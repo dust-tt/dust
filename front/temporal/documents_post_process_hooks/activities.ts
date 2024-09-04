@@ -135,7 +135,12 @@ async function getDataSourceDocument({
   }
 
   const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
-  const dataSource = await DataSourceResource.fetchByName(auth, dataSourceName);
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dataSourceName,
+    // TODO(DATASOURCE_SID): clean-up
+    { origin: "post_upsert_hook_activities" }
+  );
 
   if (!dataSource) {
     return new Err(new Error(`Could not find data source ${dataSourceName}`));

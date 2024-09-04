@@ -31,7 +31,12 @@ async function handler(
     });
   }
 
-  const dataSource = await DataSourceResource.fetchByName(auth, req.query.name);
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    req.query.name,
+    // TODO(DATASOURCE_SID): Clean-up and rename parameter as [dsId]
+    { origin: "data_source_get_or_post" }
+  );
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,

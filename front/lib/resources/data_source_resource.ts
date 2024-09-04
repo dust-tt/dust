@@ -36,7 +36,17 @@ export type FetchDataSourceOrigin =
   | "post_upsert_hook_helper"
   | "post_upsert_hook_activities"
   | "lib_api_get_data_source"
-  | "lib_api_delete_data_source";
+  | "lib_api_delete_data_source"
+  | "cli_delete"
+  | "cli_delete_document"
+  | "vault_patch_content"
+  | "data_source_view_create"
+  | "poke_data_source_config"
+  | "registry_lookup"
+  | "data_source_get_or_post"
+  | "data_source_managed_update"
+  | "vault_data_source_config"
+  | "vault_patch_or_delete_data_source";
 
 export type FetchDataSourceOptions = {
   includeEditedBy?: boolean;
@@ -191,30 +201,6 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
       );
       return dataSources[0];
     }
-  }
-
-  static async fetchById(
-    auth: Authenticator,
-    id: string,
-    options?: FetchDataSourceOptions
-  ): Promise<DataSourceResource | null> {
-    // Preparing the introduction of datasource sIds - fetchById for now points to fetchByName
-    const dataSource = await this.fetchByName(auth, id, options);
-
-    return dataSource ?? null;
-  }
-
-  static async fetchByName(
-    auth: Authenticator,
-    name: string,
-    options?: Omit<FetchDataSourceOptions, "limit" | "order">
-  ): Promise<DataSourceResource | null> {
-    const dataSources = await this.fetchByNames(auth, [name], options);
-    if (dataSources.length === 0) {
-      return null;
-    }
-
-    return dataSources[0];
   }
 
   // TODO(DATASOURCE_SID): remove
