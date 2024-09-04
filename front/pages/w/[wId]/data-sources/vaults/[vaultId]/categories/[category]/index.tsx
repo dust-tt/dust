@@ -18,7 +18,6 @@ import { VaultResourcesList } from "@app/components/vaults/VaultResourcesList";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { VaultResource } from "@app/lib/resources/vault_resource";
-import { useDataSourceViewContentNodes } from "@app/lib/swr";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
