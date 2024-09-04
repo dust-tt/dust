@@ -2,6 +2,7 @@ import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
@@ -76,11 +77,7 @@ async function updateParentsFieldForConnector(
         }
 
         return updateDocumentParentsField({
-          dataSourceConfig: {
-            dataSourceName: connector.dataSourceName,
-            workspaceId: connector.workspaceId,
-            workspaceAPIKey: connector.workspaceAPIKey,
-          },
+          dataSourceConfig: dataSourceConfigFromConnector(connector),
           documentId: node.internalId,
           parents,
         });

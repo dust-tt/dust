@@ -333,14 +333,15 @@ async function handler(
         logger
       );
 
-      const connectorsRes = await connectorsAPI.createConnector(
+      const connectorsRes = await connectorsAPI.createConnector({
         provider,
-        owner.sId,
-        systemAPIKeyRes.value.secret,
-        dataSourceName,
-        connectionId || "none",
-        configuration
-      );
+        workspaceId: owner.sId,
+        workspaceAPIKey: systemAPIKeyRes.value.secret,
+        dataSourceId: dataSource.sId,
+        dataSourceName: dataSource.name,
+        connectionId: connectionId || "none",
+        configuration,
+      });
 
       if (connectorsRes.isErr()) {
         logger.error(

@@ -13,6 +13,7 @@ import type { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 
 /** Compute the parents field for a notion pageOrDb See the [Design
  * Doc](https://www.notion.so/dust-tt/Engineering-e0f834b5be5a43569baaf76e9c41adf2?p=3d26536a4e0a464eae0c3f8f27a7af97&pm=s)
@@ -154,11 +155,7 @@ export async function updateAllParentsFields(
           "Updating parents field for page"
         );
         await updateDocumentParentsField({
-          dataSourceConfig: {
-            dataSourceName: connector.dataSourceName,
-            workspaceId: connector.workspaceId,
-            workspaceAPIKey: connector.workspaceAPIKey,
-          },
+          dataSourceConfig: dataSourceConfigFromConnector(connector),
           documentId: `notion-${pageId}`,
           parents,
         });
