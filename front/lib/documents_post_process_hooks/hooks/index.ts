@@ -19,7 +19,7 @@ export type DocumentsPostProcessHookVerb = "upsert" | "delete";
 
 export type DocumentsPostProcessHookOnUpsertParams = {
   auth: Authenticator;
-  dataSourceName: string;
+  dataSourceId: string;
   documentId: string;
   documentSourceUrl?: string;
   documentText: string;
@@ -30,7 +30,7 @@ export type DocumentsPostProcessHookOnUpsertParams = {
 
 export type DocumentsPostProcessHookOnDeleteParams = {
   auth: Authenticator;
-  dataSourceName: string;
+  dataSourceId: string;
   documentId: string;
   dataSourceConnectorProvider: ConnectorProvider | null;
 };

@@ -11,8 +11,8 @@ import {
 const QUEUE_NAME = "post-upsert-hooks-queue"; // TODO: rename to post-process-hooks-queue
 
 export async function launchRunPostUpsertHooksWorkflow(
-  dataSourceName: string,
   workspaceId: string,
+  dataSourceId: string,
   documentId: string,
   documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null,
@@ -23,7 +23,7 @@ export async function launchRunPostUpsertHooksWorkflow(
 
   await client.workflow.signalWithStart(runPostUpsertHooksWorkflow, {
     args: [
-      dataSourceName,
+      dataSourceId,
       workspaceId,
       documentId,
       documentHash,
@@ -32,15 +32,15 @@ export async function launchRunPostUpsertHooksWorkflow(
       debounceMs,
     ],
     taskQueue: QUEUE_NAME,
-    workflowId: `workflow-run-post-upsert-hooks-${hookType}-${workspaceId}-${dataSourceName}-${documentId}`,
+    workflowId: `workflow-run-post-upsert-hooks-${hookType}-${workspaceId}-${dataSourceId}-${documentId}`,
     signal: newUpsertSignal,
     signalArgs: undefined,
   });
 }
 
 export async function launchRunPostDeleteHooksWorkflow(
-  dataSourceName: string,
   workspaceId: string,
+  dataSourceId: string,
   documentId: string,
   dataSourceConnectorProvider: ConnectorProvider | null,
   hookType: DocumentsPostProcessHookType
@@ -49,13 +49,13 @@ export async function launchRunPostDeleteHooksWorkflow(
 
   await client.workflow.start(runPostDeleteHoosWorkflow, {
     args: [
-      dataSourceName,
+      dataSourceId,
       workspaceId,
       documentId,
       dataSourceConnectorProvider,
       hookType,
     ],
     taskQueue: QUEUE_NAME,
-    workflowId: `workflow-run-post-delete-hooks-${hookType}-${workspaceId}-${dataSourceName}-${documentId}`,
+    workflowId: `workflow-run-post-delete-hooks-${hookType}-${workspaceId}-${dataSourceId}-${documentId}`,
   });
 }

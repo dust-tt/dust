@@ -31,7 +31,7 @@ const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
 export const EnqueueUpsertDocument = t.type({
   workspaceId: t.string,
-  dataSourceName: t.string,
+  dataSourceId: t.string,
   documentId: t.string,
   tags: t.union([t.array(t.string), t.null]),
   parents: t.union([t.array(t.string), t.null]),
@@ -43,8 +43,7 @@ export const EnqueueUpsertDocument = t.type({
 
 export const EnqueueUpsertTable = t.type({
   workspaceId: t.string,
-  projectId: t.string,
-  dataSourceName: t.string,
+  dataSourceId: t.string,
   tableId: t.string,
   tableName: t.string,
   tableDescription: t.string,
@@ -70,7 +69,7 @@ export async function enqueueUpsertDocument({
     {
       upsertQueueId,
       workspaceId: upsertDocument.workspaceId,
-      dataSourceName: upsertDocument.dataSourceName,
+      dataSourceId: upsertDocument.dataSourceId,
       documentId: upsertDocument.documentId,
       enqueueTimestamp: Date.now(),
     },
@@ -95,7 +94,7 @@ export async function enqueueUpsertTable({
     {
       upsertQueueId,
       workspaceId: upsertTable.workspaceId,
-      dataSourceName: upsertTable.dataSourceName,
+      dataSourceId: upsertTable.dataSourceId,
       documentId: upsertTable.tableId,
       enqueueTimestamp: Date.now(),
     },
@@ -144,7 +143,7 @@ async function enqueueUpsert({
 
     const launchRes = await launchWorkflowFn({
       workspaceId: upsertItem.workspaceId,
-      dataSourceName: upsertItem.dataSourceName,
+      dataSourceId: upsertItem.dataSourceId,
       upsertQueueId,
       enqueueTimestamp: now,
     });
@@ -187,7 +186,7 @@ export async function runPostUpsertHooks({
 
   const postUpsertHooksToRun = await getDocumentsPostUpsertHooksToRun({
     auth,
-    dataSourceName: dataSource.name,
+    dataSourceId: dataSource.sId,
     documentId: documentId,
     documentText: fullText,
     documentHash: document.hash,
@@ -199,8 +198,8 @@ export async function runPostUpsertHooks({
   // TODO: parallel.
   for (const { type: hookType, debounceMs } of postUpsertHooksToRun) {
     await launchRunPostUpsertHooksWorkflow(
-      dataSource.name,
       workspaceId,
+      dataSource.sId,
       documentId,
       document.hash,
       dataSource.connectorProvider || null,

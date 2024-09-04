@@ -16,8 +16,8 @@ import { withRetries } from "@app/lib/utils/retries";
 import logger from "@app/logger/logger";
 
 export async function runPostUpsertHookActivity(
-  dataSourceName: string,
   workspaceId: string,
+  dataSourceId: string,
   documentId: string,
   documentHash: string,
   dataSourceConnectorProvider: ConnectorProvider | null,
@@ -25,7 +25,7 @@ export async function runPostUpsertHookActivity(
 ) {
   const localLogger = logger.child({
     workspaceId,
-    dataSourceName,
+    dataSourceId,
     documentId,
     dataSourceConnectorProvider,
     hookType,
@@ -40,8 +40,8 @@ export async function runPostUpsertHookActivity(
   localLogger.info("Running documents post process hook onUpsert function.");
 
   const dataSourceDocumentRes = await withRetries(getDataSourceDocument)({
-    dataSourceName,
     workspaceId,
+    dataSourceId,
     documentId,
   });
 
@@ -66,8 +66,8 @@ export async function runPostUpsertHookActivity(
   }
 
   await hook.onUpsert({
-    dataSourceName,
     auth: await Authenticator.internalBuilderForWorkspace(workspaceId),
+    dataSourceId,
     documentId,
     documentText,
     documentSourceUrl,
@@ -78,15 +78,15 @@ export async function runPostUpsertHookActivity(
 }
 
 export async function runPostDeleteHookActivity(
-  dataSourceName: string,
   workspaceId: string,
+  dataSourceId: string,
   documentId: string,
   dataSourceConnectorProvider: ConnectorProvider | null,
   hookType: DocumentsPostProcessHookType
 ) {
   const localLogger = logger.child({
     workspaceId,
-    dataSourceName,
+    dataSourceId,
     documentId,
     dataSourceConnectorProvider,
     hookType,
@@ -106,8 +106,8 @@ export async function runPostDeleteHookActivity(
   }
 
   await hook.onDelete({
-    dataSourceName,
     auth: await Authenticator.internalBuilderForWorkspace(workspaceId),
+    dataSourceId,
     documentId,
     dataSourceConnectorProvider,
   });
@@ -115,12 +115,12 @@ export async function runPostDeleteHookActivity(
 }
 
 async function getDataSourceDocument({
-  dataSourceName,
   workspaceId,
+  dataSourceId,
   documentId,
 }: {
-  dataSourceName: string;
   workspaceId: string;
+  dataSourceId: string;
   documentId: string;
 }): Promise<
   Result<{ document: CoreAPIDocument; data_source: CoreAPIDataSource }, Error>
@@ -137,13 +137,13 @@ async function getDataSourceDocument({
   const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
   const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,
-    dataSourceName,
+    dataSourceId,
     // TODO(DATASOURCE_SID): clean-up
     { origin: "post_upsert_hook_activities" }
   );
 
   if (!dataSource) {
-    return new Err(new Error(`Could not find data source ${dataSourceName}`));
+    return new Err(new Error(`Could not find data source ${dataSourceId}`));
   }
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const docText = await coreAPI.getDataSourceDocument({
