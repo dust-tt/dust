@@ -18,7 +18,6 @@ import type {
   LightContentNode,
   LightWorkspaceType,
   PlanType,
-  PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
 import { MAX_FILE_LENGTH, MAX_FILE_SIZES } from "@dust-tt/types";
 import {
@@ -100,13 +99,13 @@ export function DocumentOrTableUploadOrEditModal({
 
   const { table } = useTable({
     workspaceId: owner.sId,
-    dataSourceName: dataSourceView.dataSource.name,
+    dataSourceView: dataSourceView,
     tableId: isTable ? initialId ?? null : null,
   });
 
   const { document } = useDocument({
     workspaceId: owner.sId,
-    dataSourceName: dataSourceView.dataSource.name,
+    dataSourceView: dataSourceView,
     documentId: !isTable ? initialId ?? null : null,
   });
 
@@ -121,7 +120,6 @@ export function DocumentOrTableUploadOrEditModal({
     });
   };
 
-  // TODO(GROUPS_UI) replace endpoint https://github.com/dust-tt/dust/issues/6921
   useEffect(() => {
     const fetchData = async () => {
       if (!initialId) {
@@ -191,7 +189,9 @@ export function DocumentOrTableUploadOrEditModal({
         throw new Error("File too large");
       }
 
-      const endpoint = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/tables/csv`;
+      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.name}/tables`;
+      const endpoint = initialId ? `${base}/${initialId}` : base;
+
       const body = JSON.stringify({
         name: table.name,
         description: table.description,
@@ -205,7 +205,7 @@ export function DocumentOrTableUploadOrEditModal({
       });
 
       const res = await fetch(endpoint, {
-        method: "POST",
+        method: initialId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body,
       });
@@ -233,8 +233,12 @@ export function DocumentOrTableUploadOrEditModal({
   const handleDocumentUpload = async (document: TableOrDocument) => {
     setUploading(true);
     try {
-      const endpoint = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.name}/documents/${encodeURIComponent(document.name)}`;
-      const body: PostDataSourceDocumentRequestBody = {
+      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.name}/documents`;
+      const endpoint = initialId
+        ? `${base}/${encodeURIComponent(document.name)}`
+        : base;
+      const body = {
+        name: document.name,
         timestamp: null,
         parents: null,
         section: { prefix: null, content: document.text, sections: [] },
@@ -248,7 +252,7 @@ export function DocumentOrTableUploadOrEditModal({
       const stringifiedBody = JSON.stringify(body);
 
       const res = await fetch(endpoint, {
-        method: "POST",
+        method: initialId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: stringifiedBody,
       });

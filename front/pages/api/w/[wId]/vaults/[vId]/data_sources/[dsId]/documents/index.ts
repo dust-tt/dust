@@ -3,19 +3,15 @@ import type {
   DocumentType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import {
-  CoreAPI,
-  PostDataSourceDocumentRequestBodySchema,
-} from "@dust-tt/types";
+import { PostDataSourceWithNameDocumentRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import apiConfig from "@app/lib/api/config";
-import { getDataSource, upsertDocument } from "@app/lib/api/data_sources";
+import { upsertDocument } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export const config = {
@@ -26,18 +22,18 @@ export const config = {
   },
 };
 
-export type GetDocumentResponseBody = {
+export type PostDocumentResponseBody = {
   document: DocumentType | CoreAPILightDocument;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetDocumentResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<PostDocumentResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const { documentId, name } = req.query;
+  const { dsId, vId } = req.query;
 
-  if (typeof name !== "string" || typeof documentId !== "string") {
+  if (typeof dsId !== "string" || typeof vId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -47,9 +43,13 @@ async function handler(
     });
   }
 
-  const dataSource = await getDataSource(auth, name as string);
+  const dataSource = await DataSourceResource.fetchByName(auth, dsId);
 
-  if (!dataSource) {
+  if (
+    !dataSource ||
+    vId !== dataSource.vault.sId ||
+    !dataSource.canRead(auth)
+  ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -58,17 +58,15 @@ async function handler(
       },
     });
   }
-  const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
 
   switch (req.method) {
     case "POST":
-      if (!auth.isBuilder()) {
+      if (!dataSource.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
-            message:
-              "You can only alter the data souces of the workspaces for which you are a builder.",
+            message: "You are not allowed to update data in this data source.",
           },
         });
       }
@@ -83,9 +81,9 @@ async function handler(
         });
       }
 
-      const bodyValidation = PostDataSourceDocumentRequestBodySchema.decode(
-        req.body
-      );
+      const bodyValidation =
+        PostDataSourceWithNameDocumentRequestBodySchema.decode(req.body);
+
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
@@ -99,8 +97,7 @@ async function handler(
 
       const upsertResult = await upsertDocument({
         ...bodyValidation.right,
-        name: documentId,
-        dataSource,
+        dataSource: dataSource.toJSON(),
         auth,
       });
 
@@ -138,80 +135,12 @@ async function handler(
         document: upsertResult.value.document,
       });
       return;
-
-    case "GET":
-      const document = await coreAPI.getDataSourceDocument({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        documentId,
-      });
-
-      if (document.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "data_source_error",
-            message:
-              "There was an error retrieving the data source's document.",
-            data_source_error: document.error,
-          },
-        });
-      }
-
-      res.status(200).json({
-        document: document.value.document,
-      });
-      return;
-
-    case "DELETE":
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "You can only alter the data souces of the workspaces for which you are a builder.",
-          },
-        });
-      }
-
-      if (dataSource.connectorId) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message: "You cannot delete a document from a managed data source.",
-          },
-        });
-      }
-
-      const deleteRes = await coreAPI.deleteDataSourceDocument({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        documentId: req.query.documentId as string,
-      });
-
-      if (deleteRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "There was an error deleting the document.",
-            data_source_error: deleteRes.error,
-          },
-        });
-      }
-
-      res.status(204).end();
-      return;
-
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message:
-            "The method passed is not supported, GET, POST or DELETE is expected.",
+          message: "The method passed is not supported, POST is expected.",
         },
       });
   }
