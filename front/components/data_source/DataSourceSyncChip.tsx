@@ -8,11 +8,11 @@ import { timeAgoFrom } from "@app/lib/utils";
 
 export default function ConnectorSyncingChip({
   workspaceId,
-  dataSourceName,
+  dataSourceId,
   initialState,
 }: {
   workspaceId: string;
-  dataSourceName: string;
+  dataSourceId: string;
   initialState: ConnectorType;
 }) {
   const {
@@ -20,8 +20,8 @@ export default function ConnectorSyncingChip({
     isConnectorLoading,
     isConnectorError,
   } = useConnector({
-    workspaceId: workspaceId,
-    dataSourceName: dataSourceName,
+    workspaceId,
+    dataSourceId,
   });
 
   const connector = refreshedConnector || initialState;

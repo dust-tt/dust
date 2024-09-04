@@ -111,9 +111,7 @@ const getTableColumns = ({
                   info.row.original.dataSourceView.dataSource.connector
                 }
                 workspaceId={info.row.original.workspaceId}
-                dataSourceName={
-                  info.row.original.dataSourceView.dataSource.name
-                }
+                dataSourceId={info.row.original.dataSourceView.dataSource.sId}
               />
             )}
         </>

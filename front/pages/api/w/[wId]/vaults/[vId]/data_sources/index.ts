@@ -426,7 +426,6 @@ const handleDataSourceWithProvider = async ({
     workspaceId: owner.sId,
     workspaceAPIKey: systemAPIKeyRes.value.secret,
     dataSourceId: dataSource.sId,
-    dataSourceName: dataSource.name,
     connectionId: connectionId ?? "none",
     configuration,
   });
