@@ -84,10 +84,7 @@ export function DataTable<TData extends TBaseData>({
     state: {
       columnFilters,
       sorting,
-    },
-    ...(paginationProps && {
-      manualPagination: true,
-    }),
+    }
   });
 
   useEffect(() => {
