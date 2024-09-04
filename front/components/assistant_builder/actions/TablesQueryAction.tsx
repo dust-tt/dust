@@ -27,7 +27,6 @@ export function ActionTablesQuery({
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderTableConfiguration | null;
   updateAction: (
-    // TODO:
     setNewAction: (
       previousAction: AssistantBuilderTableConfiguration
     ) => AssistantBuilderTableConfiguration
@@ -48,11 +47,14 @@ export function ActionTablesQuery({
           setShowTableModal(isOpen);
         }}
         owner={owner}
-        onSave={(dsConfigs) => {
+        onSave={(newViewSelection) => {
           setEdited(true);
+
+          // Update the action configuration with the new view selection.
+          // Table query action only supports one table.
           updateAction(() => {
             return {
-              ...dsConfigs,
+              ...newViewSelection,
             };
           });
         }}

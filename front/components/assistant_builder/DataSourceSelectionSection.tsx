@@ -99,7 +99,6 @@ export default function DataSourceSelectionSection({
                 <Tree.Item
                   key={dsConfig.dataSourceView.sId}
                   type={
-                    // TODO: Handle folders for table view!
                     dsConfig.dataSourceView.dataSource.connectorId
                       ? "node"
                       : "leaf"

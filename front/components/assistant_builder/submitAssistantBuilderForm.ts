@@ -116,10 +116,6 @@ export async function submitAssistantBuilderForm({
         ];
 
       case "TABLES_QUERY":
-        console.log(
-          ">> About to submit tables query:",
-          JSON.stringify(a.configuration, null, 2)
-        );
         return [
           {
             type: "tables_query_configuration",

@@ -318,18 +318,20 @@ async function renderTableDataSourcesConfigurations(
     );
 
   // Return a map of dataSourceView.sId to selected resources.
-  return dataSourceConfigurationsArray.reduce(
-    (acc, curr) => ({
-      ...acc,
-      [curr.dataSourceView.sId]: {
-        ...curr,
-        selectedResources: [
-          // Merge selected resources within the same dataSourceView.
-          ...(acc[curr.dataSourceView.sId]?.selectedResources ?? []),
-          ...curr.selectedResources,
-        ],
-      },
-    }),
-    {} as DataSourceViewSelectionConfigurations
+  return dataSourceConfigurationsArray.reduce<DataSourceViewSelectionConfigurations>(
+    (acc, config) => {
+      const { sId } = config.dataSourceView;
+
+      if (!acc[sId]) {
+        // Initialize the entry if it doesn't exist.
+        acc[sId] = config;
+      } else {
+        // Append to selectedResources if entry already exists.
+        acc[sId].selectedResources.push(...config.selectedResources);
+      }
+
+      return acc;
+    },
+    {}
   );
 }

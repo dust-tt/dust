@@ -307,6 +307,7 @@ export function getTableIdForContentNode(
         contentNode.internalId
       );
 
+    // For static tables, the tableId is the contentNode internalId.
     case null:
       return contentNode.internalId;
 
@@ -334,6 +335,7 @@ export function getContentNodeInternalIdFromTableId(
     case "microsoft":
       return getMicrosoftSheetContentNodeInternalIdFromTableId(tableId);
 
+    // For static tables, the contentNode internalId is the tableId.
     case null:
       return tableId;
 
