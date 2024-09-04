@@ -13,11 +13,11 @@ import { DocumentOrTableUploadOrEditModal } from "@app/components/data_source/Do
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 
-type ContentActionKey =
-  | "DocumentOrTableUploadOrEditModal"
+export type ContentActionKey =
+  | "DocumentUploadOrEdit"
+  | "TableUploadOrEdit"
   | "MultipleDocumentsUpload"
-  | "DocumentOrTableDeleteDialog"
-  | "TableUploadOrEditModal";
+  | "DocumentOrTableDeleteDialog";
 
 export type ContentAction = {
   action?: ContentActionKey;
@@ -28,7 +28,7 @@ type ContentActionsProps = {
   dataSourceView: DataSourceViewType;
   plan: PlanType;
   owner: WorkspaceType;
-  onSave: () => void;
+  onSave: (action?: ContentActionKey) => void;
 };
 
 export type ContentActionsRef = {
@@ -53,7 +53,7 @@ export const ContentActions = React.forwardRef<
     // Keep current to have it during closing animation
     setCurrentAction({ contentNode: currentAction.contentNode });
     if (save) {
-      onSave();
+      onSave(currentAction.action);
     }
   };
   // TODO(2024-08-30 flav) Refactor component below to remove conditional code between
@@ -63,10 +63,16 @@ export const ContentActions = React.forwardRef<
       <DocumentOrTableUploadOrEditModal
         contentNode={currentAction.contentNode}
         dataSourceView={dataSourceView}
-        isOpen={currentAction.action === "DocumentOrTableUploadOrEditModal"}
+        isOpen={
+          currentAction.action === "DocumentUploadOrEdit" ||
+          currentAction.action === "TableUploadOrEdit"
+        }
         onClose={onClose}
         owner={owner}
         plan={plan}
+        viewType={
+          currentAction.action === "TableUploadOrEdit" ? "tables" : "documents"
+        }
       />
       <MultipleDocumentsUpload
         dataSourceView={dataSourceView}
@@ -103,7 +109,9 @@ export const getMenuItems = (
         onClick: () => {
           contentActionsRef.current &&
             contentActionsRef.current?.callAction(
-              "DocumentOrTableUploadOrEditModal",
+              contentNode.type === "database"
+                ? "TableUploadOrEdit"
+                : "DocumentUploadOrEdit",
               contentNode
             );
         },

@@ -237,7 +237,7 @@ export async function upsertDocument({
   parents?: string[] | null;
   timestamp?: number | null;
   light_document_output?: boolean;
-  dataSource: DataSourceType;
+  dataSource: DataSourceResource;
   auth: Authenticator;
 }): Promise<
   Result<
