@@ -38,7 +38,7 @@ export class KeyResource extends BaseResource<KeyModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<KeyModel>, "secret">,
+    blob: Omit<CreationAttributes<KeyModel>, "secret" | "groupId">,
     group: GroupResource
   ) {
     const new_id = Buffer.from(blake3(uuidv4())).toString("hex");
