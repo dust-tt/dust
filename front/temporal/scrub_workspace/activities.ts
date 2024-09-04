@@ -155,7 +155,7 @@ async function deleteDatasources(auth: Authenticator) {
   await DataSourceViewResource.deleteAllForWorkspace(auth);
 
   for (const dataSource of dataSources) {
-    const r = await deleteDataSource(auth, dataSource.name);
+    const r = await deleteDataSource(auth, dataSource);
     if (r.isErr()) {
       throw new Error(`Failed to delete data source: ${r.error.message}`);
     }

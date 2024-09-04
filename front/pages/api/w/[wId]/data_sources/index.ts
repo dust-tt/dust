@@ -10,7 +10,7 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
+import { getDataSources } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -45,7 +45,9 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      res.status(200).json({ dataSources });
+      res
+        .status(200)
+        .json({ dataSources: dataSources.map((ds) => ds.toJSON()) });
       return;
 
     case "POST":
@@ -212,16 +214,13 @@ async function handler(
         ds
       );
 
-      const dataSourceType = await getDataSource(auth, ds.name);
-      if (dataSourceType) {
-        void ServerSideTracking.trackDataSourceCreated({
-          user,
-          workspace: owner,
-          dataSource: dataSourceType,
-        });
-      }
-
       res.status(201).json({
+        dataSource: ds.toJSON(),
+      });
+
+      void ServerSideTracking.trackDataSourceCreated({
+        user,
+        workspace: owner,
         dataSource: ds.toJSON(),
       });
       return;

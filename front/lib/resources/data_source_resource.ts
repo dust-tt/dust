@@ -16,6 +16,7 @@ import { Op } from "sequelize";
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
@@ -36,7 +37,6 @@ export type FetchDataSourceOrigin =
   | "post_upsert_hook_helper"
   | "post_upsert_hook_activities"
   | "lib_api_get_data_source"
-  | "lib_api_delete_data_source"
   | "cli_delete"
   | "cli_delete_document"
   | "vault_patch_content"
@@ -46,7 +46,8 @@ export type FetchDataSourceOrigin =
   | "data_source_get_or_post"
   | "data_source_managed_update"
   | "vault_data_source_config"
-  | "vault_patch_or_delete_data_source";
+  | "vault_patch_or_delete_data_source"
+  | "vault_data_source_documents";
 
 export type FetchDataSourceOptions = {
   includeEditedBy?: boolean;
@@ -299,6 +300,13 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
       transaction,
     });
 
+    // TODO(DATASOURCE_SID): state storing the datasource name.
+    await AgentTablesQueryConfigurationTable.destroy({
+      where: {
+        dataSourceId: this.name,
+      },
+    });
+
     await DataSourceViewResource.deleteForDataSource(auth, this, transaction);
 
     try {
@@ -402,6 +410,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
   toJSON(): DataSourceType {
     return {
       id: this.id,
+      sId: this.sId,
       createdAt: this.createdAt.getTime(),
       name: this.name,
       description: this.description,

@@ -51,7 +51,6 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
-import { tableKey } from "@app/lib/client/tables_query";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDocument, isWebsite } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -129,7 +128,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       readOnly,
       isAdmin,
       isBuilder,
-      dataSource,
+      dataSource: dataSource.toJSON(),
       connector,
       standardView,
       dustClientFacingUrl: config.getClientFacingUrl(),
@@ -601,13 +600,9 @@ function DatasourceTablesTabView({
 
         <div className="py-8">
           <ContextItem.List>
-            {tables.map((t) => (
+            {tables.map((t, index) => (
               <ContextItem
-                key={tableKey({
-                  workspaceId: owner.sId,
-                  tableId: t.table_id,
-                  dataSourceId: dataSource.name,
-                })}
+                key={index}
                 title={`${t.name} (${t.data_source_id})`}
                 visual={
                   <ContextItem.Visual

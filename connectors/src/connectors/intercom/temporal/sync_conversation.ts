@@ -74,14 +74,7 @@ export async function deleteConversation({
     conversationId
   );
   await Promise.all([
-    deleteFromDataSource(
-      {
-        dataSourceName: dataSourceConfig.dataSourceName,
-        workspaceId: dataSourceConfig.workspaceId,
-        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-      },
-      dsConversationId
-    ),
+    deleteFromDataSource(dataSourceConfig, dsConversationId),
     IntercomConversation.destroy({
       where: {
         connectorId,

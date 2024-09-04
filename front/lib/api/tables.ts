@@ -3,7 +3,6 @@ import type {
   CoreAPIRow,
   CoreAPIRowValue,
   CoreAPITable,
-  DataSourceType,
   Result,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -16,6 +15,8 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import logger from "@app/logger/logger";
+
+import type { DataSourceResource } from "../resources/data_source_resource";
 
 type CsvParsingError = {
   type:
@@ -63,7 +64,7 @@ export async function deleteTable({
   tableId,
 }: {
   owner: WorkspaceType;
-  dataSource: DataSourceType;
+  dataSource: DataSourceResource;
   tableId: string;
 }): Promise<Result<null, TableOperationError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -124,7 +125,7 @@ export async function upsertTableFromCsv({
   truncate,
 }: {
   auth: Authenticator;
-  dataSource: DataSourceType;
+  dataSource: DataSourceResource;
   tableName: string;
   tableDescription: string;
   tableId: string;

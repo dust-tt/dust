@@ -158,17 +158,18 @@ export function useDataSourceViewDocument({
     fetcher;
   const disabled = !dataSourceView || !documentId;
 
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
-      : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/documents/${documentId}`,
+      : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`,
     dataSourceViewDocumentFetcher
   );
 
   return {
     document: data?.document,
-    isDocumentLoading: !error && !data,
+    isDocumentLoading: !disabled && !error && !data,
     isDocumentError: error,
+    mutateDocument: mutate,
   };
 }
 
@@ -192,7 +193,7 @@ export function useDataSourceViewConnectorConfiguration({
 
   return {
     configuration: data ? data.configuration : null,
-    isDocumentLoading: !error && !data,
+    isDocumentLoading: !disabled && !error && !data,
     isDocumentError: error,
   };
 }

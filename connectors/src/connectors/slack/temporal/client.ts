@@ -1,10 +1,10 @@
 import type { ModelId } from "@dust-tt/types";
 import { Err, Ok, removeNulls } from "@dust-tt/types";
 
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { getWeekStart } from "../lib/utils";
 import { getChannelsToSync } from "./activities";
@@ -39,11 +39,7 @@ export async function launchSlackSyncWorkflow(
   }
   const client = await getTemporalClient();
 
-  const dataSourceConfig: DataSourceConfig = {
-    workspaceAPIKey: connector.workspaceAPIKey,
-    workspaceId: connector.workspaceId,
-    dataSourceName: connector.dataSourceName,
-  };
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const workflowId = workspaceFullSyncWorkflowId(connectorId, fromTs);
   try {

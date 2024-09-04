@@ -62,6 +62,7 @@ export function ActionRetrievalSearch({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
+        viewType="documents"
       />
 
       <DataSourceSelectionSection
@@ -136,6 +137,7 @@ export function ActionRetrievalExhaustive({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
+        viewType="documents"
       />
 
       <DataSourceSelectionSection

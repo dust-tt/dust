@@ -90,6 +90,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           connectionId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
+          dataSourceId: dataSourceConfig.dataSourceId,
           dataSourceName: dataSourceConfig.dataSourceName,
         },
         intercomConfigurationBlob

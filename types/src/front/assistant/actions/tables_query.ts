@@ -13,8 +13,7 @@ export type TablesQueryConfigurationType = {
 
 export type TableDataSourceConfiguration = {
   dataSourceId: string;
-  // TODO(GROUPS_INFRA) Make `dataSourceViewId` required.
-  dataSourceViewId?: string | null;
+  dataSourceViewId: string;
   tableId: string;
   workspaceId: string;
 };

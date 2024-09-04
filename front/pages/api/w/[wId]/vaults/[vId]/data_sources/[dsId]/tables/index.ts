@@ -95,7 +95,7 @@ async function handler(
       const upsertRes = await upsertTable({
         ...bodyValidation.right,
         async: bodyValidation.right.async ?? false,
-        dataSource: dataSource.toJSON(),
+        dataSource,
         auth,
       });
 

@@ -24,6 +24,7 @@ export class ConnectorModel extends Model<
 
   declare workspaceAPIKey: string;
   declare workspaceId: string;
+  declare dataSourceId: string | null;
   declare dataSourceName: string;
 
   declare lastSyncStatus?: ConnectorSyncStatus;
@@ -74,6 +75,10 @@ ConnectorModel.init(
     dataSourceName: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    dataSourceId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     lastSyncStatus: {
       type: DataTypes.STRING,

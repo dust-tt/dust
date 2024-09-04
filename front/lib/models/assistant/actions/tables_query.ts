@@ -95,7 +95,7 @@ export class AgentTablesQueryConfigurationTable extends Model<
   declare dataSourceId: string;
   declare tableId: string;
 
-  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
+  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
   declare tablesQueryConfigurationId: ForeignKey<
     AgentTablesQueryConfiguration["id"]
   >;
@@ -166,10 +166,9 @@ DataSourceViewModel.hasMany(AgentTablesQueryConfigurationTable, {
   foreignKey: { allowNull: true },
   onDelete: "RESTRICT",
 });
-// TODO(GROUPS_INFRA): This should be a required relationship.
 AgentTablesQueryConfigurationTable.belongsTo(DataSourceViewModel, {
   as: "dataSourceView",
-  foreignKey: { allowNull: true },
+  foreignKey: { allowNull: false },
 });
 
 export class AgentTablesQueryAction extends Model<

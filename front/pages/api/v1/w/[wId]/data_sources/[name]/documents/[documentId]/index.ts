@@ -415,7 +415,7 @@ async function handler(
         const enqueueRes = await enqueueUpsertDocument({
           upsertDocument: {
             workspaceId: owner.sId,
-            dataSourceName: dataSource.name,
+            dataSourceId: dataSource.sId,
             documentId: req.query.documentId as string,
             tags: bodyValidation.right.tags || [],
             parents: bodyValidation.right.parents || [],
@@ -477,7 +477,7 @@ async function handler(
 
         res.status(200).json({
           document: upsertRes.value.document,
-          data_source: dataSource,
+          data_source: dataSource.toJSON(),
         });
 
         await runPostUpsertHooks({
@@ -539,7 +539,7 @@ async function handler(
 
       const postDeleteHooksToRun = await getDocumentsPostDeleteHooksToRun({
         auth: await Authenticator.internalBuilderForWorkspace(owner.sId),
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.sId,
         documentId: req.query.documentId as string,
         dataSourceConnectorProvider: dataSource.connectorProvider || null,
       });
@@ -547,8 +547,8 @@ async function handler(
       // TODO: parallel.
       for (const { type: hookType } of postDeleteHooksToRun) {
         await launchRunPostDeleteHooksWorkflow(
-          dataSource.name,
           owner.sId,
+          dataSource.sId,
           req.query.documentId as string,
           dataSource.connectorProvider || null,
           hookType

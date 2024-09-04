@@ -1,12 +1,14 @@
 import type {
+  AgentActionConfigurationType,
   AgentConfigurationType,
   AppType,
-  CoreAPITable,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
+  DustAppRunConfigurationType,
   ProcessConfigurationType,
   RetrievalConfigurationType,
+  TablesQueryConfigurationType,
   TemplateAgentConfigurationType,
 } from "@dust-tt/types";
 import {
@@ -21,10 +23,8 @@ import {
   slugify,
 } from "@dust-tt/types";
 
-import type {
-  AssistantBuilderActionConfiguration,
-  AssistantBuilderTablesQueryConfiguration,
-} from "@app/components/assistant_builder/types";
+import { getContentNodeInternalIdFromTableId } from "@app/components/assistant_builder/shared";
+import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import {
   getDefaultDustAppRunActionConfiguration,
   getDefaultProcessActionConfiguration,
@@ -37,7 +37,6 @@ import { getApps } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { getContentNodesForManagedDataSourceView } from "@app/lib/api/data_source_view";
 import type { Authenticator } from "@app/lib/auth";
-import { tableKey } from "@app/lib/client/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
@@ -69,209 +68,272 @@ export async function buildInitialActions({
 }): Promise<AssistantBuilderActionConfiguration[]> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-  // Helper function to compute DataSourceViewSelectionConfigurations
-  const renderDataSourcesConfigurations = async (
-    action: RetrievalConfigurationType | ProcessConfigurationType
-  ) => {
-    const selectedResources: {
-      dataSourceViewId: string;
-      resources: string[] | null;
-      isSelectAll: boolean;
-    }[] = [];
-
-    for (const ds of action.dataSources) {
-      selectedResources.push({
-        dataSourceViewId: ds.dataSourceViewId,
-        resources: ds.filter.parents?.in ?? null,
-        isSelectAll: !ds.filter.parents,
-      });
-    }
-
-    const dataSourceConfigurationsArray: DataSourceViewSelectionConfiguration[] =
-      await Promise.all(
-        selectedResources.map(
-          async (sr): Promise<DataSourceViewSelectionConfiguration> => {
-            const dataSourceView = dataSourceViews.find(
-              (dsv) => dsv.sId === sr.dataSourceViewId
-            );
-
-            if (!dataSourceView) {
-              throw new Error(
-                `Could not find DataSourceView with id ${sr.dataSourceViewId}`
-              );
-            }
-
-            if (!dataSourceView.dataSource.connectorId || !sr.resources) {
-              return {
-                dataSourceView,
-                selectedResources: [],
-                isSelectAll: sr.isSelectAll,
-              };
-            }
-
-            const nodesRes = await getContentNodesForManagedDataSourceView(
-              dataSourceView,
-              {
-                includeChildren: false,
-                internalIds: sr.resources,
-                viewType: "documents",
-              }
-            );
-
-            if (nodesRes.isErr()) {
-              throw nodesRes.error;
-            }
-
-            return {
-              dataSourceView,
-              selectedResources: nodesRes.value,
-              isSelectAll: sr.isSelectAll,
-            };
-          }
-        )
-      );
-
-    // key: dataSourceView.sId, value: DataSourceConfig
-    const dataSourceConfigurations = dataSourceConfigurationsArray.reduce(
-      (acc, curr) => ({
-        ...acc,
-        [curr.dataSourceView.sId]: curr,
-      }),
-      {} as DataSourceViewSelectionConfigurations
-    );
-
-    return dataSourceConfigurations;
-  };
-
-  const actions = configuration.actions;
-
   const builderActions: AssistantBuilderActionConfiguration[] = [];
 
-  for (const action of actions) {
-    let builderAction: AssistantBuilderActionConfiguration | null = null;
-    if (isRetrievalConfiguration(action)) {
-      const isSearch = action.query !== "none";
+  for (const action of configuration.actions) {
+    const builderAction = await initializeBuilderAction(
+      action,
+      dataSourceViews,
+      dustApps,
+      coreAPI
+    );
 
-      const retrievalConfiguration = isSearch
-        ? getDefaultRetrievalSearchActionConfiguration()
-        : getDefaultRetrievalExhaustiveActionConfiguration();
-
-      if (
-        action.relativeTimeFrame !== "auto" &&
-        action.relativeTimeFrame !== "none"
-      ) {
-        retrievalConfiguration.configuration.timeFrame = {
-          value: action.relativeTimeFrame.duration,
-          unit: action.relativeTimeFrame.unit,
-        };
+    if (builderAction) {
+      if (action.name) {
+        builderAction.name = action.name;
+      }
+      if (action.description) {
+        builderAction.description = action.description;
       }
 
-      retrievalConfiguration.configuration.dataSourceConfigurations =
-        await renderDataSourcesConfigurations(action);
-
-      builderAction = retrievalConfiguration;
-    } else if (isDustAppRunConfiguration(action)) {
-      const dustAppConfiguration = getDefaultDustAppRunActionConfiguration();
-      for (const app of dustApps) {
-        if (app.sId === action.appId) {
-          dustAppConfiguration.configuration.app = app;
-          dustAppConfiguration.name = slugify(app.name);
-          dustAppConfiguration.description = app.description ?? "";
-          break;
-        }
-      }
-
-      builderAction = dustAppConfiguration;
-    } else if (isTablesQueryConfiguration(action)) {
-      const tablesQueryConfiguration =
-        getDefaultTablesQueryActionConfiguration();
-
-      const coreAPITables: CoreAPITable[] = await Promise.all(
-        action.tables.map(async (t) => {
-          const dataSourceView = dataSourceViews.find(
-            // TODO(DATASOURCE_SID): statefulness of dataSourceId on tables
-            (dsv) => dsv.dataSource.name === t.dataSourceId
-          );
-
-          if (!dataSourceView) {
-            throw new Error(
-              `Could not find DataSourceView with id ${t.dataSourceId}`
-            );
-          }
-
-          const coreAPITable = await coreAPI.getTable({
-            projectId: dataSourceView.dataSource.dustAPIProjectId,
-            dataSourceId: dataSourceView.dataSource.dustAPIDataSourceId,
-            tableId: t.tableId,
-          });
-
-          if (coreAPITable.isErr()) {
-            throw coreAPITable.error;
-          }
-
-          return coreAPITable.value.table;
-        })
-      );
-
-      tablesQueryConfiguration.configuration = action.tables.reduce(
-        (acc, curr, i) => {
-          const table = coreAPITables[i];
-          const key = tableKey(curr);
-          return {
-            ...acc,
-            [key]: {
-              workspaceId: curr.workspaceId,
-              dataSourceId: curr.dataSourceId,
-              tableId: curr.tableId,
-              tableName: `${table.name}`,
-            },
-          };
-        },
-        {} as AssistantBuilderTablesQueryConfiguration
-      );
-
-      builderAction = tablesQueryConfiguration;
-    } else if (isProcessConfiguration(action)) {
-      const processConfiguration = getDefaultProcessActionConfiguration();
-      if (
-        action.relativeTimeFrame !== "auto" &&
-        action.relativeTimeFrame !== "none"
-      ) {
-        processConfiguration.configuration.timeFrame = {
-          value: action.relativeTimeFrame.duration,
-          unit: action.relativeTimeFrame.unit,
-        };
-      }
-
-      processConfiguration.configuration.tagsFilter = action.tagsFilter;
-
-      processConfiguration.configuration.dataSourceConfigurations =
-        await renderDataSourcesConfigurations(action);
-
-      processConfiguration.configuration.schema = action.schema;
-
-      builderAction = processConfiguration;
-    } else if (isWebsearchConfiguration(action)) {
-      builderAction = getDefaultWebsearchActionConfiguration();
-      // Websearch: use the default name/description
       builderActions.push(builderAction);
-      continue;
-    } else if (isBrowseConfiguration(action)) {
-      // Ignore browse actions
-      continue;
-    } else {
-      assertNever(action);
     }
-
-    if (action.name) {
-      builderAction.name = action.name;
-    }
-    if (action.description) {
-      builderAction.description = action.description;
-    }
-
-    builderActions.push(builderAction);
   }
 
   return builderActions;
+}
+
+async function initializeBuilderAction(
+  action: AgentActionConfigurationType,
+  dataSourceViews: DataSourceViewType[],
+  dustApps: AppType[],
+  coreAPI: CoreAPI
+): Promise<AssistantBuilderActionConfiguration | null> {
+  if (isRetrievalConfiguration(action)) {
+    return getRetrievalActionConfiguration(action, dataSourceViews);
+  } else if (isDustAppRunConfiguration(action)) {
+    return getDustAppRunActionConfiguration(action, dustApps);
+  } else if (isTablesQueryConfiguration(action)) {
+    return getTablesQueryActionConfiguration(action, dataSourceViews, coreAPI);
+  } else if (isProcessConfiguration(action)) {
+    return getProcessActionConfiguration(action, dataSourceViews);
+  } else if (isWebsearchConfiguration(action)) {
+    return getDefaultWebsearchActionConfiguration();
+  } else if (isBrowseConfiguration(action)) {
+    return null; // Ignore browse actions
+  } else {
+    assertNever(action);
+  }
+}
+
+async function getRetrievalActionConfiguration(
+  action: RetrievalConfigurationType,
+  dataSourceViews: DataSourceViewType[]
+): Promise<AssistantBuilderActionConfiguration> {
+  const retrievalConfiguration =
+    action.query !== "none"
+      ? getDefaultRetrievalSearchActionConfiguration()
+      : getDefaultRetrievalExhaustiveActionConfiguration();
+
+  if (
+    action.relativeTimeFrame !== "auto" &&
+    action.relativeTimeFrame !== "none"
+  ) {
+    retrievalConfiguration.configuration.timeFrame = {
+      value: action.relativeTimeFrame.duration,
+      unit: action.relativeTimeFrame.unit,
+    };
+  }
+
+  retrievalConfiguration.configuration.dataSourceConfigurations =
+    await renderDataSourcesConfigurations(action, dataSourceViews);
+
+  return retrievalConfiguration;
+}
+
+async function getDustAppRunActionConfiguration(
+  action: DustAppRunConfigurationType,
+  dustApps: AppType[]
+): Promise<AssistantBuilderActionConfiguration> {
+  const dustAppConfiguration = getDefaultDustAppRunActionConfiguration();
+  const app = dustApps.find((app) => app.sId === action.appId);
+
+  if (app) {
+    dustAppConfiguration.configuration.app = app;
+    dustAppConfiguration.name = slugify(app.name);
+    dustAppConfiguration.description = app.description ?? "";
+  }
+
+  return dustAppConfiguration;
+}
+
+async function getTablesQueryActionConfiguration(
+  action: TablesQueryConfigurationType,
+  dataSourceViews: DataSourceViewType[],
+  coreAPI: CoreAPI
+): Promise<AssistantBuilderActionConfiguration> {
+  const tablesQueryConfiguration = getDefaultTablesQueryActionConfiguration();
+  tablesQueryConfiguration.configuration =
+    await renderTableDataSourcesConfigurations(
+      action,
+      dataSourceViews,
+      coreAPI
+    );
+
+  return tablesQueryConfiguration;
+}
+
+async function getProcessActionConfiguration(
+  action: ProcessConfigurationType,
+  dataSourceViews: DataSourceViewType[]
+): Promise<AssistantBuilderActionConfiguration> {
+  const processConfiguration = getDefaultProcessActionConfiguration();
+
+  if (
+    action.relativeTimeFrame !== "auto" &&
+    action.relativeTimeFrame !== "none"
+  ) {
+    processConfiguration.configuration.timeFrame = {
+      value: action.relativeTimeFrame.duration,
+      unit: action.relativeTimeFrame.unit,
+    };
+  }
+
+  processConfiguration.configuration.tagsFilter = action.tagsFilter;
+  processConfiguration.configuration.dataSourceConfigurations =
+    await renderDataSourcesConfigurations(action, dataSourceViews);
+  processConfiguration.configuration.schema = action.schema;
+
+  return processConfiguration;
+}
+
+async function renderDataSourcesConfigurations(
+  action: RetrievalConfigurationType | ProcessConfigurationType,
+  dataSourceViews: DataSourceViewType[]
+): Promise<DataSourceViewSelectionConfigurations> {
+  const selectedResources = action.dataSources.map((ds) => ({
+    dataSourceViewId: ds.dataSourceViewId,
+    resources: ds.filter.parents?.in ?? null,
+    isSelectAll: !ds.filter.parents,
+  }));
+
+  const dataSourceConfigurationsArray = await Promise.all(
+    selectedResources.map(async (sr) => {
+      const dataSourceView = dataSourceViews.find(
+        (dsv) => dsv.sId === sr.dataSourceViewId
+      );
+      if (!dataSourceView) {
+        throw new Error(
+          `Could not find DataSourceView with id ${sr.dataSourceViewId}`
+        );
+      }
+
+      if (!dataSourceView.dataSource.connectorId || !sr.resources) {
+        return {
+          dataSourceView,
+          selectedResources: [],
+          isSelectAll: sr.isSelectAll,
+        };
+      }
+
+      const nodesRes = await getContentNodesForManagedDataSourceView(
+        dataSourceView,
+        {
+          includeChildren: false,
+          internalIds: sr.resources,
+          viewType: "documents",
+        }
+      );
+
+      if (nodesRes.isErr()) {
+        throw nodesRes.error;
+      }
+      return {
+        dataSourceView,
+        selectedResources: nodesRes.value,
+        isSelectAll: sr.isSelectAll,
+      };
+    })
+  );
+
+  return dataSourceConfigurationsArray.reduce(
+    (acc, curr) => ({
+      ...acc,
+      [curr.dataSourceView.sId]: curr,
+    }),
+    {} as DataSourceViewSelectionConfigurations
+  );
+}
+
+async function renderTableDataSourcesConfigurations(
+  action: TablesQueryConfigurationType,
+  dataSourceViews: DataSourceViewType[],
+  coreAPI: CoreAPI
+): Promise<DataSourceViewSelectionConfigurations> {
+  const selectedResources = action.tables.map((table) => ({
+    dataSourceViewId: table.dataSourceViewId,
+    resources: [table.tableId],
+    // `isSelectAll` is always false for TablesQueryConfiguration.
+    isSelectAll: false,
+  }));
+
+  const dataSourceConfigurationsArray: DataSourceViewSelectionConfiguration[] =
+    await Promise.all(
+      selectedResources.map(async (sr) => {
+        const dataSourceView = dataSourceViews.find(
+          (dsv) => dsv.sId === sr.dataSourceViewId
+        );
+        if (!dataSourceView) {
+          throw new Error(
+            `Could not find DataSourceView with id ${sr.dataSourceViewId}`
+          );
+        }
+
+        const coreAPITables = await Promise.all(
+          sr.resources.map(async (tableId) => {
+            const coreAPITable = await coreAPI.getTable({
+              projectId: dataSourceView.dataSource.dustAPIProjectId,
+              dataSourceId: dataSourceView.dataSource.dustAPIDataSourceId,
+              tableId,
+            });
+
+            if (coreAPITable.isErr()) {
+              throw coreAPITable.error;
+            }
+
+            return coreAPITable.value.table;
+          })
+        );
+
+        return {
+          dataSourceView,
+          selectedResources: coreAPITables.map((table) => ({
+            dustDocumentId: table.table_id,
+            expandable: false,
+            internalId: getContentNodeInternalIdFromTableId(
+              dataSourceView,
+              table
+            ),
+            lastUpdatedAt: table.timestamp,
+            parentInternalId: null,
+            // TODO(2024-09-04 flav) Fetch the parent ids so the Tree hierarchy can be properly rendered in the UI.
+            parentInternalIds: [],
+            permission: "read",
+            preventSelection: false,
+            sourceUrl: null,
+            title: table.name,
+            type: "database",
+          })),
+          isSelectAll: sr.isSelectAll,
+        };
+      })
+    );
+
+  // Return a map of dataSourceView.sId to selected resources.
+  return dataSourceConfigurationsArray.reduce<DataSourceViewSelectionConfigurations>(
+    (acc, config) => {
+      const { sId } = config.dataSourceView;
+
+      if (!acc[sId]) {
+        // Initialize the entry if it doesn't exist.
+        acc[sId] = config;
+      } else {
+        // Append to selectedResources if entry already exists.
+        acc[sId].selectedResources.push(...config.selectedResources);
+      }
+
+      return acc;
+    },
+    {}
+  );
 }

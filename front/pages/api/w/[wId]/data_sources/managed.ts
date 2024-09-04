@@ -20,7 +20,6 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getOrCreateSystemApiKey } from "@app/lib/auth";
@@ -336,14 +335,15 @@ async function handler(
         logger
       );
 
-      const connectorsRes = await connectorsAPI.createConnector(
+      const connectorsRes = await connectorsAPI.createConnector({
         provider,
-        owner.sId,
-        systemAPIKeyRes.value.secret,
-        dataSourceName,
-        connectionId || "none",
-        configuration
-      );
+        workspaceId: owner.sId,
+        workspaceAPIKey: systemAPIKeyRes.value.secret,
+        dataSourceId: dataSource.sId,
+        dataSourceName: dataSource.name,
+        connectionId: connectionId || "none",
+        configuration,
+      });
 
       if (connectorsRes.isErr()) {
         logger.error(
@@ -391,19 +391,18 @@ async function handler(
       await dataSource.update({
         connectorId: connectorsRes.value.id,
       });
-      const dataSourceType = await getDataSource(auth, dataSource.name);
-      if (dataSourceType) {
-        void ServerSideTracking.trackDataSourceCreated({
-          dataSource: dataSourceType,
-          user,
-          workspace: owner,
-        });
-      }
 
-      return res.status(201).json({
+      res.status(201).json({
         dataSource: dataSource.toJSON(),
         connector: connectorsRes.value,
       });
+
+      void ServerSideTracking.trackDataSourceCreated({
+        dataSource: dataSource.toJSON(),
+        user,
+        workspace: owner,
+      });
+      return;
 
     default:
       return apiError(req, res, {

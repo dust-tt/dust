@@ -51,7 +51,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const dataSource = await getDataSource(auth, context.params?.name as string);
-
   if (!dataSource) {
     return {
       notFound: true,
@@ -66,7 +65,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       readOnly,
-      dataSource,
+      dataSource: dataSource.toJSON(),
       loadTableId: (context.query.tableId || null) as string | null,
       gaTrackingId: config.getGaTrackingId(),
     },

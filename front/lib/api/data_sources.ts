@@ -38,11 +38,11 @@ export const MANAGED_DS_DELETABLE_AS_BUILDER: ConnectorProvider[] = [
 
 export async function getDataSource(
   auth: Authenticator,
-  name: string,
+  nameOrId: string,
   { includeEditedBy }: { includeEditedBy: boolean } = {
     includeEditedBy: false,
   }
-): Promise<DataSourceType | null> {
+): Promise<DataSourceResource | null> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
@@ -52,7 +52,7 @@ export async function getDataSource(
     return null;
   }
 
-  const dataSource = await DataSourceResource.fetchByNameOrId(auth, name, {
+  const dataSource = await DataSourceResource.fetchByNameOrId(auth, nameOrId, {
     includeEditedBy,
     // TODO(DATASOURCE_SID): clean-up
     origin: "lib_api_get_data_source",
@@ -62,7 +62,7 @@ export async function getDataSource(
     return null;
   }
 
-  return dataSource.toJSON();
+  return dataSource;
 }
 
 export async function getDataSources(
@@ -70,7 +70,7 @@ export async function getDataSources(
   { includeEditedBy }: { includeEditedBy: boolean } = {
     includeEditedBy: false,
   }
-): Promise<DataSourceType[]> {
+): Promise<DataSourceResource[]> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
@@ -80,20 +80,16 @@ export async function getDataSources(
     return [];
   }
 
-  const dataSources = await DataSourceResource.listByWorkspace(auth, {
+  return DataSourceResource.listByWorkspace(auth, {
     includeEditedBy,
   });
-  return dataSources.map((dataSource) => dataSource.toJSON());
 }
 
 export async function deleteDataSource(
   auth: Authenticator,
-  dataSourceName: string
+  dataSource: DataSourceResource
 ): Promise<
-  Result<
-    DataSourceType,
-    { code: "data_source_not_found" | "unauthorized_deletion"; message: string }
-  >
+  Result<DataSourceType, { code: "unauthorized_deletion"; message: string }>
 > {
   const owner = auth.getNonNullableWorkspace();
 
@@ -101,22 +97,6 @@ export async function deleteDataSource(
     return new Err({
       code: "unauthorized_deletion",
       message: "Only builders can delete data sources.",
-    });
-  }
-
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dataSourceName,
-    {
-      // TODO(DATASOURCE_SID): clean-up
-      origin: "lib_api_delete_data_source",
-    }
-  );
-
-  if (!dataSource) {
-    return new Err({
-      code: "data_source_not_found",
-      message: "Could not find the data source.",
     });
   }
 
@@ -257,7 +237,7 @@ export async function upsertDocument({
   parents?: string[] | null;
   timestamp?: number | null;
   light_document_output?: boolean;
-  dataSource: DataSourceType;
+  dataSource: DataSourceResource;
   auth: Authenticator;
 }): Promise<
   Result<
@@ -426,7 +406,7 @@ export async function upsertTable({
   parents?: string[] | null;
   timestamp?: number | null;
   async: boolean;
-  dataSource: DataSourceType;
+  dataSource: DataSourceResource;
   auth: Authenticator;
 }) {
   const nonNullTableId = tableId ?? generateLegacyModelSId();
@@ -446,8 +426,7 @@ export async function upsertTable({
     const enqueueRes = await enqueueUpsertTable({
       upsertTable: {
         workspaceId: auth.getNonNullableWorkspace().sId,
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceName: dataSource.name,
+        dataSourceId: dataSource.sId,
         tableId: nonNullTableId,
         tableName: name,
         tableDescription: description,
