@@ -283,12 +283,27 @@ export class VaultResource extends BaseResource<VaultModel> {
     };
   }
 
+  canWrite(auth: Authenticator) {
+    if (this.isRegular()) {
+      return auth.canWrite([this.acl()]);
+    }
+    return auth.isBuilder() && auth.canWrite([this.acl()]);
+  }
+
+  canRead(auth: Authenticator) {
+    return auth.canRead([this.acl()]);
+  }
+
   isGlobal() {
     return this.kind === "global";
   }
 
   isSystem() {
     return this.kind === "system";
+  }
+
+  isRegular() {
+    return this.kind === "regular";
   }
 
   toJSON(): VaultType {

@@ -34,6 +34,7 @@ import {
 
 interface VaultSideBarMenuProps {
   owner: LightWorkspaceType;
+  isAdmin: boolean;
   setShowVaultCreationModal: (show: boolean) => void;
 }
 
@@ -41,6 +42,7 @@ const VAULTS_SORT_ORDER: VaultKind[] = ["system", "global", "regular"];
 
 export default function VaultSideBarMenu({
   owner,
+  isAdmin,
   setShowVaultCreationModal,
 }: VaultSideBarMenuProps) {
   const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
@@ -68,12 +70,12 @@ export default function VaultSideBarMenu({
               <Fragment key={`vault-section-${index}`}>
                 <div className="flex items-center justify-between">
                   <Item.SectionHeader label={sectionLabel} />
-                  {sectionLabel === "PRIVATE" && (
+                  {sectionLabel === "PRIVATE" && isAdmin && (
                     <Button
                       className="mt-4"
                       size="xs"
                       variant="tertiary"
-                      label="Create Vault "
+                      label="Create Vault"
                       icon={LockIcon}
                       onClick={() => setShowVaultCreationModal(true)}
                     />

@@ -15,12 +15,14 @@ import { useDataSources } from "@app/lib/swr/data_sources";
 type WebsitesHeaderMenuProps = {
   owner: WorkspaceType;
   vault: VaultType;
+  canWrite: boolean;
   dataSourceView: DataSourceViewType;
 };
 
 export const WebsitesHeaderMenu = ({
   owner,
   vault,
+  canWrite,
   dataSourceView,
 }: WebsitesHeaderMenuProps) => {
   const [showEditWebsiteModal, setShowEditWebsiteModal] = useState(false);
@@ -57,6 +59,7 @@ export const WebsitesHeaderMenu = ({
         onClick={() => {
           setShowEditWebsiteModal(true);
         }}
+        disabled={!canWrite}
       />
     </>
   );

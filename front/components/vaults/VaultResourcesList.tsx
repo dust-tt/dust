@@ -58,6 +58,7 @@ type VaultResourcesListProps = {
   owner: WorkspaceType;
   plan: PlanType;
   isAdmin: boolean;
+  canWriteInVault: boolean;
   vault: VaultType;
   systemVault: VaultType;
   category: DataSourceViewCategory;
@@ -173,6 +174,7 @@ export const VaultResourcesList = ({
   owner,
   plan,
   isAdmin,
+  canWriteInVault,
   dustClientFacingUrl,
   vault,
   systemVault,
@@ -296,7 +298,7 @@ export const VaultResourcesList = ({
       <div
         className={classNames(
           "flex gap-2",
-          rows.length === 0 && isAdmin
+          rows.length === 0
             ? "h-36 w-full max-w-4xl items-center justify-center rounded-lg border bg-structure-50"
             : ""
         )}
@@ -345,6 +347,7 @@ export const VaultResourcesList = ({
               setOpen={setShowFolderOrWebsiteModal}
               owner={owner}
               vault={vault}
+              canWriteInVault={canWriteInVault}
               dataSources={dataSources}
               dataSourceView={selectedDataSourceView}
               plan={plan}
@@ -364,7 +367,7 @@ export const VaultResourcesList = ({
           </>
         )}
       </div>
-      {rows.length > 0 ? (
+      {rows.length > 0 && (
         <DataTable
           data={rows}
           columns={getTableColumns({ isManaged, isSystemVault })}
@@ -372,12 +375,6 @@ export const VaultResourcesList = ({
           filterColumn="name"
           initialColumnOrder={[{ desc: false, id: "name" }]}
         />
-      ) : !isAdmin ? (
-        <div className="flex items-center justify-center text-sm font-normal text-element-700">
-          No available connection
-        </div>
-      ) : (
-        <></>
       )}
     </>
   );

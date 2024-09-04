@@ -1,4 +1,4 @@
-import { Button, PlusIcon, Popup } from "@dust-tt/sparkle";
+import { Button, PlusIcon, Popup, Tooltip } from "@dust-tt/sparkle";
 import type {
   DataSourceType,
   DataSourceViewWithConnectorType,
@@ -16,6 +16,7 @@ import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_sourc
 
 interface EditVaultStaticDatasourcesViewsProps {
   owner: WorkspaceType;
+  canWriteInVault: boolean;
   isOpen: boolean;
   setOpen: (isOpen: boolean) => void;
   plan: PlanType;
@@ -28,6 +29,7 @@ interface EditVaultStaticDatasourcesViewsProps {
 
 export function EditVaultStaticDatasourcesViews({
   owner,
+  canWriteInVault,
   plan,
   vault,
   isOpen,
@@ -98,11 +100,30 @@ export function EditVaultStaticDatasourcesViews({
           }
         />
       ) : null}
-      <Button
-        label={category === "folder" ? "Add folder" : "Add website"}
-        onClick={checkLimitsAndOpenModal}
-        icon={PlusIcon}
-      />
+      {canWriteInVault ? (
+        <Button
+          label={`Add ${category}`}
+          onClick={checkLimitsAndOpenModal}
+          icon={PlusIcon}
+          disabled={!canWriteInVault}
+        />
+      ) : (
+        <Tooltip
+          label={
+            vault.kind === "global"
+              ? `Only builders of the workspace can add a ${category} in the Company data Vault.`
+              : `Only members of the vault can add a ${category}.`
+          }
+          position="above"
+        >
+          <Button
+            label={`Add ${category}`}
+            onClick={checkLimitsAndOpenModal}
+            icon={PlusIcon}
+            disabled={!canWriteInVault}
+          />
+        </Tooltip>
+      )}
     </>
   );
 }
