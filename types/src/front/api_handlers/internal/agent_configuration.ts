@@ -88,8 +88,7 @@ const TablesQueryActionConfigurationSchema = t.type({
   tables: t.array(
     t.type({
       dataSourceId: t.string,
-      // TODO(GROUPS_INFRA) Make `dataSourceViewId` required.
-      dataSourceViewId: t.union([t.string, t.undefined, t.null]),
+      dataSourceViewId: t.string,
       tableId: t.string,
       workspaceId: t.string,
     })
