@@ -3,9 +3,9 @@ import {
   Div3D,
   Hover3D,
   LoginIcon,
+  LogoHorizontalColorLayer1Logo,
+  LogoHorizontalColorLayer2Logo,
   LogoHorizontalColorLogo,
-  LogoHorizontalColorLogoLayer1,
-  LogoHorizontalColorLogoLayer2,
 } from "@dust-tt/sparkle";
 import { Transition } from "@headlessui/react";
 import Head from "next/head";
@@ -99,10 +99,10 @@ export default function LandingLayout({
             <Link href="/">
               <Hover3D className="relative h-[24px] w-[96px]">
                 <Div3D depth={0} className="h-[24px] w-[96px]">
-                  <LogoHorizontalColorLogoLayer1 className="h-[24px] w-[96px]" />
+                  <LogoHorizontalColorLayer1Logo className="h-[24px] w-[96px]" />
                 </Div3D>
                 <Div3D depth={25} className="absolute top-0">
-                  <LogoHorizontalColorLogoLayer2 className="h-[24px] w-[96px]" />
+                  <LogoHorizontalColorLayer2Logo className="h-[24px] w-[96px]" />
                 </Div3D>
               </Hover3D>
             </Link>
