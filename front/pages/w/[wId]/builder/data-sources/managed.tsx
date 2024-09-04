@@ -28,11 +28,10 @@ import {
 } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
-import type { NextRouter } from "next/router";
-import { useRouter } from "next/router";
 import * as React from "react";
 import { useMemo, useRef, useState } from "react";
 
+import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { subNavigationBuild } from "@app/components/navigation/config";
@@ -75,9 +74,9 @@ type GetTableRowParams = {
   managedDataSource: DataSourceWithConnectorAndUsageType;
   isAdmin: boolean;
   isLoadingByProvider: Record<ConnectorProvider, boolean | undefined>;
-  router: NextRouter;
   owner: WorkspaceType;
   readOnly: boolean;
+  onButtonClick: (ds: DataSourceWithConnectorAndUsageType) => void;
 };
 
 export async function setupConnection({
@@ -219,9 +218,12 @@ export default function DataSourcesView({
     {} as Record<ConnectorProvider, boolean>
   );
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
+  const [selectedDataSource, setSelectedDataSource] =
+    useState<DataSourceWithConnectorAndUsageType | null>(null);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
+
+  console.log(managedDataSources);
 
   const connectionRows = useMemo(() => {
     const filteredRows = managedDataSources.filter(
@@ -234,19 +236,14 @@ export default function DataSourcesView({
         managedDataSource,
         isAdmin,
         isLoadingByProvider,
-        router,
         owner,
         readOnly,
+        onButtonClick: (dataSource: DataSourceWithConnectorAndUsageType) => {
+          setSelectedDataSource(dataSource);
+        },
       })
     );
-  }, [
-    isAdmin,
-    isLoadingByProvider,
-    owner,
-    readOnly,
-    router,
-    managedDataSources,
-  ]);
+  }, [isAdmin, isLoadingByProvider, owner, readOnly, managedDataSources]);
   return (
     <AppLayout
       subscription={subscription}
@@ -324,6 +321,17 @@ export default function DataSourcesView({
           </div>
         ) : (
           false
+        )}
+        {selectedDataSource && selectedDataSource.connector && (
+          <ConnectorPermissionsModal
+            owner={owner}
+            connector={selectedDataSource.connector}
+            dataSource={selectedDataSource}
+            isOpen={!!selectedDataSource}
+            onClose={() => {
+              setSelectedDataSource(null);
+            }}
+          />
         )}
       </Page.Vertical>
     </AppLayout>
@@ -440,20 +448,16 @@ function getTableRow({
   managedDataSource,
   isAdmin,
   isLoadingByProvider,
-  router,
   owner,
   readOnly,
+  onButtonClick,
 }: GetTableRowParams): RowData {
   const connectorProvider =
     managedDataSource.connectorProvider as ConnectorProvider;
   const isDisabled = isLoadingByProvider[connectorProvider] || !isAdmin;
 
   const buttonOnClick = () => {
-    !isDisabled
-      ? void router.push(
-          `/w/${owner.sId}/builder/data-sources/${managedDataSource.name}`
-        )
-      : null;
+    !isDisabled ? onButtonClick(managedDataSource) : null;
   };
 
   const LogoComponent =

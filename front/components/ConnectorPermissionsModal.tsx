@@ -111,7 +111,7 @@ export function ConnectorPermissionsModal({
       savingLabel="Saving..."
       isSaving={saving}
       hasChanged={!!Object.keys(updatedPermissionByInternalId).length}
-      variant="full-screen"
+      variant="side-md"
     >
       <div className="mx-auto max-w-4xl text-left">
         <div className="flex flex-col pt-12">
