@@ -76,6 +76,7 @@ import {
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -505,6 +506,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
       maxStepsPerRun: agent.maxStepsPerRun,
       visualizationEnabled: agent.visualizationEnabled ?? false,
       templateId: template?.sId ?? null,
+      groupIds: agent.groupIds.map((id) =>
+        GroupResource.modelIdToSId({ id, workspaceId: owner.id })
+      ),
     };
 
     agentConfigurationType.userListStatus = agentUserListStatus({
@@ -703,6 +707,8 @@ export async function createAgentConfiguration(
     model,
     agentConfigurationId,
     templateId,
+    // datasource view ids used by the agent, to be used for permissions check
+    dataSourceViewIds,
   }: {
     name: string;
     description: string;
@@ -715,6 +721,7 @@ export async function createAgentConfiguration(
     model: AgentModelConfigurationType;
     agentConfigurationId?: string;
     templateId: string | null;
+    dataSourceViewIds: string[];
   }
 ): Promise<Result<LightAgentConfigurationType, Error>> {
   const owner = auth.workspace();
@@ -739,6 +746,12 @@ export async function createAgentConfiguration(
 
   let version = 0;
   let listStatusOverride: AgentUserListStatus | null = null;
+
+  const groupIds = (
+    await DataSourceViewResource.fetchByIds(auth, dataSourceViewIds)
+  )
+    .map((view) => view.acl().aclEntries.map((entry) => entry.groupId))
+    .flat();
 
   try {
     let template: TemplateResource | null = null;
@@ -826,6 +839,7 @@ export async function createAgentConfiguration(
             workspaceId: owner.id,
             authorId: user.id,
             templateId: template?.id,
+            groupIds,
           },
           {
             transaction: t,
@@ -858,6 +872,9 @@ export async function createAgentConfiguration(
       maxStepsPerRun: agent.maxStepsPerRun,
       visualizationEnabled: agent.visualizationEnabled ?? false,
       templateId: template?.sId ?? null,
+      groupIds: agent.groupIds.map((id) =>
+        GroupResource.modelIdToSId({ id, workspaceId: owner.id })
+      ),
     };
 
     agentConfiguration.userListStatus = agentUserListStatus({

@@ -176,6 +176,7 @@ function _getHelperGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    groupIds: [],
   };
 }
 
@@ -207,6 +208,7 @@ function _getGPT35TurboGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    groupIds: [],
   };
 }
 function _getGPT4GlobalAgent({
@@ -247,6 +249,7 @@ function _getGPT4GlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    groupIds: [],
   };
 }
 
@@ -278,6 +281,7 @@ function _getClaudeInstantGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    groupIds: [],
   };
 }
 
@@ -316,6 +320,7 @@ function _getClaude2GlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    groupIds: [],
   };
 }
 
@@ -348,6 +353,7 @@ function _getClaude3HaikuGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    groupIds: [],
   };
 }
 
@@ -385,6 +391,7 @@ function _getClaude3OpusGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    groupIds: [],
   };
 }
 
@@ -423,6 +430,7 @@ function _getClaude3GlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    groupIds: [],
   };
 }
 
@@ -460,6 +468,7 @@ function _getMistralLargeGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    groupIds: [],
   };
 }
 
@@ -497,6 +506,7 @@ function _getMistralMediumGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    groupIds: [],
   };
 }
 
@@ -528,6 +538,7 @@ function _getMistralSmallGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    groupIds: [],
   };
 }
 
@@ -564,6 +575,7 @@ function _getGeminiProGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    groupIds: [],
   };
 }
 
@@ -630,6 +642,7 @@ function _getManagedDataSourceAgent(
       maxStepsPerRun: 0,
       visualizationEnabled: false,
       templateId: null,
+      groupIds: [],
     };
   }
 
@@ -656,6 +669,7 @@ function _getManagedDataSourceAgent(
       maxStepsPerRun: 0,
       visualizationEnabled: false,
       templateId: null,
+      groupIds: [],
     };
   }
 
@@ -694,6 +708,7 @@ function _getManagedDataSourceAgent(
     maxStepsPerRun: 1,
     visualizationEnabled: false,
     templateId: null,
+    groupIds: [],
   };
 }
 
@@ -874,6 +889,7 @@ function _getDustGlobalAgent(
       maxStepsPerRun: 0,
       visualizationEnabled: false,
       templateId: null,
+      groupIds: [],
     };
   }
 
@@ -900,6 +916,7 @@ function _getDustGlobalAgent(
       maxStepsPerRun: 0,
       visualizationEnabled: false,
       templateId: null,
+      groupIds: [],
     };
   }
 
@@ -1000,6 +1017,7 @@ function _getDustGlobalAgent(
     maxStepsPerRun: 3,
     visualizationEnabled: false,
     templateId: null,
+    groupIds: [],
   };
 }
 
