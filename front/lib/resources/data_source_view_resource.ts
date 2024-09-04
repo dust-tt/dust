@@ -243,15 +243,19 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       "limit" | "order"
     >
   ) {
-    const fileModelIds = removeNulls(ids.map(getResourceIdFromSId));
+    const dataSourceViewModelIds = removeNulls(ids.map(getResourceIdFromSId));
 
-    const dataSource = await this.baseFetch(auth, fetchDataSourceViewOptions, {
-      where: {
-        id: fileModelIds,
-      },
-    });
+    const dataSourceViews = await this.baseFetch(
+      auth,
+      fetchDataSourceViewOptions,
+      {
+        where: {
+          id: dataSourceViewModelIds,
+        },
+      }
+    );
 
-    return dataSource ?? null;
+    return dataSourceViews ?? null;
   }
 
   // Updating.

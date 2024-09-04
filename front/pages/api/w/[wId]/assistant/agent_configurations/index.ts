@@ -295,7 +295,7 @@ export async function createOrUpgradeAgentConfiguration({
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
-    dataSourceViewIds: getDsvIdsFromActions(actions),
+    dataSourceViewIds: getDataSourceViewIdsFromActions(actions),
   });
 
   if (agentConfigurationRes.isErr()) {
@@ -446,7 +446,7 @@ export async function createOrUpgradeAgentConfiguration({
   return new Ok(agentConfiguration);
 }
 
-function getDsvIdsFromActions(
+function getDataSourceViewIdsFromActions(
   actions: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"]
 ): string[] {
   const relevantActions = actions.filter(
@@ -458,11 +458,10 @@ function getDsvIdsFromActions(
 
   return removeNulls(
     relevantActions.flatMap((action) => {
-      if (action.type === "retrieval_configuration") {
-        return action.dataSources.map(
-          (dataSource) => dataSource.dataSourceViewId
-        );
-      } else if (action.type === "process_configuration") {
+      if (
+        action.type === "retrieval_configuration" ||
+        action.type === "process_configuration"
+      ) {
         return action.dataSources.map(
           (dataSource) => dataSource.dataSourceViewId
         );
