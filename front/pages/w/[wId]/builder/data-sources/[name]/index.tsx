@@ -129,7 +129,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       readOnly,
       isAdmin,
       isBuilder,
-      dataSource,
+      dataSource: dataSource.toJSON(),
       connector,
       standardView,
       dustClientFacingUrl: config.getClientFacingUrl(),

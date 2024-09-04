@@ -61,6 +61,7 @@ export type EditedByUser = {
 
 export type DataSourceType = {
   id: ModelId;
+  sId: string;
   createdAt: number;
   name: string;
   description: string | null;

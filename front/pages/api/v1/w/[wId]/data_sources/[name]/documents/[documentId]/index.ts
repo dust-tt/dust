@@ -477,7 +477,7 @@ async function handler(
 
         res.status(200).json({
           document: upsertRes.value.document,
-          data_source: dataSource,
+          data_source: dataSource.toJSON(),
         });
 
         await runPostUpsertHooks({

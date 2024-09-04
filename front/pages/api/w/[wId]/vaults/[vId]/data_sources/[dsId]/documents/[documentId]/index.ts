@@ -53,7 +53,7 @@ async function handler(
     });
   }
 
-  const dataSource = await DataSourceResource.fetchByName(auth, dsId);
+  const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId);
 
   if (
     !dataSource ||

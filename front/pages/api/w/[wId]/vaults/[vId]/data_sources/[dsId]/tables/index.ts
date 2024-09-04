@@ -39,7 +39,7 @@ async function handler(
     });
   }
 
-  const dataSource = await DataSourceResource.fetchByName(auth, dsId);
+  const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId);
 
   if (
     !dataSource ||
@@ -95,7 +95,7 @@ async function handler(
       const upsertRes = await upsertTable({
         ...bodyValidation.right,
         async: bodyValidation.right.async ?? false,
-        dataSource: dataSource.toJSON(),
+        dataSource,
         auth,
       });
 

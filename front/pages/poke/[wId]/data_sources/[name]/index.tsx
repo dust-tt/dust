@@ -244,7 +244,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      dataSource,
+      dataSource: dataSource.toJSON(),
       coreDataSource: coreDataSourceRes.value.data_source,
       connector,
       features,
