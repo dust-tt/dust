@@ -392,6 +392,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
   toJSON(): DataSourceType {
     return {
       id: this.id,
+      sId: this.sId,
       createdAt: this.createdAt.getTime(),
       name: this.name,
       description: this.description,
