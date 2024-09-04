@@ -290,6 +290,7 @@ async function renderTableDataSourcesConfigurations(
             if (coreAPITable.isErr()) {
               throw coreAPITable.error;
             }
+
             return coreAPITable.value.table;
           })
         );
@@ -305,6 +306,7 @@ async function renderTableDataSourcesConfigurations(
             ),
             lastUpdatedAt: table.timestamp,
             parentInternalId: null,
+            // TODO(2024-09-04 flav) Fetch the parent ids so the Tree hierarchy can be properly rendered in the UI.
             parentInternalIds: [],
             permission: "read",
             preventSelection: false,
