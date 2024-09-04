@@ -8,9 +8,7 @@ import type {
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useContext } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { VaultAppsList } from "@app/components/vaults/VaultAppsList";
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
@@ -81,33 +79,28 @@ const fetchWebsiteRootUrl = async (
     viewType: "documents",
   });
 
-  try {
-    const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views/${sId}/content-nodes`,
-      {
-        method: "POST",
-        body,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-
-    if (!res.ok) {
-      throw new Error("Failed to fetch content nodes");
+  const res = await fetch(
+    `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views/${sId}/content-nodes`,
+    {
+      method: "POST",
+      body,
+      headers: { "Content-Type": "application/json" },
     }
+  );
 
-    const json = await res.json();
-    const nodes = json.nodes;
-
-    if (!nodes || nodes.length() !== 1) {
-      console.error("Error in fetched nodes.");
-      return null;
-    }
-    const rootNodeInternalId = nodes[0].internalId;
-    return `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${sId}?parentId=${rootNodeInternalId}`;
-  } catch (error) {
-    console.error("Error fetching vault resource content URL:", error);
+  if (!res.ok) {
     return null;
   }
+
+  const json = await res.json();
+  const nodes = json.nodes;
+
+  if (!nodes || nodes.length !== 1) {
+    console.error("Error in fetched nodes.");
+    return null;
+  }
+  const rootNodeInternalId = nodes[0].internalId;
+  return `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${sId}?parentId=${rootNodeInternalId}`;
 };
 
 export default function Vault({
@@ -121,7 +114,6 @@ export default function Vault({
   systemVault,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
 
   const handleSelect = async (sId: string) => {
     switch (category) {
@@ -134,14 +126,11 @@ export default function Vault({
         // the next depth level
         const url = await fetchWebsiteRootUrl(owner, vault, category, sId);
         if (url) {
-          await router.push(url);
+          void router.push(url);
         } else {
-          sendNotification({
-            title: "Error retrieving website",
-            description:
-              "An error occurred while retrieving the website's content.",
-            type: "error",
-          });
+          void router.push(
+            `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${sId}`
+          );
         }
         break;
       }
@@ -160,9 +149,7 @@ export default function Vault({
         <VaultAppsList
           owner={owner}
           isBuilder={isBuilder}
-          onSelect={(sId) => {
-            void router.push(`/w/${owner.sId}/a/${sId}`);
-          }}
+          onSelect={handleSelect}
         />
       ) : (
         <VaultResourcesList
