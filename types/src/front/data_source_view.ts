@@ -1,8 +1,5 @@
 import { ModelId } from "../shared/model_id";
-import {
-  DataSourceViewCategory,
-  LightContentNode,
-} from "./api_handlers/public/vaults";
+import { DataSourceViewCategory } from "./api_handlers/public/vaults";
 import {
   DataSourceType,
   DataSourceWithConnectorDetailsType,
