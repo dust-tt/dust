@@ -20,11 +20,12 @@ import type {
   LightWorkspaceType,
   PlanType,
 } from "@dust-tt/types";
-import { MAX_FILE_LENGTH, MAX_FILE_SIZES } from "@dust-tt/types";
 import {
   BIG_FILE_SIZE,
   Err,
   isSlugified,
+  MAX_FILE_LENGTH,
+  MAX_FILE_SIZES,
   parseAndStringifyCsv,
 } from "@dust-tt/types";
 import React, { useContext, useEffect, useRef, useState } from "react";
@@ -32,7 +33,7 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
-import { useDocument } from "@app/lib/swr/data_sources";
+import { useDataSourceViewDocument } from "@app/lib/swr/data_source_views";
 import { useTable } from "@app/lib/swr/tables";
 import { classNames } from "@app/lib/utils";
 
@@ -105,11 +106,12 @@ export function DocumentOrTableUploadOrEditModal({
     tableId: isTable ? initialId ?? null : null,
   });
 
-  const { document, isDocumentError, isDocumentLoading } = useDocument({
-    workspaceId: owner.sId,
-    dataSourceView: dataSourceView,
-    documentId: !isTable ? initialId ?? null : null,
-  });
+  const { document, isDocumentError, isDocumentLoading } =
+    useDataSourceViewDocument({
+      owner,
+      dataSourceView,
+      documentId: !isTable ? initialId ?? null : null,
+    });
 
   const resetTableOrDoc = () => {
     setTableOrDoc({

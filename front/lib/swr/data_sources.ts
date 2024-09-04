@@ -1,15 +1,10 @@
-import type {
-  DataSourceViewType,
-  LightContentNode,
-  LightWorkspaceType,
-} from "@dust-tt/types";
+import type { LightContentNode, LightWorkspaceType } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 
 import { fetcher, postFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
-import type { GetDocumentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents/[documentId]";
 import type { GetContentNodesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/content-nodes";
 import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 
@@ -108,31 +103,6 @@ export function useDataSourceNodes(
       parentsById: data?.parentsById,
     },
     serializeKey,
-  };
-}
-
-export function useDocument({
-  workspaceId,
-  dataSourceView,
-  documentId,
-}: {
-  workspaceId: string;
-  dataSourceView: DataSourceViewType;
-  documentId: string | null;
-}) {
-  const documentFetcher: Fetcher<GetDocumentResponseBody> = fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    documentId
-      ? `/api/w/${workspaceId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`
-      : null,
-    documentFetcher
-  );
-  return {
-    document: useMemo(() => (data ? data.document : null), [data]),
-    isDocumentLoading: documentId && !error && !data,
-    isDocumentError: error,
-    mutateDocument: mutate,
   };
 }
 
