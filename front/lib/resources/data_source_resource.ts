@@ -36,7 +36,6 @@ export type FetchDataSourceOrigin =
   | "post_upsert_hook_helper"
   | "post_upsert_hook_activities"
   | "lib_api_get_data_source"
-  | "lib_api_delete_data_source"
   | "cli_delete"
   | "cli_delete_document"
   | "vault_patch_content"
@@ -46,7 +45,8 @@ export type FetchDataSourceOrigin =
   | "data_source_get_or_post"
   | "data_source_managed_update"
   | "vault_data_source_config"
-  | "vault_patch_or_delete_data_source";
+  | "vault_patch_or_delete_data_source"
+  | "vault_data_source_documents";
 
 export type FetchDataSourceOptions = {
   includeEditedBy?: boolean;

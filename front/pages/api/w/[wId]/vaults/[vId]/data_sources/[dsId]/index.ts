@@ -169,7 +169,7 @@ async function handler(
         });
       }
 
-      const dRes = await deleteDataSource(auth, dataSource.name);
+      const dRes = await deleteDataSource(auth, dataSource);
       if (dRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,

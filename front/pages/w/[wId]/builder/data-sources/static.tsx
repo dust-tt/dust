@@ -65,7 +65,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       plan,
       readOnly,
-      dataSources,
+      dataSources: dataSources.map((ds) => ds.toJSON()),
       gaTrackingId: config.getGaTrackingId(),
       dataSourcesUsage,
     },

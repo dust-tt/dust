@@ -31,7 +31,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      dataSources,
+      dataSources: dataSources.map((ds) => ds.toJSON()),
       gaTrackingId: config.getGaTrackingId(),
     },
   };
