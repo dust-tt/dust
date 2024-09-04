@@ -2,6 +2,11 @@ export type DustErrorCode =
   | "resource_not_found"
   | "unauthorized"
   | "invalid_id"
+  | "core_api_error"
+  // Data source
+  | "data_source_quota_error"
+  | "text_or_section_required"
+  | "invalid_url"
   // Group errors
   | "user_not_found"
   | "user_not_member"

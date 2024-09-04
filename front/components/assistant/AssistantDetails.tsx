@@ -408,6 +408,7 @@ function DataSourceViewsSection({
                     setDocumentToDisplay(documentId);
                   }}
                   isSearchEnabled={false}
+                  viewType="documents"
                 />
               )}
               {dataSourceView && !isAllSelected && (
@@ -499,6 +500,7 @@ function DataSourceViewSelectedNodes({
               setDocumentToDisplay(documentId);
             }}
             isSearchEnabled={false}
+            viewType="documents"
           />
         </Tree.Item>
       ))}

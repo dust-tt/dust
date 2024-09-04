@@ -12,34 +12,6 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { classNames } from "@app/lib/utils";
 
-const deleteDataSource = ({
-  name,
-  updateAction,
-  setEdited,
-}: {
-  name: string;
-  updateAction: (
-    setNewAction: (
-      previousAction: AssistantBuilderRetrievalConfiguration
-    ) => AssistantBuilderRetrievalConfiguration
-  ) => void;
-  setEdited: (edited: boolean) => void;
-}) => {
-  updateAction((previousAction) => {
-    if (previousAction.dataSourceConfigurations[name]) {
-      setEdited(true);
-    }
-    const newDataSourceConfigurations = {
-      ...previousAction.dataSourceConfigurations,
-    };
-    delete newDataSourceConfigurations[name];
-    return {
-      ...previousAction,
-      dataSourceConfigurations: newDataSourceConfigurations,
-    };
-  });
-};
-
 export function hasErrorActionRetrievalSearch(
   action: AssistantBuilderActionConfiguration
 ): string | null {
@@ -98,13 +70,7 @@ export function ActionRetrievalSearch({
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
-        onDelete={(name) => {
-          deleteDataSource({
-            name,
-            updateAction,
-            setEdited,
-          });
-        }}
+        viewType={"documents"}
       />
     </>
   );
@@ -178,13 +144,7 @@ export function ActionRetrievalExhaustive({
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
-        onDelete={(name) => {
-          deleteDataSource({
-            name,
-            updateAction,
-            setEdited,
-          });
-        }}
+        viewType={"documents"}
       />
       <div className={"flex flex-row items-center gap-4 pb-4"}>
         <div className="text-sm font-semibold text-element-900">

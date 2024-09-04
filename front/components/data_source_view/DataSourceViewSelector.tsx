@@ -16,7 +16,7 @@ import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo } from "react";
 
-import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
+import DataSourceViewResourceSelectorTree from "@app/components/DataSourceViewResourceSelectorTree";
 import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 import { orderDatasourceViewByImportance } from "@app/lib/assistant";
 import {
@@ -33,7 +33,7 @@ import {
 const MIN_TOTAL_DATA_SOURCES_TO_GROUP = 12;
 const MIN_DATA_SOURCES_PER_KIND_TO_GROUP = 3;
 
-type DataSourceViewsSelectorProps = {
+interface DataSourceViewsSelectorProps {
   owner: LightWorkspaceType;
   dataSourceViews: DataSourceViewType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
@@ -41,7 +41,7 @@ type DataSourceViewsSelectorProps = {
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
   viewType: ContentNodesViewType;
-};
+}
 
 export function DataSourceViewsSelector({
   owner,
@@ -198,11 +198,8 @@ function DataSourceViewSelector({
     (r) => r.internalId
   );
 
-  // TODO(GROUPS_INFRA): useParentResourcesById should use views not data sources.
   const { parentsById, setParentsById } = useParentResourcesById({
-    owner,
-    dataSource: dataSourceView.dataSource,
-    internalIds,
+    selectedResources: selectionConfiguration.selectedResources,
   });
 
   const selectedParents = [
@@ -245,22 +242,22 @@ function DataSourceViewSelector({
   }, [dataSourceView, setParentsById, setSelectionConfigurations]);
 
   const isTableView = viewType === "tables";
-  console.log(
-    ">> checkedStatus:",
-    checkedStatus,
-    getDisplayNameForDataSource(dataSourceView.dataSource)
-  );
+
+  // Folders with viewType "documents" are always considered leaf items.
+  // For viewType "tables", folders are not leaf items because users need to select a specific table.
+  const isLeafItem = isFolder(dataSourceView.dataSource) && !isTableView;
+
+  // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
+  const hideCheckbox = isTableView && !isPartiallyChecked;
 
   return (
     <Tree.Item
       key={dataSourceView.dataSource.name}
       label={getDisplayNameForDataSource(dataSourceView.dataSource)}
       visual={LogoComponent}
-      type={
-        isFolder(dataSourceView.dataSource) && !isTableView ? "leaf" : "node"
-      }
+      type={isLeafItem ? "leaf" : "node"}
       checkbox={
-        isTableView && !isPartiallyChecked
+        hideCheckbox
           ? undefined
           : {
               checked: checkedStatus,
@@ -268,7 +265,7 @@ function DataSourceViewSelector({
             }
       }
     >
-      <DataSourceResourceSelectorTree
+      <DataSourceViewResourceSelectorTree
         owner={owner}
         dataSourceView={dataSourceView}
         showExpand={config?.isNested ?? true}

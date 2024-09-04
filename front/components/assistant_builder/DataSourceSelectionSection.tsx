@@ -32,9 +32,9 @@ interface DataSourceSelectionSectionProps {
 }
 
 export default function DataSourceSelectionSection({
-  owner,
   dataSourceConfigurations,
   openDataSourceModal,
+  owner,
   viewType,
 }: DataSourceSelectionSectionProps) {
   const { dataSourceViews } = useContext(AssistantBuilderContext);
@@ -94,6 +94,7 @@ export default function DataSourceSelectionSection({
                 dsConfig.dataSourceView.dataSource.connectorProvider,
                 FolderIcon
               );
+
               return (
                 <Tree.Item
                   key={dsConfig.dataSourceView.sId}

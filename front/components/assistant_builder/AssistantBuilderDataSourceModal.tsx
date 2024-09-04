@@ -26,7 +26,7 @@ export default function AssistantBuilderDataSourceModal({
   onSave,
   owner,
   setOpen,
-  viewType = "documents",
+  viewType,
 }: AssistantBuilderDataSourceModalProps) {
   const { dataSourceViews } = useContext(AssistantBuilderContext);
   const [hasChanged, setHasChanged] = useState(false);
@@ -68,8 +68,8 @@ export default function AssistantBuilderDataSourceModal({
     >
       <div className="w-full pt-12">
         <DataSourceViewsSelector
-          owner={owner}
           dataSourceViews={dataSourceViews}
+          owner={owner}
           selectionConfigurations={selectionConfigurations}
           setSelectionConfigurations={setSelectionConfigurationsCallback}
           viewType={viewType}

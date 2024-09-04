@@ -6,8 +6,8 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
+  DataSourceViewContentNode,
   DataSourceViewType,
-  LightContentNode,
   LightWorkspaceType,
 } from "@dust-tt/types";
 import { useEffect, useState } from "react";
@@ -17,7 +17,22 @@ import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 
-export default function DataSourceResourceSelectorTree({
+interface DataSourceViewResourceSelectorTreeBaseProps {
+  dataSourceView: DataSourceViewType;
+  onSelectChange: (
+    resource: DataSourceViewContentNode,
+    parents: string[],
+    selected: boolean
+  ) => void;
+  owner: LightWorkspaceType;
+  parentIsSelected?: boolean;
+  selectedParents?: string[];
+  selectedResourceIds: string[];
+  showExpand: boolean;
+  viewType?: ContentNodesViewType;
+}
+
+export default function DataSourceViewResourceSelectorTree({
   owner,
   dataSourceView,
   showExpand, //if not, it's flat
@@ -26,23 +41,10 @@ export default function DataSourceResourceSelectorTree({
   selectedResourceIds,
   onSelectChange,
   viewType = "documents",
-}: {
-  owner: LightWorkspaceType;
-  dataSourceView: DataSourceViewType;
-  showExpand: boolean;
-  parentIsSelected?: boolean;
-  selectedParents?: string[];
-  selectedResourceIds: string[];
-  onSelectChange: (
-    resource: LightContentNode,
-    parents: string[],
-    selected: boolean
-  ) => void;
-  viewType?: ContentNodesViewType;
-}) {
+}: DataSourceViewResourceSelectorTreeBaseProps) {
   return (
     <div className="overflow-x-auto">
-      <DataSourceResourceSelectorChildren
+      <DataSourceViewResourceSelectorChildren
         owner={owner}
         dataSourceView={dataSourceView}
         showExpand={showExpand}
@@ -59,33 +61,25 @@ export default function DataSourceResourceSelectorTree({
   );
 }
 
-function DataSourceResourceSelectorChildren({
-  owner,
+type DataSourceResourceSelectorChildrenProps =
+  DataSourceViewResourceSelectorTreeBaseProps & {
+    parentId?: string;
+    parents: string[];
+    selectedParents: string[];
+  };
+
+function DataSourceViewResourceSelectorChildren({
   dataSourceView,
-  parentId,
-  parents,
-  parentIsSelected,
-  selectedParents,
-  showExpand,
-  selectedResourceIds,
   onSelectChange,
+  owner,
+  parentId,
+  parentIsSelected,
+  parents,
+  selectedParents,
+  selectedResourceIds,
+  showExpand,
   viewType = "documents",
-}: {
-  owner: LightWorkspaceType;
-  dataSourceView: DataSourceViewType;
-  parentId?: string;
-  parents: string[];
-  parentIsSelected?: boolean;
-  selectedParents: string[];
-  showExpand: boolean;
-  selectedResourceIds: string[];
-  onSelectChange: (
-    resource: LightContentNode,
-    parents: string[],
-    selected: boolean
-  ) => void;
-  viewType: ContentNodesViewType;
-}) {
+}: DataSourceResourceSelectorChildrenProps) {
   const { nodes, isNodesLoading, isNodesError } = useDataSourceViewContentNodes(
     {
       dataSourceView: dataSourceView,
@@ -171,7 +165,7 @@ function DataSourceResourceSelectorChildren({
                   : undefined
               }
               renderTreeItems={() => (
-                <DataSourceResourceSelectorChildren
+                <DataSourceViewResourceSelectorChildren
                   owner={owner}
                   dataSourceView={dataSourceView}
                   parentId={r.internalId}

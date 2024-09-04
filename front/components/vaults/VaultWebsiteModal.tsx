@@ -93,7 +93,8 @@ export default function VaultWebsiteModal({
     null
   );
 
-  const dataSourceId = dataSourceView ? dataSourceView.dataSource.name : null;
+  // TODO(DATASOURCE_SID): Move to dataSourceId = ... dataSourceView.dataSource.sId
+  const dsName = dataSourceView ? dataSourceView.dataSource.name : null;
   const defaultDataSourceName = dataSourceView
     ? dataSourceView.dataSource.name
     : "";
@@ -159,7 +160,11 @@ export default function VaultWebsiteModal({
 
     // Validate Name
     const nameExists = dataSources.some(
-      (d) => d.name === dataSourceName && d.name !== dataSourceId
+      // TODO(DATASOURCE_SID): This line was kind of buggy because dataSourceId and sId was name but
+      // dataSourceId was not defined when it mattered (creation) and this not used during patching.
+      // (currently replacing back to .name the real real value for now showing that the line makes
+      // no sense). Will move to sId in subsequent PR.
+      (d) => d.name === dataSourceName && d.name !== dsName
     );
     const dataSourceNameRes = isDataSourceNameValid(dataSourceName);
     if (nameExists) {
@@ -173,7 +178,7 @@ export default function VaultWebsiteModal({
     setDataSourceUrlError(urlError);
     setDataSourceNameError(nameError);
     return !urlError && !nameError;
-  }, [dataSourceName, dataSourceId, dataSources, dataSourceUrl]);
+  }, [dataSourceName, dsName, dataSources, dataSourceUrl]);
 
   useEffect(() => {
     if (isSubmitted) {
@@ -247,7 +252,7 @@ export default function VaultWebsiteModal({
       }
     } else if (dataSourceView) {
       const res = await fetch(
-        `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSourceId}/configuration`,
+        `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dsName}/configuration`,
         {
           method: "PATCH",
           headers: {
@@ -295,12 +300,12 @@ export default function VaultWebsiteModal({
   };
 
   const handleDelete = async () => {
-    if (!dataSourceId) {
+    if (!dsName) {
       return;
     }
     setIsSaving(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSourceId}`,
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dsName}`,
       {
         method: "DELETE",
       }
@@ -589,7 +594,7 @@ export default function VaultWebsiteModal({
                     setAdvancedSettingsOpened(true);
                   }}
                 ></Button>
-                {webCrawlerConfiguration && dataSourceId && (
+                {webCrawlerConfiguration && dsName && (
                   <>
                     <Button
                       variant="secondaryWarning"

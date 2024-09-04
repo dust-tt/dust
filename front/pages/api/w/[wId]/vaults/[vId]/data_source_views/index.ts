@@ -124,7 +124,10 @@ async function handler(
       const { name, parentsIn } = bodyValidation.right;
 
       // Create a new view
-      const dataSource = await DataSourceResource.fetchByName(auth, name);
+      const dataSource = await DataSourceResource.fetchByNameOrId(auth, name, {
+        // TODO(DATASOURCE_SID): Clean-up
+        origin: "data_source_view_create",
+      });
       if (!dataSource) {
         return apiError(req, res, {
           status_code: 400,

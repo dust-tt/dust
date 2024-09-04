@@ -149,9 +149,11 @@ async function handler(
             await view.setEditedBy(auth);
           } else {
             // Create a new view
-            const dataSource = await DataSourceResource.fetchByName(
+            const dataSource = await DataSourceResource.fetchByNameOrId(
               auth,
-              dataSourceConfig.dataSource
+              dataSourceConfig.dataSource,
+              // TODO(DATASOURCE_SID): Clean-up
+              { origin: "vault_patch_content" }
             );
             if (dataSource) {
               await DataSourceViewResource.createViewInVaultFromDataSource(

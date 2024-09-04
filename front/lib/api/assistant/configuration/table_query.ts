@@ -129,6 +129,8 @@ export async function createTableDataSourceConfiguration(
   const [globalVault, dataSources] = await Promise.all([
     // TODO(GROUPS_INFRA): Remove fetching global vault once the UI passes the data source view.
     VaultResource.fetchWorkspaceGlobalVault(auth),
+    // TODO(DATASOURCE_SID): remove fetch by names in favor of fetchByModelIds once the
+    // configuration is migrated to it.
     DataSourceResource.fetchByNames(
       // We can use `auth` because we limit to one workspace.
       auth,

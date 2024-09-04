@@ -21,14 +21,38 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { isResourceSId, makeSId } from "@app/lib/resources/string_ids";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
+import logger from "@app/logger/logger";
+
+export type FetchDataSourceOrigin =
+  | "labs_transcripts_resource"
+  | "document_tracker"
+  | "post_upsert_hook_helper"
+  | "post_upsert_hook_activities"
+  | "lib_api_get_data_source"
+  | "lib_api_delete_data_source"
+  | "cli_delete"
+  | "cli_delete_document"
+  | "vault_patch_content"
+  | "data_source_view_create"
+  | "poke_data_source_config"
+  | "registry_lookup"
+  | "data_source_get_or_post"
+  | "data_source_managed_update"
+  | "vault_data_source_config"
+  | "vault_patch_or_delete_data_source";
 
 export type FetchDataSourceOptions = {
   includeEditedBy?: boolean;
   limit?: number;
   order?: [string, "ASC" | "DESC"][];
+  origin?: FetchDataSourceOrigin;
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -92,30 +116,94 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return result;
   }
 
-  static async fetchById(
+  static async fetchByNameOrId(
     auth: Authenticator,
-    id: string,
-    options?: FetchDataSourceOptions
-  ): Promise<DataSourceResource | null> {
-    // Preparing the introduction of datasource sIds - fetchById for now points to fetchByName
-    const dataSource = await this.fetchByName(auth, id, options);
-
-    return dataSource ?? null;
-  }
-
-  static async fetchByName(
-    auth: Authenticator,
-    name: string,
+    nameOrId: string,
     options?: Omit<FetchDataSourceOptions, "limit" | "order">
   ): Promise<DataSourceResource | null> {
-    const dataSources = await this.fetchByNames(auth, [name], options);
-    if (dataSources.length === 0) {
-      return null;
-    }
+    if (DataSourceResource.isDataSourceSId(nameOrId)) {
+      // Fetch by sId
+      const dataSourceModelId = getResourceIdFromSId(nameOrId);
+      if (!dataSourceModelId) {
+        logger.error(
+          {
+            nameOrId: nameOrId,
+            type: "sid",
+            sId: nameOrId,
+            origin: options?.origin,
+            error: "invalid_sid",
+            success: false,
+          },
+          "fetchByNameOrId"
+        );
+        return null;
+      }
 
-    return dataSources[0];
+      const dataSources = await this.fetchByModelIds(
+        auth,
+        [dataSourceModelId],
+        options
+      );
+
+      if (dataSources.length === 0) {
+        logger.error(
+          {
+            nameOrId: nameOrId,
+            type: "sid",
+            sId: nameOrId,
+            origin: options?.origin,
+            error: "id_from_sid_not_found",
+            success: false,
+          },
+          "fetchByNameOrId"
+        );
+        return null;
+      }
+
+      logger.info(
+        {
+          nameOrId: nameOrId,
+          type: "sid",
+          sId: nameOrId,
+          origin: options?.origin,
+          success: true,
+        },
+        "fetchByNameOrId"
+      );
+      return dataSources[0];
+    } else {
+      // Fetch by name
+      const dataSources = await this.fetchByNames(auth, [nameOrId], options);
+      if (dataSources.length === 0) {
+        logger.error(
+          {
+            nameOrId: nameOrId,
+            type: "name",
+            name: nameOrId,
+            origin: options?.origin,
+            error: "name_not_found",
+            success: false,
+          },
+          "fetchByNameOrId"
+        );
+        return null;
+      }
+
+      logger.info(
+        {
+          nameOrId: nameOrId,
+          type: "name",
+          name: nameOrId,
+          origin: options?.origin,
+          success: true,
+        },
+        "fetchByNameOrId"
+      );
+      return dataSources[0];
+    }
   }
 
+  // TODO(DATASOURCE_SID): remove
   static async fetchByNames(
     auth: Authenticator,
     names: string[],
@@ -271,6 +359,16 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
 
   getUsagesByAgents(auth: Authenticator) {
     return getDataSourceUsage({ auth, dataSource: this.toJSON() });
+  }
+
+  // Permissions.
+
+  canRead(auth: Authenticator) {
+    return auth.canRead([this.vault.acl()]);
+  }
+
+  canWrite(auth: Authenticator) {
+    return auth.isBuilder() && auth.canWrite([this.vault.acl()]);
   }
 
   // sId logic.
