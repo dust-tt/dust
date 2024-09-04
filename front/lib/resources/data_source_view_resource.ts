@@ -322,6 +322,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     auth: Authenticator,
     transaction?: Transaction
   ) {
+    // TODO(GROUPS_INFRA) Delete agent_data_source_configuration and agent_tables_query_configuration.
     return this.model.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
