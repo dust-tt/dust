@@ -67,7 +67,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      dataSources,
+      dataSources: dataSources.map((ds) => ds.toJSON()),
       dataSource: dataSource.toJSON(),
       webCrawlerConfiguration: connectorRes.value
         .configuration as WebCrawlerConfigurationType,

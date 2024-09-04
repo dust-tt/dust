@@ -72,7 +72,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       res.status(200).json({
-        data_sources: dataSources,
+        data_sources: dataSources.map((ds) => ds.toJSON()),
       });
       return;
 

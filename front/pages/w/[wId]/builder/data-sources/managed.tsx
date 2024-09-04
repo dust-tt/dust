@@ -140,16 +140,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const managedDataSources: DataSourceWithConnectorAndUsageType[] = removeNulls(
     await Promise.all(
       allDataSources.map(async (managedDataSource) => {
-        if (!isManaged(managedDataSource)) {
+        const ds = managedDataSource.toJSON();
+        if (!isManaged(ds)) {
           return null;
         }
         const augmentedDataSource =
-          await augmentDataSourceWithConnectorDetails(managedDataSource);
+          await augmentDataSourceWithConnectorDetails(ds);
 
-        const usageRes = await getDataSourceUsage({
-          auth,
-          dataSource: managedDataSource,
-        });
+        const usageRes = await managedDataSource.getUsagesByAgents(auth);
         return {
           ...augmentedDataSource,
           usage: usageRes.isOk() ? usageRes.value : 0,
