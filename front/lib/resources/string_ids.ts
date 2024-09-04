@@ -108,7 +108,7 @@ export function isResourceSId(
   resourceName: ResourceNameType,
   sId: string
 ): boolean {
-  return sId.startsWith(RESOURCES_PREFIX[resourceName]);
+  return sId.startsWith(`${RESOURCES_PREFIX[resourceName]}_`);
 }
 
 // Legacy behavior.
