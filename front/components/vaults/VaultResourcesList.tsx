@@ -21,7 +21,7 @@ import type {
 } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import type { ComponentType} from "react";
+import type { ComponentType } from "react";
 import { useContext } from "react";
 import { useRef } from "react";
 import { useState } from "react";

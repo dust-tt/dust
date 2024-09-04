@@ -80,11 +80,13 @@ export const VaultDataSourceViewContentList = ({
     nodes?.map((contentNode) => ({
       ...contentNode,
       icon: getVisualForContentNode(contentNode),
-      onClick: () => {
-        if (contentNode.expandable) {
-          onSelect(contentNode.internalId);
-        }
-      },
+      ...(contentNode.expandable && {
+        onClick: () => {
+          if (contentNode.expandable) {
+            onSelect(contentNode.internalId);
+          }
+        },
+      }),
       moreMenuItems: getMenuItems(
         dataSourceView,
         contentNode,
