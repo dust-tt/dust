@@ -63,10 +63,11 @@ export default function AssistantBuilderDataSourceModal({
     >
       <div className="w-full pt-12">
         <DataSourceViewsSelector
-          owner={owner}
           dataSourceViews={dataSourceViews}
+          owner={owner}
           selectionConfigurations={selectionConfigurations}
           setSelectionConfigurations={setSelectionConfigurationsCallback}
+          viewType="documents"
         />
       </div>
     </Modal>

@@ -7,7 +7,7 @@ import type {
 import { Transition } from "@headlessui/react";
 import * as React from "react";
 
-import DataSourceResourceSelectorTree from "@app/components/DataSourceResourceSelectorTree";
+import DataSourceViewResourceSelectorTree from "@app/components/DataSourceViewResourceSelectorTree";
 
 export const PickTablesManaged = ({
   owner,
@@ -33,7 +33,7 @@ export const PickTablesManaged = ({
     <Transition show className="mx-auto max-w-6xl">
       <Page>
         <Page.Header title="Select a Table" icon={ServerIcon} />
-        <DataSourceResourceSelectorTree
+        <DataSourceViewResourceSelectorTree
           owner={owner}
           dataSourceView={dataSourceView}
           showExpand={true}

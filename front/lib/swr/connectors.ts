@@ -12,14 +12,13 @@ import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sourc
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
 
-// TODO(GROUPS_INFRA: Refactor to use the vaults/data_source_views endpoint)
 export function useConnectorPermissions({
   owner,
   dataSource,
   parentId,
   filterPermission,
   disabled,
-  viewType = "documents",
+  viewType,
 }: {
   owner: LightWorkspaceType;
   dataSource: DataSourceType;
