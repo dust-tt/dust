@@ -903,14 +903,15 @@ function _getDustGlobalAgent(
     };
   }
 
-  let instructions = `The assistant answers with precision and brevity. It produces short and straight to the point answers. The assistant should not provide additional information or content that the user did not ask for. When possible, the assistant should answer using a single sentence.
-# When the user asks a questions to the assistant, the assistant should analyze the situation as follows.
-1. If the user's question requires information that is likely private or internal to the company (and therefore unlikely to be found on the public internet or within the assistant's own knowledge), the assistant should search in the company's internal data sources to answer the question. It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
-2. If the users's question requires information that is recent and likely to be found on the public internet, the assistant should use the internet to answer the question. That means performing a websearch and potentially browse some webpages.
-3. If it is not obvious whether the information would be included in the internal company data sources or on the public internet, the assistant should both search the internal company data sources and the public internet before answering the user's question.
-4. If the user's query require neither internal company data or recent public knowledge, the assistant is allowed to answer without using any tool.
-The assistant always respects the mardown format and generates spaces to nest content.`;
+  const instructions = `The assistant answers with precision and brevity. It produces short and straight to the point answers. The assistant should not provide additional information or content that the user did not ask for. When possible, the assistant should answer using a single sentence.
+    # When the user asks a questions to the assistant, the assistant should analyze the situation as follows.
+    1. If the user's question requires information that is likely private or internal to the company (and therefore unlikely to be found on the public internet or within the assistant's own knowledge), the assistant should search in the company's internal data sources to answer the question. Searching in all datasources is the default behavior unless the user has specified the location in which case it is better to search only on the specific data source. It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
+    2. If the users's question requires information that is recent and likely to be found on the public internet, the assistant should use the internet to answer the question. That means performing a websearch and potentially browse some webpages.
+    3. If it is not obvious whether the information would be included in the internal company data sources or on the public internet, the assistant should both search the internal company data sources and the public internet before answering the user's question.
+    4. If the user's query require neither internal company data or recent public knowledge, the assistant is allowed to answer without using any tool.
+    The assistant always respects the mardown format and generates spaces to nest content.`;
 
+  // We push one action with all data sources
   const actions: AgentActionConfigurationType[] = [
     {
       id: -1,
@@ -930,46 +931,36 @@ The assistant always respects the mardown format and generates spaces to nest co
     },
   ];
 
-  if (owner.flags.includes("dust_splitted_ds_flag")) {
-    // Note: if we want to ungate this, we should make sure to provide a better design in the Assitant detail modal.
-    // The instructions have been edited only to add "Searching in all datasources is the default behavior unless the user has specified the location in which case it is better to search only on the specific data source."
-    instructions = `The assistant answers with precision and brevity. It produces short and straight to the point answers. The assistant should not provide additional information or content that the user did not ask for. When possible, the assistant should answer using a single sentence.
-    # When the user asks a questions to the assistant, the assistant should analyze the situation as follows.
-    1. If the user's question requires information that is likely private or internal to the company (and therefore unlikely to be found on the public internet or within the assistant's own knowledge), the assistant should search in the company's internal data sources to answer the question. Searching in all datasources is the default behavior unless the user has specified the location in which case it is better to search only on the specific data source. It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
-    2. If the users's question requires information that is recent and likely to be found on the public internet, the assistant should use the internet to answer the question. That means performing a websearch and potentially browse some webpages.
-    3. If it is not obvious whether the information would be included in the internal company data sources or on the public internet, the assistant should both search the internal company data sources and the public internet before answering the user's question.
-    4. If the user's query require neither internal company data or recent public knowledge, the assistant is allowed to answer without using any tool.
-    The assistant always respects the mardown format and generates spaces to nest content.`;
-
-    dataSourceViews.forEach((dsView) => {
-      if (
-        dsView.dataSource.connectorProvider &&
-        dsView.dataSource.connectorProvider !== "webcrawler"
-      ) {
-        actions.push({
-          id: -1,
-          sId:
-            GLOBAL_AGENTS_SID.DUST +
-            "-datasource-action-" +
-            dsView.dataSource.name,
-          type: "retrieval_configuration",
-          query: "auto",
-          relativeTimeFrame: "auto",
-          topK: "auto",
-          dataSources: [
-            {
-              dataSourceId: dsView.dataSource.name,
-              dataSourceViewId: dsView.sId,
-              workspaceId: preFetchedDataSources.workspaceId,
-              filter: { parents: null },
-            },
-          ],
-          name: "search_" + dsView.dataSource.name,
-          description: `The user's ${dsView.dataSource.connectorProvider} data source.`,
-        });
-      }
-    });
-  }
+  // Then we push one action per managed data source to have better results when users ask "search in <data_source>"
+  // Hack: We prefix the action names with "hidden_" to hide it from the user in the UI otherwise data sources are displayed twice.
+  dataSourceViews.forEach((dsView) => {
+    if (
+      dsView.dataSource.connectorProvider &&
+      dsView.dataSource.connectorProvider !== "webcrawler"
+    ) {
+      actions.push({
+        id: -1,
+        sId:
+          GLOBAL_AGENTS_SID.DUST +
+          "-datasource-action-" +
+          dsView.dataSource.name,
+        type: "retrieval_configuration",
+        query: "auto",
+        relativeTimeFrame: "auto",
+        topK: "auto",
+        dataSources: [
+          {
+            dataSourceId: dsView.dataSource.name,
+            dataSourceViewId: dsView.sId,
+            workspaceId: preFetchedDataSources.workspaceId,
+            filter: { parents: null },
+          },
+        ],
+        name: "hidden_dust_search_" + dsView.dataSource.name,
+        description: `The user's ${dsView.dataSource.connectorProvider} data source.`,
+      });
+    }
+  });
 
   actions.push({
     id: -1,
