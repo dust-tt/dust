@@ -179,8 +179,8 @@ export async function handlePostTableCsvUpsertRequest(
     const enqueueRes = await enqueueUpsertTable({
       upsertTable: {
         workspaceId: owner.sId,
-        dataSourceId: dataSource.sId,
-        dataSourceName: dataSource.name,
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceName,
         tableId,
         tableName: name,
         tableDescription: description,
