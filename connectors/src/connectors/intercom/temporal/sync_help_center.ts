@@ -102,14 +102,7 @@ export async function deleteCollectionWithChildren({
         article.articleId
       );
       await Promise.all([
-        deleteFromDataSource(
-          {
-            dataSourceName: dataSourceConfig.dataSourceName,
-            workspaceId: dataSourceConfig.workspaceId,
-            workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-          },
-          dsArticleId
-        ),
+        deleteFromDataSource(dataSourceConfig, dsArticleId),
         article.destroy(),
       ]);
     })

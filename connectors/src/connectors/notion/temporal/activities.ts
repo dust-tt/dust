@@ -40,7 +40,10 @@ import {
   updateAllParentsFields,
 } from "@connectors/connectors/notion/lib/parents";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
-import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import {
+  dataSourceConfigFromConnector,
+  dataSourceInfoFromConnector,
+} from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteFromDataSource,
@@ -2081,10 +2084,7 @@ export async function renderAndUpsertPageFromCache({
     "notionRenderAndUpsertPageFromCache: Saving page in connectors DB."
   );
   await upsertNotionPageInConnectorsDb({
-    dataSourceInfo: {
-      dataSourceName: connector.dataSourceName,
-      workspaceId: connector.workspaceId,
-    },
+    dataSourceInfo: dataSourceInfoFromConnector(connector),
     notionPageId: pageId,
     lastSeenTs: runTimestamp,
     parentType,
