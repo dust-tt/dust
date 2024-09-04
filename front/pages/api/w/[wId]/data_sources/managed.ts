@@ -296,6 +296,7 @@ async function handler(
         ? VaultResource.fetchWorkspaceGlobalVault(auth)
         : VaultResource.fetchWorkspaceSystemVault(auth));
       const dataSource = await DataSourceResource.makeNew(
+        auth,
         {
           assistantDefaultSelected,
           connectorProvider: provider,

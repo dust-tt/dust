@@ -383,6 +383,7 @@ const handleDataSourceWithProvider = async ({
   }
 
   const dataSource = await DataSourceResource.makeNew(
+    auth,
     {
       assistantDefaultSelected:
         isConnectorProviderAssistantDefaultSelected(provider),
@@ -611,6 +612,7 @@ const handleDataSourceWithoutProvider = async ({
   }
 
   const dataSource = await DataSourceResource.makeNew(
+    auth,
     {
       name,
       description,

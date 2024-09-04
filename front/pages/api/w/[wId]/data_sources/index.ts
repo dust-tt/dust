@@ -196,6 +196,7 @@ async function handler(
       }
 
       const ds = await DataSourceResource.makeNew(
+        auth,
         {
           name: req.body.name,
           description: description,
