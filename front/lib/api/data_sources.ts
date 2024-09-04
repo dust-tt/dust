@@ -426,7 +426,7 @@ export async function upsertTable({
     const enqueueRes = await enqueueUpsertTable({
       upsertTable: {
         workspaceId: auth.getNonNullableWorkspace().sId,
-        projectId: dataSource.dustAPIProjectId,
+        dataSourceId: dataSource.sId,
         dataSourceName: dataSource.name,
         tableId: nonNullTableId,
         tableName: name,
