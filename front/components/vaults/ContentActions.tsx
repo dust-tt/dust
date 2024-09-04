@@ -17,8 +17,7 @@ export type ContentActionKey =
   | "DocumentUploadOrEdit"
   | "TableUploadOrEdit"
   | "MultipleDocumentsUpload"
-  | "DocumentOrTableDeleteDialog"
-  | "TableUploadOrEditModal";
+  | "DocumentOrTableDeleteDialog";
 
 export type ContentAction = {
   action?: ContentActionKey;
