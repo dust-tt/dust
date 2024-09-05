@@ -74,7 +74,6 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceId: dataSourceConfig.dataSourceId,
-        dataSourceName: dataSourceConfig.dataSourceName,
       },
       webCrawlerConfigurationBlob
     );

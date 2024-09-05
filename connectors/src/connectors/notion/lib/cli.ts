@@ -227,8 +227,8 @@ export const notion = async ({
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
-      if (!args.dataSourceName) {
-        throw new Error("Missing --dataSourceName argument");
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
       }
       if (!args.pageId) {
         throw new Error("Missing --pageId argument");
@@ -239,12 +239,12 @@ export const notion = async ({
         where: {
           type: "notion",
           workspaceId: `${args.wId}`,
-          dataSourceName: args.dataSourceName,
+          dataSourceId: args.dsId,
         },
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId} and type notion`
         );
       }
       const connectorId = connector.id;
@@ -290,8 +290,8 @@ export const notion = async ({
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
-      if (!args.dataSourceName) {
-        throw new Error("Missing --dataSourceName argument");
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
       }
       if (!args.databaseId) {
         throw new Error("Missing --databaseId argument");
@@ -302,13 +302,13 @@ export const notion = async ({
         where: {
           type: "notion",
           workspaceId: `${args.wId}`,
-          dataSourceName: args.dataSourceName,
+          dataSourceId: args.dsId,
         },
       });
 
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}, and type notion`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}, and type notion`
         );
       }
 
@@ -372,6 +372,9 @@ export const notion = async ({
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
+      }
       if (!args.pageId) {
         throw new Error("Missing --pageId argument");
       }
@@ -380,12 +383,12 @@ export const notion = async ({
         where: {
           type: "notion",
           workspaceId: `${args.wId}`,
-          dataSourceName: "managed-notion",
+          dataSourceId: args.dsId,
         },
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId} and type notion`
         );
       }
       logger.info({ pageId }, "[Admin] Upserting page");
@@ -429,6 +432,9 @@ export const notion = async ({
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
+      }
       if (!args.databaseId) {
         throw new Error("Missing --databaseId argument");
       }
@@ -437,12 +443,12 @@ export const notion = async ({
         where: {
           type: "notion",
           workspaceId: `${args.wId}`,
-          dataSourceName: "managed-notion",
+          dataSourceId: args.dsId,
         },
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId} and type notion`
         );
       }
       logger.info({ databaseId }, "[Admin] Upserting database");
@@ -484,14 +490,14 @@ export const notion = async ({
     }
 
     case "search-pages": {
-      const { query, wId } = args;
+      const { query, wId, dsId } = args;
 
       if (!query) {
         throw new Error("Missing --query argument");
       }
 
       const connector = await getConnectorOrThrow({
-        connectorType: "notion",
+        dataSourceId: dsId,
         workspaceId: wId,
       });
 
@@ -505,14 +511,14 @@ export const notion = async ({
     }
 
     case "check-url": {
-      const { url, wId } = args;
+      const { url, wId, dsId } = args;
 
       if (!url) {
         throw new Error("Missing --url argument");
       }
 
       const connector = await getConnectorOrThrow({
-        connectorType: "notion",
+        dataSourceId: dsId,
         workspaceId: wId,
       });
 
@@ -526,14 +532,14 @@ export const notion = async ({
     }
 
     case "find-url": {
-      const { url, wId } = args;
+      const { url, wId, dsId } = args;
 
       if (!url) {
         throw new Error("Missing --url argument");
       }
 
       const connector = await getConnectorOrThrow({
-        connectorType: "notion",
+        dataSourceId: dsId,
         workspaceId: wId,
       });
 
@@ -546,10 +552,10 @@ export const notion = async ({
     }
 
     case "me": {
-      const { wId } = args;
+      const { wId, dsId } = args;
 
       const connector = await getConnectorOrThrow({
-        connectorType: "notion",
+        dataSourceId: dsId,
         workspaceId: wId,
       });
 

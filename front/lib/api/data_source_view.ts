@@ -9,6 +9,7 @@ import { ConnectorsAPI, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 
 import config from "@app/lib/api/config";
+import type { OffsetPaginationParams } from "@app/lib/api/pagination";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
@@ -123,20 +124,23 @@ export async function getContentNodesForManagedDataSourceView(
 export async function getContentNodesForStaticDataSourceView(
   dataSourceView: DataSourceViewResource,
   viewType: ContentNodesViewType,
-  { limit, offset }: { limit: number; offset: number }
+  internalIds: string[],
+  pagination?: OffsetPaginationParams
 ): Promise<Result<DataSourceViewContentNode[], Error | CoreAPIError>> {
   const { dataSource } = dataSourceView;
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   if (viewType === "documents") {
-    const documentsRes = await coreAPI.getDataSourceDocuments({
-      dataSourceId: dataSource.dustAPIDataSourceId,
-      limit,
-      offset,
-      projectId: dataSource.dustAPIProjectId,
-      viewFilter: dataSourceView.toViewFilter(),
-    });
+    const documentsRes = await coreAPI.getDataSourceDocuments(
+      {
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        documentIds: internalIds,
+        projectId: dataSource.dustAPIProjectId,
+        viewFilter: dataSourceView.toViewFilter(),
+      },
+      pagination
+    );
 
     if (documentsRes.isErr()) {
       return documentsRes;
@@ -159,11 +163,15 @@ export async function getContentNodesForStaticDataSourceView(
 
     return new Ok(documentsAsContentNodes);
   } else {
-    const tablesRes = await coreAPI.getTables({
-      dataSourceId: dataSource.dustAPIDataSourceId,
-      projectId: dataSource.dustAPIProjectId,
-      viewFilter: dataSourceView.toViewFilter(),
-    });
+    const tablesRes = await coreAPI.getTables(
+      {
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        projectId: dataSource.dustAPIProjectId,
+        tableIds: internalIds,
+        viewFilter: dataSourceView.toViewFilter(),
+      },
+      pagination
+    );
 
     if (tablesRes.isErr()) {
       return tablesRes;

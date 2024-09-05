@@ -1733,7 +1733,7 @@ impl DataSource {
 
         // Delete tables (concurrently).
         let (tables, total) = store
-            .list_tables(&self.project, &self.data_source_id, None)
+            .list_tables(&self.project, &self.data_source_id, &None, &None, None)
             .await?;
         try_join_all(
             tables

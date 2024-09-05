@@ -1,9 +1,11 @@
 import type {
+  ConnectorProvider,
   CoreAPIDataSourceDocumentSection,
   ModelId,
   Result,
 } from "@dust-tt/types";
 import {
+  CONNECTOR_TYPE_TO_NAME,
   Err,
   isTextExtractionSupportedContentType,
   Ok,
@@ -16,11 +18,6 @@ import { apiConfig } from "@connectors/lib/api/config";
 import { upsertTableFromCsv } from "@connectors/lib/data_sources";
 import type { Logger } from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
-const dataSourceNameToConnectorName: { [key: string]: string } = {
-  "managed-microsoft": "Microsoft",
-  "managed-google_drive": "Google Drive",
-};
 
 export function handleTextFile(
   data: ArrayBuffer,
@@ -43,6 +40,7 @@ export async function handleCsvFile({
   maxDocumentLen,
   localLogger,
   dataSourceConfig,
+  provider,
   connectorId,
   parents,
 }: {
@@ -52,6 +50,7 @@ export async function handleCsvFile({
   maxDocumentLen: number;
   localLogger: Logger;
   dataSourceConfig: DataSourceConfig;
+  provider: ConnectorProvider;
   connectorId: ModelId;
   parents: string[];
 }): Promise<Result<null, Error>> {
@@ -62,7 +61,7 @@ export async function handleCsvFile({
 
   const tableCsv = Buffer.from(data).toString("utf-8").trim();
   const tableName = slugify(fileName.substring(0, 32));
-  const tableDescription = `Structured data from ${dataSourceNameToConnectorName[dataSourceConfig.dataSourceName]} (${fileName})`;
+  const tableDescription = `Structured data from ${CONNECTOR_TYPE_TO_NAME[provider]} (${fileName})`;
 
   try {
     const stringifiedContent = await parseAndStringifyCsv(tableCsv);

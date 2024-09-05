@@ -159,6 +159,7 @@ async function handler(
 
     contentNodes = contentNodesRes.value;
   } else {
+    // TODO(GROUPS_INFRA) Remove once core has pagination.
     if (internalIds.length > 0) {
       return apiError(req, res, {
         status_code: 400,
@@ -173,6 +174,7 @@ async function handler(
     const contentNodesRes = await getContentNodesForStaticDataSourceView(
       dataSourceView,
       viewType,
+      removeNulls(internalIds),
       paginationRes.value
     );
 

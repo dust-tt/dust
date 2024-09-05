@@ -45,6 +45,7 @@ export default function DataSourceSelectionSection({
     useState<DataSourceViewType | null>(null);
 
   const canAddDataSource = dataSourceViews.length > 0;
+  const isTableView = viewType === "tables";
 
   return (
     <>
@@ -95,14 +96,14 @@ export default function DataSourceSelectionSection({
                 FolderIcon
               );
 
+              // Folders are always displayed as leaf items, except for table items.
+              const isLeafItem =
+                !dsConfig.dataSourceView.dataSource.connectorId && !isTableView;
+
               return (
                 <Tree.Item
                   key={dsConfig.dataSourceView.sId}
-                  type={
-                    dsConfig.dataSourceView.dataSource.connectorId
-                      ? "node"
-                      : "leaf"
-                  } // todo make useConnectorPermissions hook work for non managed ds (Folders)
+                  type={isLeafItem ? "leaf" : "node"}
                   label={getDisplayNameForDataSource(
                     dsConfig.dataSourceView.dataSource
                   )}

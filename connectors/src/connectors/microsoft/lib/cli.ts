@@ -102,10 +102,6 @@ export const microsoft = async ({
     case "start-incremental-sync": {
       const connector = await getConnector(args);
 
-      if (!args.dataSourceName) {
-        throw new Error("Missing --dataSourceName argument");
-      }
-
       await throwOnError(launchMicrosoftIncrementalSyncWorkflow(connector.id));
       return { success: true };
     }

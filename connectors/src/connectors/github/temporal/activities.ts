@@ -1238,7 +1238,7 @@ export async function githubCodeSyncDailyCronActivity({
   await client.workflow.signalWithStart("githubCodeSyncWorkflow", {
     args: [dataSourceConfig, connectorId, repoName, repoId, repoLogin],
     taskQueue: QUEUE_NAME,
-    workflowId: getCodeSyncWorkflowId(dataSourceConfig, repoId),
+    workflowId: getCodeSyncWorkflowId(connectorId, repoId),
     searchAttributes: {
       connectorId: [connectorId],
     },
