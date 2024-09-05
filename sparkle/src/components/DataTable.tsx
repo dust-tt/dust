@@ -251,7 +251,7 @@ DataTable.Row = function Row({
   return (
     <tr
       className={classNames(
-        "s-group s-border-b s-border-structure-200 s-text-sm s-transition-colors s-duration-300 s-ease-out",
+        "s-group/dt s-border-b s-border-structure-200 s-text-sm s-transition-colors s-duration-300 s-ease-out",
         onClick ? "s-cursor-pointer hover:s-bg-structure-50" : "",
         className || ""
       )}
@@ -260,7 +260,7 @@ DataTable.Row = function Row({
     >
       {children}
       <td className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600">
-        {moreMenuItems && (
+        {moreMenuItems && moreMenuItems.length > 0 && (
           <DropdownMenu className="s-mr-1.5 s-flex">
             <DropdownMenu.Button
               onClick={(e) => {
