@@ -91,7 +91,6 @@ export default function VaultWebsiteModal({
         : WEBCRAWLER_DEFAULT_CONFIGURATION.crawlFrequency
     );
     setDataSourceName(dataSourceView ? dataSourceView.dataSource.name : "");
-    console.log(dataSourceView);
     setHeaders(
       webCrawlerConfiguration
         ? Object.entries(webCrawlerConfiguration.headers).map(
@@ -99,7 +98,10 @@ export default function VaultWebsiteModal({
           )
         : []
     );
-  }, [dataSourceView, webCrawlerConfiguration]);
+    if (!isOpen) {
+      setDataSourceName("");
+    }
+  }, [isOpen, dataSourceView, webCrawlerConfiguration]);
 
   const router = useRouter();
   const sendNotification = React.useContext(SendNotificationsContext);
@@ -116,7 +118,10 @@ export default function VaultWebsiteModal({
   // TODO(DATASOURCE_SID): Move to dataSourceId = ... dataSourceView.dataSource.sId
   const dsName = dataSourceView ? dataSourceView.dataSource.name : null;
 
-  const [dataSourceName, setDataSourceName] = useState("");
+  const [dataSourceName, setDataSourceName] = useState(
+    dataSourceView ? dataSourceView.dataSource.name : ""
+  );
+
   const [dataSourceNameError, setDataSourceNameError] = useState<string | null>(
     null
   );
@@ -166,7 +171,6 @@ export default function VaultWebsiteModal({
   }, [dataSourceUrl, dataSourceView]);
 
   const validateForm = useCallback(() => {
-    console.log(dataSourceView);
     let urlError = null;
     let nameError = null;
 
@@ -196,7 +200,7 @@ export default function VaultWebsiteModal({
     setDataSourceUrlError(urlError);
     setDataSourceNameError(nameError);
     return !urlError && !nameError;
-  }, [dataSourceView, dataSourceUrl, dataSources, dataSourceName, dsName]);
+  }, [dataSourceUrl, dataSources, dataSourceName, dsName]);
 
   useEffect(() => {
     if (isSubmitted) {
