@@ -79,7 +79,7 @@ async function handler(
 
   const { workspaceAuth } = await Authenticator.fromKey(keyRes.value, wId);
 
-  if (!workspaceAuth || !workspaceAuth.isBuilder()) {
+  if (!workspaceAuth.isBuilder()) {
     return apiError(req, res, {
       status_code: 401,
       api_error: {

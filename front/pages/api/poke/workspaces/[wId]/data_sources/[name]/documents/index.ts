@@ -58,10 +58,14 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      const offset = req.query.offset
-        ? parseInt(req.query.offset as string)
-        : 0;
+      const limit =
+        typeof req.query.limit === "string"
+          ? parseInt(req.query.limit as string)
+          : 10;
+      const offset =
+        typeof req.query.offset === "string"
+          ? parseInt(req.query.offset as string)
+          : 0;
 
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const documents = await coreAPI.getDataSourceDocuments(

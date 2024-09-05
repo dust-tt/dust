@@ -86,9 +86,10 @@ async function handler(
   switch (req.method) {
     case "GET":
       let listUpgraded: boolean | undefined;
-      const searchTerm = req.query.search
-        ? decodeURIComponent(req.query.search as string).trim()
-        : undefined;
+      const searchTerm =
+        typeof req.query.search === "string"
+          ? decodeURIComponent(req.query.search).trim()
+          : undefined;
       let limit: number = 0;
       let originalLimit: number = 0;
       const order: Order = [["createdAt", "DESC"]];

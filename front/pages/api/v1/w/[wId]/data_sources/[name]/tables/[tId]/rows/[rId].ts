@@ -142,7 +142,7 @@ async function handler(
   }
 
   const tableId = req.query.tId;
-  if (!tableId || typeof tableId !== "string") {
+  if (typeof tableId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -153,7 +153,7 @@ async function handler(
   }
 
   const rowId = req.query.rId;
-  if (!rowId || typeof rowId !== "string") {
+  if (typeof rowId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

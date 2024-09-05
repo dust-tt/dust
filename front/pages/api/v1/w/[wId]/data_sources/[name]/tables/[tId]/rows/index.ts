@@ -230,7 +230,7 @@ async function handler(
   }
 
   const tableId = req.query.tId;
-  if (!tableId || typeof tableId !== "string") {
+  if (typeof tableId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -242,10 +242,10 @@ async function handler(
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   switch (req.method) {
     case "GET":
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      const offset = req.query.offset
-        ? parseInt(req.query.offset as string)
-        : 0;
+      const limit =
+        typeof req.query.limit === "string" ? parseInt(req.query.limit) : 10;
+      const offset =
+        typeof req.query.offset === "string" ? parseInt(req.query.offset) : 0;
 
       const listRes = await coreAPI.getTableRows({
         projectId: dataSource.dustAPIProjectId,

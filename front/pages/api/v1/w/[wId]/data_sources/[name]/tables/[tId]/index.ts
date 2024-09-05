@@ -137,7 +137,7 @@ async function handler(
   }
 
   const tableId = req.query.tId;
-  if (!tableId || typeof tableId !== "string") {
+  if (typeof tableId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

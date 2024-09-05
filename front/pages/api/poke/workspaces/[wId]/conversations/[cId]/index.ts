@@ -31,7 +31,7 @@ async function handler(
   }
 
   const { cId } = req.query;
-  if (!cId || typeof cId !== "string") {
+  if (typeof cId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

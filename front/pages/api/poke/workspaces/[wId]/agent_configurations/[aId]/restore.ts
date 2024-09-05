@@ -38,7 +38,7 @@ async function handler(
   switch (req.method) {
     case "POST":
       const { wId } = req.query;
-      if (!wId || typeof wId !== "string") {
+      if (typeof wId !== "string") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

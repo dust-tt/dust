@@ -164,7 +164,8 @@ async function handler(
     });
   }
 
-  const lastEventId = req.query.lastEventId || null;
+  const lastEventId =
+    typeof req.query.lastEventId === "string" ? req.query.lastEventId : null;
   if (lastEventId && typeof lastEventId !== "string") {
     return apiError(req, res, {
       status_code: 400,

@@ -43,7 +43,7 @@ async function handler(
   }
 
   const { tId: templateId } = req.query;
-  if (!templateId || typeof templateId !== "string") {
+  if (typeof templateId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

@@ -215,10 +215,10 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      if (req.query.tags_in && typeof req.query.tags_in === "string") {
+      if (typeof req.query.tags_in === "string") {
         req.query.tags_in = [req.query.tags_in];
       }
-      if (req.query.tags_not && typeof req.query.tags_not === "string") {
+      if (typeof req.query.tags_not === "string") {
         req.query.tags_not = [req.query.tags_not];
       }
 

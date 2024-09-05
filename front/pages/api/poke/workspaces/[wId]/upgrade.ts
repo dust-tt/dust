@@ -34,7 +34,7 @@ async function handler(
   switch (req.method) {
     case "POST":
       const planCode = req.query.planCode;
-      if (!planCode || typeof planCode !== "string") {
+      if (typeof planCode !== "string") {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
