@@ -10,7 +10,6 @@ import type {
   AppType,
   DataSourceConfiguration,
   LightAgentConfigurationType,
-  LightWorkspaceType,
   ModelId,
   ProcessSchemaPropertyType,
   ProcessTagsFilter,
@@ -28,7 +27,6 @@ import {
   Ok,
 } from "@dust-tt/types";
 import assert from "assert";
-import * as _ from "lodash";
 import type { Order, Transaction } from "sequelize";
 import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
@@ -73,15 +71,11 @@ import {
   Mention,
   Message,
 } from "@app/lib/models/assistant/conversation";
-import { Workspace } from "@app/lib/models/workspace";
-import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
