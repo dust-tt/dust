@@ -186,12 +186,8 @@ export function DataTable<TData extends TBaseData>({
       </DataTable.Root>
       {pagination && (
         <Pagination
-          getCanNextPage={table.getCanNextPage}
-          getCanPreviousPage={table.getCanPreviousPage}
-          nextPage={table.nextPage}
           pageIndex={pageIndex}
           pageSize={pageSize}
-          previousPage={table.previousPage}
           rowCount={table.getRowCount()}
           setPageIndex={table.setPageIndex}
         />

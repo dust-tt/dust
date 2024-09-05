@@ -11,16 +11,33 @@ const meta = {
 export default meta;
 
 export const PaginationSM = () => {
-  return <Pagination rowCount={960} pageSize={50} />;
+  const [pageIndex, setPageIndex] = React.useState(0);
+  return (
+    <Pagination
+      rowCount={960}
+      pageSize={50}
+      pageIndex={pageIndex}
+      setPageIndex={setPageIndex}
+    />
+  );
 };
 
 export const PaginationXS = () => {
+  const [pageIndex, setPageIndex] = React.useState(0);
   return (
-    <Pagination rowCount={960} pageSize={50} size="xs" showDetails={false} />
+    <Pagination
+      rowCount={960}
+      pageSize={50}
+      size="xs"
+      showDetails={false}
+      pageIndex={pageIndex}
+      setPageIndex={setPageIndex}
+    />
   );
 };
 
 export const PaginationNoPageButtons = () => {
+  const [pageIndex, setPageIndex] = React.useState(0);
   return (
     <Pagination
       rowCount={960}
@@ -28,6 +45,8 @@ export const PaginationNoPageButtons = () => {
       size="xs"
       showDetails={false}
       showPageButtons={false}
+      pageIndex={pageIndex}
+      setPageIndex={setPageIndex}
     />
   );
 };

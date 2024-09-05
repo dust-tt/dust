@@ -9,47 +9,14 @@ type Size = "sm" | "xs";
 
 const pagesShownInControls = 7;
 
-type BasePaginationProps = {
+type PaginationProps = {
   size?: Size;
   showDetails?: boolean;
   showPageButtons?: boolean;
   rowCount: number;
   pageSize: number;
-};
-
-type PaginationControls = {
   pageIndex: number;
   setPageIndex: (pageNumber: number) => void;
-  getCanPreviousPage: () => boolean;
-  getCanNextPage: () => boolean;
-  previousPage: () => void;
-  nextPage: () => void;
-};
-
-export type PaginationProps = BasePaginationProps & PaginationControls;
-
-const useUncontrolledPagination = (numPages: number) => {
-  const [pageIndex, setPageIndex] = React.useState(0);
-
-  const getCanNextPage = () => pageIndex < numPages - 1;
-  const getCanPreviousPage = () => pageIndex > 0;
-  const nextPage = () => setPageIndex(pageIndex + 1);
-  const previousPage = () => setPageIndex(pageIndex - 1);
-
-  return {
-    pageIndex,
-    setPageIndex,
-    getCanNextPage,
-    getCanPreviousPage,
-    nextPage,
-    previousPage,
-  };
-};
-
-const isControlled = (
-  props: PaginationControls | Record<string, unknown>
-): props is PaginationControls => {
-  return "pageIndex" in props;
 };
 
 export function Pagination({
@@ -58,21 +25,15 @@ export function Pagination({
   showPageButtons = true,
   rowCount,
   pageSize = 25,
-  ...controlledParams
-}: BasePaginationProps | PaginationProps) {
+  pageIndex,
+  setPageIndex,
+}: PaginationProps) {
   const numPages = Math.ceil(rowCount / pageSize);
 
-  const uncontrolledParams = useUncontrolledPagination(numPages);
-
-  // Use uncontrolled pagination if pageIndex is provided
-  const {
-    pageIndex,
-    setPageIndex,
-    getCanPreviousPage,
-    getCanNextPage,
-    previousPage,
-    nextPage,
-  } = isControlled(controlledParams) ? controlledParams : uncontrolledParams;
+  const canNextPage = pageIndex < numPages - 1;
+  const canPreviousPage = pageIndex > 0;
+  const nextPage = () => setPageIndex(pageIndex + 1);
+  const previousPage = () => setPageIndex(pageIndex - 1);
 
   const controlsAreHidden = Boolean(numPages <= 1);
   const firstFileOnPageIndex = pageIndex * pageSize + 1;
@@ -110,18 +71,16 @@ export function Pagination({
           showPageButtons ? "s-gap-0" : "s-gap-2"
         )}
       >
-        {getCanPreviousPage && previousPage && (
-          <Button
-            variant="tertiary"
-            size={size === "xs" ? "xs" : "sm"}
-            label="previous"
-            labelVisible={false}
-            disabledTooltip={true}
-            disabled={!getCanPreviousPage()}
-            icon={ChevronLeftIcon}
-            onClick={previousPage}
-          />
-        )}
+        <Button
+          variant="tertiary"
+          size={size === "xs" ? "xs" : "sm"}
+          label="previous"
+          labelVisible={false}
+          disabledTooltip={true}
+          disabled={!canPreviousPage}
+          icon={ChevronLeftIcon}
+          onClick={previousPage}
+        />
 
         <div
           className={classNames(
@@ -133,18 +92,16 @@ export function Pagination({
           {pageButtons}
         </div>
 
-        {getCanNextPage && nextPage && (
-          <Button
-            variant="tertiary"
-            size={size === "xs" ? "xs" : "sm"}
-            label="next"
-            labelVisible={false}
-            disabledTooltip={true}
-            disabled={!getCanNextPage()}
-            icon={ChevronRightIcon}
-            onClick={nextPage}
-          />
-        )}
+        <Button
+          variant="tertiary"
+          size={size === "xs" ? "xs" : "sm"}
+          label="next"
+          labelVisible={false}
+          disabledTooltip={true}
+          disabled={!canNextPage}
+          icon={ChevronRightIcon}
+          onClick={nextPage}
+        />
       </div>
 
       <span

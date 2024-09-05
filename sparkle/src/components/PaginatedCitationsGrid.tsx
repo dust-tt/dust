@@ -21,7 +21,7 @@ export function PaginatedCitationsGrid({
   items,
   maxItemsPerPage = 9,
 }: PaginatedCitationsGridProps) {
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0);
   const cols = 3;
   const rows = Math.ceil(Math.min(maxItemsPerPage, items.length) / cols);
 
@@ -30,7 +30,7 @@ export function PaginatedCitationsGrid({
   }
 
   // Calculate start index.
-  const startIndex = (currentPage - 1) * maxItemsPerPage;
+  const startIndex = currentPage * maxItemsPerPage;
   // Slice items for current page.
   const paginatedItems = items.slice(startIndex, startIndex + maxItemsPerPage);
 
@@ -65,12 +65,13 @@ export function PaginatedCitationsGrid({
         )}
       >
         <Pagination
-          itemsCount={items.length}
-          maxItemsPerPage={maxItemsPerPage}
+          rowCount={items.length}
+          pageSize={maxItemsPerPage}
           size="xs"
           showDetails={false}
           showPageButtons={false}
-          onButtonClick={(pageNb) => setCurrentPage(pageNb)}
+          pageIndex={currentPage}
+          setPageIndex={(pageNb) => setCurrentPage(pageNb)}
         />
       </div>
     </div>
