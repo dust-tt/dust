@@ -168,7 +168,9 @@ export type ModelConfigurationType = {
   supportsVision: boolean;
 };
 
-const OPEN_AI_TOOL_USE_META_PROMPT =
+// Should be used for all Open AI models older than gpt-4o-2024-08-06 to prevent issues
+// with invalid JSON.
+const LEGACY_OPEN_AI_TOOL_USE_META_PROMPT =
   "When using tools, generate valid and properly escaped JSON arguments.";
 
 export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
@@ -183,7 +185,7 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's GPT 3.5 Turbo model, cost-effective and high throughput (16k context).",
   shortDescription: "OpenAI's fast model.",
   isLegacy: false,
-  toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
+  toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   supportsVision: false,
 };
 
@@ -198,7 +200,7 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   description: "OpenAI's GPT 4 Turbo model for complex tasks (128k context).",
   shortDescription: "OpenAI's second best model.",
   isLegacy: false,
-  toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
+  toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   supportsVision: true,
 };
 export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
@@ -212,7 +214,6 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   description: "OpenAI's GPT 4o model (128k context).",
   shortDescription: "OpenAI's most advanced model.",
   isLegacy: false,
-  toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
   supportsVision: true,
 };
 export const GPT_4O_LEGACY_MODEL_CONFIG: ModelConfigurationType = {
@@ -226,7 +227,7 @@ export const GPT_4O_LEGACY_MODEL_CONFIG: ModelConfigurationType = {
   description: "OpenAI's GPT 4o model (128k context).",
   shortDescription: "OpenAI's most advanced model.",
   isLegacy: false,
-  toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
+  toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   supportsVision: true,
 };
 export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
@@ -240,7 +241,7 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   description: "OpenAI's GPT 4o mini model (128k context).",
   shortDescription: "OpenAI's fast model.",
   isLegacy: false,
-  toolUseMetaPrompt: OPEN_AI_TOOL_USE_META_PROMPT,
+  toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   supportsVision: true,
 };
 
@@ -286,6 +287,14 @@ const ANTHROPIC_DELIMITERS_CONFIGURATION = {
   ],
 };
 
+const ANTHROPIC_TOOL_USE_META_PROMPT =
+  `Immediately before using a tool, think for one short bullet point in \`<thinking>\` tags about ` +
+  `how it evaluates against the criteria for a good and bad tool use. ` +
+  `After using a tool, think for one short bullet point in \`<thinking>\` tags to evaluate ` +
+  `whether the tools results are enough to answer the user's question. ` +
+  `The response to the user must be in \`<response>\` tags. ` +
+  `There must be a single \`<response>\` after the tools use (if any).`;
+
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,
@@ -299,6 +308,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
   supportsVision: true,
+  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
 };
 export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -313,6 +323,7 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
   supportsVision: true,
+  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
