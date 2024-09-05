@@ -259,7 +259,6 @@ export default function DataSourcesView({
             getRenderingConfigForConnectorProvider(
               dataSource.connectorProvider
             );
-          console.log(addDataWithConnection);
           if (addDataWithConnection) {
             setShowEditionModal(addDataWithConnection);
           } else {
