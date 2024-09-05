@@ -8,6 +8,7 @@ import { Button } from "./Button";
 type Size = "sm" | "xs";
 
 const pagesShownInControls = 7;
+const defaultPageSize = 25;
 
 type PaginationProps = {
   size?: Size;
@@ -24,20 +25,21 @@ export function Pagination({
   showDetails = true,
   showPageButtons = true,
   rowCount,
-  pageSize = 25,
+  pageSize = defaultPageSize,
   pageIndex,
   setPageIndex,
 }: PaginationProps) {
   const numPages = Math.ceil(rowCount / pageSize);
 
+  // pageIndex is 0-based
   const canNextPage = pageIndex < numPages - 1;
   const canPreviousPage = pageIndex > 0;
   const nextPage = () => setPageIndex(pageIndex + 1);
   const previousPage = () => setPageIndex(pageIndex - 1);
 
   const controlsAreHidden = Boolean(numPages <= 1);
-  const firstFileOnPageIndex = pageIndex * pageSize + 1;
-  const lastFileOnPageIndex =
+  const firstItemOnPageIndex = pageIndex * pageSize + 1;
+  const lastItemOnPageIndex =
     rowCount > (pageIndex + 1) * pageSize
       ? (pageIndex + 1) * pageSize
       : rowCount;
@@ -113,7 +115,7 @@ export function Pagination({
       >
         {controlsAreHidden
           ? `${rowCount} items`
-          : `Showing ${firstFileOnPageIndex}-${lastFileOnPageIndex} of ${rowCount} items`}
+          : `Showing ${firstItemOnPageIndex}-${lastItemOnPageIndex} of ${rowCount} items`}
       </span>
     </div>
   );
@@ -130,14 +132,12 @@ function renderPageNumber(
       key={pageNumber}
       className={classNames(
         "s-font-semibold s-transition-colors s-duration-100",
-        currentPage === pageNumber - 1
-          ? "s-text-action-500"
-          : "s-text-slate-400",
+        currentPage === pageNumber ? "s-text-action-500" : "s-text-slate-400",
         size === "xs" ? "s-text-xs" : "s-text-sm"
       )}
-      onClick={() => onPageClick(pageNumber - 1)}
+      onClick={() => onPageClick(pageNumber)}
     >
-      {pageNumber}
+      {pageNumber + 1}
     </button>
   );
 }
@@ -166,7 +166,7 @@ function getPageButtons(
 
   // If total pages are less than or equal to slots, show all pages
   if (totalPages <= slots) {
-    for (let i = 1; i <= totalPages; i++) {
+    for (let i = 0; i < totalPages; i++) {
       pagination.push(renderPageNumber(i, currentPage, onPageClick, size));
     }
     return pagination;
@@ -178,23 +178,21 @@ function getPageButtons(
   // Ensure current page is within bounds
   currentPage = Math.max(0, Math.min(currentPage, totalPages - 1));
 
-  pagination.push(renderPageNumber(1, currentPage, onPageClick, size)); // Always show the first page
-
+  pagination.push(renderPageNumber(0, currentPage, onPageClick, size)); // Always show the first page
   // Determine the range of pages to display
   let start, end;
-  if (currentPage <= halfSlots + 2) {
-    start = 2;
-    end = remainingSlots;
-  } else if (currentPage >= totalPages - halfSlots - 1) {
-    start = totalPages - remainingSlots + 1;
-    end = totalPages - 1;
+  if (currentPage <= halfSlots + 1) {
+    start = 1;
+    end = remainingSlots - 1;
+  } else if (currentPage >= totalPages - halfSlots - 2) {
+    start = totalPages - remainingSlots;
+    end = totalPages - 2;
   } else {
     start = currentPage - halfSlots + 1;
     end = currentPage + halfSlots - 1;
   }
-
   // Add ellipsis if there is a gap between the first page and the start of the range
-  if (start > 2) {
+  if (start > 1) {
     pagination.push(renderEllipses(size));
   }
 
@@ -204,11 +202,13 @@ function getPageButtons(
   }
 
   // Add ellipsis if there is a gap between the end of the range and the last page
-  if (end < totalPages - 1) {
+  if (end < totalPages - 2) {
     pagination.push(renderEllipses(size));
   }
 
-  pagination.push(renderPageNumber(totalPages, currentPage, onPageClick, size)); // Always show the last page
+  pagination.push(
+    renderPageNumber(totalPages - 1, currentPage, onPageClick, size)
+  ); // Always show the last page
 
   return pagination;
 }

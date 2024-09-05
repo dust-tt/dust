@@ -106,7 +106,7 @@ export function DataTable<TData extends TBaseData>({
   }, [filter, filterColumn]);
 
   return (
-    <div className="s-mb-2 s-ml-2 s-flex s-flex-col s-gap-2">
+    <div className="s-flex s-flex-col s-gap-2">
       <DataTable.Root className={className}>
         <DataTable.Header>
           {table.getHeaderGroups().map((headerGroup) => (

@@ -71,7 +71,7 @@ export function PaginatedCitationsGrid({
           showDetails={false}
           showPageButtons={false}
           pageIndex={currentPage}
-          setPageIndex={(pageNb) => setCurrentPage(pageNb)}
+          setPageIndex={setCurrentPage}
         />
       </div>
     </div>
