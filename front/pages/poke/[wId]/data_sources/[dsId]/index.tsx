@@ -71,14 +71,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const dataSourceName = context.params?.name;
-  if (!dataSourceName || typeof dataSourceName !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const dataSource = await getDataSource(auth, dataSourceName, {
+  const dataSource = await getDataSource(auth, context.params?.dsId as string, {
     includeEditedBy: true,
   });
   if (!dataSource) {
@@ -90,7 +83,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const coreDataSourceRes = await coreAPI.getDataSource({
     projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.name,
+    dataSourceId: dataSource.dustAPIDataSourceId,
   });
 
   if (coreDataSourceRes.isErr()) {
@@ -244,7 +237,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      dataSource,
+      dataSource: dataSource.toJSON(),
       coreDataSource: coreDataSourceRes.value.data_source,
       connector,
       features,
@@ -305,7 +298,7 @@ const DataSourcePage = ({
     ) {
       window.open(
         `/poke/${owner.sId}/data_sources/${
-          dataSource.name
+          dataSource.sId
         }/view?documentId=${encodeURIComponent(documentId)}`
       );
     }

@@ -3,7 +3,7 @@ import { CoreAPI } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import config from "@app/lib/api/config";
-import { DataSource } from "@app/lib/models/data_source";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import logger from "@app/logger/logger";
 
 const { CONNECTORS_DB = "" } = process.env;

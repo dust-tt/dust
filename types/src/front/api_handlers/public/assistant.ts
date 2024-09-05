@@ -24,6 +24,8 @@ export const PublicPostMessagesRequestBodySchema = t.intersection([
         t.literal("slack"),
         t.literal("web"),
         t.literal("api"),
+        t.literal("gsheet"),
+        t.literal("zapier"),
         t.null,
         t.undefined,
       ]),

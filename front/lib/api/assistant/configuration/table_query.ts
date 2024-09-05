@@ -16,6 +16,7 @@ import {
 } from "@app/lib/models/assistant/actions/tables_query";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export async function fetchTableQueryActionConfigurations({
@@ -46,6 +47,12 @@ export async function fetchTableQueryActionConfigurations({
           [Op.in]: tableQueryConfigurations.map((r) => r.id),
         },
       },
+      include: [
+        {
+          model: DataSourceViewModel,
+          as: "dataSourceView",
+        },
+      ],
     });
 
   const groupedAgentTablesQueryConfigurationTables = _.groupBy(
@@ -68,15 +75,28 @@ export async function fetchTableQueryActionConfigurations({
       const tablesQueryConfigTables =
         groupedAgentTablesQueryConfigurationTables[c.id] ?? [];
 
+      const tables: TableDataSourceConfiguration[] =
+        tablesQueryConfigTables.map((table) => {
+          const { dataSourceView } = table;
+
+          const dataSourceViewId = DataSourceViewResource.modelIdToSId({
+            id: dataSourceView.id,
+            workspaceId: dataSourceView.workspaceId,
+          });
+
+          return {
+            dataSourceId: table.dataSourceId,
+            dataSourceViewId,
+            workspaceId: table.dataSourceWorkspaceId,
+            tableId: table.tableId,
+          };
+        });
+
       actions.push({
         id: c.id,
         sId: c.sId,
         type: "tables_query_configuration",
-        tables: tablesQueryConfigTables.map((tablesQueryConfigTable) => ({
-          dataSourceId: tablesQueryConfigTable.dataSourceId,
-          workspaceId: tablesQueryConfigTable.dataSourceWorkspaceId,
-          tableId: tablesQueryConfigTable.tableId,
-        })),
+        tables,
         name: c.name || DEFAULT_TABLES_QUERY_ACTION_NAME,
         description: c.description,
       });
@@ -107,6 +127,8 @@ export async function createTableDataSourceConfiguration(
   const [globalVault, dataSources] = await Promise.all([
     // TODO(GROUPS_INFRA): Remove fetching global vault once the UI passes the data source view.
     VaultResource.fetchWorkspaceGlobalVault(auth),
+    // TODO(DATASOURCE_SID): remove fetch by names in favor of fetchByModelIds once the
+    // configuration is migrated to it.
     DataSourceResource.fetchByNames(
       // We can use `auth` because we limit to one workspace.
       auth,

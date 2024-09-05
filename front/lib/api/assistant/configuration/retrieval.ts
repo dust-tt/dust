@@ -10,9 +10,9 @@ import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/na
 import { renderRetrievalTimeframeType } from "@app/lib/api/assistant/configuration/helpers";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import { DataSource } from "@app/lib/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export async function fetchAgentRetrievalActionConfigurations({

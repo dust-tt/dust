@@ -13,7 +13,7 @@ import { useState } from "react";
 
 import type { ContentActionsRef } from "@app/components/vaults/ContentActions";
 import VaultFolderModal from "@app/components/vaults/VaultFolderModal";
-import { useDataSources } from "@app/lib/swr";
+import { useDataSources } from "@app/lib/swr/data_sources";
 
 type FoldersHeaderMenuProps = {
   owner: WorkspaceType;
@@ -59,16 +59,14 @@ export const FoldersHeaderMenu = ({
           <DropdownMenu.Item
             icon={DocumentTextIcon}
             onClick={() => {
-              contentActionsRef.current?.callAction(
-                "DocumentOrTableUploadOrEditModal"
-              );
+              contentActionsRef.current?.callAction("DocumentUploadOrEdit");
             }}
             label="Create a document"
           />
           <DropdownMenu.Item
             icon={TableIcon}
             onClick={() => {
-              contentActionsRef.current?.callAction("TableUploadOrEditModal");
+              contentActionsRef.current?.callAction("TableUploadOrEdit");
             }}
             label="Create a table"
           />

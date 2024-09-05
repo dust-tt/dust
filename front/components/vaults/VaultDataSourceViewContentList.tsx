@@ -1,5 +1,12 @@
-import { DataTable, Searchbar, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  DataTable,
+  DropdownMenu,
+  Searchbar,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type {
+  ContentNodesViewType,
   DataSourceViewType,
   PlanType,
   VaultType,
@@ -8,15 +15,19 @@ import type {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRef, useState } from "react";
 
-import type { ContentActionsRef } from "@app/components/vaults/ContentActions";
+import type {
+  ContentActionKey,
+  ContentActionsRef,
+} from "@app/components/vaults/ContentActions";
 import {
   ContentActions,
   getMenuItems,
 } from "@app/components/vaults/ContentActions";
 import { FoldersHeaderMenu } from "@app/components/vaults/FoldersHeaderMenu";
+import { WebsitesHeaderMenu } from "@app/components/vaults/WebsitesHeaderMenu";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { isFolder } from "@app/lib/data_sources";
-import { useDataSourceViewContentNodes } from "@app/lib/swr";
+import { isFolder, isWebsite } from "@app/lib/data_sources";
+import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {
@@ -65,6 +76,7 @@ export const VaultDataSourceViewContentList = ({
 }: VaultDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const contentActionsRef = useRef<ContentActionsRef>(null);
+  const [viewType, setViewType] = useState<ContentNodesViewType>("documents");
 
   const { isNodesLoading, mutateDataSourceViewContentNodes, nodes } =
     useDataSourceViewContentNodes({
@@ -72,7 +84,7 @@ export const VaultDataSourceViewContentList = ({
       owner,
       internalIds: parentId ? [parentId] : [],
       includeChildren: true,
-      viewType: "documents",
+      viewType,
     });
 
   const rows: RowData[] =
@@ -122,11 +134,41 @@ export const VaultDataSourceViewContentList = ({
           </>
         )}
         {isFolder(dataSourceView.dataSource) && (
-          <FoldersHeaderMenu
+          <>
+            <DropdownMenu>
+              <DropdownMenu.Button>
+                <Button
+                  size="sm"
+                  label={viewType === "documents" ? "Documents" : "Tables"}
+                  variant="secondary"
+                  type="menu"
+                />
+              </DropdownMenu.Button>
+
+              <DropdownMenu.Items>
+                <DropdownMenu.Item
+                  label="Documents"
+                  onClick={() => setViewType("documents")}
+                />
+                <DropdownMenu.Item
+                  label="Tables"
+                  onClick={() => setViewType("tables")}
+                />
+              </DropdownMenu.Items>
+            </DropdownMenu>
+            <FoldersHeaderMenu
+              owner={owner}
+              vault={vault}
+              folder={dataSourceView.dataSource}
+              contentActionsRef={contentActionsRef}
+            />
+          </>
+        )}
+        {isWebsite(dataSourceView.dataSource) && (
+          <WebsitesHeaderMenu
             owner={owner}
             vault={vault}
-            folder={dataSourceView.dataSource}
-            contentActionsRef={contentActionsRef}
+            dataSourceView={dataSourceView}
           />
         )}
       </div>
@@ -144,7 +186,14 @@ export const VaultDataSourceViewContentList = ({
         dataSourceView={dataSourceView}
         owner={owner}
         plan={plan}
-        onSave={mutateDataSourceViewContentNodes}
+        onSave={async (action?: ContentActionKey) => {
+          if (action === "DocumentUploadOrEdit") {
+            setViewType("documents");
+          } else if (action === "TableUploadOrEdit") {
+            setViewType("tables");
+          }
+          await mutateDataSourceViewContentNodes();
+        }}
       />
     </>
   );

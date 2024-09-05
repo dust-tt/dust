@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 
-import { fetcher } from "@app/lib/swr";
+import { fetcher } from "@app/lib/swr/swr";
 import type { PokeFetchAssistantTemplateResponse } from "@app/pages/api/poke/templates/[tId]";
 import type { GetDocumentsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[name]/documents";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates";

@@ -114,7 +114,7 @@ export async function getDocumentDiff({
 
 export async function getDatasource(
   auth: Authenticator,
-  dataSourceName: string
+  dataSourceId: string
 ): Promise<DataSourceResource> {
   const owner = auth.getNonNullableWorkspace();
   const workspace = await Workspace.findOne({
@@ -125,10 +125,15 @@ export async function getDatasource(
   if (!workspace) {
     throw new Error(`Could not find workspace ${owner.sId}`);
   }
-  const dataSource = await DataSourceResource.fetchByName(auth, dataSourceName);
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dataSourceId,
+    // TOOD(DATASOURCE_SID): clean-up
+    { origin: "post_upsert_hook_helper" }
+  );
   if (!dataSource) {
     throw new Error(
-      `Could not find data source with name ${dataSourceName} and workspace ${owner.sId}`
+      `Could not find data source with name ${dataSourceId} and workspace ${owner.sId}`
     );
   }
   return dataSource;

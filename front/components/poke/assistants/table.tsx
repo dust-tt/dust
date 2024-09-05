@@ -11,7 +11,7 @@ import { makeColumnsForAssistants } from "@app/components/poke/assistants/column
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
-import { usePokeAgentConfigurations } from "@app/lib/swr";
+import { usePokeAgentConfigurations } from "@app/lib/swr/poke";
 
 interface AssistantsDataTableProps {
   agentConfigurations: AgentConfigurationType[];

@@ -8,6 +8,7 @@ import {
   getNotionPageFromConnectorsDb,
   getPageChildrenOf,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 import type { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { heartbeat } from "@connectors/lib/temporal";
@@ -154,11 +155,7 @@ export async function updateAllParentsFields(
           "Updating parents field for page"
         );
         await updateDocumentParentsField({
-          dataSourceConfig: {
-            dataSourceName: connector.dataSourceName,
-            workspaceId: connector.workspaceId,
-            workspaceAPIKey: connector.workspaceAPIKey,
-          },
+          dataSourceConfig: dataSourceConfigFromConnector(connector),
           documentId: `notion-${pageId}`,
           parents,
         });

@@ -11,7 +11,7 @@ import Link from "next/link";
 
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
-import { useAssistantTemplate } from "@app/lib/swr";
+import { useAssistantTemplate } from "@app/lib/swr/assistants";
 
 interface AssistantTemplateModalProps {
   flow: BuilderFlow;

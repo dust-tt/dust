@@ -177,6 +177,10 @@ export type LightAgentConfigurationType = {
   visualizationEnabled: boolean;
 
   templateId: string | null;
+
+  // group restrictions: if empty, no restrictions, otherwise only users who belong to all the
+  // groups can see the agent
+  groupIds: string[];
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {

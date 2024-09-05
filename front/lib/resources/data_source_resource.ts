@@ -16,18 +16,44 @@ import { Op } from "sequelize";
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { DataSource } from "@app/lib/models/data_source";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
+import logger from "@app/logger/logger";
+
+export type FetchDataSourceOrigin =
+  | "labs_transcripts_resource"
+  | "document_tracker"
+  | "post_upsert_hook_helper"
+  | "post_upsert_hook_activities"
+  | "lib_api_get_data_source"
+  | "cli_delete"
+  | "cli_delete_document"
+  | "vault_patch_content"
+  | "data_source_view_create"
+  | "poke_data_source_config"
+  | "registry_lookup"
+  | "data_source_get_or_post"
+  | "data_source_managed_update"
+  | "vault_data_source_config"
+  | "vault_patch_or_delete_data_source"
+  | "vault_data_source_documents";
 
 export type FetchDataSourceOptions = {
   includeEditedBy?: boolean;
   limit?: number;
   order?: [string, "ASC" | "DESC"][];
+  origin?: FetchDataSourceOrigin;
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -91,30 +117,94 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return result;
   }
 
-  static async fetchById(
+  static async fetchByNameOrId(
     auth: Authenticator,
-    id: string,
-    options?: FetchDataSourceOptions
-  ): Promise<DataSourceResource | null> {
-    // Preparing the introduction of datasource sIds - fetchById for now points to fetchByName
-    const dataSource = await this.fetchByName(auth, id, options);
-
-    return dataSource ?? null;
-  }
-
-  static async fetchByName(
-    auth: Authenticator,
-    name: string,
+    nameOrId: string,
     options?: Omit<FetchDataSourceOptions, "limit" | "order">
   ): Promise<DataSourceResource | null> {
-    const dataSources = await this.fetchByNames(auth, [name], options);
-    if (dataSources.length === 0) {
-      return null;
-    }
+    if (DataSourceResource.isDataSourceSId(nameOrId)) {
+      // Fetch by sId
+      const dataSourceModelId = getResourceIdFromSId(nameOrId);
+      if (!dataSourceModelId) {
+        logger.error(
+          {
+            nameOrId: nameOrId,
+            type: "sid",
+            sId: nameOrId,
+            origin: options?.origin,
+            error: "invalid_sid",
+            success: false,
+          },
+          "fetchByNameOrId"
+        );
+        return null;
+      }
 
-    return dataSources[0];
+      const dataSources = await this.fetchByModelIds(
+        auth,
+        [dataSourceModelId],
+        options
+      );
+
+      if (dataSources.length === 0) {
+        logger.error(
+          {
+            nameOrId: nameOrId,
+            type: "sid",
+            sId: nameOrId,
+            origin: options?.origin,
+            error: "id_from_sid_not_found",
+            success: false,
+          },
+          "fetchByNameOrId"
+        );
+        return null;
+      }
+
+      logger.info(
+        {
+          nameOrId: nameOrId,
+          type: "sid",
+          sId: nameOrId,
+          origin: options?.origin,
+          success: true,
+        },
+        "fetchByNameOrId"
+      );
+      return dataSources[0];
+    } else {
+      // Fetch by name
+      const dataSources = await this.fetchByNames(auth, [nameOrId], options);
+      if (dataSources.length === 0) {
+        logger.error(
+          {
+            nameOrId: nameOrId,
+            type: "name",
+            name: nameOrId,
+            origin: options?.origin,
+            error: "name_not_found",
+            success: false,
+          },
+          "fetchByNameOrId"
+        );
+        return null;
+      }
+
+      logger.info(
+        {
+          nameOrId: nameOrId,
+          type: "name",
+          name: nameOrId,
+          origin: options?.origin,
+          success: true,
+        },
+        "fetchByNameOrId"
+      );
+      return dataSources[0];
+    }
   }
 
+  // TODO(DATASOURCE_SID): remove
   static async fetchByNames(
     auth: Authenticator,
     names: string[],
@@ -210,6 +300,13 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
       transaction,
     });
 
+    // TODO(DATASOURCE_SID): state storing the datasource name.
+    await AgentTablesQueryConfigurationTable.destroy({
+      where: {
+        dataSourceId: this.name,
+      },
+    });
+
     await DataSourceViewResource.deleteForDataSource(auth, this, transaction);
 
     try {
@@ -272,12 +369,48 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     return getDataSourceUsage({ auth, dataSource: this.toJSON() });
   }
 
+  // Permissions.
+
+  canRead(auth: Authenticator) {
+    return auth.canRead([this.vault.acl()]);
+  }
+
+  canWrite(auth: Authenticator) {
+    return auth.isBuilder() && auth.canWrite([this.vault.acl()]);
+  }
+
+  // sId logic.
+
+  get sId(): string {
+    return DataSourceResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("data_source", {
+      id,
+      workspaceId,
+    });
+  }
+
+  static isDataSourceSId(sId: string): boolean {
+    return isResourceSId("data_source", sId);
+  }
+
   // Serialization.
 
   toJSON(): DataSourceType {
     return {
       id: this.id,
-      sId: this.name, // TODO(thomas 20240812) Migrate to a real sId
+      sId: this.sId,
       createdAt: this.createdAt.getTime(),
       name: this.name,
       description: this.description,

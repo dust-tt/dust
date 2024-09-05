@@ -76,7 +76,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     providerFilter: "webcrawler",
   });
 
-  const websiteDataSources = allDataSources.filter(isWebsite);
+  const websiteDataSources = allDataSources
+    .filter(isWebsite)
+    .map((ds) => ds.toJSON());
 
   const connectorIds = websiteDataSources
     .filter((ds) => ds.connectorId !== null)

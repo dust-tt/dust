@@ -26,7 +26,11 @@ import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
-import { useVaultDataSourceViews, useVaultInfo, useVaults } from "@app/lib/swr";
+import {
+  useVaultDataSourceViews,
+  useVaultInfo,
+  useVaults,
+} from "@app/lib/swr/vaults";
 
 interface VaultSideBarMenuProps {
   owner: LightWorkspaceType;
@@ -142,6 +146,7 @@ const SystemVaultMenu = ({
           owner={owner}
           vault={vault}
           visual={item.visual}
+          tailwindIconTextColor={item.tailwindIconTextColor}
         />
       ))}
     </Tree>
@@ -156,22 +161,26 @@ const SystemVaultItem = ({
   owner,
   vault,
   visual,
+  tailwindIconTextColor,
 }: {
   category: DataSourceViewCategory;
   label: string;
   owner: LightWorkspaceType;
   vault: VaultType;
   visual: IconType;
+  tailwindIconTextColor: string;
 }) => {
   const router = useRouter();
 
   const itemPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`;
-  const isAncestorToCurrentPage = router.asPath.includes(itemPath);
+  const isAncestorToCurrentPage = router.asPath.startsWith(itemPath + "/");
 
   // Unfold the item if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(() => {
-    setIsExpanded(isAncestorToCurrentPage);
+    if (isAncestorToCurrentPage) {
+      setIsExpanded(isAncestorToCurrentPage);
+    }
   }, [isAncestorToCurrentPage]);
 
   const { isVaultDataSourceViewsLoading, vaultDataSourceViews } =
@@ -193,6 +202,7 @@ const SystemVaultItem = ({
       visual={visual}
       size="md"
       areActionsFading={false}
+      tailwindIconTextColor={tailwindIconTextColor}
     >
       {isExpanded && (
         <Tree isLoading={isVaultDataSourceViewsLoading}>
@@ -222,12 +232,14 @@ const VaultMenuItem = ({
   const router = useRouter();
 
   const vaultPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}`;
-  const isAncestorToCurrentPage = router.asPath.includes(vaultPath);
+  const isAncestorToCurrentPage = router.asPath.startsWith(vaultPath + "/");
 
   // Unfold the vault if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(() => {
-    setIsExpanded(isAncestorToCurrentPage);
+    if (isAncestorToCurrentPage) {
+      setIsExpanded(isAncestorToCurrentPage);
+    }
   }, [isAncestorToCurrentPage]);
 
   const { vaultInfo, isVaultInfoLoading } = useVaultInfo({
@@ -275,28 +287,23 @@ const DATA_SOURCE_OR_VIEW_SUB_ITEMS: {
       className?: string;
     }>;
     label: string;
-    tailwindIconTextColor: "text-element-700";
   };
 } = {
   managed: {
     icon: CloudArrowLeftRightIcon,
     label: "Connected Data",
-    tailwindIconTextColor: "text-element-700",
   },
   folder: {
     icon: FolderIcon,
-    label: "Files",
-    tailwindIconTextColor: "text-element-700",
+    label: "Folders",
   },
   website: {
     icon: GlobeAltIcon,
     label: "Websites",
-    tailwindIconTextColor: "text-element-700",
   },
   apps: {
     icon: CommandLineIcon,
     label: "Apps",
-    tailwindIconTextColor: "text-element-700",
   },
 };
 
@@ -329,7 +336,6 @@ const VaultDataSourceViewItem = ({
       onItemClick={() => router.push(dataSourceViewPath)}
       label={getDataSourceNameFromView(item)}
       visual={LogoComponent}
-      tailwindIconTextColor="text-element-700"
       areActionsFading={false}
     />
   );
@@ -347,12 +353,16 @@ const VaultCategoryItem = ({
   const router = useRouter();
 
   const vaultCategoryPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`;
-  const isAncestorToCurrentPage = router.asPath.includes(vaultCategoryPath);
+  const isAncestorToCurrentPage = router.asPath.includes(
+    vaultCategoryPath + "/"
+  );
 
   // Unfold the vault's category if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(() => {
-    setIsExpanded(isAncestorToCurrentPage);
+    if (isAncestorToCurrentPage) {
+      setIsExpanded(isAncestorToCurrentPage);
+    }
   }, [isAncestorToCurrentPage]);
 
   const categoryDetails = DATA_SOURCE_OR_VIEW_SUB_ITEMS[category];

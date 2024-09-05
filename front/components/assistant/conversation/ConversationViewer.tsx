@@ -32,7 +32,7 @@ import {
   useConversationParticipants,
   useConversationReactions,
   useConversations,
-} from "@app/lib/swr";
+} from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
 const DEFAULT_PAGE_LIMIT = 50;

@@ -18,7 +18,7 @@ import InputBarContainer, {
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { compareAgentsForSort } from "@app/lib/assistant";
-import { useAgentConfigurations } from "@app/lib/swr";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 

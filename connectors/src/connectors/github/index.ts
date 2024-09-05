@@ -54,6 +54,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
           connectionId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
+          dataSourceId: dataSourceConfig.dataSourceId,
           dataSourceName: dataSourceConfig.dataSourceName,
         },
         githubConfigurationBlob
@@ -100,6 +101,11 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       }
 
       await c.update({ connectionId });
+
+      await launchGithubFullSyncWorkflow({
+        connectorId: this.connectorId,
+        syncCodeOnly: false,
+      });
     }
 
     return new Ok(c.id.toString());

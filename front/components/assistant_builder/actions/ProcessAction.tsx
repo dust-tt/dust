@@ -301,22 +301,6 @@ export function ActionProcess({
     return null;
   }
 
-  const deleteDataSource = (name: string) => {
-    updateAction((previousAction) => {
-      if (previousAction.dataSourceConfigurations[name]) {
-        setEdited(true);
-      }
-      const dataSourceConfigurations = {
-        ...previousAction.dataSourceConfigurations,
-      };
-      delete dataSourceConfigurations[name];
-      return {
-        ...previousAction,
-        dataSourceConfigurations,
-      };
-    });
-  };
-
   const foldersOnly =
     Object.keys(actionConfiguration.dataSourceConfigurations).every(
       (k) =>
@@ -391,6 +375,7 @@ export function ActionProcess({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
+        viewType="documents"
       />
 
       <div className="text-sm text-element-700">
@@ -415,7 +400,7 @@ export function ActionProcess({
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
-        onDelete={deleteDataSource}
+        viewType="documents"
       />
 
       {(foldersOnly ||

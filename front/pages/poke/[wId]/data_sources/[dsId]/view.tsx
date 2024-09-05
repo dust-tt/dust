@@ -13,14 +13,7 @@ import logger from "@app/logger/logger";
 export const getServerSideProps = withSuperUserAuthRequirements<{
   document: CoreAPIDocument;
 }>(async (context, auth) => {
-  const dataSourceName = context.params?.name;
-  if (!dataSourceName || typeof dataSourceName !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const dataSource = await getDataSource(auth, dataSourceName);
+  const dataSource = await getDataSource(auth, context.params?.dsId as string);
   if (!dataSource) {
     return {
       notFound: true,

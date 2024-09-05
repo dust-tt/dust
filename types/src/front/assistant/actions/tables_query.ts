@@ -3,23 +3,17 @@ import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { ModelId } from "../../../shared/model_id";
 
 export type TablesQueryConfigurationType = {
-  id: ModelId;
-  sId: string;
-  type: "tables_query_configuration";
-  tables: Array<{
-    workspaceId: string;
-    dataSourceId: string;
-    tableId: string;
-  }>;
-
-  name: string;
   description: string | null;
+  id: ModelId;
+  name: string;
+  sId: string;
+  tables: TableDataSourceConfiguration[];
+  type: "tables_query_configuration";
 };
 
 export type TableDataSourceConfiguration = {
   dataSourceId: string;
-  // TODO(GROUPS_INFRA) Make `dataSourceViewId` required.
-  dataSourceViewId?: string;
+  dataSourceViewId: string;
   tableId: string;
   workspaceId: string;
 };

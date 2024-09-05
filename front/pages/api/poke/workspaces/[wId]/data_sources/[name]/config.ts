@@ -59,9 +59,11 @@ async function handler(
       }
       const { configKey, configValue } = req.body;
 
-      const dataSource = await DataSourceResource.fetchByName(
+      const dataSource = await DataSourceResource.fetchByNameOrId(
         auth,
-        req.query.name as string
+        req.query.name as string,
+        // TODO(DATASOURCE_SID): Clean-up and rename parameter [dsId]
+        { origin: "poke_data_source_config" }
       );
 
       if (!dataSource) {

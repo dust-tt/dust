@@ -12,7 +12,8 @@ import WorkspacePicker from "@app/components/WorkspacePicker";
 import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import { useUser, useWorkspaceSubscriptions } from "@app/lib/swr";
+import { useUser } from "@app/lib/swr/user";
+import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{

@@ -9,8 +9,8 @@ import { DataTypes, Model } from "sequelize";
 
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import { DataSource } from "@app/lib/models/data_source";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 /**

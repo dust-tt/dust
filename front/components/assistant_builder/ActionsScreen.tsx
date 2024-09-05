@@ -51,7 +51,7 @@ import type {
   AssistantBuilderRetrievalConfiguration,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
-  AssistantBuilderTablesQueryConfiguration,
+  AssistantBuilderTableConfiguration,
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
@@ -650,7 +650,7 @@ function ActionConfigEditor({
               actionName: action.name,
               actionDescription: action.description,
               getNewActionConfig: (old) =>
-                setNewAction(old as AssistantBuilderTablesQueryConfiguration),
+                setNewAction(old as AssistantBuilderTableConfiguration),
             });
           }}
           setEdited={setEdited}

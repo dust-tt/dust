@@ -4,7 +4,6 @@ export const WHITELISTABLE_FEATURES = [
   "labs_transcripts",
   "labs_transcripts_datasource",
   "document_tracker",
-  "dust_splitted_ds_flag",
   "data_vaults_feature",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
