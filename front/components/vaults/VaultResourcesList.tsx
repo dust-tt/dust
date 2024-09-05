@@ -29,7 +29,7 @@ import { useState } from "react";
 import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
-import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSourceDialog";
+import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
@@ -357,7 +357,7 @@ export const VaultResourcesList = ({
               }}
             />
             {selectedDataSourceView && (
-              <DeleteDataSourceDialog
+              <DeleteStaticDataSourceDialog
                 handleDelete={onDeleteFolderOrWebsite}
                 isOpen={showDeleteConfirmDialog}
                 onClose={() => setShowDeleteConfirmDialog(false)}

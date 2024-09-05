@@ -16,7 +16,7 @@ import { isDataSourceNameValid } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState } from "react";
 
-import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSourceDialog";
+import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
@@ -261,7 +261,7 @@ export default function VaultFolderModal({
             {folder !== null && (
               <>
                 <Page.Separator />
-                <DeleteDataSourceDialog
+                <DeleteStaticDataSourceDialog
                   handleDelete={onDeleteFolder}
                   isOpen={showDeleteConfirmDialog}
                   onClose={onClose}

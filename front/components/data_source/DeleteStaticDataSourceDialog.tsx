@@ -1,18 +1,18 @@
 import { Dialog } from "@dust-tt/sparkle";
 
-interface DeleteDataSourceDialogProps {
+interface DeleteStaticDataSourceDialogProps {
   handleDelete: () => void;
   dataSourceUsage?: number;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function DeleteDataSourceDialog({
+export function DeleteStaticDataSourceDialog({
   handleDelete,
   dataSourceUsage,
   isOpen,
   onClose,
-}: DeleteDataSourceDialogProps) {
+}: DeleteStaticDataSourceDialogProps) {
   const onDelete = async () => {
     await handleDelete();
     onClose();

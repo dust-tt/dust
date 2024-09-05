@@ -36,7 +36,7 @@ import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
 
-import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSourceDialog";
+import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
@@ -624,7 +624,7 @@ export default function VaultWebsiteModal({
                         setIsDeleteModalOpen(true);
                       }}
                     />
-                    <DeleteDataSourceDialog
+                    <DeleteStaticDataSourceDialog
                       handleDelete={handleDelete}
                       isOpen={isDeleteModalOpen}
                       onClose={() => setIsDeleteModalOpen(false)}
