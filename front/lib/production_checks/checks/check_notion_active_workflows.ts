@@ -35,10 +35,10 @@ async function getDescriptionsAndHistories({
   notionConnector: NotionConnector;
 }) {
   const incrementalSyncHandle: WorkflowHandle = client.workflow.getHandle(
-    getNotionWorkflowId(notionConnector, "never")
+    getNotionWorkflowId(notionConnector.id, "never")
   );
   const garbageCollectorHandle: WorkflowHandle = client.workflow.getHandle(
-    getNotionWorkflowId(notionConnector, "always")
+    getNotionWorkflowId(notionConnector.id, "always")
   );
 
   const descriptions = await Promise.all([
