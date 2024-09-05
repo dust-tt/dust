@@ -99,8 +99,6 @@ export function DataTable<TData extends TBaseData>({
     onPaginationChange: setPagination,
   });
 
-  const { pageIndex, pageSize } = table.getState().pagination;
-
   useEffect(() => {
     if (filterColumn) {
       table.getColumn(filterColumn)?.setFilterValue(filter);
@@ -186,8 +184,7 @@ export function DataTable<TData extends TBaseData>({
       </DataTable.Root>
       {pagination && (
         <Pagination
-          pageIndex={pageIndex}
-          pageSize={pageSize}
+          {...table.getState().pagination}
           rowCount={table.getRowCount()}
           setPageIndex={table.setPageIndex}
         />
