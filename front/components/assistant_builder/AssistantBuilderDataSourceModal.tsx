@@ -5,11 +5,12 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { SetStateAction } from "react";
-import { useCallback, useContext, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
+import { supportsStructuredData } from "@app/lib/data_sources";
 
 interface AssistantBuilderDataSourceModalProps {
   initialDataSourceConfigurations: DataSourceViewSelectionConfigurations;
@@ -51,6 +52,16 @@ export default function AssistantBuilderDataSourceModal({
     [setSelectionConfigurations]
   );
 
+  const supportedDataSourceViewsForViewType = useMemo(
+    () =>
+      viewType === "documents"
+        ? dataSourceViews
+        : dataSourceViews.filter((dsv) =>
+            supportsStructuredData(dsv.dataSource)
+          ),
+    [dataSourceViews, viewType]
+  );
+
   return (
     <Modal
       isOpen={isOpen}
@@ -68,7 +79,7 @@ export default function AssistantBuilderDataSourceModal({
     >
       <div className="w-full pt-12">
         <DataSourceViewsSelector
-          dataSourceViews={dataSourceViews}
+          dataSourceViews={supportedDataSourceViewsForViewType}
           owner={owner}
           selectionConfigurations={selectionConfigurations}
           setSelectionConfigurations={setSelectionConfigurationsCallback}

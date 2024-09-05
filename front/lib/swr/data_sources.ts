@@ -1,12 +1,10 @@
-import type { LightContentNode, LightWorkspaceType } from "@dust-tt/types";
+import type { LightWorkspaceType } from "@dust-tt/types";
 import { useMemo } from "react";
-import type { Fetcher, SWRConfiguration } from "swr";
+import type { Fetcher } from "swr";
 
-import { fetcher, postFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
-import type { GetContentNodesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/content-nodes";
-import type { GetContentNodeParentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/parents";
 
 export function useDataSources(
   owner: LightWorkspaceType,
@@ -24,85 +22,6 @@ export function useDataSources(
     isDataSourcesLoading: disabled ? false : !error && !data,
     isDataSourcesError: disabled ? false : error,
     mutateDataSources: mutate,
-  };
-}
-
-interface UseDataSourceKey {
-  workspaceId: string;
-  dataSourceName: string;
-  internalIds: string[];
-}
-
-interface UseDataSourceResult {
-  contentNodes: LightContentNode[];
-  parentsById: Record<string, Set<string>>;
-}
-
-export function useDataSourceNodes(
-  key: UseDataSourceKey,
-  options?: SWRConfiguration<{
-    contentNodes: LightContentNode[];
-    parentsById: Record<string, Set<string>>;
-  }>
-) {
-  const contentNodesFetcher: Fetcher<UseDataSourceResult, string> = async (
-    key: string
-  ) => {
-    const { workspaceId, dataSourceName, internalIds } = JSON.parse(key);
-    if (internalIds.length === 0) {
-      return { contentNodes: [], parentsById: {} };
-    }
-
-    const nodesUrl = `/api/w/${workspaceId}/data_sources/${encodeURIComponent(
-      dataSourceName
-    )}/managed/content-nodes`;
-
-    const parentsUrl = `/api/w/${workspaceId}/data_sources/${encodeURIComponent(
-      dataSourceName
-    )}/managed/parents`;
-
-    const [nodesData, parentsData]: [
-      GetContentNodesResponseBody,
-      GetContentNodeParentsResponseBody,
-    ] = await Promise.all([
-      postFetcher([nodesUrl, { internalIds }]),
-      postFetcher([parentsUrl, { internalIds }]),
-    ]);
-
-    const { contentNodes } = nodesData;
-    if (contentNodes.length !== internalIds.length) {
-      throw new Error(
-        `Failed to fetch content nodes for all tables. Expected ${internalIds.length}, got ${contentNodes.length}.`
-      );
-    }
-
-    const parentsById = parentsData.nodes.reduce(
-      (acc, r) => {
-        acc[r.internalId] = new Set(r.parents);
-        return acc;
-      },
-      {} as Record<string, Set<string>>
-    );
-
-    return { contentNodes, parentsById };
-  };
-
-  const serializeKey = (k: UseDataSourceKey) => JSON.stringify(k);
-
-  const { data, error } = useSWRWithDefaults(
-    serializeKey(key),
-    contentNodesFetcher,
-    options
-  );
-
-  return {
-    isNodesLoading: !error && !data,
-    isNodesError: error,
-    nodes: {
-      contentNodes: data?.contentNodes,
-      parentsById: data?.parentsById,
-    },
-    serializeKey,
   };
 }
 

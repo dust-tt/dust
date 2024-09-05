@@ -27,6 +27,7 @@ export default function TablePicker({
   void owner;
   void dataSource;
 
+  // TODO(GROUPS_INFRA): Use data source views to get tables.
   const { tables } = useTables({
     workspaceId: dataSource.workspace_id,
     dataSourceName: dataSource.data_source_id,
