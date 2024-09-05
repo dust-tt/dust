@@ -130,7 +130,7 @@ Tree.Item = function ({
   const childrenToRender = getChildren();
 
   const treeItemStyleClasses = {
-    base: "s-group s-flex s-cursor-default s-flex-row s-items-center",
+    base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center",
     isNavigatableBase:
       "s-border s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
     isNavigatableUnselected:
@@ -200,7 +200,7 @@ Tree.Item = function ({
             className={classNames(
               "s-flex s-gap-2 s-pl-4",
               areActionsFading
-                ? "s-transform s-opacity-0 s-duration-300 group-hover:s-opacity-100"
+                ? "s-transform s-opacity-0 s-duration-300 group-hover/tree:s-opacity-100"
                 : ""
             )}
           >
