@@ -359,12 +359,13 @@ async function handler(
       // the `getDataSourceDocuments` query involves a SELECT COUNT(*) in the DB that is not
       // optimized, so we avoid it for large workspaces if we know we're unlimited anyway
       if (plan.limits.dataSources.documents.count != -1) {
-        const documents = await coreAPI.getDataSourceDocuments({
-          projectId: dataSource.dustAPIProjectId,
-          dataSourceId: dataSource.dustAPIDataSourceId,
-          limit: 1,
-          offset: 0,
-        });
+        const documents = await coreAPI.getDataSourceDocuments(
+          {
+            projectId: dataSource.dustAPIProjectId,
+            dataSourceId: dataSource.dustAPIDataSourceId,
+          },
+          { limit: 1, offset: 0 }
+        );
 
         if (documents.isErr()) {
           return apiError(req, res, {

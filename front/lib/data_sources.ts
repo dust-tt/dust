@@ -65,7 +65,7 @@ const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
   "microsoft",
 ];
 
-export function canContainStructuredData(ds: DataSource): boolean {
+export function supportsStructuredData(ds: DataSource): boolean {
   return Boolean(
     isFolder(ds) ||
       (ds.connectorProvider &&

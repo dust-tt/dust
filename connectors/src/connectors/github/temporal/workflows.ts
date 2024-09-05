@@ -68,7 +68,7 @@ export async function githubFullSyncWorkflow(
   await githubSaveStartSyncActivity(dataSourceConfig);
   const loggerArgs = {
     connectorId,
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
     workspaceId: dataSourceConfig.workspaceId,
     syncCodeOnly: syncCodeOnly.toString(),
   };
@@ -90,7 +90,7 @@ export async function githubFullSyncWorkflow(
     pageNumber += 1;
 
     for (const repo of resultsPage) {
-      const fullSyncWorkflowId = getFullSyncWorkflowId(dataSourceConfig);
+      const fullSyncWorkflowId = getFullSyncWorkflowId(connectorId);
       const childWorkflowId = `${fullSyncWorkflowId}-repo-${repo.id}-syncCodeOnly-${syncCodeOnly}`;
       promises.push(
         queue.add(() =>
@@ -134,7 +134,7 @@ export async function githubReposSyncWorkflow(
   const promises: Promise<void>[] = [];
 
   for (const repo of repos) {
-    const reposSyncWorkflowId = getReposSyncWorkflowId(dataSourceConfig);
+    const reposSyncWorkflowId = getReposSyncWorkflowId(connectorId);
     const childWorkflowId = `${reposSyncWorkflowId}-repo-${repo.id}`;
     promises.push(
       queue.add(() =>
@@ -181,7 +181,7 @@ export async function githubRepoIssuesSyncWorkflow({
   pageNumber: number;
 }): Promise<boolean> {
   const loggerArgs = {
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     repoName,
@@ -243,7 +243,7 @@ export async function githubRepoDiscussionsSyncWorkflow({
   nextCursor: string | null;
 }): Promise<string | null> {
   const loggerArgs = {
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     repoName,
@@ -306,7 +306,7 @@ export async function githubRepoSyncWorkflow({
   forceCodeResync?: boolean;
 }) {
   const loggerArgs = {
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     repoName,
@@ -319,8 +319,8 @@ export async function githubRepoSyncWorkflow({
     for (;;) {
       const childWorkflowId = `${
         isFullSync
-          ? getFullSyncWorkflowId(dataSourceConfig)
-          : getReposSyncWorkflowId(dataSourceConfig)
+          ? getFullSyncWorkflowId(connectorId)
+          : getReposSyncWorkflowId(connectorId)
       }-repo-${repoId}-issues-page-${pageNumber}`;
 
       const shouldContinue = await executeChild(githubRepoIssuesSyncWorkflow, {
@@ -353,8 +353,8 @@ export async function githubRepoSyncWorkflow({
     for (;;) {
       const childWorkflowId = `${
         isFullSync
-          ? getFullSyncWorkflowId(dataSourceConfig)
-          : getReposSyncWorkflowId(dataSourceConfig)
+          ? getFullSyncWorkflowId(connectorId)
+          : getReposSyncWorkflowId(connectorId)
       }-repo-${repoId}-issues-page-${cursorIteration}`;
 
       nextCursor = await executeChild(githubRepoDiscussionsSyncWorkflow, {
@@ -404,7 +404,7 @@ export async function githubCodeSyncWorkflow(
   repoLogin: string
 ) {
   const loggerArgs = {
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     repoName,
@@ -469,7 +469,7 @@ export async function githubIssueSyncWorkflow(
   issueNumber: number
 ) {
   const loggerArgs = {
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     repoName,
@@ -513,7 +513,7 @@ export async function githubDiscussionSyncWorkflow(
   discussionNumber: number
 ) {
   const loggerArgs = {
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     repoName,
@@ -557,7 +557,7 @@ export async function githubIssueGarbageCollectWorkflow(
   issueNumber: number
 ) {
   const loggerArgs = {
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     issueNumber,
@@ -580,7 +580,7 @@ export async function githubDiscussionGarbageCollectWorkflow(
   discussionNumber: number
 ) {
   const loggerArgs = {
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     discussionNumber,
@@ -602,7 +602,7 @@ export async function githubRepoGarbageCollectWorkflow(
   repoId: string
 ) {
   const loggerArgs = {
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
   };

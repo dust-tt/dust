@@ -41,7 +41,6 @@ export type GithubCommandType = t.TypeOf<typeof GithubCommandSchema>;
 export const NotionCommandSchema = t.type({
   majorCommand: t.literal("notion"),
   command: t.union([
-    t.literal("restart-all"),
     t.literal("skip-page"),
     t.literal("skip-database"),
     t.literal("upsert-page"),
@@ -101,7 +100,12 @@ export type SlackCommandType = t.TypeOf<typeof SlackCommandSchema>;
 
 export const BatchCommandSchema = t.type({
   majorCommand: t.literal("batch"),
-  command: t.union([t.literal("full-resync"), t.literal("restart-all")]),
+  command: t.union([
+    t.literal("full-resync"),
+    t.literal("restart-all"),
+    t.literal("stop-all"),
+    t.literal("resume-all"),
+  ]),
   args: t.record(
     t.string,
     t.union([t.string, NumberAsStringCodec, t.undefined])
@@ -115,13 +119,11 @@ export const WebcrawlerCommandSchema = t.type({
   command: t.literal("start-scheduler"),
 });
 
-export const BatchRestartAllResponseSchema = t.type({
+export const BatchAllResponseSchema = t.type({
   succeeded: t.number,
   failed: t.number,
 });
-export type BatchRestartAllResponseType = t.TypeOf<
-  typeof BatchRestartAllResponseSchema
->;
+export type BatchAllResponseType = t.TypeOf<typeof BatchAllResponseSchema>;
 
 export type WebcrawlerCommandType = t.TypeOf<typeof WebcrawlerCommandSchema>;
 
@@ -346,7 +348,7 @@ export type TemporalUnprocessedWorkflowsResponseType = t.TypeOf<
 
 export const AdminResponseSchema = t.union([
   AdminSuccessResponseSchema,
-  BatchRestartAllResponseSchema,
+  BatchAllResponseSchema,
   CheckFileGenericResponseSchema,
   GetParentsResponseSchema,
   IntercomCheckConversationResponseSchema,

@@ -170,6 +170,7 @@ async function handleFileExport(
       maxDocumentLen,
       localLogger,
       dataSourceConfig,
+      provider: "google_drive",
       connectorId,
       parents: [file.id, ...parents],
     });
@@ -219,7 +220,7 @@ export async function syncOneFile(
       const localLogger = logger.child({
         provider: "google_drive",
         workspaceId: dataSourceConfig.workspaceId,
-        dataSourceName: dataSourceConfig.dataSourceName,
+        dataSourceId: dataSourceConfig.dataSourceId,
         connectorId,
         documentId,
         fileId: file.id,

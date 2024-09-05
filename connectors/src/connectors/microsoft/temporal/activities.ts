@@ -375,7 +375,7 @@ export async function syncFiles({
   logger.info(
     {
       connectorId,
-      dataSourceName: dataSourceConfig.dataSourceName,
+      dataSourceId: dataSourceConfig.dataSourceId,
       parent,
       count,
     },
