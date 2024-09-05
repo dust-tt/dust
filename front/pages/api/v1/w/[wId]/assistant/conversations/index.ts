@@ -57,6 +57,7 @@ export type PostConversationsResponseBody = {
  *                 $ref: '#/components/schemas/Message'
  *               contentFragment:
  *                 $ref: '#/components/schemas/ContentFragment'
+ *                 description: The text content of an attached file (optional)
  *               blocking:
  *                 type: boolean
  *                 description: Whether to wait for the agent to generate the initial message (if blocking = false, you will need to use streaming events to get the messages)
