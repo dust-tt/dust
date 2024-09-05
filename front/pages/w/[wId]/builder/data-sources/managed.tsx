@@ -73,7 +73,6 @@ type RowData = {
   disabled: boolean;
   isLoading: boolean;
   readOnly: boolean;
-  dataSourceUrl: string;
   workspaceId: string | undefined;
   icon: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
   buttonOnClick: () => void;
@@ -84,7 +83,6 @@ type GetTableRowParams = {
   managedDataSource: DataSourceWithConnectorAndUsageType;
   isAdmin: boolean;
   isLoadingByProvider: Record<ConnectorProvider, boolean | undefined>;
-  owner: WorkspaceType;
   readOnly: boolean;
   onButtonClick: (ds: DataSourceWithConnectorAndUsageType) => void;
 };
@@ -251,7 +249,6 @@ export default function DataSourcesView({
         managedDataSource,
         isAdmin,
         isLoadingByProvider,
-        owner,
         readOnly,
         onButtonClick: (dataSource: DataSourceWithConnectorAndUsageType) => {
           setSelectedDataSource(dataSource);
@@ -267,7 +264,7 @@ export default function DataSourcesView({
         },
       })
     );
-  }, [isAdmin, isLoadingByProvider, owner, readOnly, managedDataSources]);
+  }, [isAdmin, isLoadingByProvider, readOnly, managedDataSources]);
 
   const updateConnectorConnectionId = async (
     newConnectionId: string,
@@ -568,7 +565,6 @@ function getTableRow({
   managedDataSource,
   isAdmin,
   isLoadingByProvider,
-  owner,
   readOnly,
   onButtonClick,
 }: GetTableRowParams): RowData {
@@ -588,7 +584,6 @@ function getTableRow({
     icon: LogoComponent,
     buttonOnClick,
     workspaceId: managedDataSource.connector?.workspaceId,
-    dataSourceUrl: `/w/${owner.sId}/builder/data-sources/${managedDataSource.name}`,
     isAdmin,
     readOnly,
     disabled: isDisabled,
