@@ -244,7 +244,7 @@ export const notion = async ({
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId} and type notion`
         );
       }
       const connectorId = connector.id;
@@ -308,7 +308,7 @@ export const notion = async ({
 
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}, and type notion`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}, and type notion`
         );
       }
 
@@ -388,7 +388,7 @@ export const notion = async ({
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId} and type notion`
         );
       }
       logger.info({ pageId }, "[Admin] Upserting page");
@@ -448,7 +448,7 @@ export const notion = async ({
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName} and type notion`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId} and type notion`
         );
       }
       logger.info({ databaseId }, "[Admin] Upserting database");
