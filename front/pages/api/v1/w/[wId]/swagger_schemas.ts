@@ -98,26 +98,32 @@
  *           type: string
  *           description: Username in the current context
  *           example: "johndoe123"
+ *           required: true
  *         timezone:
  *           type: string
  *           description: User's timezone
  *           example: "America/New_York"
+ *           required: true
  *         fullName:
  *           type: string
  *           description: User's full name in the current context
  *           example: "John Doe"
+ *           required: true
  *         email:
  *           type: string
  *           description: User's email in the current context
  *           example: "john.doe@example.com"
+ *           required: true
  *         profilePictureUrl:
  *           type: string
  *           description: URL of the user's profile picture
  *           example: "https://example.com/profiles/johndoe123.jpg"
+ *           required: true
  *         origin:
  *           type: string
  *           description: Origin of the context
  *           example: "api"
+ *           required: true
  *     AgentConfiguration:
  *       type: object
  *       properties:
@@ -326,18 +332,22 @@
  *           type: string
  *           description: The title of the content fragment
  *           example: "My content fragment"
+ *           required: true
  *         content:
  *           type: string
  *           description: The content of the content fragment
  *           example: "This is my content fragment extracted text"
+ *           required: true
  *         url:
  *           type: string
  *           description: The URL of the content fragment
  *           example: "https://example.com/content"
+ *           required: true
  *         contentType:
  *           type: string
  *           description: The content type of the content fragment
  *           example: "text/plain"
+ *           required: true
  *         context:
  *           $ref: '#/components/schemas/Context'
  *     Datasource:
