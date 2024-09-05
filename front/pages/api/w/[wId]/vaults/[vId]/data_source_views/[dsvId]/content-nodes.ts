@@ -8,7 +8,11 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
+import {
+  filterAndCropContentNodesByView,
+  getContentNodesForManagedDataSourceView,
+  getContentNodesForStaticDataSourceView,
+} from "@app/lib/api/data_source_view";
 import { getOffsetPaginationParams } from "@app/lib/api/pagination";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -131,27 +135,67 @@ async function handler(
     });
   }
 
-  const contentNodesRes = await getContentNodesForDataSourceView(
-    dataSourceView,
-    {
-      includeChildren: includeChildren === true,
-      internalIds: removeNulls(internalIds),
+  let contentNodes: DataSourceViewContentNode[];
+
+  if (dataSourceView.dataSource.connectorId) {
+    const contentNodesRes = await getContentNodesForManagedDataSourceView(
+      dataSourceView,
+      {
+        includeChildren: includeChildren === true,
+        internalIds: removeNulls(internalIds),
+        viewType,
+      }
+    );
+
+    if (contentNodesRes.isErr()) {
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: contentNodesRes.error.message,
+        },
+      });
+    }
+
+    contentNodes = contentNodesRes.value;
+  } else {
+    if (internalIds.length > 0) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Internal ids should not be provided for static data sources.",
+        },
+      });
+    }
+
+    const contentNodesRes = await getContentNodesForStaticDataSourceView(
+      dataSourceView,
       viewType,
-    },
-    paginationRes.value
-  );
-  if (contentNodesRes.isErr()) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: contentNodesRes.error.message,
-      },
-    });
+      paginationRes.value
+    );
+
+    if (contentNodesRes.isErr()) {
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: contentNodesRes.error.message,
+        },
+      });
+    }
+
+    contentNodes = contentNodesRes.value;
   }
 
+  const contentNodesInView = filterAndCropContentNodesByView(
+    dataSourceView,
+    contentNodes
+  );
+
   return res.status(200).json({
-    nodes: contentNodesRes.value,
+    nodes: contentNodesInView,
   });
 }
 

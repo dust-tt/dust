@@ -91,7 +91,7 @@ const OffsetPaginationParamsCodec = t.type({
   offset: t.number,
 });
 
-export interface OffsetPaginationParams {
+interface OffsetPaginationParams {
   limit: number;
   offset: number;
 }

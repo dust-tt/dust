@@ -4,6 +4,7 @@ import type {
   AppType,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
   DustAppRunConfigurationType,
   ProcessConfigurationType,
   RetrievalConfigurationType,
@@ -34,7 +35,7 @@ import {
 } from "@app/components/assistant_builder/types";
 import { getApps } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
-import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
+import { getContentNodesForManagedDataSourceView } from "@app/lib/api/data_source_view";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
@@ -61,7 +62,7 @@ export async function buildInitialActions({
   dustApps,
   configuration,
 }: {
-  dataSourceViews: DataSourceViewResource[];
+  dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
 }): Promise<AssistantBuilderActionConfiguration[]> {
@@ -94,7 +95,7 @@ export async function buildInitialActions({
 
 async function initializeBuilderAction(
   action: AgentActionConfigurationType,
-  dataSourceViews: DataSourceViewResource[],
+  dataSourceViews: DataSourceViewType[],
   dustApps: AppType[],
   coreAPI: CoreAPI
 ): Promise<AssistantBuilderActionConfiguration | null> {
@@ -117,7 +118,7 @@ async function initializeBuilderAction(
 
 async function getRetrievalActionConfiguration(
   action: RetrievalConfigurationType,
-  dataSourceViews: DataSourceViewResource[]
+  dataSourceViews: DataSourceViewType[]
 ): Promise<AssistantBuilderActionConfiguration> {
   const retrievalConfiguration =
     action.query !== "none"
@@ -158,7 +159,7 @@ async function getDustAppRunActionConfiguration(
 
 async function getTablesQueryActionConfiguration(
   action: TablesQueryConfigurationType,
-  dataSourceViews: DataSourceViewResource[],
+  dataSourceViews: DataSourceViewType[],
   coreAPI: CoreAPI
 ): Promise<AssistantBuilderActionConfiguration> {
   const tablesQueryConfiguration = getDefaultTablesQueryActionConfiguration();
@@ -174,7 +175,7 @@ async function getTablesQueryActionConfiguration(
 
 async function getProcessActionConfiguration(
   action: ProcessConfigurationType,
-  dataSourceViews: DataSourceViewResource[]
+  dataSourceViews: DataSourceViewType[]
 ): Promise<AssistantBuilderActionConfiguration> {
   const processConfiguration = getDefaultProcessActionConfiguration();
 
@@ -198,7 +199,7 @@ async function getProcessActionConfiguration(
 
 async function renderDataSourcesConfigurations(
   action: RetrievalConfigurationType | ProcessConfigurationType,
-  dataSourceViews: DataSourceViewResource[]
+  dataSourceViews: DataSourceViewType[]
 ): Promise<DataSourceViewSelectionConfigurations> {
   const selectedResources = action.dataSources.map((ds) => ({
     dataSourceViewId: ds.dataSourceViewId,
@@ -206,60 +207,58 @@ async function renderDataSourcesConfigurations(
     isSelectAll: !ds.filter.parents,
   }));
 
-  const dataSourceConfigurationsArray: DataSourceViewSelectionConfiguration[] =
-    await Promise.all(
-      selectedResources.map(async (sr) => {
-        const dataSourceView = dataSourceViews.find(
-          (dsv) => dsv.sId === sr.dataSourceViewId
+  const dataSourceConfigurationsArray = await Promise.all(
+    selectedResources.map(async (sr) => {
+      const dataSourceView = dataSourceViews.find(
+        (dsv) => dsv.sId === sr.dataSourceViewId
+      );
+      if (!dataSourceView) {
+        throw new Error(
+          `Could not find DataSourceView with id ${sr.dataSourceViewId}`
         );
-        if (!dataSourceView) {
-          throw new Error(
-            `Could not find DataSourceView with id ${sr.dataSourceViewId}`
-          );
-        }
+      }
 
-        if (!dataSourceView.dataSource.connectorId || !sr.resources) {
-          return {
-            dataSourceView: dataSourceView.toJSON(),
-            selectedResources: [],
-            isSelectAll: sr.isSelectAll,
-          };
-        }
-
-        // TODO: We need to filter the content nodes based on the filter.parents.in
-        const contentNodeRes = await getContentNodesForDataSourceView(
-          dataSourceView,
-          {
-            includeChildren: false,
-            internalIds: sr.resources,
-            viewType: "documents",
-          },
-          { limit: 100, offset: 0 }
-        );
-
-        if (contentNodeRes.isErr()) {
-          throw contentNodeRes.error;
-        }
+      if (!dataSourceView.dataSource.connectorId || !sr.resources) {
         return {
-          dataSourceView: dataSourceView.toJSON(),
-          selectedResources: contentNodeRes.value,
+          dataSourceView,
+          selectedResources: [],
           isSelectAll: sr.isSelectAll,
         };
-      })
-    );
+      }
 
-  return dataSourceConfigurationsArray.reduce<DataSourceViewSelectionConfigurations>(
+      // TODO(2024-09-04 flav) Restrict to the current view.
+      const nodesRes = await getContentNodesForManagedDataSourceView(
+        dataSourceView,
+        {
+          includeChildren: false,
+          internalIds: sr.resources,
+          viewType: "documents",
+        }
+      );
+
+      if (nodesRes.isErr()) {
+        throw nodesRes.error;
+      }
+      return {
+        dataSourceView,
+        selectedResources: nodesRes.value,
+        isSelectAll: sr.isSelectAll,
+      };
+    })
+  );
+
+  return dataSourceConfigurationsArray.reduce(
     (acc, curr) => ({
       ...acc,
       [curr.dataSourceView.sId]: curr,
     }),
-    {}
+    {} as DataSourceViewSelectionConfigurations
   );
 }
 
 async function renderTableDataSourcesConfigurations(
   action: TablesQueryConfigurationType,
-  dataSourceViews: DataSourceViewResource[],
+  dataSourceViews: DataSourceViewType[],
   coreAPI: CoreAPI
 ): Promise<DataSourceViewSelectionConfigurations> {
   const selectedResources = action.tables.map((table) => ({
@@ -283,53 +282,39 @@ async function renderTableDataSourcesConfigurations(
 
         const coreAPITables = await Promise.all(
           sr.resources.map(async (tableId) => {
-            const rawTableId = getContentNodeInternalIdFromTableId(
-              dataSourceView,
-              { table_id: tableId }
-            );
+            const coreAPITable = await coreAPI.getTable({
+              projectId: dataSourceView.dataSource.dustAPIProjectId,
+              dataSourceId: dataSourceView.dataSource.dustAPIDataSourceId,
+              tableId,
+            });
 
-            const contentNodeRes = await getContentNodesForDataSourceView(
-              dataSourceView,
-              {
-                includeChildren: false,
-                internalIds: [tableId],
-                viewType: "tables",
-              },
-              {
-                limit: 1,
-                offset: 0,
-              }
-            );
-
-            if (contentNodeRes.isErr()) {
-              throw contentNodeRes.error;
+            if (coreAPITable.isErr()) {
+              throw coreAPITable.error;
             }
-            return {
-              dataSourceView: dataSourceView.toJSON(),
-              selectedResources: contentNodeRes.value,
-              isSelectAll: sr.isSelectAll,
-            };
+
+            return coreAPITable.value.table;
           })
         );
 
         return {
-          dataSourceView: dataSourceView.toJSON(),
-          selectedResources: coreAPITables.map((table) =>
-            table.selectedResources.map((sr) => ({
-              dustDocumentId: sr.dustDocumentId,
-              expandable: false,
-              internalId: sr.internalId,
-              lastUpdatedAt: sr.lastUpdatedAt,
-              parentInternalId: null,
-              // TODO(2024-09-04 flav) Restrict to the current view.
-              parentInternalIds: sr.parentInternalIds,
-              permission: "read",
-              preventSelection: false,
-              sourceUrl: sr.sourceUrl,
-              title: sr.title,
-              type: "database",
-            }))
-          ),
+          dataSourceView,
+          selectedResources: coreAPITables.map((table) => ({
+            dustDocumentId: table.table_id,
+            expandable: false,
+            internalId: getContentNodeInternalIdFromTableId(
+              dataSourceView,
+              table
+            ),
+            lastUpdatedAt: table.timestamp,
+            parentInternalId: null,
+            // TODO(2024-09-04 flav) Restrict to the current view.
+            parentInternalIds: table.parents,
+            permission: "read",
+            preventSelection: false,
+            sourceUrl: null,
+            title: table.name,
+            type: "database",
+          })),
           isSelectAll: sr.isSelectAll,
         };
       })

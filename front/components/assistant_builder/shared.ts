@@ -15,8 +15,6 @@ import {
   isGoogleSheetContentNodeInternalId,
 } from "@dust-tt/types";
 
-import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-
 export const FILTERING_MODES = ["SEARCH", "TIMEFRAME"] as const;
 export type FilteringMode = (typeof FILTERING_MODES)[number];
 export const FILTERING_MODE_TO_LABEL: Record<FilteringMode, string> = {
@@ -321,7 +319,7 @@ export function getTableIdForContentNode(
 }
 
 export function getContentNodeInternalIdFromTableId(
-  dataSourceView: DataSourceViewResource,
+  dataSourceView: DataSourceViewType,
   table: CoreAPITable
 ): string {
   const { dataSource } = dataSourceView;
