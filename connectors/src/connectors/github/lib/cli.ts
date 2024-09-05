@@ -44,7 +44,7 @@ export const github = async ({
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
         );
       }
 
@@ -91,7 +91,7 @@ export const github = async ({
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
         );
       }
 
@@ -145,7 +145,7 @@ export const github = async ({
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
         );
       }
 
@@ -176,7 +176,7 @@ export const github = async ({
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
         );
       }
       const githubCodeRepository = await GithubCodeRepository.findOne({

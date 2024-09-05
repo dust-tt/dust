@@ -21,7 +21,10 @@ import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDoc
 import { orderDatasourceViewSelectionConfigurationByImportance } from "@app/lib/assistant";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import {
+  canBeExpanded,
+  getDisplayNameForDataSource,
+} from "@app/lib/data_sources";
 import { classNames } from "@app/lib/utils";
 
 interface DataSourceSelectionSectionProps {
@@ -45,7 +48,6 @@ export default function DataSourceSelectionSection({
     useState<DataSourceViewType | null>(null);
 
   const canAddDataSource = dataSourceViews.length > 0;
-  const isTableView = viewType === "tables";
 
   return (
     <>
@@ -96,14 +98,14 @@ export default function DataSourceSelectionSection({
                 FolderIcon
               );
 
-              // Folders are always displayed as leaf items, except for table items.
-              const isLeafItem =
-                !dsConfig.dataSourceView.dataSource.connectorId && !isTableView;
-
               return (
                 <Tree.Item
                   key={dsConfig.dataSourceView.sId}
-                  type={isLeafItem ? "leaf" : "node"}
+                  type={
+                    canBeExpanded(viewType, dsConfig.dataSourceView.dataSource)
+                      ? "node"
+                      : "leaf"
+                  } // todo make useConnectorPermissions hook work for non managed ds (Folders)
                   label={getDisplayNameForDataSource(
                     dsConfig.dataSourceView.dataSource
                   )}

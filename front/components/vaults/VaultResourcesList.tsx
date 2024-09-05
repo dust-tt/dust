@@ -5,10 +5,13 @@ import {
   Cog6ToothIcon,
   DataTable,
   FolderIcon,
+  PencilSquareIcon,
   Searchbar,
   Spinner,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
+  APIError,
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
@@ -21,6 +24,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
+import { isWebsiteOrFolder } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type { ComponentType } from "react";
 import { useContext } from "react";
@@ -31,10 +35,11 @@ import * as React from "react";
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEditionModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
-import { EditVaultStaticDataSourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
+import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
 import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
@@ -43,6 +48,7 @@ import { useDataSources } from "@app/lib/swr/data_sources";
 import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
 import { setupConnection } from "@app/pages/w/[wId]/builder/data-sources/managed";
+import { useRouter } from "next/router";
 
 type RowData = {
   dataSourceView: DataSourceViewWithConnectorType;
@@ -51,7 +57,7 @@ type RowData = {
   workspaceId: string;
   isAdmin: boolean;
   isLoading?: boolean;
-  buttonOnClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  buttonOnClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onClick?: () => void;
 };
 
@@ -61,6 +67,7 @@ type VaultResourcesListProps = {
   user: UserType;
   plan: PlanType;
   isAdmin: boolean;
+  canWriteInVault: boolean;
   vault: VaultType;
   systemVault: VaultType;
   category: DataSourceViewCategory;
@@ -177,6 +184,7 @@ export const VaultResourcesList = ({
   user,
   plan,
   isAdmin,
+  canWriteInVault,
   dustClientFacingUrl,
   vault,
   systemVault,
@@ -188,14 +196,21 @@ export const VaultResourcesList = ({
   const [showConnectorModal, setShowConnectorModal] = useState(false);
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceViewWithConnectorType | null>(null);
+  const [selectedDataSourceView, setSelectedDataSourceView] =
+    useState<DataSourceViewWithConnectorType | null>(null);
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const [showFolderOrWebsiteModal, setShowFolderOrWebsiteModal] =
+    useState(false);
 
   const { dataSources, isDataSourcesLoading } = useDataSources(owner);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
   const sendNotification = useContext(SendNotificationsContext);
+  const router = useRouter();
 
   const isSystemVault = systemVault.sId === vault.sId;
   const isManaged = category === "managed";
+  const isStatic = isWebsiteOrFolder(category);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Partial<Record<ConnectorProvider, boolean>>
@@ -283,6 +298,35 @@ export const VaultResourcesList = ({
       includeConnectorDetails: true,
     });
 
+  const onDeleteFolderOrWebsite = async () => {
+    if (!selectedDataSourceView) {
+      return;
+    }
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${selectedDataSourceView.dataSource.name}`,
+      { method: "DELETE" }
+    );
+
+    if (res.ok) {
+      await router.push(
+        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`
+      );
+      sendNotification({
+        type: "success",
+        title: `Successfully deleted ${selectedDataSourceView.category}`,
+        description: `${getDataSourceNameFromView(selectedDataSourceView)} was successfully deleted.`,
+      });
+    } else {
+      const err: { error: APIError } = await res.json();
+      sendNotification({
+        type: "error",
+        title: `Error deleting ${selectedDataSourceView.category}`,
+        description: `Error: ${err.error.message}`,
+      });
+    }
+    return res.ok;
+  };
+
   const rows: RowData[] =
     vaultDataSourceViews?.map((r) => ({
       dataSourceView: r,
@@ -294,6 +338,29 @@ export const VaultResourcesList = ({
       workspaceId: owner.sId,
       isAdmin,
       isLoading: isLoadingByProvider[r.dataSource.connectorProvider],
+      ...(isStatic && {
+        moreMenuItems: [
+          {
+            label: "Edit",
+            icon: PencilSquareIcon,
+            onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+              e.stopPropagation();
+              setSelectedDataSourceView(r);
+              setShowFolderOrWebsiteModal(true);
+            },
+          },
+          {
+            label: "Delete",
+            icon: TrashIcon,
+            variant: "warning",
+            onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+              e.stopPropagation();
+              setSelectedDataSourceView(r);
+              setShowDeleteConfirmDialog(true);
+            },
+          },
+        ],
+      }),
       buttonOnClick: (e) => {
         e.stopPropagation();
         setShowConnectorModal(true);
@@ -315,7 +382,7 @@ export const VaultResourcesList = ({
       <div
         className={classNames(
           "flex gap-2",
-          rows.length === 0 && isAdmin
+          rows.length === 0
             ? "h-36 w-full max-w-4xl items-center justify-center rounded-lg border bg-structure-50"
             : ""
         )}
@@ -349,7 +416,7 @@ export const VaultResourcesList = ({
             />
           </div>
         )}
-        {!isSystemVault && category === "managed" && (
+        {!isSystemVault && isManaged && (
           <EditVaultManagedDataSourcesViews
             owner={owner}
             vault={vault}
@@ -357,17 +424,34 @@ export const VaultResourcesList = ({
             isAdmin={isAdmin}
           />
         )}
-        {(category === "folder" || category === "website") && (
-          <EditVaultStaticDataSourcesViews
-            owner={owner}
-            plan={plan}
-            vault={vault}
-            category={category}
-            dataSources={dataSources}
-          />
+        {isStatic && (
+          <>
+            <EditVaultStaticDatasourcesViews
+              isOpen={showFolderOrWebsiteModal}
+              setOpen={setShowFolderOrWebsiteModal}
+              owner={owner}
+              vault={vault}
+              canWriteInVault={canWriteInVault}
+              dataSources={dataSources}
+              dataSourceView={selectedDataSourceView}
+              plan={plan}
+              category={category}
+              onClose={() => {
+                setShowFolderOrWebsiteModal(false);
+                setSelectedDataSourceView(null);
+              }}
+            />
+            {selectedDataSourceView && (
+              <DeleteStaticDataSourceDialog
+                handleDelete={onDeleteFolderOrWebsite}
+                isOpen={showDeleteConfirmDialog}
+                onClose={() => setShowDeleteConfirmDialog(false)}
+              />
+            )}
+          </>
         )}
       </div>
-      {rows.length > 0 ? (
+      {rows.length > 0 && (
         <DataTable
           data={rows}
           columns={getTableColumns({ isManaged, isSystemVault })}
@@ -375,12 +459,6 @@ export const VaultResourcesList = ({
           filterColumn="name"
           initialColumnOrder={[{ desc: false, id: "name" }]}
         />
-      ) : !isAdmin ? (
-        <div className="flex items-center justify-center text-sm font-normal text-element-700">
-          No available connection
-        </div>
-      ) : (
-        <></>
       )}
       {selectedDataSource && selectedDataSource.dataSource.connector && (
         <>

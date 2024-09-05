@@ -14,22 +14,22 @@ import type {
 } from "@dust-tt/types";
 import { isDataSourceNameValid } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
-import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSourceDialog";
+import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 export default function VaultFolderModal({
   isOpen,
-  setOpen,
+  onClose,
   owner,
   vault,
   dataSources,
   folder,
 }: {
   isOpen: boolean;
-  setOpen: (isOpen: boolean) => void;
+  onClose: () => void;
   owner: WorkspaceType;
   vault: VaultType;
   dataSources: DataSourceType[];
@@ -56,6 +56,11 @@ export default function VaultFolderModal({
     description: null,
   });
 
+  useEffect(() => {
+    setName(folder ? folder.name : null);
+    setDescription(folder ? folder.description : null);
+  }, [folder]);
+
   const postCreateFolder = async () => {
     const res = await fetch(
       `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources`,
@@ -71,7 +76,7 @@ export default function VaultFolderModal({
       }
     );
     if (res.ok) {
-      onClose();
+      handleOnClose();
       const response: PostVaultDataSourceResponseBody = await res.json();
       const { dataSourceView } = response;
       await router.push(
@@ -107,7 +112,7 @@ export default function VaultFolderModal({
       }
     );
     if (res.ok) {
-      onClose();
+      handleOnClose();
       sendNotification({
         type: "success",
         title: "Successfully updated folder",
@@ -170,7 +175,7 @@ export default function VaultFolderModal({
       }
     );
     if (res.ok) {
-      onClose();
+      handleOnClose();
       await router.push(
         `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/folder`
       );
@@ -189,8 +194,8 @@ export default function VaultFolderModal({
     }
   };
 
-  const onClose = () => {
-    setOpen(false);
+  const handleOnClose = () => {
+    onClose();
     setName(defaultName);
     setDescription(defaultDescription);
   };
@@ -256,10 +261,10 @@ export default function VaultFolderModal({
             {folder !== null && (
               <>
                 <Page.Separator />
-                <DeleteDataSourceDialog
+                <DeleteStaticDataSourceDialog
                   handleDelete={onDeleteFolder}
                   isOpen={showDeleteConfirmDialog}
-                  setIsOpen={setShowDeleteConfirmDialog}
+                  onClose={onClose}
                 />
                 <Button
                   size="sm"

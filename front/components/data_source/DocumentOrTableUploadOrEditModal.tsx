@@ -101,8 +101,8 @@ export function DocumentOrTableUploadOrEditModal({
   const initialId = contentNode?.internalId;
 
   const { table, isTableError, isTableLoading } = useTable({
-    workspaceId: owner.sId,
-    dataSourceView: dataSourceView,
+    owner,
+    dataSourceView,
     tableId: isTable ? initialId ?? null : null,
   });
 

@@ -24,6 +24,7 @@ import {
   getConnectorProviderLogoWithFallback,
 } from "@app/lib/connector_providers";
 import {
+  canBeExpanded,
   getDisplayNameForDataSource,
   isFolder,
   isManaged,
@@ -241,10 +242,6 @@ function DataSourceViewSelector({
 
   const isTableView = viewType === "tables";
 
-  // Folders with viewType "documents" are always considered leaf items.
-  // For viewType "tables", folders are not leaf items because users need to select a specific table.
-  const isLeafItem = isFolder(dataSourceView.dataSource) && !isTableView;
-
   // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
   const hideCheckbox = isTableView && !isPartiallyChecked;
 
@@ -253,7 +250,9 @@ function DataSourceViewSelector({
       key={dataSourceView.dataSource.name}
       label={getDisplayNameForDataSource(dataSourceView.dataSource)}
       visual={LogoComponent}
-      type={isLeafItem ? "leaf" : "node"}
+      type={
+        canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
+      }
       checkbox={
         hideCheckbox
           ? undefined

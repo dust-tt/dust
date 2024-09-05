@@ -296,6 +296,7 @@ async function handler(
         ? VaultResource.fetchWorkspaceGlobalVault(auth)
         : VaultResource.fetchWorkspaceSystemVault(auth));
       const dataSource = await DataSourceResource.makeNew(
+        auth,
         {
           assistantDefaultSelected,
           connectorProvider: provider,
@@ -317,6 +318,7 @@ async function handler(
         const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
 
         await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+          auth,
           globalVault,
           dataSource,
           "custom"
@@ -324,6 +326,7 @@ async function handler(
       }
 
       await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+        auth,
         dataSource.vault,
         dataSource
       );

@@ -100,7 +100,7 @@ export const google_drive = async ({
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId} and data source ${args.dataSourceName}`
+          `Could not find connector for workspace ${args.wId} and data source ${args.dsId}`
         );
       }
       await throwOnError(
@@ -145,7 +145,7 @@ export const google_drive = async ({
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId} and data source ${args.dataSourceName}`
+          `Could not find connector for workspace ${args.wId} and data source ${args.dsId}`
         );
       }
 

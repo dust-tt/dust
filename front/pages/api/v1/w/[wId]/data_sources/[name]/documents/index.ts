@@ -112,12 +112,13 @@ async function handler(
         ? parseInt(req.query.offset as string)
         : 0;
 
-      const documents = await coreAPI.getDataSourceDocuments({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        limit,
-        offset,
-      });
+      const documents = await coreAPI.getDataSourceDocuments(
+        {
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+        },
+        { limit, offset }
+      );
       if (documents.isErr()) {
         return apiError(req, res, {
           status_code: 400,

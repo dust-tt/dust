@@ -10,20 +10,17 @@ import {
   IconButton,
   Page,
   PlanetIcon,
-  ServerIcon,
-  Spinner,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
   AgentActionConfigurationType,
   AgentConfigurationScope,
   AgentConfigurationType,
-  CoreAPITable,
+  ContentNodesViewType,
   DataSourceConfiguration,
   DataSourceViewType,
   DustAppRunConfigurationType,
   RetrievalConfigurationType,
-  TablesQueryConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
@@ -35,7 +32,7 @@ import {
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@dust-tt/types";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
@@ -50,7 +47,11 @@ import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import {
+  canBeExpanded,
+  getDisplayNameForDataSource,
+  isFolder,
+} from "@app/lib/data_sources";
 import { useApp } from "@app/lib/swr/apps";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
 import {
@@ -271,7 +272,7 @@ export function AssistantDetails({
           {!!retrievalActions.length && (
             <div>
               <div className="pb-2 text-lg font-bold text-element-800">
-                Data sources
+                Retrieve from Documents
               </div>
               {retrievalActions.map((a, index) => (
                 <div className="flex flex-col gap-2" key={`action-${index}`}>
@@ -279,6 +280,7 @@ export function AssistantDetails({
                     owner={owner}
                     dataSourceViews={dataSourceViews}
                     dataSourceConfigurations={a.dataSources}
+                    viewType="documents"
                   />
                 </div>
               ))}
@@ -287,23 +289,52 @@ export function AssistantDetails({
           {otherActions.map((action, index) =>
             isDustAppRunConfiguration(action) ? (
               <div className="flex flex-col gap-2" key={`action-${index}`}>
-                <div className="text-lg font-bold text-element-800">Action</div>
+                <div className="text-lg font-bold text-element-800">
+                  Run Actions
+                </div>
                 <DustAppSection dustApp={action} owner={owner} />
               </div>
             ) : isTablesQueryConfiguration(action) ? (
               <div className="flex flex-col gap-2" key={`action-${index}`}>
-                <div className="text-lg font-bold text-element-800">Tables</div>
-                <TablesQuerySection tablesQueryConfig={action} />
+                <div className="text-lg font-bold text-element-800">
+                  Query Tables
+                </div>
+                <DataSourceViewsSection
+                  owner={owner}
+                  dataSourceViews={dataSourceViews}
+                  dataSourceConfigurations={action.tables.map((t) => {
+                    // We should never have an undefined dataSourceView here as
+                    // if it's undefined, it means the dataSourceView was deleted and the configuration is invalid
+                    // But we need to handle this case to avoid crashing the UI
+                    const dataSourceView = dataSourceViews.find(
+                      (dsv) => dsv.sId == t.dataSourceViewId
+                    );
+
+                    return {
+                      workspaceId: t.workspaceId,
+                      dataSourceId: t.dataSourceId,
+                      dataSourceViewId: t.dataSourceViewId,
+                      filter: {
+                        parents:
+                          dataSourceView && isFolder(dataSourceView.dataSource)
+                            ? null
+                            : { in: [t.tableId], not: [] },
+                      },
+                    };
+                  })}
+                  viewType="tables"
+                />
               </div>
             ) : isProcessConfiguration(action) ? (
               <div className="flex flex-col gap-2" key={`action-${index}`}>
                 <div className="text-lg font-bold text-element-800">
-                  Extract from data sources
+                  Extract from documents
                 </div>
                 <DataSourceViewsSection
                   owner={owner}
                   dataSourceViews={dataSourceViews}
                   dataSourceConfigurations={action.dataSources}
+                  viewType="documents"
                 />
               </div>
             ) : isWebsearchConfiguration(action) ? (
@@ -353,10 +384,12 @@ function DataSourceViewsSection({
   owner,
   dataSourceViews,
   dataSourceConfigurations,
+  viewType,
 }: {
   owner: WorkspaceType;
   dataSourceViews: DataSourceViewType[];
   dataSourceConfigurations: DataSourceConfiguration[];
+  viewType: ContentNodesViewType;
 }) {
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
@@ -401,7 +434,7 @@ function DataSourceViewsSection({
             <Tree.Item
               key={dsConfig.dataSourceId}
               type={
-                dataSourceView && dataSourceView.dataSource.connectorId
+                canBeExpanded(viewType, dataSourceView?.dataSource)
                   ? "node"
                   : "leaf"
               }
@@ -420,7 +453,7 @@ function DataSourceViewsSection({
                     setDocumentToDisplay(documentId);
                   }}
                   isSearchEnabled={false}
-                  viewType="documents"
+                  viewType={viewType}
                 />
               )}
               {dataSourceView && !isAllSelected && (
@@ -430,6 +463,7 @@ function DataSourceViewsSection({
                   dataSourceConfiguration={dsConfig}
                   setDataSourceViewToDisplay={setDataSourceViewToDisplay}
                   setDocumentToDisplay={setDocumentToDisplay}
+                  viewType={viewType}
                 />
               )}
             </Tree.Item>
@@ -444,12 +478,14 @@ function DataSourceViewSelectedNodes({
   dataSourceConfiguration,
   dataSourceView,
   owner,
+  viewType,
   setDataSourceViewToDisplay,
   setDocumentToDisplay,
 }: {
   dataSourceConfiguration: DataSourceConfiguration;
   dataSourceView: DataSourceViewType;
   owner: WorkspaceType;
+  viewType: ContentNodesViewType;
   setDataSourceViewToDisplay: (dsv: DataSourceViewType) => void;
   setDocumentToDisplay: (documentId: string) => void;
 }) {
@@ -457,6 +493,7 @@ function DataSourceViewSelectedNodes({
     owner,
     dataSourceView,
     internalIds: dataSourceConfiguration.filter.parents?.in ?? [],
+    viewType,
   });
 
   return (
@@ -537,83 +574,6 @@ function DustAppSection({
         </div>
         <div>{app ? app.name : ""}</div>
       </div>
-    </div>
-  );
-}
-
-function TablesQuerySection({
-  tablesQueryConfig,
-}: {
-  tablesQueryConfig: TablesQueryConfigurationType;
-}) {
-  const [tables, setTables] = useState<CoreAPITable[] | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isError, setIsError] = useState<boolean>(false);
-
-  const getTables = useCallback(async () => {
-    if (!tablesQueryConfig.tables.length) {
-      return;
-    }
-
-    const tableEndpoints = tablesQueryConfig.tables.map(
-      (t) =>
-        `/api/w/${t.workspaceId}/data_sources/${t.dataSourceId}/tables/${t.tableId}`
-    );
-
-    const results = await Promise.all(
-      tableEndpoints.map((endpoint) =>
-        fetch(endpoint, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        })
-      )
-    );
-
-    const tablesParsed = [];
-    for (const res of results) {
-      if (!res.ok) {
-        throw new Error((await res.json()).error.message);
-      }
-      tablesParsed.push((await res.json()).table);
-    }
-
-    setTables(tablesParsed);
-  }, [tablesQueryConfig.tables]);
-
-  useEffect(() => {
-    if (!tablesQueryConfig.tables || isLoading || isError || tables?.length) {
-      return;
-    }
-    setIsLoading(true);
-    getTables()
-      .catch(() => setIsError(true))
-      .finally(() => setIsLoading(false));
-  }, [getTables, isLoading, tablesQueryConfig.tables, tables?.length, isError]);
-
-  return (
-    <div className="flex flex-col gap-2">
-      {isLoading ? (
-        <Spinner />
-      ) : !tablesQueryConfig.tables.length ? (
-        <span>No tables are currently linked to this assistant.</span>
-      ) : tables ? (
-        <>
-          <div>The following tables are queried before answering:</div>
-          {tables.map((t) => (
-            <div
-              className="flex flex-row items-center gap-2"
-              key={`${t.data_source_id}/${t.table_id}`}
-            >
-              <div>
-                <ServerIcon />
-              </div>
-              <div key={`${t.data_source_id}/${t.table_id}`}>{t.name}</div>
-            </div>
-          ))}
-        </>
-      ) : (
-        <div>Error loading tables.</div>
-      )}
     </div>
   );
 }
