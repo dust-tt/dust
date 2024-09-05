@@ -1,22 +1,22 @@
 import type { ModelId } from "@dust-tt/types";
 
 export function getFullSyncWorkflowId(connectorId: ModelId) {
-  return `workflow-github-full-sync-${connectorId}`;
+  return `workflow-github-${connectorId}-full-sync`;
 }
 
 export function getReposSyncWorkflowId(connectorId: ModelId) {
-  return `workflow-github-repos-sync-${connectorId}`;
+  return `workflow-github-${connectorId}-repos-sync`;
 }
 
 export function getCodeSyncWorkflowId(connectorId: ModelId, repoId: number) {
-  return `workflow-github-code-sync-${connectorId}-${repoId}`;
+  return `workflow-github-${connectorId}-code-sync-${repoId}`;
 }
 
 export function getCodeSyncDailyCronWorkflowId(
   connectorId: ModelId,
   repoId: number
 ) {
-  return `workflow-github-code-sync-daily-cron-${connectorId}-${repoId}`;
+  return `workflow-github-${connectorId}-code-sync-daily-cron-${repoId}`;
 }
 
 export function getIssueSyncWorkflowId(
@@ -24,7 +24,7 @@ export function getIssueSyncWorkflowId(
   repoId: number,
   issueNumber: number
 ) {
-  return `workflow-github-issue-sync-${connectorId}-${repoId}-${issueNumber}`;
+  return `workflow-github-${connectorId}-issue-sync-${repoId}-${issueNumber}`;
 }
 
 export function getDiscussionSyncWorkflowId(
@@ -32,7 +32,7 @@ export function getDiscussionSyncWorkflowId(
   repoId: number,
   discussionNumber: number
 ) {
-  return `workflow-github-discussion-sync-${connectorId}-${repoId}-${discussionNumber}`;
+  return `workflow-github-${connectorId}-discussion-sync-${repoId}-${discussionNumber}`;
 }
 
 export function getIssueGarbageCollectWorkflowId(
@@ -40,7 +40,7 @@ export function getIssueGarbageCollectWorkflowId(
   repoId: number,
   issueNumber: number
 ) {
-  return `workflow-github-issue-garbage-collect-${connectorId}-${repoId}-${issueNumber}`;
+  return `workflow-github-${connectorId}-issue-garbage-collect-${repoId}-${issueNumber}`;
 }
 
 export function getDiscussionGarbageCollectWorkflowId(
@@ -48,12 +48,12 @@ export function getDiscussionGarbageCollectWorkflowId(
   repoId: number,
   issueNumber: number
 ) {
-  return `workflow-github-discussion-garbage-collect-${connectorId}-${repoId}-${issueNumber}`;
+  return `workflow-github-${connectorId}-discussion-garbage-collect-${repoId}-${issueNumber}`;
 }
 
 export function getRepoGarbageCollectWorkflowId(
   connectorId: ModelId,
   repoId: number
 ) {
-  return `workflow-github-repo-garbage-collect-${connectorId}-${repoId}`;
+  return `workflow-github-${connectorId}-repo-garbage-collect-${repoId}`;
 }

@@ -16,11 +16,11 @@ export function getNotionWorkflowId(
   connectorId: ModelId,
   gargbageCollectionMode: NotionGarbageCollectionMode
 ) {
-  let wfName = "workflow-notion";
+  let wfName = `workflow-notion-${connectorId}`;
   if (gargbageCollectionMode === "always") {
     wfName += "-garbage-collector";
   }
-  return `${wfName}-${connectorId}`;
+  return wfName;
 }
 
 // Extractor types
