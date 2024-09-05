@@ -53,11 +53,11 @@ Collapsible.Button = function ({
   const labelClasses = {
     primary: {
       base: "s-text-action-500 s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none",
-      hover: "group-hover:s-text-action-400",
+      hover: "group-hover/col:s-text-action-400",
       active: "active:s-text-action-600",
       dark: {
         base: "dark:s-text-action-500-dark",
-        hover: "dark:group-hover:s-text-action-400-dark",
+        hover: "dark:group-hover/col:s-text-action-400-dark",
         active: "dark:active:s-text-action-600-dark",
         disabled: "dark:s-element-500-dark",
       },
@@ -66,11 +66,11 @@ Collapsible.Button = function ({
 
     secondary: {
       base: "s-text-element-900 s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none",
-      hover: "group-hover:s-text-action-500",
+      hover: "group-hover/col:s-text-action-500",
       active: "active:s-text-action-600",
       dark: {
         base: "dark:s-text-element-900-dark",
-        hover: "dark:group-hover:s-text-action-400-dark",
+        hover: "dark:group-hover/col:s-text-action-400-dark",
         active: "dark:active:s-text-action-600-dark",
         disabled: "dark:s-element-500-dark",
       },
@@ -81,24 +81,24 @@ Collapsible.Button = function ({
   const chevronClasses = {
     primary: {
       base: "s-text-element-600",
-      hover: "group-hover:s-text-action-400",
+      hover: "group-hover/col:s-text-action-400",
       active: "active:s-text-action-700",
       disabled: "s-element-500",
       dark: {
         base: "dark:s-text-element-600-dark",
-        hover: "dark:group-hover:s-text-action-500-dark",
+        hover: "dark:group-hover/col:s-text-action-500-dark",
         active: "dark:active:s-text-action-700-dark",
         disabled: "dark:s-element-500-dark",
       },
     },
     secondary: {
       base: "s-text-element-600",
-      hover: "group-hover:s-text-action-400",
+      hover: "group-hover/col:s-text-action-400",
       active: "active:s-text-action-700",
       disabled: "s-element-500",
       dark: {
         base: "dark:s-text-element-600-dark",
-        hover: "dark:group-hover:s-text-action-500-dark",
+        hover: "dark:group-hover/col:s-text-action-500-dark",
         active: "dark:active:s-text-action-700-dark",
         disabled: "dark:s-element-500-dark",
       },
@@ -131,7 +131,7 @@ Collapsible.Button = function ({
       className={classNames(
         disabled ? "s-cursor-default" : "s-cursor-pointer",
         className,
-        "s-group s-flex s-items-center s-justify-items-center s-gap-1 s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0"
+        "s-group/col s-flex s-items-center s-justify-items-center s-gap-1 s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0"
       )}
     >
       <Icon

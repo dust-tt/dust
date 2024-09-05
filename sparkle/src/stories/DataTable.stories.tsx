@@ -49,8 +49,9 @@ export const DataTableExample = () => {
       icon: FolderIcon,
       moreMenuItems: [
         {
-          label: "Edit",
+          label: "Edit (disabled)",
           onClick: () => console.log("Edit"),
+          disabled: true,
         },
       ],
     },
