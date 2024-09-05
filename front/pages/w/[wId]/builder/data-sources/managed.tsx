@@ -260,7 +260,7 @@ export default function DataSourcesView({
               dataSource.connectorProvider
             );
           if (addDataWithConnection) {
-            setShowEditionModal(true);
+            setShowEditionModal(addDataWithConnection);
           } else {
             setShowConnectorModal(true);
           }

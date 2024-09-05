@@ -31,10 +31,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
-  const plan = auth.plan();
-  const user = auth.user();
+  const plan = auth.getNonNullablePlan();
+  const user = auth.getNonNullableUser();
 
-  if (!subscription || !plan || !user) {
+  if (!subscription) {
     return {
       notFound: true,
     };
