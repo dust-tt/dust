@@ -429,7 +429,7 @@ export class Authenticator {
     return new Authenticator({
       workspace,
       role: "builder",
-      groups: globalGroup ? [globalGroup] : [],
+      groups: [globalGroup],
       subscription,
       flags,
     });
@@ -471,7 +471,7 @@ export class Authenticator {
     return new Authenticator({
       workspace,
       role: "admin",
-      groups: globalGroup ? [globalGroup] : [],
+      groups: [globalGroup],
       subscription,
       flags,
     });
@@ -575,7 +575,7 @@ export class Authenticator {
           role: this._role,
           segmentation: this._workspace.segmentation || null,
           flags:
-            ACTIVATE_ALL_FEATURES_DEV && isDevelopment()
+            typeof ACTIVATE_ALL_FEATURES_DEV === "string" && isDevelopment()
               ? [...WHITELISTABLE_FEATURES]
               : this._flags,
           ssoEnforced: this._workspace.ssoEnforced,
@@ -762,7 +762,7 @@ export async function subscriptionForWorkspace(
 ): Promise<SubscriptionType> {
   const res = await subscriptionForWorkspaces([workspace]);
 
-  const subscription = res[workspace.sId];
+  const subscription = workspace.sId in res ? res[workspace.sId] : null;
   if (!subscription) {
     throw new Error(
       `Could not find subscription for workspace ${workspace.sId}`
@@ -815,7 +815,9 @@ export async function subscriptionForWorkspaces(
 
   for (const [sId, workspace] of Object.entries(workspaceModelBySid)) {
     const activeSubscription =
-      activeSubscriptionByWorkspaceId[workspace.id.toString()];
+      workspace.id.toString() in activeSubscriptionByWorkspaceId
+        ? activeSubscriptionByWorkspaceId[workspace.id.toString()]
+        : null;
 
     // Default values when no subscription
     let plan: PlanAttributes = FREE_NO_PLAN_DATA;
@@ -824,16 +826,8 @@ export async function subscriptionForWorkspaces(
       // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
       if (isTrial(activeSubscription)) {
         plan = getTrialVersionForPlan(activeSubscription.plan);
-      } else if (activeSubscription.plan) {
-        plan = activeSubscription.plan;
       } else {
-        logger.error(
-          {
-            workspaceId: sId,
-            activeSubscription,
-          },
-          "Cannot find plan for active subscription. Will use limits of FREE_TEST_PLAN instead. Please check and fix."
-        );
+        plan = activeSubscription.plan;
       }
     }
 
@@ -868,10 +862,6 @@ export async function getOrCreateSystemApiKey(
       },
       group
     );
-  }
-
-  if (!key) {
-    return new Err(new Error("Failed to create system key."));
   }
 
   return new Ok(key);

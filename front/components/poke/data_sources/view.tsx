@@ -172,7 +172,7 @@ export function ViewDataSourceTable({
                     <PokeTableRow>
                       <PokeTableCell>Last sync success</PokeTableCell>
                       <PokeTableCell>
-                        {connector?.lastSyncSuccessfulTime ? (
+                        {connector.lastSyncSuccessfulTime ? (
                           <span className="font-bold text-green-600">
                             {timeAgoFrom(connector?.lastSyncSuccessfulTime, {
                               useLongFormat: true,

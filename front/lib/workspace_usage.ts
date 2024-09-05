@@ -485,5 +485,5 @@ export async function checkWorkspaceActivity(workspace: Workspace) {
     where: { workspaceId: workspace.id, updatedAt: { [Op.gte]: sevenDaysAgo } },
   });
 
-  return hasDataSource || hasCreatedAssistant || hasRecentConversation;
+  return !!hasDataSource || !!hasCreatedAssistant || !!hasRecentConversation;
 }

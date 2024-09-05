@@ -38,11 +38,7 @@ async function getDefautPriceFromMetadata(
   const stripe = getStripeClient();
   const prices = await stripe.prices.list({ product: productId, active: true });
   for (const price of prices.data) {
-    if (
-      price.metadata &&
-      key in price.metadata &&
-      price.metadata[key] === "true"
-    ) {
+    if (key in price.metadata && price.metadata[key] === "true") {
       return price.id;
     }
   }
@@ -195,7 +191,7 @@ export const createCustomerPortalSession = async ({
 
   const stripeCustomerId = stripeSubscription.customer;
 
-  if (!stripeCustomerId || typeof stripeCustomerId !== "string") {
+  if (typeof stripeCustomerId !== "string") {
     throw new Error(
       `No stripeCustomerId found for the workspace: ${owner.sId}`
     );
@@ -324,6 +320,9 @@ export function assertStripeSubscriptionIsValid(
   }
 
   const itemsToCheck = stripeSubscription.items.data.filter(
+    // item.delete is typed as undefined | void, so we need to disable the
+    // strict-boolean-expressions rule here.
+    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
     (item) => !item.deleted
   );
 
@@ -366,12 +365,6 @@ export function assertStripeSubscriptionItemIsValid({
   item: Stripe.SubscriptionItem;
   recurringRequired?: boolean;
 }): Result<true, { invalidity_message: string }> {
-  if (!item.price) {
-    return new Err({
-      invalidity_message: "Subscription item has no price.",
-    });
-  }
-
   if (recurringRequired && !item.price.recurring) {
     return new Err({
       invalidity_message: "Price must be recurring.",

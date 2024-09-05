@@ -18,6 +18,17 @@ module.exports = {
     */
     curly: ["error", "all"],
     "react/no-unescaped-entities": 0,
+    // "@typescript-eslint/strict-boolean-expressions": [
+    //   "error",
+    //   {
+    //     allowNullableBoolean: true,
+    //     allowNullableString: true,
+    //     allowNullableObject: true,
+    //     allowNullableNumber: true,
+    //     allowNullableEnum: true,
+    //     allowAny: true,
+    //   },
+    // ],
     "@typescript-eslint/consistent-type-imports": "error",
     "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
     "@typescript-eslint/no-explicit-any": 0,

@@ -92,7 +92,7 @@ export async function renderConversationForModelMultiActions({
 
       for (const action of actions) {
         const stepIndex = action.step;
-        steps[stepIndex] = steps[stepIndex] || emptyStep();
+        steps[stepIndex] = stepIndex in steps ? steps[stepIndex] : emptyStep();
         steps[stepIndex].actions.push({
           call: action.renderForFunctionCall(),
           result: action.renderForMultiActionsModel(),
@@ -100,7 +100,8 @@ export async function renderConversationForModelMultiActions({
       }
 
       for (const content of m.rawContents) {
-        steps[content.step] = steps[content.step] || emptyStep();
+        steps[content.step] =
+          content.step in steps ? steps[content.step] : emptyStep();
         if (content.content.trim()) {
           steps[content.step].contents.push(content.content);
         }
@@ -121,18 +122,6 @@ export async function renderConversationForModelMultiActions({
       } else {
         // In regular mode, we render all steps.
         for (const step of steps) {
-          if (!step) {
-            logger.error(
-              {
-                workspaceId: conversation.owner.sId,
-                conversationId: conversation.sId,
-                agentMessageId: m.sId,
-                panic: true,
-              },
-              "Unexpected state, agent message step is empty"
-            );
-            continue;
-          }
           if (!step.actions.length && !step.contents.length) {
             logger.error(
               {
@@ -305,7 +294,7 @@ export async function renderConversationForModelMultiActions({
   for (let i = selected.length - 1; i >= 0; i--) {
     const cfMessage = selected[i];
     if (isContentFragmentMessageTypeModel(cfMessage)) {
-      const userMessage = selected[i + 1];
+      const userMessage = i + 1 in selected ? selected[i + 1] : null;
       if (!userMessage || userMessage.role !== "user") {
         logger.error(
           {

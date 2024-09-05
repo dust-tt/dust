@@ -414,7 +414,8 @@ async function handler(
 
   if (targetWorkspace) {
     // For users joining a workspace from trying to access a conversation, we redirect to this conversation after signing in.
-    if (req.query.join === "true" && req.query.cId) {
+    const { cid: cId } = req.query;
+    if (req.query.join === "true" && typeof cId === "string") {
       res.redirect(`/w/${targetWorkspace.sId}/welcome?cId=${req.query.cId}`);
       return;
     }

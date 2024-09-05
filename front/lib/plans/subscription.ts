@@ -478,7 +478,7 @@ export async function getPerSeatSubscriptionPricing(
   if (
     !item.quantity ||
     !recurring ||
-    (metadata && metadata[REPORT_USAGE_METADATA_KEY] !== "PER_SEAT")
+    metadata[REPORT_USAGE_METADATA_KEY] !== "PER_SEAT"
   ) {
     return null;
   }
