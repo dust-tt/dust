@@ -350,6 +350,7 @@
  *           required: true
  *         context:
  *           $ref: '#/components/schemas/Context'
+ *           required: true
  *     Datasource:
  *       type: object
  *       properties:
