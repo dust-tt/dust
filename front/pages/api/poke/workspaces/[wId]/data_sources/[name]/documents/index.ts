@@ -64,12 +64,16 @@ async function handler(
         : 0;
 
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const documents = await coreAPI.getDataSourceDocuments({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        limit,
-        offset,
-      });
+      const documents = await coreAPI.getDataSourceDocuments(
+        {
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+        },
+        {
+          limit,
+          offset,
+        }
+      );
 
       if (documents.isErr()) {
         return apiError(req, res, {
