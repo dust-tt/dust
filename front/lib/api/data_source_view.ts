@@ -132,13 +132,15 @@ export async function getContentNodesForStaticDataSourceView(
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   if (viewType === "documents") {
-    const documentsRes = await coreAPI.getDataSourceDocuments({
-      dataSourceId: dataSource.dustAPIDataSourceId,
-      documentIds: internalIds,
-      pagination,
-      projectId: dataSource.dustAPIProjectId,
-      viewFilter: dataSourceView.toViewFilter(),
-    });
+    const documentsRes = await coreAPI.getDataSourceDocuments(
+      {
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        documentIds: internalIds,
+        projectId: dataSource.dustAPIProjectId,
+        viewFilter: dataSourceView.toViewFilter(),
+      },
+      pagination
+    );
 
     if (documentsRes.isErr()) {
       return documentsRes;
@@ -161,13 +163,15 @@ export async function getContentNodesForStaticDataSourceView(
 
     return new Ok(documentsAsContentNodes);
   } else {
-    const tablesRes = await coreAPI.getTables({
-      dataSourceId: dataSource.dustAPIDataSourceId,
-      pagination,
-      projectId: dataSource.dustAPIProjectId,
-      tableIds: internalIds,
-      viewFilter: dataSourceView.toViewFilter(),
-    });
+    const tablesRes = await coreAPI.getTables(
+      {
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        projectId: dataSource.dustAPIProjectId,
+        tableIds: internalIds,
+        viewFilter: dataSourceView.toViewFilter(),
+      },
+      pagination
+    );
 
     if (tablesRes.isErr()) {
       return tablesRes;

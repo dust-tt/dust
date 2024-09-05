@@ -670,19 +670,20 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
-  async getDataSourceDocuments({
-    dataSourceId,
-    documentIds,
-    pagination,
-    projectId,
-    viewFilter,
-  }: {
-    dataSourceId: string;
-    documentIds?: string[];
-    pagination?: { limit: number; offset: number };
-    projectId: string;
-    viewFilter?: CoreAPISearchFilter | null;
-  }): Promise<
+  async getDataSourceDocuments(
+    {
+      dataSourceId,
+      documentIds,
+      projectId,
+      viewFilter,
+    }: {
+      dataSourceId: string;
+      documentIds?: string[];
+      projectId: string;
+      viewFilter?: CoreAPISearchFilter | null;
+    },
+    pagination?: { limit: number; offset: number }
+  ): Promise<
     CoreAPIResponse<{
       documents: CoreAPIDocument[];
       limit: number;
@@ -1111,19 +1112,20 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
-  async getTables({
-    dataSourceId,
-    pagination,
-    projectId,
-    tableIds,
-    viewFilter,
-  }: {
-    dataSourceId: string;
-    pagination?: { limit: number; offset: number };
-    projectId: string;
-    tableIds?: string[];
-    viewFilter?: CoreAPISearchFilter | null;
-  }): Promise<
+  async getTables(
+    {
+      dataSourceId,
+      projectId,
+      tableIds,
+      viewFilter,
+    }: {
+      dataSourceId: string;
+      projectId: string;
+      tableIds?: string[];
+      viewFilter?: CoreAPISearchFilter | null;
+    },
+    pagination?: { limit: number; offset: number }
+  ): Promise<
     CoreAPIResponse<{
       limit: number;
       offset: number;
