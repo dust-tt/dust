@@ -81,13 +81,15 @@ export const FoldersHeaderMenu = ({
   );
 };
 
+type AddDataDropDrownButtonProps = {
+  contentActionsRef: RefObject<ContentActionsRef>;
+  canWriteInVault: boolean;
+};
+
 const AddDataDropDownButton = ({
   contentActionsRef,
   canWriteInVault,
-}: {
-  contentActionsRef: RefObject<ContentActionsRef>;
-  canWriteInVault: boolean;
-}) => {
+}: AddDataDropDrownButtonProps) => {
   return (
     <DropdownMenu>
       <DropdownMenu.Button>
@@ -128,17 +130,19 @@ const AddDataDropDownButton = ({
   );
 };
 
+type EditFolderButtonProps = {
+  owner: WorkspaceType;
+  vault: VaultType;
+  folder: DataSourceType;
+  canWriteInVault: boolean;
+};
+
 const EditFolderButton = ({
   owner,
   vault,
   folder,
   canWriteInVault,
-}: {
-  owner: WorkspaceType;
-  vault: VaultType;
-  folder: DataSourceType;
-  canWriteInVault: boolean;
-}) => {
+}: EditFolderButtonProps) => {
   const { dataSources } = useDataSources(owner);
   const [showEditFolderModal, setShowEditFolderModal] = useState(false);
   return (
