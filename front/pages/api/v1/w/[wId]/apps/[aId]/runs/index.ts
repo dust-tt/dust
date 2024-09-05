@@ -47,27 +47,23 @@ function extractUsageFromExecutions(
   traces: TraceType[][],
   usages: RunUsageType[]
 ) {
-  if (block) {
-    traces.forEach((tracesInner) => {
-      tracesInner.forEach((trace) => {
-        if (trace?.meta) {
-          const { token_usage } = trace.meta as {
-            token_usage: { prompt_tokens: number; completion_tokens: number };
-          };
-          if (token_usage) {
-            const promptTokens = token_usage.prompt_tokens;
-            const completionTokens = token_usage.completion_tokens;
-            usages.push({
-              providerId: block.provider_id,
-              modelId: block.model_id,
-              promptTokens,
-              completionTokens,
-            });
-          }
-        }
-      });
+  traces.forEach((tracesInner) => {
+    tracesInner.forEach((trace) => {
+      if (trace.meta) {
+        const { token_usage } = trace.meta as {
+          token_usage: { prompt_tokens: number; completion_tokens: number };
+        };
+        const promptTokens = token_usage.prompt_tokens;
+        const completionTokens = token_usage.completion_tokens;
+        usages.push({
+          providerId: block.provider_id,
+          modelId: block.model_id,
+          promptTokens,
+          completionTokens,
+        });
+      }
     });
-  }
+  });
 }
 
 /**

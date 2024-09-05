@@ -86,7 +86,7 @@ export function renderSubscriptionFromModels({
     trialing: activeSubscription?.trialing === true,
     sId: activeSubscription?.sId || null,
     stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
-    startDate: activeSubscription?.startDate?.getTime() || null,
+    startDate: activeSubscription?.startDate.getTime() || null,
     endDate: activeSubscription?.endDate?.getTime() || null,
     paymentFailingSince:
       activeSubscription?.paymentFailingSince?.getTime() || null,
@@ -133,7 +133,7 @@ export const internalSubscribeWorkspaceToFreeNoPlan = async ({
     });
 
     // Notify Stripe that we ended the subscription if the subscription was a paid one
-    if (activeSubscription?.stripeSubscriptionId) {
+    if (activeSubscription.stripeSubscriptionId) {
       await cancelSubscriptionImmediately({
         stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
       });
@@ -459,14 +459,8 @@ export async function getPerSeatSubscriptionPricing(
   }
 
   const { items } = stripeSubscription;
-  if (!items) {
-    return null;
-  }
 
   const [item] = items.data;
-  if (!item || !item.price) {
-    return null;
-  }
 
   const { unit_amount: unitAmount, currency, recurring, metadata } = item.price;
 
@@ -478,7 +472,7 @@ export async function getPerSeatSubscriptionPricing(
   if (
     !item.quantity ||
     !recurring ||
-    (metadata && metadata[REPORT_USAGE_METADATA_KEY] !== "PER_SEAT")
+    metadata[REPORT_USAGE_METADATA_KEY] !== "PER_SEAT"
   ) {
     return null;
   }

@@ -111,9 +111,9 @@ export function ViewDataSourceTable({
                     <PokeTableRow>
                       <PokeTableCell>Paused at</PokeTableCell>
                       <PokeTableCell>
-                        {connector?.pausedAt ? (
+                        {connector.pausedAt ? (
                           <span className="font-bold text-green-600">
-                            {timeAgoFrom(connector?.pausedAt, {
+                            {timeAgoFrom(connector.pausedAt, {
                               useLongFormat: true,
                             })}
                           </span>
@@ -125,8 +125,8 @@ export function ViewDataSourceTable({
                     <PokeTableRow>
                       <PokeTableCell>Last sync start</PokeTableCell>
                       <PokeTableCell>
-                        {connector?.lastSyncStartTime ? (
-                          timeAgoFrom(connector?.lastSyncStartTime, {
+                        {connector.lastSyncStartTime ? (
+                          timeAgoFrom(connector.lastSyncStartTime, {
                             useLongFormat: true,
                           })
                         ) : (
@@ -139,8 +139,8 @@ export function ViewDataSourceTable({
                     <PokeTableRow>
                       <PokeTableCell>Last sync finish</PokeTableCell>
                       <PokeTableCell>
-                        {connector?.lastSyncFinishTime ? (
-                          timeAgoFrom(connector?.lastSyncFinishTime, {
+                        {connector.lastSyncFinishTime ? (
+                          timeAgoFrom(connector.lastSyncFinishTime, {
                             useLongFormat: true,
                           })
                         ) : (
@@ -153,9 +153,9 @@ export function ViewDataSourceTable({
                     <PokeTableRow>
                       <PokeTableCell>Last sync status</PokeTableCell>
                       <PokeTableCell>
-                        {connector?.lastSyncStatus ? (
+                        {connector.lastSyncStatus ? (
                           <span className="font-bold">
-                            {connector?.lastSyncStatus}
+                            {connector.lastSyncStatus}
                             {connector.lastSyncStatus === "failed" && (
                               <span className="text-warning-500">
                                 &nbsp;{connector.errorType}
@@ -172,9 +172,9 @@ export function ViewDataSourceTable({
                     <PokeTableRow>
                       <PokeTableCell>Last sync success</PokeTableCell>
                       <PokeTableCell>
-                        {connector?.lastSyncSuccessfulTime ? (
+                        {connector.lastSyncSuccessfulTime ? (
                           <span className="font-bold text-green-600">
-                            {timeAgoFrom(connector?.lastSyncSuccessfulTime, {
+                            {timeAgoFrom(connector.lastSyncSuccessfulTime, {
                               useLongFormat: true,
                             })}
                           </span>

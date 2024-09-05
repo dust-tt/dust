@@ -105,12 +105,9 @@ async function handler(
         attributes: ["name"],
       });
 
-      let exists = false;
-      existing.forEach((e) => {
-        if (e.name == bodyValidation.right.dataset.name) {
-          exists = true;
-        }
-      });
+      const exists = existing.some(
+        (e) => e.name === bodyValidation.right.dataset.name
+      );
       if (exists) {
         return apiError(req, res, {
           status_code: 400,

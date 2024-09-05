@@ -100,8 +100,8 @@ async function handler(
           const session = event.data.object as Stripe.Checkout.Session;
           const workspaceId = session.client_reference_id;
           const stripeSubscriptionId = session.subscription;
-          const planCode = session?.metadata?.planCode || null;
-          const userId = session?.metadata?.userId || null;
+          const planCode = session.metadata?.planCode || null;
+          const userId = session.metadata?.userId || null;
 
           if (session.status === "open" || session.status === "expired") {
             // Open: The checkout session is still in progress. Payment processing has not started.

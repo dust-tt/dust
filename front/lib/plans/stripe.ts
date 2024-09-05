@@ -38,11 +38,7 @@ async function getDefautPriceFromMetadata(
   const stripe = getStripeClient();
   const prices = await stripe.prices.list({ product: productId, active: true });
   for (const price of prices.data) {
-    if (
-      price.metadata &&
-      key in price.metadata &&
-      price.metadata[key] === "true"
-    ) {
+    if (key in price.metadata && price.metadata[key] === "true") {
       return price.id;
     }
   }
@@ -353,7 +349,7 @@ export function isEnterpriseSubscription(
 
   return activeItems.every((item) => {
     const isRecurring = Boolean(item.price.recurring);
-    const reportUsage = item.price.metadata?.REPORT_USAGE;
+    const reportUsage = item.price.metadata.REPORT_USAGE;
 
     return isRecurring && isEnterpriseReportUsage(reportUsage);
   });
@@ -378,7 +374,7 @@ export function assertStripeSubscriptionItemIsValid({
     });
   }
 
-  const reportUsage = item.price.metadata?.REPORT_USAGE;
+  const reportUsage = item.price.metadata.REPORT_USAGE;
 
   if (!item.price.recurring && reportUsage) {
     return new Err({
@@ -417,7 +413,7 @@ export function assertStripeSubscriptionItemIsValid({
     }
 
     if (item.price.recurring.usage_type === "metered") {
-      if (!isMauReportUsage(item.price.metadata?.REPORT_USAGE)) {
+      if (!isMauReportUsage(item.price.metadata.REPORT_USAGE)) {
         return new Err({
           invalidity_message: `Subscription recurring price has usage_type 'metered' but no valid REPORT_USAGE metadata. REPORT_USAGE should be MAU_{number} (e.g. MAU_1, MAU_5, MAU_10). Got ${reportUsage}`,
         });

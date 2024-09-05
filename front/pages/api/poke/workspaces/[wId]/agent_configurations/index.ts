@@ -68,7 +68,7 @@ async function handler(
         auth,
         agentsGetView: viewParam,
         variant: "light",
-        sort: viewParam === "archived" ? "updatedAt" : undefined,
+        sort: "updatedAt",
       });
 
       return res.status(200).json({

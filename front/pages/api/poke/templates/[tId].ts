@@ -121,7 +121,7 @@ async function handler(
         });
       }
 
-      await existingTemplate?.update({
+      await existingTemplate.update({
         backgroundColor: body.backgroundColor,
         description: body.description ?? null,
         emoji: body.emoji,
@@ -137,7 +137,7 @@ async function handler(
         presetInstructions: body.presetInstructions ?? null,
         presetModelId: model.modelId,
         presetProviderId: model.providerId,
-        presetTemperature: body.presetTemperature ?? null,
+        presetTemperature: body.presetTemperature,
         tags: body.tags,
         visibility: body.visibility,
       });

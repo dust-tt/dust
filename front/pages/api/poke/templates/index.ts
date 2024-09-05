@@ -103,7 +103,7 @@ async function handler(
         presetInstructions: body.presetInstructions ?? null,
         presetModelId: model.modelId,
         presetProviderId: model.providerId,
-        presetTemperature: body.presetTemperature ?? null,
+        presetTemperature: body.presetTemperature,
         sId: generateLegacyModelSId(),
         tags: body.tags,
         visibility: body.visibility,

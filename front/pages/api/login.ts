@@ -280,7 +280,7 @@ async function handleRegularSignupFlow(
     });
 
     return new Ok({ flow: null, workspace });
-  } else if (targetWorkspaceId && !canJoinTargetWorkspace) {
+  } else if (targetWorkspaceId && !joinTargetWorkspaceAllowed) {
     return new Err(
       new AuthFlowError(
         "invalid_domain",

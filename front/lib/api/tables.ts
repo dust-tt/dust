@@ -357,13 +357,8 @@ export async function rowsFromCsv(
 
     for (const [i, h] of header.entries()) {
       const col = record[i];
-      if (col === undefined) {
-        return new Err({
-          type: "invalid_record_length",
-          message: `Invalid record length at row ${i} (expected ${header.length} columns, got ${record.length})).`,
-        });
-      }
-      if (!valuesByCol[h]) {
+
+      if (!(h in valuesByCol)) {
         valuesByCol[h] = [col];
       } else {
         (valuesByCol[h] as string[]).push(col);
@@ -464,9 +459,9 @@ export async function rowsFromCsv(
   for (let i = 0; i < nbRows; i++) {
     const record = header.reduce(
       (acc, h) => {
-        const parsedValues = parsedValuesByCol[h];
-        acc[h] =
-          parsedValues && parsedValues[i] !== undefined ? parsedValues[i] : "";
+        const parsedValues =
+          h in parsedValuesByCol ? parsedValuesByCol[h] : undefined;
+        acc[h] = parsedValues ? parsedValues[i] : "";
         return acc;
       },
       {} as Record<string, CoreAPIRowValue>

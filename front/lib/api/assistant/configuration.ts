@@ -514,7 +514,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     agentConfigurationType.userListStatus = agentUserListStatus({
       agentConfiguration: agentConfigurationType,
       listStatusOverride:
-        agentUserRelations[agent.sId]?.listStatusOverride ?? null,
+        agentUserRelations[agent.sId].listStatusOverride ?? null,
     });
 
     agentConfigurationTypes.push(agentConfigurationType);
@@ -1296,7 +1296,7 @@ async function _createAgentDataSourcesConfigData(
       const dataSourcesWithViews: DataSourceWithView[] = uniqueDataSources.map(
         (ds) => ({
           ds,
-          view: dataSourceViewMap[ds.id] ?? null,
+          view: dataSourceViewMap[ds.id],
         })
       );
 

@@ -206,7 +206,7 @@ export class Authenticator {
           return (
             await FeatureFlag.findAll({
               where: {
-                workspaceId: workspace?.id,
+                workspaceId: workspace.id,
               },
             })
           ).map((flag) => flag.name);
@@ -419,7 +419,7 @@ export class Authenticator {
         return (
           await FeatureFlag.findAll({
             where: {
-              workspaceId: workspace?.id,
+              workspaceId: workspace.id,
             },
           })
         ).map((flag) => flag.name);
@@ -429,7 +429,7 @@ export class Authenticator {
     return new Authenticator({
       workspace,
       role: "builder",
-      groups: globalGroup ? [globalGroup] : [],
+      groups: [globalGroup],
       subscription,
       flags,
     });
@@ -461,7 +461,7 @@ export class Authenticator {
         return (
           await FeatureFlag.findAll({
             where: {
-              workspaceId: workspace?.id,
+              workspaceId: workspace.id,
             },
           })
         ).map((flag) => flag.name);
@@ -471,7 +471,7 @@ export class Authenticator {
     return new Authenticator({
       workspace,
       role: "admin",
-      groups: globalGroup ? [globalGroup] : [],
+      groups: [globalGroup],
       subscription,
       flags,
     });
