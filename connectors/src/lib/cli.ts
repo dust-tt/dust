@@ -1,8 +1,8 @@
 import type {
   AdminCommandType,
   AdminSuccessResponseType,
+  BatchAllResponseType,
   BatchCommandType,
-  BatchRestartAllResponseType,
   ConnectorsCommandType,
   GetParentsResponseType,
   Result,
@@ -185,7 +185,7 @@ export const batch = async ({
   command,
   args,
 }: BatchCommandType): Promise<
-  AdminSuccessResponseType | BatchRestartAllResponseType
+  AdminSuccessResponseType | BatchAllResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "batch", command, args });
   switch (command) {
