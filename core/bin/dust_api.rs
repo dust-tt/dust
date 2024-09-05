@@ -1671,8 +1671,9 @@ async fn data_sources_documents_upsert(
 
 #[derive(serde::Deserialize)]
 struct DataSourcesListQuery {
-    offset: usize,
-    limit: usize,
+    document_ids: Option<String>, // Parse as JSON.
+    limit: Option<usize>,
+    offset: Option<usize>,
     view_filter: Option<String>, // Parsed as JSON.
 }
 
@@ -1698,18 +1699,39 @@ async fn data_sources_documents_list(
         }
     };
 
+    let limit_offset: Option<(usize, usize)> = match (query.limit, query.offset) {
+        (Some(limit), Some(offset)) => Some((limit, offset)),
+        _ => None,
+    };
+
+    let document_ids: Option<Vec<String>> = match query.document_ids {
+        Some(ref ids) => match serde_json::from_str(ids) {
+            Ok(parsed_ids) => Some(parsed_ids),
+            Err(e) => {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_document_ids",
+                    "Failed to parse document_ids query parameter",
+                    Some(e.into()),
+                )
+            }
+        },
+        None => None,
+    };
+
     let project = project::Project::new_from_id(project_id);
     match state
         .store
         .list_data_source_documents(
             &project,
             &data_source_id,
-            Some((query.limit, query.offset)),
+            limit_offset,
             &match view_filter {
                 Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
                 None => None,
             },
             true, // remove system tags
+            &document_ids,
         )
         .await
     {
@@ -1724,10 +1746,10 @@ async fn data_sources_documents_list(
             Json(APIResponse {
                 error: None,
                 response: Some(json!({
-                    "offset": query.offset,
-                    "limit": query.limit,
-                    "total": total,
                     "documents": documents,
+                    "limit": query.limit,
+                    "offset": query.offset,
+                    "total": total,
                 })),
             }),
         ),
@@ -2052,10 +2074,18 @@ async fn tables_retrieve(
     }
 }
 
+#[derive(serde::Deserialize)]
+struct TableListQuery {
+    limit: Option<usize>,
+    offset: Option<usize>,
+    table_ids: Option<String>,   // Parsed as JSON.
+    view_filter: Option<String>, // Parsed as JSON.
+}
+
 async fn tables_list(
     Path((project_id, data_source_id)): Path<(i64, String)>,
     State(state): State<Arc<APIState>>,
-    Query(query): Query<TableRetrieveQuery>,
+    Query(query): Query<TableListQuery>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
     let view_filter: Option<SearchFilter> = match query
@@ -2075,9 +2105,35 @@ async fn tables_list(
         }
     };
 
+    let limit_offset: Option<(usize, usize)> = match (query.limit, query.offset) {
+        (Some(limit), Some(offset)) => Some((limit, offset)),
+        _ => None,
+    };
+
+    let table_ids: Option<Vec<String>> = match query.table_ids {
+        Some(ref ids) => match serde_json::from_str(ids) {
+            Ok(parsed_ids) => Some(parsed_ids),
+            Err(e) => {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_table_ids",
+                    "Failed to parse table_ids query parameter",
+                    Some(e.into()),
+                )
+            }
+        },
+        None => None,
+    };
+
     match state
         .store
-        .list_tables(&project, &data_source_id, None)
+        .list_tables(
+            &project,
+            &data_source_id,
+            &view_filter,
+            &table_ids,
+            limit_offset,
+        )
         .await
     {
         Err(e) => error_response(
@@ -2086,12 +2142,15 @@ async fn tables_list(
             "Failed to list tables",
             Some(e),
         ),
-        Ok((tables, _)) => (
+        Ok((tables, total)) => (
             StatusCode::OK,
             Json(APIResponse {
                 error: None,
                 response: Some(json!({
-                    "tables": tables.into_iter().filter(|table| table.match_filter(&view_filter)).collect::<Vec<Table>>(),
+                    "limit": query.limit,
+                    "offset": query.offset,
+                    "tables": tables,
+                    "total": total,
                 })),
             }),
         ),

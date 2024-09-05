@@ -672,31 +672,37 @@ export class CoreAPI {
 
   async getDataSourceDocuments({
     dataSourceId,
-    limit,
-    offset,
+    documentIds,
+    pagination,
     projectId,
     viewFilter,
   }: {
     dataSourceId: string;
-    limit: number;
-    offset: number;
+    documentIds?: string[];
+    pagination?: { limit: number; offset: number };
     projectId: string;
     viewFilter?: CoreAPISearchFilter | null;
   }): Promise<
     CoreAPIResponse<{
-      offset: number;
-      limit: number;
-      total: number;
       documents: CoreAPIDocument[];
+      limit: number;
+      offset: number;
+      total: number;
     }>
   > {
-    const queryParams = new URLSearchParams({
-      limit: String(limit),
-      offset: String(offset),
-    });
+    const queryParams = new URLSearchParams();
+
+    if (pagination) {
+      queryParams.append("limit", String(pagination.limit));
+      queryParams.append("offset", String(pagination.offset));
+    }
 
     if (viewFilter) {
       queryParams.append("view_filter", JSON.stringify(viewFilter));
+    }
+
+    if (documentIds && documentIds.length > 0) {
+      queryParams.append("document_ids", JSON.stringify(documentIds));
     }
 
     const response = await this._fetchWithError(
@@ -1107,21 +1113,37 @@ export class CoreAPI {
 
   async getTables({
     dataSourceId,
+    pagination,
     projectId,
+    tableIds,
     viewFilter,
   }: {
     dataSourceId: string;
+    pagination?: { limit: number; offset: number };
     projectId: string;
+    tableIds?: string[];
     viewFilter?: CoreAPISearchFilter | null;
   }): Promise<
     CoreAPIResponse<{
+      limit: number;
+      offset: number;
       tables: CoreAPITable[];
+      total: number;
     }>
   > {
     const queryParams = new URLSearchParams();
 
     if (viewFilter) {
       queryParams.append("view_filter", JSON.stringify(viewFilter));
+    }
+
+    if (tableIds && tableIds.length > 0) {
+      queryParams.append("table_ids", JSON.stringify(tableIds));
+    }
+
+    if (pagination) {
+      queryParams.append("limit", String(pagination.limit));
+      queryParams.append("offset", String(pagination.offset));
     }
 
     const response = await this._fetchWithError(

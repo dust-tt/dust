@@ -9,6 +9,7 @@ import { ConnectorsAPI, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 
 import config from "@app/lib/api/config";
+import type { OffsetPaginationParams } from "@app/lib/api/pagination";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
@@ -123,7 +124,8 @@ export async function getContentNodesForManagedDataSourceView(
 export async function getContentNodesForStaticDataSourceView(
   dataSourceView: DataSourceViewResource,
   viewType: ContentNodesViewType,
-  { limit, offset }: { limit: number; offset: number }
+  internalIds: string[],
+  pagination?: OffsetPaginationParams
 ): Promise<Result<DataSourceViewContentNode[], Error | CoreAPIError>> {
   const { dataSource } = dataSourceView;
 
@@ -132,8 +134,8 @@ export async function getContentNodesForStaticDataSourceView(
   if (viewType === "documents") {
     const documentsRes = await coreAPI.getDataSourceDocuments({
       dataSourceId: dataSource.dustAPIDataSourceId,
-      limit,
-      offset,
+      documentIds: internalIds,
+      pagination,
       projectId: dataSource.dustAPIProjectId,
       viewFilter: dataSourceView.toViewFilter(),
     });
@@ -161,7 +163,9 @@ export async function getContentNodesForStaticDataSourceView(
   } else {
     const tablesRes = await coreAPI.getTables({
       dataSourceId: dataSource.dustAPIDataSourceId,
+      pagination,
       projectId: dataSource.dustAPIProjectId,
+      tableIds: internalIds,
       viewFilter: dataSourceView.toViewFilter(),
     });
 

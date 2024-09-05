@@ -1744,6 +1744,7 @@ impl Store for PostgresStore {
         limit_offset: Option<(usize, usize)>,
         view_filter: &Option<SearchFilter>,
         remove_system_tags: bool,
+        document_ids: &Option<Vec<String>>,
     ) -> Result<(Vec<Document>, usize)> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -1771,11 +1772,26 @@ impl Store for PostgresStore {
         params.push(&data_source_row_id);
         where_clauses.push("status = 'latest'".to_string());
 
-        let (filter_clauses, filter_params, p_idx) =
+        let (filter_clauses, filter_params, mut p_idx) =
             Self::where_clauses_and_params_for_filter(view_filter, params.len() + 1);
 
         where_clauses.extend(filter_clauses);
         params.extend(filter_params);
+
+        // Add document_ids filter if provided.
+        if let Some(ref ids) = document_ids {
+            // Create a dynamic list of placeholders for the document IDs.
+            let id_placeholders: Vec<String> = (0..ids.len())
+                .map(|_| {
+                    let placeholder = format!("${}", p_idx);
+                    p_idx += 1; // Increment p_idx after each document.
+                    placeholder
+                })
+                .collect();
+
+            where_clauses.push(format!("document_id IN ({})", id_placeholders.join(", ")));
+            params.extend(ids.iter().map(|id| id as &(dyn ToSql + Sync)));
+        }
 
         let sql = format!(
             "SELECT id, created, document_id, timestamp, tags_array, parents, source_url, hash, \
@@ -2537,6 +2553,8 @@ impl Store for PostgresStore {
         &self,
         project: &Project,
         data_source_id: &str,
+        view_filter: &Option<SearchFilter>,
+        table_ids: &Option<Vec<String>>,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<Table>, usize)> {
         let project_id = project.project_id();
@@ -2559,30 +2577,57 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
+        let mut where_clauses: Vec<String> = vec![];
+        let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
+
+        where_clauses.push("data_source = $1".to_string());
+        params.push(&data_source_row_id);
+
+        let (filter_clauses, filter_params, mut p_idx) =
+            Self::where_clauses_and_params_for_filter(view_filter, params.len() + 1);
+
+        where_clauses.extend(filter_clauses);
+        params.extend(filter_params);
+
+        // Add table_ids filter if provided.
+        if let Some(ref ids) = table_ids {
+            // Create a dynamic list of placeholders for the table IDs.
+            let id_placeholders: Vec<String> = (0..ids.len())
+                .map(|_| {
+                    let placeholder = format!("${}", p_idx);
+                    p_idx += 1; // Increment p_idx after each table.
+                    placeholder
+                })
+                .collect();
+
+            where_clauses.push(format!("table_id IN ({})", id_placeholders.join(", ")));
+            params.extend(ids.iter().map(|id| id as &(dyn ToSql + Sync)));
+        }
+
+        let sql = format!(
+            "SELECT created, table_id, name, description, timestamp, tags_array, \
+                                parents, schema, schema_stale_at FROM tables \
+               WHERE {} ORDER BY timestamp DESC",
+            where_clauses.join(" AND "),
+        );
+
         let rows = match limit_offset {
             None => {
-                let stmt = c
-                    .prepare(
-                        "SELECT created, table_id, name, description, timestamp, tags_array, \
-                                parents, schema, schema_stale_at FROM tables \
-                           WHERE data_source = $1",
-                    )
-                    .await?;
-                c.query(&stmt, &[&data_source_row_id]).await?
+                let stmt = c.prepare(&sql).await?;
+                c.query(&stmt, &params).await?
             }
             Some((limit, offset)) => {
+                let limit = limit as i64;
+                let offset = offset as i64;
+
+                let mut params = params.clone();
+                params.push(&limit);
+                params.push(&offset);
+
                 let stmt = c
-                    .prepare(
-                        "SELECT created, table_id, name, description, timestamp, tags_array, \
-                                parents, schema, schema_stale_at FROM tables \
-                        WHERE data_source = $1 LIMIT $2 OFFSET $3",
-                    )
+                    .prepare(&(sql + &format!(" LIMIT ${} OFFSET ${}", p_idx, p_idx + 1)))
                     .await?;
-                c.query(
-                    &stmt,
-                    &[&data_source_row_id, &(limit as i64), &(offset as i64)],
-                )
-                .await?
+                c.query(&stmt, &params).await?
             }
         };
 
@@ -2630,9 +2675,16 @@ impl Store for PostgresStore {
             None => tables.len(),
             Some(_) => {
                 let stmt = c
-                    .prepare("SELECT COUNT(*) FROM tables WHERE data_source = $1")
+                    .prepare(
+                        format!(
+                            "SELECT COUNT(*) FROM tables \
+                                   WHERE {}",
+                            where_clauses.join(" AND ")
+                        )
+                        .as_str(),
+                    )
                     .await?;
-                let t: i64 = c.query_one(&stmt, &[&data_source_row_id]).await?.get(0);
+                let t: i64 = c.query_one(&stmt, &params).await?.get(0);
                 t as usize
             }
         };

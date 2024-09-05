@@ -1,5 +1,6 @@
 import type {
   ConnectorProvider,
+  ContentNodesViewType,
   CoreAPIDocument,
   DataSourceType,
   WithConnector,
