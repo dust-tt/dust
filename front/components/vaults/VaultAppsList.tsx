@@ -90,57 +90,57 @@ export const VaultAppsList = ({
     );
   }
 
-  if (rows.length === 0) {
-    return (
-      <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg border bg-structure-50">
-        <Button
-          label="Create App"
-          disabled={!isBuilder}
-          onClick={() => {
-            setIsCreateAppModalOpened(true);
-          }}
-        />
-      </div>
-    );
-  }
-
   return (
     <>
+      {rows.length === 0 ? (
+        <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg border bg-structure-50">
+          <Button
+            label="Create App"
+            disabled={!isBuilder}
+            onClick={() => {
+              setIsCreateAppModalOpened(true);
+            }}
+          />
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-2">
+            <Searchbar
+              name="search"
+              ref={searchBarRef}
+              placeholder="Search (Name)"
+              value={appSearch}
+              onChange={(s) => {
+                setAppSearch(s);
+              }}
+            />
+            {isBuilder && (
+              <>
+                <Button
+                  label="New App"
+                  variant="primary"
+                  icon={PlusIcon}
+                  size="sm"
+                  onClick={() => {
+                    setIsCreateAppModalOpened(true);
+                  }}
+                />
+                <ManageAppSecretsButtonModal owner={owner} />
+              </>
+            )}
+          </div>
+          <DataTable
+            data={rows}
+            columns={getTableColumns()}
+            filter={appSearch}
+            filterColumn="name"
+          />
+        </>
+      )}
       <VaultCreateAppModal
         owner={owner}
         isOpen={isCreateAppModalOpened}
         setIsOpen={setIsCreateAppModalOpened}
-      />
-      <div className="flex gap-2">
-        <Searchbar
-          name="search"
-          ref={searchBarRef}
-          placeholder="Search (Name)"
-          value={appSearch}
-          onChange={(s) => {
-            setAppSearch(s);
-          }}
-        />
-        {isBuilder && (
-          <>
-            <Button
-              label="New App"
-              variant="primary"
-              icon={PlusIcon}
-              size="sm"
-              onClick={() => {
-                setIsCreateAppModalOpened(true);
-              }}
-            />
-            <ManageAppSecretsButtonModal owner={owner} />
-          </>
-        )}
-      </div>
-      <DataTable
-        data={rows}
-        columns={getTableColumns()}
-        filter={appSearch}
-        filterColumn="name"
       />
     </>
   );
