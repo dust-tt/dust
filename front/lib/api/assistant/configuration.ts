@@ -222,9 +222,7 @@ async function fetchGlobalAgentConfigurationForView(
   const allGlobalAgents = await getGlobalAgents(auth, globalAgentIdsToFetch);
   const matchingGlobalAgents = allGlobalAgents.filter(
     (a) =>
-      (!agentPrefix ||
-        a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())) &&
-      !(a.status === "disabled_missing_datasource")
+      !agentPrefix || a.name.toLowerCase().startsWith(agentPrefix.toLowerCase())
   );
 
   if (
