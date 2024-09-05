@@ -2,13 +2,13 @@ import type {
   ContentNodesViewType,
   CoreAPIError,
   DataSourceViewContentNode,
-  DataSourceViewType,
   Result,
 } from "@dust-tt/types";
 import { ConnectorsAPI, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 
 import config from "@app/lib/api/config";
+import type { OffsetPaginationParams } from "@app/lib/api/pagination";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
@@ -55,7 +55,7 @@ export function filterAndCropContentNodesByView(
 }
 
 export async function getContentNodesForManagedDataSourceView(
-  dataSourceView: DataSourceViewResource | DataSourceViewType,
+  dataSourceView: DataSourceViewResource,
   {
     includeChildren,
     internalIds,
@@ -123,13 +123,46 @@ export async function getContentNodesForManagedDataSourceView(
 export async function getContentNodesForStaticDataSourceView(
   dataSourceView: DataSourceViewResource,
   viewType: ContentNodesViewType,
+  internalIds: string[],
   { limit, offset }: { limit: number; offset: number }
 ): Promise<Result<DataSourceViewContentNode[], Error | CoreAPIError>> {
   const { dataSource } = dataSourceView;
 
+  if (internalIds.length > 1) {
+    return new Err(
+      new Error("Internal ids should not be provided for static data sources.")
+    );
+  }
+
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   if (viewType === "documents") {
+    if (internalIds.length > 0) {
+      const documentsRes = await coreAPI.getDataSourceDocuments({
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        limit,
+        offset,
+        projectId: dataSource.dustAPIProjectId,
+        viewFilter: dataSourceView.toViewFilter(),
+      });
+
+      if (documentsRes.isErr()) {
+        return documentsRes;
+      }
+    } else {
+      const documentsRes = await coreAPI.getDataSourceDocument({
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        limit,
+        offset,
+        projectId: dataSource.dustAPIProjectId,
+        viewFilter: dataSourceView.toViewFilter(),
+      });
+
+      if (documentsRes.isErr()) {
+        return documentsRes;
+      }
+    }
+
     const documentsRes = await coreAPI.getDataSourceDocuments({
       dataSourceId: dataSource.dustAPIDataSourceId,
       limit,
@@ -186,4 +219,57 @@ export async function getContentNodesForStaticDataSourceView(
 
     return new Ok(tablesAsContentNodes);
   }
+}
+
+export async function getContentNodesForDataSourceView(
+  dataSourceView: DataSourceViewResource,
+  {
+    includeChildren,
+    internalIds,
+    viewType,
+  }: {
+    includeChildren: boolean;
+    internalIds: string[];
+    viewType: ContentNodesViewType;
+  },
+  pagination: OffsetPaginationParams
+): Promise<Result<DataSourceViewContentNode[], Error | CoreAPIError>> {
+  let contentNodes: DataSourceViewContentNode[];
+
+  if (dataSourceView.dataSource.connectorId) {
+    const contentNodesRes = await getContentNodesForManagedDataSourceView(
+      dataSourceView,
+      {
+        includeChildren: includeChildren === true,
+        internalIds: removeNulls(internalIds),
+        viewType,
+      }
+    );
+
+    if (contentNodesRes.isErr()) {
+      return contentNodesRes;
+    }
+
+    contentNodes = contentNodesRes.value;
+  } else {
+    const contentNodesRes = await getContentNodesForStaticDataSourceView(
+      dataSourceView,
+      viewType,
+      internalIds,
+      pagination
+    );
+
+    if (contentNodesRes.isErr()) {
+      return contentNodesRes;
+    }
+
+    contentNodes = contentNodesRes.value;
+  }
+
+  const contentNodesInView = filterAndCropContentNodesByView(
+    dataSourceView,
+    contentNodes
+  );
+
+  return new Ok(contentNodesInView);
 }
