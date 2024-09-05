@@ -226,6 +226,7 @@ async function renderDataSourcesConfigurations(
         };
       }
 
+      // TODO(2024-09-04 flav) Restrict to the current view.
       const nodesRes = await getContentNodesForManagedDataSourceView(
         dataSourceView,
         {
@@ -306,8 +307,8 @@ async function renderTableDataSourcesConfigurations(
             ),
             lastUpdatedAt: table.timestamp,
             parentInternalId: null,
-            // TODO(2024-09-04 flav) Fetch the parent ids so the Tree hierarchy can be properly rendered in the UI.
-            parentInternalIds: [],
+            // TODO(2024-09-04 flav) Restrict to the current view.
+            parentInternalIds: table.parents,
             permission: "read",
             preventSelection: false,
             sourceUrl: null,
