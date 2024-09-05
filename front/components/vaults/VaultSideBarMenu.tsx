@@ -103,7 +103,7 @@ const renderVaultItems = (vaults: VaultType[], owner: LightWorkspaceType) =>
       {vault.kind === "system" ? (
         <SystemVaultMenu owner={owner} vault={vault} />
       ) : (
-        <VaultMenuItem owner={owner} vault={vault} />
+        <VaultMenu owner={owner} vault={vault} />
       )}
     </Fragment>
   ));
@@ -231,6 +231,20 @@ const SystemVaultItem = ({
 };
 
 // Global + regular vaults.
+
+const VaultMenu = ({
+  owner,
+  vault,
+}: {
+  owner: LightWorkspaceType;
+  vault: VaultType;
+}) => {
+  return (
+    <Tree variant="navigator">
+      <VaultMenuItem owner={owner} vault={vault} />
+    </Tree>
+  );
+};
 
 const VaultMenuItem = ({
   owner,
