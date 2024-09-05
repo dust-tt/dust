@@ -1,5 +1,5 @@
 import { Button, DropdownMenu } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { VaultType, WorkspaceType } from "@dust-tt/types";
 import type { TimeframeUnit } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
@@ -23,21 +23,25 @@ export function hasErrorActionRetrievalSearch(
     : "Please select at least one data source.";
 }
 
-export function ActionRetrievalSearch({
-  owner,
-  actionConfiguration,
-  updateAction,
-  setEdited,
-}: {
+type ActionRetrievalSearchProps = {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
+  allowedVaults: VaultType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderRetrievalConfiguration
     ) => AssistantBuilderRetrievalConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-}) {
+};
+
+export function ActionRetrievalSearch({
+  owner,
+  actionConfiguration,
+  allowedVaults,
+  updateAction,
+  setEdited,
+}: ActionRetrievalSearchProps) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
 
   if (!actionConfiguration) {
@@ -62,6 +66,7 @@ export function ActionRetrievalSearch({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
+        allowedVaults={allowedVaults}
         viewType="documents"
       />
 
@@ -87,21 +92,25 @@ export function hasErrorActionRetrievalExhaustive(
     : "Please select at least one data source and set a timeframe";
 }
 
-export function ActionRetrievalExhaustive({
-  owner,
-  actionConfiguration,
-  updateAction,
-  setEdited,
-}: {
+type ActionRetrievalExhaustiveProps = {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
+  allowedVaults: VaultType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderRetrievalConfiguration
     ) => AssistantBuilderRetrievalConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-}) {
+};
+
+export function ActionRetrievalExhaustive({
+  owner,
+  actionConfiguration,
+  allowedVaults,
+  updateAction,
+  setEdited,
+}: ActionRetrievalExhaustiveProps) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
 
@@ -137,6 +146,7 @@ export function ActionRetrievalExhaustive({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
+        allowedVaults={allowedVaults}
         viewType="documents"
       />
 

@@ -1,4 +1,5 @@
 import {
+  Chip,
   CloudArrowLeftRightIcon,
   FolderIcon,
   GlobeAltIcon,
@@ -15,6 +16,7 @@ import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   LightWorkspaceType,
+  VaultType,
 } from "@dust-tt/types";
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
@@ -36,6 +38,7 @@ import {
   isWebsite,
 } from "@app/lib/data_sources";
 import { useVaults } from "@app/lib/swr/vaults";
+import { classNames } from "@app/lib/utils";
 import { getVaultIcon, getVaultName } from "@app/lib/vaults";
 
 const MIN_TOTAL_DATA_SOURCES_TO_GROUP = 12;
@@ -45,6 +48,7 @@ const ONLY_ONE_VAULT_PER_SELECTION = true;
 interface DataSourceViewsSelectorProps {
   owner: LightWorkspaceType;
   dataSourceViews: DataSourceViewType[];
+  allowedVaults?: VaultType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
   setSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
@@ -55,6 +59,7 @@ interface DataSourceViewsSelectorProps {
 function VaultSelector({
   owner,
   dataSourceViews,
+  allowedVaults,
   selectionConfigurations,
   setSelectionConfigurations,
   viewType,
@@ -99,7 +104,9 @@ function VaultSelector({
             // Should never happen
             return null;
           }
-
+          const disabled = !(allowedVaults
+            ? allowedVaults.find((v) => v.sId === vaultId)
+            : false);
           return (
             <div key={vaultId}>
               <RadioButton
@@ -113,13 +120,28 @@ function VaultSelector({
                           size="md"
                           className="s-flex-shrink-0 ml-3 inline-block align-middle text-brand"
                         />
-                        <span className="s-text-element-900 align-middle font-bold">
-                          {getVaultName(vault)}
+                        <span
+                          className={classNames(
+                            "s-text-element-900",
+                            "align-middle",
+                            !disabled ? "font-bold" : "italic"
+                          )}
+                        >
+                          {getVaultName(vault)}{" "}
+                          {disabled && (
+                            <Chip
+                              key="xs-warning"
+                              size="xs"
+                              className="ml-2"
+                              label="Disabled: only one vault allowed per assistant"
+                              color="warning"
+                            />
+                          )}
                         </span>
                       </>
                     ),
                     value: vaultId,
-                    disabled: false,
+                    disabled: disabled,
                   },
                 ]}
                 value={selectedVault}
@@ -146,6 +168,7 @@ function VaultSelector({
 export function DataSourceViewsSelector({
   owner,
   dataSourceViews,
+  allowedVaults,
   selectionConfigurations,
   setSelectionConfigurations,
   viewType,
@@ -184,6 +207,7 @@ export function DataSourceViewsSelector({
         {...{
           owner,
           dataSourceViews,
+          allowedVaults,
           selectionConfigurations,
           setSelectionConfigurations,
           viewType,

@@ -52,6 +52,7 @@ export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
   ]);
 
   return {
+    vaults: accessibleVaults.map((vault) => vault.toJSON()),
     dataSourceViews: dsViews.map((dsView) => dsView.toJSON()),
     dustApps: allDustApps,
   };

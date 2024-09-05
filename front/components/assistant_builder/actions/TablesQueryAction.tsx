@@ -1,5 +1,5 @@
 import { Hoverable } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { VaultType, WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -18,21 +18,25 @@ export function hasErrorActionTablesQuery(
     : "Please select one table.";
 }
 
-export function ActionTablesQuery({
-  owner,
-  actionConfiguration,
-  updateAction,
-  setEdited,
-}: {
+type ActionTablesQueryProps = {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderTableConfiguration | null;
+  allowedVaults: VaultType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderTableConfiguration
     ) => AssistantBuilderTableConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-}) {
+};
+
+export function ActionTablesQuery({
+  owner,
+  actionConfiguration,
+  allowedVaults,
+  updateAction,
+  setEdited,
+}: ActionTablesQueryProps) {
   const [showTableModal, setShowTableModal] = useState(false);
 
   if (!actionConfiguration) {
@@ -59,6 +63,7 @@ export function ActionTablesQuery({
           });
         }}
         initialDataSourceConfigurations={actionConfiguration}
+        allowedVaults={allowedVaults}
         viewType="tables"
       />
 

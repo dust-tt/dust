@@ -1,21 +1,25 @@
-import type { AppType, DataSourceViewType } from "@dust-tt/types";
+import type { AppType, DataSourceViewType, VaultType } from "@dust-tt/types";
 import { createContext } from "react";
 
-export const AssistantBuilderContext = createContext<{
+type AssistantBuilderContextType = {
   dustApps: AppType[];
   dataSourceViews: DataSourceViewType[];
-}>({
-  dustApps: [],
-  dataSourceViews: [],
-});
+  vaults: VaultType[];
+};
+
+export const AssistantBuilderContext =
+  createContext<AssistantBuilderContextType>({
+    dustApps: [],
+    dataSourceViews: [],
+    vaults: [],
+  });
 
 export function AssistantBuilderProvider({
   dustApps,
   dataSourceViews,
+  vaults,
   children,
-}: {
-  dustApps: AppType[];
-  dataSourceViews: DataSourceViewType[];
+}: AssistantBuilderContextType & {
   children: React.ReactNode;
 }) {
   return (
@@ -23,6 +27,7 @@ export function AssistantBuilderProvider({
       value={{
         dustApps,
         dataSourceViews,
+        vaults,
       }}
     >
       {children}
