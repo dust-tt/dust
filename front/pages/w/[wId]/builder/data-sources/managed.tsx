@@ -259,6 +259,7 @@ export default function DataSourcesView({
             getRenderingConfigForConnectorProvider(
               dataSource.connectorProvider
             );
+          console.log(addDataWithConnection);
           if (addDataWithConnection) {
             setShowEditionModal(addDataWithConnection);
           } else {
@@ -430,6 +431,9 @@ export default function DataSourcesView({
               }}
               setShowEditionModal={setShowEditionModal}
               handleUpdatePermissions={handleUpdatePermissions}
+              isAdmin={isAdmin}
+              readOnly={readOnly}
+              plan={plan}
             />
             <DataSourceEditionModal
               isOpen={showEditionModal}

@@ -394,6 +394,9 @@ export const VaultResourcesList = ({
             }}
             setShowEditionModal={setShowEditionModal}
             handleUpdatePermissions={handleUpdatePermissions}
+            plan={plan}
+            readOnly={isAdmin}
+            isAdmin={isAdmin}
           />
           <DataSourceEditionModal
             isOpen={showEditionModal}

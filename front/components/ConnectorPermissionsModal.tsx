@@ -4,6 +4,7 @@ import type {
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
+  PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
@@ -11,6 +12,9 @@ import { useContext, useState } from "react";
 import * as React from "react";
 import { useSWRConfig } from "swr";
 
+import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
+import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
+import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 
 import { PermissionTree } from "./ConnectorPermissionsTree";
@@ -66,6 +70,9 @@ export function ConnectorPermissionsModal({
   onClose,
   setShowEditionModal,
   handleUpdatePermissions,
+  plan,
+  readOnly,
+  isAdmin,
 }: {
   owner: WorkspaceType;
   connector: ConnectorType;
@@ -77,6 +84,9 @@ export function ConnectorPermissionsModal({
     connector: ConnectorType,
     dataSource: DataSourceType
   ) => Promise<void>;
+  plan: PlanType;
+  readOnly: boolean;
+  isAdmin: boolean;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -178,6 +188,17 @@ export function ConnectorPermissionsModal({
             }}
           />
         </div>
+        {connector.type === "slack" && (
+          <SlackBotEnableView
+            {...{ owner, readOnly, isAdmin, dataSource, plan }}
+          />
+        )}
+        {connector.type === "github" && (
+          <GithubCodeEnableView {...{ owner, readOnly, isAdmin, dataSource }} />
+        )}
+        {connector.type === "intercom" && (
+          <IntercomConfigView {...{ owner, readOnly, isAdmin, dataSource }} />
+        )}
         <div className="flex flex-col pt-4">
           <Page.Vertical align="stretch" gap="xl">
             <Page.Header title="Make available to the workspace:" />
