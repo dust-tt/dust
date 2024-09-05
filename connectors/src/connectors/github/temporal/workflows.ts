@@ -90,7 +90,7 @@ export async function githubFullSyncWorkflow(
     pageNumber += 1;
 
     for (const repo of resultsPage) {
-      const fullSyncWorkflowId = getFullSyncWorkflowId(dataSourceConfig);
+      const fullSyncWorkflowId = getFullSyncWorkflowId(connectorId);
       const childWorkflowId = `${fullSyncWorkflowId}-repo-${repo.id}-syncCodeOnly-${syncCodeOnly}`;
       promises.push(
         queue.add(() =>
@@ -134,7 +134,7 @@ export async function githubReposSyncWorkflow(
   const promises: Promise<void>[] = [];
 
   for (const repo of repos) {
-    const reposSyncWorkflowId = getReposSyncWorkflowId(dataSourceConfig);
+    const reposSyncWorkflowId = getReposSyncWorkflowId(connectorId);
     const childWorkflowId = `${reposSyncWorkflowId}-repo-${repo.id}`;
     promises.push(
       queue.add(() =>
@@ -319,8 +319,8 @@ export async function githubRepoSyncWorkflow({
     for (;;) {
       const childWorkflowId = `${
         isFullSync
-          ? getFullSyncWorkflowId(dataSourceConfig)
-          : getReposSyncWorkflowId(dataSourceConfig)
+          ? getFullSyncWorkflowId(connectorId)
+          : getReposSyncWorkflowId(connectorId)
       }-repo-${repoId}-issues-page-${pageNumber}`;
 
       const shouldContinue = await executeChild(githubRepoIssuesSyncWorkflow, {
@@ -353,8 +353,8 @@ export async function githubRepoSyncWorkflow({
     for (;;) {
       const childWorkflowId = `${
         isFullSync
-          ? getFullSyncWorkflowId(dataSourceConfig)
-          : getReposSyncWorkflowId(dataSourceConfig)
+          ? getFullSyncWorkflowId(connectorId)
+          : getReposSyncWorkflowId(connectorId)
       }-repo-${repoId}-issues-page-${cursorIteration}`;
 
       nextCursor = await executeChild(githubRepoDiscussionsSyncWorkflow, {
