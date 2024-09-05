@@ -200,7 +200,7 @@ async function botAnswerMessage(
       },
       slackConfig.whitelistedDomains
     );
-    if (!hasChatbotAccess) {
+    if (!hasChatbotAccess.authorized) {
       return new Ok(undefined);
     }
   }
