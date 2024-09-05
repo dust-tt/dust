@@ -1,8 +1,8 @@
 import type {
   AdminCommandType,
   AdminSuccessResponseType,
+  BatchAllResponseType,
   BatchCommandType,
-  BatchRestartAllResponseType,
   ConnectorsCommandType,
   GetParentsResponseType,
   Result,
@@ -185,7 +185,7 @@ export const batch = async ({
   command,
   args,
 }: BatchCommandType): Promise<
-  AdminSuccessResponseType | BatchRestartAllResponseType
+  AdminSuccessResponseType | BatchAllResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "batch", command, args });
   switch (command) {
@@ -238,10 +238,14 @@ export const batch = async ({
       }
       return { success: true };
     }
-    case "restart-all": {
+
+    case "restart-all":
+    case "resume-all":
+    case "stop-all": {
       if (!args.provider) {
         throw new Error("Missing --provider argument");
       }
+
       const PROVIDERS_ALLOWING_RESTART = [
         "notion",
         "intercom",
@@ -250,7 +254,7 @@ export const batch = async ({
       ];
       if (!PROVIDERS_ALLOWING_RESTART.includes(args.provider)) {
         throw new Error(
-          `Can't restart-all for ${
+          `Can't ${command} for ${
             args.provider
           }. Allowed providers: ${PROVIDERS_ALLOWING_RESTART.join(" ")}`
         );
@@ -268,18 +272,22 @@ export const batch = async ({
       for (const connector of connectors) {
         promises.push(
           queue.add(async () => {
-            await throwOnError(
-              getConnectorManager({
-                connectorId: connector.id,
-                connectorProvider: connector.type,
-              }).stop()
-            );
-            await throwOnError(
-              getConnectorManager({
-                connectorId: connector.id,
-                connectorProvider: connector.type,
-              }).resume()
-            );
+            if (["restart-all", "stop-all"].includes(command)) {
+              await throwOnError(
+                getConnectorManager({
+                  connectorId: connector.id,
+                  connectorProvider: connector.type,
+                }).stop()
+              );
+            }
+            if (["restart-all", "resume-all"].includes(command)) {
+              await throwOnError(
+                getConnectorManager({
+                  connectorId: connector.id,
+                  connectorProvider: connector.type,
+                }).resume()
+              );
+            }
           })
         );
       }
@@ -288,7 +296,6 @@ export const batch = async ({
 
       const logInfo = () => {
         const completed = succeeded + failed;
-
         if (
           (completed && completed % 10 === 0) ||
           completed === connectors.length
@@ -312,6 +319,7 @@ export const batch = async ({
 
       return { succeeded, failed };
     }
+
     default:
       throw new Error("Unknown batch command: " + command);
   }
