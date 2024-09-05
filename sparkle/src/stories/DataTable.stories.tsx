@@ -140,6 +140,27 @@ const columns: ColumnDef<Data>[] = [
   },
 ];
 
+export const DataTableExample = () => {
+  const [filter, setFilter] = React.useState<string>("");
+
+  return (
+    <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
+      <Input
+        name="filter"
+        placeholder="Filter"
+        value={filter}
+        onChange={(v) => setFilter(v)}
+      />
+      <DataTable
+        data={data}
+        filter={filter}
+        filterColumn="name"
+        columns={columns}
+      />
+    </div>
+  );
+};
+
 export const DataTablePaginatedExample = () => {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
