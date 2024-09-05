@@ -210,7 +210,6 @@ export const VaultResourcesList = ({
       includeConnectorDetails: true,
     });
 
-  console.log(vaultDataSourceViews);
   const rows: RowData[] =
     vaultDataSourceViews?.map((r) => ({
       dataSourceView: r,
