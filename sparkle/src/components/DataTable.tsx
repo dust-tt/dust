@@ -14,15 +14,14 @@ import {
 } from "@tanstack/react-table";
 import React, { ReactNode, useEffect, useState } from "react";
 
-import { DropdownItemProps } from "@sparkle/components/DropdownMenu";
+import { Avatar } from "@sparkle/components/Avatar";
 import {
-  Avatar,
+  DropdownItemProps,
   DropdownMenu,
-  IconButton,
-  MoreIcon,
-  Pagination,
-} from "@sparkle/index";
-import { ArrowDownIcon, ArrowUpIcon } from "@sparkle/index";
+} from "@sparkle/components/DropdownMenu";
+import { IconButton } from "@sparkle/components/IconButton";
+import { Pagination } from "@sparkle/components/Pagination";
+import { ArrowDownIcon, ArrowUpIcon, MoreIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
