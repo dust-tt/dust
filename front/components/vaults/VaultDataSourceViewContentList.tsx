@@ -45,7 +45,7 @@ type VaultDataSourceViewContentListProps = {
   vault: VaultType;
   dataSourceView: DataSourceViewType;
   plan: PlanType;
-  isAdmin: boolean;
+  canWriteInVault: boolean;
   onSelect: (parentId: string) => void;
   owner: WorkspaceType;
   parentId?: string;
@@ -72,7 +72,7 @@ export const VaultDataSourceViewContentList = ({
   vault,
   dataSourceView,
   plan,
-  isAdmin,
+  canWriteInVault,
   onSelect,
   parentId,
 }: VaultDataSourceViewContentListProps) => {
@@ -143,7 +143,7 @@ export const VaultDataSourceViewContentList = ({
       <div
         className={classNames(
           "flex gap-2",
-          rows.length === 0 && isAdmin
+          rows.length === 0
             ? "h-36 w-full max-w-4xl items-center justify-center rounded-lg border bg-structure-50"
             : ""
         )}
@@ -186,6 +186,7 @@ export const VaultDataSourceViewContentList = ({
             <FoldersHeaderMenu
               owner={owner}
               vault={vault}
+              canWriteInVault={canWriteInVault}
               folder={dataSourceView.dataSource}
               contentActionsRef={contentActionsRef}
             />
@@ -195,6 +196,7 @@ export const VaultDataSourceViewContentList = ({
           <WebsitesHeaderMenu
             owner={owner}
             vault={vault}
+            canWriteInVault={canWriteInVault}
             dataSourceView={dataSourceView}
           />
         )}

@@ -23,6 +23,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     dataSource: DataSourceType;
     dataSourceView: DataSourceViewType;
     isAdmin: boolean;
+    canWriteInVault: boolean;
     parentId?: string;
     plan: PlanType;
   }
@@ -67,6 +68,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
+  const vault = dataSourceView.vault;
+  const canWriteInVault = vault.canWrite(auth);
+
   return {
     props: {
       category: context.query.category as DataSourceViewCategory,
@@ -74,12 +78,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       dataSourceView: dataSourceView.toJSON(),
       gaTrackingId: config.getGaTrackingId(),
       isAdmin,
+      canWriteInVault,
       owner,
       // undefined is not allowed in the JSON response
       ...(parentId && { parentId }),
       plan,
       subscription,
-      vault: dataSourceView.vault.toJSON(),
+      vault: vault.toJSON(),
     },
   };
 });
@@ -88,7 +93,7 @@ export default function Vault({
   vault,
   category,
   dataSourceView,
-  isAdmin,
+  canWriteInVault,
   owner,
   parentId,
   plan,
@@ -100,7 +105,7 @@ export default function Vault({
         owner={owner}
         vault={vault}
         plan={plan}
-        isAdmin={isAdmin}
+        canWriteInVault={canWriteInVault}
         parentId={parentId}
         dataSourceView={dataSourceView}
         onSelect={(parentId) => {

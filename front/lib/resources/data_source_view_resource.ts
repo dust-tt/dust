@@ -409,7 +409,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   // Permissions.
 
   canRead(auth: Authenticator) {
-    return auth.isAdmin() || auth.canRead([this.vault.acl()]);
+    return this.vault.canRead(auth);
   }
 
   // Serialization.
