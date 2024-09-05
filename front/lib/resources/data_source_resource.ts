@@ -79,15 +79,18 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
   }
 
   static async makeNew(
+    auth: Authenticator,
     blob: Omit<CreationAttributes<DataSource>, "vaultId">,
     vault: VaultResource
   ) {
-    const datasource = await DataSource.create({
+    const dataSource = await DataSource.create({
       ...blob,
+      editedByUserId: auth.getNonNullableUser().id,
+      editedAt: new Date(),
       vaultId: vault.id,
     });
 
-    return new this(DataSourceResource.model, datasource.get(), vault);
+    return new this(DataSourceResource.model, dataSource.get(), vault);
   }
 
   // Fetching.

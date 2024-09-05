@@ -61,15 +61,23 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   // Creation.
 
   private static async makeNew(
+    auth: Authenticator,
     blob: Omit<CreationAttributes<DataSourceViewModel>, "vaultId">,
     vault: VaultResource,
     dataSource: DataSourceResource
   ) {
-    const key = await DataSourceViewResource.model.create({
+    const dataSourceView = await DataSourceViewResource.model.create({
       ...blob,
+      editedByUserId: auth.getNonNullableUser().id,
+      editedAt: new Date(),
       vaultId: vault.id,
     });
-    const dsv = new this(DataSourceViewResource.model, key.get(), vault);
+
+    const dsv = new this(
+      DataSourceViewResource.model,
+      dataSourceView.get(),
+      vault
+    );
     dsv.ds = dataSource;
     return dsv;
   }
@@ -80,7 +88,8 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     dataSource: DataSourceResource,
     parentsIn: string[] | null
   ) {
-    const dataSourceView = await this.makeNew(
+    return this.makeNew(
+      auth,
       {
         dataSourceId: dataSource.id,
         parentsIn,
@@ -90,19 +99,17 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       vault,
       dataSource
     );
-
-    await dataSourceView.setEditedBy(auth);
-
-    return dataSourceView;
   }
 
   // This view has access to all documents, which is represented by null.
   static async createViewInVaultFromDataSourceIncludingAllDocuments(
+    auth: Authenticator,
     vault: VaultResource,
     dataSource: DataSourceResource,
     kind: DataSourceViewKind = "default"
   ) {
     return this.makeNew(
+      auth,
       {
         dataSourceId: dataSource.id,
         parentsIn: null,
