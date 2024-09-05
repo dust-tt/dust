@@ -1725,13 +1725,13 @@ async fn data_sources_documents_list(
         .list_data_source_documents(
             &project,
             &data_source_id,
-            limit_offset,
             &match view_filter {
                 Some(filter) => Some(filter.postprocess_for_data_source(&data_source_id)),
                 None => None,
             },
-            true, // remove system tags
             &document_ids,
+            limit_offset,
+            true, // remove system tags
         )
         .await
     {

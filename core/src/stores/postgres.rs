@@ -1741,10 +1741,10 @@ impl Store for PostgresStore {
         &self,
         project: &Project,
         data_source_id: &str,
-        limit_offset: Option<(usize, usize)>,
         view_filter: &Option<SearchFilter>,
-        remove_system_tags: bool,
         document_ids: &Option<Vec<String>>,
+        limit_offset: Option<(usize, usize)>,
+        remove_system_tags: bool,
     ) -> Result<(Vec<Document>, usize)> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
