@@ -14,7 +14,7 @@ import type {
 } from "@dust-tt/types";
 import { isDataSourceNameValid } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -55,6 +55,11 @@ export default function VaultFolderModal({
     name: null,
     description: null,
   });
+
+  useEffect(() => {
+    setName(folder ? folder.name : null);
+    setDescription(folder ? folder.description : null);
+  }, [folder]);
 
   const postCreateFolder = async () => {
     const res = await fetch(

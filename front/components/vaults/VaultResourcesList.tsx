@@ -333,7 +333,7 @@ export const VaultResourcesList = ({
             />
           </div>
         )}
-        {!isSystemVault && category === "managed" && (
+        {!isSystemVault && isManaged && (
           <EditVaultManagedDataSourcesViews
             owner={owner}
             vault={vault}
@@ -341,31 +341,25 @@ export const VaultResourcesList = ({
             isAdmin={isAdmin}
           />
         )}
-        {isWebsiteOrFolder(category) && (
+        {isStatic && (
           <>
-            <EditVaultStaticDataSourcesViews
+            <VaultFolderOrWebsiteModal
+              isOpen={showFolderOrWebsiteModal}
+              setOpen={setShowFolderOrWebsiteModal}
               owner={owner}
-              plan={plan}
               vault={vault}
-              category={category}
               dataSources={dataSources}
+              dataSourceView={selectedDataSourceView}
+              plan={plan}
+              category={category}
+              onClose={() => setSelectedDataSourceView(null)}
             />
             {selectedDataSourceView && (
-              <>
-                <VaultFolderOrWebsiteModal
-                  isOpen={showFolderOrWebsiteModal}
-                  setOpen={(isOpen) => setShowFolderOrWebsiteModal(isOpen)}
-                  owner={owner}
-                  vault={vault}
-                  dataSources={dataSources}
-                  dataSourceView={selectedDataSourceView}
-                />
-                <DeleteDataSourceDialog
-                  handleDelete={onDeleteFolderOrWebsite}
-                  isOpen={showDeleteConfirmDialog}
-                  setIsOpen={setShowDeleteConfirmDialog}
-                />
-              </>
+              <DeleteDataSourceDialog
+                handleDelete={onDeleteFolderOrWebsite}
+                isOpen={showDeleteConfirmDialog}
+                setIsOpen={setShowDeleteConfirmDialog}
+              />
             )}
           </>
         )}

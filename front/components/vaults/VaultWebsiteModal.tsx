@@ -67,18 +67,36 @@ export default function VaultWebsiteModal({
   webCrawlerConfiguration: WebCrawlerConfigurationType | null;
 }) {
   useEffect(() => {
-    if (webCrawlerConfiguration) {
-      setDataSourceUrl(webCrawlerConfiguration.url);
-      setMaxPages(webCrawlerConfiguration.maxPageToCrawl);
-      setMaxDepth(webCrawlerConfiguration.depth);
-      setCrawlMode(webCrawlerConfiguration.crawlMode);
-      setSelectedCrawlFrequency(webCrawlerConfiguration.crawlFrequency);
-      setHeaders(
-        Object.entries(webCrawlerConfiguration.headers).map(([key, value]) => {
-          return { key, value };
-        })
-      );
-    }
+    setDataSourceUrl(
+      webCrawlerConfiguration ? webCrawlerConfiguration.url : ""
+    );
+    setMaxPages(
+      webCrawlerConfiguration
+        ? webCrawlerConfiguration.maxPageToCrawl
+        : WEBCRAWLER_DEFAULT_CONFIGURATION.maxPageToCrawl
+    );
+    setMaxDepth(
+      webCrawlerConfiguration
+        ? webCrawlerConfiguration.depth
+        : WEBCRAWLER_DEFAULT_CONFIGURATION.depth
+    );
+    setCrawlMode(
+      webCrawlerConfiguration
+        ? webCrawlerConfiguration.crawlMode
+        : WEBCRAWLER_DEFAULT_CONFIGURATION.crawlMode
+    );
+    setSelectedCrawlFrequency(
+      webCrawlerConfiguration
+        ? webCrawlerConfiguration.crawlFrequency
+        : WEBCRAWLER_DEFAULT_CONFIGURATION.crawlFrequency
+    );
+    setHeaders(
+      webCrawlerConfiguration
+        ? Object.entries(webCrawlerConfiguration.headers).map(
+            ([key, value]) => ({ key, value })
+          )
+        : []
+    );
   }, [webCrawlerConfiguration]);
 
   const router = useRouter();
