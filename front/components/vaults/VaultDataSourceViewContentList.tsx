@@ -179,7 +179,7 @@ export const VaultDataSourceViewContentList = ({
               }}
             />
           </>
-        ) : (
+        ) : dataSourceView.category === "managed" ? (
           <div className="flex flex-col items-center gap-2 text-sm text-element-700">
             <span>No data sources were added yet.</span>
             <Button
@@ -193,6 +193,8 @@ export const VaultDataSourceViewContentList = ({
               }}
             />
           </div>
+        ) : (
+          <></>
         )}
         {isFolder(dataSourceView.dataSource) && (
           <>
