@@ -11,36 +11,23 @@ const meta = {
 export default meta;
 
 export const PaginationSM = () => {
-  return (
-    <Pagination
-      itemsCount={960}
-      maxItemsPerPage={50}
-      onButtonClick={() => {}}
-    />
-  );
+  return <Pagination rowCount={960} pageSize={50} />;
 };
 
 export const PaginationXS = () => {
   return (
-    <Pagination
-      itemsCount={960}
-      maxItemsPerPage={50}
-      size="xs"
-      showDetails={false}
-      onButtonClick={() => {}}
-    />
+    <Pagination rowCount={960} pageSize={50} size="xs" showDetails={false} />
   );
 };
 
 export const PaginationNoPageButtons = () => {
   return (
     <Pagination
-      itemsCount={960}
-      maxItemsPerPage={50}
+      rowCount={960}
+      pageSize={50}
       size="xs"
       showDetails={false}
       showPageButtons={false}
-      onButtonClick={() => {}}
     />
   );
 };

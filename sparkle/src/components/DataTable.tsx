@@ -4,7 +4,10 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
+  OnChangeFn,
+  PaginationState,
   SortingFn,
   type SortingState,
   useReactTable,
@@ -12,7 +15,6 @@ import {
 import React, { ReactNode, useEffect, useState } from "react";
 
 import { DropdownItemProps } from "@sparkle/components/DropdownMenu";
-import { PaginationProps } from "@sparkle/components/Pagination";
 import {
   Avatar,
   DropdownMenu,
@@ -37,14 +39,16 @@ interface ColumnBreakpoint {
 
 interface DataTableProps<TData extends TBaseData> {
   data: TData[];
+  totalRowCount?: number;
   columns: ColumnDef<TData, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   className?: string;
   filter?: string;
   filterColumn?: string;
+  pagination?: PaginationState;
+  setPagination?: OnChangeFn<PaginationState>;
   initialColumnOrder?: SortingState;
   columnsBreakpoints?: ColumnBreakpoint;
   sortingFn?: SortingFn<TData>;
-  paginationProps: PaginationProps;
 }
 
 function shouldRenderColumn(
@@ -59,13 +63,15 @@ function shouldRenderColumn(
 
 export function DataTable<TData extends TBaseData>({
   data,
+  totalRowCount,
   columns,
   className,
   filter,
   filterColumn,
   initialColumnOrder,
   columnsBreakpoints = {},
-  paginationProps,
+  pagination,
+  setPagination,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
   const [sorting, setSorting] = useState<SortingState>(
@@ -73,19 +79,28 @@ export function DataTable<TData extends TBaseData>({
   );
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
+  const isServerSidePagination = !!totalRowCount && totalRowCount > data.length;
+
   const table = useReactTable({
     data,
     columns,
+    rowCount: totalRowCount,
+    manualPagination: isServerSidePagination,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     onColumnFiltersChange: setColumnFilters,
     state: {
       columnFilters,
-      sorting,
-    }
+      sorting: isServerSidePagination ? undefined : sorting,
+      pagination,
+    },
+    onPaginationChange: setPagination,
   });
+
+  const { pageIndex, pageSize } = table.getState().pagination;
 
   useEffect(() => {
     if (filterColumn) {
@@ -170,11 +185,16 @@ export function DataTable<TData extends TBaseData>({
           ))}
         </DataTable.Body>
       </DataTable.Root>
-      {paginationProps && (
+      {pagination && (
         <Pagination
-          itemsCount={paginationProps.itemsCount}
-          maxItemsPerPage={paginationProps.maxItemsPerPage}
-          onButtonClick={paginationProps.onButtonClick}
+          getCanNextPage={table.getCanNextPage}
+          getCanPreviousPage={table.getCanPreviousPage}
+          nextPage={table.nextPage}
+          pageIndex={pageIndex}
+          pageSize={pageSize}
+          previousPage={table.previousPage}
+          rowCount={table.getRowCount()}
+          setPageIndex={table.setPageIndex}
         />
       )}
     </div>

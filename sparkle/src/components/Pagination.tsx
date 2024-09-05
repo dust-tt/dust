@@ -1,5 +1,4 @@
 import React, { useCallback } from "react";
-import { useState } from "react";
 
 import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
@@ -10,43 +9,87 @@ type Size = "sm" | "xs";
 
 const pagesShownInControls = 7;
 
-export interface PaginationProps {
-  itemsCount: number;
-  maxItemsPerPage: number;
-  onButtonClick: (pageNumber: number) => void;
+type BasePaginationProps = {
   size?: Size;
   showDetails?: boolean;
   showPageButtons?: boolean;
-}
+  rowCount: number;
+  pageSize: number;
+};
+
+type PaginationControls = {
+  pageIndex: number;
+  setPageIndex: (pageNumber: number) => void;
+  getCanPreviousPage: () => boolean;
+  getCanNextPage: () => boolean;
+  previousPage: () => void;
+  nextPage: () => void;
+};
+
+export type PaginationProps = BasePaginationProps & PaginationControls;
+
+const useUncontrolledPagination = (numPages: number) => {
+  const [pageIndex, setPageIndex] = React.useState(0);
+
+  const getCanNextPage = () => pageIndex < numPages - 1;
+  const getCanPreviousPage = () => pageIndex > 0;
+  const nextPage = () => setPageIndex(pageIndex + 1);
+  const previousPage = () => setPageIndex(pageIndex - 1);
+
+  return {
+    pageIndex,
+    setPageIndex,
+    getCanNextPage,
+    getCanPreviousPage,
+    nextPage,
+    previousPage,
+  };
+};
+
+const isControlled = (
+  props: PaginationControls | Record<string, unknown>
+): props is PaginationControls => {
+  return "pageIndex" in props;
+};
 
 export function Pagination({
-  itemsCount,
-  maxItemsPerPage,
-  onButtonClick,
   size = "sm",
   showDetails = true,
   showPageButtons = true,
-}: PaginationProps) {
-  const numPages = Math.ceil(itemsCount / maxItemsPerPage);
+  rowCount,
+  pageSize = 25,
+  ...controlledParams
+}: BasePaginationProps | PaginationProps) {
+  const numPages = Math.ceil(rowCount / pageSize);
+
+  const uncontrolledParams = useUncontrolledPagination(numPages);
+
+  // Use uncontrolled pagination if pageIndex is provided
+  const {
+    pageIndex,
+    setPageIndex,
+    getCanPreviousPage,
+    getCanNextPage,
+    previousPage,
+    nextPage,
+  } = isControlled(controlledParams) ? controlledParams : uncontrolledParams;
+
   const controlsAreHidden = Boolean(numPages <= 1);
-  const [currentPage, setCurrentPage] = useState(1);
-  const firstFileOnPageIndex =
-    currentPage * maxItemsPerPage - maxItemsPerPage + 1;
+  const firstFileOnPageIndex = pageIndex * pageSize + 1;
   const lastFileOnPageIndex =
-    itemsCount > currentPage * maxItemsPerPage
-      ? currentPage * maxItemsPerPage
-      : itemsCount;
+    rowCount > (pageIndex + 1) * pageSize
+      ? (pageIndex + 1) * pageSize
+      : rowCount;
 
   const onPaginationButtonClick = useCallback(
     (pageNb: number) => {
-      setCurrentPage(pageNb);
-      onButtonClick(pageNb);
+      setPageIndex(pageNb);
     },
-    [onButtonClick, setCurrentPage]
+    [pageIndex, setPageIndex]
   );
 
   const pageButtons: React.ReactNode[] = getPageButtons(
-    currentPage,
+    pageIndex,
     numPages,
     pagesShownInControls,
     onPaginationButtonClick,
@@ -67,18 +110,18 @@ export function Pagination({
           showPageButtons ? "s-gap-0" : "s-gap-2"
         )}
       >
-        <Button
-          variant="tertiary"
-          size={size === "xs" ? "xs" : "sm"}
-          label="previous"
-          labelVisible={false}
-          disabledTooltip={true}
-          disabled={currentPage === 1 ? true : false}
-          icon={ChevronLeftIcon}
-          onClick={() => {
-            onPaginationButtonClick(currentPage - 1);
-          }}
-        />
+        {getCanPreviousPage && previousPage && (
+          <Button
+            variant="tertiary"
+            size={size === "xs" ? "xs" : "sm"}
+            label="previous"
+            labelVisible={false}
+            disabledTooltip={true}
+            disabled={!getCanPreviousPage()}
+            icon={ChevronLeftIcon}
+            onClick={previousPage}
+          />
+        )}
 
         <div
           className={classNames(
@@ -90,18 +133,18 @@ export function Pagination({
           {pageButtons}
         </div>
 
-        <Button
-          variant="tertiary"
-          size={size === "xs" ? "xs" : "sm"}
-          label="next"
-          labelVisible={false}
-          disabledTooltip={true}
-          disabled={currentPage === numPages ? true : false}
-          icon={ChevronRightIcon}
-          onClick={() => {
-            onPaginationButtonClick(currentPage + 1);
-          }}
-        />
+        {getCanNextPage && nextPage && (
+          <Button
+            variant="tertiary"
+            size={size === "xs" ? "xs" : "sm"}
+            label="next"
+            labelVisible={false}
+            disabledTooltip={true}
+            disabled={!getCanNextPage()}
+            icon={ChevronRightIcon}
+            onClick={nextPage}
+          />
+        )}
       </div>
 
       <span
@@ -112,8 +155,8 @@ export function Pagination({
         )}
       >
         {controlsAreHidden
-          ? `${itemsCount} items`
-          : `Showing ${firstFileOnPageIndex}-${lastFileOnPageIndex} of ${itemsCount} items`}
+          ? `${rowCount} items`
+          : `Showing ${firstFileOnPageIndex}-${lastFileOnPageIndex} of ${rowCount} items`}
       </span>
     </div>
   );
@@ -130,10 +173,12 @@ function renderPageNumber(
       key={pageNumber}
       className={classNames(
         "s-font-semibold s-transition-colors s-duration-100",
-        currentPage === pageNumber ? "s-text-action-500" : "s-text-slate-400",
+        currentPage === pageNumber - 1
+          ? "s-text-action-500"
+          : "s-text-slate-400",
         size === "xs" ? "s-text-xs" : "s-text-sm"
       )}
-      onClick={() => onPageClick(pageNumber)}
+      onClick={() => onPageClick(pageNumber - 1)}
     >
       {pageNumber}
     </button>
@@ -174,7 +219,7 @@ function getPageButtons(
   const halfSlots = Math.floor(remainingSlots / 2);
 
   // Ensure current page is within bounds
-  currentPage = Math.max(1, Math.min(currentPage, totalPages));
+  currentPage = Math.max(0, Math.min(currentPage, totalPages - 1));
 
   pagination.push(renderPageNumber(1, currentPage, onPageClick, size)); // Always show the first page
 
