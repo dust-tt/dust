@@ -73,7 +73,7 @@ ConnectorModel.init(
     },
     dataSourceId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     lastSyncStatus: {
       type: DataTypes.STRING,
