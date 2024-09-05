@@ -21,7 +21,7 @@ const labelStyleClasses = {
 const labelColorClasses = {
   item: "s-text-element-600 dark:s-text-element-500-dark group-hover/item:s-text-action-500 group-active/item:s-text-action-700 dark:group-hover/item:s-text-action-600-dark dark:group-active/item:s-text-action-400-dark",
   action:
-    "s-text-element-800 dark:s-text-element-800-dark group-hover/item:s-border-2 group-hover/item:s-text-action-500 group-active/item:s-text-action-700 dark:group-hover/item:s-text-action-600-dark dark:group-active/item:s-text-action-400-dark",
+    "s-text-element-800 dark:s-text-element-800-dark group-hover/item:s-text-action-500 group-active/item:s-text-action-700 dark:group-hover/item:s-text-action-600-dark dark:group-active/item:s-text-action-400-dark",
   link: "s-text-element-800 dark:s-text-element-800-dark group-hover/item:s-text-action-500 group-active/item:s-text-action-700 dark:group-hover/item:s-text-action-600-dark dark:group-active/item:s-text-action-400-dark",
   warning:
     "s-text-warning-500 dark:s-text-warning-400-dark group-hover/item:s-text-warning-400 group-active/item:s-text-warning-700 dark:group-hover/item:s-text-warning-600-dark dark:group-active/item:s-text-warning-400-dark",
