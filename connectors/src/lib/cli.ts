@@ -103,9 +103,6 @@ export const connectors = async ({
   if (!args.dsId) {
     throw new Error("Missing --dsId argument");
   }
-  if (!args.dataSourceName) {
-    throw new Error("Missing --dataSourceName argument");
-  }
 
   // We retrieve by data source name as we can have multiple data source with the same provider for
   // a given workspace.

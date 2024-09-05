@@ -6,19 +6,10 @@ import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-type ConnectorDeleteReqBody = {
-  dataSourceName: string;
-  workspaceId: string;
-};
-
 type ConnectorDeleteResBody = WithConnectorsAPIErrorReponse<{ success: true }>;
 
 const _deleteConnectorAPIHandler = async (
-  req: Request<
-    { connector_id: string },
-    ConnectorDeleteResBody,
-    ConnectorDeleteReqBody
-  >,
+  req: Request<{ connector_id: string }, ConnectorDeleteResBody>,
   res: Response<ConnectorDeleteResBody>
 ) => {
   const force = req.query.force === "true";
