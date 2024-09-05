@@ -174,7 +174,7 @@ async function handler(
     const contentNodesRes = await getContentNodesForStaticDataSourceView(
       dataSourceView,
       viewType,
-      internalIds,
+      removeNulls(internalIds),
       paginationRes.value
     );
 
