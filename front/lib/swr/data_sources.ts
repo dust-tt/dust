@@ -5,6 +5,7 @@ import type { Fetcher } from "swr";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
+import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables";
 import type { GetTableResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/[tId]";
 
 export function useDataSources(
@@ -73,5 +74,30 @@ export function useDataSourceTable({
     isTableLoading: !error && !data,
     isTableError: error,
     mutateTable: mutate,
+  };
+}
+
+//TODO(GROUPS_INFRA) Deprecated, remove once all usages are removed.
+export function useDataSourceTables({
+  workspaceId,
+  dataSourceName,
+}: {
+  workspaceId: string;
+  dataSourceName: string;
+}) {
+  const tablesFetcher: Fetcher<ListTablesResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    dataSourceName
+      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/tables`
+      : null,
+    tablesFetcher
+  );
+
+  return {
+    tables: useMemo(() => (data ? data.tables : []), [data]),
+    isTablesLoading: !error && !data,
+    isTablesError: error,
+    mutateTables: mutate,
   };
 }
