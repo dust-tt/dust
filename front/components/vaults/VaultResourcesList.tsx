@@ -26,6 +26,7 @@ import type {
 import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
 import { isWebsiteOrFolder } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useContext } from "react";
 import { useRef } from "react";
@@ -48,7 +49,6 @@ import { useDataSources } from "@app/lib/swr/data_sources";
 import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
 import { setupConnection } from "@app/pages/w/[wId]/builder/data-sources/managed";
-import { useRouter } from "next/router";
 
 type RowData = {
   dataSourceView: DataSourceViewWithConnectorType;
@@ -203,10 +203,10 @@ export const VaultResourcesList = ({
     useState(false);
 
   const { dataSources, isDataSourcesLoading } = useDataSources(owner);
+  const router = useRouter();
+  const sendNotification = useContext(SendNotificationsContext);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
-  const sendNotification = useContext(SendNotificationsContext);
-  const router = useRouter();
 
   const isSystemVault = systemVault.sId === vault.sId;
   const isManaged = category === "managed";
@@ -298,35 +298,6 @@ export const VaultResourcesList = ({
       includeConnectorDetails: true,
     });
 
-  const onDeleteFolderOrWebsite = async () => {
-    if (!selectedDataSourceView) {
-      return;
-    }
-    const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${selectedDataSourceView.dataSource.name}`,
-      { method: "DELETE" }
-    );
-
-    if (res.ok) {
-      await router.push(
-        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`
-      );
-      sendNotification({
-        type: "success",
-        title: `Successfully deleted ${selectedDataSourceView.category}`,
-        description: `${getDataSourceNameFromView(selectedDataSourceView)} was successfully deleted.`,
-      });
-    } else {
-      const err: { error: APIError } = await res.json();
-      sendNotification({
-        type: "error",
-        title: `Error deleting ${selectedDataSourceView.category}`,
-        description: `Error: ${err.error.message}`,
-      });
-    }
-    return res.ok;
-  };
-
   const rows: RowData[] =
     vaultDataSourceViews?.map((r) => ({
       dataSourceView: r,
@@ -376,6 +347,35 @@ export const VaultResourcesList = ({
       </div>
     );
   }
+
+  const onDeleteFolderOrWebsite = async () => {
+    if (!selectedDataSourceView) {
+      return;
+    }
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${selectedDataSourceView.dataSource.name}`,
+      { method: "DELETE" }
+    );
+
+    if (res.ok) {
+      await router.push(
+        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`
+      );
+      sendNotification({
+        type: "success",
+        title: `Successfully deleted ${selectedDataSourceView.category}`,
+        description: `${getDataSourceNameFromView(selectedDataSourceView)} was successfully deleted.`,
+      });
+    } else {
+      const err: { error: APIError } = await res.json();
+      sendNotification({
+        type: "error",
+        title: `Error deleting ${selectedDataSourceView.category}`,
+        description: `Error: ${err.error.message}`,
+      });
+    }
+    return res.ok;
+  };
 
   return (
     <>
