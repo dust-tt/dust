@@ -1,4 +1,5 @@
 import type {
+  ConnectorProvider,
   CoreAPIDocument,
   DataSourceType,
   WithConnector,
@@ -56,4 +57,18 @@ export function isWebsite(
 
 export function isManaged(ds: DataSource): ds is DataSource & WithConnector {
   return ds.connectorProvider !== null && !isWebsite(ds);
+}
+
+const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
+  "google_drive",
+  "notion",
+  "microsoft",
+];
+
+export function supportsStructuredData(ds: DataSource): boolean {
+  return Boolean(
+    isFolder(ds) ||
+      (ds.connectorProvider &&
+        STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider))
+  );
 }
