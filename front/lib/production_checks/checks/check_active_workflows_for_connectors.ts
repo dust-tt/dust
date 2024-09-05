@@ -14,7 +14,7 @@ import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 
 interface ConnectorBlob {
   id: number;
-  dataSourceName: string;
+  dataSourceId: string;
   workspaceId: string;
   pausedAt: Date | null;
 }
@@ -46,7 +46,7 @@ const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
 
 async function listAllConnectorsForProvider(provider: ConnectorProvider) {
   const connectors: ConnectorBlob[] = await connectorsReplica.query(
-    `SELECT id, "dataSourceName", "workspaceId", "pausedAt" FROM connectors WHERE "type" = :provider and  "errorType" IS NULL`,
+    `SELECT id, "dataSourceId", "workspaceId", "pausedAt" FROM connectors WHERE "type" = :provider and  "errorType" IS NULL`,
     {
       type: QueryTypes.SELECT,
       replacements: {
@@ -108,6 +108,7 @@ export const checkActiveWorkflows: CheckFunction = async (
         missingActiveWorkflows.push({
           connectorId: connector.id,
           workspaceId: connector.workspaceId,
+          dataSourceId: connector.dataSourceId,
         });
       }
     }

@@ -9,7 +9,7 @@ interface ConnectorBlob {
   id: number;
   type: ConnectorProvider;
   createdAt: Date;
-  dataSourceName: string;
+  dataSourceId: string;
   workspaceId: string;
   pausedAt: Date | null;
   lastSyncSuccessfulTime: Date | null;
@@ -20,7 +20,7 @@ const connectorsReplica = getConnectorReplicaDbConnection();
 
 async function listAllConnectors() {
   const connectors: ConnectorBlob[] = await connectorsReplica.query(
-    `SELECT id, "dataSourceName", "workspaceId", "pausedAt", "lastSyncSuccessfulTime", "lastSyncStartTime", "createdAt", "type" FROM connectors WHERE "errorType" IS NULL AND "pausedAt" IS NULL AND "type" <> 'webcrawler'`,
+    `SELECT id, "dataSourceId", "workspaceId", "pausedAt", "lastSyncSuccessfulTime", "lastSyncStartTime", "createdAt", "type" FROM connectors WHERE "errorType" IS NULL AND "pausedAt" IS NULL AND "type" <> 'webcrawler'`,
     {
       type: QueryTypes.SELECT,
     }
@@ -77,6 +77,7 @@ export const checkConnectorsLastSyncSuccess: CheckFunction = async (
         provider: connector.type,
         connectorId: connector.id,
         workspaceId: connector.workspaceId,
+        dataSourceId: connector.dataSourceId,
         createdAt: connector.createdAt,
         lastSyncSuccessfulTime: connector.lastSyncSuccessfulTime,
       });
