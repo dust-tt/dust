@@ -1,48 +1,68 @@
 import { Button, PlusIcon, Popup } from "@dust-tt/sparkle";
 import type {
   DataSourceType,
+  DataSourceViewWithConnectorType,
   PlanType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isWebCrawlerConfiguration } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React, { useCallback, useState } from "react";
 
 import VaultFolderModal from "@app/components/vaults/VaultFolderModal";
 import VaultWebsiteModal from "@app/components/vaults/VaultWebsiteModal";
+import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
 
-export function EditVaultStaticDataSourcesViews({
+interface EditVaultStaticDatasourcesViewsProps {
+  owner: WorkspaceType;
+  isOpen: boolean;
+  setOpen: (isOpen: boolean) => void;
+  plan: PlanType;
+  vault: VaultType;
+  dataSources: DataSourceType[];
+  dataSourceView: DataSourceViewWithConnectorType | null;
+  category: "folder" | "website";
+  onClose: () => void;
+}
+
+export function EditVaultStaticDatasourcesViews({
   owner,
   plan,
   vault,
-  category,
+  isOpen,
+  setOpen,
   dataSources,
-}: {
-  owner: WorkspaceType;
-  plan: PlanType;
-  vault: VaultType;
-  category: "folder" | "website";
-  dataSources: DataSourceType[];
-}) {
+  dataSourceView,
+  category,
+  onClose,
+}: EditVaultStaticDatasourcesViewsProps) {
   const router = useRouter();
-  const [showAddFolderModal, setShowAddFolderModal] = useState(false);
-  const [showAddWebsiteModal, setShowAddWebsiteModal] = useState(false);
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
 
+  const { configuration } = useDataSourceViewConnectorConfiguration({
+    dataSourceView: category === "website" ? dataSourceView : null,
+    owner,
+  });
+
   const planDataSourcesLimit = plan.limits.dataSources.count;
+
   const checkLimitsAndOpenModal = useCallback(() => {
     if (
-      planDataSourcesLimit != -1 &&
+      planDataSourcesLimit !== -1 &&
       dataSources.length >= planDataSourcesLimit
     ) {
       setShowDatasourceLimitPopup(true);
-    } else if (category === "folder") {
-      setShowAddFolderModal(true);
-    } else if (category === "website") {
-      setShowAddWebsiteModal(true);
+    } else {
+      setOpen(true);
     }
-  }, [category, dataSources, planDataSourcesLimit]);
+  }, [dataSources.length, planDataSourcesLimit, setOpen]);
+
+  const handleClose = () => {
+    setOpen(false);
+    onClose();
+  };
 
   return (
     <>
@@ -59,32 +79,33 @@ export function EditVaultStaticDataSourcesViews({
         }}
         className="absolute bottom-8 right-0"
       />
-      <VaultFolderModal
-        isOpen={showAddFolderModal}
-        setOpen={(isOpen) => {
-          setShowAddFolderModal(isOpen);
-        }}
-        owner={owner}
-        vault={vault}
-        dataSources={dataSources}
-        folder={null} // null for a folder creation.
-      />
-      <VaultWebsiteModal
-        isOpen={showAddWebsiteModal}
-        setOpen={(isOpen) => {
-          setShowAddWebsiteModal(isOpen);
-        }}
-        owner={owner}
-        vault={vault}
-        dataSources={dataSources}
-        dataSourceView={null} // null for a website creation.
-        webCrawlerConfiguration={null} // null for a website creation.
-      />
+      {category === "folder" ? (
+        <VaultFolderModal
+          isOpen={isOpen}
+          setOpen={handleClose}
+          owner={owner}
+          vault={vault}
+          dataSources={dataSources}
+          folder={dataSourceView?.dataSource ?? null}
+        />
+      ) : category === "website" ? (
+        <VaultWebsiteModal
+          isOpen={isOpen}
+          setOpen={handleClose}
+          owner={owner}
+          vault={vault}
+          dataSources={dataSources}
+          dataSourceView={dataSourceView}
+          webCrawlerConfiguration={
+            configuration && isWebCrawlerConfiguration(configuration)
+              ? configuration
+              : null
+          }
+        />
+      ) : null}
       <Button
         label={category === "folder" ? "Add folder" : "Add website"}
-        onClick={async () => {
-          await checkLimitsAndOpenModal();
-        }}
+        onClick={checkLimitsAndOpenModal}
         icon={PlusIcon}
       />
     </>

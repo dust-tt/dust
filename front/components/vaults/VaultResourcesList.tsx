@@ -33,8 +33,7 @@ import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSo
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
-import { EditVaultStaticDataSourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
-import { VaultFolderOrWebsiteModal } from "@app/components/vaults/VaultFolderOrWebsiteModal";
+import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
 import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
@@ -343,7 +342,7 @@ export const VaultResourcesList = ({
         )}
         {isStatic && (
           <>
-            <VaultFolderOrWebsiteModal
+            <EditVaultStaticDatasourcesViews
               isOpen={showFolderOrWebsiteModal}
               setOpen={setShowFolderOrWebsiteModal}
               owner={owner}
