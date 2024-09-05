@@ -2,8 +2,8 @@ import { ConnectorsAPI } from "@dust-tt/types";
 import { QueryTypes } from "sequelize";
 
 import config from "@app/lib/api/config";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import { getConnectorReplicaDbConnection } from "@app/lib/production_checks/utils";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import logger from "@app/logger/logger";
 
 async function main() {

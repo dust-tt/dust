@@ -36,8 +36,8 @@ export const FoldersHeaderMenu = ({
     <>
       <VaultFolderModal
         isOpen={showEditFolderModal}
-        setOpen={(isOpen) => {
-          setShowEditFolderModal(isOpen);
+        onClose={() => {
+          setShowEditFolderModal(false);
         }}
         owner={owner}
         vault={vault}
