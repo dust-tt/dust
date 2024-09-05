@@ -13,3 +13,9 @@ export const ContentNodesViewTypeCodec = t.union([
 ]);
 
 export type ContentNodesViewType = t.TypeOf<typeof ContentNodesViewTypeCodec>;
+
+export function isValidContentNodesViewType(
+  value: unknown
+): value is ContentNodesViewType {
+  return value === "documents" || value === "tables";
+}
