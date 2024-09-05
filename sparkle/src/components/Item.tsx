@@ -109,8 +109,6 @@ export function Item({
 
   const targetProps = target ? { target } : {};
 
-  console.log(">>> disabled:", disabled, label);
-
   return (
     <Link
       className={classNames(
