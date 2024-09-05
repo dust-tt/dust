@@ -16,6 +16,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { isValidContentNodesViewType } from "@dust-tt/types";
+import PlusIcon from "@heroicons/react/20/solid/esm/PlusIcon";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useRef, useState } from "react";
 
@@ -167,7 +168,7 @@ export const VaultDataSourceViewContentList = ({
             : ""
         )}
       >
-        {rows.length > 0 && (
+        {rows.length > 0 ? (
           <>
             <Searchbar
               name="search"
@@ -178,6 +179,20 @@ export const VaultDataSourceViewContentList = ({
               }}
             />
           </>
+        ) : (
+          <div className="flex flex-col items-center gap-2 text-sm text-element-700">
+            <span>No data sources were added yet.</span>
+            <Button
+              variant="primary"
+              icon={PlusIcon}
+              label="Add data"
+              onClick={() => {
+                void router.push(
+                  `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${dataSourceView.category}`
+                );
+              }}
+            />
+          </div>
         )}
         {isFolder(dataSourceView.dataSource) && (
           <>
