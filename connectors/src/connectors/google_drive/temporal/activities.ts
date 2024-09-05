@@ -159,7 +159,7 @@ export async function syncFiles(
   logger.info(
     {
       connectorId,
-      dataSourceId: dataSourceConfig.dataSourceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
     },
     `[SyncFiles] Start sync.`
   );
@@ -244,7 +244,7 @@ export async function syncFiles(
   logger.info(
     {
       connectorId,
-      dataSourceId: dataSourceConfig.dataSourceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
       folderId: driveFolderId,
       count: filesToSync.length,
     },
@@ -276,7 +276,7 @@ export async function syncFiles(
   logger.info(
     {
       connectorId,
-      dataSourceId: dataSourceConfig.dataSourceId,
+      dataSourceName: dataSourceConfig.dataSourceName,
       folderId: driveFolderId,
       count,
     },

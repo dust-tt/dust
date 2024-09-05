@@ -54,6 +54,7 @@ const _createConnectorAPIHandler = async (
     const {
       workspaceId,
       workspaceAPIKey,
+      dataSourceName,
       dataSourceId,
       connectionId,
       configuration,
@@ -82,6 +83,7 @@ const _createConnectorAPIHandler = async (
             dataSourceConfig: {
               workspaceId,
               dataSourceId,
+              dataSourceName,
               workspaceAPIKey,
             },
             connectionId,
@@ -112,6 +114,7 @@ const _createConnectorAPIHandler = async (
               workspaceId,
               workspaceAPIKey,
               dataSourceId,
+              dataSourceName,
             },
             connectionId,
           },
@@ -132,6 +135,7 @@ const _createConnectorAPIHandler = async (
               workspaceId,
               workspaceAPIKey,
               dataSourceId,
+              dataSourceName,
             },
             connectionId,
             configuration: null,

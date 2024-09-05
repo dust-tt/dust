@@ -87,14 +87,14 @@ export const google_drive = async ({
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
-      if (!args.dsId) {
-        throw new Error("Missing --dsId argument");
+      if (!args.dataSourceName) {
+        throw new Error("Missing --dataSourceName argument");
       }
 
       const connector = await ConnectorModel.findOne({
         where: {
           workspaceId: `${args.wId}`,
-          dataSourceId: args.dsId,
+          dataSourceName: args.dataSourceName,
           type: "google_drive",
         },
       });
@@ -130,8 +130,8 @@ export const google_drive = async ({
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
-      if (!args.dsId) {
-        throw new Error("Missing --dsId argument");
+      if (!args.dataSourceName) {
+        throw new Error("Missing --dataSourceName argument");
       }
       if (!args.fileId) {
         throw new Error("Missing --fileId argument");
@@ -140,7 +140,7 @@ export const google_drive = async ({
       const connector = await ConnectorModel.findOne({
         where: {
           workspaceId: `${args.wId}`,
-          dataSourceId: args.dsId,
+          dataSourceName: args.dataSourceName,
         },
       });
       if (!connector) {

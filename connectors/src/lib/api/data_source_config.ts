@@ -11,6 +11,7 @@ export function dataSourceConfigFromConnector(
 ): DataSourceConfig {
   return {
     workspaceAPIKey: connector.workspaceAPIKey,
+    dataSourceName: connector.dataSourceName,
     dataSourceId: connector.dataSourceId,
     workspaceId: connector.workspaceId,
   };
@@ -21,6 +22,7 @@ export function dataSourceInfoFromConnector(
   connector: ConnectorResource | ConnectorModel
 ): DataSourceInfo {
   return {
+    dataSourceName: connector.dataSourceName,
     dataSourceId: connector.dataSourceId,
     workspaceId: connector.workspaceId,
   };

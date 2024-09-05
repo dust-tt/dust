@@ -4,8 +4,6 @@ import type {
 } from "@notionhq/client/build/src/api-endpoints";
 import * as t from "io-ts";
 
-import { ModelId } from "../shared/model_id";
-
 // notion SDK types
 export type PageObjectProperties = PageObjectResponse["properties"];
 export type PropertyKeys = keyof PageObjectProperties;
@@ -13,14 +11,14 @@ export type PropertyTypes = PageObjectProperties[PropertyKeys]["type"];
 export type NotionGarbageCollectionMode = "always" | "never";
 
 export function getNotionWorkflowId(
-  connectorId: ModelId,
+  dataSourceInfo: { workspaceId: string; dataSourceName: string },
   gargbageCollectionMode: NotionGarbageCollectionMode
 ) {
-  let wfName = `workflow-notion-${connectorId}`;
+  let wfName = "workflow-notion";
   if (gargbageCollectionMode === "always") {
     wfName += "-garbage-collector";
   }
-  return wfName;
+  return `${wfName}-${dataSourceInfo.workspaceId}-${dataSourceInfo.dataSourceName}`;
 }
 
 // Extractor types

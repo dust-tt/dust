@@ -116,11 +116,11 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
   static async findByDataSource(dataSource: {
     workspaceId: string;
-    dataSourceId: string;
+    dataSourceName: string;
   }) {
     const where: WhereOptions<ConnectorModel> = {
       workspaceId: dataSource.workspaceId,
-      dataSourceId: dataSource.dataSourceId,
+      dataSourceName: dataSource.dataSourceName,
     };
 
     const blob = await ConnectorResource.model.findOne({
@@ -206,7 +206,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       type: this.type,
       connectionId: this.connectionId,
       workspaceId: this.workspaceId,
-      dataSourceId: this.dataSourceId,
+      dataSourceName: this.dataSourceName,
       lastSyncStatus: this.lastSyncStatus,
       lastSyncStartTime: this.lastSyncStartTime?.getTime(),
       lastSyncFinishTime: this.lastSyncFinishTime?.getTime(),

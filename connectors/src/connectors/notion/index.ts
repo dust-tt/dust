@@ -83,6 +83,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceId: dataSourceConfig.dataSourceId,
+          dataSourceName: dataSourceConfig.dataSourceName,
         },
         {}
       );
@@ -97,7 +98,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       logger.error(
         {
           workspaceId: dataSourceConfig.workspaceId,
-          dataSourceId: dataSourceConfig.dataSourceId,
+          dataSourceName: dataSourceConfig.dataSourceName,
           error: e,
         },
         "Error launching notion sync workflow."
@@ -182,7 +183,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         logger.error(
           {
             workspaceId: dataSourceConfig.workspaceId,
-            dataSourceId: dataSourceConfig.dataSourceId,
+            dataSourceName: dataSourceConfig.dataSourceName,
             error: e,
           },
           "Error launching notion sync workflow post update."
@@ -253,7 +254,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       logger.error(
         {
           workspaceId: dataSourceConfig.workspaceId,
-          dataSourceId: dataSourceConfig.dataSourceId,
+          dataSourceName: dataSourceConfig.dataSourceName,
           error: e,
         },
         "Error launching notion sync workflow."
@@ -366,7 +367,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         {
           connectorId: this.connectorId,
           workspaceId: connector.workspaceId,
-          dataSourceId: connector.dataSourceId,
+          dataSourceName: connector.dataSourceName,
           e,
         },
         "Error stopping notion sync workflow."
@@ -389,7 +390,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         {
           connectorId: this.connectorId,
           workspaceId: connector.workspaceId,
-          dataSourceId: connector.dataSourceId,
+          dataSourceName: connector.dataSourceName,
           error: e,
         },
         "Error launching notion sync workflow."

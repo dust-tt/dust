@@ -70,6 +70,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceId: dataSourceConfig.dataSourceId,
+        dataSourceName: dataSourceConfig.dataSourceName,
       },
       {
         slackTeamId: teamInfo.team.id,

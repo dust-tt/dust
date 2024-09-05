@@ -178,13 +178,12 @@ export async function syncOneFile({
     ];
 
     result = await handleCsvFile({
+      dataSourceConfig,
       data,
       tableId: documentId,
       fileName: file.name || "",
       localLogger,
       maxDocumentLen,
-      dataSourceConfig,
-      provider: "microsoft",
       connectorId,
       parents,
     });

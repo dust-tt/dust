@@ -127,6 +127,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceId: dataSourceConfig.dataSourceId,
+        dataSourceName: dataSourceConfig.dataSourceName,
       },
       googleDriveConfigurationBlob
     );

@@ -13,6 +13,7 @@ import { NotionConnectorState } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { DataSourceInfo } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -39,7 +40,7 @@ export async function launchNotionSyncWorkflow(
     );
   }
 
-  const workflow = await getNotionWorkflow(connectorId, "never");
+  const workflow = await getNotionWorkflow(dataSourceConfig, "never");
 
   if (workflow && workflow.executionDescription.status.name === "RUNNING") {
     logger.warn(
@@ -61,7 +62,7 @@ export async function launchNotionSyncWorkflow(
       },
     ],
     taskQueue: QUEUE_NAME,
-    workflowId: getNotionWorkflowId(connectorId, "never"),
+    workflowId: getNotionWorkflowId(dataSourceConfig, "never"),
     searchAttributes: {
       connectorId: [connectorId],
     },
@@ -88,7 +89,7 @@ export async function launchNotionGarbageCollectorWorkflow(
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const workflow = await getNotionWorkflow(connectorId, "always");
+  const workflow = await getNotionWorkflow(dataSourceConfig, "always");
 
   if (workflow && workflow.executionDescription.status.name === "RUNNING") {
     logger.warn(
@@ -110,7 +111,7 @@ export async function launchNotionGarbageCollectorWorkflow(
       },
     ],
     taskQueue: QUEUE_NAME,
-    workflowId: getNotionWorkflowId(connectorId, "always"),
+    workflowId: getNotionWorkflowId(dataSourceConfig, "always"),
     searchAttributes: {
       connectorId: [connectorId],
     },
@@ -145,7 +146,7 @@ export async function stopNotionSyncWorkflow(
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const workflow = await getNotionWorkflow(connectorId, "never");
+  const workflow = await getNotionWorkflow(dataSourceConfig, "never");
 
   if (!workflow) {
     logger.warn(
@@ -192,7 +193,7 @@ export async function stopNotionGarbageCollectorWorkflow(
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const workflow = await getNotionWorkflow(connectorId, "always");
+  const workflow = await getNotionWorkflow(dataSourceConfig, "always");
 
   if (!workflow) {
     logger.warn(
@@ -229,8 +230,8 @@ export async function stopNotionGarbageCollectorWorkflow(
   );
 }
 
-async function getNotionWorkflow(
-  connectorId: ModelId,
+export async function getNotionWorkflow(
+  dataSourceInfo: DataSourceInfo,
   gargbageCollectionMode: NotionGarbageCollectionMode
 ): Promise<{
   executionDescription: WorkflowExecutionDescription;
@@ -240,7 +241,7 @@ async function getNotionWorkflow(
 
   const handle: WorkflowHandle<typeof notionSyncWorkflow> =
     client.workflow.getHandle(
-      getNotionWorkflowId(connectorId, gargbageCollectionMode)
+      getNotionWorkflowId(dataSourceInfo, gargbageCollectionMode)
     );
   try {
     return { executionDescription: await handle.describe(), handle };

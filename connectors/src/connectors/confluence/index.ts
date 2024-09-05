@@ -91,6 +91,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceId: dataSourceConfig.dataSourceId,
+          dataSourceName: dataSourceConfig.dataSourceName,
         },
         confluenceConfigurationBlob
       );

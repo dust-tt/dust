@@ -30,7 +30,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
 
     return {
       redirect: {
-        destination: `/poke/${connector.workspaceId}/data_sources/${connector.dataSourceId}`,
+        destination: `/poke/${connector.workspaceId}/data_sources/${connector.dataSourceName}`,
         permanent: false,
       },
     };
