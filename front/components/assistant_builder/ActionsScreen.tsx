@@ -668,23 +668,18 @@ function ActionConfigEditor({
 }: ActionConfigEditorProps) {
   const { vaults } = useContext(AssistantBuilderContext);
 
-  // Only allow global + one regular across all actions (weird product decision that we will fix later)
+  // Only allow one vault across all actions
   const allowedVaults = useMemo(() => {
-    const usedRegularVaultsInOtherActions = vaults.reduce((acc, v) => {
-      if (v.kind !== "regular") {
-        return acc;
-      } else {
-        return (vaultsUsedInActions[v.sId] ?? []).some((a) => a !== action)
-          ? acc.concat(v)
-          : acc;
-      }
+    const usedVaultsInOtherActions = vaults.reduce((acc, v) => {
+      return (vaultsUsedInActions[v.sId] ?? []).some((a) => a !== action)
+        ? acc.concat(v)
+        : acc;
     }, [] as VaultType[]);
 
     return vaults.filter(
       (vault) =>
-        vault.kind === "global" ||
-        usedRegularVaultsInOtherActions.length == 0 ||
-        usedRegularVaultsInOtherActions.find((v) => v.sId === vault.sId)
+        usedVaultsInOtherActions.length == 0 ||
+        usedVaultsInOtherActions.find((v) => v.sId === vault.sId)
     );
   }, [action, vaults, vaultsUsedInActions]);
 

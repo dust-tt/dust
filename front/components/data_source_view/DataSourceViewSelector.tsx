@@ -147,7 +147,7 @@ function VaultSelector({
                 value={selectedVault}
                 onChange={() => setSelectedVault(vaultId)}
               />
-              {selectedVault == vaultId && (
+              {selectedVault === vaultId && (
                 <DataSourceViewsSelector
                   owner={owner}
                   dataSourceViews={dataSourceViewsByVaultId[selectedVault]}
@@ -264,7 +264,7 @@ export function DataSourceViewsSelector({
         {groupFolders && (
           <Tree.Item
             key="folders"
-            label="Files"
+            label="Folders"
             visual={FolderIcon}
             type="node"
           >
@@ -357,6 +357,10 @@ function DataSourceViewSelector({
       ? "partial"
       : "unchecked";
 
+  // If the user has multiples vaults, they can choose to only select one vault per tool
+  // It's forced in the UI because it's a radio button
+  // However, when they select something in another vault, the previous selections will not be removed automatically
+  // This function is used to remove the all the previous selections that do not match the passed selection's vault
   const keepOnlyOneVaultIfApplicable = useCallback(
     (config: DataSourceViewSelectionConfigurations) => {
       if (ONLY_ONE_VAULT_PER_SELECTION) {

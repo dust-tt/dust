@@ -125,7 +125,6 @@ async function getRetrievalActionConfiguration(
     action.query !== "none"
       ? getDefaultRetrievalSearchActionConfiguration()
       : getDefaultRetrievalExhaustiveActionConfiguration();
-
   if (
     action.relativeTimeFrame !== "auto" &&
     action.relativeTimeFrame !== "none"
