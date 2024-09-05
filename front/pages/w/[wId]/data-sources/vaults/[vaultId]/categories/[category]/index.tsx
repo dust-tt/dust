@@ -22,7 +22,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     dustClientFacingUrl: string;
     isAdmin: boolean;
     isBuilder: boolean;
-    canWrite: boolean;
+    canWriteInVault: boolean;
     vault: VaultType;
     systemVault: VaultType;
     plan: PlanType;
@@ -50,7 +50,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   }
   const isAdmin = auth.isAdmin();
   const isBuilder = auth.isBuilder();
-  const canWrite = vault.canWrite(auth);
+  const canWriteInVault = vault.canWrite(auth);
 
   return {
     props: {
@@ -59,7 +59,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       gaTrackingId: config.getGaTrackingId(),
       isAdmin,
       isBuilder,
-      canWrite,
+      canWriteInVault,
       owner,
       plan,
       subscription,
@@ -74,7 +74,7 @@ export default function Vault({
   dustClientFacingUrl,
   isAdmin,
   isBuilder,
-  canWrite,
+  canWriteInVault,
   owner,
   plan,
   vault,
@@ -99,7 +99,7 @@ export default function Vault({
           vault={vault}
           systemVault={systemVault}
           isAdmin={isAdmin}
-          canWrite={canWrite}
+          canWriteInVault={canWriteInVault}
           category={category}
           onSelect={(sId) => {
             void router.push(

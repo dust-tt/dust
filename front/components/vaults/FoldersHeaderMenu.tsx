@@ -19,7 +19,7 @@ import { useDataSources } from "@app/lib/swr/data_sources";
 type FoldersHeaderMenuProps = {
   owner: WorkspaceType;
   vault: VaultType;
-  canWrite: boolean;
+  canWriteInVault: boolean;
   folder: DataSourceType;
   contentActionsRef: RefObject<ContentActionsRef>;
 };
@@ -27,16 +27,16 @@ type FoldersHeaderMenuProps = {
 export const FoldersHeaderMenu = ({
   owner,
   vault,
-  canWrite,
+  canWriteInVault,
   folder,
   contentActionsRef,
 }: FoldersHeaderMenuProps) => {
   return (
     <>
-      {canWrite ? (
+      {canWriteInVault ? (
         <AddDataDropDownButton
           contentActionsRef={contentActionsRef}
-          canWrite={canWrite}
+          canWriteInVault={canWriteInVault}
         />
       ) : (
         <Tooltip
@@ -49,16 +49,16 @@ export const FoldersHeaderMenu = ({
         >
           <AddDataDropDownButton
             contentActionsRef={contentActionsRef}
-            canWrite={canWrite}
+            canWriteInVault={canWriteInVault}
           />
         </Tooltip>
       )}
-      {canWrite ? (
+      {canWriteInVault ? (
         <EditFolderButton
           owner={owner}
           vault={vault}
           folder={folder}
-          canWrite={canWrite}
+          canWriteInVault={canWriteInVault}
         />
       ) : (
         <Tooltip
@@ -73,7 +73,7 @@ export const FoldersHeaderMenu = ({
             owner={owner}
             vault={vault}
             folder={folder}
-            canWrite={canWrite}
+            canWriteInVault={canWriteInVault}
           />
         </Tooltip>
       )}
@@ -83,10 +83,10 @@ export const FoldersHeaderMenu = ({
 
 const AddDataDropDownButton = ({
   contentActionsRef,
-  canWrite,
+  canWriteInVault,
 }: {
   contentActionsRef: RefObject<ContentActionsRef>;
-  canWrite: boolean;
+  canWriteInVault: boolean;
 }) => {
   return (
     <DropdownMenu>
@@ -97,7 +97,7 @@ const AddDataDropDownButton = ({
           icon={PlusIcon}
           variant="primary"
           type="menu"
-          disabled={!canWrite}
+          disabled={!canWriteInVault}
         />
       </DropdownMenu.Button>
 
@@ -132,12 +132,12 @@ const EditFolderButton = ({
   owner,
   vault,
   folder,
-  canWrite,
+  canWriteInVault,
 }: {
   owner: WorkspaceType;
   vault: VaultType;
   folder: DataSourceType;
-  canWrite: boolean;
+  canWriteInVault: boolean;
 }) => {
   const { dataSources } = useDataSources(owner);
   const [showEditFolderModal, setShowEditFolderModal] = useState(false);
@@ -161,7 +161,7 @@ const EditFolderButton = ({
         onClick={() => {
           setShowEditFolderModal(true);
         }}
-        disabled={!canWrite}
+        disabled={!canWriteInVault}
       />
     </>
   );

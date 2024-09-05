@@ -45,7 +45,7 @@ type VaultDataSourceViewContentListProps = {
   vault: VaultType;
   dataSourceView: DataSourceViewType;
   plan: PlanType;
-  canWrite: boolean;
+  canWriteInVault: boolean;
   onSelect: (parentId: string) => void;
   owner: WorkspaceType;
   parentId?: string;
@@ -72,7 +72,7 @@ export const VaultDataSourceViewContentList = ({
   vault,
   dataSourceView,
   plan,
-  canWrite,
+  canWriteInVault,
   onSelect,
   parentId,
 }: VaultDataSourceViewContentListProps) => {
@@ -186,7 +186,7 @@ export const VaultDataSourceViewContentList = ({
             <FoldersHeaderMenu
               owner={owner}
               vault={vault}
-              canWrite={canWrite}
+              canWriteInVault={canWriteInVault}
               folder={dataSourceView.dataSource}
               contentActionsRef={contentActionsRef}
             />
@@ -196,7 +196,7 @@ export const VaultDataSourceViewContentList = ({
           <WebsitesHeaderMenu
             owner={owner}
             vault={vault}
-            canWrite={canWrite}
+            canWriteInVault={canWriteInVault}
             dataSourceView={dataSourceView}
           />
         )}
