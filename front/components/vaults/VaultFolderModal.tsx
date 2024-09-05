@@ -22,14 +22,14 @@ import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vau
 
 export default function VaultFolderModal({
   isOpen,
-  setOpen,
+  onClose,
   owner,
   vault,
   dataSources,
   folder,
 }: {
   isOpen: boolean;
-  setOpen: (isOpen: boolean) => void;
+  onClose: () => void;
   owner: WorkspaceType;
   vault: VaultType;
   dataSources: DataSourceType[];
@@ -76,7 +76,7 @@ export default function VaultFolderModal({
       }
     );
     if (res.ok) {
-      onClose();
+      handleOnClose();
       const response: PostVaultDataSourceResponseBody = await res.json();
       const { dataSourceView } = response;
       await router.push(
@@ -112,7 +112,7 @@ export default function VaultFolderModal({
       }
     );
     if (res.ok) {
-      onClose();
+      handleOnClose();
       sendNotification({
         type: "success",
         title: "Successfully updated folder",
@@ -175,7 +175,7 @@ export default function VaultFolderModal({
       }
     );
     if (res.ok) {
-      onClose();
+      handleOnClose();
       await router.push(
         `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/folder`
       );
@@ -194,8 +194,8 @@ export default function VaultFolderModal({
     }
   };
 
-  const onClose = () => {
-    setOpen(false);
+  const handleOnClose = () => {
+    onClose();
     setName(defaultName);
     setDescription(defaultDescription);
   };
@@ -264,7 +264,7 @@ export default function VaultFolderModal({
                 <DeleteDataSourceDialog
                   handleDelete={onDeleteFolder}
                   isOpen={showDeleteConfirmDialog}
-                  setIsOpen={setShowDeleteConfirmDialog}
+                  onClose={onClose}
                 />
                 <Button
                   size="sm"

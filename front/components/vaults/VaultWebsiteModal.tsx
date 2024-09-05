@@ -51,7 +51,7 @@ const WEBSITE_CAT: DataSourceViewCategory = "website";
 // this should be refactored to use the new design.
 export default function VaultWebsiteModal({
   isOpen,
-  setOpen,
+  onClose,
   owner,
   dataSources,
   vault,
@@ -59,7 +59,7 @@ export default function VaultWebsiteModal({
   webCrawlerConfiguration,
 }: {
   isOpen: boolean;
-  setOpen: (isOpen: boolean) => void;
+  onClose: () => void;
   owner: WorkspaceType;
   vault: VaultType;
   dataSources: DataSourceType[];
@@ -90,6 +90,8 @@ export default function VaultWebsiteModal({
         ? webCrawlerConfiguration.crawlFrequency
         : WEBCRAWLER_DEFAULT_CONFIGURATION.crawlFrequency
     );
+    setDataSourceName(dataSourceView ? dataSourceView.dataSource.name : "");
+    console.log(dataSourceView);
     setHeaders(
       webCrawlerConfiguration
         ? Object.entries(webCrawlerConfiguration.headers).map(
@@ -97,7 +99,7 @@ export default function VaultWebsiteModal({
           )
         : []
     );
-  }, [webCrawlerConfiguration]);
+  }, [dataSourceView, webCrawlerConfiguration]);
 
   const router = useRouter();
   const sendNotification = React.useContext(SendNotificationsContext);
@@ -113,11 +115,8 @@ export default function VaultWebsiteModal({
 
   // TODO(DATASOURCE_SID): Move to dataSourceId = ... dataSourceView.dataSource.sId
   const dsName = dataSourceView ? dataSourceView.dataSource.name : null;
-  const defaultDataSourceName = dataSourceView
-    ? dataSourceView.dataSource.name
-    : "";
 
-  const [dataSourceName, setDataSourceName] = useState(defaultDataSourceName);
+  const [dataSourceName, setDataSourceName] = useState("");
   const [dataSourceNameError, setDataSourceNameError] = useState<string | null>(
     null
   );
@@ -167,6 +166,7 @@ export default function VaultWebsiteModal({
   }, [dataSourceUrl, dataSourceView]);
 
   const validateForm = useCallback(() => {
+    console.log(dataSourceView);
     let urlError = null;
     let nameError = null;
 
@@ -196,7 +196,7 @@ export default function VaultWebsiteModal({
     setDataSourceUrlError(urlError);
     setDataSourceNameError(nameError);
     return !urlError && !nameError;
-  }, [dataSourceName, dsName, dataSources, dataSourceUrl]);
+  }, [dataSourceView, dataSourceUrl, dataSources, dataSourceName, dsName]);
 
   useEffect(() => {
     if (isSubmitted) {
@@ -246,7 +246,7 @@ export default function VaultWebsiteModal({
         }
       );
       if (res.ok) {
-        setOpen(false);
+        onClose();
         sendNotification({
           title: "Website created",
           type: "success",
@@ -297,7 +297,7 @@ export default function VaultWebsiteModal({
         }
       );
       if (res.ok) {
-        setOpen(false);
+        onClose();
         setIsSaving(false);
         sendNotification({
           title: "Website updated",
@@ -348,9 +348,7 @@ export default function VaultWebsiteModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={() => {
-        setOpen(false);
-      }}
+      onClose={onClose}
       onSave={() => {
         setIsSubmitted(true);
         if (!isSaving) {
@@ -594,7 +592,7 @@ export default function VaultWebsiteModal({
                 )}
                 <Input
                   placeholder=""
-                  value={defaultDataSourceName}
+                  value={dataSourceName}
                   onChange={(value) => setDataSourceName(value)}
                   error={dataSourceNameError}
                   name="dataSourceName"
@@ -625,7 +623,7 @@ export default function VaultWebsiteModal({
                     <DeleteDataSourceDialog
                       handleDelete={handleDelete}
                       isOpen={isDeleteModalOpen}
-                      setIsOpen={setIsDeleteModalOpen}
+                      onClose={() => setIsDeleteModalOpen(false)}
                     />
                   </>
                 )}

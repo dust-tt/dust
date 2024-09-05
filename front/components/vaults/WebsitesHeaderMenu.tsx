@@ -40,8 +40,8 @@ export const WebsitesHeaderMenu = ({
     <>
       <VaultWebsiteModal
         isOpen={showEditWebsiteModal}
-        setOpen={(isOpen) => {
-          setShowEditWebsiteModal(isOpen);
+        onClose={() => {
+          setShowEditWebsiteModal(false);
         }}
         owner={owner}
         vault={vault}

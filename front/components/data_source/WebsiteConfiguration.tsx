@@ -535,7 +535,7 @@ export default function WebsiteConfiguration({
               <DeleteDataSourceDialog
                 handleDelete={handleDelete}
                 isOpen={isDeleteModalOpen}
-                setIsOpen={setIsDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
                 dataSourceUsage={dataSourceUsage ?? 0}
               />
             </div>

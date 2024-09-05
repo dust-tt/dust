@@ -59,11 +59,6 @@ export function EditVaultStaticDatasourcesViews({
     }
   }, [dataSources.length, planDataSourcesLimit, setOpen]);
 
-  const handleClose = () => {
-    setOpen(false);
-    onClose();
-  };
-
   return (
     <>
       <Popup
@@ -82,7 +77,7 @@ export function EditVaultStaticDatasourcesViews({
       {category === "folder" ? (
         <VaultFolderModal
           isOpen={isOpen}
-          setOpen={handleClose}
+          onClose={onClose}
           owner={owner}
           vault={vault}
           dataSources={dataSources}
@@ -91,7 +86,7 @@ export function EditVaultStaticDatasourcesViews({
       ) : category === "website" ? (
         <VaultWebsiteModal
           isOpen={isOpen}
-          setOpen={handleClose}
+          onClose={onClose}
           owner={owner}
           vault={vault}
           dataSources={dataSources}

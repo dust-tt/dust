@@ -351,13 +351,16 @@ export const VaultResourcesList = ({
               dataSourceView={selectedDataSourceView}
               plan={plan}
               category={category}
-              onClose={() => setSelectedDataSourceView(null)}
+              onClose={() => {
+                setShowFolderOrWebsiteModal(false);
+                setSelectedDataSourceView(null);
+              }}
             />
             {selectedDataSourceView && (
               <DeleteDataSourceDialog
                 handleDelete={onDeleteFolderOrWebsite}
                 isOpen={showDeleteConfirmDialog}
-                setIsOpen={setShowDeleteConfirmDialog}
+                onClose={() => setShowDeleteConfirmDialog(false)}
               />
             )}
           </>

@@ -286,7 +286,7 @@ function StandardDataSourceSettings({
             <DeleteDataSourceDialog
               handleDelete={handleDelete}
               isOpen={isDeleteModalOpen}
-              setIsOpen={setIsDeleteModalOpen}
+              onClose={() => setIsDeleteModalOpen(false)}
               dataSourceUsage={dataSourceUsage}
             />
           </div>
