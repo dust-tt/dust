@@ -139,7 +139,7 @@ export async function fetchDatabaseChildPages({
   const localLoggerArgs = {
     ...loggerArgs,
     databaseId,
-    dataSourceName: connector.dataSourceName,
+    dataSourceId: connector.dataSourceId,
     workspaceId: connector.workspaceId,
   };
   const localLogger = logger.child(localLoggerArgs);
@@ -288,7 +288,7 @@ export async function getPagesAndDatabasesToSync({
   const localLogger = logger.child({
     ...loggerArgs,
     connectorId: connector.id,
-    dataSourceName: connector.dataSourceName,
+    dataSourceId: connector.dataSourceId,
     workspaceId: connector.workspaceId,
   });
 
@@ -314,7 +314,7 @@ export async function getPagesAndDatabasesToSync({
       cursors,
       {
         ...loggerArgs,
-        dataSourceName: connector.dataSourceName,
+        dataSourceId: connector.dataSourceId,
         workspaceId: connector.workspaceId,
       },
       skippedDatabaseIds
@@ -492,7 +492,7 @@ export async function upsertDatabaseInConnectorsDb(
       loggerArgs: {
         ...loggerArgs,
         workspaceId: connector.workspaceId,
-        dataSourceName: connector.dataSourceName,
+        dataSourceId: connector.dataSourceId,
       },
     });
 
@@ -651,7 +651,7 @@ export async function garbageCollectorMarkAsSeen({
   }
 
   const localLogger = logger.child({
-    dataSourceName: connector.dataSourceName,
+    dataSourceId: connector.dataSourceId,
     workspaceId: connector.workspaceId,
   });
 
@@ -809,7 +809,7 @@ export async function garbageCollect({
 
   const localLogger = logger.child({
     connectorId: connector.id,
-    dataSourceName: connector.dataSourceName,
+    dataSourceId: connector.dataSourceId,
     workspaceId: connector.workspaceId,
   });
 
@@ -1037,7 +1037,7 @@ export async function deletePageOrDatabaseIfArchived({
     ...loggerArgs,
     objectId,
     objectType,
-    dataSourceName: connector.dataSourceName,
+    dataSourceId: connector.dataSourceId,
     workspaceId: connector.workspaceId,
   });
 
@@ -1214,7 +1214,7 @@ export async function updateParentsFields(connectorId: ModelId) {
 
   const localLogger = logger.child({
     workspaceId: connector.workspaceId,
-    dataSourceName: connector.dataSourceName,
+    dataSourceId: connector.dataSourceId,
   });
 
   const notionPageIds = (
@@ -1286,7 +1286,7 @@ export async function cachePage({
   let localLogger = logger.child({
     ...loggerArgs,
     pageId,
-    dataSourceName: connector.dataSourceName,
+    dataSourceId: connector.dataSourceId,
     workspaceId: connector.workspaceId,
   });
 
@@ -1430,7 +1430,7 @@ export async function cacheBlockChildren({
     pageId,
     blockId,
     currentIndexInParent,
-    dataSourceName: connector.dataSourceName,
+    dataSourceId: connector.dataSourceId,
     workspaceId: connector.workspaceId,
   });
 
@@ -1549,7 +1549,7 @@ async function cacheDatabaseChildPages({
   const localLogger = logger.child({
     ...loggerArgs,
     workspaceId: connector.workspaceId,
-    dataSourceName: connector.dataSourceName,
+    dataSourceId: connector.dataSourceId,
   });
 
   const notionDatabaseModel = await NotionDatabase.findOne({
@@ -1783,7 +1783,7 @@ export async function renderAndUpsertPageFromCache({
   const localLogger = logger.child({
     ...loggerArgs,
     pageId,
-    dataSourceName: connector.dataSourceName,
+    dataSourceId: connector.dataSourceId,
     workspaceId: connector.workspaceId,
   });
 
@@ -1980,7 +1980,7 @@ export async function renderAndUpsertPageFromCache({
     loggerArgs: {
       ...loggerArgs,
       workspaceId: connector.workspaceId,
-      dataSourceName: connector.dataSourceName,
+      dataSourceId: connector.dataSourceId,
     },
   });
 
@@ -2171,7 +2171,7 @@ export async function clearWorkflowCache({
 
   const localLogger = logger.child({
     workspaceId: connector.workspaceId,
-    dataSourceName: connector.dataSourceName,
+    dataSourceId: connector.dataSourceId,
   });
 
   localLogger.info("notionClearConnectorCacheActivity: Clearing cache.");
@@ -2209,7 +2209,7 @@ export async function getDiscoveredResourcesFromCache({
 
   const localLogger = logger.child({
     workspaceId: connector.workspaceId,
-    dataSourceName: connector.dataSourceName,
+    dataSourceId: connector.dataSourceId,
   });
 
   localLogger.info(
@@ -2458,7 +2458,7 @@ export async function upsertDatabaseStructuredDataFromCache({
   const localLogger = logger.child({
     ...loggerArgs,
     workspaceId: connector.workspaceId,
-    dataSourceName: connector.dataSourceName,
+    dataSourceId: connector.dataSourceId,
     databaseId,
   });
 

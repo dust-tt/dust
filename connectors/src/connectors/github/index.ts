@@ -55,7 +55,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceId: dataSourceConfig.dataSourceId,
-          dataSourceName: dataSourceConfig.dataSourceName,
         },
         githubConfigurationBlob
       );

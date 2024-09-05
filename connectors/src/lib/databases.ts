@@ -17,11 +17,11 @@ type CreateDatabaseParams = {
 };
 
 async function _createDatabase({
-  dataSourceConfig: { workspaceAPIKey, workspaceId, dataSourceName },
+  dataSourceConfig: { workspaceAPIKey, workspaceId, dataSourceId },
   databaseName,
 }: CreateDatabaseParams): Promise<string> {
   const res = await fetch(
-    `${DUST_FRONT_API}/api/v1/w/${workspaceId}/data_sources/${dataSourceName}/databases`,
+    `${DUST_FRONT_API}/api/v1/w/${workspaceId}/data_sources/${dataSourceId}/databases`,
     {
       method: "POST",
       headers: {
@@ -33,7 +33,7 @@ async function _createDatabase({
   );
   if (!res.ok) {
     throw new Error(
-      `Failed to create database ${databaseName} in data source ${dataSourceName}: ${res.status} ${res.statusText}`
+      `Failed to create database ${databaseName} in data source ${dataSourceId}: ${res.status} ${res.statusText}`
     );
   }
   const body = await res.json();
@@ -48,13 +48,13 @@ type UpsertTableParams = {
 };
 
 async function _upsertTable({
-  dataSourceConfig: { workspaceAPIKey, workspaceId, dataSourceName },
+  dataSourceConfig: { workspaceAPIKey, workspaceId, dataSourceId },
   databaseId,
   name,
   description,
 }: UpsertTableParams): Promise<string> {
   const res = await fetch(
-    `${DUST_FRONT_API}/api/v1/w/${workspaceId}/data_sources/${dataSourceName}/databases/${databaseId}/tables`,
+    `${DUST_FRONT_API}/api/v1/w/${workspaceId}/data_sources/${dataSourceId}/databases/${databaseId}/tables`,
     {
       method: "POST",
       headers: {
@@ -66,7 +66,7 @@ async function _upsertTable({
   );
   if (!res.ok) {
     throw new Error(
-      `Failed to upsert table ${name} in database ${databaseId} in data source ${dataSourceName}: ${res.status} ${res.statusText}`
+      `Failed to upsert table ${name} in database ${databaseId} in data source ${dataSourceId}: ${res.status} ${res.statusText}`
     );
   }
   const body = await res.json();
@@ -85,14 +85,14 @@ type UpsertRowsParams = {
 };
 
 async function _upsertRows({
-  dataSourceConfig: { workspaceAPIKey, workspaceId, dataSourceName },
+  dataSourceConfig: { workspaceAPIKey, workspaceId, dataSourceId },
   databaseId,
   tableId,
   rows,
   truncate,
 }: UpsertRowsParams): Promise<void> {
   const res = await fetch(
-    `${DUST_FRONT_API}/api/v1/w/${workspaceId}/data_sources/${dataSourceName}/databases/${databaseId}/tables/${tableId}/rows`,
+    `${DUST_FRONT_API}/api/v1/w/${workspaceId}/data_sources/${dataSourceId}/databases/${databaseId}/tables/${tableId}/rows`,
     {
       method: "POST",
       headers: {
@@ -104,7 +104,7 @@ async function _upsertRows({
   );
   if (!res.ok) {
     throw new Error(
-      `Failed to upsert rows in table ${tableId} in database ${databaseId} in data source ${dataSourceName}: ${res.status} ${res.statusText}`
+      `Failed to upsert rows in table ${tableId} in database ${databaseId} in data source ${dataSourceId}: ${res.status} ${res.statusText}`
     );
   }
 }

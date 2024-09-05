@@ -29,7 +29,7 @@ export type ConnectorType = {
   id: string;
   type: ConnectorProvider;
   workspaceId: string;
-  dataSourceName: string;
+  dataSourceId: string;
   connectionId: string;
 
   lastSyncStatus?: ConnectorSyncStatus;
@@ -140,7 +140,6 @@ export class ConnectorsAPI {
     workspaceId,
     workspaceAPIKey,
     dataSourceId,
-    dataSourceName,
     connectionId,
     configuration,
   }: {
@@ -148,7 +147,6 @@ export class ConnectorsAPI {
     workspaceId: string;
     workspaceAPIKey: string;
     dataSourceId: string;
-    dataSourceName: string;
     connectionId: string;
     configuration: ConnectorConfiguration;
   }): Promise<ConnectorsAPIResponse<ConnectorType>> {
@@ -160,7 +158,6 @@ export class ConnectorsAPI {
         body: JSON.stringify({
           workspaceId,
           workspaceAPIKey,
-          dataSourceName,
           dataSourceId,
           connectionId,
           configuration,

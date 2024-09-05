@@ -231,7 +231,7 @@ export async function confluenceCheckAndUpsertPageActivity({
 
   const loggerArgs = {
     connectorId,
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
     pageId,
     spaceId,
     workspaceId: dataSourceConfig.workspaceId,

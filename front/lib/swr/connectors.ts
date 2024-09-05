@@ -80,14 +80,14 @@ export function useConnectorConfig({
 
 export function useConnector({
   workspaceId,
-  dataSourceName,
+  dataSourceId,
 }: {
   workspaceId: string;
-  dataSourceName: string;
+  dataSourceId: string;
 }) {
   const configFetcher: Fetcher<GetConnectorResponseBody> = fetcher;
 
-  const url = `/api/w/${workspaceId}/data_sources/${dataSourceName}/connector`;
+  const url = `/api/w/${workspaceId}/data_sources/${dataSourceId}/connector`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     refreshInterval: (connectorResBody) => {

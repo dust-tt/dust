@@ -91,7 +91,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceId: dataSourceConfig.dataSourceId,
-        dataSourceName: dataSourceConfig.dataSourceName,
       },
       microsoftConfigurationBlob
     );
