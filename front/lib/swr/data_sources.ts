@@ -5,6 +5,8 @@ import type { Fetcher } from "swr";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
+import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables";
+import type { GetTableResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/[tId]";
 
 export function useDataSources(
   owner: LightWorkspaceType,
@@ -25,7 +27,7 @@ export function useDataSources(
   };
 }
 
-export function useDocuments(
+export function useDataSourceDocuments(
   owner: LightWorkspaceType,
   dataSource: { name: string },
   limit: number,
@@ -45,5 +47,57 @@ export function useDocuments(
     isDocumentsLoading: !error && !data,
     isDocumentsError: error,
     mutateDocuments: mutate,
+  };
+}
+
+//TODO(GROUPS_INFRA) Deprecated, remove once all usages are removed.
+export function useDataSourceTable({
+  workspaceId,
+  dataSourceName,
+  tableId,
+}: {
+  workspaceId: string;
+  dataSourceName: string;
+  tableId: string | null;
+}) {
+  const tableFetcher: Fetcher<GetTableResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    tableId
+      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/tables/${tableId}`
+      : null,
+    tableFetcher
+  );
+
+  return {
+    table: data ? data.table : null,
+    isTableLoading: !error && !data,
+    isTableError: error,
+    mutateTable: mutate,
+  };
+}
+
+//TODO(GROUPS_INFRA) Deprecated, remove once all usages are removed.
+export function useDataSourceTables({
+  workspaceId,
+  dataSourceName,
+}: {
+  workspaceId: string;
+  dataSourceName: string;
+}) {
+  const tablesFetcher: Fetcher<ListTablesResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    dataSourceName
+      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/tables`
+      : null,
+    tablesFetcher
+  );
+
+  return {
+    tables: useMemo(() => (data ? data.tables : []), [data]),
+    isTablesLoading: !error && !data,
+    isTablesError: error,
+    mutateTables: mutate,
   };
 }
