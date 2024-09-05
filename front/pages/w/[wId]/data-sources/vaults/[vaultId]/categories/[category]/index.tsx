@@ -27,12 +27,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     systemVault: VaultType;
     plan: PlanType;
     user: UserType;
+    readOnly: boolean;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
   const plan = auth.getNonNullablePlan();
   const user = auth.getNonNullableUser();
+  const readOnly = !auth.isBuilder();
 
   if (!subscription) {
     return {
@@ -66,6 +68,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       vault: vault.toJSON(),
       systemVault: systemVault.toJSON(),
       user,
+      readOnly,
     },
   };
 });
@@ -80,6 +83,7 @@ export default function Vault({
   plan,
   vault,
   systemVault,
+  readOnly,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   return (
@@ -107,6 +111,7 @@ export default function Vault({
               `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${sId}`
             );
           }}
+          readOnly={readOnly}
         />
       )}
     </Page.Vertical>

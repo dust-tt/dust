@@ -65,6 +65,7 @@ type VaultResourcesListProps = {
   systemVault: VaultType;
   category: DataSourceViewCategory;
   onSelect: (sId: string) => void;
+  readOnly: boolean;
 };
 
 const getTableColumns = ({
@@ -182,6 +183,7 @@ export const VaultResourcesList = ({
   systemVault,
   category,
   onSelect,
+  readOnly,
 }: VaultResourcesListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showEditionModal, setShowEditionModal] = useState(false);
@@ -395,7 +397,7 @@ export const VaultResourcesList = ({
             setShowEditionModal={setShowEditionModal}
             handleUpdatePermissions={handleUpdatePermissions}
             plan={plan}
-            readOnly={isAdmin}
+            readOnly={readOnly}
             isAdmin={isAdmin}
           />
           <DataSourceEditionModal
