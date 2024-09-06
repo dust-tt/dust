@@ -1,5 +1,5 @@
+import { PaginationState } from "@tanstack/react-table";
 import React, { useCallback } from "react";
-import { useState } from "react";
 
 import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
@@ -11,42 +11,49 @@ type Size = "sm" | "xs";
 const pagesShownInControls = 7;
 
 interface PaginationProps {
-  itemsCount: number;
-  maxItemsPerPage: number;
-  onButtonClick: (pageNumber: number) => void;
   size?: Size;
   showDetails?: boolean;
   showPageButtons?: boolean;
+  rowCount: number;
+  pagination: PaginationState;
+  setPagination: (pagination: PaginationState) => void;
 }
 
 export function Pagination({
-  itemsCount,
-  maxItemsPerPage,
-  onButtonClick,
   size = "sm",
   showDetails = true,
   showPageButtons = true,
+  rowCount,
+  pagination,
+  setPagination,
 }: PaginationProps) {
-  const numPages = Math.ceil(itemsCount / maxItemsPerPage);
+  // pageIndex is 0-based
+  const { pageIndex, pageSize } = pagination;
+
+  const numPages = Math.ceil(rowCount / pageSize);
+
+  const canNextPage = pagination.pageIndex < numPages - 1;
+  const canPreviousPage = pageIndex > 0;
+  const nextPage = () => setPagination({ pageSize, pageIndex: pageIndex + 1 });
+  const previousPage = () =>
+    setPagination({ pageSize, pageIndex: pageIndex - 1 });
+
   const controlsAreHidden = Boolean(numPages <= 1);
-  const [currentPage, setCurrentPage] = useState(1);
-  const firstFileOnPageIndex =
-    currentPage * maxItemsPerPage - maxItemsPerPage + 1;
-  const lastFileOnPageIndex =
-    itemsCount > currentPage * maxItemsPerPage
-      ? currentPage * maxItemsPerPage
-      : itemsCount;
+  const firstItemOnPageIndex = pageIndex * pageSize + 1;
+  const lastItemOnPageIndex =
+    rowCount > (pageIndex + 1) * pageSize
+      ? (pageIndex + 1) * pageSize
+      : rowCount;
 
   const onPaginationButtonClick = useCallback(
-    (pageNb: number) => {
-      setCurrentPage(pageNb);
-      onButtonClick(pageNb);
+    (pageIndex: number) => {
+      setPagination({ pageSize, pageIndex });
     },
-    [onButtonClick, setCurrentPage]
+    [pageIndex, setPagination]
   );
 
   const pageButtons: React.ReactNode[] = getPageButtons(
-    currentPage,
+    pageIndex,
     numPages,
     pagesShownInControls,
     onPaginationButtonClick,
@@ -73,11 +80,9 @@ export function Pagination({
           label="previous"
           labelVisible={false}
           disabledTooltip={true}
-          disabled={currentPage === 1 ? true : false}
+          disabled={!canPreviousPage}
           icon={ChevronLeftIcon}
-          onClick={() => {
-            onPaginationButtonClick(currentPage - 1);
-          }}
+          onClick={previousPage}
         />
 
         <div
@@ -96,11 +101,9 @@ export function Pagination({
           label="next"
           labelVisible={false}
           disabledTooltip={true}
-          disabled={currentPage === numPages ? true : false}
+          disabled={!canNextPage}
           icon={ChevronRightIcon}
-          onClick={() => {
-            onPaginationButtonClick(currentPage + 1);
-          }}
+          onClick={nextPage}
         />
       </div>
 
@@ -112,8 +115,8 @@ export function Pagination({
         )}
       >
         {controlsAreHidden
-          ? `${itemsCount} items`
-          : `Showing ${firstFileOnPageIndex}-${lastFileOnPageIndex} of ${itemsCount} items`}
+          ? `${rowCount} items`
+          : `Showing ${firstItemOnPageIndex}-${lastItemOnPageIndex} of ${rowCount} items`}
       </span>
     </div>
   );
@@ -135,7 +138,7 @@ function renderPageNumber(
       )}
       onClick={() => onPageClick(pageNumber)}
     >
-      {pageNumber}
+      {pageNumber + 1}
     </button>
   );
 }
@@ -164,7 +167,7 @@ function getPageButtons(
 
   // If total pages are less than or equal to slots, show all pages
   if (totalPages <= slots) {
-    for (let i = 1; i <= totalPages; i++) {
+    for (let i = 0; i < totalPages; i++) {
       pagination.push(renderPageNumber(i, currentPage, onPageClick, size));
     }
     return pagination;
@@ -174,25 +177,23 @@ function getPageButtons(
   const halfSlots = Math.floor(remainingSlots / 2);
 
   // Ensure current page is within bounds
-  currentPage = Math.max(1, Math.min(currentPage, totalPages));
+  currentPage = Math.max(0, Math.min(currentPage, totalPages - 1));
 
-  pagination.push(renderPageNumber(1, currentPage, onPageClick, size)); // Always show the first page
-
+  pagination.push(renderPageNumber(0, currentPage, onPageClick, size)); // Always show the first page
   // Determine the range of pages to display
   let start, end;
-  if (currentPage <= halfSlots + 2) {
-    start = 2;
-    end = remainingSlots;
-  } else if (currentPage >= totalPages - halfSlots - 1) {
-    start = totalPages - remainingSlots + 1;
-    end = totalPages - 1;
+  if (currentPage <= halfSlots + 1) {
+    start = 1;
+    end = remainingSlots - 1;
+  } else if (currentPage >= totalPages - halfSlots - 2) {
+    start = totalPages - remainingSlots;
+    end = totalPages - 2;
   } else {
     start = currentPage - halfSlots + 1;
     end = currentPage + halfSlots - 1;
   }
-
   // Add ellipsis if there is a gap between the first page and the start of the range
-  if (start > 2) {
+  if (start > 1) {
     pagination.push(renderEllipses(size));
   }
 
@@ -202,11 +203,13 @@ function getPageButtons(
   }
 
   // Add ellipsis if there is a gap between the end of the range and the last page
-  if (end < totalPages - 1) {
+  if (end < totalPages - 2) {
     pagination.push(renderEllipses(size));
   }
 
-  pagination.push(renderPageNumber(totalPages, currentPage, onPageClick, size)); // Always show the last page
+  pagination.push(
+    renderPageNumber(totalPages - 1, currentPage, onPageClick, size)
+  ); // Always show the last page
 
   return pagination;
 }
