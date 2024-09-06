@@ -288,9 +288,9 @@ export class VaultResource extends BaseResource<VaultModel> {
       case "system":
         return auth.isAdmin() && auth.canWrite([this.acl()]);
       case "global":
-      case "public":
         return auth.isBuilder() && auth.canWrite([this.acl()]);
       case "regular":
+      case "public":
         return auth.canWrite([this.acl()]);
 
       default:
