@@ -21,7 +21,7 @@
     "@amplitude/analytics-browser": "^2.5.2",
     "@amplitude/analytics-node": "^1.3.5",
     "@auth0/nextjs-auth0": "^3.5.0",
-    "@dust-tt/sparkle": "^0.2.220",
+    "@dust-tt/sparkle": "^0.2.226",
     "@dust-tt/types": "file:../types",
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
