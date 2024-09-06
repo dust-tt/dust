@@ -120,78 +120,87 @@ ContentActions.displayName = "ContentActions";
 type ContentActionsMenu = ComponentProps<typeof DataTable.Row>["moreMenuItems"];
 
 export const getMenuItems = (
+  canReadInVault: boolean,
+  canWriteInVault: boolean,
   dataSourceView: DataSourceViewType,
   contentNode: LightContentNode,
   contentActionsRef: RefObject<ContentActionsRef>
 ): ContentActionsMenu => {
-  if (isFolder(dataSourceView.dataSource)) {
-    return [
-      {
-        label: "Edit",
-        icon: PencilSquareIcon,
-        onClick: () => {
-          contentActionsRef.current &&
-            contentActionsRef.current?.callAction(
-              contentNode.type === "database"
-                ? "TableUploadOrEdit"
-                : "DocumentUploadOrEdit",
-              contentNode
-            );
-        },
+  const actions: ContentActionsMenu = [];
+
+  // Edit & Delete
+  if (canWriteInVault && isFolder(dataSourceView.dataSource)) {
+    actions.push({
+      label: "Edit",
+      icon: PencilSquareIcon,
+      onClick: () => {
+        contentActionsRef.current &&
+          contentActionsRef.current?.callAction(
+            contentNode.type === "database"
+              ? "TableUploadOrEdit"
+              : "DocumentUploadOrEdit",
+            contentNode
+          );
       },
-      {
-        label: "Delete",
-        icon: TrashIcon,
-        onClick: () => {
-          contentActionsRef.current &&
-            contentActionsRef.current?.callAction(
-              "DocumentOrTableDeleteDialog",
-              contentNode
-            );
-        },
-        variant: "warning",
+    });
+    actions.push({
+      label: "Delete",
+      icon: TrashIcon,
+      onClick: () => {
+        contentActionsRef.current &&
+          contentActionsRef.current?.callAction(
+            "DocumentOrTableDeleteDialog",
+            contentNode
+          );
       },
-    ];
+      variant: "warning",
+    });
   }
 
-  if (isWebsite(dataSourceView.dataSource)) {
-    return [...makeViewRawContentAction(contentNode, contentActionsRef)];
+  // View in source
+  if (canReadInVault) {
+    actions.push(makeViewSourceUrlContentAction(contentNode, dataSourceView));
   }
 
-  const actions: ContentActionsMenu = [
-    {
-      label: `View in ${capitalize(getDataSourceName(dataSourceView.dataSource))}`,
-      icon: ExternalLinkIcon,
-      link: contentNode.sourceUrl
-        ? { href: contentNode.sourceUrl, target: "_blank" }
-        : undefined,
-      disabled: contentNode.sourceUrl === null,
-      onClick: () => {},
-    },
-  ];
-
-  if (contentNode.type === "file") {
-    actions.push(...makeViewRawContentAction(contentNode, contentActionsRef));
+  // View raw content in modal
+  if (
+    canReadInVault &&
+    (contentNode.type === "file" || isWebsite(dataSourceView.dataSource))
+  ) {
+    actions.push(makeViewRawContentAction(contentNode, contentActionsRef));
   }
 
   return actions;
 };
 
-function makeViewRawContentAction(
+const makeViewSourceUrlContentAction = (
+  contentNode: LightContentNode,
+  dataSourceView: DataSourceViewType
+) => {
+  return {
+    label: `View in ${capitalize(getDataSourceName(dataSourceView.dataSource))}`,
+    icon: ExternalLinkIcon,
+    link: contentNode.sourceUrl
+      ? { href: contentNode.sourceUrl, target: "_blank" }
+      : undefined,
+    disabled: contentNode.sourceUrl === null,
+    onClick: () => {},
+  };
+};
+
+const makeViewRawContentAction = (
   contentNode: LightContentNode,
   contentActionsRef: RefObject<ContentActionsRef>
-) {
-  return [
-    {
-      label: "View raw content",
-      icon: EyeIcon,
-      onClick: () => {
-        contentActionsRef.current &&
-          contentActionsRef.current?.callAction(
-            "DocumentViewRawContent",
-            contentNode
-          );
-      },
+) => {
+  return {
+    label: "View raw content",
+    icon: EyeIcon,
+    onClick: () => {
+      contentActionsRef.current &&
+        contentActionsRef.current?.callAction(
+          "DocumentViewRawContent",
+          contentNode
+        );
     },
-  ];
-}
+  };
+};

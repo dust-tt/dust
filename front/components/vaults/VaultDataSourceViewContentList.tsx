@@ -44,6 +44,7 @@ type VaultDataSourceViewContentListProps = {
   dataSourceView: DataSourceViewType;
   plan: PlanType;
   canWriteInVault: boolean;
+  canReadInVault: boolean;
   onSelect: (parentId: string) => void;
   owner: WorkspaceType;
   parentId?: string;
@@ -73,6 +74,7 @@ export const VaultDataSourceViewContentList = ({
   dataSourceView,
   plan,
   canWriteInVault,
+  canReadInVault,
   onSelect,
   parentId,
 }: VaultDataSourceViewContentListProps) => {
@@ -135,12 +137,14 @@ export const VaultDataSourceViewContentList = ({
           },
         }),
         moreMenuItems: getMenuItems(
+          canReadInVault,
+          canWriteInVault,
           dataSourceView,
           contentNode,
           contentActionsRef
         ),
       })) || [],
-    [dataSourceView, nodes, onSelect]
+    [canWriteInVault, canReadInVault, dataSourceView, nodes, onSelect]
   );
 
   if (isNodesLoading) {
