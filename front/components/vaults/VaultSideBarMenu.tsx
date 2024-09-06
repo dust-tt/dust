@@ -71,6 +71,11 @@ export default function VaultSideBarMenu({
       <div className="flex w-full flex-col px-2">
         <Item.List>
           {sortedGroupedVaults.map(({ kind, vaults }, index) => {
+            // Public vaults are created manually by us to hold public dust apps - other workspaces can't create them, so we do not show the section at all if there are no vaults.
+            if (kind === "public" && !vaults.length) {
+              return null;
+            }
+
             const sectionLabel = getSectionLabel(kind);
 
             return (
