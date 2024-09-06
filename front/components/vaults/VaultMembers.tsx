@@ -38,7 +38,7 @@ const tableColumns = [
         return true;
       }
 
-      return removeDiacritics(row.original.name)
+      return removeDiacritics(row.getValue(columnId))
         .toLowerCase()
         .includes(removeDiacritics(filterValue).toLowerCase());
     },

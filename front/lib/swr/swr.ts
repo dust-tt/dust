@@ -27,7 +27,7 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
   if (disabled) {
     // When disabled, as the key is null, the mutate function is not working
     // so we need to provide a custom mutate function that will work
-    return { ...result, mutate: () => globalMutate(key) };
+    return { ...result, mutate: () => globalMutate<TData>(key) };
   } else {
     return result;
   }
