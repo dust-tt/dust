@@ -1,7 +1,7 @@
 export type DataSourceConfig = {
   workspaceAPIKey: string;
   workspaceId: string;
-  dataSourceName: string;
+  dataSourceId: string;
 };
 
 export type DataSourceInfo = Omit<DataSourceConfig, "workspaceAPIKey">;

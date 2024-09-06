@@ -237,7 +237,7 @@ export async function upsertDocument({
   parents?: string[] | null;
   timestamp?: number | null;
   light_document_output?: boolean;
-  dataSource: DataSourceType;
+  dataSource: DataSourceResource;
   auth: Authenticator;
 }): Promise<
   Result<
@@ -310,12 +310,13 @@ export async function upsertDocument({
   // the `getDataSourceDocuments` query involves a SELECT COUNT(*) in the DB that is not
   // optimized, so we avoid it for large workspaces if we know we're unlimited anyway
   if (plan.limits.dataSources.documents.count !== -1) {
-    const documents = await coreAPI.getDataSourceDocuments({
-      projectId: dataSource.dustAPIProjectId,
-      dataSourceId: dataSource.dustAPIDataSourceId,
-      limit: 1,
-      offset: 0,
-    });
+    const documents = await coreAPI.getDataSourceDocuments(
+      {
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceId: dataSource.dustAPIDataSourceId,
+      },
+      { limit: 1, offset: 0 }
+    );
     if (documents.isErr()) {
       return new Err(
         new DustError(

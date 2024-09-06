@@ -5,7 +5,7 @@ import type {
   Result,
   VaultType,
 } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
+import { assertNever, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -283,12 +283,49 @@ export class VaultResource extends BaseResource<VaultModel> {
     };
   }
 
+  canWrite(auth: Authenticator) {
+    switch (this.kind) {
+      case "system":
+        return auth.isAdmin() && auth.canWrite([this.acl()]);
+      case "global":
+        return auth.isBuilder() && auth.canWrite([this.acl()]);
+      case "regular":
+      case "public":
+        return auth.canWrite([this.acl()]);
+
+      default:
+        assertNever(this.kind);
+    }
+  }
+
+  canRead(auth: Authenticator) {
+    switch (this.kind) {
+      case "system":
+        return auth.isAdmin() && auth.canRead([this.acl()]);
+      case "global":
+      case "regular":
+        return auth.canRead([this.acl()]);
+      case "public":
+        return true;
+      default:
+        assertNever(this.kind);
+    }
+  }
+
   isGlobal() {
     return this.kind === "global";
   }
 
   isSystem() {
     return this.kind === "system";
+  }
+
+  isRegular() {
+    return this.kind === "regular";
+  }
+
+  isPublic() {
+    return this.kind === "public";
   }
 
   toJSON(): VaultType {

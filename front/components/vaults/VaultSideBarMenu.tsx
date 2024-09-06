@@ -2,7 +2,6 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
-  CompanyIcon,
   FolderIcon,
   GlobeAltIcon,
   Item,
@@ -22,6 +21,7 @@ import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useEffect, useState } from "react";
 
+import { getVaultIcon } from "@app/lib/client/vaults";
 import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
@@ -34,13 +34,20 @@ import {
 
 interface VaultSideBarMenuProps {
   owner: LightWorkspaceType;
+  isAdmin: boolean;
   setShowVaultCreationModal: (show: boolean) => void;
 }
 
-const VAULTS_SORT_ORDER: VaultKind[] = ["system", "global", "regular"];
+const VAULTS_SORT_ORDER: VaultKind[] = [
+  "system",
+  "global",
+  "regular",
+  "public",
+];
 
 export default function VaultSideBarMenu({
   owner,
+  isAdmin,
   setShowVaultCreationModal,
 }: VaultSideBarMenuProps) {
   const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
@@ -68,12 +75,12 @@ export default function VaultSideBarMenu({
               <Fragment key={`vault-section-${index}`}>
                 <div className="flex items-center justify-between">
                   <Item.SectionHeader label={sectionLabel} />
-                  {sectionLabel === "PRIVATE" && (
+                  {sectionLabel === "PRIVATE" && isAdmin && (
                     <Button
                       className="mt-4"
                       size="xs"
                       variant="tertiary"
-                      label="Create Vault "
+                      label="Create Vault"
                       icon={LockIcon}
                       onClick={() => setShowVaultCreationModal(true)}
                     />
@@ -111,6 +118,9 @@ const getSectionLabel = (kind: VaultKind) => {
 
     case "system":
       return "SYSTEM";
+
+    case "public":
+      return "PUBLIC";
 
     default:
       assertNever(kind);
@@ -173,12 +183,14 @@ const SystemVaultItem = ({
   const router = useRouter();
 
   const itemPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`;
-  const isAncestorToCurrentPage = router.asPath.includes(itemPath);
+  const isAncestorToCurrentPage = router.asPath.startsWith(itemPath + "/");
 
   // Unfold the item if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(() => {
-    setIsExpanded(isAncestorToCurrentPage);
+    if (isAncestorToCurrentPage) {
+      setIsExpanded(isAncestorToCurrentPage);
+    }
   }, [isAncestorToCurrentPage]);
 
   const { isVaultDataSourceViewsLoading, vaultDataSourceViews } =
@@ -230,12 +242,14 @@ const VaultMenuItem = ({
   const router = useRouter();
 
   const vaultPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}`;
-  const isAncestorToCurrentPage = router.asPath.includes(vaultPath);
+  const isAncestorToCurrentPage = router.asPath.startsWith(vaultPath + "/");
 
   // Unfold the vault if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(() => {
-    setIsExpanded(isAncestorToCurrentPage);
+    if (isAncestorToCurrentPage) {
+      setIsExpanded(isAncestorToCurrentPage);
+    }
   }, [isAncestorToCurrentPage]);
 
   const { vaultInfo, isVaultInfoLoading } = useVaultInfo({
@@ -252,7 +266,7 @@ const VaultMenuItem = ({
       onItemClick={() => router.push(vaultPath)}
       isSelected={router.asPath === vaultPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
-      visual={vault.kind === "global" ? CompanyIcon : LockIcon}
+      visual={getVaultIcon(vault.kind)}
       tailwindIconTextColor="text-brand"
       size="md"
       areActionsFading={false}
@@ -349,12 +363,16 @@ const VaultCategoryItem = ({
   const router = useRouter();
 
   const vaultCategoryPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`;
-  const isAncestorToCurrentPage = router.asPath.includes(vaultCategoryPath);
+  const isAncestorToCurrentPage = router.asPath.includes(
+    vaultCategoryPath + "/"
+  );
 
   // Unfold the vault's category if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(() => {
-    setIsExpanded(isAncestorToCurrentPage);
+    if (isAncestorToCurrentPage) {
+      setIsExpanded(isAncestorToCurrentPage);
+    }
   }, [isAncestorToCurrentPage]);
 
   const categoryDetails = DATA_SOURCE_OR_VIEW_SUB_ITEMS[category];

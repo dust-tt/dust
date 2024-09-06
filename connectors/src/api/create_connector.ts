@@ -52,9 +52,9 @@ const _createConnectorAPIHandler = async (
     }
 
     const {
-      workspaceAPIKey,
-      dataSourceName,
       workspaceId,
+      workspaceAPIKey,
+      dataSourceId,
       connectionId,
       configuration,
     } = bodyValidation.right;
@@ -80,8 +80,8 @@ const _createConnectorAPIHandler = async (
           params: {
             configuration: configurationRes.value,
             dataSourceConfig: {
-              dataSourceName,
               workspaceId,
+              dataSourceId,
               workspaceAPIKey,
             },
             connectionId,
@@ -109,9 +109,9 @@ const _createConnectorAPIHandler = async (
           params: {
             configuration: configurationRes.value,
             dataSourceConfig: {
-              dataSourceName,
               workspaceId,
               workspaceAPIKey,
+              dataSourceId,
             },
             connectionId,
           },
@@ -129,9 +129,9 @@ const _createConnectorAPIHandler = async (
           connectorProvider: req.params.connector_provider,
           params: {
             dataSourceConfig: {
-              dataSourceName,
               workspaceId,
               workspaceAPIKey,
+              dataSourceId,
             },
             connectionId,
             configuration: null,

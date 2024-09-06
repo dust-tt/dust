@@ -51,13 +51,14 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
-import { tableKey } from "@app/lib/client/tables_query";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDocument, isWebsite } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
-import { useDocuments } from "@app/lib/swr/data_sources";
-import { useTables } from "@app/lib/swr/tables";
+import {
+  useDataSourceDocuments,
+  useDataSourceTables,
+} from "@app/lib/swr/data_sources";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -252,7 +253,7 @@ function DatasourceDocumentsTabView({
     isDocumentsLoading,
     isDocumentsError,
     mutateDocuments,
-  } = useDocuments(owner, dataSource, limit, offset);
+  } = useDataSourceDocuments(owner, dataSource, limit, offset);
   const [showDocumentsLimitPopup, setShowDocumentsLimitPopup] = useState(false);
 
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
@@ -562,7 +563,7 @@ function DatasourceTablesTabView({
   dataSource: DataSourceType;
   router: ReturnType<typeof useRouter>;
 }) {
-  const { tables } = useTables({
+  const { tables } = useDataSourceTables({
     workspaceId: owner.sId,
     dataSourceName: dataSource.name,
   });
@@ -601,14 +602,9 @@ function DatasourceTablesTabView({
 
         <div className="py-8">
           <ContextItem.List>
-            {tables.map((t) => (
+            {tables.map((t, index) => (
               <ContextItem
-                key={tableKey({
-                  workspaceId: owner.sId,
-                  tableId: t.table_id,
-                  dataSourceId: dataSource.name,
-                  dataSourceViewId: undefined,
-                })}
+                key={index}
                 title={`${t.name} (${t.data_source_id})`}
                 visual={
                   <ContextItem.Visual
@@ -1193,7 +1189,7 @@ function ManagedDataSourceView({
           <ConnectorSyncingChip
             initialState={connector}
             workspaceId={connector.workspaceId}
-            dataSourceName={connector.dataSourceName}
+            dataSourceId={connector.dataSourceId}
           />
         </div>
 

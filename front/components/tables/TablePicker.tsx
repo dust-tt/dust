@@ -5,7 +5,7 @@ import { Menu } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 
-import { useTables } from "@app/lib/swr/tables";
+import { useDataSourceTables } from "@app/lib/swr/data_sources";
 import { classNames } from "@app/lib/utils";
 
 export default function TablePicker({
@@ -27,7 +27,8 @@ export default function TablePicker({
   void owner;
   void dataSource;
 
-  const { tables } = useTables({
+  // TODO(GROUPS_INFRA): Use data source views to get tables.
+  const { tables } = useDataSourceTables({
     workspaceId: dataSource.workspace_id,
     dataSourceName: dataSource.data_source_id,
   });

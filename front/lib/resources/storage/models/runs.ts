@@ -7,9 +7,9 @@ import type {
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
-import { App } from "@app/lib/models/apps";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { App } from "@app/lib/resources/storage/models/apps";
 
 export class RunModel extends Model<
   InferAttributes<RunModel>,

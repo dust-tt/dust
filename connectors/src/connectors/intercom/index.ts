@@ -90,7 +90,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           connectionId,
           workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
           workspaceId: dataSourceConfig.workspaceId,
-          dataSourceName: dataSourceConfig.dataSourceName,
+          dataSourceId: dataSourceConfig.dataSourceId,
         },
         intercomConfigurationBlob
       );
@@ -262,7 +262,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       logger.error(
         {
           workspaceId: dataSourceConfig.workspaceId,
-          dataSourceName: dataSourceConfig.dataSourceName,
+          dataSourceId: dataSourceConfig.dataSourceId,
           error: e,
         },
         "Error launching Intercom sync workflow."

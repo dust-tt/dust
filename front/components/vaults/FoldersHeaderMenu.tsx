@@ -6,6 +6,7 @@ import {
   DropdownMenu,
   PlusIcon,
   TableIcon,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, VaultType, WorkspaceType } from "@dust-tt/types";
 import type { RefObject } from "react";
@@ -18,6 +19,7 @@ import { useDataSources } from "@app/lib/swr/data_sources";
 type FoldersHeaderMenuProps = {
   owner: WorkspaceType;
   vault: VaultType;
+  canWriteInVault: boolean;
   folder: DataSourceType;
   contentActionsRef: RefObject<ContentActionsRef>;
 };
@@ -25,64 +27,136 @@ type FoldersHeaderMenuProps = {
 export const FoldersHeaderMenu = ({
   owner,
   vault,
+  canWriteInVault,
   folder,
   contentActionsRef,
 }: FoldersHeaderMenuProps) => {
-  const [showEditFolderModal, setShowEditFolderModal] = useState(false);
+  return (
+    <>
+      {canWriteInVault ? (
+        <AddDataDropDownButton
+          contentActionsRef={contentActionsRef}
+          canWriteInVault={canWriteInVault}
+        />
+      ) : (
+        <Tooltip
+          label={
+            vault.kind === "global"
+              ? `Only builders of the workspace can add data in the Company Data vault.`
+              : `Only members of the vault can add data.`
+          }
+          position="above"
+        >
+          <AddDataDropDownButton
+            contentActionsRef={contentActionsRef}
+            canWriteInVault={canWriteInVault}
+          />
+        </Tooltip>
+      )}
+      {canWriteInVault ? (
+        <EditFolderButton
+          owner={owner}
+          vault={vault}
+          folder={folder}
+          canWriteInVault={canWriteInVault}
+        />
+      ) : (
+        <Tooltip
+          label={
+            vault.kind === "global"
+              ? `Only builders of the workspace can edit a folder in the Company Data vault.`
+              : `Only members of the vault can edit a folder.`
+          }
+          position="above"
+        >
+          <EditFolderButton
+            owner={owner}
+            vault={vault}
+            folder={folder}
+            canWriteInVault={canWriteInVault}
+          />
+        </Tooltip>
+      )}
+    </>
+  );
+};
 
+type AddDataDropDrownButtonProps = {
+  contentActionsRef: RefObject<ContentActionsRef>;
+  canWriteInVault: boolean;
+};
+
+const AddDataDropDownButton = ({
+  contentActionsRef,
+  canWriteInVault,
+}: AddDataDropDrownButtonProps) => {
+  return (
+    <DropdownMenu>
+      <DropdownMenu.Button>
+        <Button
+          size="sm"
+          label="Add data"
+          icon={PlusIcon}
+          variant="primary"
+          type="menu"
+          disabled={!canWriteInVault}
+        />
+      </DropdownMenu.Button>
+
+      <DropdownMenu.Items width={300}>
+        <DropdownMenu.Item
+          icon={DocumentTextIcon}
+          onClick={() => {
+            contentActionsRef.current?.callAction("DocumentUploadOrEdit");
+          }}
+          label="Create a document"
+        />
+        <DropdownMenu.Item
+          icon={TableIcon}
+          onClick={() => {
+            contentActionsRef.current?.callAction("TableUploadOrEdit");
+          }}
+          label="Create a table"
+        />
+        <DropdownMenu.Item
+          icon={CloudArrowUpIcon}
+          onClick={() => {
+            contentActionsRef.current?.callAction("MultipleDocumentsUpload");
+          }}
+          label="Upload multiple files"
+        />
+      </DropdownMenu.Items>
+    </DropdownMenu>
+  );
+};
+
+type EditFolderButtonProps = {
+  owner: WorkspaceType;
+  vault: VaultType;
+  folder: DataSourceType;
+  canWriteInVault: boolean;
+};
+
+const EditFolderButton = ({
+  owner,
+  vault,
+  folder,
+  canWriteInVault,
+}: EditFolderButtonProps) => {
   const { dataSources } = useDataSources(owner);
-
+  const [showEditFolderModal, setShowEditFolderModal] = useState(false);
   return (
     <>
       <VaultFolderModal
         isOpen={showEditFolderModal}
-        setOpen={(isOpen) => {
-          setShowEditFolderModal(isOpen);
+        onClose={() => {
+          setShowEditFolderModal(false);
         }}
         owner={owner}
         vault={vault}
         dataSources={dataSources}
         folder={folder}
       />
-      <DropdownMenu>
-        <DropdownMenu.Button>
-          <Button
-            size="sm"
-            label="Add data"
-            icon={PlusIcon}
-            variant="primary"
-            type="menu"
-          />
-        </DropdownMenu.Button>
-
-        <DropdownMenu.Items width={300}>
-          <DropdownMenu.Item
-            icon={DocumentTextIcon}
-            onClick={() => {
-              contentActionsRef.current?.callAction(
-                "DocumentOrTableUploadOrEditModal"
-              );
-            }}
-            label="Create a document"
-          />
-          <DropdownMenu.Item
-            icon={TableIcon}
-            onClick={() => {
-              contentActionsRef.current?.callAction(
-                "DocumentOrTableUploadOrEditModal"
-              );
-            }}
-            label="Create a table"
-          />
-          <DropdownMenu.Item
-            icon={CloudArrowUpIcon}
-            onClick={() => {
-              contentActionsRef.current?.callAction("MultipleDocumentsUpload");
-            }}
-            label="Upload multiple files"
-          />
-        </DropdownMenu.Items>
-      </DropdownMenu>
       <Button
         size="sm"
         label="Edit folder"
@@ -91,6 +165,7 @@ export const FoldersHeaderMenu = ({
         onClick={() => {
           setShowEditFolderModal(true);
         }}
+        disabled={!canWriteInVault}
       />
     </>
   );

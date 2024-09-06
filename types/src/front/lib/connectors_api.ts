@@ -29,7 +29,7 @@ export type ConnectorType = {
   id: string;
   type: ConnectorProvider;
   workspaceId: string;
-  dataSourceName: string;
+  dataSourceId: string;
   connectionId: string;
 
   lastSyncStatus?: ConnectorSyncStatus;
@@ -135,14 +135,21 @@ export class ConnectorsAPI {
     this._logger = logger;
   }
 
-  async createConnector(
-    provider: ConnectorProvider,
-    workspaceId: string,
-    workspaceAPIKey: string,
-    dataSourceName: string,
-    connectionId: string,
-    configuration: ConnectorConfiguration
-  ): Promise<ConnectorsAPIResponse<ConnectorType>> {
+  async createConnector({
+    provider,
+    workspaceId,
+    workspaceAPIKey,
+    dataSourceId,
+    connectionId,
+    configuration,
+  }: {
+    provider: ConnectorProvider;
+    workspaceId: string;
+    workspaceAPIKey: string;
+    dataSourceId: string;
+    connectionId: string;
+    configuration: ConnectorConfiguration;
+  }): Promise<ConnectorsAPIResponse<ConnectorType>> {
     const res = await this._fetchWithError(
       `${this._url}/connectors/create/${encodeURIComponent(provider)}`,
       {
@@ -151,7 +158,7 @@ export class ConnectorsAPI {
         body: JSON.stringify({
           workspaceId,
           workspaceAPIKey,
-          dataSourceName,
+          dataSourceId,
           connectionId,
           configuration,
         } satisfies ConnectorCreateRequestBody),

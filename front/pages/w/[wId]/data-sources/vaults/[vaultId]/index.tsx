@@ -1,11 +1,4 @@
-import {
-  LockIcon,
-  Page,
-  PlanetIcon,
-  PuzzleIcon,
-  Tab,
-  UserGroupIcon,
-} from "@dust-tt/sparkle";
+import { Page, PuzzleIcon, Tab, UserGroupIcon } from "@dust-tt/sparkle";
 import type { VaultType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -17,6 +10,7 @@ import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
 import { VaultMembers } from "@app/components/vaults/VaultMembers";
 import config from "@app/lib/api/config";
+import { getVaultIcon } from "@app/lib/client/vaults";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 
@@ -68,11 +62,11 @@ export default function Vault({
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
         title={vault.kind === "global" ? "Company Data" : vault.name}
-        icon={vault.kind === "global" ? PlanetIcon : LockIcon}
+        icon={getVaultIcon(vault.kind)}
         description="Manage connections to your products and the real-time data feeds Dust has access to."
       />
 
-      {vault.kind !== "global" && (
+      {vault.kind !== "global" && isAdmin && (
         <div className="w-[320px]">
           <Tab
             tabs={[
@@ -101,7 +95,6 @@ export default function Vault({
         <VaultCategoriesList
           owner={owner}
           vault={vault}
-          isAdmin={isAdmin}
           onSelect={(category) => {
             void router.push(
               `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`
@@ -109,7 +102,7 @@ export default function Vault({
           }}
         />
       )}
-      {currentTab === "members" && (
+      {currentTab === "members" && isAdmin && (
         <VaultMembers owner={owner} vault={vault} isAdmin={isAdmin} />
       )}
     </Page.Vertical>

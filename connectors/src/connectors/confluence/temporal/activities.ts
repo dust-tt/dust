@@ -231,7 +231,7 @@ export async function confluenceCheckAndUpsertPageActivity({
 
   const loggerArgs = {
     connectorId,
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
     pageId,
     spaceId,
     workspaceId: dataSourceConfig.workspaceId,
@@ -508,11 +508,7 @@ export async function confluenceUpdatePagesParentIdsActivity(
       );
 
       await updateDocumentParentsField({
-        dataSourceConfig: {
-          dataSourceName: connector.dataSourceName,
-          workspaceId: connector.workspaceId,
-          workspaceAPIKey: connector.workspaceAPIKey,
-        },
+        dataSourceConfig: dataSourceConfigFromConnector(connector),
         documentId: makeConfluencePageId(page.pageId),
         parents: parentIds,
       });

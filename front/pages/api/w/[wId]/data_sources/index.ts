@@ -196,6 +196,7 @@ async function handler(
       }
 
       const ds = await DataSourceResource.makeNew(
+        auth,
         {
           name: req.body.name,
           description: description,
@@ -209,6 +210,7 @@ async function handler(
       );
 
       await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+        auth,
         ds.vault,
         ds
       );

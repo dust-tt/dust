@@ -15,6 +15,8 @@ async function backfillDefaultViewForDataSource(
   logger: Logger,
   execute: boolean
 ): Promise<boolean> {
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
   // Check if there is already a view for this managed data source in the vault.
   const dsv = await DataSourceViewModel.findOne({
     where: {
@@ -37,6 +39,7 @@ async function backfillDefaultViewForDataSource(
 
   // Create a default view for this data source in the vault.
   await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+    auth,
     vault,
     dataSource
   );

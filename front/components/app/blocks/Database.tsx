@@ -129,7 +129,7 @@ export default function Database({
             </div>
           )}
         </div>
-        {block.config.tables?.[0].table_id && (
+        {block.config.tables?.[0]?.table_id && (
           <div>
             <div className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
               query:

@@ -36,7 +36,7 @@ import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
 
-import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSourceDialog";
+import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
@@ -51,7 +51,7 @@ const WEBSITE_CAT: DataSourceViewCategory = "website";
 // this should be refactored to use the new design.
 export default function VaultWebsiteModal({
   isOpen,
-  setOpen,
+  onClose,
   owner,
   dataSources,
   vault,
@@ -59,7 +59,7 @@ export default function VaultWebsiteModal({
   webCrawlerConfiguration,
 }: {
   isOpen: boolean;
-  setOpen: (isOpen: boolean) => void;
+  onClose: () => void;
   owner: WorkspaceType;
   vault: VaultType;
   dataSources: DataSourceType[];
@@ -67,19 +67,41 @@ export default function VaultWebsiteModal({
   webCrawlerConfiguration: WebCrawlerConfigurationType | null;
 }) {
   useEffect(() => {
-    if (webCrawlerConfiguration) {
-      setDataSourceUrl(webCrawlerConfiguration.url);
-      setMaxPages(webCrawlerConfiguration.maxPageToCrawl);
-      setMaxDepth(webCrawlerConfiguration.depth);
-      setCrawlMode(webCrawlerConfiguration.crawlMode);
-      setSelectedCrawlFrequency(webCrawlerConfiguration.crawlFrequency);
-      setHeaders(
-        Object.entries(webCrawlerConfiguration.headers).map(([key, value]) => {
-          return { key, value };
-        })
-      );
+    setDataSourceUrl(
+      webCrawlerConfiguration ? webCrawlerConfiguration.url : ""
+    );
+    setMaxPages(
+      webCrawlerConfiguration
+        ? webCrawlerConfiguration.maxPageToCrawl
+        : WEBCRAWLER_DEFAULT_CONFIGURATION.maxPageToCrawl
+    );
+    setMaxDepth(
+      webCrawlerConfiguration
+        ? webCrawlerConfiguration.depth
+        : WEBCRAWLER_DEFAULT_CONFIGURATION.depth
+    );
+    setCrawlMode(
+      webCrawlerConfiguration
+        ? webCrawlerConfiguration.crawlMode
+        : WEBCRAWLER_DEFAULT_CONFIGURATION.crawlMode
+    );
+    setSelectedCrawlFrequency(
+      webCrawlerConfiguration
+        ? webCrawlerConfiguration.crawlFrequency
+        : WEBCRAWLER_DEFAULT_CONFIGURATION.crawlFrequency
+    );
+    setDataSourceName(dataSourceView ? dataSourceView.dataSource.name : "");
+    setHeaders(
+      webCrawlerConfiguration
+        ? Object.entries(webCrawlerConfiguration.headers).map(
+            ([key, value]) => ({ key, value })
+          )
+        : []
+    );
+    if (!isOpen) {
+      setDataSourceName("");
     }
-  }, [webCrawlerConfiguration]);
+  }, [isOpen, dataSourceView, webCrawlerConfiguration]);
 
   const router = useRouter();
   const sendNotification = React.useContext(SendNotificationsContext);
@@ -95,11 +117,11 @@ export default function VaultWebsiteModal({
 
   // TODO(DATASOURCE_SID): Move to dataSourceId = ... dataSourceView.dataSource.sId
   const dsName = dataSourceView ? dataSourceView.dataSource.name : null;
-  const defaultDataSourceName = dataSourceView
-    ? dataSourceView.dataSource.name
-    : "";
 
-  const [dataSourceName, setDataSourceName] = useState(defaultDataSourceName);
+  const [dataSourceName, setDataSourceName] = useState(
+    dataSourceView ? dataSourceView.dataSource.name : ""
+  );
+
   const [dataSourceNameError, setDataSourceNameError] = useState<string | null>(
     null
   );
@@ -178,7 +200,7 @@ export default function VaultWebsiteModal({
     setDataSourceUrlError(urlError);
     setDataSourceNameError(nameError);
     return !urlError && !nameError;
-  }, [dataSourceName, dsName, dataSources, dataSourceUrl]);
+  }, [dataSourceUrl, dataSources, dataSourceName, dsName]);
 
   useEffect(() => {
     if (isSubmitted) {
@@ -228,7 +250,7 @@ export default function VaultWebsiteModal({
         }
       );
       if (res.ok) {
-        setOpen(false);
+        onClose();
         sendNotification({
           title: "Website created",
           type: "success",
@@ -279,7 +301,7 @@ export default function VaultWebsiteModal({
         }
       );
       if (res.ok) {
-        setOpen(false);
+        onClose();
         setIsSaving(false);
         sendNotification({
           title: "Website updated",
@@ -330,9 +352,7 @@ export default function VaultWebsiteModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={() => {
-        setOpen(false);
-      }}
+      onClose={onClose}
       onSave={() => {
         setIsSubmitted(true);
         if (!isSaving) {
@@ -576,7 +596,7 @@ export default function VaultWebsiteModal({
                 )}
                 <Input
                   placeholder=""
-                  value={defaultDataSourceName}
+                  value={dataSourceName}
                   onChange={(value) => setDataSourceName(value)}
                   error={dataSourceNameError}
                   name="dataSourceName"
@@ -604,10 +624,10 @@ export default function VaultWebsiteModal({
                         setIsDeleteModalOpen(true);
                       }}
                     />
-                    <DeleteDataSourceDialog
+                    <DeleteStaticDataSourceDialog
                       handleDelete={handleDelete}
                       isOpen={isDeleteModalOpen}
-                      setIsOpen={setIsDeleteModalOpen}
+                      onClose={() => setIsDeleteModalOpen(false)}
                     />
                   </>
                 )}

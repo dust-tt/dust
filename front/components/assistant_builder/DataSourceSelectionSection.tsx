@@ -21,7 +21,10 @@ import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDoc
 import { orderDatasourceViewSelectionConfigurationByImportance } from "@app/lib/assistant";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import {
+  canBeExpanded,
+  getDisplayNameForDataSource,
+} from "@app/lib/data_sources";
 import { classNames } from "@app/lib/utils";
 
 interface DataSourceSelectionSectionProps {
@@ -99,7 +102,7 @@ export default function DataSourceSelectionSection({
                 <Tree.Item
                   key={dsConfig.dataSourceView.sId}
                   type={
-                    dsConfig.dataSourceView.dataSource.connectorId
+                    canBeExpanded(viewType, dsConfig.dataSourceView.dataSource)
                       ? "node"
                       : "leaf"
                   } // todo make useConnectorPermissions hook work for non managed ds (Folders)

@@ -2,8 +2,8 @@ import type { DustAppRunConfigurationType, ModelId } from "@dust-tt/types";
 import _ from "lodash";
 import { Op } from "sequelize";
 
-import { App } from "@app/lib/models/apps";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
+import { App } from "@app/lib/resources/storage/models/apps";
 
 export async function fetchDustAppRunActionConfigurations({
   configurationIds,

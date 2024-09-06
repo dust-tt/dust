@@ -267,8 +267,10 @@ export default function AssistantBuilder({
   }, [builderState, owner, initialBuilderState?.handle]);
 
   useEffect(() => {
-    void formValidation();
-  }, [formValidation]);
+    if (edited) {
+      void formValidation();
+    }
+  }, [edited, formValidation]);
 
   const setAction = useCallback(
     (p: AssistantBuilderSetActionType) => {

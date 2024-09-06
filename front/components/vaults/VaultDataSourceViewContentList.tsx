@@ -1,14 +1,26 @@
-import { DataTable, Searchbar, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  DataTable,
+  DropdownMenu,
+  Searchbar,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type {
+  ContentNodesViewType,
   DataSourceViewType,
   PlanType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isValidContentNodesViewType } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useRef, useState } from "react";
+import { useRouter } from "next/router";
+import { useEffect, useRef, useState } from "react";
 
-import type { ContentActionsRef } from "@app/components/vaults/ContentActions";
+import type {
+  ContentActionKey,
+  ContentActionsRef,
+} from "@app/components/vaults/ContentActions";
 import {
   ContentActions,
   getMenuItems,
@@ -33,7 +45,7 @@ type VaultDataSourceViewContentListProps = {
   vault: VaultType;
   dataSourceView: DataSourceViewType;
   plan: PlanType;
-  isAdmin: boolean;
+  canWriteInVault: boolean;
   onSelect: (parentId: string) => void;
   owner: WorkspaceType;
   parentId?: string;
@@ -60,12 +72,44 @@ export const VaultDataSourceViewContentList = ({
   vault,
   dataSourceView,
   plan,
-  isAdmin,
+  canWriteInVault,
   onSelect,
   parentId,
 }: VaultDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const contentActionsRef = useRef<ContentActionsRef>(null);
+
+  const router = useRouter();
+  const viewType: ContentNodesViewType = isValidContentNodesViewType(
+    router.query.viewType
+  )
+    ? router.query.viewType
+    : "documents";
+
+  // Set a default viewType if not present in the URL
+  useEffect(() => {
+    if (!router.query.viewType) {
+      void router.replace(
+        {
+          query: { ...router.query, viewType: "documents" },
+        },
+        undefined,
+        { shallow: true }
+      );
+    }
+  }, [router]);
+
+  const handleViewTypeChange = (newViewType: ContentNodesViewType) => {
+    if (newViewType !== viewType) {
+      void router.replace(
+        {
+          query: { ...router.query, viewType: newViewType },
+        },
+        undefined,
+        { shallow: true }
+      );
+    }
+  };
 
   const { isNodesLoading, mutateDataSourceViewContentNodes, nodes } =
     useDataSourceViewContentNodes({
@@ -73,18 +117,20 @@ export const VaultDataSourceViewContentList = ({
       owner,
       internalIds: parentId ? [parentId] : [],
       includeChildren: true,
-      viewType: "documents",
+      viewType,
     });
 
   const rows: RowData[] =
     nodes?.map((contentNode) => ({
       ...contentNode,
       icon: getVisualForContentNode(contentNode),
-      onClick: () => {
-        if (contentNode.expandable) {
-          onSelect(contentNode.internalId);
-        }
-      },
+      ...(contentNode.expandable && {
+        onClick: () => {
+          if (contentNode.expandable) {
+            onSelect(contentNode.internalId);
+          }
+        },
+      }),
       moreMenuItems: getMenuItems(
         dataSourceView,
         contentNode,
@@ -105,7 +151,7 @@ export const VaultDataSourceViewContentList = ({
       <div
         className={classNames(
           "flex gap-2",
-          rows.length === 0 && isAdmin
+          rows.length === 0
             ? "h-36 w-full max-w-4xl items-center justify-center rounded-lg border bg-structure-50"
             : ""
         )}
@@ -123,17 +169,42 @@ export const VaultDataSourceViewContentList = ({
           </>
         )}
         {isFolder(dataSourceView.dataSource) && (
-          <FoldersHeaderMenu
-            owner={owner}
-            vault={vault}
-            folder={dataSourceView.dataSource}
-            contentActionsRef={contentActionsRef}
-          />
+          <>
+            <DropdownMenu>
+              <DropdownMenu.Button>
+                <Button
+                  size="sm"
+                  label={viewType === "documents" ? "Documents" : "Tables"}
+                  variant="secondary"
+                  type="menu"
+                />
+              </DropdownMenu.Button>
+
+              <DropdownMenu.Items>
+                <DropdownMenu.Item
+                  label="Documents"
+                  onClick={() => handleViewTypeChange("documents")}
+                />
+                <DropdownMenu.Item
+                  label="Tables"
+                  onClick={() => handleViewTypeChange("tables")}
+                />
+              </DropdownMenu.Items>
+            </DropdownMenu>
+            <FoldersHeaderMenu
+              owner={owner}
+              vault={vault}
+              canWriteInVault={canWriteInVault}
+              folder={dataSourceView.dataSource}
+              contentActionsRef={contentActionsRef}
+            />
+          </>
         )}
         {isWebsite(dataSourceView.dataSource) && (
           <WebsitesHeaderMenu
             owner={owner}
             vault={vault}
+            canWriteInVault={canWriteInVault}
             dataSourceView={dataSourceView}
           />
         )}
@@ -152,7 +223,15 @@ export const VaultDataSourceViewContentList = ({
         dataSourceView={dataSourceView}
         owner={owner}
         plan={plan}
-        onSave={mutateDataSourceViewContentNodes}
+        onSave={async (action?: ContentActionKey) => {
+          if (action === "DocumentUploadOrEdit") {
+            handleViewTypeChange("documents");
+          } else if (action === "TableUploadOrEdit") {
+            handleViewTypeChange("tables");
+          }
+
+          await mutateDataSourceViewContentNodes();
+        }}
       />
     </>
   );

@@ -118,7 +118,7 @@ export async function syncHelpCenterOnlyActivity({
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     provider: "intercom",
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
   };
 
   const helpCenterOnDb = await IntercomHelpCenter.findOne({
@@ -238,7 +238,7 @@ export async function syncLevel1CollectionWithChildrenActivity({
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     provider: "intercom",
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
   };
 
   const intercomWorkspace = await IntercomWorkspace.findOne({
@@ -342,7 +342,7 @@ export async function syncArticleBatchActivity({
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     provider: "intercom",
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
   };
 
   const intercomWorkspace = await IntercomWorkspace.findOne({
@@ -440,7 +440,7 @@ export async function syncTeamOnlyActivity({
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     provider: "intercom",
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
   };
 
   const teamOnDB = await IntercomTeam.findOne({
@@ -557,7 +557,7 @@ export async function syncConversationBatchActivity({
     workspaceId: dataSourceConfig.workspaceId,
     connectorId,
     provider: "intercom",
-    dataSourceName: dataSourceConfig.dataSourceName,
+    dataSourceId: dataSourceConfig.dataSourceId,
     teamId: teamId ?? null,
   };
 

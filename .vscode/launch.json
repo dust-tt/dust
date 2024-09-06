@@ -35,6 +35,14 @@
             "request": "launch",
             "command": "npm start",
             "cwd": "${workspaceFolder}/connectors",
+            "envFile": "${workspaceFolder}/connectors/.env.local",
+          },
+          {
+            "type": "node-terminal",
+            "name": "Debug front server",
+            "request": "launch",
+            "command": "npm run dev",
+            "cwd": "${workspaceFolder}/front",
             "envFile": "${workspaceFolder}/front/.env.local",
           }
     ]

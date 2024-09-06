@@ -4,11 +4,13 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
+  NonAttribute,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 
 export class App extends Model<
   InferAttributes<App>,
@@ -27,7 +29,11 @@ export class App extends Model<
   declare savedRun: string | null;
   declare dustAPIProjectId: string;
 
+  declare vaultId: ForeignKey<VaultModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
+
+  declare vault: NonAttribute<VaultModel>;
+  declare workspace: NonAttribute<Workspace>;
 }
 App.init(
   {
@@ -85,10 +91,18 @@ App.init(
     ],
   }
 );
+
 Workspace.hasMany(App, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
+App.belongsTo(Workspace);
+
+VaultModel.hasMany(App, {
+  foreignKey: { allowNull: false },
+  onDelete: "RESTRICT",
+});
+App.belongsTo(VaultModel);
 
 export class Provider extends Model<
   InferAttributes<Provider>,

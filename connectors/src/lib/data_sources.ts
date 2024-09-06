@@ -22,7 +22,10 @@ import { gfm } from "micromark-extension-gfm";
 
 import { apiConfig } from "@connectors/lib/api/config";
 import { withRetries } from "@connectors/lib/dust_front_api_helpers";
-import { DustConnectorWorkflowError } from "@connectors/lib/error";
+import {
+  DustConnectorWorkflowError,
+  InvalidRowsRequestError,
+} from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -99,11 +102,11 @@ async function _upsertToDatasource({
         documentUrl,
         documentLength: sectionFullText(documentContent).length,
         workspaceId: dataSourceConfig.workspaceId,
-        dataSourceName: dataSourceConfig.dataSourceName,
+        dataSourceId: dataSourceConfig.dataSourceId,
         parents,
       });
       const statsDTags = [
-        `data_source_name:${dataSourceConfig.dataSourceName}`,
+        `data_source_Id:${dataSourceConfig.dataSourceId}`,
         `workspace_id:${dataSourceConfig.workspaceId}`,
       ];
 
@@ -116,8 +119,9 @@ async function _upsertToDatasource({
 
       const now = new Date();
 
-      const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-      const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
+      const endpoint =
+        `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+        `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
       const dustRequestPayload: PostDataSourceDocumentRequestBody = {
         text: null,
         section: documentContent,
@@ -213,8 +217,9 @@ export async function deleteFromDataSource(
 ) {
   const localLogger = logger.child({ ...loggerArgs, documentId });
 
-  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/documents/${documentId}`;
+  const endpoint =
+    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
@@ -300,8 +305,9 @@ async function _updateDocumentOrTableParentsField({
     tableOrDocument === "document"
       ? logger.child({ ...loggerArgs, documentId: id })
       : logger.child({ ...loggerArgs, tableId: id });
-  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/${tableOrDocument}s/${id}/parents`;
+  const endpoint =
+    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/${tableOrDocument}s/${id}/parents`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
@@ -404,14 +410,14 @@ async function tokenize(text: string, ds: DataSourceConfig) {
     logger,
     { useLocalInDev: true }
   );
-  const tokensRes = await dustAPI.tokenize(text, ds.dataSourceName);
+  const tokensRes = await dustAPI.tokenize(text, ds.dataSourceId);
   if (tokensRes.isErr()) {
     logger.error(
       { error: tokensRes.error },
-      `Error tokenizing text for ${ds.dataSourceName}`
+      `Error tokenizing text for ${ds.dataSourceId}`
     );
     throw new DustConnectorWorkflowError(
-      `Error tokenizing text for ${ds.dataSourceName}`,
+      `Error tokenizing text for ${ds.dataSourceId}`,
       "transient_upstream_activity_error",
       tokensRes.error
     );
@@ -569,7 +575,7 @@ export async function upsertTableFromCsv({
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
-    `data_source_name:${dataSourceConfig.dataSourceName}`,
+    `data_source_id:${dataSourceConfig.dataSourceId}`,
     `workspace_id:${dataSourceConfig.workspaceId}`,
   ];
 
@@ -582,8 +588,9 @@ export async function upsertTableFromCsv({
 
   const now = new Date();
 
-  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tables/csv`;
+  const endpoint =
+    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/tables/csv`;
   const dustRequestPayload = {
     name: tableName,
     parents,
@@ -684,6 +691,12 @@ export async function upsertTableFromCsv({
       },
       "Error uploading table to Dust."
     );
+    if (
+      dustRequestResult.status === 400 &&
+      dustRequestResult.data.error?.type === "invalid_rows_request_error"
+    ) {
+      throw new InvalidRowsRequestError(dustRequestResult.data.error.message);
+    }
     throw new Error(
       `Error uploading to dust, got ${
         dustRequestResult.status
@@ -709,7 +722,7 @@ export async function deleteTableRow({
     rowId,
   });
   const statsDTags = [
-    `data_source_name:${dataSourceConfig.dataSourceName}`,
+    `data_source_id:${dataSourceConfig.dataSourceId}`,
     `workspace_id:${dataSourceConfig.workspaceId}`,
   ];
 
@@ -722,8 +735,9 @@ export async function deleteTableRow({
 
   const now = new Date();
 
-  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tables/${tableId}/rows/${rowId}`;
+  const endpoint =
+    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}/rows/${rowId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
@@ -801,8 +815,9 @@ export async function getTable({
     tableId,
   });
 
-  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tables/${tableId}`;
+  const endpoint =
+    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
@@ -839,7 +854,7 @@ export async function deleteTable({
     tableId,
   });
   const statsDTags = [
-    `data_source_name:${dataSourceConfig.dataSourceName}`,
+    `data_source_id:${dataSourceConfig.dataSourceId}`,
     `workspace_id:${dataSourceConfig.workspaceId}`,
   ];
 
@@ -852,8 +867,9 @@ export async function deleteTable({
 
   const now = new Date();
 
-  const urlSafeName = encodeURIComponent(dataSourceConfig.dataSourceName);
-  const endpoint = `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}/data_sources/${urlSafeName}/tables/${tableId}`;
+  const endpoint =
+    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,

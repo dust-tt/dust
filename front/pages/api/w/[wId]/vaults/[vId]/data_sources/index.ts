@@ -383,6 +383,7 @@ const handleDataSourceWithProvider = async ({
   }
 
   const dataSource = await DataSourceResource.makeNew(
+    auth,
     {
       assistantDefaultSelected:
         isConnectorProviderAssistantDefaultSelected(provider),
@@ -404,6 +405,7 @@ const handleDataSourceWithProvider = async ({
     const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
 
     await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+      auth,
       globalVault,
       dataSource,
       "custom"
@@ -412,6 +414,7 @@ const handleDataSourceWithProvider = async ({
 
   const dataSourceView =
     await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+      auth,
       dataSource.vault,
       dataSource
     );
@@ -421,14 +424,14 @@ const handleDataSourceWithProvider = async ({
     logger
   );
 
-  const connectorsRes = await connectorsAPI.createConnector(
+  const connectorsRes = await connectorsAPI.createConnector({
     provider,
-    owner.sId,
-    systemAPIKeyRes.value.secret,
-    dataSourceName,
-    connectionId ?? "none",
-    configuration
-  );
+    workspaceId: owner.sId,
+    workspaceAPIKey: systemAPIKeyRes.value.secret,
+    dataSourceId: dataSource.sId,
+    connectionId: connectionId ?? "none",
+    configuration,
+  });
 
   if (connectorsRes.isErr()) {
     logger.error(
@@ -608,6 +611,7 @@ const handleDataSourceWithoutProvider = async ({
   }
 
   const dataSource = await DataSourceResource.makeNew(
+    auth,
     {
       name,
       description,
@@ -622,6 +626,7 @@ const handleDataSourceWithoutProvider = async ({
 
   const dataSourceView =
     await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+      auth,
       dataSource.vault,
       dataSource
     );

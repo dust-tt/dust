@@ -767,10 +767,9 @@ export class DustAPI {
 
   async tokenize(
     text: string,
-    dataSourceName: string
+    dataSourceId: string
   ): Promise<DustAPIResponse<CoreAPITokenType[]>> {
-    const urlSafeName = encodeURIComponent(dataSourceName);
-    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/data_sources/${urlSafeName}/tokenize`;
+    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/data_sources/${dataSourceId}/tokenize`;
 
     const res = await this._fetchWithError(endpoint, {
       method: "POST",

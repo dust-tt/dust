@@ -24,7 +24,7 @@ export class ConnectorModel extends Model<
 
   declare workspaceAPIKey: string;
   declare workspaceId: string;
-  declare dataSourceName: string;
+  declare dataSourceId: string;
 
   declare lastSyncStatus?: ConnectorSyncStatus;
   declare errorType: ConnectorErrorType | null;
@@ -71,7 +71,7 @@ ConnectorModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    dataSourceName: {
+    dataSourceId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -115,6 +115,6 @@ ConnectorModel.init(
   {
     sequelize: sequelizeConnection,
     modelName: "connectors",
-    indexes: [{ fields: ["workspaceId", "dataSourceName"], unique: true }],
+    indexes: [{ fields: ["workspaceId", "dataSourceId"], unique: true }],
   }
 );

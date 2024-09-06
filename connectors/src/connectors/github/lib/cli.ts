@@ -28,8 +28,8 @@ export const github = async ({
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
-      if (!args.dataSourceName) {
-        throw new Error("Missing --dataSourceName argument");
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
       }
       if (!args.owner) {
         throw new Error("Missing --owner argument");
@@ -40,11 +40,11 @@ export const github = async ({
 
       const connector = await ConnectorResource.findByDataSource({
         workspaceId: `${args.wId}`,
-        dataSourceName: args.dataSourceName,
+        dataSourceId: args.dsId,
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
         );
       }
 
@@ -73,8 +73,8 @@ export const github = async ({
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
-      if (!args.dataSourceName) {
-        throw new Error("Missing --dataSourceName argument");
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
       }
       if (!args.enable) {
         throw new Error("Missing --enable (true/false) argument");
@@ -87,11 +87,11 @@ export const github = async ({
 
       const connector = await ConnectorResource.findByDataSource({
         workspaceId: `${args.wId}`,
-        dataSourceName: args.dataSourceName,
+        dataSourceId: args.dsId,
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
         );
       }
 
@@ -123,8 +123,8 @@ export const github = async ({
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
-      if (!args.dataSourceName) {
-        throw new Error("Missing --dataSourceName argument");
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
       }
       if (!args.repoLogin) {
         throw new Error("Missing --repoLogin argument");
@@ -140,12 +140,12 @@ export const github = async ({
       }
 
       const connector = await ConnectorResource.findByDataSource({
-        workspaceId: args.wId,
-        dataSourceName: args.dataSourceName,
+        workspaceId: `${args.wId}`,
+        dataSourceId: args.dsId,
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
         );
       }
 
@@ -163,20 +163,20 @@ export const github = async ({
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
-      if (!args.dataSourceName) {
-        throw new Error("Missing --dataSourceName argument");
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
       }
       if (!args.repoId) {
         throw new Error("Missing --repoId argument");
       }
 
       const connector = await ConnectorResource.findByDataSource({
-        workspaceId: args.wId,
-        dataSourceName: args.dataSourceName,
+        workspaceId: `${args.wId}`,
+        dataSourceId: args.dsId,
       });
       if (!connector) {
         throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dataSourceName}`
+          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}`
         );
       }
       const githubCodeRepository = await GithubCodeRepository.findOne({

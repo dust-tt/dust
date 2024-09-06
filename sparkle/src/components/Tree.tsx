@@ -130,13 +130,15 @@ Tree.Item = function ({
   const childrenToRender = getChildren();
 
   const treeItemStyleClasses = {
-    base: "s-group s-flex s-cursor-default s-flex-row s-items-center",
+    base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center",
     isNavigatableBase:
       "s-border s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
     isNavigatableUnselected:
       "s-border-structure-200/0 s-bg-white/0 hover:s-border-structure-200 hover:s-bg-white",
     isNavigatableSelected: "s-border-structure-200 s-bg-white",
   };
+
+  const isExpanded = childrenToRender && !effectiveCollapsed;
 
   return (
     <>
@@ -157,17 +159,15 @@ Tree.Item = function ({
             ? isSelected
               ? treeItemStyleClasses.isNavigatableSelected
               : treeItemStyleClasses.isNavigatableUnselected
-            : ""
+            : "",
+          isExpanded ? "is-expanded" : "is-collapsed",
+          type
         )}
         onClick={onItemClick ? onItemClick : undefined}
       >
         {type === "node" && (
           <IconButton
-            icon={
-              childrenToRender && !effectiveCollapsed
-                ? ArrowDownSIcon
-                : ArrowRightSIcon
-            }
+            icon={isExpanded ? ArrowDownSIcon : ArrowRightSIcon}
             size="xs"
             variant="secondary"
             onClick={(e) => {
@@ -200,7 +200,7 @@ Tree.Item = function ({
             className={classNames(
               "s-flex s-gap-2 s-pl-4",
               areActionsFading
-                ? "s-transform s-opacity-0 s-duration-300 group-hover:s-opacity-100"
+                ? "s-transform s-opacity-0 s-duration-300 group-hover/tree:s-opacity-100"
                 : ""
             )}
           >

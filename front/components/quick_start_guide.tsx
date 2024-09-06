@@ -57,7 +57,7 @@ export function QuickStartGuide({
             <div className="w-full">
               <div className="relative w-full overflow-hidden rounded-lg pb-[56.20%]">
                 <iframe
-                  src="https://fast.wistia.net/embed/iframe/j7w4t4ysr3?seo=true&videoFoam=false"
+                  src="https://fast.wistia.net/embed/iframe/v90n8beuh9?seo=true&videoFoam=false"
                   title="Dust product tour"
                   allow="autoplay; fullscreen"
                   frameBorder="0"

@@ -14,10 +14,8 @@ import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export async function fetchTableQueryActionConfigurations({
   configurationIds,
@@ -79,12 +77,10 @@ export async function fetchTableQueryActionConfigurations({
         tablesQueryConfigTables.map((table) => {
           const { dataSourceView } = table;
 
-          const dataSourceViewId = dataSourceView
-            ? DataSourceViewResource.modelIdToSId({
-                id: dataSourceView.id,
-                workspaceId: dataSourceView.workspaceId,
-              })
-            : null;
+          const dataSourceViewId = DataSourceViewResource.modelIdToSId({
+            id: dataSourceView.id,
+            workspaceId: dataSourceView.workspaceId,
+          });
 
           return {
             dataSourceId: table.dataSourceId,
@@ -125,56 +121,26 @@ export async function createTableDataSourceConfiguration(
     )
   );
 
-  const dataSourceIds = tableConfigurations.map((tc) => tc.dataSourceId);
-  const [globalVault, dataSources] = await Promise.all([
-    // TODO(GROUPS_INFRA): Remove fetching global vault once the UI passes the data source view.
-    VaultResource.fetchWorkspaceGlobalVault(auth),
-    // TODO(DATASOURCE_SID): remove fetch by names in favor of fetchByModelIds once the
-    // configuration is migrated to it.
-    DataSourceResource.fetchByNames(
-      // We can use `auth` because we limit to one workspace.
-      auth,
-      dataSourceIds
-    ),
-  ]);
-
-  const uniqueDataSources = _.uniqBy(dataSources, (ds) => ds.id);
-
-  const dataSourceViews =
-    await DataSourceViewResource.listForDataSourcesInVault(
-      // We can use `auth` because we limit to one workspace.
-      auth,
-      uniqueDataSources,
-      globalVault
-    );
+  // DataSourceViewResource.listByWorkspace() applies the permissions check.
+  const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
+  const dataSourceViewsMap = dataSourceViews.reduce(
+    (acc, dsv) => {
+      acc[dsv.sId] = dsv;
+      return acc;
+    },
+    {} as Record<string, DataSourceViewResource>
+  );
 
   return Promise.all(
     tableConfigurations.map(async (tc) => {
-      const dataSource = dataSources.find((ds) => ds.name === tc.dataSourceId);
-      assert(
-        dataSource,
-        "Can't create TableDataSourceConfiguration for query tables: DataSource not found."
-      );
-
-      let dataSourceView;
-
-      // Since the UI does not currently provide the data source view,
-      // we try to retrieve the view associated with the data from the global vault
-      // and assign it to the table data source configuration.
-      if (!tc.dataSourceViewId) {
-        dataSourceView = dataSourceViews.find(
-          (dsv) => dsv.dataSourceId === dataSource.id
-        );
-      } else {
-        dataSourceView = dataSourceViews.find(
-          (dsv) => dsv.sId === tc.dataSourceViewId
-        );
-      }
-
+      const dataSourceView = dataSourceViewsMap[tc.dataSourceViewId];
       assert(
         dataSourceView,
         "Can't create TableDataSourceConfiguration for query tables: DataSourceView not found."
       );
+
+      const { dataSource } = dataSourceView;
+
       assert(
         dataSourceView.dataSource.name === tc.dataSourceId,
         "Can't create TableDataSourceConfiguration for query tables: data source view does not belong to the data source."

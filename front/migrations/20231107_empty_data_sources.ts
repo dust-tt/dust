@@ -2,8 +2,8 @@ import { CoreAPI } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import config from "@app/lib/api/config";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import { Workspace } from "@app/lib/models/workspace";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
