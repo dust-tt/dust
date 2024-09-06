@@ -55,8 +55,10 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDocument, isWebsite } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
-import { useDocuments } from "@app/lib/swr/data_sources";
-import { useTables } from "@app/lib/swr/tables";
+import {
+  useDataSourceDocuments,
+  useDataSourceTables,
+} from "@app/lib/swr/data_sources";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -251,7 +253,7 @@ function DatasourceDocumentsTabView({
     isDocumentsLoading,
     isDocumentsError,
     mutateDocuments,
-  } = useDocuments(owner, dataSource, limit, offset);
+  } = useDataSourceDocuments(owner, dataSource, limit, offset);
   const [showDocumentsLimitPopup, setShowDocumentsLimitPopup] = useState(false);
 
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
@@ -561,7 +563,7 @@ function DatasourceTablesTabView({
   dataSource: DataSourceType;
   router: ReturnType<typeof useRouter>;
 }) {
-  const { tables } = useTables({
+  const { tables } = useDataSourceTables({
     workspaceId: owner.sId,
     dataSourceName: dataSource.name,
   });

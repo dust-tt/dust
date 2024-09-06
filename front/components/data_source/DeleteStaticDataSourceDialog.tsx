@@ -1,21 +1,21 @@
 import { Dialog } from "@dust-tt/sparkle";
 
-interface DeleteDataSourceDialogProps {
+interface DeleteStaticDataSourceDialogProps {
   handleDelete: () => void;
   dataSourceUsage?: number;
   isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
+  onClose: () => void;
 }
 
-export function DeleteDataSourceDialog({
+export function DeleteStaticDataSourceDialog({
   handleDelete,
   dataSourceUsage,
   isOpen,
-  setIsOpen,
-}: DeleteDataSourceDialogProps) {
+  onClose,
+}: DeleteStaticDataSourceDialogProps) {
   const onDelete = async () => {
     await handleDelete();
-    setIsOpen(false);
+    onClose();
   };
 
   const message =
@@ -30,7 +30,7 @@ export function DeleteDataSourceDialog({
       isOpen={isOpen}
       title="Removing Data Source"
       onValidate={onDelete}
-      onCancel={() => setIsOpen(false)}
+      onCancel={onClose}
       validateVariant="primaryWarning"
     >
       <div>{message}</div>

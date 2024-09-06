@@ -5,10 +5,13 @@ import {
   Cog6ToothIcon,
   DataTable,
   FolderIcon,
+  PencilSquareIcon,
   Searchbar,
   Spinner,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
+  APIError,
   ConnectorProvider,
   DataSourceViewCategory,
   DataSourceViewWithConnectorType,
@@ -16,17 +19,21 @@ import type {
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isWebsiteOrFolder } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
+import { useContext } from "react";
 import { useRef } from "react";
 import { useState } from "react";
 import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
+import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
-import { EditVaultStaticDataSourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
+import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
 import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
@@ -42,7 +49,7 @@ type RowData = {
   workspaceId: string;
   isAdmin: boolean;
   isLoading?: boolean;
-  buttonOnClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  buttonOnClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onClick?: () => void;
 };
 
@@ -51,6 +58,7 @@ type VaultResourcesListProps = {
   owner: WorkspaceType;
   plan: PlanType;
   isAdmin: boolean;
+  canWriteInVault: boolean;
   vault: VaultType;
   systemVault: VaultType;
   category: DataSourceViewCategory;
@@ -166,6 +174,7 @@ export const VaultResourcesList = ({
   owner,
   plan,
   isAdmin,
+  canWriteInVault,
   dustClientFacingUrl,
   vault,
   systemVault,
@@ -173,19 +182,25 @@ export const VaultResourcesList = ({
   onSelect,
 }: VaultResourcesListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
+  const [showFolderOrWebsiteModal, setShowFolderOrWebsiteModal] =
+    useState(false);
+  const [selectedDataSourceView, setSelectedDataSourceView] =
+    useState<DataSourceViewWithConnectorType | null>(null);
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
 
   const { dataSources, isDataSourcesLoading } = useDataSources(owner);
+  const router = useRouter();
+  const sendNotification = useContext(SendNotificationsContext);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
   const isSystemVault = systemVault.sId === vault.sId;
   const isManaged = category === "managed";
+  const isStatic = isWebsiteOrFolder(category);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Partial<Record<ConnectorProvider, boolean>>
   >({});
-
-  const router = useRouter();
 
   // DataSources Views of the current vault.
   const { vaultDataSourceViews, isVaultDataSourceViewsLoading } =
@@ -208,9 +223,32 @@ export const VaultResourcesList = ({
       workspaceId: owner.sId,
       isAdmin,
       isLoading: isLoadingByProvider[r.dataSource.connectorProvider],
+      ...(isStatic && {
+        moreMenuItems: [
+          {
+            label: "Edit",
+            icon: PencilSquareIcon,
+            onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+              e.stopPropagation();
+              setSelectedDataSourceView(r);
+              setShowFolderOrWebsiteModal(true);
+            },
+          },
+          {
+            label: "Delete",
+            icon: TrashIcon,
+            variant: "warning",
+            onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+              e.stopPropagation();
+              setSelectedDataSourceView(r);
+              setShowDeleteConfirmDialog(true);
+            },
+          },
+        ],
+      }),
       buttonOnClick: (e) => {
         e.stopPropagation();
-        // TODO(GROUPS_UI) Link to data source view.
+        // TODO(GROUPS_UI): will be removed by https://github.com/dust-tt/tasks/issues/1237
         void router.push(
           `/w/${owner.sId}/builder/data-sources/${r.dataSource.name}`
         );
@@ -226,12 +264,41 @@ export const VaultResourcesList = ({
     );
   }
 
+  const onDeleteFolderOrWebsite = async () => {
+    if (!selectedDataSourceView) {
+      return;
+    }
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${selectedDataSourceView.dataSource.name}`,
+      { method: "DELETE" }
+    );
+
+    if (res.ok) {
+      await router.push(
+        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`
+      );
+      sendNotification({
+        type: "success",
+        title: `Successfully deleted ${selectedDataSourceView.category}`,
+        description: `${getDataSourceNameFromView(selectedDataSourceView)} was successfully deleted.`,
+      });
+    } else {
+      const err: { error: APIError } = await res.json();
+      sendNotification({
+        type: "error",
+        title: `Error deleting ${selectedDataSourceView.category}`,
+        description: `Error: ${err.error.message}`,
+      });
+    }
+    return res.ok;
+  };
+
   return (
     <>
       <div
         className={classNames(
           "flex gap-2",
-          rows.length === 0 && isAdmin
+          rows.length === 0
             ? "h-36 w-full max-w-4xl items-center justify-center rounded-lg border bg-structure-50"
             : ""
         )}
@@ -265,7 +332,7 @@ export const VaultResourcesList = ({
             />
           </div>
         )}
-        {!isSystemVault && category === "managed" && (
+        {!isSystemVault && isManaged && (
           <EditVaultManagedDataSourcesViews
             owner={owner}
             vault={vault}
@@ -273,17 +340,34 @@ export const VaultResourcesList = ({
             isAdmin={isAdmin}
           />
         )}
-        {(category === "folder" || category === "website") && (
-          <EditVaultStaticDataSourcesViews
-            owner={owner}
-            plan={plan}
-            vault={vault}
-            category={category}
-            dataSources={dataSources}
-          />
+        {isStatic && (
+          <>
+            <EditVaultStaticDatasourcesViews
+              isOpen={showFolderOrWebsiteModal}
+              setOpen={setShowFolderOrWebsiteModal}
+              owner={owner}
+              vault={vault}
+              canWriteInVault={canWriteInVault}
+              dataSources={dataSources}
+              dataSourceView={selectedDataSourceView}
+              plan={plan}
+              category={category}
+              onClose={() => {
+                setShowFolderOrWebsiteModal(false);
+                setSelectedDataSourceView(null);
+              }}
+            />
+            {selectedDataSourceView && (
+              <DeleteStaticDataSourceDialog
+                handleDelete={onDeleteFolderOrWebsite}
+                isOpen={showDeleteConfirmDialog}
+                onClose={() => setShowDeleteConfirmDialog(false)}
+              />
+            )}
+          </>
         )}
       </div>
-      {rows.length > 0 ? (
+      {rows.length > 0 && (
         <DataTable
           data={rows}
           columns={getTableColumns({ isManaged, isSystemVault })}
@@ -291,12 +375,6 @@ export const VaultResourcesList = ({
           filterColumn="name"
           initialColumnOrder={[{ desc: false, id: "name" }]}
         />
-      ) : !isAdmin ? (
-        <div className="flex items-center justify-center text-sm font-normal text-element-700">
-          No available connection
-        </div>
-      ) : (
-        <></>
       )}
     </>
   );

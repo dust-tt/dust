@@ -72,7 +72,7 @@ export default function Vault({
         description="Manage connections to your products and the real-time data feeds Dust has access to."
       />
 
-      {vault.kind !== "global" && (
+      {vault.kind !== "global" && isAdmin && (
         <div className="w-[320px]">
           <Tab
             tabs={[
@@ -101,7 +101,6 @@ export default function Vault({
         <VaultCategoriesList
           owner={owner}
           vault={vault}
-          isAdmin={isAdmin}
           onSelect={(category) => {
             void router.push(
               `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`
@@ -109,7 +108,7 @@ export default function Vault({
           }}
         />
       )}
-      {currentTab === "members" && (
+      {currentTab === "members" && isAdmin && (
         <VaultMembers owner={owner} vault={vault} isAdmin={isAdmin} />
       )}
     </Page.Vertical>

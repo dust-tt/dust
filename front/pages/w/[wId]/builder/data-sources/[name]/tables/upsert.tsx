@@ -28,7 +28,7 @@ import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useTable } from "@app/lib/swr/tables";
+import { useDataSourceTable } from "@app/lib/swr/data_sources";
 import { classNames } from "@app/lib/utils";
 import type { UpsertTableFromCsvRequestBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/csv";
 
@@ -97,7 +97,7 @@ export default function TableUpsert({
   const [upserting, setUpserting] = useState(false);
   const [isBigFile, setIsBigFile] = useState(false);
 
-  const { table } = useTable({
+  const { table } = useDataSourceTable({
     workspaceId: owner.sId,
     dataSourceName: dataSource.name,
     tableId: loadTableId,

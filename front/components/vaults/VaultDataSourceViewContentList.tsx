@@ -45,7 +45,7 @@ type VaultDataSourceViewContentListProps = {
   vault: VaultType;
   dataSourceView: DataSourceViewType;
   plan: PlanType;
-  isAdmin: boolean;
+  canWriteInVault: boolean;
   onSelect: (parentId: string) => void;
   owner: WorkspaceType;
   parentId?: string;
@@ -72,7 +72,7 @@ export const VaultDataSourceViewContentList = ({
   vault,
   dataSourceView,
   plan,
-  isAdmin,
+  canWriteInVault,
   onSelect,
   parentId,
 }: VaultDataSourceViewContentListProps) => {
@@ -89,17 +89,25 @@ export const VaultDataSourceViewContentList = ({
   // Set a default viewType if not present in the URL
   useEffect(() => {
     if (!router.query.viewType) {
-      void router.replace({
-        query: { ...router.query, viewType: "documents" },
-      });
+      void router.replace(
+        {
+          query: { ...router.query, viewType: "documents" },
+        },
+        undefined,
+        { shallow: true }
+      );
     }
   }, [router]);
 
   const handleViewTypeChange = (newViewType: ContentNodesViewType) => {
     if (newViewType !== viewType) {
-      void router.push({
-        query: { ...router.query, viewType: newViewType },
-      });
+      void router.replace(
+        {
+          query: { ...router.query, viewType: newViewType },
+        },
+        undefined,
+        { shallow: true }
+      );
     }
   };
 
@@ -116,11 +124,13 @@ export const VaultDataSourceViewContentList = ({
     nodes?.map((contentNode) => ({
       ...contentNode,
       icon: getVisualForContentNode(contentNode),
-      onClick: () => {
-        if (contentNode.expandable) {
-          onSelect(contentNode.internalId);
-        }
-      },
+      ...(contentNode.expandable && {
+        onClick: () => {
+          if (contentNode.expandable) {
+            onSelect(contentNode.internalId);
+          }
+        },
+      }),
       moreMenuItems: getMenuItems(
         dataSourceView,
         contentNode,
@@ -141,7 +151,7 @@ export const VaultDataSourceViewContentList = ({
       <div
         className={classNames(
           "flex gap-2",
-          rows.length === 0 && isAdmin
+          rows.length === 0
             ? "h-36 w-full max-w-4xl items-center justify-center rounded-lg border bg-structure-50"
             : ""
         )}
@@ -184,6 +194,7 @@ export const VaultDataSourceViewContentList = ({
             <FoldersHeaderMenu
               owner={owner}
               vault={vault}
+              canWriteInVault={canWriteInVault}
               folder={dataSourceView.dataSource}
               contentActionsRef={contentActionsRef}
             />
@@ -193,6 +204,7 @@ export const VaultDataSourceViewContentList = ({
           <WebsitesHeaderMenu
             owner={owner}
             vault={vault}
+            canWriteInVault={canWriteInVault}
             dataSourceView={dataSourceView}
           />
         )}

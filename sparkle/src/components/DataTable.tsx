@@ -21,6 +21,7 @@ import {
 } from "@sparkle/components/DropdownMenu";
 import { IconButton } from "@sparkle/components/IconButton";
 import { Pagination } from "@sparkle/components/Pagination";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { ArrowDownIcon, ArrowUpIcon, MoreIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 
@@ -288,7 +289,7 @@ DataTable.Row = function Row({
   return (
     <tr
       className={classNames(
-        "s-group s-border-b s-border-structure-200 s-text-sm s-transition-colors s-duration-300 s-ease-out",
+        "s-group/dt s-border-b s-border-structure-200 s-text-sm s-transition-colors s-duration-300 s-ease-out",
         onClick ? "s-cursor-pointer hover:s-bg-structure-50" : "",
         className || ""
       )}
@@ -297,13 +298,9 @@ DataTable.Row = function Row({
     >
       {children}
       <td className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600">
-        {moreMenuItems && (
+        {moreMenuItems && moreMenuItems.length > 0 && (
           <DropdownMenu className="s-mr-1.5 s-flex">
-            <DropdownMenu.Button
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            >
+            <DropdownMenu.Button>
               <IconButton icon={MoreIcon} size="sm" variant="tertiary" />
             </DropdownMenu.Button>
             <DropdownMenu.Items origin="topRight" width={220}>
@@ -338,6 +335,7 @@ DataTable.Cell = function Cell({ children, className, ...props }: CellProps) {
 
 interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   avatarUrl?: string;
+  avatarTooltipLabel?: string;
   icon?: React.ComponentType<{ className?: string }>;
   iconClassName?: string;
   roundedAvatar?: boolean;
@@ -349,6 +347,7 @@ DataTable.CellContent = function CellContent({
   children,
   className,
   avatarUrl,
+  avatarTooltipLabel,
   roundedAvatar,
   icon,
   iconClassName,
@@ -360,7 +359,17 @@ DataTable.CellContent = function CellContent({
       className={classNames("s-flex s-items-center s-py-2", className || "")}
       {...props}
     >
-      {avatarUrl && (
+      {avatarUrl && avatarTooltipLabel && (
+        <Tooltip label={avatarTooltipLabel} position="above">
+          <Avatar
+            visual={avatarUrl}
+            size="xs"
+            className="s-mr-2"
+            isRounded={roundedAvatar ?? false}
+          />
+        </Tooltip>
+      )}
+      {avatarUrl && !avatarTooltipLabel && (
         <Avatar
           visual={avatarUrl}
           size="xs"

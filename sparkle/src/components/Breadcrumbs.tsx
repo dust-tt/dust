@@ -3,6 +3,7 @@ import React from "react";
 
 import { DropdownMenu } from "@sparkle/components/DropdownMenu";
 import { Icon } from "@sparkle/components/Icon";
+import { LinkProps } from "@sparkle/components/Item";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { SparkleContext, SparkleContextLinkType } from "@sparkle/context";
 import { ChevronRightIcon } from "@sparkle/icons";
@@ -11,20 +12,20 @@ const LABEL_TRUNCATE_LENGTH_MIDDLE = 15;
 const LABEL_TRUNCATE_LENGTH_END = 30;
 const ELLIPSIS_STRING = "...";
 
-type BreadcrumbItem = {
-  label: string;
+interface BreadcrumbItem {
   icon?: ComponentType<{ className?: string }>;
-  href?: string;
-};
+  label: string;
+  link?: LinkProps;
+}
 
-type BreadcrumbProps = {
+interface BreadcrumbProps {
   items: BreadcrumbItem[];
-};
+}
 
-type BreadcrumbsAccumulator = {
+interface BreadcrumbsAccumulator {
   itemsShown: BreadcrumbItem[];
   itemsHidden: BreadcrumbItem[];
-};
+}
 
 export function Breadcrumbs({ items }: BreadcrumbProps) {
   const { components } = React.useContext(SparkleContext);
@@ -63,7 +64,7 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
                     <DropdownMenu.Item
                       icon={item.icon}
                       label={item.label}
-                      href={item.href || "#"}
+                      link={item.link}
                       key={`breadcrumbs-hidden-${index}`}
                     >
                       {truncateWithTooltip(
@@ -77,7 +78,7 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
             ) : (
               <div>
                 <Link
-                  href={item.href || "#"}
+                  href={item.link?.href || "#"}
                   className={
                     index === items.length - 1
                       ? "s-text-element-900"

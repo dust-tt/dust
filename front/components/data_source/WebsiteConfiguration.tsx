@@ -30,7 +30,7 @@ import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import { DeleteDataSourceDialog } from "@app/components/data_source/DeleteDataSourceDialog";
+import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -532,10 +532,10 @@ export default function WebsiteConfiguration({
                   setIsDeleteModalOpen(true);
                 }}
               />
-              <DeleteDataSourceDialog
+              <DeleteStaticDataSourceDialog
                 handleDelete={handleDelete}
                 isOpen={isDeleteModalOpen}
-                setIsOpen={setIsDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
                 dataSourceUsage={dataSourceUsage ?? 0}
               />
             </div>

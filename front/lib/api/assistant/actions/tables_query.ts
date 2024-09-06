@@ -270,6 +270,20 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       table_id: t.tableId,
       data_source_id: t.dataSourceId,
     }));
+    if (tables.length === 0) {
+      yield {
+        type: "tables_query_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "tables_query_error",
+          message:
+            "The assistant does not have access to any tables. Please edit the assistant's Query Tables tool to add tables, or remove the tool.",
+        },
+      };
+      return;
+    }
     config.DATABASE_SCHEMA = {
       type: "database_schema",
       tables,

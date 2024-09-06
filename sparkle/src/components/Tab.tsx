@@ -71,10 +71,10 @@ const tabClasses = {
 const iconClasses = {
   default: {
     base: "s-text-element-600",
-    hover: "group-hover:s-text-action-400",
+    hover: "group-hover/tab:s-text-action-400",
     dark: {
       base: "dark:s-text-element-600-dark",
-      hover: "dark:group-hover:s-text-action-500-dark",
+      hover: "dark:group-hover/tab:s-text-action-500-dark",
     },
   },
   selected: {
@@ -125,7 +125,7 @@ export function Tab<E>({
         : iconClasses.default;
 
       const finalTabClasses = classNames(
-        "s-group s-justify-center s-flex s-text-sm s-font-semibold s-py-2.5 s-transition-all ease-out s-duration-400 s-whitespace-nowrap s-select-none",
+        "s-group/tab s-justify-center s-flex s-text-sm s-font-semibold s-py-2.5 s-transition-all ease-out s-duration-400 s-whitespace-nowrap s-select-none",
         variant === "default"
           ? tab.icon
             ? tab.hideLabel

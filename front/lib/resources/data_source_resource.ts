@@ -79,15 +79,18 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
   }
 
   static async makeNew(
+    auth: Authenticator,
     blob: Omit<CreationAttributes<DataSource>, "vaultId">,
     vault: VaultResource
   ) {
-    const datasource = await DataSource.create({
+    const dataSource = await DataSource.create({
       ...blob,
+      editedByUserId: auth.getNonNullableUser().id,
+      editedAt: new Date(),
       vaultId: vault.id,
     });
 
-    return new this(DataSourceResource.model, datasource.get(), vault);
+    return new this(DataSourceResource.model, dataSource.get(), vault);
   }
 
   // Fetching.
@@ -372,11 +375,11 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
   // Permissions.
 
   canRead(auth: Authenticator) {
-    return auth.canRead([this.vault.acl()]);
+    return this.vault.canRead(auth);
   }
 
   canWrite(auth: Authenticator) {
-    return auth.isBuilder() && auth.canWrite([this.vault.acl()]);
+    return this.vault.canWrite(auth);
   }
 
   // sId logic.
