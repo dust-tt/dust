@@ -214,6 +214,7 @@ const SystemVaultItem = ({
               key={ds.sId}
               owner={owner}
               vault={vault}
+              disabled={true}
             />
           ))}
         </Tree>
