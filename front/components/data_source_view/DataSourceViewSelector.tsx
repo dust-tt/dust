@@ -74,12 +74,9 @@ function VaultSelector({
   });
 
   const [selectedVault, setSelectedVault] = useState<string>(() => {
-    const firstKey =
-      Object.keys(selectionConfigurations).length > 0
-        ? Object.keys(selectionConfigurations)[0]
-        : null;
+    const firstKey = Object.keys(selectionConfigurations)[0] ?? null;
     return firstKey
-      ? selectionConfigurations[firstKey].dataSourceView.vaultId
+      ? selectionConfigurations[firstKey]?.dataSourceView?.vaultId ?? ""
       : "";
   });
 
@@ -207,12 +204,12 @@ export function DataSourceViewsSelector({
   if (nbOfVaults > 1) {
     return (
       <VaultSelector
-          owner={owner}
-          dataSourceViews={dataSourceViews}
-          allowedVaults={allowedVaults}
-          selectionConfigurations={selectionConfigurations}
-          setSelectionConfigurations={setSelectionConfigurations}
-          viewType={viewType}
+        owner={owner}
+        dataSourceViews={dataSourceViews}
+        allowedVaults={allowedVaults}
+        selectionConfigurations={selectionConfigurations}
+        setSelectionConfigurations={setSelectionConfigurations}
+        viewType={viewType}
       />
     );
   } else {
@@ -364,18 +361,19 @@ function DataSourceViewSelector({
   // This function ensures that only the selections matching the current vault are retained, removing any others.
   const keepOnlyOneVaultIfApplicable = useCallback(
     (config: DataSourceViewSelectionConfigurations) => {
-if (!ONLY_ONE_VAULT_PER_SELECTION) {
-return config;
-}
+      if (!ONLY_ONE_VAULT_PER_SELECTION) {
+        return config;
+      }
 
-  const { vaultId, sId } = dataSourceView;
-  return Object.fromEntries(
-    Object.entries(config).filter(
-      ([key, value]) => key === sId || value.dataSourceView.vaultId === vaultId
-    )
-  );
+      const { vaultId, sId } = dataSourceView;
+      return Object.fromEntries(
+        Object.entries(config).filter(
+          ([key, value]) =>
+            key === sId || value.dataSourceView.vaultId === vaultId
+        )
+      );
     },
-    [dataSourceView.sId, dataSourceView.vaultId]
+    [dataSourceView]
   );
 
   const onToggleSelectAll = useCallback(
