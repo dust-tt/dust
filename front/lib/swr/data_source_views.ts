@@ -113,6 +113,7 @@ export function useDataSourceViewContentNodes({
   isNodesLoading: boolean;
   mutateDataSourceViewContentNodes: KeyedMutator<GetDataSourceViewContentNodes>;
   nodes: GetDataSourceViewContentNodes["nodes"];
+  totalNodesCount: number;
 } {
   const url = dataSourceView
     ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
@@ -144,6 +145,7 @@ export function useDataSourceViewContentNodes({
     isNodesLoading: !error && !data,
     mutateDataSourceViewContentNodes: mutate,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
+    totalNodesCount: data ? 1000 : 0,
   };
 }
 

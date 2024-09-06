@@ -113,14 +113,18 @@ export const VaultDataSourceViewContentList = ({
     }
   };
 
-  const { isNodesLoading, mutateDataSourceViewContentNodes, nodes } =
-    useDataSourceViewContentNodes({
-      dataSourceView,
-      owner,
-      internalIds: parentId ? [parentId] : [],
-      includeChildren: true,
-      viewType,
-    });
+  const {
+    isNodesLoading,
+    mutateDataSourceViewContentNodes,
+    nodes,
+    totalNodesCount,
+  } = useDataSourceViewContentNodes({
+    dataSourceView,
+    owner,
+    internalIds: parentId ? [parentId] : [],
+    includeChildren: true,
+    viewType,
+  });
 
   const rows: RowData[] = useMemo(
     () =>
@@ -228,6 +232,7 @@ export const VaultDataSourceViewContentList = ({
       <ContentActions
         ref={contentActionsRef}
         dataSourceView={dataSourceView}
+        totalNodesCount={totalNodesCount}
         owner={owner}
         plan={plan}
         onSave={async (action?: ContentActionKey) => {
