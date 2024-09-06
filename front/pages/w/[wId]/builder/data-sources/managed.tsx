@@ -33,8 +33,8 @@ import {
 } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
-import * as React from "react";
-import { useContext, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/router";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   ConnectorPermissionsModal,
@@ -56,6 +56,14 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
+
+const REDIRECT_TO_EDIT_PERMISSIONS = [
+  "confluence",
+  "google_drive",
+  "microsoft",
+  "slack",
+  "intercom",
+];
 
 type DataSourceWithConnectorAndUsageType =
   DataSourceWithConnectorDetailsType & {
@@ -142,7 +150,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const readOnly = !auth.isBuilder();
   const isAdmin = auth.isAdmin();
-
   const allDataSources = await getDataSources(auth, { includeEditedBy: true });
 
   const managedDataSources: DataSourceWithConnectorAndUsageType[] = removeNulls(
@@ -237,6 +244,18 @@ export default function DataSourcesView({
 
   const searchBarRef = useRef<HTMLInputElement>(null);
   const sendNotification = useContext(SendNotificationsContext);
+  const router = useRouter();
+
+  useEffect(() => {
+    console.log(router.query.edit_permissions);
+    const dataSource = managedDataSources.find(
+      (ds) => ds.name === router.query.edit_permissions
+    );
+    if (dataSource) {
+      setSelectedDataSource(dataSource);
+      setShowConnectorModal(true);
+    }
+  }, [router, managedDataSources]);
 
   const connectionRows = useMemo(() => {
     const filteredRows = managedDataSources.filter(
@@ -393,6 +412,20 @@ export default function DataSourcesView({
                   [provider]: isLoading,
                 }))
               }
+              onCreated={async (dataSource) => {
+                if (
+                  dataSource.connectorProvider &&
+                  REDIRECT_TO_EDIT_PERMISSIONS.includes(
+                    dataSource.connectorProvider
+                  )
+                ) {
+                  await router.replace(
+                    `${router.asPath}?edit_permissions=${dataSource.name}`
+                  );
+                } else {
+                  await router.replace(`${router.asPath}`);
+                }
+              }}
             />
           )}
         </div>

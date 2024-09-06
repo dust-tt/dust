@@ -50,6 +50,14 @@ import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
 import { setupConnection } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
+const REDIRECT_TO_EDIT_PERMISSIONS = [
+  "confluence",
+  "google_drive",
+  "microsoft",
+  "slack",
+  "intercom",
+];
+
 type RowData = {
   dataSourceView: DataSourceViewWithConnectorType;
   label: string;
@@ -193,15 +201,14 @@ export const VaultResourcesList = ({
 }: VaultResourcesListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showEditionModal, setShowEditionModal] = useState(false);
-  const [showConnectorModal, setShowConnectorModal] = useState(false);
-  const [selectedDataSource, setSelectedDataSource] =
-    useState<DataSourceViewWithConnectorType | null>(null);
+  const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
+    useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
     useState<DataSourceViewWithConnectorType | null>(null);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [showFolderOrWebsiteModal, setShowFolderOrWebsiteModal] =
     useState(false);
-
+  const [isNewConnectorLoading, setIsNewConnectorLoading] = useState(false);
   const { dataSources, isDataSourcesLoading } = useDataSources(owner);
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
@@ -289,14 +296,17 @@ export const VaultResourcesList = ({
   };
 
   // DataSources Views of the current vault.
-  const { vaultDataSourceViews, isVaultDataSourceViewsLoading } =
-    useVaultDataSourceViews({
-      workspaceId: owner.sId,
-      vaultId: vault.sId,
-      category: category,
-      includeEditedBy: true,
-      includeConnectorDetails: true,
-    });
+  const {
+    vaultDataSourceViews,
+    isVaultDataSourceViewsLoading,
+    mutateVaultDataSourceViews,
+  } = useVaultDataSourceViews({
+    workspaceId: owner.sId,
+    vaultId: vault.sId,
+    category: category,
+    includeEditedBy: true,
+    includeConnectorDetails: true,
+  });
 
   const rows: RowData[] =
     vaultDataSourceViews?.map((r) => ({
@@ -334,13 +344,17 @@ export const VaultResourcesList = ({
       }),
       buttonOnClick: (e) => {
         e.stopPropagation();
-        setShowConnectorModal(true);
-        setSelectedDataSource(r);
+        setShowConnectorPermissionsModal(true);
+        setSelectedDataSourceView(r);
       },
       onClick: () => onSelect(r.sId),
     })) || [];
 
-  if (isDataSourcesLoading || isVaultDataSourceViewsLoading) {
+  if (
+    isDataSourcesLoading ||
+    isVaultDataSourceViewsLoading ||
+    isNewConnectorLoading
+  ) {
     return (
       <div className="mt-8 flex justify-center">
         <Spinner size="lg" />
@@ -407,12 +421,34 @@ export const VaultResourcesList = ({
               existingDataSources={vaultDataSourceViews.map(
                 (v) => v.dataSource
               )}
-              setIsProviderLoading={(provider, isLoading) =>
+              setIsProviderLoading={(provider, isLoading) => {
+                setIsNewConnectorLoading(true);
                 setIsLoadingByProvider((prev) => ({
                   ...prev,
                   [provider]: isLoading,
-                }))
-              }
+                }));
+              }}
+              onCreated={async (dataSource) => {
+                const updateDataSourceViews =
+                  await mutateVaultDataSourceViews();
+                if (
+                  dataSource.connectorProvider &&
+                  REDIRECT_TO_EDIT_PERMISSIONS.includes(
+                    dataSource.connectorProvider
+                  )
+                ) {
+                  if (updateDataSourceViews) {
+                    const view = updateDataSourceViews.dataSourceViews.find(
+                      (v) => v.dataSource.sId === dataSource.sId
+                    );
+                    if (view) {
+                      setSelectedDataSourceView(view);
+                      setShowConnectorPermissionsModal(true);
+                    }
+                  }
+                }
+                setIsNewConnectorLoading(false);
+              }}
             />
           </div>
         )}
@@ -460,41 +496,42 @@ export const VaultResourcesList = ({
           initialColumnOrder={[{ desc: false, id: "name" }]}
         />
       )}
-      {selectedDataSource && selectedDataSource.dataSource.connector && (
-        <>
-          <ConnectorPermissionsModal
-            owner={owner}
-            connector={selectedDataSource.dataSource.connector}
-            dataSource={selectedDataSource.dataSource}
-            isOpen={showConnectorModal && !!selectedDataSource}
-            onClose={() => {
-              setShowConnectorModal(false);
-            }}
-            setShowEditionModal={setShowEditionModal}
-            handleUpdatePermissions={handleUpdatePermissions}
-            plan={plan}
-            readOnly={false}
-            isAdmin={isAdmin}
-          />
-          <DataSourceEditionModal
-            isOpen={showEditionModal}
-            onClose={() => setShowEditionModal(false)}
-            dataSource={selectedDataSource.dataSource}
-            owner={owner}
-            user={user}
-            onEditPermissionsClick={() => {
-              if (!selectedDataSource?.dataSource.connector) {
-                return;
-              }
-              void handleUpdatePermissions(
-                selectedDataSource.dataSource.connector,
-                selectedDataSource.dataSource
-              );
-            }}
-            dustClientFacingUrl={dustClientFacingUrl}
-          />
-        </>
-      )}
+      {selectedDataSourceView &&
+        selectedDataSourceView.dataSource.connector && (
+          <>
+            <ConnectorPermissionsModal
+              owner={owner}
+              connector={selectedDataSourceView.dataSource.connector}
+              dataSource={selectedDataSourceView.dataSource}
+              isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
+              onClose={() => {
+                setShowConnectorPermissionsModal(false);
+              }}
+              setShowEditionModal={setShowEditionModal}
+              handleUpdatePermissions={handleUpdatePermissions}
+              plan={plan}
+              readOnly={false}
+              isAdmin={isAdmin}
+            />
+            <DataSourceEditionModal
+              isOpen={showEditionModal}
+              onClose={() => setShowEditionModal(false)}
+              dataSource={selectedDataSourceView.dataSource}
+              owner={owner}
+              user={user}
+              onEditPermissionsClick={() => {
+                if (!selectedDataSourceView?.dataSource.connector) {
+                  return;
+                }
+                void handleUpdatePermissions(
+                  selectedDataSourceView.dataSource.connector,
+                  selectedDataSourceView.dataSource
+                );
+              }}
+              dustClientFacingUrl={dustClientFacingUrl}
+            />
+          </>
+        )}
     </>
   );
 };
