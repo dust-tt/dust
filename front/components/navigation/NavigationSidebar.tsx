@@ -155,9 +155,9 @@ export const NavigationSidebar = React.forwardRef<
                                       icon={nav.icon}
                                       className="TEST grow pl-14 pr-4"
                                       link={
-                                        menu.href
+                                        nav.href
                                           ? {
-                                              href: menu.href,
+                                              href: nav.href,
                                             }
                                           : undefined
                                       }
