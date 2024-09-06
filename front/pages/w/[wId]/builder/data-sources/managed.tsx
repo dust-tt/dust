@@ -247,7 +247,6 @@ export default function DataSourcesView({
   const router = useRouter();
 
   useEffect(() => {
-    console.log(router.query.edit_permissions);
     const dataSource = managedDataSources.find(
       (ds) => ds.name === router.query.edit_permissions
     );
