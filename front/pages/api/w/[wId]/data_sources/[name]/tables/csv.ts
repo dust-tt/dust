@@ -169,7 +169,7 @@ export async function handlePostTableCsvUpsertRequest(
     if (csvRowsRes?.isErr()) {
       return apiError(req, res, {
         api_error: {
-          type: "invalid_request_error",
+          type: "invalid_rows_request_error",
           message: `Failed to parse CSV: ${csvRowsRes.error.message}`,
         },
         status_code: 400,

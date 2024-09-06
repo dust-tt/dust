@@ -21,6 +21,7 @@ type Data = {
   lastUpdated: string;
   size: string;
   avatarUrl?: string;
+  avatarTooltipLabel?: string;
   icon?: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
   moreMenuItems?: DropdownItemProps[];
@@ -29,6 +30,17 @@ type Data = {
 
 export const DataTableExample = () => {
   const data: Data[] = [
+    {
+      name: "Soupinou with tooltip on avatar",
+      usedBy: 100,
+      addedBy: "User1",
+      lastUpdated: "July 8, 2023",
+      size: "32kb",
+      avatarUrl: "https://avatars.githubusercontent.com/u/138893015?s=200&v=4",
+      avatarTooltipLabel: "Meow",
+      roundedAvatar: true,
+      onClick: () => console.log("hehe"),
+    },
     {
       name: "Marketing",
       description: "(23 items)",
@@ -101,6 +113,7 @@ export const DataTableExample = () => {
       cell: (info) => (
         <DataTable.CellContent
           avatarUrl={info.row.original.avatarUrl}
+          avatarTooltipLabel={info.row.original.avatarTooltipLabel}
           icon={info.row.original.icon}
           description={info.row.original.description}
           roundedAvatar={info.row.original.roundedAvatar}
