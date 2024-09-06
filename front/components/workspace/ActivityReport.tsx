@@ -22,11 +22,10 @@ export function ActivityReport({
   isDownloading,
   handleDownload,
 }: ActivityReportProps) {
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const handlePageChange = (pageNumber: number) => {
-    setCurrentPage(pageNumber);
-  };
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: maxItemsPerPage,
+  });
 
   const toPrettyDate = (date: string) => {
     const months = [
@@ -46,9 +45,9 @@ export function ActivityReport({
     const [year, monthIndex] = date.split("-");
     return `${months.at(Number(monthIndex) - 1)} ${year} `;
   };
-
-  const startIndex = (currentPage - 1) * maxItemsPerPage;
-  const endIndex = startIndex + maxItemsPerPage;
+  const { pageIndex, pageSize } = pagination;
+  const startIndex = pageIndex * pageSize;
+  const endIndex = startIndex + pageSize;
   const currentItems = monthOptions.slice(startIndex, endIndex);
   return (
     <>
@@ -85,9 +84,9 @@ export function ActivityReport({
             </ContextItem.List>
             <div className="mt-2">
               <Pagination
-                itemsCount={monthOptions.length}
-                maxItemsPerPage={maxItemsPerPage}
-                onButtonClick={handlePageChange}
+                rowCount={monthOptions.length}
+                pagination={pagination}
+                setPagination={setPagination}
                 size="xs"
               />
             </div>

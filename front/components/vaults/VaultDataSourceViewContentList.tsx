@@ -4,6 +4,7 @@ import {
   DropdownMenu,
   Searchbar,
   Spinner,
+  usePaginationFromUrl,
 } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
@@ -15,7 +16,7 @@ import type {
 import { isValidContentNodesViewType } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   ContentActionKey,
@@ -79,6 +80,8 @@ export const VaultDataSourceViewContentList = ({
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
+  const { pagination, setPagination } = usePaginationFromUrl("table");
+
   const router = useRouter();
   const viewType: ContentNodesViewType = isValidContentNodesViewType(
     router.query.viewType
@@ -120,23 +123,26 @@ export const VaultDataSourceViewContentList = ({
       viewType,
     });
 
-  const rows: RowData[] =
-    nodes?.map((contentNode) => ({
-      ...contentNode,
-      icon: getVisualForContentNode(contentNode),
-      ...(contentNode.expandable && {
-        onClick: () => {
-          if (contentNode.expandable) {
-            onSelect(contentNode.internalId);
-          }
-        },
-      }),
-      moreMenuItems: getMenuItems(
-        dataSourceView,
-        contentNode,
-        contentActionsRef
-      ),
-    })) || [];
+  const rows: RowData[] = useMemo(
+    () =>
+      nodes?.map((contentNode) => ({
+        ...contentNode,
+        icon: getVisualForContentNode(contentNode),
+        ...(contentNode.expandable && {
+          onClick: () => {
+            if (contentNode.expandable) {
+              onSelect(contentNode.internalId);
+            }
+          },
+        }),
+        moreMenuItems: getMenuItems(
+          dataSourceView,
+          contentNode,
+          contentActionsRef
+        ),
+      })) || [],
+    [dataSourceView, nodes, onSelect]
+  );
 
   if (isNodesLoading) {
     return (
@@ -216,6 +222,8 @@ export const VaultDataSourceViewContentList = ({
           filter={dataSourceSearch}
           filterColumn="title"
           initialColumnOrder={[{ desc: false, id: "title" }]}
+          pagination={pagination}
+          setPagination={setPagination}
         />
       )}
       <ContentActions

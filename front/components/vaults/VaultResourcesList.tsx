@@ -9,6 +9,7 @@ import {
   Searchbar,
   Spinner,
   TrashIcon,
+  usePaginationFromUrl,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
@@ -23,10 +24,9 @@ import { isWebsiteOrFolder } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 import { useRef } from "react";
 import { useState } from "react";
-import * as React from "react";
 
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
@@ -202,6 +202,8 @@ export const VaultResourcesList = ({
     Partial<Record<ConnectorProvider, boolean>>
   >({});
 
+  const { pagination, setPagination } = usePaginationFromUrl("table");
+
   // DataSources Views of the current vault.
   const { vaultDataSourceViews, isVaultDataSourceViewsLoading } =
     useVaultDataSourceViews({
@@ -212,49 +214,60 @@ export const VaultResourcesList = ({
       includeConnectorDetails: true,
     });
 
-  const rows: RowData[] =
-    vaultDataSourceViews?.map((r) => ({
-      dataSourceView: r,
-      label: getDataSourceNameFromView(r),
-      icon: getConnectorProviderLogoWithFallback(
-        r.dataSource.connectorProvider,
-        FolderIcon
-      ),
-      workspaceId: owner.sId,
+  const rows: RowData[] = useMemo(
+    () =>
+      vaultDataSourceViews?.map((r) => ({
+        dataSourceView: r,
+        label: getDataSourceNameFromView(r),
+        icon: getConnectorProviderLogoWithFallback(
+          r.dataSource.connectorProvider,
+          FolderIcon
+        ),
+        workspaceId: owner.sId,
+        isAdmin,
+        isLoading: isLoadingByProvider[r.dataSource.connectorProvider],
+        ...(isStatic && {
+          moreMenuItems: [
+            {
+              label: "Edit",
+              icon: PencilSquareIcon,
+              onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+                e.stopPropagation();
+                setSelectedDataSourceView(r);
+                setShowFolderOrWebsiteModal(true);
+              },
+            },
+            {
+              label: "Delete",
+              icon: TrashIcon,
+              variant: "warning",
+              onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+                e.stopPropagation();
+                setSelectedDataSourceView(r);
+                setShowDeleteConfirmDialog(true);
+              },
+            },
+          ],
+        }),
+        buttonOnClick: (e) => {
+          e.stopPropagation();
+          // TODO(GROUPS_UI): will be removed by https://github.com/dust-tt/tasks/issues/1237
+          void router.push(
+            `/w/${owner.sId}/builder/data-sources/${r.dataSource.name}`
+          );
+        },
+        onClick: () => onSelect(r.sId),
+      })) || [],
+    [
+      isLoadingByProvider,
+      onSelect,
+      owner,
+      vaultDataSourceViews,
+      router,
       isAdmin,
-      isLoading: isLoadingByProvider[r.dataSource.connectorProvider],
-      ...(isStatic && {
-        moreMenuItems: [
-          {
-            label: "Edit",
-            icon: PencilSquareIcon,
-            onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-              e.stopPropagation();
-              setSelectedDataSourceView(r);
-              setShowFolderOrWebsiteModal(true);
-            },
-          },
-          {
-            label: "Delete",
-            icon: TrashIcon,
-            variant: "warning",
-            onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-              e.stopPropagation();
-              setSelectedDataSourceView(r);
-              setShowDeleteConfirmDialog(true);
-            },
-          },
-        ],
-      }),
-      buttonOnClick: (e) => {
-        e.stopPropagation();
-        // TODO(GROUPS_UI): will be removed by https://github.com/dust-tt/tasks/issues/1237
-        void router.push(
-          `/w/${owner.sId}/builder/data-sources/${r.dataSource.name}`
-        );
-      },
-      onClick: () => onSelect(r.sId),
-    })) || [];
+      isStatic,
+    ]
+  );
 
   if (isDataSourcesLoading || isVaultDataSourceViewsLoading) {
     return (
@@ -374,6 +387,8 @@ export const VaultResourcesList = ({
           filter={dataSourceSearch}
           filterColumn="name"
           initialColumnOrder={[{ desc: false, id: "name" }]}
+          pagination={pagination}
+          setPagination={setPagination}
         />
       )}
     </>
