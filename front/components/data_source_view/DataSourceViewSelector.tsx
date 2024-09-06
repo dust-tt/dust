@@ -73,12 +73,15 @@ function VaultSelector({
     workspaceId: owner.sId,
   });
 
-  const [selectedVault, setSelectedVault] = useState<string>(
-    Object.keys(selectionConfigurations).length > 0
-      ? selectionConfigurations[Object.keys(selectionConfigurations)[0]]
-          .dataSourceView.vaultId
-      : ""
-  );
+  const [selectedVault, setSelectedVault] = useState<string>(() => {
+    const firstKey =
+      Object.keys(selectionConfigurations).length > 0
+        ? Object.keys(selectionConfigurations)[0]
+        : null;
+    return firstKey
+      ? selectionConfigurations[firstKey].dataSourceView.vaultId
+      : "";
+  });
 
   if (isVaultsLoading || isVaultsError || !vaults) {
     return <Spinner />;
@@ -118,11 +121,11 @@ function VaultSelector({
                         <Icon
                           visual={getVaultIcon(vault)}
                           size="md"
-                          className="s-flex-shrink-0 ml-3 inline-block align-middle text-brand"
+                          className="ml-3 inline-block flex-shrink-0 align-middle text-brand"
                         />
                         <span
                           className={classNames(
-                            "s-text-element-900",
+                            "text-element-900",
                             "align-middle",
                             !disabled ? "font-bold" : "italic"
                           )}

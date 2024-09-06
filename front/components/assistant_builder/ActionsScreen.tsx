@@ -156,22 +156,12 @@ export default function ActionsScreen({
           break;
         case "RETRIEVAL_SEARCH":
         case "RETRIEVAL_EXHAUSTIVE":
+        case "PROCESS":
           Object.values(action.configuration.dataSourceConfigurations).forEach(
             (config) => {
               vaultIdToActions[config.dataSourceView.vaultId] = (
                 vaultIdToActions[config.dataSourceView.vaultId] ?? []
               ).concat(action);
-            }
-          );
-          break;
-        case "PROCESS":
-          Object.values(action.configuration.dataSourceConfigurations).forEach(
-            (config) => {
-              if (config.dataSourceView) {
-                vaultIdToActions[config.dataSourceView.vaultId] = (
-                  vaultIdToActions[config.dataSourceView.vaultId] ?? []
-                ).concat(action);
-              }
             }
           );
           break;
@@ -670,16 +660,16 @@ function ActionConfigEditor({
 
   // Only allow one vault across all actions
   const allowedVaults = useMemo(() => {
-    const usedVaultsInOtherActions = vaults.reduce((acc, v) => {
-      return (vaultsUsedInActions[v.sId] ?? []).some((a) => a !== action)
-        ? acc.concat(v)
-        : acc;
-    }, [] as VaultType[]);
-
-    return vaults.filter(
-      (vault) =>
-        usedVaultsInOtherActions.length == 0 ||
-        usedVaultsInOtherActions.find((v) => v.sId === vault.sId)
+    const isVaultUsedInOtherActions = (vault: VaultType) => {
+      const actionsUsingVault = vaultsUsedInActions[vault.sId] ?? [];
+      return actionsUsingVault.some((a) => a !== action);
+    };
+    const usedVaultsInOtherActions = vaults.filter(isVaultUsedInOtherActions);
+    if (usedVaultsInOtherActions.length === 0) {
+      return vaults;
+    }
+    return vaults.filter((vault) =>
+      usedVaultsInOtherActions.some((v) => v.sId === vault.sId)
     );
   }, [action, vaults, vaultsUsedInActions]);
 
