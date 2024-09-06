@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { usePaginationFromUrl } from "@sparkle/components/Pagination";
+import { usePaginationFromUrl } from "@sparkle/hooks/usePaginationFromUrl";
 
 import { Pagination } from "../index_with_tw_base";
 
