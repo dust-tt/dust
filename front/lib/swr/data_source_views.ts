@@ -8,6 +8,7 @@ import { useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
 import {
+  appendPaginationParams,
   fetcher,
   fetcherMultiple,
   postFetcher,
@@ -96,7 +97,6 @@ export function useMultipleDataSourceViewsContentNodes({
   );
 }
 
-// TODO(GROUPS_INFRA) Implement pagination.
 export function useDataSourceViewContentNodes({
   owner,
   dataSourceView,
@@ -119,16 +119,8 @@ export function useDataSourceViewContentNodes({
   totalCount: number;
 } {
   const params = new URLSearchParams();
+  appendPaginationParams(params, pagination);
 
-  if (pagination && pagination.pageIndex) {
-    params.set(
-      "offset",
-      (pagination.pageSize * pagination.pageIndex).toString()
-    );
-  }
-  if (pagination && pagination.pageSize) {
-    params.set("limit", pagination.pageSize.toString());
-  }
   const url = dataSourceView
     ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
     : null;

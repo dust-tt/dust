@@ -1,3 +1,4 @@
+import type { PaginationState } from "@tanstack/react-table";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
 import useSWR, { useSWRConfig } from "swr";
 
@@ -81,4 +82,19 @@ export const fetcherMultiple = <T>(urlsAndOptions: UrlsAndOptions[]) => {
   return Promise.all<T>(
     urlsAndOptions.map(({ url, options }) => f(url, options))
   );
+};
+
+export const appendPaginationParams = (
+  params: URLSearchParams,
+  pagination?: PaginationState
+) => {
+  if (pagination && pagination.pageIndex) {
+    params.set(
+      "offset",
+      (pagination.pageSize * pagination.pageIndex).toString()
+    );
+  }
+  if (pagination && pagination.pageSize) {
+    params.set("limit", pagination.pageSize.toString());
+  }
 };

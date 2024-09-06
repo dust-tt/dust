@@ -79,7 +79,7 @@ export const VaultDataSourceViewContentList = ({
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
-  const { pagination, setPagination } = usePaginationFromUrl("table", 5);
+  const { pagination, setPagination } = usePaginationFromUrl("table");
 
   const router = useRouter();
   const viewType: ContentNodesViewType = isValidContentNodesViewType(
