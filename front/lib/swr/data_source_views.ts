@@ -3,6 +3,7 @@ import type {
   DataSourceViewType,
   LightWorkspaceType,
 } from "@dust-tt/types";
+import type { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
@@ -101,21 +102,35 @@ export function useDataSourceViewContentNodes({
   dataSourceView,
   internalIds,
   includeChildren,
+  pagination,
   viewType = "documents",
 }: {
   owner: LightWorkspaceType;
   dataSourceView?: DataSourceViewType;
   internalIds: string[];
   includeChildren?: boolean;
+  pagination?: PaginationState;
   viewType?: ContentNodesViewType;
 }): {
   isNodesError: boolean;
   isNodesLoading: boolean;
   mutateDataSourceViewContentNodes: KeyedMutator<GetDataSourceViewContentNodes>;
   nodes: GetDataSourceViewContentNodes["nodes"];
+  totalCount: number;
 } {
+  const params = new URLSearchParams();
+
+  if (pagination && pagination.pageIndex) {
+    params.set(
+      "offset",
+      (pagination.pageSize * pagination.pageIndex).toString()
+    );
+  }
+  if (pagination && pagination.pageSize) {
+    params.set("limit", pagination.pageSize.toString());
+  }
   const url = dataSourceView
-    ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
+    ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
     : null;
 
   const body = JSON.stringify({
@@ -144,6 +159,7 @@ export function useDataSourceViewContentNodes({
     isNodesLoading: !error && !data,
     mutateDataSourceViewContentNodes: mutate,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
+    totalCount: data ? data.totalCount : 0,
   };
 }
 
