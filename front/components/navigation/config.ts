@@ -115,9 +115,11 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
     icon: ChatBubbleLeftRightIcon,
     sizing: "expand",
     isCurrent: (currentRoute) =>
-      ["/w/[wId]/assistant/new", "/w/[wId]/assistant/[cId]"].includes(
-        currentRoute
-      ),
+      [
+        "/w/[wId]/assistant/new",
+        "/w/[wId]/assistant/[cId]",
+        "/w/[wId]/assistants",
+      ].includes(currentRoute),
   });
 
   if (isBuilder(owner)) {

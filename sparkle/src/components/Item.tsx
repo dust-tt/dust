@@ -184,30 +184,26 @@ export function Item({
   );
 }
 
-interface EntryItemProps {
-  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
-  disabled?: boolean;
-  selected?: boolean;
-  label: string;
-  icon?: ComponentType;
-  className?: string;
-  href?: string;
-}
+type EntryItemProps = Pick<
+  ItemProps,
+  "onClick" | "disabled" | "selected" | "label" | "icon" | "className" | "link"
+>;
 
 Item.Entry = function (props: EntryItemProps) {
   return <Item {...props} spacing="sm" style="item" hasAction={"hover"} />;
 };
 
-interface AvatarItemProps {
-  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
-  disabled?: boolean;
-  label: string;
-  description?: string;
-  visual?: string | React.ReactNode;
-  className?: string;
-  hasAction?: boolean | "hover";
-  href?: string;
-}
+type AvatarItemProps = Pick<
+  ItemProps,
+  | "className"
+  | "description"
+  | "disabled"
+  | "hasAction"
+  | "label"
+  | "link"
+  | "onClick"
+  | "visual"
+>;
 
 Item.Avatar = function ({
   description,
@@ -225,34 +221,28 @@ Item.Avatar = function ({
   );
 };
 
-interface NavigationListItemProps {
-  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
-  selected?: boolean;
-  disabled?: boolean;
-  label: string;
-  description?: string;
-  icon?: ComponentType;
-  className?: string;
-  href?: string;
-  target?: string;
-  hasAction?: boolean | "hover";
-  action?: ComponentType;
-}
+type NavigationListItemProps = Pick<
+  ItemProps,
+  | "action"
+  | "className"
+  | "description"
+  | "disabled"
+  | "hasAction"
+  | "icon"
+  | "label"
+  | "link"
+  | "onClick"
+  | "selected"
+>;
 
 Item.Navigation = function (props: NavigationListItemProps) {
   return <Item {...props} style="action" spacing="md" />;
 };
 
-interface LinkItemProps {
-  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
-  label: string;
-  description?: string;
-  visual?: string | React.ReactNode;
-  icon?: ComponentType;
-  className?: string;
-  href?: string;
-  target?: string;
-}
+type LinkItemProps = Pick<
+  ItemProps,
+  "onClick" | "label" | "description" | "visual" | "icon" | "className" | "link"
+>;
 
 Item.Link = function ({ ...props }: LinkItemProps) {
   return (
@@ -267,18 +257,23 @@ Item.Link = function ({ ...props }: LinkItemProps) {
   );
 };
 
-interface DropdownListItemProps {
+interface DropdownListItemBaseProps {
   style?: "default" | "warning";
-  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
-  selected?: boolean;
-  disabled?: boolean;
-  label: string;
-  description?: string;
-  visual?: string | React.ReactNode;
-  icon?: ComponentType;
-  className?: string;
-  link?: LinkProps;
 }
+
+type DropdownListItemProps = DropdownListItemBaseProps &
+  Pick<
+    ItemProps,
+    | "className"
+    | "description"
+    | "disabled"
+    | "icon"
+    | "label"
+    | "link"
+    | "onClick"
+    | "selected"
+    | "visual"
+  >;
 
 Item.Dropdown = function ({ style, ...props }: DropdownListItemProps) {
   return (

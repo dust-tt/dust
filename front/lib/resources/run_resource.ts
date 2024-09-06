@@ -16,8 +16,8 @@ import type {
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { App } from "@app/lib/models/apps";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { App } from "@app/lib/resources/storage/models/apps";
 import {
   RunModel,
   RunUsageModel,

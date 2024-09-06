@@ -5,7 +5,6 @@ import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
-import { App, Clone, Dataset, Provider } from "@app/lib/models/apps";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
@@ -52,6 +51,12 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  App,
+  Clone,
+  Dataset,
+  Provider,
+} from "@app/lib/resources/storage/models/apps";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";

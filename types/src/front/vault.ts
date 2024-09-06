@@ -1,4 +1,4 @@
-const VAULT_KINDS = ["regular", "global", "system"] as const;
+const VAULT_KINDS = ["regular", "global", "system", "public"] as const;
 export type VaultKind = (typeof VAULT_KINDS)[number];
 
 export type VaultType = {

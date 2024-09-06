@@ -290,7 +290,9 @@ export class VaultResource extends BaseResource<VaultModel> {
       case "global":
         return auth.isBuilder() && auth.canWrite([this.acl()]);
       case "regular":
+      case "public":
         return auth.canWrite([this.acl()]);
+
       default:
         assertNever(this.kind);
     }
@@ -303,6 +305,8 @@ export class VaultResource extends BaseResource<VaultModel> {
       case "global":
       case "regular":
         return auth.canRead([this.acl()]);
+      case "public":
+        return true;
       default:
         assertNever(this.kind);
     }
@@ -318,6 +322,10 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   isRegular() {
     return this.kind === "regular";
+  }
+
+  isPublic() {
+    return this.kind === "public";
   }
 
   toJSON(): VaultType {
