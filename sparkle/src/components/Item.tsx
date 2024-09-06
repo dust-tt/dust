@@ -42,23 +42,27 @@ const iconClasses = {
     "s-text-warning-400 group-hover/item:s-text-warning-300 group-active/item:s-text-warning-700 dark:group-hover/item:s-text-warning-600-dark dark:group-active/item:s-text-warning-400-dark",
 };
 
-type ItemProps = {
+export interface LinkProps {
+  href: string;
+  target?: string;
+}
+
+interface ItemProps {
+  action?: ComponentType;
+  className?: string;
+  description?: string;
+  disabled?: boolean;
+  hasAction?: boolean | "hover";
+  icon?: ComponentType;
+  label: string;
+  link?: LinkProps;
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
-  style: "action" | "warning" | "item" | "link";
-  spacing?: "sm" | "md" | "lg";
   selectable?: boolean;
   selected?: boolean;
-  disabled?: boolean;
-  label: string;
-  description?: string;
+  spacing?: "sm" | "md" | "lg";
+  style: "action" | "warning" | "item" | "link";
   visual?: string | React.ReactNode;
-  icon?: ComponentType;
-  action?: ComponentType;
-  hasAction?: boolean | "hover";
-  className?: string;
-  href?: string;
-  target?: string;
-};
+}
 
 export function Item({
   label,
@@ -73,11 +77,11 @@ export function Item({
   selected = false,
   disabled = false,
   className = "",
-  href,
-  target,
+  link,
 }: ItemProps) {
   const { components } = React.useContext(SparkleContext);
 
+  const { href, target } = link || {};
   const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
 
   let visualElement: React.ReactNode;
@@ -273,7 +277,7 @@ interface DropdownListItemProps {
   visual?: string | React.ReactNode;
   icon?: ComponentType;
   className?: string;
-  href?: string;
+  link?: LinkProps;
 }
 
 Item.Dropdown = function ({ style, ...props }: DropdownListItemProps) {

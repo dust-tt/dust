@@ -82,17 +82,8 @@ export const ListItemExample = () => (
         <DropdownMenu>
           <DropdownMenu.Button label="Dust" />
           <DropdownMenu.Items>
-            <DropdownMenu.Item label="item 1" href="#" />
-            <DropdownMenu.Item label="item 2" href="#" />
-          </DropdownMenu.Items>
-        </DropdownMenu>
-      </div>
-      <div>
-        <DropdownMenu>
-          <DropdownMenu.Button label="Dust" />
-          <DropdownMenu.Items>
-            <DropdownMenu.Item label="item 1" href="#" icon={Cog6ToothIcon} />
-            <DropdownMenu.Item label="item 2" href="#" icon={Cog6ToothIcon} />
+            <DropdownMenu.Item label="item 1" link={{ href: "#" }} />
+            <DropdownMenu.Item label="item 2" link={{ href: "#" }} />
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
@@ -102,13 +93,42 @@ export const ListItemExample = () => (
           <DropdownMenu.Items>
             <DropdownMenu.Item
               label="item 1"
-              href="#"
+              link={{ href: "#" }}
+              icon={Cog6ToothIcon}
+            />
+            <DropdownMenu.Item
+              label="item 2"
+              link={{ href: "#" }}
+              icon={Cog6ToothIcon}
+            />
+          </DropdownMenu.Items>
+        </DropdownMenu>
+      </div>
+      <div>
+        <DropdownMenu>
+          <DropdownMenu.Button label="Dust" />
+          <DropdownMenu.Items>
+            <DropdownMenu.Item
+              label="item 1"
+              link={{ href: "#" }}
+              icon={Cog6ToothIcon}
+              description="Desciption of the item"
+            />
+            <DropdownMenu.Item
+              label="Dust site"
+              link={{ href: "https://dust.tt", target: "_blank" }}
+              icon={Cog6ToothIcon}
+              description="Desciption of the item"
+            />
+            <DropdownMenu.Item
+              label="item 1"
+              link={{ href: "#" }}
               icon={Cog6ToothIcon}
               description="Desciption of the item"
             />
             <DropdownMenu.Item
               label="item 2"
-              href="#"
+              link={{ href: "#" }}
               icon={Cog6ToothIcon}
               description="Desciption of the item"
             />

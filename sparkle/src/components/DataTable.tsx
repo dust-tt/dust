@@ -262,11 +262,7 @@ DataTable.Row = function Row({
       <td className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600">
         {moreMenuItems && moreMenuItems.length > 0 && (
           <DropdownMenu className="s-mr-1.5 s-flex">
-            <DropdownMenu.Button
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            >
+            <DropdownMenu.Button>
               <IconButton icon={MoreIcon} size="sm" variant="tertiary" />
             </DropdownMenu.Button>
             <DropdownMenu.Items origin="topRight" width={220}>
