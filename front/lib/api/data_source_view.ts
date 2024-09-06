@@ -55,18 +55,26 @@ export function filterAndCropContentNodesByView(
   return removeNulls(contentNodesInView);
 }
 
+interface GetContentNodesForDataSourceViewParams {
+  includeChildren: boolean;
+  internalIds: string[];
+  pagination: OffsetPaginationParams;
+  viewType: ContentNodesViewType;
+}
+
+interface GetContentNodesForDataSourceViewResult {
+  nodes: DataSourceViewContentNode[];
+  total: number;
+}
+
 export async function getContentNodesForManagedDataSourceView(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   {
     includeChildren,
     internalIds,
     viewType,
-  }: {
-    includeChildren: boolean;
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }
-): Promise<Result<DataSourceViewContentNode[], Error>> {
+  }: GetContentNodesForDataSourceViewParams
+): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
   const { dataSource } = dataSourceView;
 
   const connectorsAPI = new ConnectorsAPI(
@@ -99,7 +107,11 @@ export async function getContentNodesForManagedDataSourceView(
       );
     }
 
-    return new Ok(connectorsRes.value.resources);
+    return new Ok({
+      nodes: connectorsRes.value.resources,
+      // Connectors API does not support pagination yet, so the total is the length of the nodes.
+      total: connectorsRes.value.resources.length,
+    });
   } else {
     const connectorsRes = await connectorsAPI.getContentNodes({
       connectorId: dataSource.connectorId,
@@ -115,7 +127,11 @@ export async function getContentNodesForManagedDataSourceView(
       );
     }
 
-    return new Ok(connectorsRes.value.nodes);
+    return new Ok({
+      nodes: connectorsRes.value.nodes,
+      // Connectors API does not support pagination yet, so the total is the length of the nodes.
+      total: connectorsRes.value.nodes.length,
+    });
   }
 }
 
@@ -123,10 +139,10 @@ export async function getContentNodesForManagedDataSourceView(
 // They are flat and do not have a hierarchy.
 export async function getContentNodesForStaticDataSourceView(
   dataSourceView: DataSourceViewResource,
-  viewType: ContentNodesViewType,
-  internalIds: string[],
-  pagination?: OffsetPaginationParams
-): Promise<Result<DataSourceViewContentNode[], Error | CoreAPIError>> {
+  { internalIds, pagination, viewType }: GetContentNodesForDataSourceViewParams
+): Promise<
+  Result<GetContentNodesForDataSourceViewResult, Error | CoreAPIError>
+> {
   const { dataSource } = dataSourceView;
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -161,7 +177,10 @@ export async function getContentNodesForStaticDataSourceView(
         type: "file",
       }));
 
-    return new Ok(documentsAsContentNodes);
+    return new Ok({
+      nodes: documentsAsContentNodes,
+      total: documentsRes.value.total,
+    });
   } else {
     const tablesRes = await coreAPI.getTables(
       {
@@ -192,6 +211,52 @@ export async function getContentNodesForStaticDataSourceView(
         type: "database",
       }));
 
-    return new Ok(tablesAsContentNodes);
+    return new Ok({
+      nodes: tablesAsContentNodes,
+      total: tablesRes.value.total,
+    });
   }
+}
+
+export async function getContentNodesForDataSourceView(
+  dataSourceView: DataSourceViewResource,
+  params: GetContentNodesForDataSourceViewParams
+): Promise<
+  Result<GetContentNodesForDataSourceViewResult, Error | CoreAPIError>
+> {
+  let contentNodesResult: GetContentNodesForDataSourceViewResult;
+
+  if (dataSourceView.dataSource.connectorId) {
+    const contentNodesRes = await getContentNodesForManagedDataSourceView(
+      dataSourceView,
+      params
+    );
+
+    if (contentNodesRes.isErr()) {
+      return contentNodesRes;
+    }
+
+    contentNodesResult = contentNodesRes.value;
+  } else {
+    const contentNodesRes = await getContentNodesForStaticDataSourceView(
+      dataSourceView,
+      params
+    );
+
+    if (contentNodesRes.isErr()) {
+      return contentNodesRes;
+    }
+
+    contentNodesResult = contentNodesRes.value;
+  }
+
+  const contentNodesInView = filterAndCropContentNodesByView(
+    dataSourceView,
+    contentNodesResult.nodes
+  );
+
+  return new Ok({
+    nodes: contentNodesInView,
+    total: contentNodesResult.total,
+  });
 }

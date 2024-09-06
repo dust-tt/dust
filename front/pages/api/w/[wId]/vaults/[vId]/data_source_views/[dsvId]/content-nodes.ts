@@ -2,17 +2,13 @@ import type {
   DataSourceViewContentNode,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { ContentNodesViewTypeCodec, removeNulls } from "@dust-tt/types";
+import { ContentNodesViewTypeCodec } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  filterAndCropContentNodesByView,
-  getContentNodesForManagedDataSourceView,
-  getContentNodesForStaticDataSourceView,
-} from "@app/lib/api/data_source_view";
+import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { getOffsetPaginationParams } from "@app/lib/api/pagination";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -47,6 +43,7 @@ const GetContentNodesOrChildrenRequestBody = t.union([
 
 export type GetDataSourceViewContentNodes = {
   nodes: DataSourceViewContentNode[];
+  total: number;
 };
 
 // This endpoints serves two purposes:
@@ -135,70 +132,27 @@ async function handler(
     });
   }
 
-  let contentNodes: DataSourceViewContentNode[];
-
-  if (dataSourceView.dataSource.connectorId) {
-    const contentNodesRes = await getContentNodesForManagedDataSourceView(
-      dataSourceView,
-      {
-        includeChildren: includeChildren === true,
-        internalIds: removeNulls(internalIds),
-        viewType,
-      }
-    );
-
-    if (contentNodesRes.isErr()) {
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: contentNodesRes.error.message,
-        },
-      });
-    }
-
-    contentNodes = contentNodesRes.value;
-  } else {
-    // TODO(GROUPS_INFRA) Remove once core has pagination.
-    if (internalIds.length > 0) {
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "Internal ids should not be provided for static data sources.",
-        },
-      });
-    }
-
-    const contentNodesRes = await getContentNodesForStaticDataSourceView(
-      dataSourceView,
-      viewType,
-      removeNulls(internalIds),
-      paginationRes.value
-    );
-
-    if (contentNodesRes.isErr()) {
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: contentNodesRes.error.message,
-        },
-      });
-    }
-
-    contentNodes = contentNodesRes.value;
-  }
-
-  const contentNodesInView = filterAndCropContentNodesByView(
+  const contentNodesRes = await getContentNodesForDataSourceView(
     dataSourceView,
-    contentNodes
+    {
+      includeChildren: includeChildren === true,
+      internalIds,
+      pagination: paginationRes.value,
+      viewType,
+    }
   );
 
-  return res.status(200).json({
-    nodes: contentNodesInView,
-  });
+  if (contentNodesRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: contentNodesRes.error.message,
+      },
+    });
+  }
+
+  return res.status(200).json(contentNodesRes.value);
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
