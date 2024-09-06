@@ -112,9 +112,18 @@ const getTableColumns = ({
         ? row.dataSourceView.dataSource.editedByUser?.imageUrl
         : row.dataSourceView.editedByUser?.imageUrl) ?? "",
     id: "managedBy",
-    cell: (info: CellContext<RowData, string>) => (
-      <DataTable.CellContent avatarUrl={info.getValue()} roundedAvatar={true} />
-    ),
+    cell: (info: CellContext<RowData, string>) => {
+      const dsv = info.row.original.dataSourceView;
+      const editedByUser =
+        dsv.kind === "default" ? dsv.dataSource.editedByUser : dsv.editedByUser;
+      return (
+        <DataTable.CellContent
+          avatarUrl={info.getValue()}
+          avatarTooltipLabel={editedByUser?.fullName ?? undefined}
+          roundedAvatar={true}
+        />
+      );
+    },
   };
 
   const lastSyncedColumn = {
