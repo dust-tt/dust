@@ -34,7 +34,7 @@ export { Modal } from "./Modal";
 export { Notification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
-export * from "./Pagination";
+export { Pagination, usePaginationFromUrl } from "./Pagination";
 export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioButton } from "./RadioButton";
