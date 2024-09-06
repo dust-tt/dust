@@ -24,6 +24,7 @@ import { useEffect, useRef, useState } from "react";
 import * as React from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import type { SearchOrderType } from "@app/components/assistant/SearchOrderDropdown";
 import { SearchOrderDropdown } from "@app/components/assistant/SearchOrderDropdown";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
@@ -34,12 +35,14 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useConversations } from "@app/lib/swr/conversations";
 import { classNames, subFilter } from "@app/lib/utils";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   tabScope: AgentConfigurationScope;
+  loadFromChatMenu: boolean;
   gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -60,6 +63,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       tabScope,
       subscription,
+      loadFromChatMenu: false,
       gaTrackingId: config.getGaTrackingId(),
     },
   };
@@ -69,6 +73,7 @@ export default function WorkspaceAssistants({
   owner,
   tabScope,
   subscription,
+  loadFromChatMenu,
   gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
@@ -216,15 +221,30 @@ export default function WorkspaceAssistants({
     }
   }, [tabScope]);
 
+  // Hack to display this page either from Builder or Chat Menu
+  const { conversations, isConversationsError } = useConversations({
+    workspaceId: owner.sId,
+  });
+  const subNavigation = !loadFromChatMenu
+    ? subNavigationBuild({
+        owner,
+        current: "workspace_assistants",
+      })
+    : null;
+  const navChildren = loadFromChatMenu ? (
+    <AssistantSidebarMenu
+      owner={owner}
+      conversations={conversations}
+      isConversationsError={isConversationsError}
+    />
+  ) : null;
   return (
     <AppLayout
       subscription={subscription}
       owner={owner}
       gaTrackingId={gaTrackingId}
-      subNavigation={subNavigationBuild({
-        owner,
-        current: "workspace_assistants",
-      })}
+      subNavigation={subNavigation}
+      navChildren={navChildren}
     >
       <AssistantDetails
         owner={owner}
