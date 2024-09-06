@@ -24,7 +24,17 @@ async function handler(
   auth: Authenticator,
   session: SessionWithUser
 ): Promise<void> {
-  const app = await AppResource.fetchById(auth, req.query.aId as string);
+  const { aId } = req.query;
+  if (typeof aId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query paramteter `aId`",
+      },
+    });
+  }
+  const app = await AppResource.fetchById(auth, aId);
 
   if (!app) {
     return apiError(req, res, {

@@ -12,7 +12,7 @@ export type GetOrPostAppResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetOrPostAppResponseBody | void>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetOrPostAppResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const app = await AppResource.fetchById(auth, req.query.aId as string);

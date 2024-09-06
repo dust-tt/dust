@@ -9,7 +9,7 @@ import { getDatasetHash } from "@app/lib/api/datasets";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
-import {AppResource} from "@app/lib/resources/app_resource";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { Dataset } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -25,7 +25,18 @@ async function handler(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  const app = await AppResource.fetchById(auth, req.query.aId as string);
+  const { aId } = req.query;
+  if (typeof aId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query paramteter `aId`",
+      },
+    });
+  }
+
+  const app = await AppResource.fetchById(auth, aId);
   if (!app) {
     return apiError(req, res, {
       status_code: 404,

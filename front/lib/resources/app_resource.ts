@@ -43,8 +43,8 @@ export class AppResource extends ResourceWithVault<App> {
 
   // Fetching.
 
-  // baseFetch filters out apps private apps if the auth is not a user on the workspace. This will
-  // be removed soon as we remove public apps.
+  // baseFetch filters out private apps if the auth is not a user on the workspace. This will be
+  // removed soon as we remove public apps.
   private static async baseFetch(
     auth: Authenticator,
     options?: ResourceFindOptions<App>

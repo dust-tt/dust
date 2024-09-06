@@ -50,7 +50,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const r = await getRun(auth, app, context.params?.runId as string);
+  const r = await getRun(auth, app.toJSON(), context.params?.runId as string);
   if (!r) {
     return {
       notFound: true,
