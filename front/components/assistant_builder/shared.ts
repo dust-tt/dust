@@ -295,7 +295,7 @@ export function getTableIdForContentNode(
     case "google_drive":
       if (!isGoogleSheetContentNodeInternalId(contentNode.internalId)) {
         throw new Error(
-          `Googgle Drive ContentNode internalId ${contentNode.internalId} is not a Google Sheet internal ID`
+          `Google Drive ContentNode internalId ${contentNode.internalId} is not a Google Sheet internal ID`
         );
       }
       return getGoogleSheetTableIdFromContentNodeInternalId(

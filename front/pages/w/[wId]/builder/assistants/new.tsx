@@ -118,8 +118,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       actions,
       agentConfiguration: configuration,
       baseUrl: config.getClientFacingUrl(),
-      vaults,
-      dataSourceViews,
+      dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
       dustApps,
       flow,
       gaTrackingId: config.getGaTrackingId(),
@@ -128,6 +127,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       subscription,
       templateId,
+      vaults: vaults.map((v) => v.toJSON()),
     },
   };
 });

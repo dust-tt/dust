@@ -61,6 +61,8 @@ interface GetContentNodesForDataSourceViewParams {
   internalIds?: string[];
   pagination?: OffsetPaginationParams;
   viewType: ContentNodesViewType;
+  // If onlyCoreAPI is true, the function will only use the Core API to fetch the content nodes.
+  onlyCoreAPI?: boolean;
 }
 
 interface GetContentNodesForDataSourceViewResult {
@@ -234,9 +236,11 @@ export async function getContentNodesForDataSourceView(
 ): Promise<
   Result<GetContentNodesForDataSourceViewResult, Error | CoreAPIError>
 > {
+  const { onlyCoreAPI = false } = params;
+
   let contentNodesResult: GetContentNodesForDataSourceViewResult;
 
-  if (dataSourceView.dataSource.connectorId) {
+  if (dataSourceView.dataSource.connectorId && !onlyCoreAPI) {
     const contentNodesRes = await getContentNodesForManagedDataSourceView(
       dataSourceView,
       params
