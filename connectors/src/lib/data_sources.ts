@@ -22,7 +22,10 @@ import { gfm } from "micromark-extension-gfm";
 
 import { apiConfig } from "@connectors/lib/api/config";
 import { withRetries } from "@connectors/lib/dust_front_api_helpers";
-import { DustConnectorWorkflowError } from "@connectors/lib/error";
+import {
+  DustConnectorWorkflowError,
+  InvalidRowsRequestError,
+} from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -688,6 +691,12 @@ export async function upsertTableFromCsv({
       },
       "Error uploading table to Dust."
     );
+    if (
+      dustRequestResult.status === 400 &&
+      dustRequestResult.data.error?.type === "invalid_rows_request_error"
+    ) {
+      throw new InvalidRowsRequestError(dustRequestResult.data.error.message);
+    }
     throw new Error(
       `Error uploading to dust, got ${
         dustRequestResult.status

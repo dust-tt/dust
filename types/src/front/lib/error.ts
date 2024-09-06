@@ -12,6 +12,7 @@ export type APIErrorType =
   | "invalid_api_key_error"
   | "internal_server_error"
   | "invalid_request_error"
+  | "invalid_rows_request_error"
   | "user_not_found"
   | "data_source_error"
   | "data_source_not_found"
