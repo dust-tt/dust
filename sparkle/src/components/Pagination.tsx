@@ -1,4 +1,6 @@
-import React, { useCallback } from "react";
+import { PaginationState } from "@tanstack/react-table";
+import React, { useCallback, useMemo } from "react";
+import useHashParam from "use-hash-param";
 
 import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
@@ -9,6 +11,36 @@ type Size = "sm" | "xs";
 
 const pagesShownInControls = 7;
 const defaultPageSize = 25;
+
+export const usePaginationFromUrl = (
+  urlPrefix?: string,
+  initialPageSize = defaultPageSize
+) => {
+  const [pageIndexParam, setPageIndexParam] = useHashParam(
+    urlPrefix ? `${urlPrefix}PageIndex` : "pageIndex"
+  );
+  const [pageSizeParam, setPageSizeParam] = useHashParam(
+    urlPrefix ? `${urlPrefix}PageSize` : "pageSize"
+  );
+
+  const pageIndex = pageIndexParam ? parseInt(pageIndexParam) : 0;
+  const pageSize = pageSizeParam ? parseInt(pageSizeParam) : initialPageSize;
+
+  const res = useMemo(() => {
+    const pagination: PaginationState = { pageIndex, pageSize };
+
+    const setPagination = (newValue: PaginationState) => {
+      if (newValue.pageIndex !== pageIndex || newValue.pageSize !== pageSize) {
+        setPageIndexParam(newValue.pageIndex.toString());
+        setPageSizeParam(newValue.pageSize.toString());
+      }
+    };
+
+    return { pagination, setPagination };
+  }, [pageIndex, pageSize, urlPrefix]);
+
+  return res;
+};
 
 type PaginationProps = {
   size?: Size;

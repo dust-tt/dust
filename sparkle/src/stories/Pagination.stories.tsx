@@ -1,6 +1,8 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
+import { usePaginationFromUrl } from "@sparkle/components/Pagination";
+
 import { Pagination } from "../index_with_tw_base";
 
 const meta = {
@@ -48,5 +50,22 @@ export const PaginationNoPageButtons = () => {
       pageIndex={pageIndex}
       setPageIndex={setPageIndex}
     />
+  );
+};
+
+export const PaginationWithUrl = () => {
+  const { pagination, setPagination } = usePaginationFromUrl();
+
+  return (
+    <>
+      <div className="s-p-2">Current hash: {location.hash}</div>
+      <Pagination
+        rowCount={960}
+        {...pagination}
+        setPageIndex={(pageNumber) =>
+          setPagination({ ...pagination, pageIndex: pageNumber })
+        }
+      />
+    </>
   );
 };

@@ -6,10 +6,10 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  OnChangeFn,
   PaginationState,
   SortingFn,
   type SortingState,
+  Updater,
   useReactTable,
 } from "@tanstack/react-table";
 import React, { ReactNode, useEffect, useState } from "react";
@@ -44,7 +44,7 @@ interface DataTableProps<TData extends TBaseData> {
   filter?: string;
   filterColumn?: string;
   pagination?: PaginationState;
-  setPagination?: OnChangeFn<PaginationState>;
+  setPagination?: (pagination: PaginationState) => void;
   initialColumnOrder?: SortingState;
   columnsBreakpoints?: ColumnBreakpoint;
   sortingFn?: SortingFn<TData>;
@@ -79,6 +79,14 @@ export function DataTable<TData extends TBaseData>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const isServerSidePagination = !!totalRowCount && totalRowCount > data.length;
+  const onPaginationChange =
+    pagination && setPagination
+      ? (updater: Updater<PaginationState>) => {
+          const newValue =
+            typeof updater === "function" ? updater(pagination) : updater;
+          setPagination(newValue);
+        }
+      : undefined;
 
   const table = useReactTable({
     data,
@@ -96,7 +104,10 @@ export function DataTable<TData extends TBaseData>({
       sorting: isServerSidePagination ? undefined : sorting,
       pagination,
     },
-    onPaginationChange: setPagination,
+    initialState: {
+      pagination,
+    },
+    onPaginationChange: onPaginationChange,
   });
 
   useEffect(() => {
