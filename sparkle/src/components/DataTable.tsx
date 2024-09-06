@@ -1,3 +1,4 @@
+import { Tooltip } from "@dust-tt/sparkle";
 import {
   type ColumnDef,
   ColumnFiltersState,
@@ -18,7 +19,6 @@ import {
 } from "@sparkle/components/DropdownMenu";
 import { IconButton } from "@sparkle/components/IconButton";
 import { ArrowDownIcon, ArrowUpIcon, MoreIcon } from "@sparkle/icons";
-import { Tooltip } from "@sparkle/index_with_tw_base";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
