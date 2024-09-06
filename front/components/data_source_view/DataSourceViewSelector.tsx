@@ -360,10 +360,10 @@ function DataSourceViewSelector({
       ? "partial"
       : "unchecked";
 
-  // If the user has multiples vaults, they can choose to only select one vault per tool
-  // It's forced in the UI because it's a radio button
-  // However, when they select something in another vault, the previous selections will not be removed automatically
-  // This function is used to remove the all the previous selections that do not match the passed selection's vault
+  // When users have multiple vaults, they can opt to select only one vault per tool.
+  // This is enforced in the UI via a radio button, ensuring single selection at a time.
+  // However, selecting a new item in a different vault doesn't automatically clear previous selections.
+  // This function ensures that only the selections matching the current vault are retained, removing any others.
   const keepOnlyOneVaultIfApplicable = useCallback(
     (config: DataSourceViewSelectionConfigurations) => {
       if (ONLY_ONE_VAULT_PER_SELECTION) {
