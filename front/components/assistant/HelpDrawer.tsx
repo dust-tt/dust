@@ -126,11 +126,10 @@ function LinksList({
         <Item.Link
           icon={link.icon}
           label={link.title}
-          href={link.href}
+          link={link.href ? { href: link.href, target: "_blank" } : undefined}
           onClick={link.onClick}
           key={index}
           description={link.description}
-          target="_blank"
         />
       ))}
     </Item.List>

@@ -4,19 +4,21 @@ import { useMemo } from "react";
 
 import { useDataSourceViewDocument } from "@app/lib/swr/data_source_views";
 
-export default function DataSourceViewDocumentModal({
-  owner,
-  dataSourceView,
-  documentId,
-  isOpen,
-  setOpen,
-}: {
-  owner: LightWorkspaceType;
+interface DataSourceViewDocumentModalProps {
   dataSourceView: DataSourceViewType | null;
   documentId: string | null;
   isOpen: boolean;
-  setOpen: (open: boolean) => void;
-}) {
+  onClose: () => void;
+  owner: LightWorkspaceType;
+}
+
+export default function DataSourceViewDocumentModal({
+  dataSourceView,
+  documentId,
+  isOpen,
+  onClose,
+  owner,
+}: DataSourceViewDocumentModalProps) {
   const { document, isDocumentLoading } = useDataSourceViewDocument({
     documentId,
     dataSourceView,
@@ -41,7 +43,7 @@ export default function DataSourceViewDocumentModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={() => setOpen(false)}
+      onClose={onClose}
       hasChanged={false}
       title={title}
       variant="full-screen"

@@ -141,7 +141,9 @@ export function AssistantSidebarMenu({
                                     ).toLocaleDateString()}`)
                               }
                               className="px-2"
-                              href={`/w/${owner.sId}/assistant/${c.sId}`}
+                              link={{
+                                href: `/w/${owner.sId}/assistant/${c.sId}`,
+                              }}
                             />
                           );
                         }
