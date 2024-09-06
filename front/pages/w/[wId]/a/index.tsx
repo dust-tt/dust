@@ -747,7 +747,10 @@ function Apps({ apps, owner }: { apps: AppType[]; owner: WorkspaceType }) {
               You can also visit our developer documentation:
             </p>
             <p className="mt-2">
-              <Link href="https://docs.dust.tt" target="_blank">
+              <Link
+                href="https://docs.dust.tt/reference/introduction-to-dust-apps"
+                target="_blank"
+              >
                 <Button variant="tertiary" label="View Documentation" />
               </Link>
             </p>
@@ -801,7 +804,10 @@ export default function Developers({
             variant="tertiary"
             label="Developer Documentation"
             onClick={() => {
-              window.open("https://docs.dust.tt/reference", "_blank");
+              window.open(
+                "https://docs.dust.tt/reference/introduction-to-dust-apps",
+                "_blank"
+              );
             }}
             icon={ExternalLinkIcon}
           />

@@ -391,7 +391,10 @@ export default function AppView({
                   icon={DocumentTextIcon}
                   label="Documentation"
                   onClick={() => {
-                    window.open("https://docs.dust.tt", "_blank");
+                    window.open(
+                      "https://docs.dust.tt/reference/introduction-to-dust-apps",
+                      "_blank"
+                    );
                   }}
                 />
               </div>

@@ -1,8 +1,8 @@
 // @ts-expect-error old migration code kept for reference
 
 import { personalWorkspace } from "@app/lib/auth";
-import { App, Dataset, Provider } from "@app/lib/models/apps";
 import { User } from "@app/lib/models/user";
+import { App, Dataset, Provider } from "@app/lib/resources/storage/models/apps";
 import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { RunModel } from "@app/lib/resources/storage/models/runs";
