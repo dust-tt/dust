@@ -9,6 +9,7 @@ import {
   Searchbar,
   Spinner,
   TrashIcon,
+  usePaginationFromUrl,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
@@ -28,10 +29,9 @@ import { isWebsiteOrFolder } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 import { useRef } from "react";
 import { useState } from "react";
-import * as React from "react";
 
 import {
   ConnectorPermissionsModal,
@@ -226,6 +226,8 @@ export const VaultResourcesList = ({
     Partial<Record<ConnectorProvider, boolean>>
   >({});
 
+  const { pagination, setPagination } = usePaginationFromUrl("table");
+
   const handleUpdatePermissions = async (
     connector: ConnectorType,
     dataSource: DataSourceType
@@ -311,56 +313,66 @@ export const VaultResourcesList = ({
     includeConnectorDetails: true,
   });
 
-  const rows: RowData[] =
-    vaultDataSourceViews?.map((dataSourceView) => ({
-      dataSourceView,
-      label: getDataSourceNameFromView(dataSourceView),
-      icon: getConnectorProviderLogoWithFallback(
-        dataSourceView.dataSource.connectorProvider,
-        FolderIcon
-      ),
-      workspaceId: owner.sId,
+  const rows: RowData[] = useMemo(
+    () =>
+      vaultDataSourceViews?.map((dataSourceView) => ({
+        dataSourceView: dataSourceView,
+        label: getDataSourceNameFromView(dataSourceView),
+        icon: getConnectorProviderLogoWithFallback(
+          dataSourceView.dataSource.connectorProvider,
+          FolderIcon
+        ),
+        workspaceId: owner.sId,
+        isAdmin,
+        isLoading:
+          isLoadingByProvider[dataSourceView.dataSource.connectorProvider],
+        ...(isStatic && {
+          moreMenuItems: [
+            {
+              label: "Edit",
+              icon: PencilSquareIcon,
+              onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+                e.stopPropagation();
+                setSelectedDataSourceView(dataSourceView);
+                setShowFolderOrWebsiteModal(true);
+              },
+            },
+            {
+              label: "Delete",
+              icon: TrashIcon,
+              variant: "warning",
+              onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+                e.stopPropagation();
+                setSelectedDataSourceView(dataSourceView);
+                setShowDeleteConfirmDialog(true);
+              },
+            },
+          ],
+        }),
+        buttonOnClick: (e) => {
+          e.stopPropagation();
+          setSelectedDataSourceView(dataSourceView);
+          const { addDataWithConnection } =
+            getRenderingConfigForConnectorProvider(
+              dataSourceView.dataSource.connectorProvider
+            );
+          if (addDataWithConnection) {
+            setShowEditionModal(addDataWithConnection);
+          } else {
+            setShowConnectorPermissionsModal(true);
+          }
+        },
+        onClick: () => onSelect(dataSourceView.sId),
+      })) || [],
+    [
+      isLoadingByProvider,
+      onSelect,
+      owner,
+      vaultDataSourceViews,
       isAdmin,
-      isLoading:
-        isLoadingByProvider[dataSourceView.dataSource.connectorProvider],
-      ...(isStatic && {
-        moreMenuItems: [
-          {
-            label: "Edit",
-            icon: PencilSquareIcon,
-            onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-              e.stopPropagation();
-              setSelectedDataSourceView(dataSourceView);
-              setShowFolderOrWebsiteModal(true);
-            },
-          },
-          {
-            label: "Delete",
-            icon: TrashIcon,
-            variant: "warning",
-            onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-              e.stopPropagation();
-              setSelectedDataSourceView(dataSourceView);
-              setShowDeleteConfirmDialog(true);
-            },
-          },
-        ],
-      }),
-      buttonOnClick: (e) => {
-        e.stopPropagation();
-        setSelectedDataSourceView(dataSourceView);
-        const { addDataWithConnection } =
-          getRenderingConfigForConnectorProvider(
-            dataSourceView.dataSource.connectorProvider
-          );
-        if (addDataWithConnection) {
-          setShowEditionModal(addDataWithConnection);
-        } else {
-          setShowConnectorPermissionsModal(true);
-        }
-      },
-      onClick: () => onSelect(dataSourceView.sId),
-    })) || [];
+      isStatic,
+    ]
+  );
 
   if (
     isDataSourcesLoading ||
@@ -506,6 +518,8 @@ export const VaultResourcesList = ({
           filter={dataSourceSearch}
           filterColumn="name"
           initialColumnOrder={[{ desc: false, id: "name" }]}
+          pagination={pagination}
+          setPagination={setPagination}
         />
       )}
       {selectedDataSourceView &&

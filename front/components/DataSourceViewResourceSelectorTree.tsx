@@ -122,11 +122,7 @@ function DataSourceViewResourceSelectorChildren({
         dataSourceView={dataSourceView}
         documentId={documentToDisplay}
         isOpen={!!documentToDisplay}
-        setOpen={(open) => {
-          if (!open) {
-            setDocumentToDisplay(null);
-          }
-        }}
+        onClose={() => setDocumentToDisplay(null)}
       />
       <Tree isLoading={isNodesLoading}>
         {nodes.map((r) => {
