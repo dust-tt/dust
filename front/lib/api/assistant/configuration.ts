@@ -627,7 +627,14 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     }),
   ]);
 
-  return applySortAndLimit(allAgentConfigurations.flat());
+  // Filter out agents that the user does not have access to
+  // user should be in all groups that are in the agent's groupIds
+  const userGroups = auth.groups().map((g) => g.sId);
+  const allowedAgentConfigurations = allAgentConfigurations
+    .flat()
+    .filter((a) => a.groupIds.every((id) => userGroups.includes(id)));
+
+  return applySortAndLimit(allowedAgentConfigurations.flat());
 }
 
 async function getConversationMentions(
