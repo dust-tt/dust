@@ -170,7 +170,11 @@ export class AppResource extends ResourceWithVault<App> {
           },
           transaction: t,
         });
-        await DatasetResource.deleteForApp(auth, this, t);
+        const res = await DatasetResource.deleteForApp(auth, this, t);
+        if (res.isErr()) {
+          // Interrupt the transaction if there was an error deleting datasets.
+          throw res.error;
+        }
         await this.model.destroy({
           where: {
             workspaceId: auth.getNonNullableWorkspace().id,
