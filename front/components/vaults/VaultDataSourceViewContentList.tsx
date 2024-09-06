@@ -117,7 +117,7 @@ export const VaultDataSourceViewContentList = ({
     useDataSourceViewContentNodes({
       dataSourceView,
       owner,
-      internalIds: parentId ? [parentId] : [],
+      internalIds: parentId ? [parentId] : undefined,
       includeChildren: true,
       viewType,
     });

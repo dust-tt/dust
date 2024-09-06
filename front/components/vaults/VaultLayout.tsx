@@ -102,12 +102,14 @@ function VaultBreadCrumbs({
     owner,
     dataSourceView,
     internalIds: parentId ? [parentId] : [],
+    includeChildren: false,
   });
 
   const { nodes: folders } = useDataSourceViewContentNodes({
-    owner,
     dataSourceView,
-    internalIds: currentFolder?.parentInternalIds || [],
+    includeChildren: false,
+    internalIds: currentFolder?.parentInternalIds ?? [],
+    owner,
   });
 
   const items: {
