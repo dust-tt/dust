@@ -17,6 +17,7 @@ import type {
   ConnectorType,
   DataSourceType,
   DataSourceViewCategory,
+  DataSourceViewType,
   DataSourceViewWithConnectorType,
   PlanType,
   UpdateConnectorRequestBody,
@@ -25,7 +26,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
-import { isWebsiteOrFolder } from "@dust-tt/types";
+import { isWebsiteOrFolderCategory } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
@@ -220,7 +221,7 @@ export const VaultResourcesList = ({
 
   const isSystemVault = systemVault.sId === vault.sId;
   const isManaged = category === "managed";
-  const isStatic = isWebsiteOrFolder(category);
+  const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Partial<Record<ConnectorProvider, boolean>>
@@ -315,62 +316,61 @@ export const VaultResourcesList = ({
 
   const rows: RowData[] = useMemo(
     () =>
-      vaultDataSourceViews?.map((dataSourceView) => ({
-        dataSourceView: dataSourceView,
-        label: getDataSourceNameFromView(dataSourceView),
-        icon: getConnectorProviderLogoWithFallback(
-          dataSourceView.dataSource.connectorProvider,
-          FolderIcon
-        ),
-        workspaceId: owner.sId,
-        isAdmin,
-        isLoading:
-          isLoadingByProvider[dataSourceView.dataSource.connectorProvider],
-        ...(isStatic && {
-          moreMenuItems: [
-            {
-              label: "Edit",
-              icon: PencilSquareIcon,
-              onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-                e.stopPropagation();
-                setSelectedDataSourceView(dataSourceView);
-                setShowFolderOrWebsiteModal(true);
-              },
+      vaultDataSourceViews?.map((dataSourceView) => {
+        const moreMenuItems = [];
+        if (isWebsiteOrFolder && canWriteInVault) {
+          moreMenuItems.push({
+            label: "Edit",
+            icon: PencilSquareIcon,
+            onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+              e.stopPropagation();
+              setSelectedDataSourceView(dataSourceView);
+              setShowFolderOrWebsiteModal(true);
             },
-            {
-              label: "Delete",
-              icon: TrashIcon,
-              variant: "warning",
-              onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-                e.stopPropagation();
-                setSelectedDataSourceView(dataSourceView);
-                setShowDeleteConfirmDialog(true);
-              },
+          });
+          moreMenuItems.push({
+            label: "Delete",
+            icon: TrashIcon,
+            variant: "warning",
+            onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+              e.stopPropagation();
+              setSelectedDataSourceView(dataSourceView);
+              setShowDeleteConfirmDialog(true);
             },
-          ],
-        }),
-        buttonOnClick: (e) => {
-          e.stopPropagation();
-          setSelectedDataSourceView(dataSourceView);
-          const { addDataWithConnection } =
-            getRenderingConfigForConnectorProvider(
-              dataSourceView.dataSource.connectorProvider
-            );
-          if (addDataWithConnection) {
-            setShowEditionModal(addDataWithConnection);
-          } else {
-            setShowConnectorPermissionsModal(true);
-          }
-        },
-        onClick: () => onSelect(dataSourceView.sId),
-      })) || [],
+          });
+        }
+        const provider = dataSourceView.dataSource.connectorProvider;
+
+        return {
+          dataSourceView: dataSourceView,
+          label: getDataSourceNameFromView(dataSourceView),
+          icon: getConnectorProviderLogoWithFallback(provider, FolderIcon),
+          workspaceId: owner.sId,
+          isAdmin,
+          isLoading: isLoadingByProvider[provider],
+          moreMenuItems,
+          buttonOnClick: (e) => {
+            e.stopPropagation();
+            setSelectedDataSourceView(dataSourceView);
+            const { addDataWithConnection } =
+              getRenderingConfigForConnectorProvider(provider);
+            if (addDataWithConnection) {
+              setShowEditionModal(addDataWithConnection);
+            } else {
+              setShowConnectorPermissionsModal(true);
+            }
+          },
+          onClick: () => onSelect(dataSourceView.sId),
+        };
+      }) || [],
     [
       isLoadingByProvider,
       onSelect,
       owner,
       vaultDataSourceViews,
       isAdmin,
-      isStatic,
+      isWebsiteOrFolder,
+      canWriteInVault,
     ]
   );
 
@@ -463,7 +463,8 @@ export const VaultResourcesList = ({
                 ) {
                   if (updateDataSourceViews) {
                     const view = updateDataSourceViews.dataSourceViews.find(
-                      (v) => v.dataSource.sId === dataSource.sId
+                      (v: DataSourceViewType) =>
+                        v.dataSource.sId === dataSource.sId
                     );
                     if (view) {
                       setSelectedDataSourceView(view);
@@ -484,7 +485,7 @@ export const VaultResourcesList = ({
             isAdmin={isAdmin}
           />
         )}
-        {isStatic && (
+        {isWebsiteOrFolder && (
           <>
             <EditVaultStaticDatasourcesViews
               isOpen={showFolderOrWebsiteModal}
