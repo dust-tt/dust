@@ -631,7 +631,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   // user should be in all groups that are in the agent's groupIds
   const allowedAgentConfigurations = allAgentConfigurations
     .flat()
-    .filter((a) => auth.canRead([Authenticator.aclFromGroupIds(a.groupIds)]));
+    .filter((a) => auth.canRead(Authenticator.aclsFromGroupIds(a.groupIds)));
 
   return applySortAndLimit(allowedAgentConfigurations.flat());
 }

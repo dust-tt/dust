@@ -91,7 +91,7 @@ export class Authenticator {
     this._key = key;
   }
 
-  static aclFromGroupIds(groupIds: string[]): ACLType {
+  static aclsFromGroupIds(groupIds: string[]): ACLType[] {
     const getIdFromSIdOrThrow = (groupId: string) => {
       const id = getResourceIdFromSId(groupId);
       if (!id) {
@@ -100,12 +100,14 @@ export class Authenticator {
       return id;
     };
 
-    return {
-      aclEntries: groupIds.map((groupId) => ({
-        groupId: getIdFromSIdOrThrow(groupId),
-        permissions: ["read", "write"],
-      })),
-    };
+    return groupIds.map((groupId) => ({
+      aclEntries: [
+        {
+          groupId: getIdFromSIdOrThrow(groupId),
+          permissions: ["read", "write"],
+        },
+      ],
+    }));
   }
 
   /**
