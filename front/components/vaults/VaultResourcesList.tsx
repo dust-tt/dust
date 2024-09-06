@@ -33,7 +33,10 @@ import { useRef } from "react";
 import { useState } from "react";
 import * as React from "react";
 
-import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
+import {
+  ConnectorPermissionsModal,
+  getRenderingConfigForConnectorProvider,
+} from "@app/components/ConnectorPermissionsModal";
 import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEditionModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
@@ -309,16 +312,17 @@ export const VaultResourcesList = ({
   });
 
   const rows: RowData[] =
-    vaultDataSourceViews?.map((r) => ({
-      dataSourceView: r,
-      label: getDataSourceNameFromView(r),
+    vaultDataSourceViews?.map((dataSourceView) => ({
+      dataSourceView,
+      label: getDataSourceNameFromView(dataSourceView),
       icon: getConnectorProviderLogoWithFallback(
-        r.dataSource.connectorProvider,
+        dataSourceView.dataSource.connectorProvider,
         FolderIcon
       ),
       workspaceId: owner.sId,
       isAdmin,
-      isLoading: isLoadingByProvider[r.dataSource.connectorProvider],
+      isLoading:
+        isLoadingByProvider[dataSourceView.dataSource.connectorProvider],
       ...(isStatic && {
         moreMenuItems: [
           {
@@ -326,7 +330,7 @@ export const VaultResourcesList = ({
             icon: PencilSquareIcon,
             onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
               e.stopPropagation();
-              setSelectedDataSourceView(r);
+              setSelectedDataSourceView(dataSourceView);
               setShowFolderOrWebsiteModal(true);
             },
           },
@@ -336,7 +340,7 @@ export const VaultResourcesList = ({
             variant: "warning",
             onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
               e.stopPropagation();
-              setSelectedDataSourceView(r);
+              setSelectedDataSourceView(dataSourceView);
               setShowDeleteConfirmDialog(true);
             },
           },
@@ -344,10 +348,18 @@ export const VaultResourcesList = ({
       }),
       buttonOnClick: (e) => {
         e.stopPropagation();
-        setShowConnectorPermissionsModal(true);
-        setSelectedDataSourceView(r);
+        setSelectedDataSourceView(dataSourceView);
+        const { addDataWithConnection } =
+          getRenderingConfigForConnectorProvider(
+            dataSourceView.dataSource.connectorProvider
+          );
+        if (addDataWithConnection) {
+          setShowEditionModal(addDataWithConnection);
+        } else {
+          setShowConnectorPermissionsModal(true);
+        }
       },
-      onClick: () => onSelect(r.sId),
+      onClick: () => onSelect(dataSourceView.sId),
     })) || [];
 
   if (

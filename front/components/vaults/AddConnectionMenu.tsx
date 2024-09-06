@@ -22,7 +22,6 @@ import {
   isConnectionIdRequiredForProvider,
   isConnectorProviderAllowedForPlan,
 } from "@app/lib/connector_providers";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
 import { setupConnection } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
