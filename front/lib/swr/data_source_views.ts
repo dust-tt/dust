@@ -34,8 +34,9 @@ export function useDataSourceViews(
   const dataSourceViewsFetcher: Fetcher<GetDataSourceViewsResponseBody> =
     fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    disabled ? null : `/api/w/${owner.sId}/data_source_views`,
-    dataSourceViewsFetcher
+    `/api/w/${owner.sId}/data_source_views`,
+    dataSourceViewsFetcher,
+    { disabled }
   );
 
   return {

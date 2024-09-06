@@ -40,10 +40,9 @@ export function useConnectorPermissions({
     url += `&filterPermission=${filterPermission}`;
   }
 
-  const { data, error } = useSWRWithDefaults(
-    disabled ? null : url,
-    permissionsFetcher
-  );
+  const { data, error } = useSWRWithDefaults(url, permissionsFetcher, {
+    disabled,
+  });
 
   return {
     resources: useMemo(() => (data ? data.resources : []), [data]),

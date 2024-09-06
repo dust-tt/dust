@@ -81,7 +81,7 @@ type VaultResourcesListProps = {
   canWriteInVault: boolean;
   vault: VaultType;
   systemVault: VaultType;
-  category: DataSourceViewCategory;
+  category: Exclude<DataSourceViewCategory, "apps">;
   onSelect: (sId: string) => void;
 };
 
