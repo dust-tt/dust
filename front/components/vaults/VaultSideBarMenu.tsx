@@ -114,6 +114,9 @@ const getSectionLabel = (kind: VaultKind) => {
     case "system":
       return "SYSTEM";
 
+    case "public":
+      return "PUBLIC";
+
     default:
       assertNever(kind);
   }
