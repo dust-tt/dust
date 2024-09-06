@@ -38,7 +38,7 @@ import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
   const accessibleVaults = [
-    ...(await VaultResource.listWorkspaceVaults(auth, false)),
+    ...(await VaultResource.listWorkspaceVaults(auth)),
   ].filter((vault) => !vault.isSystem());
 
   const [dsViews, allDustApps] = await Promise.all([

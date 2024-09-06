@@ -20,7 +20,7 @@ import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@dust-tt/types";
 import { groupBy } from "lodash";
 import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 
 import {
   getConnectorProviderLogoWithFallback,
@@ -31,6 +31,7 @@ import {
   useVaultDataSourceViews,
   useVaultInfo,
   useVaults,
+  useVaultsAsAdmin,
 } from "@app/lib/swr/vaults";
 import { getVaultIcon, getVaultName } from "@app/lib/vaults";
 
@@ -52,9 +53,33 @@ export default function VaultSideBarMenu({
   isAdmin,
   setShowVaultCreationModal,
 }: VaultSideBarMenuProps) {
-  const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
+  const { vaults, isVaultsLoading } = useVaultsAsAdmin({
+    workspaceId: owner.sId,
+  });
 
-  if (!vaults || isVaultsLoading) {
+  const { vaults: vaultsAsUser, isVaultsLoading: isVaultsAsUserLoading } =
+    useVaults({
+      workspaceId: owner.sId,
+    });
+
+  // Vaults that are in the vaultsAsUser list should be displayed first, use the name as a tiebreaker.
+  const compareVaults = useCallback(
+    (v1: VaultType, v2: VaultType) => {
+      const v1IsMember = !!vaultsAsUser?.find((v) => v.sId === v1.sId);
+      const v2IsMember = !!vaultsAsUser?.find((v) => v.sId === v2.sId);
+
+      if (v1IsMember && !v2IsMember) {
+        return -1;
+      } else if (!v1IsMember && v2IsMember) {
+        return 1;
+      } else {
+        return v1.name.localeCompare(v2.name);
+      }
+    },
+    [vaultsAsUser]
+  );
+
+  if (!vaults || !vaultsAsUser || isVaultsLoading || isVaultsAsUserLoading) {
     return <></>;
   }
 
@@ -96,7 +121,11 @@ export default function VaultSideBarMenu({
                     />
                   )}
                 </div>
-                {renderVaultItems(vaults, owner)}
+                {renderVaultItems(
+                  vaults.toSorted(compareVaults),
+                  vaultsAsUser,
+                  owner
+                )}
               </Fragment>
             );
           })}
@@ -107,16 +136,25 @@ export default function VaultSideBarMenu({
 }
 
 // Function to render vault items.
-const renderVaultItems = (vaults: VaultType[], owner: LightWorkspaceType) =>
-  vaults.map((vault) => (
+const renderVaultItems = (
+  vaults: VaultType[],
+  vaultsAsUser: VaultType[],
+  owner: LightWorkspaceType
+) => {
+  return vaults.map((vault) => (
     <Fragment key={`vault-${vault.sId}`}>
       {vault.kind === "system" ? (
         <SystemVaultMenu owner={owner} vault={vault} />
       ) : (
-        <VaultMenu owner={owner} vault={vault} />
+        <VaultMenu
+          owner={owner}
+          vault={vault}
+          isMember={!!vaultsAsUser.find((v) => v.sId === vault.sId)}
+        />
       )}
     </Fragment>
   ));
+};
 
 const getSectionLabel = (kind: VaultKind) => {
   switch (kind) {
@@ -245,13 +283,15 @@ const SystemVaultItem = ({
 const VaultMenu = ({
   owner,
   vault,
+  isMember,
 }: {
   owner: LightWorkspaceType;
   vault: VaultType;
+  isMember: boolean;
 }) => {
   return (
     <Tree variant="navigator">
-      <VaultMenuItem owner={owner} vault={vault} />
+      <VaultMenuItem owner={owner} vault={vault} isMember={isMember} />
     </Tree>
   );
 };
@@ -259,9 +299,11 @@ const VaultMenu = ({
 const VaultMenuItem = ({
   owner,
   vault,
+  isMember,
 }: {
   owner: LightWorkspaceType;
   vault: VaultType;
+  isMember: boolean;
 }) => {
   const router = useRouter();
 
@@ -291,7 +333,7 @@ const VaultMenuItem = ({
       isSelected={router.asPath === vaultPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={getVaultIcon(vault)}
-      tailwindIconTextColor="text-brand"
+      tailwindIconTextColor={isMember ? "text-success-500" : "text-warning-400"}
       size="md"
       areActionsFading={false}
     >

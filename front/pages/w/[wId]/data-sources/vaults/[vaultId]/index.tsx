@@ -1,5 +1,11 @@
-import { Page, PuzzleIcon, Tab, UserGroupIcon } from "@dust-tt/sparkle";
-import type { VaultType } from "@dust-tt/types";
+import {
+  Chip,
+  InformationCircleIcon,
+  Page,
+  PuzzleIcon,
+  Tab,
+  UserGroupIcon,
+} from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -15,10 +21,7 @@ import { VaultResource } from "@app/lib/resources/vault_resource";
 import { getVaultIcon, getVaultName } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
-  VaultLayoutProps & {
-    isAdmin: boolean;
-    vault: VaultType;
-  }
+  VaultLayoutProps & { isMember: boolean }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
@@ -39,20 +42,23 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
   const isAdmin = auth.isAdmin();
+  const isMember = vault.canRead(auth);
 
   return {
     props: {
       gaTrackingId: config.getGaTrackingId(),
       isAdmin,
+      isMember,
       owner,
       subscription,
       vault: vault.toJSON(),
     },
   };
 });
-
+//
 export default function Vault({
   isAdmin,
+  isMember,
   owner,
   vault,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -65,6 +71,14 @@ export default function Vault({
         icon={getVaultIcon(vault)}
         description="Manage connections to your products and the real-time data feeds Dust has access to."
       />
+      {!isMember && (
+        <Chip
+          color="warning"
+          label="You are not a member of this vault."
+          size="sm"
+          icon={InformationCircleIcon}
+        />
+      )}
 
       {vault.kind !== "global" && isAdmin && (
         <div className="w-[320px]">

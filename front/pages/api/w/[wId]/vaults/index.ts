@@ -31,7 +31,25 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const vaults = await VaultResource.listWorkspaceVaults(auth);
+      const { role } = req.query;
+
+      if (role && typeof role !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid request query parameters.",
+          },
+        });
+      }
+
+      let vaults: VaultResource[] = [];
+
+      if (role && role === "admin") {
+        vaults = await VaultResource.listWorkspaceVaultsAsAdmin(auth);
+      } else {
+        vaults = await VaultResource.listWorkspaceVaults(auth);
+      }
 
       return res.status(200).json({
         vaults: vaults.map((vault) => vault.toJSON()),
