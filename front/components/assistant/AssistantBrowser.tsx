@@ -108,7 +108,7 @@ export function AssistantBrowser({
 
   const isVaultsEnabled = owner.flags.includes("data_vaults_feature");
   const builderManageAssistantsRoute = isVaultsEnabled
-    ? `/w/${owner.sId}/assistant/manage-assistants/`
+    ? `/w/${owner.sId}/assistants/`
     : `/w/${owner.sId}/builder/assistants/`;
 
   return (

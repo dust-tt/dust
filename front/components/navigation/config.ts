@@ -118,7 +118,7 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
       [
         "/w/[wId]/assistant/new",
         "/w/[wId]/assistant/[cId]",
-        "/w/[wId]/assistant/manage-assistants",
+        "/w/[wId]/assistants",
       ].includes(currentRoute),
   });
 

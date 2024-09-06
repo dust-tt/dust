@@ -221,7 +221,8 @@ export default function WorkspaceAssistants({
     }
   }, [tabScope]);
 
-  // Hack to display this page either from Builder or Chat Menu
+  // toto[GROUPS_INFRA]: this is a Hack to display this page either from Builder or Chat Menu
+  // Once the Build menu is gone, we should edit this one to use ConversationLayout instead of AppLayout.
   const { conversations, isConversationsError } = useConversations({
     workspaceId: owner.sId,
   });
