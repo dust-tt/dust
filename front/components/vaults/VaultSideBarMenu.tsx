@@ -2,7 +2,6 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
-  CompanyIcon,
   FolderIcon,
   GlobeAltIcon,
   Item,
@@ -22,6 +21,7 @@ import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useEffect, useState } from "react";
 
+import { getVaultIcon } from "@app/lib/client/vaults";
 import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
@@ -38,7 +38,12 @@ interface VaultSideBarMenuProps {
   setShowVaultCreationModal: (show: boolean) => void;
 }
 
-const VAULTS_SORT_ORDER: VaultKind[] = ["system", "global", "regular"];
+const VAULTS_SORT_ORDER: VaultKind[] = [
+  "system",
+  "global",
+  "regular",
+  "public",
+];
 
 export default function VaultSideBarMenu({
   owner,
@@ -261,7 +266,7 @@ const VaultMenuItem = ({
       onItemClick={() => router.push(vaultPath)}
       isSelected={router.asPath === vaultPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
-      visual={vault.kind === "global" ? CompanyIcon : LockIcon}
+      visual={getVaultIcon(vault.kind)}
       tailwindIconTextColor="text-brand"
       size="md"
       areActionsFading={false}
