@@ -13,13 +13,13 @@
  *         sId:
  *           type: string
  *           description: Unique string identifier for the user
- *           example: "0ec9852c2f"
+ *           example: "0ec98sgc2f"
  *         id:
  *           type: integer
  *           example: 12345
  *         createdAt:
  *           type: integer
- *           example: 1625097600
+ *           example: 1631234567
  *         username:
  *           type: string
  *           description: User's chosen username
@@ -57,11 +57,11 @@
  *         sId:
  *           type: string
  *           description: Unique string identifier for the workspace
- *           example: "dQFf9l5FQY"
+ *           example: "0ec98sgc2f"
  *         name:
  *           type: string
  *           description: Name of the workspace
- *           example: "My Awesome Workspace"
+ *           example: "Project Alpha"
  *         role:
  *           type: string
  *           description: User's role in the workspace
@@ -76,7 +76,7 @@
  *           items:
  *             type: string
  *             description: Feature flags enabled for the workspace
- *           example: ["advanced_analytics", "beta_features"]
+ *           example: ["beta_feature", "early_access"]
  *         ssoEnforced:
  *           type: boolean
  *           example: true
@@ -97,43 +97,38 @@
  *         username:
  *           type: string
  *           description: Username in the current context
- *           example: "johndoe123"
- *           required: true
+ *           example: "johndoe"
  *         timezone:
  *           type: string
  *           description: User's timezone
  *           example: "America/New_York"
- *           required: true
  *         fullName:
  *           type: string
  *           description: User's full name in the current context
  *           example: "John Doe"
- *           required: true
  *         email:
  *           type: string
  *           description: User's email in the current context
  *           example: "john.doe@example.com"
- *           required: true
  *         profilePictureUrl:
  *           type: string
  *           description: URL of the user's profile picture
- *           example: "https://example.com/profiles/johndoe123.jpg"
- *           required: true
+ *           example: "https://example.com/profile/johndoe.jpg"
  *         origin:
  *           type: string
  *           description: Origin of the context
+ *           default: "api"
  *           example: "api"
- *           required: true
  *     AgentConfiguration:
  *       type: object
  *       properties:
  *         id:
  *           type: integer
- *           example: 12345
+ *           example: 54321
  *         sId:
  *           type: string
  *           description: Unique string identifier for the agent configuration
- *           example: "7f3a9c2b1e"
+ *           example: "0ec98sgc2f"
  *         version:
  *           type: integer
  *           example: 2
@@ -141,29 +136,29 @@
  *           type: string
  *           nullable: true
  *           description: Timestamp of when the version was created
- *           example: "2023-06-15T14:30:00Z"
+ *           example: "2023-09-15T14:30:00Z"
  *         versionAuthorId:
  *           type: string
  *           nullable: true
  *           description: ID of the user who created this version
- *           example: "0ec9852c2f"
+ *           example: "0ec98sgc2f"
  *         name:
  *           type: string
  *           description: Name of the agent configuration
- *           example: "Customer Support Agent"
+ *           example: "Customer Support Bot"
  *         description:
  *           type: string
  *           description: Description of the agent configuration
- *           example: "An AI agent designed to handle customer support inquiries"
+ *           example: "An AI assistant for handling customer inquiries"
  *         instructions:
  *           type: string
  *           nullable: true
  *           description: Instructions for the agent
- *           example: "Always greet the customer politely and try to resolve their issue efficiently."
+ *           example: "Respond to customer queries politely and accurately"
  *         pictureUrl:
  *           type: string
  *           description: URL of the agent's picture
- *           example: "https://example.com/agent-images/support-agent.png"
+ *           example: "https://example.com/agents/support-bot.png"
  *         status:
  *           type: string
  *           description: Current status of the agent configuration
@@ -175,7 +170,7 @@
  *         userListStatus:
  *           type: string
  *           description: Status of the user list for this configuration
- *           example: "all_users"
+ *           example: "allowlist"
  *         model:
  *           type: object
  *           properties:
@@ -200,7 +195,7 @@
  *           type: string
  *           nullable: true
  *           description: ID of the template used for this configuration
- *           example: "b4e2f1a9c7"
+ *           example: "0ec98sgc2f"
  *     Conversation:
  *       type: object
  *       properties:
@@ -209,24 +204,24 @@
  *           properties:
  *             id:
  *               type: integer
- *               example: 67890
+ *               example: 98765
  *             created:
  *               type: integer
- *               example: 1625097600
+ *               example: 1631234567
  *             sId:
  *               type: string
  *               description: Unique string identifier for the conversation
- *               example: "3d8f6a2c1b"
+ *               example: "0ec98sgc2f"
  *             owner:
  *               $ref: '#/components/schemas/Workspace'
  *             title:
  *               type: string
  *               description: Title of the conversation
- *               example: "Customer Inquiry #1234"
+ *               example: "Product Inquiry - Customer A"
  *             visibility:
  *               type: string
- *               description: Visibility setting of the conversation
- *               example: "private"
+ *               description: Visibility setting of the conversation. Only 'unlisted' is accepted through the API.
+ *               example: "unlisted"
  *             content:
  *               type: array
  *               items:
@@ -236,15 +231,15 @@
  *                   properties:
  *                     id:
  *                       type: integer
- *                       example: 1
+ *                       example: 1001
  *                     sId:
  *                       type: string
  *                       description: Unique string identifier for the message
- *                       example: "9e7d5c3a1f"
+ *                       example: "0ec98sgc2f"
  *                     type:
  *                       type: string
  *                       description: Type of the message
- *                       example: "human"
+ *                       example: "user"
  *                     visibility:
  *                       type: string
  *                       description: Visibility setting of the message
@@ -254,7 +249,7 @@
  *                       example: 1
  *                     created:
  *                       type: integer
- *                       example: 1625097700
+ *                       example: 1631234568
  *                     user:
  *                       $ref: '#/components/schemas/User'
  *                     mentions:
@@ -264,16 +259,16 @@
  *                     content:
  *                       type: string
  *                       description: Content of the message
- *                       example: "Hello, I need help with my order."
+ *                       example: "Hello, I have a question about your product."
  *                     context:
  *                       $ref: '#/components/schemas/Context'
  *                     agentMessageId:
  *                       type: integer
- *                       example: 1
+ *                       example: 2001
  *                     parentMessageId:
  *                       type: string
  *                       description: ID of the parent message
- *                       example: "2b8e4f6a0c"
+ *                       example: "0ec98sgc2f"
  *                     status:
  *                       type: string
  *                       description: Status of the message
@@ -285,7 +280,7 @@
  *                       type: string
  *                       nullable: true
  *                       description: Chain of thought for the message
- *                       example: "The user is asking about their order. I should first greet them and then ask for their order number."
+ *                       example: "To answer your question, I need to search in your internal datasources."
  *                     rawContents:
  *                       type: array
  *                       items:
@@ -297,7 +292,7 @@
  *                           content:
  *                             type: string
  *                             description: Content for each step
- *                             example: "Hello! I'd be happy to help you with your order. Could you please provide your order number?"
+ *                             example: "Searching in Google Drive."
  *                     error:
  *                       type: string
  *                       nullable: true
@@ -311,7 +306,7 @@
  *         configurationId:
  *           type: string
  *           description: ID of the mentioned agent configuration
- *           example: "7f3a9c2b1e"
+ *           example: "0ec98sgc2f"
  *     Message:
  *       type: object
  *       properties:
@@ -332,52 +327,47 @@
  *           type: string
  *           description: The title of the content fragment
  *           example: "My content fragment"
- *           required: true
  *         content:
  *           type: string
  *           description: The content of the content fragment
- *           example: "This is my content fragment extracted text"
- *           required: true
+ *           example: "This is my content fragment"
  *         url:
  *           type: string
  *           description: The URL of the content fragment
  *           example: "https://example.com/content"
- *           required: true
  *         contentType:
  *           type: string
  *           description: The content type of the content fragment
  *           example: "text/plain"
- *           required: true
  *         context:
  *           $ref: '#/components/schemas/Context'
- *           required: true
  *     Datasource:
  *       type: object
  *       properties:
  *         id:
  *           type: integer
  *           description: Unique identifier for the datasource
- *           example: 12345
+ *           example: 3456
  *         createdAt:
  *           type: integer
  *           description: Timestamp of when the datasource was created
- *           example: 1625097600
+ *           example: 1631234567
  *         name:
  *           type: string
  *           description: Name of the datasource
- *           example: "Customer Knowledge Base"
+ *           example: "Product Knowledge Base"
  *         description:
  *           type: string
  *           description: Description of the datasource
- *           example: "Contains all customer-related information and FAQs"
+ *           example: "Contains all product information and specifications"
  *         dustAPIProjectId:
  *           type: string
  *           description: ID of the associated Dust API project
- *           example: "5e9d8c7b6a"
+ *           example: "0ec98sgc2f"
  *         connectorId:
  *           type: string
  *           description: ID of the connector used for this datasource
- *           example: "1f3e5d7c9b"
+ *           example: "0ec98sgc2f"
  *         connectorProvider:
  *           type: string
  *           description: Provider of the connector (e.g., 'webcrawler')
@@ -392,11 +382,11 @@
  *         run_id:
  *           type: string
  *           description: The ID of the run
- *           example: "4a2c6e8b0d"
+ *           example: "0ec98sgc2f"
  *         app_id:
  *           type: string
  *           description: The ID of the app
- *           example: "9f1d3b5a7c"
+ *           example: "0ec98sgc2f"
  *         status:
  *           type: object
  *           properties:
@@ -411,11 +401,11 @@
  *         results:
  *           type: object
  *           description: The results of the run
- *           example: {}
+ *           example: {"output": "Hello, world!"}
  *         specification_hash:
  *           type: string
  *           description: The hash of the app specification
- *           example: "8c0a4e6d2f"
+ *           example: "0ec98sgc2f"
  *         traces:
  *           type: array
  *           items:
@@ -426,46 +416,46 @@
  *                 timestamp:
  *                   type: number
  *                   description: The timestamp of the trace
- *                   example: 1234567890
+ *                   example: 1631234567890
  *                 trace:
  *                   type: object
  *                   description: The trace
- *                   example: {}
+ *                   example: {"event": "start", "details": "Initializing run"}
  *     Document:
  *       type: object
  *       properties:
  *         data_source_id:
  *           type: string
- *           example: "3b7d9f1e5a"
+ *           example: "0ec98sgc2f"
  *         created:
  *           type: number
- *           example: 1625097600
+ *           example: 1631234567
  *         document_id:
  *           type: string
- *           example: "2c4a6e8d0f"
+ *           example: "0ec98sgc2f"
  *         timestamp:
  *           type: number
- *           example: 1625097600
+ *           example: 1631234567890
  *         tags:
  *           type: array
  *           items:
  *             type: string
- *           example: ["customer_support", "faq"]
+ *           example: ["product", "manual"]
  *         parents:
  *           type: array
  *           items:
  *             type: string
- *           example: ["7b9d1f3e5a", "2c4a6e8d0f"]
+ *           example: ["0ec98sgc2f"]
  *         source_url:
  *           type: string
  *           nullable: true
- *           example: "https://example.com/support/article1"
+ *           example: "https://example.com/product-manual.pdf"
  *         hash:
  *           type: string
- *           example: "a1b2c3d4e5"
+ *           example: "0ec98sgc2f"
  *         text_size:
  *           type: number
- *           example: 1024
+ *           example: 15234
  *         chunk_count:
  *           type: number
  *           example: 5
@@ -475,21 +465,21 @@
  *             type: object
  *           example: [
  *             {
- *               "chunk_id": "9f1d3b5a7c",
+ *               "chunk_id": "0ec98sgc2f",
  *               "text": "This is the first chunk of the document.",
- *               "embedding": [0.1, 0.2, 0.3, 0.4]
+ *               "offset": 0
  *             },
  *             {
- *               "chunk_id": "4a2c6e8b0d",
+ *               "chunk_id": "1fd99thd3g",
  *               "text": "This is the second chunk of the document.",
- *               "embedding": [0.5, 0.6, 0.7, 0.8]
+ *               "offset": 100
  *             }
  *           ]
  *         text:
  *           type: string
- *           example: "This is the full text content of the document. It contains multiple paragraphs and covers various topics related to customer support."
+ *           example: "This is the full text content of the document..."
  *         token_count:
  *           type: number
  *           nullable: true
- *           example: 150
+ *           example: 2345
  */
