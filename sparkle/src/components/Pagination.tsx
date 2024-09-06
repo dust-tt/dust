@@ -42,32 +42,33 @@ export const usePaginationFromUrl = (
   return res;
 };
 
-type PaginationProps = {
+interface PaginationProps {
   size?: Size;
   showDetails?: boolean;
   showPageButtons?: boolean;
   rowCount: number;
-  pageSize: number;
-  pageIndex: number;
-  setPageIndex: (pageNumber: number) => void;
-};
+  pagination: PaginationState;
+  setPagination: (pagination: PaginationState) => void;
+}
 
 export function Pagination({
   size = "sm",
   showDetails = true,
   showPageButtons = true,
   rowCount,
-  pageSize = defaultPageSize,
-  pageIndex,
-  setPageIndex,
+  pagination,
+  setPagination,
 }: PaginationProps) {
+  // pageIndex is 0-based
+  const { pageIndex, pageSize } = pagination;
+
   const numPages = Math.ceil(rowCount / pageSize);
 
-  // pageIndex is 0-based
-  const canNextPage = pageIndex < numPages - 1;
+  const canNextPage = pagination.pageIndex < numPages - 1;
   const canPreviousPage = pageIndex > 0;
-  const nextPage = () => setPageIndex(pageIndex + 1);
-  const previousPage = () => setPageIndex(pageIndex - 1);
+  const nextPage = () => setPagination({ pageSize, pageIndex: pageIndex + 1 });
+  const previousPage = () =>
+    setPagination({ pageSize, pageIndex: pageIndex - 1 });
 
   const controlsAreHidden = Boolean(numPages <= 1);
   const firstItemOnPageIndex = pageIndex * pageSize + 1;
@@ -77,10 +78,10 @@ export function Pagination({
       : rowCount;
 
   const onPaginationButtonClick = useCallback(
-    (pageNb: number) => {
-      setPageIndex(pageNb);
+    (pageIndex: number) => {
+      setPagination({ pageSize, pageIndex });
     },
-    [pageIndex, setPageIndex]
+    [pageIndex, setPagination]
   );
 
   const pageButtons: React.ReactNode[] = getPageButtons(

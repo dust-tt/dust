@@ -11,60 +11,63 @@ const meta = {
 } satisfies Meta<typeof Pagination>;
 
 export default meta;
-
 export const PaginationSM = () => {
-  const [pageIndex, setPageIndex] = React.useState(0);
+  const [pagination, setPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 50,
+  });
   return (
     <Pagination
       rowCount={960}
-      pageSize={50}
-      pageIndex={pageIndex}
-      setPageIndex={setPageIndex}
+      pagination={pagination}
+      setPagination={setPagination}
     />
   );
 };
 
 export const PaginationXS = () => {
-  const [pageIndex, setPageIndex] = React.useState(0);
+  const [pagination, setPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 50,
+  });
   return (
     <Pagination
       rowCount={960}
-      pageSize={50}
       size="xs"
       showDetails={false}
-      pageIndex={pageIndex}
-      setPageIndex={setPageIndex}
+      pagination={pagination}
+      setPagination={setPagination}
     />
   );
 };
 
 export const PaginationNoPageButtons = () => {
-  const [pageIndex, setPageIndex] = React.useState(0);
+  const [pagination, setPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 50,
+  });
   return (
     <Pagination
       rowCount={960}
-      pageSize={50}
       size="xs"
       showDetails={false}
       showPageButtons={false}
-      pageIndex={pageIndex}
-      setPageIndex={setPageIndex}
+      pagination={pagination}
+      setPagination={setPagination}
     />
   );
 };
 
 export const PaginationWithUrl = () => {
-  const { pagination, setPagination } = usePaginationFromUrl();
+  const { pagination, setPagination } = usePaginationFromUrl("example", 50);
 
   return (
     <>
       <div className="s-p-2">Current hash: {location.hash}</div>
       <Pagination
         rowCount={960}
-        {...pagination}
-        setPageIndex={(pageNumber) =>
-          setPagination({ ...pagination, pageIndex: pageNumber })
-        }
+        pagination={pagination}
+        setPagination={setPagination}
       />
     </>
   );

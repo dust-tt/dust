@@ -39,6 +39,12 @@ const data: Data[] = [
     avatarUrl: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
     roundedAvatar: true,
     onClick: () => console.log("hehe"),
+    moreMenuItems: [
+      {
+        label: "Edit",
+        onClick: () => console.log("Edit"),
+      },
+    ],
   },
   {
     name: "Design",
