@@ -250,7 +250,14 @@ export default function DataSourcesView({
     const dataSource = managedDataSources.find(
       (ds) => ds.name === router.query.edit_permissions
     );
+
     if (dataSource) {
+      void router.replace(
+        router.asPath.substr(0, router.asPath.indexOf("?")),
+        undefined,
+        { shallow: true }
+      );
+
       setSelectedDataSource(dataSource);
       setShowConnectorModal(true);
     }
