@@ -207,14 +207,12 @@ export function DataSourceViewsSelector({
   if (nbOfVaults > 1) {
     return (
       <VaultSelector
-        {...{
-          owner,
-          dataSourceViews,
-          allowedVaults,
-          selectionConfigurations,
-          setSelectionConfigurations,
-          viewType,
-        }}
+          owner={owner}
+          dataSourceViews={dataSourceViews}
+          allowedVaults={allowedVaults}
+          selectionConfigurations={selectionConfigurations}
+          setSelectionConfigurations={setSelectionConfigurations}
+          viewType={viewType}
       />
     );
   } else {
