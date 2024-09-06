@@ -1,13 +1,13 @@
 import { Button, DataTable, Searchbar } from "@dust-tt/sparkle";
 import type { VaultType, WorkspaceType } from "@dust-tt/types";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, Row } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { ManageMembersModal } from "@app/components/vaults/ManageMembersModal";
 import { useVaultInfo } from "@app/lib/swr/vaults";
-import { classNames } from "@app/lib/utils";
+import { classNames, removeDiacritics } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 type RowData = {
@@ -33,6 +33,15 @@ const tableColumns = [
       </DataTable.CellContent>
     ),
     accessorFn: (row: RowData) => row.name,
+    filterFn: (row: Row<RowData>, columnId: string, filterValue: any) => {
+      if (!filterValue) {
+        return true;
+      }
+
+      return removeDiacritics(row.getValue(columnId))
+        .toLowerCase()
+        .includes(removeDiacritics(filterValue).toLowerCase());
+    },
   },
 ];
 
