@@ -133,8 +133,11 @@ export const NavigationSidebar = React.forwardRef<
                             selected={menu.current}
                             label={menu.label}
                             icon={menu.icon}
-                            href={menu.href}
-                            target={menu.target}
+                            link={
+                              menu.href
+                                ? { href: menu.href, target: menu.target }
+                                : undefined
+                            }
                           />
                           {menu.subMenuLabel && (
                             <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm text-xs uppercase text-slate-400">
@@ -151,7 +154,13 @@ export const NavigationSidebar = React.forwardRef<
                                       label={nav.label}
                                       icon={nav.icon}
                                       className="TEST grow pl-14 pr-4"
-                                      href={nav.href}
+                                      link={
+                                        menu.href
+                                          ? {
+                                              href: menu.href,
+                                            }
+                                          : undefined
+                                      }
                                     />
                                   </div>
                                 );
