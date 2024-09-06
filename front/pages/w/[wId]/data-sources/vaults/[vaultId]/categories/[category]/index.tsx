@@ -2,6 +2,7 @@ import { Page } from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
   PlanType,
+  UserType,
   VaultType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -26,13 +27,15 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     vault: VaultType;
     systemVault: VaultType;
     plan: PlanType;
+    user: UserType;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
-  const plan = auth.plan();
+  const plan = auth.getNonNullablePlan();
+  const user = auth.getNonNullableUser();
 
-  if (!subscription || !plan) {
+  if (!subscription) {
     return {
       notFound: true,
     };
@@ -65,6 +68,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       subscription,
       vault: vault.toJSON(),
       systemVault: systemVault.toJSON(),
+      user,
     },
   };
 });
@@ -76,6 +80,7 @@ export default function Vault({
   isBuilder,
   canWriteInVault,
   owner,
+  user,
   plan,
   vault,
   systemVault,
@@ -95,6 +100,7 @@ export default function Vault({
         <VaultResourcesList
           dustClientFacingUrl={dustClientFacingUrl}
           owner={owner}
+          user={user}
           plan={plan}
           vault={vault}
           systemVault={systemVault}

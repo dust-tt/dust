@@ -10,13 +10,18 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
+  ConnectorType,
+  DataSourceType,
   DataSourceWithConnectorDetailsType,
   LightWorkspaceType,
   PlanType,
   Result,
   SubscriptionType,
+  UpdateConnectorRequestBody,
+  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
 import {
   CONNECTOR_PROVIDERS,
   Err,
@@ -28,15 +33,19 @@ import {
 } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
-import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
-import * as React from "react";
-import { useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  ConnectorPermissionsModal,
+  getRenderingConfigForConnectorProvider,
+} from "@app/components/ConnectorPermissionsModal";
+import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEditionModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import config from "@app/lib/api/config";
 import {
@@ -47,6 +56,14 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
+
+const REDIRECT_TO_EDIT_PERMISSIONS = [
+  "confluence",
+  "google_drive",
+  "microsoft",
+  "slack",
+  "intercom",
+];
 
 type DataSourceWithConnectorAndUsageType =
   DataSourceWithConnectorDetailsType & {
@@ -64,7 +81,6 @@ type RowData = {
   disabled: boolean;
   isLoading: boolean;
   readOnly: boolean;
-  dataSourceUrl: string;
   workspaceId: string | undefined;
   icon: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
   buttonOnClick: () => void;
@@ -75,9 +91,8 @@ type GetTableRowParams = {
   managedDataSource: DataSourceWithConnectorAndUsageType;
   isAdmin: boolean;
   isLoadingByProvider: Record<ConnectorProvider, boolean | undefined>;
-  router: NextRouter;
-  owner: WorkspaceType;
   readOnly: boolean;
+  onButtonClick: (ds: DataSourceWithConnectorAndUsageType) => void;
 };
 
 export async function setupConnection({
@@ -120,12 +135,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   gaTrackingId: string;
   dustClientFacingUrl: string;
+  user: UserType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
+  const user = auth.user();
 
-  if (!owner || !plan || !subscription) {
+  if (!owner || !plan || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -133,7 +150,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const readOnly = !auth.isBuilder();
   const isAdmin = auth.isAdmin();
-
   const allDataSources = await getDataSources(auth, { includeEditedBy: true });
 
   const managedDataSources: DataSourceWithConnectorAndUsageType[] = removeNulls(
@@ -200,6 +216,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       gaTrackingId: config.getGaTrackingId(),
       dustClientFacingUrl: config.getClientFacingUrl(),
+      user,
     },
   };
 });
@@ -214,14 +231,37 @@ export default function DataSourcesView({
   plan,
   gaTrackingId,
   dustClientFacingUrl,
+  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isLoadingByProvider, setIsLoadingByProvider] = useState(
     {} as Record<ConnectorProvider, boolean>
   );
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
+  const [selectedDataSource, setSelectedDataSource] =
+    useState<DataSourceWithConnectorAndUsageType | null>(null);
+  const [showEditionModal, setShowEditionModal] = useState(false);
+  const [showConnectorModal, setShowConnectorModal] = useState(false);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
+  const sendNotification = useContext(SendNotificationsContext);
   const router = useRouter();
+
+  useEffect(() => {
+    const dataSource = managedDataSources.find(
+      (ds) => ds.name === router.query.edit_permissions
+    );
+
+    if (dataSource) {
+      void router.replace(
+        router.asPath.substr(0, router.asPath.indexOf("?")),
+        undefined,
+        { shallow: true }
+      );
+
+      setSelectedDataSource(dataSource);
+      setShowConnectorModal(true);
+    }
+  }, [router, managedDataSources]);
 
   const connectionRows = useMemo(() => {
     const filteredRows = managedDataSources.filter(
@@ -234,19 +274,94 @@ export default function DataSourcesView({
         managedDataSource,
         isAdmin,
         isLoadingByProvider,
-        router,
-        owner,
         readOnly,
+        onButtonClick: (dataSource: DataSourceWithConnectorAndUsageType) => {
+          setSelectedDataSource(dataSource);
+          const { addDataWithConnection } =
+            getRenderingConfigForConnectorProvider(
+              dataSource.connectorProvider
+            );
+          if (addDataWithConnection) {
+            setShowEditionModal(addDataWithConnection);
+          } else {
+            setShowConnectorModal(true);
+          }
+        },
       })
     );
-  }, [
-    isAdmin,
-    isLoadingByProvider,
-    owner,
-    readOnly,
-    router,
-    managedDataSources,
-  ]);
+  }, [isAdmin, isLoadingByProvider, readOnly, managedDataSources]);
+
+  const updateConnectorConnectionId = async (
+    newConnectionId: string,
+    provider: string,
+    dataSource: DataSourceType
+  ) => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/update`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          connectionId: newConnectionId,
+        } satisfies UpdateConnectorRequestBody),
+      }
+    );
+
+    if (res.ok) {
+      return { success: true, error: null };
+    }
+
+    const jsonErr = await res.json();
+    const error = jsonErr.error;
+
+    if (error.type === "connector_oauth_target_mismatch") {
+      return {
+        success: false,
+        error: CONNECTOR_TYPE_TO_MISMATCH_ERROR[provider as ConnectorProvider],
+      };
+    }
+    return {
+      success: false,
+      error: `Failed to update the permissions of the Data Source: (contact support@dust.tt for assistance)`,
+    };
+  };
+
+  const handleUpdatePermissions = async (
+    connector: ConnectorType,
+    dataSource: DataSourceType
+  ) => {
+    const provider = connector.type;
+
+    const connectionIdRes = await setupConnection({
+      dustClientFacingUrl,
+      owner,
+      provider,
+    });
+    if (connectionIdRes.isErr()) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update the permissions of the Data Source",
+        description: connectionIdRes.error.message,
+      });
+      return;
+    }
+
+    const updateRes = await updateConnectorConnectionId(
+      connectionIdRes.value,
+      provider,
+      dataSource
+    );
+    if (updateRes.error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update the permissions of the Data Source",
+        description: updateRes.error,
+      });
+      return;
+    }
+  };
   return (
     <AppLayout
       subscription={subscription}
@@ -303,6 +418,20 @@ export default function DataSourcesView({
                   [provider]: isLoading,
                 }))
               }
+              onCreated={async (dataSource) => {
+                if (
+                  dataSource.connectorProvider &&
+                  REDIRECT_TO_EDIT_PERMISSIONS.includes(
+                    dataSource.connectorProvider
+                  )
+                ) {
+                  await router.replace(
+                    `${router.asPath}?edit_permissions=${dataSource.name}`
+                  );
+                } else {
+                  await router.replace(`${router.asPath}`);
+                }
+              }}
             />
           )}
         </div>
@@ -324,6 +453,41 @@ export default function DataSourcesView({
           </div>
         ) : (
           false
+        )}
+        {selectedDataSource && selectedDataSource.connector && (
+          <>
+            <ConnectorPermissionsModal
+              owner={owner}
+              connector={selectedDataSource.connector}
+              dataSource={selectedDataSource}
+              isOpen={showConnectorModal && !!selectedDataSource}
+              onClose={() => {
+                setShowConnectorModal(false);
+              }}
+              setShowEditionModal={setShowEditionModal}
+              handleUpdatePermissions={handleUpdatePermissions}
+              isAdmin={isAdmin}
+              readOnly={readOnly}
+              plan={plan}
+            />
+            <DataSourceEditionModal
+              isOpen={showEditionModal}
+              onClose={() => setShowEditionModal(false)}
+              dataSource={selectedDataSource}
+              owner={owner}
+              user={user}
+              onEditPermissionsClick={() => {
+                if (!selectedDataSource.connector) {
+                  return;
+                }
+                void handleUpdatePermissions(
+                  selectedDataSource.connector,
+                  selectedDataSource
+                );
+              }}
+              dustClientFacingUrl={dustClientFacingUrl}
+            />
+          </>
         )}
       </Page.Vertical>
     </AppLayout>
@@ -440,20 +604,15 @@ function getTableRow({
   managedDataSource,
   isAdmin,
   isLoadingByProvider,
-  router,
-  owner,
   readOnly,
+  onButtonClick,
 }: GetTableRowParams): RowData {
   const connectorProvider =
     managedDataSource.connectorProvider as ConnectorProvider;
   const isDisabled = isLoadingByProvider[connectorProvider] || !isAdmin;
 
   const buttonOnClick = () => {
-    !isDisabled
-      ? void router.push(
-          `/w/${owner.sId}/builder/data-sources/${managedDataSource.name}`
-        )
-      : null;
+    !isDisabled ? onButtonClick(managedDataSource) : null;
   };
 
   const LogoComponent =
@@ -464,7 +623,6 @@ function getTableRow({
     icon: LogoComponent,
     buttonOnClick,
     workspaceId: managedDataSource.connector?.workspaceId,
-    dataSourceUrl: `/w/${owner.sId}/builder/data-sources/${managedDataSource.name}`,
     isAdmin,
     readOnly,
     disabled: isDisabled,
