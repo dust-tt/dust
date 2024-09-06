@@ -99,7 +99,7 @@ Workspace.hasMany(App, {
 App.belongsTo(Workspace);
 
 VaultModel.hasMany(App, {
-  foreignKey: { allowNull: false },
+  foreignKey: { allowNull: true },
   onDelete: "RESTRICT",
 });
 App.belongsTo(VaultModel);
