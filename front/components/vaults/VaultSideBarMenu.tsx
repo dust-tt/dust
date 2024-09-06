@@ -22,7 +22,6 @@ import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useEffect, useState } from "react";
 
-import { getVaultIcon } from "@app/lib/client/vaults";
 import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
@@ -33,6 +32,7 @@ import {
   useVaultInfo,
   useVaults,
 } from "@app/lib/swr/vaults";
+import { getVaultIcon, getVaultName } from "@app/lib/vaults";
 
 interface VaultSideBarMenuProps {
   owner: LightWorkspaceType;
@@ -285,12 +285,12 @@ const VaultMenuItem = ({
   return (
     <Tree.Item
       isNavigatable
-      label={vault.kind === "global" ? "Company Data" : vault.name}
+      label={getVaultName(vault)}
       collapsed={!isExpanded}
       onItemClick={() => router.push(vaultPath)}
       isSelected={router.asPath === vaultPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
-      visual={getVaultIcon(vault.kind)}
+      visual={getVaultIcon(vault)}
       tailwindIconTextColor="text-brand"
       size="md"
       areActionsFading={false}

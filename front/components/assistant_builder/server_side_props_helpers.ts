@@ -43,8 +43,8 @@ import logger from "@app/logger/logger";
 
 export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
   const accessibleVaults = [
-    await VaultResource.fetchWorkspaceGlobalVault(auth),
-  ];
+    ...(await VaultResource.listWorkspaceVaults(auth, false)),
+  ].filter((vault) => !vault.isSystem());
 
   const [dsViews, allDustApps] = await Promise.all([
     DataSourceViewResource.listByVaults(auth, accessibleVaults),
@@ -52,6 +52,7 @@ export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
   ]);
 
   return {
+    vaults: accessibleVaults.map((vault) => vault.toJSON()),
     dataSourceViews: dsViews.map((dsView) => dsView.toJSON()),
     dustApps: allDustApps,
   };
@@ -124,7 +125,6 @@ async function getRetrievalActionConfiguration(
     action.query !== "none"
       ? getDefaultRetrievalSearchActionConfiguration()
       : getDefaultRetrievalExhaustiveActionConfiguration();
-
   if (
     action.relativeTimeFrame !== "auto" &&
     action.relativeTimeFrame !== "none"
