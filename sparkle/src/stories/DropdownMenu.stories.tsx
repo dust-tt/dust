@@ -51,44 +51,53 @@ export const DropdownExample = () => {
           <DropdownMenu.Button label="Action" />
           <DropdownMenu.Items width={220}>
             <DropdownMenu.SectionHeader label="Edition" />
-            <DropdownMenu.Item label="Edit" href="#" icon={PencilSquareIcon} />
+            <DropdownMenu.Item
+              label="Edit"
+              link={{ href: "#" }}
+              icon={PencilSquareIcon}
+            />
             <DropdownMenu.Item
               label="Duplicate (New)"
-              href="#"
+              link={{ href: "#" }}
               icon={ClipboardIcon}
             />
             <DropdownMenu.Item
               label="Archive"
-              href="#"
+              link={{ href: "#" }}
               icon={TrashIcon}
               variant="warning"
+            />
+            <DropdownMenu.Item
+              label="Dust site"
+              link={{ href: "https://dust.tt", target: "_blank" }}
+              icon={EyeIcon}
             />
             <DropdownMenu.SectionHeader label="Sharing" />
             <DropdownMenu.Item
               label="Company Assistant"
-              href="#"
+              link={{ href: "#" }}
               icon={PlanetIcon}
             />
             <DropdownMenu.Item
               label="Shared Assistant"
-              href="#"
+              link={{ href: "#" }}
               selected
               icon={UserGroupIcon}
             />
             <DropdownMenu.Item
               label="Personal Assistant"
-              href="#"
+              link={{ href: "#" }}
               icon={LockIcon}
             />
             <DropdownMenu.SectionHeader label="My Assistants" />
             <DropdownMenu.Item
               label="Add to my list"
-              href="#"
+              link={{ href: "#" }}
               icon={ListAddIcon}
             />
             <DropdownMenu.Item
               label="Remove from my list"
-              href="#"
+              link={{ href: "#" }}
               icon={ListRemoveIcon}
             />
           </DropdownMenu.Items>
@@ -305,11 +314,14 @@ export const DropdownExample = () => {
             tooltipPosition="below"
           />
           <DropdownMenu.Items origin="topLeft" width={120}>
-            <DropdownMenu.Item label="item 1 is longish" href="#" />
-            <DropdownMenu.Item label="item 2 is also longer" href="#" />
+            <DropdownMenu.Item label="item 1 is longish" link={{ href: "#" }} />
+            <DropdownMenu.Item
+              label="item 2 is also longer"
+              link={{ href: "#" }}
+            />
             <DropdownMenu.Item
               label="item with a long title because it is long"
-              href="#"
+              link={{ href: "#" }}
             />
           </DropdownMenu.Items>
         </DropdownMenu>
@@ -320,8 +332,8 @@ export const DropdownExample = () => {
         <DropdownMenu>
           <DropdownMenu.Button label="Moonlab" icon={PlanetIcon} />
           <DropdownMenu.Items>
-            <DropdownMenu.Item label="item 1" href="#" />
-            <DropdownMenu.Item label="item 2" href="#" />
+            <DropdownMenu.Item label="item 1" link={{ href: "#" }} />
+            <DropdownMenu.Item label="item 2" link={{ href: "#" }} />
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
@@ -331,8 +343,8 @@ export const DropdownExample = () => {
         <DropdownMenu>
           <DropdownMenu.Button label="Moonlab" icon={PlanetIcon} size="md" />
           <DropdownMenu.Items>
-            <DropdownMenu.Item label="item 1" href="#" />
-            <DropdownMenu.Item label="item 2" href="#" />
+            <DropdownMenu.Item label="item 1" link={{ href: "#" }} />
+            <DropdownMenu.Item label="item 2" link={{ href: "#" }} />
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
@@ -346,11 +358,11 @@ export const DropdownExample = () => {
             tooltipPosition="below"
           />
           <DropdownMenu.Items origin="topLeft">
-            <DropdownMenu.Item label="item 1" href="#" />
-            <DropdownMenu.Item label="item 2" href="#" />
+            <DropdownMenu.Item label="item 1" link={{ href: "#" }} />
+            <DropdownMenu.Item label="item 2" link={{ href: "#" }} />
             <DropdownMenu.Item
               label="item 2 with a long title because it is long"
-              href="#"
+              link={{ href: "#" }}
             />
           </DropdownMenu.Items>
         </DropdownMenu>
@@ -361,8 +373,8 @@ export const DropdownExample = () => {
         <DropdownMenu>
           <DropdownMenu.Button icon={ChatBubbleBottomCenterTextIcon} />
           <DropdownMenu.Items origin="bottomLeft">
-            <DropdownMenu.Item label="item 1" href="#" />
-            <DropdownMenu.Item label="item 2" href="#" />
+            <DropdownMenu.Item label="item 1" link={{ href: "#" }} />
+            <DropdownMenu.Item label="item 2" link={{ href: "#" }} />
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
@@ -372,8 +384,8 @@ export const DropdownExample = () => {
         <DropdownMenu>
           <DropdownMenu.Button icon={ChatBubbleBottomCenterTextIcon} />
           <DropdownMenu.Items origin="bottomRight">
-            <DropdownMenu.Item label="item 1" href="#" />
-            <DropdownMenu.Item label="item 2" href="#" />
+            <DropdownMenu.Item label="item 1" link={{ href: "#" }} />
+            <DropdownMenu.Item label="item 2" link={{ href: "#" }} />
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
@@ -387,8 +399,8 @@ export const DropdownExample = () => {
             disabled
           />
           <DropdownMenu.Items>
-            <DropdownMenu.Item label="item 1" href="#" />
-            <DropdownMenu.Item label="item 2" href="#" />
+            <DropdownMenu.Item label="item 1" link={{ href: "#" }} />
+            <DropdownMenu.Item label="item 2" link={{ href: "#" }} />
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
@@ -398,8 +410,8 @@ export const DropdownExample = () => {
         <DropdownMenu>
           <DropdownMenu.Button type="select" label="Every 6 months" />
           <DropdownMenu.Items origin="topRight">
-            <DropdownMenu.Item label="item 1" href="#" />
-            <DropdownMenu.Item label="item 2" href="#" />
+            <DropdownMenu.Item label="item 1" link={{ href: "#" }} />
+            <DropdownMenu.Item label="item 2" link={{ href: "#" }} />
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>
@@ -413,7 +425,7 @@ export const DropdownExample = () => {
           </DropdownMenu.Button>
           <DropdownMenu.Items origin="topRight">
             {["item 1", "item 2", "item 3"].map((item) => (
-              <DropdownMenu.Item label={item} href="#" key={item} />
+              <DropdownMenu.Item label={item} link={{ href: "#" }} key={item} />
             ))}
           </DropdownMenu.Items>
         </DropdownMenu>
@@ -486,8 +498,8 @@ export const DropdownExample = () => {
             <DropdownMenu>
               <DropdownMenu.Button label="Nested" />
               <DropdownMenu.Items origin="topRight">
-                <DropdownMenu.Item label="item 1" href="#" />
-                <DropdownMenu.Item label="item 2" href="#" />
+                <DropdownMenu.Item label="item 1" link={{ href: "#" }} />
+                <DropdownMenu.Item label="item 2" link={{ href: "#" }} />
               </DropdownMenu.Items>
             </DropdownMenu>
           </DropdownMenu.Items>
@@ -498,8 +510,8 @@ export const DropdownExample = () => {
         <DropdownMenu>
           <DropdownMenu.Button label="Moonlab" icon={PlanetIcon} />
           <DropdownMenu.Items origin="auto">
-            <DropdownMenu.Item label="item 1" href="#" />
-            <DropdownMenu.Item label="item 2" href="#" />
+            <DropdownMenu.Item label="item 1" link={{ href: "#" }} />
+            <DropdownMenu.Item label="item 2" link={{ href: "#" }} />
           </DropdownMenu.Items>
         </DropdownMenu>
       </div>

@@ -6,6 +6,7 @@ import {
   PlusIcon,
   Searchbar,
   Spinner,
+  usePaginationFromUrl,
 } from "@dust-tt/sparkle";
 import type { ConnectorType, WorkspaceType } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
@@ -71,16 +72,21 @@ export const VaultAppsList = ({
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
-  const rows: RowData[] =
-    apps?.map((app) => ({
-      sId: app.sId,
-      category: "apps",
-      name: app.name,
-      icon: CommandLineIcon,
-      workspaceId: owner.sId,
-      visibility: app.visibility === "private" ? "Private" : "Public",
-      onClick: () => onSelect(app.sId),
-    })) || [];
+  const { pagination, setPagination } = usePaginationFromUrl("table");
+
+  const rows: RowData[] = React.useMemo(
+    () =>
+      apps?.map((app) => ({
+        sId: app.sId,
+        category: "apps",
+        name: app.name,
+        icon: CommandLineIcon,
+        workspaceId: owner.sId,
+        visibility: app.visibility === "private" ? "Private" : "Public",
+        onClick: () => onSelect(app.sId),
+      })) || [],
+    [apps, onSelect, owner]
+  );
 
   if (isAppsLoading) {
     return (
@@ -134,6 +140,8 @@ export const VaultAppsList = ({
             columns={getTableColumns()}
             filter={appSearch}
             filterColumn="name"
+            pagination={pagination}
+            setPagination={setPagination}
           />
         </>
       )}

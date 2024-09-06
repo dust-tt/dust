@@ -4,9 +4,12 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
+  PaginationState,
   SortingFn,
   type SortingState,
+  Updater,
   useReactTable,
 } from "@tanstack/react-table";
 import React, { ReactNode, useEffect, useState } from "react";
@@ -17,6 +20,8 @@ import {
   DropdownMenu,
 } from "@sparkle/components/DropdownMenu";
 import { IconButton } from "@sparkle/components/IconButton";
+import { Pagination } from "@sparkle/components/Pagination";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { ArrowDownIcon, ArrowUpIcon, MoreIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 
@@ -34,10 +39,13 @@ interface ColumnBreakpoint {
 
 interface DataTableProps<TData extends TBaseData> {
   data: TData[];
+  totalRowCount?: number;
   columns: ColumnDef<TData, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   className?: string;
   filter?: string;
   filterColumn?: string;
+  pagination?: PaginationState;
+  setPagination?: (pagination: PaginationState) => void;
   initialColumnOrder?: SortingState;
   columnsBreakpoints?: ColumnBreakpoint;
   sortingFn?: SortingFn<TData>;
@@ -55,12 +63,15 @@ function shouldRenderColumn(
 
 export function DataTable<TData extends TBaseData>({
   data,
+  totalRowCount,
   columns,
   className,
   filter,
   filterColumn,
   initialColumnOrder,
   columnsBreakpoints = {},
+  pagination,
+  setPagination,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
   const [sorting, setSorting] = useState<SortingState>(
@@ -68,18 +79,36 @@ export function DataTable<TData extends TBaseData>({
   );
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
+  const isServerSidePagination = !!totalRowCount && totalRowCount > data.length;
+  const onPaginationChange =
+    pagination && setPagination
+      ? (updater: Updater<PaginationState>) => {
+          const newValue =
+            typeof updater === "function" ? updater(pagination) : updater;
+          setPagination(newValue);
+        }
+      : undefined;
+
   const table = useReactTable({
     data,
     columns,
+    rowCount: totalRowCount,
+    manualPagination: isServerSidePagination,
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: pagination ? getPaginationRowModel() : undefined,
     onColumnFiltersChange: setColumnFilters,
     state: {
       columnFilters,
-      sorting,
+      sorting: isServerSidePagination ? undefined : sorting,
+      pagination,
     },
+    initialState: {
+      pagination,
+    },
+    onPaginationChange: onPaginationChange,
   });
 
   useEffect(() => {
@@ -89,81 +118,92 @@ export function DataTable<TData extends TBaseData>({
   }, [filter, filterColumn]);
 
   return (
-    <DataTable.Root className={className}>
-      <DataTable.Header>
-        {table.getHeaderGroups().map((headerGroup) => (
-          <DataTable.Row key={headerGroup.id}>
-            {headerGroup.headers.map((header) => {
-              const breakpoint = columnsBreakpoints[header.id];
-              if (
-                !windowSize.width ||
-                !shouldRenderColumn(windowSize.width, breakpoint)
-              ) {
-                return null;
-              }
-              return (
-                <DataTable.Head
-                  key={header.id}
-                  onClick={header.column.getToggleSortingHandler()}
-                  className={classNames(
-                    header.column.getCanSort() ? "s-cursor-pointer" : ""
-                  )}
-                >
-                  <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
+    <div className="s-flex s-flex-col s-gap-2">
+      <DataTable.Root className={className}>
+        <DataTable.Header>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <DataTable.Row key={headerGroup.id}>
+              {headerGroup.headers.map((header) => {
+                const breakpoint = columnsBreakpoints[header.id];
+                if (
+                  !windowSize.width ||
+                  !shouldRenderColumn(windowSize.width, breakpoint)
+                ) {
+                  return null;
+                }
+                return (
+                  <DataTable.Head
+                    key={header.id}
+                    onClick={header.column.getToggleSortingHandler()}
+                    className={classNames(
+                      header.column.getCanSort() ? "s-cursor-pointer" : ""
                     )}
-                    {header.column.getCanSort() && (
-                      <Icon
-                        visual={
-                          header.column.getIsSorted() === "asc"
-                            ? ArrowUpIcon
-                            : header.column.getIsSorted() === "desc"
-                              ? ArrowDownIcon
-                              : ArrowDownIcon
-                        }
-                        size="xs"
-                        className={classNames(
-                          "s-ml-1",
-                          header.column.getIsSorted()
-                            ? "s-opacity-100"
-                            : "s-opacity-0"
-                        )}
-                      />
-                    )}
-                  </div>
-                </DataTable.Head>
-              );
-            })}
-          </DataTable.Row>
-        ))}
-      </DataTable.Header>
-      <DataTable.Body>
-        {table.getRowModel().rows.map((row) => (
-          <DataTable.Row
-            key={row.id}
-            onClick={row.original.onClick}
-            moreMenuItems={row.original.moreMenuItems}
-          >
-            {row.getVisibleCells().map((cell) => {
-              const breakpoint = columnsBreakpoints[cell.column.id];
-              if (
-                !windowSize.width ||
-                !shouldRenderColumn(windowSize.width, breakpoint)
-              ) {
-                return null;
-              }
-              return (
-                <DataTable.Cell key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </DataTable.Cell>
-              );
-            })}
-          </DataTable.Row>
-        ))}
-      </DataTable.Body>
-    </DataTable.Root>
+                  >
+                    <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                      {header.column.getCanSort() && (
+                        <Icon
+                          visual={
+                            header.column.getIsSorted() === "asc"
+                              ? ArrowUpIcon
+                              : header.column.getIsSorted() === "desc"
+                                ? ArrowDownIcon
+                                : ArrowDownIcon
+                          }
+                          size="xs"
+                          className={classNames(
+                            "s-ml-1",
+                            header.column.getIsSorted()
+                              ? "s-opacity-100"
+                              : "s-opacity-0"
+                          )}
+                        />
+                      )}
+                    </div>
+                  </DataTable.Head>
+                );
+              })}
+            </DataTable.Row>
+          ))}
+        </DataTable.Header>
+        <DataTable.Body>
+          {table.getRowModel().rows.map((row) => (
+            <DataTable.Row
+              key={row.id}
+              onClick={row.original.onClick}
+              moreMenuItems={row.original.moreMenuItems}
+            >
+              {row.getVisibleCells().map((cell) => {
+                const breakpoint = columnsBreakpoints[cell.column.id];
+                if (
+                  !windowSize.width ||
+                  !shouldRenderColumn(windowSize.width, breakpoint)
+                ) {
+                  return null;
+                }
+                return (
+                  <DataTable.Cell key={cell.id}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </DataTable.Cell>
+                );
+              })}
+            </DataTable.Row>
+          ))}
+        </DataTable.Body>
+      </DataTable.Root>
+      {pagination && (
+        <div className="s-p-1">
+          <Pagination
+            pagination={table.getState().pagination}
+            setPagination={table.setPagination}
+            rowCount={table.getRowCount()}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -262,11 +302,7 @@ DataTable.Row = function Row({
       <td className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600">
         {moreMenuItems && moreMenuItems.length > 0 && (
           <DropdownMenu className="s-mr-1.5 s-flex">
-            <DropdownMenu.Button
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            >
+            <DropdownMenu.Button>
               <IconButton icon={MoreIcon} size="sm" variant="tertiary" />
             </DropdownMenu.Button>
             <DropdownMenu.Items origin="topRight" width={220}>
@@ -301,6 +337,7 @@ DataTable.Cell = function Cell({ children, className, ...props }: CellProps) {
 
 interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   avatarUrl?: string;
+  avatarTooltipLabel?: string;
   icon?: React.ComponentType<{ className?: string }>;
   iconClassName?: string;
   roundedAvatar?: boolean;
@@ -312,6 +349,7 @@ DataTable.CellContent = function CellContent({
   children,
   className,
   avatarUrl,
+  avatarTooltipLabel,
   roundedAvatar,
   icon,
   iconClassName,
@@ -323,7 +361,17 @@ DataTable.CellContent = function CellContent({
       className={classNames("s-flex s-items-center s-py-2", className || "")}
       {...props}
     >
-      {avatarUrl && (
+      {avatarUrl && avatarTooltipLabel && (
+        <Tooltip label={avatarTooltipLabel} position="above">
+          <Avatar
+            visual={avatarUrl}
+            size="xs"
+            className="s-mr-2"
+            isRounded={roundedAvatar ?? false}
+          />
+        </Tooltip>
+      )}
+      {avatarUrl && !avatarTooltipLabel && (
         <Avatar
           visual={avatarUrl}
           size="xs"

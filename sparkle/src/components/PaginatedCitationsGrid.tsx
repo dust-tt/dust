@@ -1,3 +1,4 @@
+import { PaginationState } from "@tanstack/react-table";
 import { useState } from "react";
 import React from "react";
 
@@ -21,7 +22,10 @@ export function PaginatedCitationsGrid({
   items,
   maxItemsPerPage = 9,
 }: PaginatedCitationsGridProps) {
-  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: maxItemsPerPage,
+  });
   const cols = 3;
   const rows = Math.ceil(Math.min(maxItemsPerPage, items.length) / cols);
 
@@ -29,10 +33,11 @@ export function PaginatedCitationsGrid({
     return null;
   }
 
+  const { pageIndex, pageSize } = pagination;
   // Calculate start index.
-  const startIndex = (currentPage - 1) * maxItemsPerPage;
+  const startIndex = pageIndex * pageSize;
   // Slice items for current page.
-  const paginatedItems = items.slice(startIndex, startIndex + maxItemsPerPage);
+  const paginatedItems = items.slice(startIndex, startIndex + pageSize);
 
   return (
     <div className="s-flex s-w-full s-flex-col">
@@ -65,12 +70,12 @@ export function PaginatedCitationsGrid({
         )}
       >
         <Pagination
-          itemsCount={items.length}
-          maxItemsPerPage={maxItemsPerPage}
+          rowCount={items.length}
+          pagination={pagination}
+          setPagination={setPagination}
           size="xs"
           showDetails={false}
           showPageButtons={false}
-          onButtonClick={(pageNb) => setCurrentPage(pageNb)}
         />
       </div>
     </div>
