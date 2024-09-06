@@ -91,6 +91,23 @@ export class Authenticator {
     this._key = key;
   }
 
+  static aclFromGroupIds(groupIds: string[]): ACLType {
+    const getIdFromSIdOrThrow = (groupId: string) => {
+      const id = getResourceIdFromSId(groupId);
+      if (!id) {
+        throw new Error(`Unexpected: Could not find id for group ${groupId}`);
+      }
+      return id;
+    };
+
+    return {
+      aclEntries: groupIds.map((groupId) => ({
+        groupId: getIdFromSIdOrThrow(groupId),
+        permissions: ["read", "write"],
+      })),
+    };
+  }
+
   /**
    * Get a an Authenticator for the target workspace associated with the authentified user from the
    * Auth0 session.

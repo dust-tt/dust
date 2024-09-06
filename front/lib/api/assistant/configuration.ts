@@ -52,7 +52,7 @@ import {
 } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import { compareAgentsForSort } from "@app/lib/assistant";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -629,10 +629,9 @@ export async function getAgentConfigurations<V extends "light" | "full">({
 
   // Filter out agents that the user does not have access to
   // user should be in all groups that are in the agent's groupIds
-  const userGroups = auth.groups().map((g) => g.sId);
   const allowedAgentConfigurations = allAgentConfigurations
     .flat()
-    .filter((a) => a.groupIds.every((id) => userGroups.includes(id)));
+    .filter((a) => auth.canRead([Authenticator.aclFromGroupIds(a.groupIds)]));
 
   return applySortAndLimit(allowedAgentConfigurations.flat());
 }
