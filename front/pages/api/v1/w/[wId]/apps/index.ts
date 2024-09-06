@@ -1,8 +1,8 @@
 import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getApps } from "@app/lib/api/app";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
 export type GetAppsResponseBody = {
@@ -91,11 +91,15 @@ async function handler(
     req.query.wId as string
   );
 
-  const apps = await getApps(workspaceAuth);
-
   switch (req.method) {
     case "GET":
-      res.status(200).json({ apps });
+      res
+        .status(200)
+        .json({
+          apps: (await AppResource.listByWorkspace(workspaceAuth)).map((app) =>
+            app.toJSON()
+          ),
+        });
       return;
 
     default:

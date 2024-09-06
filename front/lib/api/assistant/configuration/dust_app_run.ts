@@ -2,16 +2,20 @@ import type { DustAppRunConfigurationType, ModelId } from "@dust-tt/types";
 import _ from "lodash";
 import { Op } from "sequelize";
 
+import type {Authenticator} from "@app/lib/auth";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
-import { App } from "@app/lib/resources/storage/models/apps";
+import { AppResource } from "@app/lib/resources/app_resource";
 
-export async function fetchDustAppRunActionConfigurations({
-  configurationIds,
-  variant,
-}: {
-  configurationIds: ModelId[];
-  variant: "light" | "full";
-}): Promise<Map<ModelId, DustAppRunConfigurationType[]>> {
+export async function fetchDustAppRunActionConfigurations(
+  auth: Authenticator,
+  {
+    configurationIds,
+    variant,
+  }: {
+    configurationIds: ModelId[];
+    variant: "light" | "full";
+  }
+): Promise<Map<ModelId, DustAppRunConfigurationType[]>> {
   if (variant !== "full") {
     return new Map();
   }
@@ -24,13 +28,10 @@ export async function fetchDustAppRunActionConfigurations({
     return new Map();
   }
 
-  const dustApps = await App.findAll({
-    where: {
-      sId: {
-        [Op.in]: dustAppRunConfigurations.map((c) => c.appId),
-      },
-    },
-  });
+  const dustApps = await AppResource.fetchByIds(
+    auth,
+    dustAppRunConfigurations.map((c) => c.appId)
+  );
 
   const groupedDustAppRunConfigurations = _.groupBy(
     dustAppRunConfigurations,

@@ -60,6 +60,21 @@ export class DatasetResource extends BaseResource<Dataset> {
     return new Ok(undefined);
   }
 
+  static async deleteForApp(
+    auth: Authenticator,
+    app: AppResource,
+    t?: Transaction
+  ): Promise<Result<undefined, Error>> {
+    await Dataset.destroy({
+      where: {
+        appId: app.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction: t,
+    });
+    return new Ok(undefined);
+  }
+
   // Serialization.
 
   toJSON(): DatasetType {

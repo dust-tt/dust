@@ -2,10 +2,10 @@ import type { RunType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getApp } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import {AppResource} from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -18,7 +18,7 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetRunStatusResponseBody>>,
   auth: Authenticator
 ) {
-  const app = await getApp(auth, req.query.aId as string);
+  const app = await AppResource.fetchById(auth, req.query.aId as string);
   if (!app) {
     return apiError(req, res, {
       status_code: 404,

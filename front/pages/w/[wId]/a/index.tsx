@@ -37,7 +37,6 @@ import SerpAPISetup from "@app/components/providers/SerpAPISetup";
 import SerperSetup from "@app/components/providers/SerperSetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { getApps } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -46,6 +45,7 @@ import {
   modelProviders,
   serviceProviders,
 } from "@app/lib/providers";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { useDustAppSecrets, useKeys, useProviders } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
@@ -66,14 +66,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const apps = await getApps(auth);
-
   return {
     props: {
       owner,
       groups,
       subscription,
-      apps,
+      apps: (await AppResource.listByWorkspace(auth)).map((app) =>
+        app.toJSON()
+      ),
       gaTrackingId: config.getGaTrackingId(),
     },
   };
