@@ -3,7 +3,6 @@ import React from "react";
 
 import { DropdownMenu } from "@sparkle/components/DropdownMenu";
 import { Icon } from "@sparkle/components/Icon";
-import { LinkProps } from "@sparkle/components/Item";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { SparkleContext, SparkleContextLinkType } from "@sparkle/context";
 import { ChevronRightIcon } from "@sparkle/icons";
@@ -15,7 +14,7 @@ const ELLIPSIS_STRING = "...";
 interface BreadcrumbItem {
   icon?: ComponentType<{ className?: string }>;
   label: string;
-  link?: LinkProps;
+  href?: string;
 }
 
 interface BreadcrumbProps {
@@ -64,7 +63,7 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
                     <DropdownMenu.Item
                       icon={item.icon}
                       label={item.label}
-                      link={item.link}
+                      link={item.href ? { href: item.href } : undefined}
                       key={`breadcrumbs-hidden-${index}`}
                     >
                       {truncateWithTooltip(
@@ -78,7 +77,7 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
             ) : (
               <div>
                 <Link
-                  href={item.link?.href || "#"}
+                  href={item.href || "#"}
                   className={
                     index === items.length - 1
                       ? "s-text-element-900"
