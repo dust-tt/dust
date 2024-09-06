@@ -270,6 +270,7 @@ type DropdownListItemProps = DropdownListItemBaseProps &
     | "icon"
     | "label"
     | "link"
+    | "onClick"
     | "selected"
     | "visual"
   >;
