@@ -1,3 +1,4 @@
+import type { DataTable } from "@dust-tt/sparkle";
 import { PencilSquareIcon, TrashIcon } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
@@ -5,12 +6,14 @@ import type {
   PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { RefObject } from "react";
+import { capitalize } from "lodash";
+import type { ComponentProps, RefObject } from "react";
 import React, { useImperativeHandle, useState } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentOrTableUploadOrEditModal } from "@app/components/data_source/DocumentOrTableUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
+import { getDataSourceName } from "@app/lib/connector_providers";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 
 export type ContentActionKey =
@@ -100,7 +103,7 @@ export const getMenuItems = (
   dataSourceView: DataSourceViewType,
   contentNode: LightContentNode,
   contentActionsRef: RefObject<ContentActionsRef>
-) => {
+): ComponentProps<typeof DataTable.Row>["moreMenuItems"] => {
   if (isFolder(dataSourceView.dataSource)) {
     return [
       {
@@ -132,8 +135,30 @@ export const getMenuItems = (
   }
   if (isWebsite(dataSourceView.dataSource)) {
     // TODO(GROUPS_UI): Actions for webrawler datasource
-    return null;
+    return [];
   }
-  // TODO(GROUPS_UI): Actions for managed datasource
-  return null;
+
+  return [
+    {
+      label: `View in ${capitalize(getDataSourceName(dataSourceView.dataSource))}`,
+      icon: PencilSquareIcon,
+      link: contentNode.sourceUrl
+        ? { href: contentNode.sourceUrl, target: "_blank" }
+        : undefined,
+      disabled: contentNode.sourceUrl === null,
+      onClick: () => {},
+    },
+    {
+      label: "Delete",
+      icon: TrashIcon,
+      onClick: () => {
+        contentActionsRef.current &&
+          contentActionsRef.current?.callAction(
+            "DocumentOrTableDeleteDialog",
+            contentNode
+          );
+      },
+      variant: "warning",
+    },
+  ];
 };

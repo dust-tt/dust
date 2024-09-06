@@ -7,6 +7,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
+  DataSourceViewContentNode,
   DataSourceViewType,
   PlanType,
   VaultType,
@@ -32,12 +33,8 @@ import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 
-type RowData = {
-  internalId: string;
+type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
-  title: string;
-  expandable: boolean;
-  lastUpdatedAt: number | null;
   onClick?: () => void;
 };
 
@@ -51,8 +48,8 @@ type VaultDataSourceViewContentListProps = {
   parentId?: string;
 };
 
-const getTableColumns = (): ColumnDef<RowData>[] => {
-  return [
+const getTableColumns = (): ColumnDef<RowData, string>[] => {
+  const columns: ColumnDef<RowData, string>[] = [
     {
       header: "Name",
       accessorKey: "title",
@@ -65,6 +62,8 @@ const getTableColumns = (): ColumnDef<RowData>[] => {
       ),
     },
   ];
+
+  return columns;
 };
 
 export const VaultDataSourceViewContentList = ({
