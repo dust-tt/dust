@@ -30,7 +30,6 @@ type Info = CellContext<RowData, unknown>;
 
 type VaultCategoriesListProps = {
   owner: WorkspaceType;
-  isAdmin: boolean;
   vault: VaultType;
   onSelect: (category: string) => void;
 };
@@ -91,7 +90,6 @@ const getTableColumns = () => {
 
 export const VaultCategoriesList = ({
   owner,
-  isAdmin,
   vault,
   onSelect,
 }: VaultCategoriesListProps) => {
@@ -131,7 +129,7 @@ export const VaultCategoriesList = ({
       <div
         className={classNames(
           "flex gap-2",
-          rows.length === 0 && isAdmin
+          rows.length === 0
             ? "h-36 w-full max-w-4xl items-center justify-center rounded-lg border bg-structure-50"
             : ""
         )}
@@ -147,19 +145,13 @@ export const VaultCategoriesList = ({
           />
         )}
       </div>
-      {rows.length > 0 ? (
+      {rows.length > 0 && (
         <DataTable
           data={rows}
           columns={getTableColumns()}
           filter={dataSourceSearch}
           filterColumn={"name"}
         />
-      ) : !isAdmin ? (
-        <div className="flex items-center justify-center text-sm font-normal text-element-700">
-          No available connection
-        </div>
-      ) : (
-        <></>
       )}
     </>
   );

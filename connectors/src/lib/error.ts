@@ -86,3 +86,11 @@ export function isMicrosoftApplicationDisabledError(
     /Application.*is disabled/.test(error.message)
   );
 }
+
+// Error for invalid rows when upserting table
+export class InvalidRowsRequestError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidRowsRequestError";
+  }
+}

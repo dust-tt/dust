@@ -89,17 +89,25 @@ export const VaultDataSourceViewContentList = ({
   // Set a default viewType if not present in the URL
   useEffect(() => {
     if (!router.query.viewType) {
-      void router.replace({
-        query: { ...router.query, viewType: "documents" },
-      });
+      void router.replace(
+        {
+          query: { ...router.query, viewType: "documents" },
+        },
+        undefined,
+        { shallow: true }
+      );
     }
   }, [router]);
 
   const handleViewTypeChange = (newViewType: ContentNodesViewType) => {
     if (newViewType !== viewType) {
-      void router.push({
-        query: { ...router.query, viewType: newViewType },
-      });
+      void router.replace(
+        {
+          query: { ...router.query, viewType: newViewType },
+        },
+        undefined,
+        { shallow: true }
+      );
     }
   };
 

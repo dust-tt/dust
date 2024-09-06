@@ -3,7 +3,7 @@ import React, {
   ComponentType,
   Fragment,
   JSXElementConstructor,
-  MouseEventHandler,
+  MouseEvent,
   MutableRefObject,
   ReactElement,
   useContext,
@@ -20,7 +20,7 @@ import {
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
-import { Item as StandardItem } from "./Item";
+import { Item as StandardItem, LinkProps } from "./Item";
 import { Tooltip, TooltipProps } from "./Tooltip";
 
 const ButtonRefContext =
@@ -28,11 +28,11 @@ const ButtonRefContext =
 
 const labelClasses = {
   base: "s-text-element-900 s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none",
-  hover: "group-hover:s-text-action-500",
+  hover: "group-hover/dm:s-text-action-500",
   active: "active:s-text-action-700",
   dark: {
     base: "dark:s-text-element-900-dark",
-    hover: "dark:group-hover:s-text-action-400",
+    hover: "dark:group-hover/dm:s-text-action-400",
     active: "dark:active:s-text-action-600",
     disabled: "dark:s-element-500-dark",
   },
@@ -46,23 +46,23 @@ const labelSizeClasses = {
 
 const iconClasses = {
   base: "s-text-element-700 s-transition-colors s-ease-out s-duration-400",
-  hover: "group-hover:s-text-action-500",
+  hover: "group-hover/dm:s-text-action-500",
   active: "active:s-text-action-700",
   disabled: "s-opacity-50",
   dark: {
     base: "dark:s-text-element-700-dark",
-    hover: "dark:group-hover:s-text-action-500-dark",
+    hover: "dark:group-hover/dm:s-text-action-500-dark",
     active: "dark:active:s-text-action-600",
   },
 };
 
 const chevronClasses = {
   base: "s-text-element-600 s-mt-0.5",
-  hover: "group-hover:s-text-action-400",
+  hover: "group-hover/dm:s-text-action-400",
   disabled: "s-element-500",
   dark: {
     base: "dark:s-text-element-600-dark",
-    hover: "dark:group-hover:s-text-action-500-dark",
+    hover: "dark:group-hover/dm:s-text-action-500-dark",
     disabled: "dark:s-element-500-dark",
   },
 };
@@ -102,7 +102,6 @@ export interface DropdownButtonProps {
   className?: string;
   disabled?: boolean;
   children?: React.ReactNode;
-  onClick?: MouseEventHandler;
 }
 
 DropdownMenu.Button = function ({
@@ -115,7 +114,6 @@ DropdownMenu.Button = function ({
   tooltipPosition = "above",
   className = "",
   disabled = false,
-  onClick,
 }: DropdownButtonProps) {
   const finalLabelClasses = classNames(
     labelClasses.base,
@@ -155,10 +153,10 @@ DropdownMenu.Button = function ({
         className={classNames(
           disabled ? "s-cursor-default" : "s-cursor-pointer",
           className,
-          "s-group s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
+          "s-group/dm s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
           label ? "s-gap-1.5" : "s-gap-0"
         )}
-        onClick={onClick}
+        onClick={(e) => e.stopPropagation()}
       >
         {tooltip ? (
           <Tooltip position={tooltipPosition} label={tooltip}>
@@ -188,9 +186,10 @@ DropdownMenu.Button = function ({
             className={classNames(
               disabled ? "s-cursor-default" : "s-cursor-pointer",
               className,
-              "s-group s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
+              "s-group/dm s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
               label ? (size === "md" ? "s-gap-2" : "s-gap-1.5") : "s-gap-0.5"
             )}
+            onClick={(e) => e.stopPropagation()}
           >
             <Icon visual={icon} size={size} className={finalIconClasses} />
             <Icon
@@ -207,10 +206,11 @@ DropdownMenu.Button = function ({
           className={classNames(
             disabled ? "s-cursor-default" : "s-cursor-pointer",
             className,
-            "s-group s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
+            "s-group/dm s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
             label ? (size === "md" ? "s-gap-2" : "s-gap-1.5") : "s-gap-0.5",
             type === "submenu" ? "s-opacity-50" : ""
           )}
+          onClick={(e) => e.stopPropagation()}
         >
           <Icon visual={icon} size={size} className={finalIconClasses} />
           <span
@@ -233,24 +233,24 @@ DropdownMenu.Button = function ({
 };
 
 export interface DropdownItemProps {
-  variant?: "default" | "warning";
-  label: string;
-  description?: string;
-  href?: string;
-  disabled?: boolean;
-  visual?: string | React.ReactNode;
-  icon?: ComponentType;
-  onClick?: () => void;
-  selected?: boolean;
-  hasChildren?: boolean;
   children?: React.ReactNode;
+  description?: string;
+  disabled?: boolean;
+  hasChildren?: boolean;
+  icon?: ComponentType;
+  label: string;
+  link?: LinkProps;
+  onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
+  selected?: boolean;
+  variant?: "default" | "warning";
+  visual?: string | React.ReactNode;
 }
 
 DropdownMenu.Item = function ({
   variant = "default",
   label,
   description,
-  href,
+  link,
   disabled,
   visual,
   icon,
@@ -265,23 +265,25 @@ DropdownMenu.Item = function ({
       {hasChildren ? (
         <DropdownMenu className="s-w-full s-gap-x-2 s-py-2">
           <DropdownMenu.Button
+            className="s-w-full"
+            disabled={disabled}
             label={label}
             type="submenu"
-            className="s-w-full"
           />
           {children}
         </DropdownMenu>
       ) : (
         <StandardItem.Dropdown
-          style={variant}
           className="s-w-full"
-          href={href}
-          onClick={onClick}
-          label={label}
-          visual={visual}
-          icon={icon}
           description={description}
+          disabled={disabled}
+          link={link}
+          icon={icon}
+          label={label}
+          onClick={onClick}
           selected={selected}
+          style={variant}
+          visual={visual}
         />
       )}
     </Menu.Item>
@@ -440,6 +442,7 @@ DropdownMenu.Items = function ({
           getOriginClass(origin),
           "s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-shadow-lg focus:s-outline-none dark:s-border-structure-100-dark dark:s-bg-structure-0-dark"
         )}
+        onClick={(e) => e.stopPropagation()}
         style={styleInsert(origin, marginLeft)}
       >
         {topBar}

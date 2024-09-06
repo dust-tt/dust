@@ -19,12 +19,12 @@ const labelStyleClasses = {
 };
 
 const labelColorClasses = {
-  item: "s-text-element-600 dark:s-text-element-500-dark group-hover:s-text-action-500 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
+  item: "s-text-element-600 dark:s-text-element-500-dark group-hover/item:s-text-action-500 group-active/item:s-text-action-700 dark:group-hover/item:s-text-action-600-dark dark:group-active/item:s-text-action-400-dark",
   action:
-    "s-text-element-800 dark:s-text-element-800-dark group-hover:s-text-action-500 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
-  link: "s-text-element-800 dark:s-text-element-800-dark group-hover:s-text-action-500 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
+    "s-text-element-800 dark:s-text-element-800-dark group-hover/item:s-text-action-500 group-active/item:s-text-action-700 dark:group-hover/item:s-text-action-600-dark dark:group-active/item:s-text-action-400-dark",
+  link: "s-text-element-800 dark:s-text-element-800-dark group-hover/item:s-text-action-500 group-active/item:s-text-action-700 dark:group-hover/item:s-text-action-600-dark dark:group-active/item:s-text-action-400-dark",
   warning:
-    "s-text-warning-500 dark:s-text-warning-400-dark group-hover:s-text-warning-400 group-active:s-text-warning-700 dark:group-hover:s-text-warning-600-dark dark:group-active:s-text-warning-400-dark",
+    "s-text-warning-500 dark:s-text-warning-400-dark group-hover/item:s-text-warning-400 group-active/item:s-text-warning-700 dark:group-hover/item:s-text-warning-600-dark dark:group-active/item:s-text-warning-400-dark",
 };
 
 const spacingClasses = {
@@ -34,31 +34,35 @@ const spacingClasses = {
 };
 
 const iconClasses = {
-  item: "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
+  item: "s-text-element-600 group-hover/item:s-text-action-400 group-active/item:s-text-action-700 dark:group-hover/item:s-text-action-600-dark dark:group-active/item:s-text-action-400-dark",
   action:
-    "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
-  link: "s-text-brand group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
+    "s-text-element-600 group-hover/item:s-text-action-400 group-active/item:s-text-action-700 dark:group-hover/item:s-text-action-600-dark dark:group-active/item:s-text-action-400-dark",
+  link: "s-text-brand group-hover/item:s-text-action-400 group-active/item:s-text-action-700 dark:group-hover/item:s-text-action-600-dark dark:group-active/item:s-text-action-400-dark",
   warning:
-    "s-text-warning-400 group-hover:s-text-warning-300 group-active:s-text-warning-700 dark:group-hover:s-text-warning-600-dark dark:group-active:s-text-warning-400-dark",
+    "s-text-warning-400 group-hover/item:s-text-warning-300 group-active/item:s-text-warning-700 dark:group-hover/item:s-text-warning-600-dark dark:group-active/item:s-text-warning-400-dark",
 };
 
-type ItemProps = {
+export interface LinkProps {
+  href: string;
+  target?: string;
+}
+
+interface ItemProps {
+  action?: ComponentType;
+  className?: string;
+  description?: string;
+  disabled?: boolean;
+  hasAction?: boolean | "hover";
+  icon?: ComponentType;
+  label: string;
+  link?: LinkProps;
   onClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
-  style: "action" | "warning" | "item" | "link";
-  spacing?: "sm" | "md" | "lg";
   selectable?: boolean;
   selected?: boolean;
-  disabled?: boolean;
-  label: string;
-  description?: string;
+  spacing?: "sm" | "md" | "lg";
+  style: "action" | "warning" | "item" | "link";
   visual?: string | React.ReactNode;
-  icon?: ComponentType;
-  action?: ComponentType;
-  hasAction?: boolean | "hover";
-  className?: string;
-  href?: string;
-  target?: string;
-};
+}
 
 export function Item({
   label,
@@ -73,11 +77,11 @@ export function Item({
   selected = false,
   disabled = false,
   className = "",
-  href,
-  target,
+  link,
 }: ItemProps) {
   const { components } = React.useContext(SparkleContext);
 
+  const { href, target } = link || {};
   const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
 
   let visualElement: React.ReactNode;
@@ -112,9 +116,9 @@ export function Item({
   return (
     <Link
       className={classNames(
-        "s-duration-400 s-group s-box-border s-flex s-select-none s-text-sm s-transition-colors s-ease-out",
+        "s-duration-400 s-group/item s-box-border s-flex s-select-none s-text-sm s-transition-colors s-ease-out",
         spacingClasses[spacing],
-        disabled ? "" : "s-cursor-pointer",
+        disabled ? "s-cursor-default" : "s-cursor-pointer",
         className
       )}
       onClick={selected || disabled ? undefined : onClick}
@@ -161,15 +165,15 @@ export function Item({
             ? classNames(
                 "s-shrink-0 s-transition-all s-duration-200 s-ease-out",
                 hasAction === "hover"
-                  ? "s-opacity-0 group-hover:s-opacity-100"
+                  ? "s-opacity-0 group-hover/item:s-opacity-100"
                   : "",
                 disabled
                   ? "s-text-element-500 dark:s-text-element-500-dark"
                   : selected
                     ? "s-text-action-400 s-opacity-100 dark:s-text-action-600-dark"
                     : classNames(
-                        "s-text-element-600 group-hover:s-text-action-400 group-active:s-text-action-700 dark:group-hover:s-text-action-600-dark dark:group-active:s-text-action-400-dark",
-                        hasAction ? "group-hover:s-opacity-100" : ""
+                        "s-text-element-600 group-hover/item:s-text-action-400 group-active/item:s-text-action-700 dark:group-hover/item:s-text-action-600-dark dark:group-active/item:s-text-action-400-dark",
+                        hasAction ? "group-hover/item:s-opacity-100" : ""
                       )
               )
             : "s-hidden"
@@ -273,7 +277,7 @@ interface DropdownListItemProps {
   visual?: string | React.ReactNode;
   icon?: ComponentType;
   className?: string;
-  href?: string;
+  link?: LinkProps;
 }
 
 Item.Dropdown = function ({ style, ...props }: DropdownListItemProps) {
