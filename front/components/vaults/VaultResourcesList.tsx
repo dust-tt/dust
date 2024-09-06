@@ -113,7 +113,13 @@ const getTableColumns = ({
         : row.dataSourceView.editedByUser?.imageUrl) ?? "",
     id: "managedBy",
     cell: (info: CellContext<RowData, string>) => (
-      <DataTable.CellContent avatarUrl={info.getValue()} roundedAvatar={true} />
+      <DataTable.CellContent
+        avatarUrl={info.getValue()}
+        avatarTooltipLabel={
+          info.row.original.dataSourceView.editedByUser?.fullName ?? undefined
+        }
+        roundedAvatar={true}
+      />
     ),
   };
 
