@@ -17,8 +17,8 @@ import {
   DropdownMenu,
 } from "@sparkle/components/DropdownMenu";
 import { IconButton } from "@sparkle/components/IconButton";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { ArrowDownIcon, ArrowUpIcon, MoreIcon } from "@sparkle/icons";
-import { Tooltip } from "@sparkle/index_with_tw_base";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -263,11 +263,7 @@ DataTable.Row = function Row({
       <td className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600">
         {moreMenuItems && moreMenuItems.length > 0 && (
           <DropdownMenu className="s-mr-1.5 s-flex">
-            <DropdownMenu.Button
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            >
+            <DropdownMenu.Button>
               <IconButton icon={MoreIcon} size="sm" variant="tertiary" />
             </DropdownMenu.Button>
             <DropdownMenu.Items origin="topRight" width={220}>

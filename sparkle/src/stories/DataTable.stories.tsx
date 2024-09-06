@@ -50,7 +50,7 @@ export const DataTableExample = () => {
       size: "32kb",
       avatarUrl: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
       roundedAvatar: true,
-      onClick: () => console.log("hehe"),
+      onClick: () => alert("Marketing clicked"),
     },
     {
       name: "Design",
@@ -62,10 +62,11 @@ export const DataTableExample = () => {
       moreMenuItems: [
         {
           label: "Edit (disabled)",
-          onClick: () => console.log("Edit"),
+          onClick: () => alert("Design menu clicked"),
           disabled: true,
         },
       ],
+      onClick: () => alert("Design clicked"),
     },
     {
       name: "design",
@@ -77,7 +78,7 @@ export const DataTableExample = () => {
       moreMenuItems: [
         {
           label: "Edit",
-          onClick: () => console.log("Edit"),
+          onClick: () => alert("Design menu clicked"),
         },
       ],
     },
