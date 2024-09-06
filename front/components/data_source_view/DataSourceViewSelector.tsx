@@ -366,20 +366,16 @@ function DataSourceViewSelector({
   // This function ensures that only the selections matching the current vault are retained, removing any others.
   const keepOnlyOneVaultIfApplicable = useCallback(
     (config: DataSourceViewSelectionConfigurations) => {
-      if (ONLY_ONE_VAULT_PER_SELECTION) {
-        // Keep only the vault of the current dataSourceView
-        const vaultId = dataSourceView.vaultId;
-        return Object.entries(config).reduce(
-          (acc, [key, value]) =>
-            key === dataSourceView.sId ||
-            value.dataSourceView.vaultId === vaultId
-              ? { ...acc, [key]: value }
-              : acc,
-          {}
-        );
-      } else {
-        return config;
-      }
+if (!ONLY_ONE_VAULT_PER_SELECTION) {
+return config;
+}
+
+  const { vaultId, sId } = dataSourceView;
+  return Object.fromEntries(
+    Object.entries(config).filter(
+      ([key, value]) => key === sId || value.dataSourceView.vaultId === vaultId
+    )
+  );
     },
     [dataSourceView.sId, dataSourceView.vaultId]
   );
