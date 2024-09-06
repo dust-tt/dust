@@ -22,9 +22,9 @@ import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
-import { Provider } from "@app/lib/models/apps";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { Provider } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 

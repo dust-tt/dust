@@ -1,14 +1,8 @@
 import type { AppType, Result } from "@dust-tt/types";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
+import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 
-import type { Authenticator } from "@app/lib/auth";
-import { App } from "@app/lib/models/app";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
+import { App } from "@app/lib/resources/storage/models/apps";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 

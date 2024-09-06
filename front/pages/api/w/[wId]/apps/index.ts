@@ -6,7 +6,7 @@ import { getApps } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { App } from "@app/lib/models/apps";
+import { App } from "@app/lib/resources/storage/models/apps";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";

@@ -4,7 +4,7 @@ import { Op } from "sequelize";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { App } from "@app/lib/models/apps";
+import { App } from "@app/lib/resources/storage/models/apps";
 import { apiError } from "@app/logger/withlogging";
 
 export type PostStateResponseBody = {
