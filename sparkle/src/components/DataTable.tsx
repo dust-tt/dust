@@ -18,6 +18,7 @@ import {
 } from "@sparkle/components/DropdownMenu";
 import { IconButton } from "@sparkle/components/IconButton";
 import { ArrowDownIcon, ArrowUpIcon, MoreIcon } from "@sparkle/icons";
+import { Tooltip } from "@sparkle/index_with_tw_base";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -301,6 +302,7 @@ DataTable.Cell = function Cell({ children, className, ...props }: CellProps) {
 
 interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   avatarUrl?: string;
+  avatarTooltipLabel?: string;
   icon?: React.ComponentType<{ className?: string }>;
   iconClassName?: string;
   roundedAvatar?: boolean;
@@ -312,6 +314,7 @@ DataTable.CellContent = function CellContent({
   children,
   className,
   avatarUrl,
+  avatarTooltipLabel,
   roundedAvatar,
   icon,
   iconClassName,
@@ -323,7 +326,17 @@ DataTable.CellContent = function CellContent({
       className={classNames("s-flex s-items-center s-py-2", className || "")}
       {...props}
     >
-      {avatarUrl && (
+      {avatarUrl && avatarTooltipLabel && (
+        <Tooltip label={avatarTooltipLabel} position="above">
+          <Avatar
+            visual={avatarUrl}
+            size="xs"
+            className="s-mr-2"
+            isRounded={roundedAvatar ?? false}
+          />
+        </Tooltip>
+      )}
+      {avatarUrl && !avatarTooltipLabel && (
         <Avatar
           visual={avatarUrl}
           size="xs"
