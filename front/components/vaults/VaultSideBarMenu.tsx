@@ -9,6 +9,7 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type {
+  AppType,
   DataSourceViewCategory,
   DataSourceViewType,
   LightWorkspaceType,
@@ -26,6 +27,7 @@ import {
   getConnectorProviderLogoWithFallback,
   getDataSourceNameFromView,
 } from "@app/lib/connector_providers";
+import { useApps } from "@app/lib/swr/apps";
 import {
   useVaultDataSourceViews,
   useVaultInfo,
@@ -150,7 +152,7 @@ const SystemVaultMenu = ({
     <Tree variant="navigator">
       {SYSTEM_VAULTS_ITEMS.map((item) => (
         <SystemVaultItem
-          category={item.category}
+          category={item.category as Exclude<DataSourceViewCategory, "apps">}
           key={item.label}
           label={item.label}
           owner={owner}
@@ -173,7 +175,7 @@ const SystemVaultItem = ({
   visual,
   tailwindIconTextColor,
 }: {
-  category: DataSourceViewCategory;
+  category: Exclude<DataSourceViewCategory, "apps">;
   label: string;
   owner: LightWorkspaceType;
   vault: VaultType;
@@ -288,17 +290,31 @@ const VaultMenuItem = ({
       {isExpanded && (
         <Tree isLoading={isVaultInfoLoading}>
           {vaultInfo?.categories &&
-            DATA_SOURCE_VIEW_CATEGORIES.map(
-              (c) =>
-                vaultInfo.categories[c] && (
-                  <VaultCategoryItem
+            DATA_SOURCE_VIEW_CATEGORIES.filter(
+              (c) => !!vaultInfo.categories[c]
+            ).map((c) => {
+              if (c === "apps") {
+                return (
+                  <VaultAppSubMenu
                     key={c}
                     category={c}
                     owner={owner}
                     vault={vault}
                   />
-                )
-            )}
+                );
+              } else {
+                return (
+                  vaultInfo.categories[c] && (
+                    <VaultDataSourceViewSubMenu
+                      key={c}
+                      category={c}
+                      owner={owner}
+                      vault={vault}
+                    />
+                  )
+                );
+              }
+            })}
         </Tree>
       )}
     </Tree.Item>
@@ -365,14 +381,14 @@ const VaultDataSourceViewItem = ({
   );
 };
 
-const VaultCategoryItem = ({
+const VaultDataSourceViewSubMenu = ({
   owner,
   vault,
   category,
 }: {
   owner: LightWorkspaceType;
   vault: VaultType;
-  category: DataSourceViewCategory;
+  category: Exclude<DataSourceViewCategory, "apps">;
 }) => {
   const router = useRouter();
 
@@ -418,6 +434,84 @@ const VaultCategoryItem = ({
               owner={owner}
               vault={vault}
             />
+          ))}
+        </Tree>
+      )}
+    </Tree.Item>
+  );
+};
+
+const VaultAppItem = ({
+  app,
+  owner,
+}: {
+  app: AppType;
+  owner: LightWorkspaceType;
+}): ReactElement => {
+  const router = useRouter();
+
+  const appPath = `/w/${owner.sId}/a/${app.sId}`;
+
+  return (
+    <Tree.Item
+      isNavigatable
+      type="leaf"
+      isSelected={
+        router.asPath === appPath ||
+        router.asPath.includes(appPath + "/") ||
+        router.asPath.includes(appPath + "?")
+      }
+      onItemClick={() => router.push(appPath)}
+      label={app.name}
+      visual={CommandLineIcon}
+      areActionsFading={false}
+    />
+  );
+};
+
+const VaultAppSubMenu = ({
+  owner,
+  vault,
+  category,
+}: {
+  owner: LightWorkspaceType;
+  vault: VaultType;
+  category: "apps";
+}) => {
+  const router = useRouter();
+
+  const vaultCategoryPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`;
+  const isAncestorToCurrentPage = router.asPath.includes(
+    vaultCategoryPath + "/"
+  );
+
+  // Unfold the vault's category if it's an ancestor of the current page.
+  const [isExpanded, setIsExpanded] = useState(false);
+  useEffect(() => {
+    if (isAncestorToCurrentPage) {
+      setIsExpanded(isAncestorToCurrentPage);
+    }
+  }, [isAncestorToCurrentPage]);
+
+  const categoryDetails = DATA_SOURCE_OR_VIEW_SUB_ITEMS[category];
+
+  const { isAppsLoading, apps } = useApps(owner);
+
+  return (
+    <Tree.Item
+      isNavigatable
+      label={categoryDetails.label}
+      collapsed={!isExpanded}
+      onItemClick={() => router.push(vaultCategoryPath)}
+      isSelected={router.asPath === vaultCategoryPath}
+      onChevronClick={() => setIsExpanded(!isExpanded)}
+      visual={categoryDetails.icon}
+      areActionsFading={false}
+    >
+      {isExpanded && (
+        <Tree isLoading={isAppsLoading}>
+          {apps.map((app) => (
+            <VaultAppItem app={app} key={app.sId} owner={owner} />
           ))}
         </Tree>
       )}

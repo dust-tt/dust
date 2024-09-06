@@ -14,7 +14,6 @@ import type {
   APIError,
   CrawlingFrequency,
   DataSourceType,
-  DataSourceViewCategory,
   DataSourceViewType,
   DepthOption,
   VaultType,
@@ -45,7 +44,7 @@ import type {
   PostVaultDataSourceResponseBody,
 } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
-const WEBSITE_CAT: DataSourceViewCategory = "website";
+const WEBSITE_CAT = "website";
 
 // todo(GROUPS_INFRA): current component has been mostly copy pasted from the WebsiteConfiguration existing component
 // this should be refactored to use the new design.

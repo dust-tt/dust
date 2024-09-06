@@ -56,7 +56,7 @@ export function useVaultDataSourceViews<
   vaultId,
   workspaceId,
 }: {
-  category: DataSourceViewCategory;
+  category: Exclude<DataSourceViewCategory, "apps">;
   disabled?: boolean;
   includeConnectorDetails?: IncludeConnectorDetails;
   includeEditedBy?: boolean;
