@@ -19,7 +19,7 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import config from "@app/lib/api/config";
 import { getRun } from "@app/lib/api/run";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import {AppResource} from "@app/lib/resources/app_resource";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{

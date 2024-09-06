@@ -21,7 +21,7 @@ import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
-import {AppResource} from "@app/lib/resources/app_resource";
+import { AppResource } from "@app/lib/resources/app_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { Provider } from "@app/lib/resources/storage/models/apps";

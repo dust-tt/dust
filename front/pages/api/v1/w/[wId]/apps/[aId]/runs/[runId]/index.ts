@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import apiConfig from "@app/lib/api/config";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
-import {AppResource} from "@app/lib/resources/app_resource";
+import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -83,7 +83,10 @@ async function handler(
     });
   }
 
-  const app = await AppResource.fetchById(workspaceAuth, req.query.aId as string);
+  const app = await AppResource.fetchById(
+    workspaceAuth,
+    req.query.aId as string
+  );
 
   if (!app) {
     return apiError(req, res, {

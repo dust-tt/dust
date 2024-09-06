@@ -20,7 +20,7 @@ import config from "@app/lib/api/config";
 import { getDatasets } from "@app/lib/api/datasets";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import {AppResource} from "@app/lib/resources/app_resource";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{

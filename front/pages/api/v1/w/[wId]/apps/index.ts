@@ -93,13 +93,11 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      res
-        .status(200)
-        .json({
-          apps: (await AppResource.listByWorkspace(workspaceAuth)).map((app) =>
-            app.toJSON()
-          ),
-        });
+      res.status(200).json({
+        apps: (await AppResource.listByWorkspace(workspaceAuth)).map((app) =>
+          app.toJSON()
+        ),
+      });
       return;
 
     default:

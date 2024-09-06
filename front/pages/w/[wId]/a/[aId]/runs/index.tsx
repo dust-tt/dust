@@ -16,7 +16,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import {AppResource} from "@app/lib/resources/app_resource";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { getDustAppsListUrl } from "@app/lib/vault_rollout";
