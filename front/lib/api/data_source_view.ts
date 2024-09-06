@@ -55,9 +55,10 @@ export function filterAndCropContentNodesByView(
   return removeNulls(contentNodesInView);
 }
 
+// If `internalIds` is not provided, it means that the request is for all the content nodes in the view.
 interface GetContentNodesForDataSourceViewParams {
   includeChildren: boolean;
-  internalIds: string[];
+  internalIds?: string[];
   pagination?: OffsetPaginationParams;
   viewType: ContentNodesViewType;
 }
@@ -89,12 +90,13 @@ export async function getContentNodesForManagedDataSourceView(
 
   // If the request is for children, we need to fetch the children of the internal ids.
   if (includeChildren) {
-    const [parentInternalId] = internalIds;
+    const [parentInternalId] = internalIds || [];
 
     const connectorsRes = await connectorsAPI.getConnectorPermissions({
       connectorId: dataSource.connectorId,
       filterPermission: "read",
       includeParents: true,
+      // Passing an undefined parentInternalId will fetch the root nodes.
       parentId: parentInternalId ?? undefined,
       viewType,
     });
@@ -116,7 +118,7 @@ export async function getContentNodesForManagedDataSourceView(
     const connectorsRes = await connectorsAPI.getContentNodes({
       connectorId: dataSource.connectorId,
       includeParents: true,
-      internalIds,
+      internalIds: internalIds ?? [],
       viewType,
     });
     if (connectorsRes.isErr()) {
@@ -146,6 +148,14 @@ export async function getContentNodesForStaticDataSourceView(
   const { dataSource } = dataSourceView;
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  // Early return if there are no internalIds.
+  if (internalIds?.length === 0) {
+    return new Ok({
+      nodes: [],
+      total: 0,
+    });
+  }
 
   if (viewType === "documents") {
     const documentsRes = await coreAPI.getDataSourceDocuments(

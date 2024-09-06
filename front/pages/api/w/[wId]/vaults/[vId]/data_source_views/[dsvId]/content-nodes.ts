@@ -2,7 +2,7 @@ import type {
   DataSourceViewContentNode,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { ContentNodesViewTypeCodec } from "@dust-tt/types";
+import { ContentNodesViewTypeCodec, removeNulls } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -17,29 +17,11 @@ import { apiError } from "@app/logger/withlogging";
 
 const DEFAULT_LIMIT = 100;
 
-const GetContentNodesRequestBodyBaseSchema = t.type({
-  internalIds: t.array(t.union([t.string, t.null])),
+const GetContentNodesOrChildrenRequestBody = t.type({
+  includeChildren: t.boolean,
+  internalIds: t.union([t.array(t.union([t.string, t.null])), t.undefined]),
   viewType: ContentNodesViewTypeCodec,
 });
-
-const GetContentNodesRequestBodySchema = t.intersection([
-  GetContentNodesRequestBodyBaseSchema,
-  t.type({
-    includeChildren: t.undefined,
-  }),
-]);
-
-const GetContentNodeChildrenRequestBodySchema = t.intersection([
-  GetContentNodesRequestBodyBaseSchema,
-  t.type({
-    includeChildren: t.literal(true),
-  }),
-]);
-
-const GetContentNodesOrChildrenRequestBody = t.union([
-  GetContentNodeChildrenRequestBodySchema,
-  GetContentNodesRequestBodySchema,
-]);
 
 export type GetDataSourceViewContentNodes = {
   nodes: DataSourceViewContentNode[];
@@ -107,7 +89,7 @@ async function handler(
 
   const { includeChildren, internalIds, viewType } = bodyValidation.right;
 
-  if (includeChildren && internalIds.length > 1) {
+  if (includeChildren && internalIds && internalIds.length > 1) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -136,7 +118,7 @@ async function handler(
     dataSourceView,
     {
       includeChildren: includeChildren === true,
-      internalIds,
+      internalIds: internalIds ? removeNulls(internalIds) : undefined,
       pagination: paginationRes.value,
       viewType,
     }
