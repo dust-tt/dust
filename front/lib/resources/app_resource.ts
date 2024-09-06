@@ -1,25 +1,17 @@
-import type { AppType, AppVisibility, Project, Result } from "@dust-tt/types";
+import type { AppType, AppVisibility, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { DatasetResource } from "@app/lib/resources/dataset_resource";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { App, Clone } from "@app/lib/resources/storage/models/apps";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
-
-import { DatasetResource } from "./dataset_resource";
-
-export type FetchAppOptions = {
-  includeEditedBy?: boolean;
-  limit?: number;
-  order?: [string, "ASC" | "DESC"][];
-};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
