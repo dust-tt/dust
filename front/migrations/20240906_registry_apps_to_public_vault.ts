@@ -42,7 +42,7 @@ makeScript({}, async ({ execute }, logger) => {
         {
           where: {
             sId: appId,
-            workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+            workspaceId: dustAppsWorkspace.id,
           },
         }
       );
