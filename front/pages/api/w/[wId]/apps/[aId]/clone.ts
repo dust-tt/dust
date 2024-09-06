@@ -9,7 +9,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { App, Clone, Dataset } from "@app/lib/resources/storage/models/apps";
+import { Clone, Dataset } from "@app/lib/resources/storage/models/apps";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
