@@ -269,3 +269,7 @@ export function sanitizeJSONOutput(obj: unknown): unknown {
   }
   return obj;
 }
+
+export function removeDiacritics(input: string): string {
+  return input.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
