@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { Provider } from "@app/lib/models/apps";
+import { Provider } from "@app/lib/resources/storage/models/apps";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetProvidersResponseBody = {

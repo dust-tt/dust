@@ -1,6 +1,5 @@
 import { sendInitDbMessage } from "@dust-tt/types";
 
-import { App, Clone, Dataset, Provider } from "@app/lib/models/apps";
 import {
   AgentBrowseAction,
   AgentBrowseConfiguration,
@@ -62,6 +61,12 @@ import {
   Workspace,
   WorkspaceHasDomain,
 } from "@app/lib/models/workspace";
+import {
+  App,
+  Clone,
+  Dataset,
+  Provider,
+} from "@app/lib/resources/storage/models/apps";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";

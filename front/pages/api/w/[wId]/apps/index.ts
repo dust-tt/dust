@@ -6,8 +6,9 @@ import { getApps } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { App } from "@app/lib/models/apps";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -58,6 +59,8 @@ async function handler(
         });
       }
 
+      const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const p = await coreAPI.createProject();
       if (p.isErr()) {
@@ -73,27 +76,20 @@ async function handler(
 
       const description = req.body.description ? req.body.description : null;
 
-      const app = await App.create({
-        sId: generateLegacyModelSId(),
-        name: req.body.name,
-        description,
-        visibility: req.body.visibility,
-        dustAPIProjectId: p.value.project.project_id.toString(),
-        workspaceId: owner.id,
-      });
+      const app = await AppResource.makeNew(
+        {
+          sId: generateLegacyModelSId(),
+          name: req.body.name,
+          description,
+          visibility: req.body.visibility,
+          dustAPIProjectId: p.value.project.project_id.toString(),
+          workspaceId: owner.id,
+        },
+        globalVault
+      );
 
       res.status(201).json({
-        app: {
-          id: app.id,
-          sId: app.sId,
-          name: app.name,
-          description: app.description,
-          visibility: app.visibility,
-          savedSpecification: app.savedSpecification,
-          savedConfig: app.savedConfig,
-          savedRun: app.savedRun,
-          dustAPIProjectId: app.dustAPIProjectId,
-        },
+        app: app.toJSON(),
       });
       return;
 

@@ -8,8 +8,10 @@ import { getDatasets } from "@app/lib/api/datasets";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { App, Clone, Dataset } from "@app/lib/models/apps";
+import { AppResource } from "@app/lib/resources/app_resource";
+import { Clone, Dataset } from "@app/lib/resources/storage/models/apps";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -94,8 +96,12 @@ async function handler(
 
       const description = req.body.description ? req.body.description : null;
 
-      const [cloned] = await Promise.all([
-        App.create({
+      // TODO(GROUPS_INFRA): move all this logic to AppResource.
+      const targetGlobalVault =
+        await VaultResource.fetchWorkspaceGlobalVault(targetAuth);
+
+      const cloned = await AppResource.makeNew(
+        {
           sId: generateLegacyModelSId(),
           name: req.body.name,
           description,
@@ -103,8 +109,9 @@ async function handler(
           dustAPIProjectId: project.value.project.project_id.toString(),
           savedSpecification: app.savedSpecification,
           workspaceId: targetOwner.id,
-        }),
-      ]);
+        },
+        targetGlobalVault
+      );
 
       await Promise.all(
         datasets.map((d) => {
@@ -124,17 +131,7 @@ async function handler(
       });
 
       res.status(201).json({
-        app: {
-          id: cloned.id,
-          sId: cloned.sId,
-          name: cloned.name,
-          description: cloned.description,
-          visibility: cloned.visibility,
-          savedSpecification: cloned.savedSpecification,
-          savedConfig: cloned.savedConfig,
-          savedRun: cloned.savedRun,
-          dustAPIProjectId: cloned.dustAPIProjectId,
-        },
+        app: cloned.toJSON(),
       });
       return;
 

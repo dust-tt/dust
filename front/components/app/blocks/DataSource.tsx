@@ -160,7 +160,6 @@ export default function DataSource({
   const handleDataSourcesChange = (
     dataSources: { workspace_id: string; data_source_id: string }[]
   ) => {
-    console.log("DS CHANGE", dataSources);
     const b = shallowBlockClone(block);
     b.config.data_sources = dataSources;
     onBlockUpdate(b);
