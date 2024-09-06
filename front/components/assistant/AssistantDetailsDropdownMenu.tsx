@@ -142,7 +142,9 @@ export function AssistantDetailsDropdownMenu({
         <DropdownMenu.Items width={220}>
           <DropdownMenu.Item
             label="Start conversation"
-            href={`/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`}
+            link={{
+              href: `/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`,
+            }}
             icon={ChatBubbleBottomCenterTextIcon}
           />
           {!isGlobalAgent && (
@@ -153,19 +155,23 @@ export function AssistantDetailsDropdownMenu({
               {(isBuilder(owner) || !isAgentWorkspace) && (
                 <DropdownMenu.Item
                   label="Edit"
-                  href={`/w/${owner.sId}/builder/assistants/${
-                    agentConfiguration.sId
-                  }?flow=${
-                    isAgentWorkspace
-                      ? "workspace_assistants"
-                      : "personal_assistants"
-                  }`}
+                  link={{
+                    href: `/w/${owner.sId}/builder/assistants/${
+                      agentConfiguration.sId
+                    }?flow=${
+                      isAgentWorkspace
+                        ? "workspace_assistants"
+                        : "personal_assistants"
+                    }`,
+                  }}
                   icon={PencilSquareIcon}
                 />
               )}
               <DropdownMenu.Item
                 label="Duplicate (New)"
-                href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`}
+                link={{
+                  href: `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`,
+                }}
                 icon={ClipboardIcon}
               />
               {canDelete && (

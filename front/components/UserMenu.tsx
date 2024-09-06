@@ -72,7 +72,7 @@ export function UserMenu({
             {owner.flags.includes("labs_transcripts") && (
               <DropdownMenu.Item
                 label="Transcripts processing"
-                href={`/w/${owner.sId}/assistant/labs/transcripts`}
+                link={{ href: `/w/${owner.sId}/assistant/labs/transcripts` }}
                 icon={BookOpenIcon}
               />
             )}
@@ -107,7 +107,7 @@ export function UserMenu({
         <DropdownMenu.SectionHeader label="Account" />
         <DropdownMenu.Item
           label="Sign&nbsp;out"
-          href="/api/auth/logout"
+          link={{ href: "/api/auth/logout" }}
           icon={LogoutIcon}
         />
       </DropdownMenu.Items>
