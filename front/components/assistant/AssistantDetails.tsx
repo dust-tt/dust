@@ -404,11 +404,7 @@ function DataSourceViewsSection({
         dataSourceView={dataSourceViewToDisplay}
         documentId={documentToDisplay}
         isOpen={!!documentToDisplay}
-        setOpen={(open) => {
-          if (!open) {
-            setDocumentToDisplay(null);
-          }
-        }}
+        onClose={() => setDocumentToDisplay(null)}
       />
       <Tree>
         {dataSourceConfigurations.map((dsConfig) => {

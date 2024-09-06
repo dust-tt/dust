@@ -1,5 +1,10 @@
 import type { DataTable } from "@dust-tt/sparkle";
-import { PencilSquareIcon, TrashIcon } from "@dust-tt/sparkle";
+import {
+  ExternalLinkIcon,
+  EyeIcon,
+  PencilSquareIcon,
+  TrashIcon,
+} from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   LightContentNode,
@@ -13,6 +18,7 @@ import React, { useImperativeHandle, useState } from "react";
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentOrTableUploadOrEditModal } from "@app/components/data_source/DocumentOrTableUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
+import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { getDataSourceName } from "@app/lib/connector_providers";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 
@@ -20,7 +26,8 @@ export type ContentActionKey =
   | "DocumentUploadOrEdit"
   | "TableUploadOrEdit"
   | "MultipleDocumentsUpload"
-  | "DocumentOrTableDeleteDialog";
+  | "DocumentOrTableDeleteDialog"
+  | "DocumentViewRawContent";
 
 export type ContentAction = {
   action?: ContentActionKey;
@@ -93,17 +100,30 @@ export const ContentActions = React.forwardRef<
           contentNode={currentAction.contentNode}
         />
       )}
+      <DataSourceViewDocumentModal
+        owner={owner}
+        dataSourceView={
+          currentAction.action === "DocumentViewRawContent"
+            ? dataSourceView
+            : null
+        }
+        documentId={currentAction.contentNode?.dustDocumentId ?? null}
+        isOpen={currentAction.action === "DocumentViewRawContent"}
+        onClose={() => onClose(false)}
+      />
     </>
   );
 });
 
 ContentActions.displayName = "ContentActions";
 
+type ContentActionsMenu = ComponentProps<typeof DataTable.Row>["moreMenuItems"];
+
 export const getMenuItems = (
   dataSourceView: DataSourceViewType,
   contentNode: LightContentNode,
   contentActionsRef: RefObject<ContentActionsRef>
-): ComponentProps<typeof DataTable.Row>["moreMenuItems"] => {
+): ContentActionsMenu => {
   if (isFolder(dataSourceView.dataSource)) {
     return [
       {
@@ -133,32 +153,45 @@ export const getMenuItems = (
       },
     ];
   }
+
   if (isWebsite(dataSourceView.dataSource)) {
-    // TODO(GROUPS_UI): Actions for webrawler datasource
-    return [];
+    return [...makeViewRawContentAction(contentNode, contentActionsRef)];
   }
 
-  return [
+  const actions: ContentActionsMenu = [
     {
       label: `View in ${capitalize(getDataSourceName(dataSourceView.dataSource))}`,
-      icon: PencilSquareIcon,
+      icon: ExternalLinkIcon,
       link: contentNode.sourceUrl
         ? { href: contentNode.sourceUrl, target: "_blank" }
         : undefined,
       disabled: contentNode.sourceUrl === null,
       onClick: () => {},
     },
+  ];
+
+  if (contentNode.type === "file") {
+    actions.push(...makeViewRawContentAction(contentNode, contentActionsRef));
+  }
+
+  return actions;
+};
+
+function makeViewRawContentAction(
+  contentNode: LightContentNode,
+  contentActionsRef: RefObject<ContentActionsRef>
+) {
+  return [
     {
-      label: "Delete",
-      icon: TrashIcon,
+      label: "View raw content",
+      icon: EyeIcon,
       onClick: () => {
         contentActionsRef.current &&
           contentActionsRef.current?.callAction(
-            "DocumentOrTableDeleteDialog",
+            "DocumentViewRawContent",
             contentNode
           );
       },
-      variant: "warning",
     },
   ];
-};
+}
