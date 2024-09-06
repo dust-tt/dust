@@ -684,9 +684,11 @@ export class Authenticator {
   }
 
   hasPermission(acls: ACLType[], permission: Permission): boolean {
-    // Does the user belongs to a group which has the required permission on all ACLs ?
-    return this.groups().some((group) =>
-      acls.every((acl) => groupHasPermission(acl, permission, group.id))
+    // For each acl, does the user belongs to a group that has the permission?
+    return acls.every((acl) =>
+      this.groups().some((group) =>
+        groupHasPermission(acl, permission, group.id)
+      )
     );
   }
 
