@@ -5,10 +5,10 @@ import {
   FolderIcon,
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
-import type { ContentNode } from "@dust-tt/types";
+import type { BaseContentNode } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
-function getVisualForFileContentNode(node: ContentNode & { type: "file" }) {
+function getVisualForFileContentNode(node: BaseContentNode & { type: "file" }) {
   if (node.expandable) {
     return DocumentPileIcon;
   }
@@ -16,7 +16,7 @@ function getVisualForFileContentNode(node: ContentNode & { type: "file" }) {
   return DocumentIcon;
 }
 
-export function getVisualForContentNode(node: ContentNode) {
+export function getVisualForContentNode(node: BaseContentNode) {
   switch (node.type) {
     case "channel":
       return ChatBubbleLeftRightIcon;
@@ -26,7 +26,7 @@ export function getVisualForContentNode(node: ContentNode) {
 
     case "file":
       return getVisualForFileContentNode(
-        node as ContentNode & { type: "file" }
+        node as BaseContentNode & { type: "file" }
       );
 
     case "folder":
