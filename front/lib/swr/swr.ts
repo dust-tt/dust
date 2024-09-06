@@ -1,5 +1,5 @@
 import type { Fetcher, Key, SWRConfiguration } from "swr";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 
@@ -14,12 +14,23 @@ const DEFAULT_SWR_CONFIG: SWRConfiguration = {
 
 export function useSWRWithDefaults<TKey extends Key, TData>(
   key: TKey,
-  fetcher: Fetcher<TData, TKey>,
-  config?: SWRConfiguration
+  fetcher: Fetcher<TData, TKey> | null,
+  config?: SWRConfiguration & { disabled?: boolean }
 ) {
-  const mergedConfig = { ...DEFAULT_SWR_CONFIG, ...config };
+  const { mutate: globalMutate } = useSWRConfig();
 
-  return useSWR(key, fetcher, mergedConfig);
+  const mergedConfig = { ...DEFAULT_SWR_CONFIG, ...config };
+  const disabled = !!mergedConfig.disabled;
+
+  const result = useSWR(disabled ? null : key, fetcher, mergedConfig);
+
+  if (disabled) {
+    // When disabled, as the key is null, the mutate function is not working
+    // so we need to provide a custom mutate function that will work
+    return { ...result, mutate: () => globalMutate(key) };
+  } else {
+    return result;
+  }
 }
 
 const addCommitHashToHeaders = (headers: HeadersInit = {}): HeadersInit => ({

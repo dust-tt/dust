@@ -76,7 +76,10 @@ export default function VaultSideBarMenu({
             return (
               <Fragment key={`vault-section-${index}`}>
                 <div className="flex items-center justify-between">
-                  <Item.SectionHeader label={sectionLabel} />
+                  <Item.SectionHeader
+                    label={sectionLabel}
+                    variant="secondary"
+                  />
                   {sectionLabel === "PRIVATE" && isAdmin && (
                     <Button
                       className="mt-4"
@@ -495,7 +498,7 @@ const VaultAppSubMenu = ({
 
   const categoryDetails = DATA_SOURCE_OR_VIEW_SUB_ITEMS[category];
 
-  const { isAppsLoading, apps } = useApps(owner);
+  const { isAppsLoading, apps } = useApps(owner, !isExpanded);
 
   return (
     <Tree.Item

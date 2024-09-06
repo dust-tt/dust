@@ -18,8 +18,11 @@ export function useDatasets({
   const datasetsFetcher: Fetcher<GetDatasetsResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    disabled ? null : `/api/w/${owner.sId}/apps/${app.sId}/datasets`,
-    datasetsFetcher
+    `/api/w/${owner.sId}/apps/${app.sId}/datasets`,
+    datasetsFetcher,
+    {
+      disabled,
+    }
   );
 
   return {

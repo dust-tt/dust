@@ -223,10 +223,11 @@ export function useSlackChannelsLinkedWithAgent({
     fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    dataSourceName && !disabled
-      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/managed/slack/channels_linked_with_agent`
-      : null,
-    slackChannelsLinkedWithAgentFetcher
+    `/api/w/${workspaceId}/data_sources/${dataSourceName}/managed/slack/channels_linked_with_agent`,
+    slackChannelsLinkedWithAgentFetcher,
+    {
+      disabled,
+    }
   );
 
   return {

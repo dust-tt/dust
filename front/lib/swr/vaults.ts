@@ -34,8 +34,11 @@ export function useVaultInfo({
   const vaultsCategoriesFetcher: Fetcher<GetVaultResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    disabled ? null : `/api/w/${workspaceId}/vaults/${vaultId}`,
-    vaultsCategoriesFetcher
+    `/api/w/${workspaceId}/vaults/${vaultId}`,
+    vaultsCategoriesFetcher,
+    {
+      disabled,
+    }
   );
 
   return {
@@ -79,10 +82,9 @@ export function useVaultDataSourceViews<
   }
 
   const { data, error, mutate } = useSWRWithDefaults(
-    disabled
-      ? null
-      : `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views?${queryParams.toString()}`,
-    vaultsDataSourceViewsFetcher
+    `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views?${queryParams.toString()}`,
+    vaultsDataSourceViewsFetcher,
+    { disabled }
   );
 
   const vaultDataSourceViews = useMemo(() => {

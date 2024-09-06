@@ -36,8 +36,11 @@ export function useWorkspaceAnalytics({
   const analyticsFetcher: Fetcher<GetWorkspaceAnalyticsResponse> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    !disabled ? `/api/w/${workspaceId}/workspace-analytics` : null,
-    analyticsFetcher
+    `/api/w/${workspaceId}/workspace-analytics`,
+    analyticsFetcher,
+    {
+      disabled,
+    }
   );
 
   return {
