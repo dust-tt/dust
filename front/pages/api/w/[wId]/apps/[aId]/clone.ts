@@ -34,8 +34,8 @@ async function handler(
       },
     });
   }
-  const app = await AppResource.fetchById(auth, aId);
 
+  const app = await AppResource.fetchById(auth, aId);
   if (!app) {
     return apiError(req, res, {
       status_code: 404,
