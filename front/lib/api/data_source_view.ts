@@ -58,7 +58,7 @@ export function filterAndCropContentNodesByView(
 interface GetContentNodesForDataSourceViewParams {
   includeChildren: boolean;
   internalIds: string[];
-  pagination: OffsetPaginationParams;
+  pagination?: OffsetPaginationParams;
   viewType: ContentNodesViewType;
 }
 

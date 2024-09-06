@@ -241,7 +241,7 @@ async function renderDataSourcesConfigurations(
       }
       return {
         dataSourceView,
-        selectedResources: nodesRes.value,
+        selectedResources: nodesRes.value.nodes,
         isSelectAll: sr.isSelectAll,
       };
     })
