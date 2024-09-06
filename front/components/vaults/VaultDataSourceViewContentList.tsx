@@ -71,11 +71,7 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
         const { lastUpdatedAt } = info.row.original;
 
         if (!lastUpdatedAt) {
-          return (
-            <DataTable.CellContent>
-              <span className="font-bold">-</span>
-            </DataTable.CellContent>
-          );
+          return <DataTable.CellContent>-</DataTable.CellContent>;
         }
 
         return (
