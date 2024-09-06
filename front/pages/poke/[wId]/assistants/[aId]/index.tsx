@@ -1,4 +1,4 @@
-import { ContextItem, Page } from "@dust-tt/sparkle";
+import { ContextItem, Page, TextArea } from "@dust-tt/sparkle";
 import type { AgentConfigurationType } from "@dust-tt/types";
 import { SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
@@ -62,7 +62,11 @@ const DataSourcePage = ({
                     </div>
                     <div className="ml-4 text-sm text-element-700">
                       <div className="font-bold">Instructions:</div>
-                      {a.instructions}
+                      <TextArea
+                        placeholder=""
+                        value={a.instructions}
+                        onChange={() => {}}
+                      />
                     </div>
                     <div className="ml-4 text-sm text-element-700">
                       <div className="font-bold">
