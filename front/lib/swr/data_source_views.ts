@@ -120,7 +120,7 @@ export function useDataSourceViewContentNodes({
   isNodesLoading: boolean;
   mutateDataSourceViewContentNodes: KeyedMutator<GetDataSourceViewContentNodes>;
   nodes: GetDataSourceViewContentNodes["nodes"];
-  totalCount: number;
+  totalNodesCount: number;
 } {
   const params = new URLSearchParams();
   appendPaginationParams(params, pagination);
@@ -155,7 +155,7 @@ export function useDataSourceViewContentNodes({
     isNodesLoading: !error && !data,
     mutateDataSourceViewContentNodes: mutate,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
-    totalCount: data ? data.total : 0,
+    totalNodesCount: data ? data.total : 0,
   };
 }
 

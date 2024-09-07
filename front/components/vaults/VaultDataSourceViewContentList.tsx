@@ -98,7 +98,7 @@ export const VaultDataSourceViewContentList = ({
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
-  const { pagination, setPagination } = usePaginationFromUrl("table");
+  const { pagination, setPagination } = usePaginationFromUrl("table", 5);
 
   const router = useRouter();
   const viewType: ContentNodesViewType = isValidContentNodesViewType(
@@ -136,7 +136,7 @@ export const VaultDataSourceViewContentList = ({
     isNodesLoading,
     mutateDataSourceViewContentNodes,
     nodes,
-    totalCount,
+    totalNodesCount,
   } = useDataSourceViewContentNodes({
     dataSourceView,
     owner,
@@ -245,7 +245,7 @@ export const VaultDataSourceViewContentList = ({
           filter={dataSourceSearch}
           filterColumn="title"
           initialColumnOrder={[{ desc: false, id: "title" }]}
-          totalRowCount={totalCount}
+          totalRowCount={totalNodesCount}
           pagination={pagination}
           setPagination={setPagination}
         />
