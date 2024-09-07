@@ -48,33 +48,31 @@ export async function launchNotionSyncWorkflow(
       },
       "launchNotionSyncWorkflow: Notion sync workflow already running."
     );
-    return;
-  }
-
-  await client.workflow.start(notionSyncWorkflow, {
-    args: [
-      {
-        connectorId,
-        startFromTs,
-        forceResync,
-        garbageCollectionMode: "never",
+  } else {
+    await client.workflow.start(notionSyncWorkflow, {
+      args: [
+        {
+          connectorId,
+          startFromTs,
+          forceResync,
+          garbageCollectionMode: "never",
+        },
+      ],
+      taskQueue: QUEUE_NAME,
+      workflowId: getNotionWorkflowId(connectorId, "never"),
+      searchAttributes: {
+        connectorId: [connectorId],
       },
-    ],
-    taskQueue: QUEUE_NAME,
-    workflowId: getNotionWorkflowId(connectorId, "never"),
-    searchAttributes: {
-      connectorId: [connectorId],
-    },
-    memo: {
-      connectorId,
-    },
-  });
+      memo: {
+        connectorId,
+      },
+    });
 
-  logger.info(
-    { workspaceId: dataSourceConfig.workspaceId },
-    "launchNotionSyncWorkflow: Started Notion sync workflow."
-  );
-
+    logger.info(
+      { workspaceId: dataSourceConfig.workspaceId },
+      "launchNotionSyncWorkflow: Started Notion sync workflow."
+    );
+  }
   await launchNotionGarbageCollectorWorkflow(connectorId);
 }
 
