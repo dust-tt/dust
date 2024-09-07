@@ -84,7 +84,7 @@ function DataSourceViewResourceSelectorChildren({
     {
       dataSourceView: dataSourceView,
       owner,
-      internalIds: parentId ? [parentId] : [],
+      internalIds: parentId ? [parentId] : undefined,
       includeChildren: true,
       viewType,
     }
