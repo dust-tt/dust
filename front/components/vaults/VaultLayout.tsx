@@ -134,8 +134,16 @@ function VaultBreadCrumbs({
       },
     ];
 
+    if (vault.kind === "system") {
+      // For system vault, we don't want the first breadcrumb to show, since
+      // it's only used to manage "connected data" already. Otherwise it would
+      // expose a useless link, and name would be redundant with the "Connected
+      // data" label
+      items.shift();
+    }
+
     if (dataSourceView) {
-      if (category === "managed") {
+      if (category === "managed" && vault.kind !== "system") {
         // Remove the "Connected data" from breadcrumbs to avoid hiding the actual
         // managed connection name
 
