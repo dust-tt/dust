@@ -1,16 +1,12 @@
 import type {
-  CoreAPITable,
   DataSourceType,
-  DataSourceViewType,
   LightContentNode,
   TimeframeUnit,
 } from "@dust-tt/types";
 import type { ConnectorProvider } from "@dust-tt/types";
 import {
-  getGoogleSheetContentNodeInternalIdFromTableId,
   getGoogleSheetTableIdFromContentNodeInternalId,
   getMicrosoftSheetContentNodeInternalIdFromTableId,
-  getNotionDatabaseContentNodeInternalIdFromTableId,
   getNotionDatabaseTableIdFromContentNodeInternalId,
   isGoogleSheetContentNodeInternalId,
 } from "@dust-tt/types";
@@ -295,7 +291,7 @@ export function getTableIdForContentNode(
     case "google_drive":
       if (!isGoogleSheetContentNodeInternalId(contentNode.internalId)) {
         throw new Error(
-          `Googgle Drive ContentNode internalId ${contentNode.internalId} is not a Google Sheet internal ID`
+          `Google Drive ContentNode internalId ${contentNode.internalId} is not a Google Sheet internal ID`
         );
       }
       return getGoogleSheetTableIdFromContentNodeInternalId(
@@ -310,34 +306,6 @@ export function getTableIdForContentNode(
     // For static tables, the tableId is the contentNode internalId.
     case null:
       return contentNode.internalId;
-
-    default:
-      throw new Error(
-        `Provider ${dataSource.connectorProvider} is not supported`
-      );
-  }
-}
-
-export function getContentNodeInternalIdFromTableId(
-  dataSourceView: DataSourceViewType,
-  table: CoreAPITable
-): string {
-  const { dataSource } = dataSourceView;
-  const { table_id: tableId } = table;
-
-  switch (dataSource.connectorProvider) {
-    case "google_drive":
-      return getGoogleSheetContentNodeInternalIdFromTableId(tableId);
-
-    case "notion":
-      return getNotionDatabaseContentNodeInternalIdFromTableId(tableId);
-
-    case "microsoft":
-      return getMicrosoftSheetContentNodeInternalIdFromTableId(tableId);
-
-    // For static tables, the contentNode internalId is the tableId.
-    case null:
-      return tableId;
 
     default:
       throw new Error(

@@ -9,6 +9,7 @@ import { ConnectorsAPI, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 
 import config from "@app/lib/api/config";
+import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import type { OffsetPaginationParams } from "@app/lib/api/pagination";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
@@ -61,6 +62,8 @@ interface GetContentNodesForDataSourceViewParams {
   internalIds?: string[];
   pagination?: OffsetPaginationParams;
   viewType: ContentNodesViewType;
+  // If onlyCoreAPI is true, the function will only use the Core API to fetch the content nodes.
+  onlyCoreAPI?: boolean;
 }
 
 interface GetContentNodesForDataSourceViewResult {
@@ -210,10 +213,10 @@ export async function getContentNodesForStaticDataSourceView(
       tablesRes.value.tables.map((table) => ({
         dustDocumentId: table.table_id,
         expandable: false,
-        internalId: table.table_id,
+        internalId: getContentNodeInternalIdFromTableId(dataSourceView, table),
         lastUpdatedAt: table.timestamp,
         parentInternalId: null,
-        parentInternalIds: [],
+        parentInternalIds: table.parents,
         permission: "read",
         preventSelection: false,
         sourceUrl: null,
@@ -234,9 +237,11 @@ export async function getContentNodesForDataSourceView(
 ): Promise<
   Result<GetContentNodesForDataSourceViewResult, Error | CoreAPIError>
 > {
+  const { onlyCoreAPI = false } = params;
+
   let contentNodesResult: GetContentNodesForDataSourceViewResult;
 
-  if (dataSourceView.dataSource.connectorId) {
+  if (dataSourceView.dataSource.connectorId && !onlyCoreAPI) {
     const contentNodesRes = await getContentNodesForManagedDataSourceView(
       dataSourceView,
       params
