@@ -4,6 +4,7 @@ import type {
   DataSourceViewType,
   PlanType,
   SubscriptionType,
+  VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { throwIfInvalidAgentConfiguration } from "@dust-tt/types";
@@ -28,6 +29,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   actions: AssistantBuilderInitialState["actions"];
   agentConfiguration: AgentConfigurationType;
   baseUrl: string;
+  vaults: VaultType[];
   dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
   flow: BuilderFlow;
@@ -52,10 +54,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const [{ dataSourceViews, dustApps }, configuration] = await Promise.all([
-    getAccessibleSourcesAndApps(auth),
-    getAgentConfiguration(auth, context.params?.aId as string),
-  ]);
+  const [{ vaults, dataSourceViews, dustApps }, configuration] =
+    await Promise.all([
+      getAccessibleSourcesAndApps(auth),
+      getAgentConfiguration(auth, context.params?.aId as string),
+    ]);
 
   if (configuration?.scope === "workspace" && !auth.isBuilder()) {
     return {
@@ -86,7 +89,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       actions,
       agentConfiguration: configuration,
       baseUrl: config.getClientFacingUrl(),
-      dataSourceViews,
+      dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
       dustApps,
       flow,
       gaTrackingId: config.getGaTrackingId(),
@@ -94,6 +97,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       plan,
       subscription,
+      vaults: vaults.map((v) => v.toJSON()),
     },
   };
 });
@@ -102,6 +106,7 @@ export default function EditAssistant({
   actions,
   agentConfiguration,
   baseUrl,
+  vaults,
   dataSourceViews,
   dustApps,
   flow,
@@ -123,6 +128,7 @@ export default function EditAssistant({
 
   return (
     <AssistantBuilderProvider
+      vaults={vaults}
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}
     >

@@ -488,8 +488,9 @@ function DataSourceViewSelectedNodes({
   const dataSourceViewSelectedNodes = useDataSourceViewContentNodes({
     owner,
     dataSourceView,
-    internalIds: dataSourceConfiguration.filter.parents?.in ?? [],
+    internalIds: dataSourceConfiguration.filter.parents?.in ?? undefined,
     viewType,
+    includeChildren: false,
   });
 
   return (

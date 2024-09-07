@@ -65,7 +65,11 @@ export function useMultipleDataSourceViewsContentNodes({
   const urlsAndOptions = dataSourceViewsAndInternalIds.map(
     ({ dataSourceView, internalIds }) => {
       const url = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`;
-      const body = JSON.stringify({ internalIds, viewType });
+      const body = JSON.stringify({
+        internalIds,
+        viewType,
+        includeChildren: false,
+      });
       const options = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -107,8 +111,8 @@ export function useDataSourceViewContentNodes({
 }: {
   owner: LightWorkspaceType;
   dataSourceView?: DataSourceViewType;
-  internalIds: string[];
-  includeChildren?: boolean;
+  internalIds?: string[];
+  includeChildren: boolean;
   pagination?: PaginationState;
   viewType?: ContentNodesViewType;
 }): {
@@ -151,7 +155,7 @@ export function useDataSourceViewContentNodes({
     isNodesLoading: !error && !data,
     mutateDataSourceViewContentNodes: mutate,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
-    totalCount: data ? data.totalCount : 0,
+    totalCount: data ? data.total : 0,
   };
 }
 

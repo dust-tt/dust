@@ -32,7 +32,7 @@ import { WebsitesHeaderMenu } from "@app/components/vaults/WebsitesHeaderMenu";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { classNames } from "@app/lib/utils";
+import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
@@ -61,6 +61,25 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
           <span className="font-bold">{info.row.original.title}</span>
         </DataTable.CellContent>
       ),
+    },
+    {
+      header: "Last updated",
+      accessorKey: "lastUpdatedAt",
+      id: "lastUpdatedAt",
+      sortingFn: "text", // built-in sorting function case-insensitive
+      cell: (info: CellContext<RowData, unknown>) => {
+        const { lastUpdatedAt } = info.row.original;
+
+        if (!lastUpdatedAt) {
+          return <DataTable.CellContent>-</DataTable.CellContent>;
+        }
+
+        return (
+          <DataTable.CellContent>
+            {formatTimestampToFriendlyDate(lastUpdatedAt, "short")}
+          </DataTable.CellContent>
+        );
+      },
     },
   ];
 
@@ -121,7 +140,7 @@ export const VaultDataSourceViewContentList = ({
   } = useDataSourceViewContentNodes({
     dataSourceView,
     owner,
-    internalIds: parentId ? [parentId] : [],
+    internalIds: parentId ? [parentId] : undefined,
     includeChildren: true,
     pagination,
     viewType,
