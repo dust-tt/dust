@@ -128,8 +128,21 @@ export const getMenuItems = (
 ): ContentActionsMenu => {
   const actions: ContentActionsMenu = [];
 
+  // View in source
+  if (canReadInVault) {
+    actions.push(makeViewSourceUrlContentAction(contentNode, dataSourceView));
+  }
+
+  // View raw content in modal
+  if (canReadInVault && contentNode.type === "file") {
+    actions.push(makeViewRawContentAction(contentNode, contentActionsRef));
+  }
+
   // Edit & Delete
-  if (canWriteInVault && isFolder(dataSourceView.dataSource)) {
+  if (
+    (canWriteInVault && isFolder(dataSourceView.dataSource)) ||
+    isWebsite(dataSourceView.dataSource)
+  ) {
     actions.push({
       label: "Edit",
       icon: PencilSquareIcon,
@@ -155,19 +168,6 @@ export const getMenuItems = (
       },
       variant: "warning",
     });
-  }
-
-  // View in source
-  if (canReadInVault) {
-    actions.push(makeViewSourceUrlContentAction(contentNode, dataSourceView));
-  }
-
-  // View raw content in modal
-  if (
-    canReadInVault &&
-    (contentNode.type === "file" || isWebsite(dataSourceView.dataSource))
-  ) {
-    actions.push(makeViewRawContentAction(contentNode, contentActionsRef));
   }
 
   return actions;
