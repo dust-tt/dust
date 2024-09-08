@@ -26,7 +26,7 @@ export class AppResource extends ResourceWithVault<App> {
     blob: Attributes<App>,
     vault: VaultResource
   ) {
-    super(AppResource.model, blob, vault);
+    super(App, blob, vault);
   }
 
   static async makeNew(
@@ -38,7 +38,7 @@ export class AppResource extends ResourceWithVault<App> {
       vaultId: vault.id,
     });
 
-    return new this(AppResource.model, app.get(), vault);
+    return new this(App, app.get(), vault);
   }
 
   // Fetching.

@@ -1,4 +1,4 @@
-import type { DatasetType, Result } from "@dust-tt/types";
+import type { DatasetType, ModelId, Result } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -21,15 +21,8 @@ export interface DatasetResource extends ReadonlyAttributesType<Dataset> {}
 export class DatasetResource extends BaseResource<Dataset> {
   static model: ModelStatic<Dataset> = Dataset;
 
-  private app: AppResource;
-
-  constructor(
-    model: ModelStatic<Dataset>,
-    blob: Attributes<Dataset>,
-    app: AppResource
-  ) {
-    super(DatasetResource.model, blob);
-    this.app = app;
+  constructor(model: ModelStatic<Dataset>, blob: Attributes<Dataset>) {
+    super(Dataset, blob);
   }
 
   static async makeNew(
@@ -41,7 +34,7 @@ export class DatasetResource extends BaseResource<Dataset> {
       appId: app.id,
     });
 
-    return new this(DatasetResource.model, dataset.get(), app);
+    return new this(Dataset, dataset.get());
   }
 
   // Deletion.
