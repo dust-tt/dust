@@ -25,20 +25,13 @@ import {
 import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
 import { setupConnection } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
-const REDIRECT_TO_EDIT_PERMISSIONS = [
-  "confluence",
-  "google_drive",
-  "microsoft",
-  "slack",
-  "intercom",
-];
-
 type AddConnectionMenuProps = {
   owner: WorkspaceType;
   plan: PlanType;
   existingDataSources: DataSourceWithConnectorDetailsType[];
   dustClientFacingUrl: string;
   setIsProviderLoading: (provider: ConnectorProvider, value: boolean) => void;
+  onCreated(dataSource: DataSourceType): void;
 };
 
 export const AddConnectionMenu = ({
@@ -47,6 +40,7 @@ export const AddConnectionMenu = ({
   existingDataSources,
   dustClientFacingUrl,
   setIsProviderLoading,
+  onCreated,
 }: AddConnectionMenuProps) => {
   const sendNotification = useContext(SendNotificationsContext);
   const [showUpgradePopup, setShowUpgradePopup] = useState<boolean>(false);
@@ -121,13 +115,7 @@ export const AddConnectionMenu = ({
           dataSource: DataSourceType;
           connector: ConnectorType;
         } = await res.json();
-        //TODO(GROUPS-UI): redirect to new modal to edit permissions
-        void router.push(
-          `/w/${owner.sId}/builder/data-sources/${createdManagedDataSource.dataSource.name}` +
-            (REDIRECT_TO_EDIT_PERMISSIONS.includes(provider)
-              ? `?edit_permissions=true`
-              : "")
-        );
+        onCreated(createdManagedDataSource.dataSource);
       } else {
         const responseText = await res.text();
         sendNotification({

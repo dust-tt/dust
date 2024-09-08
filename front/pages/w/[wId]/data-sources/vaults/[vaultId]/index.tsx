@@ -10,9 +10,9 @@ import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
 import { VaultMembers } from "@app/components/vaults/VaultMembers";
 import config from "@app/lib/api/config";
-import { getVaultIcon } from "@app/lib/client/vaults";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { VaultResource } from "@app/lib/resources/vault_resource";
+import { getVaultIcon, getVaultName } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
@@ -61,8 +61,8 @@ export default function Vault({
   return (
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
-        title={vault.kind === "global" ? "Company Data" : vault.name}
-        icon={getVaultIcon(vault.kind)}
+        title={getVaultName(vault)}
+        icon={getVaultIcon(vault)}
         description="Manage connections to your products and the real-time data feeds Dust has access to."
       />
 

@@ -9,25 +9,36 @@ import {
   Searchbar,
   Spinner,
   TrashIcon,
+  usePaginationFromUrl,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
   ConnectorProvider,
+  ConnectorType,
+  DataSourceType,
   DataSourceViewCategory,
+  DataSourceViewType,
   DataSourceViewWithConnectorType,
   PlanType,
+  UpdateConnectorRequestBody,
+  UserType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isWebsiteOrFolder } from "@dust-tt/types";
+import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
+import { isWebsiteOrFolderCategory } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 import { useRef } from "react";
 import { useState } from "react";
-import * as React from "react";
 
+import {
+  ConnectorPermissionsModal,
+  getRenderingConfigForConnectorProvider,
+} from "@app/components/ConnectorPermissionsModal";
+import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEditionModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -41,6 +52,15 @@ import {
 import { useDataSources } from "@app/lib/swr/data_sources";
 import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
+import { setupConnection } from "@app/pages/w/[wId]/builder/data-sources/managed";
+
+const REDIRECT_TO_EDIT_PERMISSIONS = [
+  "confluence",
+  "google_drive",
+  "microsoft",
+  "slack",
+  "intercom",
+];
 
 type RowData = {
   dataSourceView: DataSourceViewWithConnectorType;
@@ -56,12 +76,13 @@ type RowData = {
 type VaultResourcesListProps = {
   dustClientFacingUrl: string;
   owner: WorkspaceType;
+  user: UserType;
   plan: PlanType;
   isAdmin: boolean;
   canWriteInVault: boolean;
   vault: VaultType;
   systemVault: VaultType;
-  category: DataSourceViewCategory;
+  category: Exclude<DataSourceViewCategory, "apps">;
   onSelect: (sId: string) => void;
 };
 
@@ -91,9 +112,18 @@ const getTableColumns = ({
         ? row.dataSourceView.dataSource.editedByUser?.imageUrl
         : row.dataSourceView.editedByUser?.imageUrl) ?? "",
     id: "managedBy",
-    cell: (info: CellContext<RowData, string>) => (
-      <DataTable.CellContent avatarUrl={info.getValue()} roundedAvatar={true} />
-    ),
+    cell: (info: CellContext<RowData, string>) => {
+      const dsv = info.row.original.dataSourceView;
+      const editedByUser =
+        dsv.kind === "default" ? dsv.dataSource.editedByUser : dsv.editedByUser;
+      return (
+        <DataTable.CellContent
+          avatarUrl={info.getValue()}
+          avatarTooltipLabel={editedByUser?.fullName ?? undefined}
+          roundedAvatar={true}
+        />
+      );
+    },
   };
 
   const lastSyncedColumn = {
@@ -172,6 +202,7 @@ const getTableColumns = ({
 
 export const VaultResourcesList = ({
   owner,
+  user,
   plan,
   isAdmin,
   canWriteInVault,
@@ -182,12 +213,15 @@ export const VaultResourcesList = ({
   onSelect,
 }: VaultResourcesListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
-  const [showFolderOrWebsiteModal, setShowFolderOrWebsiteModal] =
+  const [showEditionModal, setShowEditionModal] = useState(false);
+  const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
     useState<DataSourceViewWithConnectorType | null>(null);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
-
+  const [showFolderOrWebsiteModal, setShowFolderOrWebsiteModal] =
+    useState(false);
+  const [isNewConnectorLoading, setIsNewConnectorLoading] = useState(false);
   const { dataSources, isDataSourcesLoading } = useDataSources(owner);
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
@@ -196,67 +230,164 @@ export const VaultResourcesList = ({
 
   const isSystemVault = systemVault.sId === vault.sId;
   const isManaged = category === "managed";
-  const isStatic = isWebsiteOrFolder(category);
+  const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Partial<Record<ConnectorProvider, boolean>>
   >({});
 
-  // DataSources Views of the current vault.
-  const { vaultDataSourceViews, isVaultDataSourceViewsLoading } =
-    useVaultDataSourceViews({
-      workspaceId: owner.sId,
-      vaultId: vault.sId,
-      category: category,
-      includeEditedBy: true,
-      includeConnectorDetails: true,
-    });
+  const { pagination, setPagination } = usePaginationFromUrl("table");
 
-  const rows: RowData[] =
-    vaultDataSourceViews?.map((r) => ({
-      dataSourceView: r,
-      label: getDataSourceNameFromView(r),
-      icon: getConnectorProviderLogoWithFallback(
-        r.dataSource.connectorProvider,
-        FolderIcon
-      ),
-      workspaceId: owner.sId,
-      isAdmin,
-      isLoading: isLoadingByProvider[r.dataSource.connectorProvider],
-      ...(isStatic && {
-        moreMenuItems: [
-          {
+  const handleUpdatePermissions = async (
+    connector: ConnectorType,
+    dataSource: DataSourceType
+  ) => {
+    const provider = connector.type;
+
+    const connectionIdRes = await setupConnection({
+      dustClientFacingUrl,
+      owner,
+      provider,
+    });
+    if (connectionIdRes.isErr()) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update the permissions of the Data Source",
+        description: connectionIdRes.error.message,
+      });
+      return;
+    }
+
+    const updateRes = await updateConnectorConnectionId(
+      connectionIdRes.value,
+      provider,
+      dataSource
+    );
+    if (updateRes.error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update the permissions of the Data Source",
+        description: updateRes.error,
+      });
+      return;
+    }
+  };
+
+  const updateConnectorConnectionId = async (
+    newConnectionId: string,
+    provider: string,
+    dataSource: DataSourceType
+  ) => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/update`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          connectionId: newConnectionId,
+        } satisfies UpdateConnectorRequestBody),
+      }
+    );
+
+    if (res.ok) {
+      return { success: true, error: null };
+    }
+
+    const jsonErr = await res.json();
+    const error = jsonErr.error;
+
+    if (error.type === "connector_oauth_target_mismatch") {
+      return {
+        success: false,
+        error: CONNECTOR_TYPE_TO_MISMATCH_ERROR[provider as ConnectorProvider],
+      };
+    }
+    return {
+      success: false,
+      error: `Failed to update the permissions of the Data Source: (contact support@dust.tt for assistance)`,
+    };
+  };
+
+  // DataSources Views of the current vault.
+  const {
+    vaultDataSourceViews,
+    isVaultDataSourceViewsLoading,
+    mutateVaultDataSourceViews,
+  } = useVaultDataSourceViews({
+    workspaceId: owner.sId,
+    vaultId: vault.sId,
+    category: category,
+    includeEditedBy: true,
+    includeConnectorDetails: true,
+  });
+
+  const rows: RowData[] = useMemo(
+    () =>
+      vaultDataSourceViews?.map((dataSourceView) => {
+        const moreMenuItems = [];
+        if (isWebsiteOrFolder && canWriteInVault) {
+          moreMenuItems.push({
             label: "Edit",
             icon: PencilSquareIcon,
             onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
               e.stopPropagation();
-              setSelectedDataSourceView(r);
+              setSelectedDataSourceView(dataSourceView);
               setShowFolderOrWebsiteModal(true);
             },
-          },
-          {
+          });
+          moreMenuItems.push({
             label: "Delete",
             icon: TrashIcon,
             variant: "warning",
             onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
               e.stopPropagation();
-              setSelectedDataSourceView(r);
+              setSelectedDataSourceView(dataSourceView);
               setShowDeleteConfirmDialog(true);
             },
-          },
-        ],
-      }),
-      buttonOnClick: (e) => {
-        e.stopPropagation();
-        // TODO(GROUPS_UI): will be removed by https://github.com/dust-tt/tasks/issues/1237
-        void router.push(
-          `/w/${owner.sId}/builder/data-sources/${r.dataSource.name}`
-        );
-      },
-      onClick: () => onSelect(r.sId),
-    })) || [];
+          });
+        }
+        const provider = dataSourceView.dataSource.connectorProvider;
 
-  if (isDataSourcesLoading || isVaultDataSourceViewsLoading) {
+        return {
+          dataSourceView: dataSourceView,
+          label: getDataSourceNameFromView(dataSourceView),
+          icon: getConnectorProviderLogoWithFallback(provider, FolderIcon),
+          workspaceId: owner.sId,
+          isAdmin,
+          isLoading: isLoadingByProvider[provider],
+          moreMenuItems,
+          buttonOnClick: (e) => {
+            e.stopPropagation();
+            setSelectedDataSourceView(dataSourceView);
+            const { addDataWithConnection } =
+              getRenderingConfigForConnectorProvider(provider);
+            if (addDataWithConnection) {
+              setShowEditionModal(addDataWithConnection);
+            } else {
+              setShowConnectorPermissionsModal(true);
+            }
+          },
+          onClick: () => onSelect(dataSourceView.sId),
+        };
+      }) || [],
+    [
+      isLoadingByProvider,
+      onSelect,
+      owner,
+      vaultDataSourceViews,
+      isAdmin,
+      isWebsiteOrFolder,
+      canWriteInVault,
+    ]
+  );
+
+  if (
+    isDataSourcesLoading ||
+    isVaultDataSourceViewsLoading ||
+    isNewConnectorLoading
+  ) {
     return (
       <div className="mt-8 flex justify-center">
         <Spinner size="lg" />
@@ -323,12 +454,35 @@ export const VaultResourcesList = ({
               existingDataSources={vaultDataSourceViews.map(
                 (v) => v.dataSource
               )}
-              setIsProviderLoading={(provider, isLoading) =>
+              setIsProviderLoading={(provider, isLoading) => {
+                setIsNewConnectorLoading(true);
                 setIsLoadingByProvider((prev) => ({
                   ...prev,
                   [provider]: isLoading,
-                }))
-              }
+                }));
+              }}
+              onCreated={async (dataSource) => {
+                const updateDataSourceViews =
+                  await mutateVaultDataSourceViews();
+                if (
+                  dataSource.connectorProvider &&
+                  REDIRECT_TO_EDIT_PERMISSIONS.includes(
+                    dataSource.connectorProvider
+                  )
+                ) {
+                  if (updateDataSourceViews) {
+                    const view = updateDataSourceViews.dataSourceViews.find(
+                      (v: DataSourceViewType) =>
+                        v.dataSource.sId === dataSource.sId
+                    );
+                    if (view) {
+                      setSelectedDataSourceView(view);
+                      setShowConnectorPermissionsModal(true);
+                    }
+                  }
+                }
+                setIsNewConnectorLoading(false);
+              }}
             />
           </div>
         )}
@@ -340,7 +494,7 @@ export const VaultResourcesList = ({
             isAdmin={isAdmin}
           />
         )}
-        {isStatic && (
+        {isWebsiteOrFolder && (
           <>
             <EditVaultStaticDatasourcesViews
               isOpen={showFolderOrWebsiteModal}
@@ -374,8 +528,46 @@ export const VaultResourcesList = ({
           filter={dataSourceSearch}
           filterColumn="name"
           initialColumnOrder={[{ desc: false, id: "name" }]}
+          pagination={pagination}
+          setPagination={setPagination}
         />
       )}
+      {selectedDataSourceView &&
+        selectedDataSourceView.dataSource.connector && (
+          <>
+            <ConnectorPermissionsModal
+              owner={owner}
+              connector={selectedDataSourceView.dataSource.connector}
+              dataSource={selectedDataSourceView.dataSource}
+              isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
+              onClose={() => {
+                setShowConnectorPermissionsModal(false);
+              }}
+              setShowEditionModal={setShowEditionModal}
+              handleUpdatePermissions={handleUpdatePermissions}
+              plan={plan}
+              readOnly={false}
+              isAdmin={isAdmin}
+            />
+            <DataSourceEditionModal
+              isOpen={showEditionModal}
+              onClose={() => setShowEditionModal(false)}
+              dataSource={selectedDataSourceView.dataSource}
+              owner={owner}
+              user={user}
+              onEditPermissionsClick={() => {
+                if (!selectedDataSourceView?.dataSource.connector) {
+                  return;
+                }
+                void handleUpdatePermissions(
+                  selectedDataSourceView.dataSource.connector,
+                  selectedDataSourceView.dataSource
+                );
+              }}
+              dustClientFacingUrl={dustClientFacingUrl}
+            />
+          </>
+        )}
     </>
   );
 };

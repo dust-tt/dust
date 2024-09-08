@@ -12,7 +12,7 @@ import {
   XCircleIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { Result, TimeframeUnit } from "@dust-tt/types";
+import type { Result, TimeframeUnit, VaultType } from "@dust-tt/types";
 import type { ProcessSchemaPropertyType, WorkspaceType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import React, { useContext, useEffect, useState } from "react";
@@ -254,34 +254,41 @@ function PropertiesFields({
   );
 }
 
-export function ActionProcess({
-  owner,
-  instructions,
-  actionConfiguration,
-  updateAction,
-  setEdited,
-  description,
-  onDescriptionChange,
-}: {
+type ActionProcessProps = {
   owner: WorkspaceType;
   instructions: string | null;
   actionConfiguration: AssistantBuilderProcessConfiguration | null;
+  allowedVaults: VaultType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderProcessConfiguration
     ) => AssistantBuilderProcessConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-} & (
-  | {
-      description: string;
-      onDescriptionChange: (description: string) => void;
-    }
-  | {
-      description?: undefined;
-      onDescriptionChange?: undefined;
-    }
-)) {
+  description: string;
+  onDescriptionChange: (description: string) => void;
+};
+
+export function ActionProcess({
+  owner,
+  instructions,
+  actionConfiguration,
+  allowedVaults,
+  updateAction,
+  setEdited,
+  description,
+  onDescriptionChange,
+}: ActionProcessProps &
+  (
+    | {
+        description: string;
+        onDescriptionChange: (description: string) => void;
+      }
+    | {
+        description?: undefined;
+        onDescriptionChange?: undefined;
+      }
+  )) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
@@ -375,6 +382,7 @@ export function ActionProcess({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
+        allowedVaults={allowedVaults}
         viewType="documents"
       />
 

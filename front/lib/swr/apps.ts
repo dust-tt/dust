@@ -33,12 +33,15 @@ export function useApp({
   };
 }
 
-export function useApps(owner: LightWorkspaceType) {
+export function useApps(owner: LightWorkspaceType, disabled?: boolean) {
   const appsFetcher: Fetcher<GetAppsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/apps`,
-    appsFetcher
+    appsFetcher,
+    {
+      disabled,
+    }
   );
 
   return {
@@ -141,8 +144,11 @@ export function useProviders({
   const providersFetcher: Fetcher<GetProvidersResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    disabled ? null : `/api/w/${owner.sId}/providers`,
-    providersFetcher
+    `/api/w/${owner.sId}/providers`,
+    providersFetcher,
+    {
+      disabled,
+    }
   );
 
   return {

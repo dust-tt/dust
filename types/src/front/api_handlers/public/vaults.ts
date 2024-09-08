@@ -69,16 +69,8 @@ export const DATA_SOURCE_VIEW_CATEGORIES = [
 export type DataSourceViewCategory =
   (typeof DATA_SOURCE_VIEW_CATEGORIES)[number];
 
-export function isWebsiteOrFolder(
+export function isWebsiteOrFolderCategory(
   category: unknown
 ): category is Extract<DataSourceViewCategory, "website" | "folder"> {
   return category === "website" || category === "folder";
-}
-
-export function isDataSourceViewCategory(
-  category: string
-): category is DataSourceViewCategory {
-  return DATA_SOURCE_VIEW_CATEGORIES.includes(
-    category as DataSourceViewCategory
-  );
 }

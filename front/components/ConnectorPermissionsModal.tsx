@@ -1,13 +1,20 @@
-import { Modal, Page } from "@dust-tt/sparkle";
+import { Button, LockIcon, Modal, Page } from "@dust-tt/sparkle";
 import type {
+  ConnectorPermission,
   ConnectorProvider,
+  ConnectorType,
   DataSourceType,
+  PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { ConnectorPermission, ConnectorType } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import { useContext, useState } from "react";
+import * as React from "react";
 import { useSWRConfig } from "swr";
 
+import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
+import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
+import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 
 import { PermissionTree } from "./ConnectorPermissionsTree";
@@ -21,18 +28,65 @@ const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "intercom",
 ]);
 
+interface ConnectorUiConfig {
+  displayEditionModal: boolean;
+  addDataWithConnection: boolean;
+}
+
+export function getRenderingConfigForConnectorProvider(
+  connectorProvider: ConnectorProvider
+): ConnectorUiConfig {
+  switch (connectorProvider) {
+    case "confluence":
+    case "google_drive":
+    case "microsoft":
+      return {
+        addDataWithConnection: false,
+        displayEditionModal: true,
+      };
+    case "webcrawler":
+    case "slack":
+    case "intercom":
+      return {
+        addDataWithConnection: false,
+        displayEditionModal: false,
+      };
+    case "notion":
+    case "github":
+      return {
+        addDataWithConnection: true,
+        displayEditionModal: true,
+      };
+    default:
+      assertNever(connectorProvider);
+  }
+}
+
 export function ConnectorPermissionsModal({
   owner,
   connector,
   dataSource,
   isOpen,
   onClose,
+  setShowEditionModal,
+  handleUpdatePermissions,
+  plan,
+  readOnly,
+  isAdmin,
 }: {
   owner: WorkspaceType;
   connector: ConnectorType;
   dataSource: DataSourceType;
   isOpen: boolean;
   onClose: () => void;
+  setShowEditionModal: (show: boolean) => void;
+  handleUpdatePermissions: (
+    connector: ConnectorType,
+    dataSource: DataSourceType
+  ) => Promise<void>;
+  plan: PlanType;
+  readOnly: boolean;
+  isAdmin: boolean;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -101,9 +155,13 @@ export function ConnectorPermissionsModal({
     setSaving(false);
   }
 
+  const { displayEditionModal } = getRenderingConfigForConnectorProvider(
+    connector.type
+  );
+
   return (
     <Modal
-      title="Add / Remove data"
+      title="Selected data sources"
       isOpen={isOpen}
       onClose={closeModal}
       onSave={save}
@@ -111,15 +169,39 @@ export function ConnectorPermissionsModal({
       savingLabel="Saving..."
       isSaving={saving}
       hasChanged={!!Object.keys(updatedPermissionByInternalId).length}
-      variant="full-screen"
+      variant="side-md"
     >
-      <div className="mx-auto max-w-4xl text-left">
-        <div className="flex flex-col pt-12">
+      <div className="mx-auto max-w-4xl">
+        <div className="flex pr-4 pt-4">
+          <Button
+            className="ml-auto justify-self-end"
+            label="Edit permissions"
+            variant="tertiary"
+            icon={LockIcon}
+            onClick={() => {
+              if (displayEditionModal) {
+                setShowEditionModal(true);
+                onClose();
+              } else {
+                void handleUpdatePermissions(connector, dataSource);
+              }
+            }}
+          />
+        </div>
+        {connector.type === "slack" && (
+          <SlackBotEnableView
+            {...{ owner, readOnly, isAdmin, dataSource, plan }}
+          />
+        )}
+        {connector.type === "github" && (
+          <GithubCodeEnableView {...{ owner, readOnly, isAdmin, dataSource }} />
+        )}
+        {connector.type === "intercom" && (
+          <IntercomConfigView {...{ owner, readOnly, isAdmin, dataSource }} />
+        )}
+        <div className="flex flex-col pt-4">
           <Page.Vertical align="stretch" gap="xl">
-            <Page.Header
-              title="Make available to the workspace"
-              description={`Selected resources will be accessible to all members of the workspace.`}
-            />
+            <Page.Header title="Make available to the workspace:" />
             <div className="mx-2 mb-16 w-full">
               <PermissionTree
                 isSearchEnabled={

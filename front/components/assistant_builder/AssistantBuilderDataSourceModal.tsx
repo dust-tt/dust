@@ -1,7 +1,8 @@
-import { Modal } from "@dust-tt/sparkle";
+import { Button, ListCheckIcon, Modal } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
+  VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { SetStateAction } from "react";
@@ -14,6 +15,7 @@ import { supportsStructuredData } from "@app/lib/data_sources";
 
 interface AssistantBuilderDataSourceModalProps {
   initialDataSourceConfigurations: DataSourceViewSelectionConfigurations;
+  allowedVaults: VaultType[];
   isOpen: boolean;
   onSave: (dsConfigs: DataSourceViewSelectionConfigurations) => void;
   owner: WorkspaceType;
@@ -23,6 +25,7 @@ interface AssistantBuilderDataSourceModalProps {
 
 export default function AssistantBuilderDataSourceModal({
   initialDataSourceConfigurations,
+  allowedVaults,
   isOpen,
   onSave,
   owner,
@@ -77,9 +80,28 @@ export default function AssistantBuilderDataSourceModal({
       variant="side-md"
       title="Manage data sources selection"
     >
-      <div className="w-full pt-12">
+      <div className="flex w-full justify-end pl-12 pr-2 pt-4">
+        <Button
+          variant="tertiary"
+          label="Select all visible"
+          icon={ListCheckIcon}
+          onClick={() => {
+            document
+              .querySelectorAll<HTMLInputElement>(
+                '#dataSourceViewsSelector div.is-collapsed label > input[type="checkbox"]:first-child'
+              )
+              .forEach((el) => {
+                if (!el.checked) {
+                  el.click();
+                }
+              });
+          }}
+        />
+      </div>
+      <div className="w-full pl-12 pt-3" id="dataSourceViewsSelector">
         <DataSourceViewsSelector
           dataSourceViews={supportedDataSourceViewsForViewType}
+          allowedVaults={allowedVaults}
           owner={owner}
           selectionConfigurations={selectionConfigurations}
           setSelectionConfigurations={setSelectionConfigurationsCallback}

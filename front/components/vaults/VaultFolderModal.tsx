@@ -18,6 +18,7 @@ import { useContext, useEffect, useState } from "react";
 
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 export default function VaultFolderModal({
@@ -37,6 +38,12 @@ export default function VaultFolderModal({
 }) {
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
+  const { mutateVaultDataSourceViews: mutate } = useVaultDataSourceViews({
+    workspaceId: owner.sId,
+    vaultId: vault.sId,
+    category: "folder",
+    disabled: true, // We don't need to fetch the data source views here, we want the mutate function to refresh the data elsewhere.
+  });
 
   const defaultName = folder?.name ?? null;
   const defaultDescription = folder?.description ?? null;
@@ -76,6 +83,7 @@ export default function VaultFolderModal({
       }
     );
     if (res.ok) {
+      await mutate();
       handleOnClose();
       const response: PostVaultDataSourceResponseBody = await res.json();
       const { dataSourceView } = response;
@@ -175,6 +183,7 @@ export default function VaultFolderModal({
       }
     );
     if (res.ok) {
+      await mutate();
       handleOnClose();
       await router.push(
         `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/folder`

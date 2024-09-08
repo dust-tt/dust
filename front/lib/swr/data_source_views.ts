@@ -34,8 +34,9 @@ export function useDataSourceViews(
   const dataSourceViewsFetcher: Fetcher<GetDataSourceViewsResponseBody> =
     fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    disabled ? null : `/api/w/${owner.sId}/data_source_views`,
-    dataSourceViewsFetcher
+    `/api/w/${owner.sId}/data_source_views`,
+    dataSourceViewsFetcher,
+    { disabled }
   );
 
   return {
@@ -62,7 +63,11 @@ export function useMultipleDataSourceViewsContentNodes({
   const urlsAndOptions = dataSourceViewsAndInternalIds.map(
     ({ dataSourceView, internalIds }) => {
       const url = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`;
-      const body = JSON.stringify({ internalIds, viewType });
+      const body = JSON.stringify({
+        internalIds,
+        viewType,
+        includeChildren: false,
+      });
       const options = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,14 +109,15 @@ export function useDataSourceViewContentNodes({
 }: {
   owner: LightWorkspaceType;
   dataSourceView?: DataSourceViewType;
-  internalIds: string[];
-  includeChildren?: boolean;
+  internalIds?: string[];
+  includeChildren: boolean;
   viewType?: ContentNodesViewType;
 }): {
   isNodesError: boolean;
   isNodesLoading: boolean;
   mutateDataSourceViewContentNodes: KeyedMutator<GetDataSourceViewContentNodes>;
   nodes: GetDataSourceViewContentNodes["nodes"];
+  totalNodes: number;
 } {
   const url = dataSourceView
     ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
@@ -143,6 +149,7 @@ export function useDataSourceViewContentNodes({
     isNodesLoading: !error && !data,
     mutateDataSourceViewContentNodes: mutate,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
+    totalNodes: data ? data.total : 0,
   };
 }
 

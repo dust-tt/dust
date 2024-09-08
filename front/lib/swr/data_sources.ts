@@ -15,8 +15,9 @@ export function useDataSources(
   const { disabled } = options;
   const dataSourcesFetcher: Fetcher<GetDataSourcesResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    disabled ? null : `/api/w/${owner.sId}/data_sources`,
-    dataSourcesFetcher
+    `/api/w/${owner.sId}/data_sources`,
+    dataSourcesFetcher,
+    { disabled }
   );
 
   return {

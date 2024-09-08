@@ -3,6 +3,7 @@ import {
   Button,
   CardButton,
   Checkbox,
+  Chip,
   ContentMessage,
   DropdownMenu,
   Icon,
@@ -15,11 +16,17 @@ import {
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { VaultType, WorkspaceType } from "@dust-tt/types";
 import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import assert from "assert";
 import type { ReactNode } from "react";
-import React, { useCallback, useEffect, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import {
   ActionDustAppRun,
@@ -43,6 +50,7 @@ import {
   ActionWebNavigation,
   hasErrorActionWebNavigation,
 } from "@app/components/assistant_builder/actions/WebNavigationAction";
+import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import type {
   AssistantBuilderActionConfiguration,
@@ -105,6 +113,8 @@ export function hasActionError(
   }
 }
 
+type VaultIdToActions = Record<string, AssistantBuilderActionConfiguration[]>;
+
 export default function ActionsScreen({
   owner,
   builderState,
@@ -122,11 +132,54 @@ export default function ActionsScreen({
   setAction: (action: AssistantBuilderSetActionType) => void;
   pendingAction: AssistantBuilderPendingAction;
 }) {
+  const { vaults } = useContext(AssistantBuilderContext);
+
   const configurableActions = builderState.actions.filter(
     (a) => !(CAPABILITIES_ACTION_CATEGORIES as string[]).includes(a.type)
   );
 
   const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
+
+  const vaultIdToActions = useMemo(() => {
+    const vaultIdToActions: VaultIdToActions = {};
+
+    configurableActions.forEach((action) => {
+      const actionType = action.type;
+
+      switch (actionType) {
+        case "TABLES_QUERY":
+          Object.values(action.configuration).forEach((config) => {
+            vaultIdToActions[config.dataSourceView.vaultId] = (
+              vaultIdToActions[config.dataSourceView.vaultId] ?? []
+            ).concat(action);
+          });
+          break;
+        case "RETRIEVAL_SEARCH":
+        case "RETRIEVAL_EXHAUSTIVE":
+        case "PROCESS":
+          Object.values(action.configuration.dataSourceConfigurations).forEach(
+            (config) => {
+              vaultIdToActions[config.dataSourceView.vaultId] = (
+                vaultIdToActions[config.dataSourceView.vaultId] ?? []
+              ).concat(action);
+            }
+          );
+          break;
+        case "DUST_APP_RUN":
+        case "WEB_NAVIGATION":
+          break;
+        default:
+          assertNever(actionType);
+      }
+    });
+
+    return vaultIdToActions;
+  }, [configurableActions]);
+
+  const nonGlobalVaultsUsedInActions = useMemo(() => {
+    const nonGlobalVaults = vaults.filter((v) => v.kind !== "global");
+    return nonGlobalVaults.filter((v) => vaultIdToActions[v.sId]?.length > 0);
+  }, [vaultIdToActions, vaults]);
 
   const updateAction = useCallback(
     function _updateAction({
@@ -183,6 +236,7 @@ export default function ActionsScreen({
         isOpen={pendingAction.action !== null}
         builderState={builderState}
         initialAction={pendingAction.action}
+        vaultsUsedInActions={vaultIdToActions}
         onSave={(newAction) => {
           setEdited(true);
           if (!pendingAction.action) {
@@ -281,6 +335,7 @@ export default function ActionsScreen({
                 />
               </div>
             )}
+
             {!isLegacyConfig && (
               <>
                 <div className="flex-grow" />
@@ -307,7 +362,19 @@ export default function ActionsScreen({
             )}
           </div>
         </div>
-
+        {nonGlobalVaultsUsedInActions.length > 0 && (
+          <div className="w-full">
+            <Chip
+              color="amber"
+              size="sm"
+              label={
+                nonGlobalVaultsUsedInActions.length > 1
+                  ? `Based on the sources you selected, this assistant can only be used by users with access to vaults : ${nonGlobalVaultsUsedInActions.map((v) => v.name).join(", ")}.`
+                  : `Based on the sources you selected, this assistant can only be used by users with access to vault : ${nonGlobalVaultsUsedInActions[0].name}.`
+              }
+            />
+          </div>
+        )}
         <div className="flex h-full min-h-40 flex-col gap-4">
           {configurableActions.length === 0 && (
             <div
@@ -346,6 +413,7 @@ export default function ActionsScreen({
             ))}
           </div>
         </div>
+
         <Capabilities
           builderState={builderState}
           setBuilderState={setBuilderState}
@@ -358,18 +426,11 @@ export default function ActionsScreen({
   );
 }
 
-function NewActionModal({
-  isOpen,
-  initialAction,
-  onSave,
-  onClose,
-  owner,
-  setEdited,
-  builderState,
-}: {
+type NewActionModalProps = {
   isOpen: boolean;
   builderState: AssistantBuilderState;
   initialAction: AssistantBuilderActionConfiguration | null;
+  vaultsUsedInActions: VaultIdToActions;
   onSave: (newAction: AssistantBuilderActionConfiguration) => void;
   onClose: () => void;
   updateAction: (args: {
@@ -380,7 +441,18 @@ function NewActionModal({
   }) => void;
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
-}) {
+};
+
+function NewActionModal({
+  isOpen,
+  initialAction,
+  vaultsUsedInActions,
+  onSave,
+  onClose,
+  owner,
+  setEdited,
+  builderState,
+}: NewActionModalProps) {
   const [newAction, setNewAction] =
     useState<AssistantBuilderActionConfiguration | null>(null);
 
@@ -461,6 +533,7 @@ function NewActionModal({
           {newAction && (
             <ActionEditor
               action={newAction}
+              vaultsUsedInActions={vaultsUsedInActions}
               updateAction={({
                 actionName,
                 actionDescription,
@@ -556,17 +629,10 @@ function ActionCard({
   );
 }
 
-function ActionConfigEditor({
-  owner,
-  action,
-  instructions,
-  updateAction,
-  setEdited,
-  description,
-  onDescriptionChange,
-}: {
+type ActionConfigEditorProps = {
   owner: WorkspaceType;
   action: AssistantBuilderActionConfiguration;
+  vaultsUsedInActions: VaultIdToActions;
   instructions: string | null;
   updateAction: (args: {
     actionName: string;
@@ -578,7 +644,35 @@ function ActionConfigEditor({
   setEdited: (edited: boolean) => void;
   description: string;
   onDescriptionChange: (v: string) => void;
-}) {
+};
+
+function ActionConfigEditor({
+  owner,
+  action,
+  vaultsUsedInActions,
+  instructions,
+  updateAction,
+  setEdited,
+  description,
+  onDescriptionChange,
+}: ActionConfigEditorProps) {
+  const { vaults } = useContext(AssistantBuilderContext);
+
+  // Only allow one vault across all actions
+  const allowedVaults = useMemo(() => {
+    const isVaultUsedInOtherActions = (vault: VaultType) => {
+      const actionsUsingVault = vaultsUsedInActions[vault.sId] ?? [];
+      return actionsUsingVault.some((a) => a !== action);
+    };
+    const usedVaultsInOtherActions = vaults.filter(isVaultUsedInOtherActions);
+    if (usedVaultsInOtherActions.length === 0) {
+      return vaults;
+    }
+    return vaults.filter((vault) =>
+      usedVaultsInOtherActions.some((v) => v.sId === vault.sId)
+    );
+  }, [action, vaults, vaultsUsedInActions]);
+
   switch (action.type) {
     case "DUST_APP_RUN":
       return (
@@ -594,6 +688,7 @@ function ActionConfigEditor({
         <ActionRetrievalSearch
           owner={owner}
           actionConfiguration={action.configuration}
+          allowedVaults={allowedVaults}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -610,6 +705,7 @@ function ActionConfigEditor({
         <ActionRetrievalExhaustive
           owner={owner}
           actionConfiguration={action.configuration}
+          allowedVaults={allowedVaults}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -627,6 +723,7 @@ function ActionConfigEditor({
           owner={owner}
           instructions={instructions}
           actionConfiguration={action.configuration}
+          allowedVaults={allowedVaults}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -645,6 +742,7 @@ function ActionConfigEditor({
         <ActionTablesQuery
           owner={owner}
           actionConfiguration={action.configuration}
+          allowedVaults={allowedVaults}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -663,19 +761,9 @@ function ActionConfigEditor({
   }
 }
 
-function ActionEditor({
-  action,
-  showInvalidActionNameError,
-  showInvalidActionDescError,
-  showInvalidActionError,
-  setShowInvalidActionNameError,
-  setShowInvalidActionDescError,
-  updateAction,
-  owner,
-  setEdited,
-  builderState,
-}: {
+type ActionEditorProps = {
   action: AssistantBuilderActionConfiguration;
+  vaultsUsedInActions: VaultIdToActions;
   showInvalidActionNameError: string | null;
   showInvalidActionDescError: string | null;
   showInvalidActionError: string | null;
@@ -691,7 +779,21 @@ function ActionEditor({
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
   builderState: AssistantBuilderState;
-}) {
+};
+
+function ActionEditor({
+  action,
+  vaultsUsedInActions,
+  showInvalidActionNameError,
+  showInvalidActionDescError,
+  showInvalidActionError,
+  setShowInvalidActionNameError,
+  setShowInvalidActionDescError,
+  updateAction,
+  owner,
+  setEdited,
+  builderState,
+}: ActionEditorProps) {
   const isDataSourceAction = [
     "TABLES_QUERY",
     "RETRIEVAL_EXHAUSTIVE",
@@ -761,6 +863,7 @@ function ActionEditor({
           <ActionConfigEditor
             owner={owner}
             action={action}
+            vaultsUsedInActions={vaultsUsedInActions}
             instructions={builderState.instructions}
             updateAction={updateAction}
             setEdited={setEdited}

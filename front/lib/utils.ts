@@ -65,8 +65,20 @@ export const timeAgoFrom = (
 };
 
 // E.g: January 25, 2024, 5:17:00 PM.
-export function formatTimestampToFriendlyDate(timestamp: number): string {
+export function formatTimestampToFriendlyDate(
+  timestamp: number,
+  version: "long" | "short" = "long"
+): string {
   const date = new Date(timestamp);
+
+  if (version === "short") {
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+
   return date.toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -268,4 +280,8 @@ export function sanitizeJSONOutput(obj: unknown): unknown {
     return sanitizedObj;
   }
   return obj;
+}
+
+export function removeDiacritics(input: string): string {
+  return input.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }

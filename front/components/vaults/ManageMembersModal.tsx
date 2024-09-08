@@ -8,11 +8,12 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, UserType } from "@dust-tt/types";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, Row } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useMembers } from "@app/lib/swr/memberships";
+import { removeDiacritics } from "@app/lib/utils";
 
 type RowData = {
   icon: string;
@@ -70,6 +71,15 @@ export function ManageMembersModal({
           </DataTable.CellContent>
         ),
         accessorFn: (row: RowData) => row.name,
+        filterFn: (row: Row<RowData>, columnId: string, filterValue: any) => {
+          if (!filterValue) {
+            return true;
+          }
+
+          return removeDiacritics(row.getValue(columnId))
+            .toLowerCase()
+            .includes(removeDiacritics(filterValue).toLowerCase());
+        },
       },
       {
         id: "action",

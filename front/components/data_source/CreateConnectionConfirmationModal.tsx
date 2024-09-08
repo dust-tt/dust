@@ -6,7 +6,7 @@ import {
   Page,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 
@@ -24,6 +24,12 @@ export function CreateConnectionConfirmationModal({
   onConfirm,
 }: CreateConnectionConfirmationModalProps) {
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsLoading(false);
+    }
+  }, [isOpen, setIsLoading]);
 
   return (
     <Modal

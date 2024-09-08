@@ -164,7 +164,7 @@ export function DataSourceViewPermissionTreeChildren({
     {
       dataSourceView,
       includeChildren: true,
-      internalIds: parentId ? [parentId] : [],
+      internalIds: parentId ? [parentId] : undefined,
       owner,
       viewType,
     }

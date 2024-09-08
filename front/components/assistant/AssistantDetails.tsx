@@ -404,11 +404,7 @@ function DataSourceViewsSection({
         dataSourceView={dataSourceViewToDisplay}
         documentId={documentToDisplay}
         isOpen={!!documentToDisplay}
-        setOpen={(open) => {
-          if (!open) {
-            setDocumentToDisplay(null);
-          }
-        }}
+        onClose={() => setDocumentToDisplay(null)}
       />
       <Tree>
         {dataSourceConfigurations.map((dsConfig) => {
@@ -492,8 +488,9 @@ function DataSourceViewSelectedNodes({
   const dataSourceViewSelectedNodes = useDataSourceViewContentNodes({
     owner,
     dataSourceView,
-    internalIds: dataSourceConfiguration.filter.parents?.in ?? [],
+    internalIds: dataSourceConfiguration.filter.parents?.in ?? undefined,
     viewType,
+    includeChildren: false,
   });
 
   return (
