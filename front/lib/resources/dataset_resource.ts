@@ -1,4 +1,4 @@
-import type { DatasetType, ModelId, Result } from "@dust-tt/types";
+import type { DatasetType, Result } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type {
   Attributes,
