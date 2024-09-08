@@ -103,6 +103,7 @@ async function main() {
   await GroupModel.sync({ alter: true });
   await GroupMembershipModel.sync({ alter: true });
 
+  await VaultModel.sync({ alter: true });
   await App.sync({ alter: true });
   await Dataset.sync({ alter: true });
   await Provider.sync({ alter: true });
@@ -110,7 +111,6 @@ async function main() {
   await KeyModel.sync({ alter: true });
   await FileModel.sync({ alter: true });
   await DustAppSecret.sync({ alter: true });
-  await VaultModel.sync({ alter: true });
   await GroupVaultModel.sync({ alter: true });
   await DataSource.sync({ alter: true });
   await DataSourceViewModel.sync({ alter: true });
