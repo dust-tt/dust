@@ -73,7 +73,7 @@ export default function DataSourcePicker({
 
   const getEditLink = (dsv: DataSourceViewType) => {
     return owner.flags.includes("data_vaults_feature")
-      ? `/w/${owner.sId}/data-sources/vaults/${dsv.vaultId}/categories//data_source_views/${dsv.dataSource}`
+      ? `/w/${owner.sId}/data-sources/vaults/${dsv.vaultId}/categories/${dsv.category}/data_source_views/${dsv.sId}`
       : `/w/${owner.sId}/builder/data-sources/${dsv.dataSource.name}`;
   };
 
