@@ -6,7 +6,7 @@ import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { ManageMembersModal } from "@app/components/vaults/ManageMembersModal";
-import { useVaultInfo } from "@app/lib/swr/vaults";
+import { useVaultInfo, useVaults } from "@app/lib/swr/vaults";
 import { classNames, removeDiacritics } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -56,6 +56,11 @@ export const VaultMembers = ({ owner, isAdmin, vault }: VaultMembersProps) => {
   const [addMemberModalOpen, setAddMemberModalOpen] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
 
+  const { mutate } = useVaults({
+    workspaceId: owner.sId,
+    disabled: true,
+  });
+
   const { vaultInfo, isVaultInfoLoading, mutateVaultInfo } = useVaultInfo({
     workspaceId: owner.sId,
     vaultId: vault.sId,
@@ -101,6 +106,7 @@ export const VaultMembers = ({ owner, isAdmin, vault }: VaultMembersProps) => {
       });
 
       await mutateVaultInfo();
+      await mutate();
     }
   };
 

@@ -19,7 +19,6 @@ import * as reporter from "io-ts-reporters";
 import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getApp } from "@app/lib/api/app";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
@@ -31,6 +30,7 @@ import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { runOnRedis } from "@app/lib/api/redis";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
 
@@ -327,7 +327,7 @@ export async function createOrUpgradeAgentConfiguration({
       }
       actionConfigs.push(res.value);
     } else if (action.type === "dust_app_run_configuration") {
-      const app = await getApp(auth, action.appId);
+      const app = await AppResource.fetchById(auth, action.appId);
       if (!app) {
         return new Err(new Error(`App ${action.appId} not found`));
       }
@@ -336,7 +336,7 @@ export async function createOrUpgradeAgentConfiguration({
         auth,
         {
           type: "dust_app_run_configuration",
-          app,
+          app: app.toJSON(),
           appWorkspaceId: action.appWorkspaceId,
           appId: action.appId,
           name: action.name ?? null,

@@ -1,7 +1,6 @@
 import type {
   AgentActionConfigurationType,
   AgentActionSpecification,
-  AgentConfigurationType,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
@@ -21,14 +20,15 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
-import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
+import {
+  actionRefsOffset,
+  getWebsearchNumResults,
+} from "@app/lib/api/assistant/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
-
-import { getRunnerforActionConfiguration } from "./runners";
 
 interface WebsearchActionBlob {
   id: ModelId; // AgentWebsearchAction
@@ -116,56 +116,6 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     });
   }
 
-  // WebSearch shares results count across web search actions of a same step and uses citations for
-  // these.
-  getCitationsCount({
-    agentConfiguration,
-    stepActions,
-  }: {
-    agentConfiguration: AgentConfigurationType;
-    stepActions: AgentActionConfigurationType[];
-  }): number {
-    return getCitationsCount({
-      agentConfiguration,
-      stepActions,
-    });
-  }
-
-  // stepTopKAndRefsOffsetForAction returns the references offset and the number of search results
-  // an action will use as part of the current step. We share number of results among all actions
-  // that use citations within a step so that we don't overflow the context when the model asks for
-  // many web searches or retrievals at the same time.
-  stepNumResultsAndRefsOffsetForAction({
-    agentConfiguration,
-    stepActionIndex,
-    stepActions,
-    refsOffset,
-  }: {
-    agentConfiguration: AgentConfigurationType;
-    stepActionIndex: number;
-    stepActions: AgentActionConfigurationType[];
-    refsOffset: number;
-  }): { numResults: number; refsOffset: number } {
-    const actionCounts: Record<string, number> = {};
-    stepActions.forEach((a) => {
-      actionCounts[a.sId] = actionCounts[a.sId] ?? 0;
-      actionCounts[a.sId]++;
-    });
-
-    for (let i = 0; i < stepActionIndex; i++) {
-      const r = stepActions[i];
-      refsOffset += getRunnerforActionConfiguration(r).getCitationsCount({
-        agentConfiguration,
-        stepActions,
-      });
-    }
-
-    return {
-      numResults: this.getCitationsCount({ agentConfiguration, stepActions }),
-      refsOffset,
-    };
-  }
-
   // This method is in charge of running the websearch and creating an AgentWebsearchAction object in
   // the database. It does not create any generic model related to the conversation. It is possible
   // for an AgentWebsearchAction to be stored (once the query params are infered) but for its execution
@@ -220,13 +170,13 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       return;
     }
 
-    const { numResults, refsOffset } =
-      this.stepNumResultsAndRefsOffsetForAction({
-        agentConfiguration,
-        stepActionIndex,
-        stepActions,
-        refsOffset: citationsRefsOffset,
-      });
+    const numResults = getWebsearchNumResults({ stepActions });
+    const refsOffset = actionRefsOffset({
+      agentConfiguration,
+      stepActionIndex,
+      stepActions,
+      refsOffset: citationsRefsOffset,
+    });
 
     // Create the AgentWebsearchAction object in the database and yield an event for the generation of
     // the params. We store the action here as the params have been generated, if an error occurs

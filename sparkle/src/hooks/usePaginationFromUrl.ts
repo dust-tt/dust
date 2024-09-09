@@ -1,14 +1,19 @@
 import { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 
-import { useHashParam } from "@sparkle/hooks/useHashParams";
+import { HistoryOptions, useHashParam } from "@sparkle/hooks/useHashParams";
 
 const defaultPageSize = 25;
 
-export const usePaginationFromUrl = (
-  urlPrefix?: string,
-  initialPageSize = defaultPageSize
-) => {
+export const usePaginationFromUrl = ({
+  urlPrefix,
+  initialPageSize = defaultPageSize,
+  defaultHistory = "push",
+}: {
+  urlPrefix?: string;
+  initialPageSize?: number;
+  defaultHistory?: HistoryOptions;
+}) => {
   const [pageIndexParam, setPageIndexParam] = useHashParam(
     urlPrefix ? `${urlPrefix}PageIndex` : "pageIndex"
   );
@@ -22,9 +27,14 @@ export const usePaginationFromUrl = (
   const res = useMemo(() => {
     const pagination: PaginationState = { pageIndex, pageSize };
 
-    const setPagination = (newValue: PaginationState) => {
+    const setPagination = (
+      newValue: PaginationState,
+      history?: HistoryOptions
+    ) => {
       if (newValue.pageIndex !== pageIndex || newValue.pageSize !== pageSize) {
-        setPageIndexParam(newValue.pageIndex.toString());
+        setPageIndexParam(newValue.pageIndex.toString(), {
+          history: history ?? defaultHistory,
+        });
         setPageSizeParam(newValue.pageSize.toString());
       }
     };

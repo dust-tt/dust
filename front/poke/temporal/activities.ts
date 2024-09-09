@@ -42,6 +42,7 @@ import {
 import { Subscription } from "@app/lib/models/plan";
 import { UserMetadata } from "@app/lib/models/user";
 import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -51,12 +52,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import {
-  App,
-  Clone,
-  Dataset,
-  Provider,
-} from "@app/lib/resources/storage/models/apps";
+import { Provider } from "@app/lib/resources/storage/models/apps";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
@@ -403,9 +399,7 @@ export async function deleteAppsActivity({
     throw new Error("Could not find the workspace.");
   }
 
-  const apps = await App.findAll({
-    where: { workspaceId: workspace.id },
-  });
+  const apps = await AppResource.listByWorkspace(auth);
 
   for (const app of apps) {
     const res = await coreAPI.deleteProject({
@@ -415,23 +409,10 @@ export async function deleteAppsActivity({
       throw new Error(`Error deleting Project from Core: ${res.error.message}`);
     }
 
-    await frontSequelize.transaction(async (t) => {
-      await RunResource.deleteAllByAppId(app.id, t);
-      await Clone.destroy({
-        where: {
-          [Op.or]: [{ fromId: app.id }, { toId: app.id }],
-        },
-        transaction: t,
-      });
-      await Dataset.destroy({
-        where: {
-          appId: app.id,
-        },
-        transaction: t,
-      });
-      logger.info(`[Workspace delete] Deleting app ${app.sId}`);
-      await app.destroy({ transaction: t });
-    });
+    const delRes = await app.delete(auth);
+    if (delRes.isErr()) {
+      throw new Error(`Error deleting App ${app.sId}: ${delRes.error.message}`);
+    }
   }
 
   await frontSequelize.transaction(async (t) => {
@@ -510,7 +491,7 @@ export async function deleteMembersActivity({
       transaction: t,
     });
 
-    const memberships = await MembershipResource.getLatestMemberships({
+    const { memberships } = await MembershipResource.getLatestMemberships({
       workspace,
       transaction: t,
     });
@@ -518,12 +499,11 @@ export async function deleteMembersActivity({
     for (const membership of memberships) {
       const user = await UserResource.fetchByModelId(membership.userId, t);
       if (user) {
-        const membershipsOfUser = await MembershipResource.getLatestMemberships(
-          {
+        const { memberships: membershipsOfUser } =
+          await MembershipResource.getLatestMemberships({
             users: [user],
             transaction: t,
-          }
-        );
+          });
 
         // If the user we're removing the membership of only has one membership, we delete the user.
         if (membershipsOfUser.length === 1) {

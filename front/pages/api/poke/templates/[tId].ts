@@ -121,7 +121,7 @@ async function handler(
         });
       }
 
-      await existingTemplate?.update({
+      await existingTemplate?.updateAttributes({
         backgroundColor: body.backgroundColor,
         description: body.description ?? null,
         emoji: body.emoji,

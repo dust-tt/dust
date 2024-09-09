@@ -2,7 +2,6 @@ import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getApp } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { getDatasets } from "@app/lib/api/datasets";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
@@ -25,8 +24,18 @@ async function handler(
   auth: Authenticator,
   session: SessionWithUser
 ): Promise<void> {
-  const app = await getApp(auth, req.query.aId as string);
+  const { aId } = req.query;
+  if (typeof aId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query paramteter `aId`",
+      },
+    });
+  }
 
+  const app = await AppResource.fetchById(auth, aId);
   if (!app) {
     return apiError(req, res, {
       status_code: 404,
@@ -37,7 +46,7 @@ async function handler(
     });
   }
 
-  const datasets = await getDatasets(auth, app);
+  const datasets = await getDatasets(auth, app.toJSON());
 
   switch (req.method) {
     case "POST":
@@ -96,7 +105,6 @@ async function handler(
 
       const description = req.body.description ? req.body.description : null;
 
-      // TODO(GROUPS_INFRA): move all this logic to AppResource.
       const targetGlobalVault =
         await VaultResource.fetchWorkspaceGlobalVault(targetAuth);
 

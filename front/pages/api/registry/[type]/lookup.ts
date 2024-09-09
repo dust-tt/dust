@@ -220,6 +220,7 @@ async function handleDataSourceView(
   const hasAccessToDataSourceView = groups.some((g) =>
     groupHasPermission(dataSourceView.acl(), "read", g.id)
   );
+  // TODO(GROUPS_INFRA) Clean up after release.
   if (!hasAccessToDataSourceView) {
     logger.info(
       {
@@ -232,24 +233,24 @@ async function handleDataSourceView(
     );
   }
 
-  // TODO(2024-08-02 flav) Uncomment.
-  // if (hasAccessToDataSourceView) {
-  const dataSource = dataSourceView.dataSource;
-  return new Ok({
-    project_id: parseInt(dataSource.dustAPIProjectId),
-    data_source_id: dataSource.dustAPIDataSourceId,
-    view_filter: {
-      tags: null,
-      parents: {
-        in: dataSourceView.parentsIn,
-        not: null,
-      },
-      timestamp: null,
-    },
-  });
-  // }
+  if (hasAccessToDataSourceView) {
+    const { dataSource } = dataSourceView;
 
-  // return new Err(new Error("No access to data source view."));
+    return new Ok({
+      project_id: parseInt(dataSource.dustAPIProjectId),
+      data_source_id: dataSource.dustAPIDataSourceId,
+      view_filter: {
+        tags: null,
+        parents: {
+          in: dataSourceView.parentsIn,
+          not: null,
+        },
+        timestamp: null,
+      },
+    });
+  }
+
+  return new Err(new Error("No access to data source view."));
 }
 
 async function handleDataSource(
@@ -290,6 +291,7 @@ async function handleDataSource(
   const hasAccessToDataSource = groups.some((g) =>
     groupHasPermission(dataSource.acl(), "read", g.id)
   );
+  // TODO(GROUPS_INFRA) Clean up after release.
   if (!hasAccessToDataSource) {
     logger.info(
       {
@@ -302,14 +304,13 @@ async function handleDataSource(
     );
   }
 
-  // TODO(2024-08-02 flav) Uncomment.
-  // if (hasAccessToDataSource) {
-  return new Ok({
-    project_id: parseInt(dataSource.dustAPIProjectId),
-    data_source_id: dataSource.dustAPIDataSourceId,
-    view_filter: null,
-  });
-  // }
+  if (hasAccessToDataSource) {
+    return new Ok({
+      project_id: parseInt(dataSource.dustAPIProjectId),
+      data_source_id: dataSource.dustAPIDataSourceId,
+      view_filter: null,
+    });
+  }
 
-  // return new Err(new Error("No access to data source."));
+  return new Err(new Error("No access to data source."));
 }

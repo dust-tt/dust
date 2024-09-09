@@ -9,11 +9,8 @@ import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
 import { useContext, useEffect, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import {
-  getConnectorProviderLogoWithFallback,
-  getDataSourceName,
-} from "@app/lib/connector_providers";
-import { isManaged } from "@app/lib/data_sources";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getDataSourceName, isManaged } from "@app/lib/data_sources";
 import { sendRequestDataSourceEmail } from "@app/lib/email";
 import logger from "@app/logger/logger";
 

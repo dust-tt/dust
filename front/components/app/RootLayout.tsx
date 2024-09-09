@@ -5,8 +5,8 @@ import type { MouseEvent } from "react";
 import type { UrlObject } from "url";
 
 import { ConfirmPopupArea } from "@app/components/Confirm";
-import { SidebarProvider } from "@app/components/sparkle/AppLayout";
 import { NotificationArea } from "@app/components/sparkle/Notification";
+import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
 
 function NextLinkWrapper({
   href,

@@ -9,6 +9,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 
+import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -117,7 +118,8 @@ export async function setInternalWorkspaceSegmentation(
  * their own workspaces).
  * @param auth Authenticator
  * @param role RoleType optional filter on role
- * @returns UserType[] members of the workspace
+ * @param paginationParams PaginationParams optional pagination parameters
+ * @returns An object containing an array of UserTypeWithWorkspaces and the total count of members.
  */
 export async function getMembers(
   auth: Authenticator,
@@ -127,28 +129,31 @@ export async function getMembers(
   }: {
     roles?: MembershipRoleType[];
     activeOnly?: boolean;
-  } = {}
-): Promise<UserTypeWithWorkspaces[]> {
+  } = {},
+  paginationParams?: PaginationParams
+): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
   const owner = auth.workspace();
   if (!owner) {
-    return [];
+    return { members: [], total: 0 };
   }
 
-  const memberships = activeOnly
+  const { memberships, total } = activeOnly
     ? await MembershipResource.getActiveMemberships({
         workspace: owner,
         roles,
+        paginationParams,
       })
     : await MembershipResource.getLatestMemberships({
         workspace: owner,
         roles,
+        paginationParams,
       });
 
   const users = await UserResource.fetchByModelIds(
     memberships.map((m) => m.userId)
   );
 
-  return users.map((u) => {
+  const usersWithWorkspaces = users.map((u) => {
     const m = memberships.find((m) => m.userId === u.id);
     let role = "none" as RoleType;
     if (m && !m.isRevoked()) {
@@ -168,6 +173,8 @@ export async function getMembers(
       workspaces: [{ ...owner, role, flags: null }],
     };
   });
+
+  return { members: usersWithWorkspaces, total };
 }
 
 export async function getMembersCount(

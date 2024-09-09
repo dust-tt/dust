@@ -1,10 +1,9 @@
 import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { App } from "@app/lib/resources/storage/models/apps";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type PostStateResponseBody = {
@@ -27,17 +26,7 @@ async function handler(
     });
   }
 
-  const owner = auth.getNonNullableWorkspace();
-
-  const app = await App.findOne({
-    where: {
-      workspaceId: owner.id,
-      visibility: {
-        [Op.or]: ["public", "private"],
-      },
-      sId: req.query.aId,
-    },
-  });
+  const app = await AppResource.fetchById(auth, req.query.aId as string);
   if (!app) {
     return apiError(req, res, {
       status_code: 404,
@@ -89,22 +78,11 @@ async function handler(
         updateParams.savedRun = req.body.run;
       }
 
-      await app.update(updateParams);
+      await app.updateState(auth, updateParams);
 
-      res.status(200).json({
-        app: {
-          id: app.id,
-          sId: app.sId,
-          name: app.name,
-          description: app.description,
-          visibility: app.visibility,
-          savedSpecification: app.savedSpecification,
-          savedConfig: app.savedConfig,
-          savedRun: app.savedRun,
-          dustAPIProjectId: app.dustAPIProjectId,
-        },
+      return res.status(200).json({
+        app: app.toJSON(),
       });
-      break;
 
     default:
       return apiError(req, res, {

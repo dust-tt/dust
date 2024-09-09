@@ -16,7 +16,6 @@ import type { Result } from "@dust-tt/types";
 import { BaseAction, DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
-import { getApp } from "@app/lib/api/app";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import config from "@app/lib/api/config";
@@ -25,6 +24,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -127,7 +127,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       );
     }
 
-    const app = await getApp(auth, actionConfiguration.appId);
+    const app = await AppResource.fetchById(auth, actionConfiguration.appId);
     if (!app) {
       return new Err(
         new Error(
@@ -178,11 +178,6 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
     });
   }
 
-  // DustAppRun does not use citations.
-  getCitationsCount(): number {
-    return 0;
-  }
-
   // This method is in charge of running a dust app and creating an AgentDustAppRunAction object in
   // the database. It does not create any generic model related to the conversation. It is possible
   // for an AgentDustAppRunAction to be stored (once the params are infered) but for the dust app run
@@ -218,7 +213,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
 
     const { actionConfiguration } = this;
 
-    const app = await getApp(auth, actionConfiguration.appId);
+    const app = await AppResource.fetchById(auth, actionConfiguration.appId);
     if (!app) {
       yield {
         type: "dust_app_run_error",

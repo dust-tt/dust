@@ -40,10 +40,7 @@ async function handler(
 ): Promise<void> {
   const vault = await VaultResource.fetchById(auth, req.query.vId as string);
 
-  if (
-    !vault ||
-    (!auth.isAdmin() && !auth.hasPermission([vault.acl()], "read"))
-  ) {
+  if (!vault || !vault.canList(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

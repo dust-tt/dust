@@ -80,7 +80,7 @@ function VaultSelector({
       : "";
   });
 
-  if (isVaultsLoading || isVaultsError || !vaults) {
+  if (isVaultsLoading || isVaultsError) {
     return <Spinner />;
   }
 

@@ -22,7 +22,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements(
 
     return {
       redirect: {
-        destination: `/w/${owner.sId}/data-sources/vaults/${vault.sId}`,
+        destination: `/w/${owner.sId}/vaults/${vault.sId}`,
         permanent: false,
       },
     };

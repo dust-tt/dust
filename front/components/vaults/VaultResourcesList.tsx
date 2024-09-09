@@ -42,17 +42,17 @@ import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEd
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
+import {
+  AddConnectionMenu,
+  setupConnection,
+} from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
-import {
-  getConnectorProviderLogoWithFallback,
-  getDataSourceNameFromView,
-} from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSources } from "@app/lib/swr/data_sources";
 import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
-import { setupConnection } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
 const REDIRECT_TO_EDIT_PERMISSIONS = [
   "confluence",
@@ -236,7 +236,9 @@ export const VaultResourcesList = ({
     Partial<Record<ConnectorProvider, boolean>>
   >({});
 
-  const { pagination, setPagination } = usePaginationFromUrl("table");
+  const { pagination, setPagination } = usePaginationFromUrl({
+    urlPrefix: "table",
+  });
 
   const handleUpdatePermissions = async (
     connector: ConnectorType,
@@ -406,7 +408,7 @@ export const VaultResourcesList = ({
 
     if (res.ok) {
       await router.push(
-        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`
+        `/w/${owner.sId}/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`
       );
       sendNotification({
         type: "success",

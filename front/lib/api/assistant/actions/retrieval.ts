@@ -1,6 +1,5 @@
 import type {
   AgentActionConfigurationType,
-  AgentConfigurationType,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
@@ -23,7 +22,10 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
-import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
+import {
+  actionRefsOffset,
+  getRetrievalTopK,
+} from "@app/lib/api/assistant/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -39,8 +41,6 @@ import {
 } from "@app/lib/registry";
 import { frontSequelize } from "@app/lib/resources/storage";
 import logger from "@app/logger/logger";
-
-import { getRunnerforActionConfiguration } from "./runners";
 
 /**
  * TimeFrame parsing
@@ -266,55 +266,13 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     return new Ok(spec);
   }
 
-  // Retrieval shares topK across retrieval actions of a same step and uses citations for these.
-  getCitationsCount({
-    agentConfiguration,
-    stepActions,
-  }: {
-    agentConfiguration: AgentConfigurationType;
-    stepActions: AgentActionConfigurationType[];
-  }): number {
-    return getCitationsCount({ agentConfiguration, stepActions });
-  }
-
-  // stepTopKAndRefsOffsetForAction returns the references offset and the number of documents an
-  // action will use as part of the current step. We share topK among all actions that use citations of a step
-  // so that we don't overflow the context when the model asks for many retrievals
-  // at the same time. Based on the nature of the retrieval actions (query being `auto` or `null`),
-  // the topK can vary (exhaustive or not). So we need all the actions of the current step to
-  // properly split the topK among them and decide which slice of references we will allocate to the
-  // current action.
-  stepTopKAndRefsOffsetForAction({
-    agentConfiguration,
-    stepActionIndex,
-    stepActions,
-    refsOffset,
-  }: {
-    agentConfiguration: AgentConfigurationType;
-    stepActionIndex: number;
-    stepActions: AgentActionConfigurationType[];
-    refsOffset: number;
-  }): { topK: number; refsOffset: number } {
-    for (let i = 0; i < stepActionIndex; i++) {
-      const r = stepActions[i];
-      refsOffset += getRunnerforActionConfiguration(r).getCitationsCount({
-        agentConfiguration,
-        stepActions,
-      });
-    }
-
-    return {
-      topK: this.getCitationsCount({ agentConfiguration, stepActions }),
-      refsOffset,
-    };
-  }
-
-  // This method is in charge of running the retrieval and creating an AgentRetrievalAction object in
-  // the database (along with the RetrievalDocument and RetrievalDocumentChunk objects). It does not
-  // create any generic model related to the conversation. It is possible for an AgentRetrievalAction
-  // to be stored (once the query params are infered) but for the retrieval to fail, in which case an
-  // error event will be emitted and the AgentRetrievalAction won't have any documents associated. The
-  // error is expected to be stored by the caller on the parent agent message.
+  // This method is in charge of running the retrieval and creating an AgentRetrievalAction object
+  // in the database (along with the RetrievalDocument and RetrievalDocumentChunk objects). It does
+  // not create any generic model related to the conversation. It is possible for an
+  // AgentRetrievalAction to be stored (once the query params are infered) but for the retrieval to
+  // fail, in which case an error event will be emitted and the AgentRetrievalAction won't have any
+  // documents associated. The error is expected to be stored by the caller on the parent agent
+  // message.
   async *run(
     auth: Authenticator,
     {
@@ -381,17 +339,21 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       }
     }
 
-    const { topK, refsOffset } = this.stepTopKAndRefsOffsetForAction({
+    const topK = getRetrievalTopK({
+      agentConfiguration,
+      stepActions,
+    });
+    const refsOffset = actionRefsOffset({
       agentConfiguration,
       stepActionIndex,
       stepActions,
       refsOffset: citationsRefsOffset,
     });
 
-    // Create the AgentRetrievalAction object in the database and yield an event for the generation of
-    // the params. We store the action here as the params have been generated, if an error occurs
-    // later on, the action won't have retrieved documents but the error will be stored on the parent
-    // agent message.
+    // Create the AgentRetrievalAction object in the database and yield an event for the generation
+    // of the params. We store the action here as the params have been generated, if an error occurs
+    // later on, the action won't have retrieved documents but the error will be stored on the
+    // parent agent message.
     const action = await AgentRetrievalAction.create({
       query: query,
       relativeTimeFrameDuration: relativeTimeFrame?.duration ?? null,
@@ -456,8 +418,8 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           config.DATASOURCE.filter.parents.in_map = {};
         }
 
-        // Note: We use dataSourceId here because after the registry lookup,
-        // it returns either the data source itself or the data source associated with the data source view.
+        // Note: We use dataSourceId here because after the registry lookup, it returns either the
+        // data source itself or the data source associated with the data source view.
         config.DATASOURCE.filter.parents.in_map[ds.dataSourceId] =
           ds.filter.parents.in;
       }
@@ -521,9 +483,9 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
     let documents: RetrievalDocumentType[] = [];
 
-    // This is not perfect and will be erroneous in case of two data sources with the same id from two
-    // different workspaces. We don't support cross workspace data sources right now. But we'll likely
-    // want `core` to return the `workspace_id` that was used eventualy.
+    // This is not perfect and will be erroneous in case of two data sources with the same id from
+    // two different workspaces. We don't support cross workspace data sources right now. But we'll
+    // likely want `core` to return the `workspace_id` that was used eventualy.
     // TODO(spolu): make `core` return data source workspace id.
     const dataSourcesIdToWorkspaceId: { [key: string]: string } = {};
     for (const ds of actionConfiguration.dataSources) {

@@ -1,7 +1,6 @@
 import type {
   AgentActionConfigurationType,
   AgentConfigurationType,
-  AppType,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
   DustAppRunConfigurationType,
@@ -30,20 +29,20 @@ import {
   getDefaultTablesQueryActionConfiguration,
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
-import { getApps } from "@app/lib/api/app";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import type { Authenticator } from "@app/lib/auth";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
-  const accessibleVaults = [
-    ...(await VaultResource.listWorkspaceVaults(auth, false)),
-  ].filter((vault) => !vault.isSystem());
+  const accessibleVaults = (
+    await VaultResource.listWorkspaceVaults(auth)
+  ).filter((vault) => !vault.isSystem());
 
   const [dsViews, allDustApps] = await Promise.all([
     DataSourceViewResource.listByVaults(auth, accessibleVaults),
-    getApps(auth),
+    AppResource.listByWorkspace(auth),
   ]);
 
   return {
@@ -59,7 +58,7 @@ export async function buildInitialActions({
   configuration,
 }: {
   dataSourceViews: DataSourceViewResource[];
-  dustApps: AppType[];
+  dustApps: AppResource[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
 }): Promise<AssistantBuilderActionConfiguration[]> {
   const builderActions: AssistantBuilderActionConfiguration[] = [];
@@ -89,7 +88,7 @@ export async function buildInitialActions({
 async function initializeBuilderAction(
   action: AgentActionConfigurationType,
   dataSourceViews: DataSourceViewResource[],
-  dustApps: AppType[]
+  dustApps: AppResource[]
 ): Promise<AssistantBuilderActionConfiguration | null> {
   if (isRetrievalConfiguration(action)) {
     return getRetrievalActionConfiguration(action, dataSourceViews);
@@ -134,13 +133,13 @@ async function getRetrievalActionConfiguration(
 
 async function getDustAppRunActionConfiguration(
   action: DustAppRunConfigurationType,
-  dustApps: AppType[]
+  dustApps: AppResource[]
 ): Promise<AssistantBuilderActionConfiguration> {
   const dustAppConfiguration = getDefaultDustAppRunActionConfiguration();
   const app = dustApps.find((app) => app.sId === action.appId);
 
   if (app) {
-    dustAppConfiguration.configuration.app = app;
+    dustAppConfiguration.configuration.app = app.toJSON();
     dustAppConfiguration.name = slugify(app.name);
     dustAppConfiguration.description = app.description ?? "";
   }

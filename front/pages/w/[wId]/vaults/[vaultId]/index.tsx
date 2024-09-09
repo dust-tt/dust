@@ -1,9 +1,15 @@
-import { Page, PuzzleIcon, Tab, UserGroupIcon } from "@dust-tt/sparkle";
-import type { VaultType } from "@dust-tt/types";
+import {
+  Chip,
+  InformationCircleIcon,
+  Page,
+  PuzzleIcon,
+  Tab,
+  UserGroupIcon,
+} from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { VaultCategoriesList } from "@app/components/vaults/VaultCategoriesList";
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
@@ -12,13 +18,11 @@ import { VaultMembers } from "@app/components/vaults/VaultMembers";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { VaultResource } from "@app/lib/resources/vault_resource";
+import { useVaultInfo } from "@app/lib/swr/vaults";
 import { getVaultIcon, getVaultName } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
-  VaultLayoutProps & {
-    isAdmin: boolean;
-    vault: VaultType;
-  }
+  VaultLayoutProps & { userId?: string }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
@@ -47,6 +51,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       owner,
       subscription,
       vault: vault.toJSON(),
+      userId: auth.user()?.sId,
     },
   };
 });
@@ -55,9 +60,20 @@ export default function Vault({
   isAdmin,
   owner,
   vault,
+  userId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { vaultInfo } = useVaultInfo({
+    workspaceId: owner.sId,
+    vaultId: vault.sId,
+  });
+
   const router = useRouter();
   const [currentTab, setCurrentTab] = useState("resources");
+  const isMember = useMemo(
+    () => vaultInfo?.members?.some((m) => m.sId === userId),
+    [userId, vaultInfo?.members]
+  );
+
   return (
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
@@ -65,6 +81,14 @@ export default function Vault({
         icon={getVaultIcon(vault)}
         description="Manage connections to your products and the real-time data feeds Dust has access to."
       />
+      {vaultInfo && !isMember && (
+        <Chip
+          color="warning"
+          label="You are not a member of this vault."
+          size="sm"
+          icon={InformationCircleIcon}
+        />
+      )}
 
       {vault.kind !== "global" && isAdmin && (
         <div className="w-[320px]">
@@ -97,7 +121,7 @@ export default function Vault({
           vault={vault}
           onSelect={(category) => {
             void router.push(
-              `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`
+              `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`
             );
           }}
         />

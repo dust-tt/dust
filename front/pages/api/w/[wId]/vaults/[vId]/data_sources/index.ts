@@ -132,7 +132,8 @@ async function handler(
         },
       });
     }
-    if (!auth.hasPermission([vault.acl()], "write")) {
+
+    if (!vault.canWrite(auth)) {
       return apiError(req, res, {
         status_code: 403,
         api_error: {
@@ -463,9 +464,7 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
-  await dataSource.update({
-    connectorId: connectorsRes.value.id,
-  });
+  await dataSource.setConnectorId(connectorsRes.value.id);
 
   res.status(201).json({
     dataSource: dataSource.toJSON(),

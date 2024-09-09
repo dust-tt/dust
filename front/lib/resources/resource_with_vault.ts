@@ -10,6 +10,7 @@ import { Model } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import type { Workspace } from "@app/lib/models/workspace";
+import type { ResourceWithId } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -21,7 +22,7 @@ import type {
 import { VaultResource } from "@app/lib/resources/vault_resource";
 
 // Interface to enforce workspaceId and vaultId.
-interface ModelWithVault {
+interface ModelWithVault extends ResourceWithId {
   workspaceId: ForeignKey<Workspace["id"]>;
   vaultId: ForeignKey<VaultModel["id"]>;
   vault: NonAttribute<VaultModel>;
@@ -107,7 +108,21 @@ export abstract class ResourceWithVault<
     });
   }
 
+  // Permissions.
+
   acl() {
     return this.vault.acl();
+  }
+
+  canList(auth: Authenticator) {
+    return this.vault.canList(auth);
+  }
+
+  canRead(auth: Authenticator) {
+    return this.vault.canRead(auth);
+  }
+
+  canWrite(auth: Authenticator) {
+    return this.vault.canWrite(auth);
   }
 }

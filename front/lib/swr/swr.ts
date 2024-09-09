@@ -1,12 +1,8 @@
+import type { PaginationState } from "@tanstack/react-table";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
 import useSWR, { useSWRConfig } from "swr";
 
 import { COMMIT_HASH } from "@app/lib/commit-hash";
-
-export const SWR_KEYS = {
-  vaults: (workspaceId: string) => `/api/w/${workspaceId}/vaults`,
-  conversations: (workspaceId: string) => `/api/w/${workspaceId}/conversations`,
-};
 
 const DEFAULT_SWR_CONFIG: SWRConfiguration = {
   errorRetryCount: 16,
@@ -81,4 +77,19 @@ export const fetcherMultiple = <T>(urlsAndOptions: UrlsAndOptions[]) => {
   return Promise.all<T>(
     urlsAndOptions.map(({ url, options }) => f(url, options))
   );
+};
+
+export const appendPaginationParams = (
+  params: URLSearchParams,
+  pagination?: PaginationState
+) => {
+  if (pagination && pagination.pageIndex) {
+    params.set(
+      "offset",
+      (pagination.pageSize * pagination.pageIndex).toString()
+    );
+  }
+  if (pagination && pagination.pageSize) {
+    params.set("limit", pagination.pageSize.toString());
+  }
 };

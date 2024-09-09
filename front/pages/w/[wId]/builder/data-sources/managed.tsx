@@ -13,9 +13,7 @@ import type {
   ConnectorType,
   DataSourceType,
   DataSourceWithConnectorDetailsType,
-  LightWorkspaceType,
   PlanType,
-  Result,
   SubscriptionType,
   UpdateConnectorRequestBody,
   UserType,
@@ -24,12 +22,8 @@ import type {
 import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
 import {
   CONNECTOR_PROVIDERS,
-  Err,
   isConnectorProvider,
-  isOAuthProvider,
-  Ok,
   removeNulls,
-  setupOAuthConnection,
 } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
@@ -46,7 +40,10 @@ import { RequestDataSourceModal } from "@app/components/data_source/RequestDataS
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
+import {
+  AddConnectionMenu,
+  setupConnection,
+} from "@app/components/vaults/AddConnectionMenu";
 import config from "@app/lib/api/config";
 import {
   augmentDataSourceWithConnectorDetails,
@@ -94,36 +91,6 @@ type GetTableRowParams = {
   readOnly: boolean;
   onButtonClick: (ds: DataSourceWithConnectorAndUsageType) => void;
 };
-
-export async function setupConnection({
-  dustClientFacingUrl,
-  owner,
-  provider,
-}: {
-  dustClientFacingUrl: string;
-  owner: LightWorkspaceType;
-  provider: ConnectorProvider;
-}): Promise<Result<string, Error>> {
-  let connectionId: string;
-
-  if (isOAuthProvider(provider)) {
-    // OAuth flow
-    const cRes = await setupOAuthConnection({
-      dustClientFacingUrl,
-      owner,
-      provider,
-      useCase: "connection",
-    });
-    if (!cRes.isOk()) {
-      return cRes;
-    }
-    connectionId = cRes.value.connection_id;
-  } else {
-    return new Err(new Error(`Unknown provider ${provider}`));
-  }
-
-  return new Ok(connectionId);
-}
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

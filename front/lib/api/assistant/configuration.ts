@@ -51,7 +51,6 @@ import {
   isGlobalAgentId,
 } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
-import { agentUserListStatus } from "@app/lib/api/assistant/user_relation";
 import { compareAgentsForSort } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
@@ -366,6 +365,29 @@ async function fetchAgentConfigurationsForView(
   }
 }
 
+export function agentUserListStatus({
+  agentConfiguration,
+  listStatusOverride,
+}: {
+  agentConfiguration: LightAgentConfigurationType;
+  listStatusOverride: AgentUserListStatus | null;
+}): AgentUserListStatus {
+  if (listStatusOverride === null) {
+    switch (agentConfiguration.scope) {
+      case "global":
+      case "workspace":
+      case "private":
+        return "in-list";
+      case "published":
+        return "not-in-list";
+      default:
+        assertNever(agentConfiguration.scope);
+    }
+  }
+
+  return listStatusOverride;
+}
+
 async function fetchWorkspaceAgentConfigurationsForView(
   auth: Authenticator,
   owner: WorkspaceType,
@@ -407,7 +429,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
   ] = await Promise.all([
     fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
     fetchAgentProcessActionConfigurations({ configurationIds, variant }),
-    fetchDustAppRunActionConfigurations({ configurationIds, variant }),
+    fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
     fetchTableQueryActionConfigurations({ configurationIds, variant }),
     fetchWebsearchActionConfigurations({ configurationIds, variant }),
     fetchBrowseActionConfigurations({ configurationIds, variant }),

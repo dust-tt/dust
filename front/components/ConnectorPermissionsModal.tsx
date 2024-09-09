@@ -54,7 +54,8 @@ export function getRenderingConfigForConnectorProvider(
     case "notion":
     case "github":
       return {
-        addDataWithConnection: true,
+        // TODO(GROUPS_INFRA): Revert back to `true` once the new connection management is released.
+        addDataWithConnection: false,
         displayEditionModal: true,
       };
     default:

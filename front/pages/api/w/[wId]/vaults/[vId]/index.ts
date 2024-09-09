@@ -39,11 +39,7 @@ async function handler(
 ): Promise<void> {
   const vault = await VaultResource.fetchById(auth, req.query.vId as string);
 
-  // Check if the user has access to the vault - either they are an admin or they have read access
-  if (
-    !vault ||
-    (!auth.isAdmin() && !auth.hasPermission([vault.acl()], "read"))
-  ) {
+  if (!vault || !vault.canList(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -145,7 +141,7 @@ async function handler(
           const view = viewByDataSourceName[dataSourceConfig.dataSource];
           if (view) {
             // Update existing view
-            await view.updateParents(auth, dataSourceConfig.parentsIn);
+            await view.updateParents(dataSourceConfig.parentsIn);
             await view.setEditedBy(auth);
           } else {
             // Create a new view

@@ -26,8 +26,7 @@ async function handler(
   if (
     !dataSourceView ||
     req.query.vId !== dataSourceView.vault.sId ||
-    (!auth.isAdmin() &&
-      !auth.hasPermission([dataSourceView.vault.acl()], "read"))
+    !dataSourceView.canList(auth)
   ) {
     return apiError(req, res, {
       status_code: 404,
@@ -71,7 +70,7 @@ async function handler(
       }
 
       const { parentsIn } = bodyValidation.right;
-      const updateResult = await dataSourceView.updateParents(auth, parentsIn);
+      const updateResult = await dataSourceView.updateParents(parentsIn);
 
       if (updateResult.isErr()) {
         return apiError(req, res, {

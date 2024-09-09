@@ -14,9 +14,9 @@ import {
 } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { getApp } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { getDustAppsListUrl } from "@app/lib/vault_rollout";
@@ -41,8 +41,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const readOnly = !auth.isBuilder();
 
-  const app = await getApp(auth, context.params?.aId as string);
-
+  const app = await AppResource.fetchById(auth, context.params?.aId as string);
   if (!app) {
     return {
       notFound: true,
@@ -59,7 +58,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       readOnly,
-      app,
+      app: app.toJSON(),
       wIdTarget,
       dustAppsListUrl,
       gaTrackingId: config.getGaTrackingId(),

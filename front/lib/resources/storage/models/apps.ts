@@ -204,10 +204,13 @@ Dataset.init(
     indexes: [{ fields: ["workspaceId", "appId", "name"] }],
   }
 );
+
 App.hasMany(Dataset, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
+Dataset.belongsTo(App);
+
 Workspace.hasMany(Dataset, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",

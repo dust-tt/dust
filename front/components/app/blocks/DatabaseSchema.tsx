@@ -84,6 +84,7 @@ export default function DatabaseSchema({
                       ]
                     : []
                 }
+                vault={app.vault}
                 onDataSourcesUpdate={(dataSources) => {
                   if (dataSources.length === 0) {
                     return;

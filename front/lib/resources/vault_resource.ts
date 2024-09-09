@@ -1,10 +1,6 @@
-import type {
-  ACLType,
-  LightWorkspaceType,
-  ModelId,
-  Result,
-  VaultType,
-} from "@dust-tt/types";
+import assert from "node:assert";
+
+import type { ACLType, ModelId, Result, VaultType } from "@dust-tt/types";
 import { assertNever, Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -16,7 +12,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -43,6 +39,14 @@ export class VaultResource extends BaseResource<VaultModel> {
     super(VaultModel, blob);
   }
 
+  static fromModel(vault: VaultModel) {
+    return new VaultResource(
+      VaultModel,
+      vault.get(),
+      vault.groups.map((group) => new GroupResource(GroupModel, group.get()))
+    );
+  }
+
   static async makeNew(
     blob: CreationAttributes<VaultModel>,
     group: GroupResource
@@ -62,7 +66,7 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   static async makeDefaultsForWorkspace(
-    workspace: LightWorkspaceType,
+    auth: Authenticator,
     {
       systemGroup,
       globalGroup,
@@ -71,16 +75,16 @@ export class VaultResource extends BaseResource<VaultModel> {
       globalGroup: GroupResource;
     }
   ) {
-    const existingVaults = await this.listWorkspaceDefaultVaults(
-      await Authenticator.internalAdminForWorkspace(workspace.sId)
-    );
+    assert(auth.isAdmin(), "Only admins can call `makeDefaultsForWorkspace`");
+
+    const existingVaults = await this.listWorkspaceDefaultVaults(auth);
     const systemVault =
       existingVaults.find((v) => v.kind === "system") ||
       (await VaultResource.makeNew(
         {
           name: "System",
           kind: "system",
-          workspaceId: workspace.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
         systemGroup
       ));
@@ -91,7 +95,7 @@ export class VaultResource extends BaseResource<VaultModel> {
         {
           name: "Workspace",
           kind: "global",
-          workspaceId: workspace.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
         globalGroup
       ));
@@ -143,28 +147,21 @@ export class VaultResource extends BaseResource<VaultModel> {
       order,
     });
 
-    return vaultModels.map(
-      (vault) =>
-        new this(
-          VaultModel,
-          vault.get(),
-          vault.groups.map(
-            (group) => new GroupResource(GroupModel, group.get())
-          )
-        )
-    );
+    return vaultModels.map(this.fromModel);
   }
 
   static async listWorkspaceVaults(
-    auth: Authenticator,
-    adminsBypassACL: boolean = true
+    auth: Authenticator
   ): Promise<VaultResource[]> {
     const vaults = await this.baseFetch(auth);
-    return vaults.filter(
-      (vault) =>
-        (auth.isAdmin() && adminsBypassACL) ||
-        auth.hasPermission([vault.acl()], "read")
-    );
+
+    return vaults.filter((vault) => vault.canList(auth));
+  }
+
+  static async listWorkspaceVaultsAsMember(auth: Authenticator) {
+    const vaults = await this.baseFetch(auth);
+    // using canRead() as we know that only members can read vaults (but admins can list them)
+    return vaults.filter((vault) => vault.canList(auth) && vault.canRead(auth));
   }
 
   static async listWorkspaceDefaultVaults(auth: Authenticator) {
@@ -287,32 +284,65 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   canWrite(auth: Authenticator) {
+    const isPrivateVaultsEnabled = auth
+      .getNonNullableWorkspace()
+      .flags.includes("private_data_vaults_feature");
+
     switch (this.kind) {
       case "system":
         return auth.isAdmin() && auth.canWrite([this.acl()]);
+
       case "global":
         return auth.isBuilder() && auth.canWrite([this.acl()]);
+
       case "regular":
+        return isPrivateVaultsEnabled ? auth.canWrite([this.acl()]) : false;
       case "public":
         return auth.canWrite([this.acl()]);
-
       default:
         assertNever(this.kind);
     }
   }
 
   canRead(auth: Authenticator) {
+    const isPrivateVaultsEnabled = auth
+      .getNonNullableWorkspace()
+      .flags.includes("private_data_vaults_feature");
+
     switch (this.kind) {
-      case "system":
-        return auth.isAdmin() && auth.canRead([this.acl()]);
       case "global":
-      case "regular":
+      case "system":
         return auth.canRead([this.acl()]);
+      case "regular":
+        return isPrivateVaultsEnabled ? auth.canRead([this.acl()]) : false;
       case "public":
         return true;
+
       default:
         assertNever(this.kind);
     }
+  }
+
+  canList(auth: Authenticator) {
+    const isPrivateVaultsEnabled = auth
+      .getNonNullableWorkspace()
+      .flags.includes("private_data_vaults_feature");
+
+    if (this.isRegular() && !isPrivateVaultsEnabled) {
+      return false;
+    }
+
+    // Admins can list all vaults.
+    if (auth.isAdmin()) {
+      return true;
+    }
+
+    // Public vaults can be listed by anyone.
+    if (this.isPublic()) {
+      return true;
+    }
+
+    return auth.canRead([this.acl()]);
   }
 
   isGlobal() {

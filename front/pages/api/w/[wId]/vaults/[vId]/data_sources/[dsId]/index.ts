@@ -63,7 +63,7 @@ async function handler(
       },
     });
   }
-  if (!auth.hasPermission([vault.acl()], "write")) {
+  if (!vault.canWrite(auth)) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -146,9 +146,7 @@ async function handler(
       }
       const { description } = bodyValidation.right;
 
-      await dataSource.update({
-        description,
-      });
+      await dataSource.setDescription(description);
 
       return res.status(200).json({
         dataSource: dataSource.toJSON(),

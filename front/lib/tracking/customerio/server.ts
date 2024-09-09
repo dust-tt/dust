@@ -7,8 +7,8 @@ import { rateLimiter } from "@dust-tt/types";
 import * as _ from "lodash";
 
 import config from "@app/lib/api/config";
-import { subscriptionForWorkspace } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
+import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -141,9 +141,10 @@ export class CustomerioServerSideTracking {
       return;
     }
 
-    const userMemberships = await MembershipResource.getLatestMemberships({
-      users: [u],
-    });
+    const { memberships: userMemberships } =
+      await MembershipResource.getLatestMemberships({
+        users: [u],
+      });
 
     const workspaces = _.keyBy(
       await Workspace.findAll({

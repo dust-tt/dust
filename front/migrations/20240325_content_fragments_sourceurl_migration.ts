@@ -38,9 +38,7 @@ async function main() {
       await Promise.all(
         messages.map(async (message) => {
           const cf = ContentFragmentResource.fromMessage(message);
-          await cf.update({
-            sourceUrl: null,
-          });
+          await cf.setSourceUrl(null);
         })
       );
     }

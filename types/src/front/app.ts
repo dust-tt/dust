@@ -1,5 +1,6 @@
 import { BlockType } from "../front/run";
 import { ModelId } from "../shared/model_id";
+import { VaultType } from "./vault";
 export type AppVisibility = "public" | "private" | "deleted";
 
 export type BlockRunConfig = {
@@ -17,6 +18,7 @@ export type AppType = {
   savedConfig: string | null;
   savedRun: string | null;
   dustAPIProjectId: string;
+  vault: VaultType;
 };
 
 export type SpecificationBlockType = {

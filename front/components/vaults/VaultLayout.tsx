@@ -14,10 +14,8 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { CreateVaultModal } from "@app/components/vaults/CreateVaultModal";
 import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
 import VaultSideBarMenu from "@app/components/vaults/VaultSideBarMenu";
-import {
-  getConnectorProviderLogoWithFallback,
-  getDataSourceNameFromView,
-} from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { getVaultIcon } from "@app/lib/vaults";
 
@@ -51,6 +49,10 @@ export function VaultLayout({
     parentId,
   } = pageProps;
 
+  const isPrivateVaultsEnabled = owner.flags.includes(
+    "private_data_vaults_feature"
+  );
+
   return (
     <RootLayout>
       <AppLayout
@@ -61,6 +63,7 @@ export function VaultLayout({
           <VaultSideBarMenu
             owner={owner}
             isAdmin={isAdmin}
+            isPrivateVaultsEnabled={isPrivateVaultsEnabled}
             setShowVaultCreationModal={setShowVaultCreationModal}
           />
         }
@@ -73,11 +76,13 @@ export function VaultLayout({
           parentId={parentId ?? undefined}
         />
         {children}
-        <CreateVaultModal
-          owner={owner}
-          isOpen={showVaultCreationModal}
-          onClose={() => setShowVaultCreationModal(false)}
-        />
+        {isAdmin && isPrivateVaultsEnabled && (
+          <CreateVaultModal
+            owner={owner}
+            isOpen={showVaultCreationModal}
+            onClose={() => setShowVaultCreationModal(false)}
+          />
+        )}
       </AppLayout>
     </RootLayout>
   );
@@ -125,12 +130,12 @@ function VaultBreadCrumbs({
       {
         icon: getVaultIcon(vault),
         label: vault.kind === "global" ? "Company Data" : vault.name,
-        href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}`,
+        href: `/w/${owner.sId}/vaults/${vault.sId}`,
       },
       {
         icon: CATEGORY_DETAILS[category].icon,
         label: CATEGORY_DETAILS[category].label,
-        href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`,
+        href: `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`,
       },
     ];
 
@@ -159,13 +164,13 @@ function VaultBreadCrumbs({
           FolderIcon
         ),
         label: getDataSourceNameFromView(dataSourceView),
-        href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
+        href: `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
       });
 
       for (const node of [...folders].reverse()) {
         items.push({
           label: node.title,
-          href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${node.internalId}`,
+          href: `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${node.internalId}`,
           icon: FolderIcon,
         });
       }

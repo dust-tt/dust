@@ -16,11 +16,11 @@ import {
 } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { getApp } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { getDatasetHash, getDatasetSchema } from "@app/lib/api/datasets";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { withDefaultUserAuthRequirementsNoWorkspaceCheck } from "@app/lib/iam/session";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 export const getServerSideProps =
@@ -45,8 +45,14 @@ export const getServerSideProps =
 
     const readOnly = !auth.isBuilder();
 
-    const app = await getApp(auth, context.params?.aId as string);
+    const { aId } = context.params;
+    if (typeof aId !== "string") {
+      return {
+        notFound: true,
+      };
+    }
 
+    const app = await AppResource.fetchById(auth, aId);
     if (!app) {
       return {
         notFound: true,
@@ -74,7 +80,7 @@ export const getServerSideProps =
         owner,
         subscription,
         readOnly,
-        app,
+        app: app.toJSON(),
         dataset,
         schema,
         dustAppsListUrl,

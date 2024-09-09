@@ -158,11 +158,6 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     return new Ok(spec);
   }
 
-  // TablesQuery does not use citations.
-  getCitationsCount(): number {
-    return 0;
-  }
-
   async *run(
     auth: Authenticator,
     {

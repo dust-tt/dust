@@ -90,6 +90,7 @@ export default function Database({
                       ]
                     : []
                 }
+                vault={app.vault}
                 onDataSourcesUpdate={(dataSources) => {
                   if (dataSources.length === 0) {
                     return;
