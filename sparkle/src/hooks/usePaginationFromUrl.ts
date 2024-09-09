@@ -25,7 +25,7 @@ export const usePaginationFromUrl = (
     const setPagination = (newValue: PaginationState) => {
       if (newValue.pageIndex !== pageIndex || newValue.pageSize !== pageSize) {
         setPageIndexParam(newValue.pageIndex.toString(), { history: "push" });
-        setPageSizeParam(newValue.pageSize.toString(), { history: "push" });
+        setPageSizeParam(newValue.pageSize.toString());
       }
     };
 
