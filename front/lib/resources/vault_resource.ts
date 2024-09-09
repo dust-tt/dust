@@ -1,6 +1,5 @@
 import type {
   ACLType,
-  LightWorkspaceType,
   ModelId,
   Result,
   VaultType,
@@ -16,7 +15,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -62,7 +61,7 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   static async makeDefaultsForWorkspace(
-    workspace: LightWorkspaceType,
+    auth: Authenticator,
     {
       systemGroup,
       globalGroup,
@@ -71,16 +70,14 @@ export class VaultResource extends BaseResource<VaultModel> {
       globalGroup: GroupResource;
     }
   ) {
-    const existingVaults = await this.listWorkspaceDefaultVaults(
-      await Authenticator.internalAdminForWorkspace(workspace.sId)
-    );
+    const existingVaults = await this.listWorkspaceDefaultVaults(auth);
     const systemVault =
       existingVaults.find((v) => v.kind === "system") ||
       (await VaultResource.makeNew(
         {
           name: "System",
           kind: "system",
-          workspaceId: workspace.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
         systemGroup
       ));
@@ -91,7 +88,7 @@ export class VaultResource extends BaseResource<VaultModel> {
         {
           name: "Workspace",
           kind: "global",
-          workspaceId: workspace.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
         globalGroup
       ));

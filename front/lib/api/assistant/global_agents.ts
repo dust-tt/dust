@@ -92,6 +92,10 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
 }> {
   const owner = auth.getNonNullableWorkspace();
 
+  // const { VaultResource } = await import("@app/lib/resources/vault_resource");
+  // const { DataSourceViewResource } = await import(
+  //   "@app/lib/resources/data_source_view_resource"
+  // );
   const defaultVaults = [await VaultResource.fetchWorkspaceGlobalVault(auth)];
   const dataSourceViews = await DataSourceViewResource.listByVaults(
     auth,
