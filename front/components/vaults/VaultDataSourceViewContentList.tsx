@@ -99,7 +99,7 @@ export const VaultDataSourceViewContentList = ({
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
-  const { pagination, setPagination } = usePaginationFromUrl("table", 5);
+  const { pagination, setPagination } = usePaginationFromUrl("table");
   const [viewType, setViewType] = useHashParam("viewType", "documents");
 
   const handleViewTypeChange = (newViewType: ContentNodesViewType) => {
