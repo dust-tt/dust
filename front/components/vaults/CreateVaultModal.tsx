@@ -15,11 +15,10 @@ import type { CellContext } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useMemo, useState } from "react";
-import { useSWRConfig } from "swr";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useMembers } from "@app/lib/swr/memberships";
-import { SWR_KEYS } from "@app/lib/swr/swr";
+import { useVaults, useVaultsAsAdmin } from "@app/lib/swr/vaults";
 import logger from "@app/logger/logger";
 import type { PostVaultsResponseBody } from "@app/pages/api/w/[wId]/vaults";
 
@@ -55,7 +54,14 @@ export function CreateVaultModal({
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
-  const { mutate } = useSWRConfig();
+  const { mutate: mutateVaults } = useVaults({
+    workspaceId: owner.sId,
+    disabled: true, // Disable as we just want the mutation function
+  });
+  const { mutate: mutateVaultsAsAdmin } = useVaultsAsAdmin({
+    workspaceId: owner.sId,
+    disabled: true, // Disable as we just want the mutation function
+  });
   const router = useRouter();
   const { members, isMembersLoading } = useMembers(owner);
   const sendNotification = useContext(SendNotificationsContext);
@@ -64,6 +70,7 @@ export function CreateVaultModal({
     return [
       {
         id: "name",
+        accessorKey: "name",
         cell: (info: Info) => (
           <DataTable.CellContent avatarUrl={info.row.original.icon}>
             {info.row.original.name}
@@ -135,7 +142,8 @@ export function CreateVaultModal({
       const r: PostVaultsResponseBody = await res.json();
 
       // Invalidate the vaults list
-      await mutate(SWR_KEYS.vaults(owner.sId));
+      await mutateVaults();
+      await mutateVaultsAsAdmin();
 
       await router.push(`/w/${owner.sId}/data-sources/vaults/${r.vault.sId}`);
     } finally {
@@ -192,44 +200,46 @@ export function CreateVaultModal({
       }}
     >
       <Page.Vertical gap="md" sizing="grow">
-        <div className="mb-4 flex w-full max-w-xl flex-col gap-y-2 p-4">
-          <Page.SectionHeader title="Name" />
-          <Input
-            placeholder="Vault's name"
-            value={vaultName}
-            name="vaultName"
-            size="sm"
-            onChange={(value) => setVaultName(value)}
-          />
-          <div className="flex gap-1 text-xs text-element-700">
-            <Icon visual={InformationCircleIcon} size="xs" />
-            <span>Vault name must be unique</span>
-          </div>
-        </div>
-        <div className="flex w-full grow flex-col gap-y-4 overflow-y-hidden border-t p-4">
-          <Page.SectionHeader title="Vault members" />
-          <div className="flex w-full">
-            <Searchbar
-              name="search"
-              placeholder="Search members"
-              value={searchTerm}
-              onChange={setSearchTerm}
+        <div className="flex w-full flex-col gap-y-4">
+          <div className="mb-4 flex w-full flex-col gap-y-2 pt-2">
+            <Page.SectionHeader title="Name" />
+            <Input
+              placeholder="Vault's name"
+              value={vaultName}
+              name="vaultName"
+              size="sm"
+              onChange={(value) => setVaultName(value)}
             />
-          </div>
-          {isMembersLoading ? (
-            <div className="mt-8 flex justify-center">
-              <Spinner size="lg" variant="color" />
+            <div className="flex gap-1 text-xs text-element-700">
+              <Icon visual={InformationCircleIcon} size="xs" />
+              <span>Vault name must be unique</span>
             </div>
-          ) : (
-            <div className="flex grow flex-col overflow-y-auto p-4">
-              <DataTable
-                data={rows}
-                columns={columns}
-                filterColumn="name"
-                filter={searchTerm}
+          </div>
+          <div className="flex w-full grow flex-col gap-y-2 border-t pt-2">
+            <Page.SectionHeader title="Vault members" />
+            <div className="flex w-full">
+              <Searchbar
+                name="search"
+                placeholder="Search members"
+                value={searchTerm}
+                onChange={setSearchTerm}
               />
             </div>
-          )}
+            {isMembersLoading ? (
+              <div className="mt-8 flex justify-center">
+                <Spinner size="lg" variant="color" />
+              </div>
+            ) : (
+              <div className="flex grow flex-col overflow-y-auto">
+                <DataTable
+                  data={rows}
+                  columns={columns}
+                  filterColumn="name"
+                  filter={searchTerm}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </Page.Vertical>
     </Modal>
