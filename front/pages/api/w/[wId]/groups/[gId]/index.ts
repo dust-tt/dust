@@ -71,6 +71,15 @@ async function handler(
           },
         });
       }
+      if (groupRes.value.kind === "system") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Can administrate the system group.",
+          },
+        });
+      }
       const bodyValidation = PatchGroupRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
