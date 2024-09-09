@@ -235,6 +235,7 @@ export const VaultDataSourceViewContentList = ({
       <ContentActions
         ref={contentActionsRef}
         dataSourceView={dataSourceView}
+        totalNodesCount={totalNodesCount}
         owner={owner}
         plan={plan}
         onSave={async (action?: ContentActionKey) => {
