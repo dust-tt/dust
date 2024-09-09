@@ -73,11 +73,13 @@ export function VaultLayout({
           parentId={parentId ?? undefined}
         />
         {children}
-        <CreateVaultModal
-          owner={owner}
-          isOpen={showVaultCreationModal}
-          onClose={() => setShowVaultCreationModal(false)}
-        />
+        {isAdmin && (
+          <CreateVaultModal
+            owner={owner}
+            isOpen={showVaultCreationModal}
+            onClose={() => setShowVaultCreationModal(false)}
+          />
+        )}
       </AppLayout>
     </RootLayout>
   );

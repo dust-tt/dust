@@ -2,23 +2,54 @@ import type { DataSourceViewCategory } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { fetcher, SWR_KEYS, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetVaultsResponseBody } from "@app/pages/api/w/[wId]/vaults";
 import type { GetVaultResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]";
 import type { GetVaultDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
 
-export function useVaults({ workspaceId }: { workspaceId: string }) {
+export function useVaults({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
   const vaultsFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
 
-  const { data, error } = useSWRWithDefaults(
-    SWR_KEYS.vaults(workspaceId),
-    vaultsFetcher
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/vaults`,
+    vaultsFetcher,
+    { disabled }
   );
 
   return {
-    vaults: data ? data.vaults : null,
-    isVaultsLoading: !error && !data,
+    vaults: useMemo(() => (data ? data.vaults : []), [data]),
+    isVaultsLoading: !error && !data && !disabled,
     isVaultsError: error,
+    mutate,
+  };
+}
+
+export function useVaultsAsAdmin({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const vaultsFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/vaults?role=admin`,
+    vaultsFetcher,
+    { disabled }
+  );
+
+  return {
+    vaults: useMemo(() => (data ? data.vaults : []), [data]),
+    isVaultsLoading: !error && !data && !disabled,
+    isVaultsError: error,
+    mutate,
   };
 }
 
