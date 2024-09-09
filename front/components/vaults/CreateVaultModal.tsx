@@ -15,11 +15,10 @@ import type { CellContext } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useMemo, useState } from "react";
-import { useSWRConfig } from "swr";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useMembers } from "@app/lib/swr/memberships";
-import { SWR_KEYS } from "@app/lib/swr/swr";
+import { useVaults, useVaultsAsAdmin } from "@app/lib/swr/vaults";
 import logger from "@app/logger/logger";
 import type { PostVaultsResponseBody } from "@app/pages/api/w/[wId]/vaults";
 
@@ -55,7 +54,14 @@ export function CreateVaultModal({
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
-  const { mutate } = useSWRConfig();
+  const { mutate: mutateVaults } = useVaults({
+    workspaceId: owner.sId,
+    disabled: true, // Disable as we just want the mutation function
+  });
+  const { mutate: mutateVaultsAsAdmin } = useVaultsAsAdmin({
+    workspaceId: owner.sId,
+    disabled: true, // Disable as we just want the mutation function
+  });
   const router = useRouter();
   const { members, isMembersLoading } = useMembers(owner);
   const sendNotification = useContext(SendNotificationsContext);
@@ -136,7 +142,8 @@ export function CreateVaultModal({
       const r: PostVaultsResponseBody = await res.json();
 
       // Invalidate the vaults list
-      await mutate(SWR_KEYS.vaults(owner.sId));
+      await mutateVaults();
+      await mutateVaultsAsAdmin();
 
       await router.push(`/w/${owner.sId}/data-sources/vaults/${r.vault.sId}`);
     } finally {

@@ -428,7 +428,7 @@ function DataSourceViewsSection({
 
           return (
             <Tree.Item
-              key={dsConfig.dataSourceId}
+              key={dsConfig.dataSourceViewId}
               type={
                 canBeExpanded(viewType, dataSourceView?.dataSource)
                   ? "node"

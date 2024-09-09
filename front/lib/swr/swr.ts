@@ -3,11 +3,6 @@ import useSWR, { useSWRConfig } from "swr";
 
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 
-export const SWR_KEYS = {
-  vaults: (workspaceId: string) => `/api/w/${workspaceId}/vaults`,
-  conversations: (workspaceId: string) => `/api/w/${workspaceId}/conversations`,
-};
-
 const DEFAULT_SWR_CONFIG: SWRConfiguration = {
   errorRetryCount: 16,
 };
