@@ -147,7 +147,7 @@ export const getMenuItems = (
 ): ContentActionsMenu => {
   const actions: ContentActionsMenu = [];
 
-  // View in source
+  // View in source:
   // We have a source for all types of docs excepts folder docs unless manually set by the user.
   if (
     canReadInVault &&
@@ -156,13 +156,13 @@ export const getMenuItems = (
     actions.push(makeViewSourceUrlContentAction(contentNode, dataSourceView));
   }
 
-  // View raw content in modal
+  // View raw content in modal.
   if (canReadInVault && contentNode.type === "file") {
     actions.push(makeViewRawContentAction(contentNode, contentActionsRef));
   }
 
-  // Edit & Delete
-  // We can edit/delete the documents on on Folders
+  // Edit & Delete:
+  // We can edit/delete the documents in a Folder only.
   if (canWriteInVault && isFolder(dataSourceView.dataSource)) {
     actions.push({
       label: "Edit",
