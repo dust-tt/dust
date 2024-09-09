@@ -59,7 +59,10 @@ export const PaginationNoPageButtons = () => {
 };
 
 export const PaginationWithUrl = () => {
-  const { pagination, setPagination } = usePaginationFromUrl("example", 50);
+  const { pagination, setPagination } = usePaginationFromUrl({
+    urlPrefix: "example",
+    initialPageSize: 50,
+  });
 
   return (
     <>

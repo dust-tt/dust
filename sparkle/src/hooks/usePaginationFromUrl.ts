@@ -5,10 +5,15 @@ import { useHashParam } from "@sparkle/hooks/useHashParams";
 
 const defaultPageSize = 25;
 
-export const usePaginationFromUrl = (
-  urlPrefix?: string,
-  initialPageSize = defaultPageSize
-) => {
+export const usePaginationFromUrl = ({
+  urlPrefix,
+  initialPageSize = defaultPageSize,
+  history = "push",
+}: {
+  urlPrefix?: string;
+  initialPageSize?: number;
+  history?: "push" | "replace";
+}) => {
   const [pageIndexParam, setPageIndexParam] = useHashParam(
     urlPrefix ? `${urlPrefix}PageIndex` : "pageIndex"
   );
@@ -24,7 +29,7 @@ export const usePaginationFromUrl = (
 
     const setPagination = (newValue: PaginationState) => {
       if (newValue.pageIndex !== pageIndex || newValue.pageSize !== pageSize) {
-        setPageIndexParam(newValue.pageIndex.toString(), { history: "push" });
+        setPageIndexParam(newValue.pageIndex.toString(), { history });
         setPageSizeParam(newValue.pageSize.toString());
       }
     };
