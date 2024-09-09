@@ -30,11 +30,7 @@ import { useContext, useMemo } from "react";
 import { useRef } from "react";
 import { useState } from "react";
 
-import {
-  ConnectorPermissionsModal,
-  getRenderingConfigForConnectorProvider,
-} from "@app/components/ConnectorPermissionsModal";
-import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEditionModal";
+import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -42,7 +38,6 @@ import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { handleUpdatePermissions } from "@app/lib/connector_utils";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSources } from "@app/lib/swr/data_sources";
 import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
@@ -207,7 +202,6 @@ export const VaultResourcesList = ({
   onSelect,
 }: VaultResourcesListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
-  const [showEditionModal, setShowEditionModal] = useState(false);
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
@@ -285,13 +279,7 @@ export const VaultResourcesList = ({
           buttonOnClick: (e) => {
             e.stopPropagation();
             setSelectedDataSourceView(dataSourceView);
-            const { addDataWithConnection } =
-              getRenderingConfigForConnectorProvider(provider);
-            if (addDataWithConnection) {
-              setShowEditionModal(addDataWithConnection);
-            } else {
-              setShowConnectorPermissionsModal(true);
-            }
+            setShowConnectorPermissionsModal(true);
           },
           onClick: () => onSelect(dataSourceView.sId),
         };
@@ -458,43 +446,20 @@ export const VaultResourcesList = ({
       )}
       {selectedDataSourceView &&
         selectedDataSourceView.dataSource.connector && (
-          <>
-            <ConnectorPermissionsModal
-              owner={owner}
-              connector={selectedDataSourceView.dataSource.connector}
-              dataSource={selectedDataSourceView.dataSource}
-              isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
-              onClose={() => {
-                setShowConnectorPermissionsModal(false);
-              }}
-              setShowEditionModal={setShowEditionModal}
-              handleUpdatePermissions={handleUpdatePermissions}
-              plan={plan}
-              readOnly={false}
-              isAdmin={isAdmin}
-              dustClientFacingUrl={dustClientFacingUrl}
-            />
-            <DataSourceEditionModal
-              isOpen={showEditionModal}
-              onClose={() => setShowEditionModal(false)}
-              dataSource={selectedDataSourceView.dataSource}
-              owner={owner}
-              user={user}
-              onEditPermissionsClick={() => {
-                if (!selectedDataSourceView?.dataSource.connector) {
-                  return;
-                }
-                void handleUpdatePermissions(
-                  selectedDataSourceView.dataSource.connector,
-                  selectedDataSourceView.dataSource,
-                  owner,
-                  dustClientFacingUrl,
-                  sendNotification
-                );
-              }}
-              dustClientFacingUrl={dustClientFacingUrl}
-            />
-          </>
+          <ConnectorPermissionsModal
+            owner={owner}
+            connector={selectedDataSourceView.dataSource.connector}
+            dataSource={selectedDataSourceView.dataSource}
+            isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
+            onClose={() => {
+              setShowConnectorPermissionsModal(false);
+            }}
+            plan={plan}
+            readOnly={false}
+            isAdmin={isAdmin}
+            dustClientFacingUrl={dustClientFacingUrl}
+            user={user}
+          />
         )}
     </>
   );

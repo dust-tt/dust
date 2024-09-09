@@ -10,16 +10,12 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
-  ConnectorType,
-  DataSourceType,
   DataSourceWithConnectorDetailsType,
   PlanType,
   SubscriptionType,
-  UpdateConnectorRequestBody,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
 import {
   CONNECTOR_PROVIDERS,
   isConnectorProvider,
@@ -28,22 +24,22 @@ import {
 import type { CellContext } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  ConnectorPermissionsModal,
-  getRenderingConfigForConnectorProvider,
-} from "@app/components/ConnectorPermissionsModal";
-import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEditionModal";
+import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+<<<<<<< HEAD
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   AddConnectionMenu,
   setupConnection,
 } from "@app/components/vaults/AddConnectionMenu";
+=======
+import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
+>>>>>>> 5d1eba24a ([front/components] - refactor: streamline ConnectorPermissionsModal integration)
 import config from "@app/lib/api/config";
 import {
   augmentDataSourceWithConnectorDetails,
@@ -206,11 +202,9 @@ export default function DataSourcesView({
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceWithConnectorAndUsageType | null>(null);
-  const [showEditionModal, setShowEditionModal] = useState(false);
   const [showConnectorModal, setShowConnectorModal] = useState(false);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
-  const sendNotification = useContext(SendNotificationsContext);
   const router = useRouter();
 
   useEffect(() => {
@@ -244,91 +238,12 @@ export default function DataSourcesView({
         readOnly,
         onButtonClick: (dataSource: DataSourceWithConnectorAndUsageType) => {
           setSelectedDataSource(dataSource);
-          const { addDataWithConnection } =
-            getRenderingConfigForConnectorProvider(
-              dataSource.connectorProvider
-            );
-          if (addDataWithConnection) {
-            setShowEditionModal(addDataWithConnection);
-          } else {
-            setShowConnectorModal(true);
-          }
+          setShowConnectorModal(true);
         },
       })
     );
   }, [isAdmin, isLoadingByProvider, readOnly, managedDataSources]);
 
-  const updateConnectorConnectionId = async (
-    newConnectionId: string,
-    provider: string,
-    dataSource: DataSourceType
-  ) => {
-    const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/update`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          connectionId: newConnectionId,
-        } satisfies UpdateConnectorRequestBody),
-      }
-    );
-
-    if (res.ok) {
-      return { success: true, error: null };
-    }
-
-    const jsonErr = await res.json();
-    const error = jsonErr.error;
-
-    if (error.type === "connector_oauth_target_mismatch") {
-      return {
-        success: false,
-        error: CONNECTOR_TYPE_TO_MISMATCH_ERROR[provider as ConnectorProvider],
-      };
-    }
-    return {
-      success: false,
-      error: `Failed to update the permissions of the Data Source: (contact support@dust.tt for assistance)`,
-    };
-  };
-
-  const handleUpdatePermissions = async (
-    connector: ConnectorType,
-    dataSource: DataSourceType
-  ) => {
-    const provider = connector.type;
-
-    const connectionIdRes = await setupConnection({
-      dustClientFacingUrl,
-      owner,
-      provider,
-    });
-    if (connectionIdRes.isErr()) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update the permissions of the Data Source",
-        description: connectionIdRes.error.message,
-      });
-      return;
-    }
-
-    const updateRes = await updateConnectorConnectionId(
-      connectionIdRes.value,
-      provider,
-      dataSource
-    );
-    if (updateRes.error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update the permissions of the Data Source",
-        description: updateRes.error,
-      });
-      return;
-    }
-  };
   return (
     <AppLayout
       subscription={subscription}
@@ -422,40 +337,20 @@ export default function DataSourcesView({
           false
         )}
         {selectedDataSource && selectedDataSource.connector && (
-          <>
-            <ConnectorPermissionsModal
-              owner={owner}
-              connector={selectedDataSource.connector}
-              dataSource={selectedDataSource}
-              isOpen={showConnectorModal && !!selectedDataSource}
-              onClose={() => {
-                setShowConnectorModal(false);
-              }}
-              setShowEditionModal={setShowEditionModal}
-              handleUpdatePermissions={handleUpdatePermissions}
-              isAdmin={isAdmin}
-              readOnly={readOnly}
-              plan={plan}
-              dustClientFacingUrl={dustClientFacingUrl}
-            />
-            <DataSourceEditionModal
-              isOpen={showEditionModal}
-              onClose={() => setShowEditionModal(false)}
-              dataSource={selectedDataSource}
-              owner={owner}
-              user={user}
-              onEditPermissionsClick={() => {
-                if (!selectedDataSource.connector) {
-                  return;
-                }
-                void handleUpdatePermissions(
-                  selectedDataSource.connector,
-                  selectedDataSource
-                );
-              }}
-              dustClientFacingUrl={dustClientFacingUrl}
-            />
-          </>
+          <ConnectorPermissionsModal
+            owner={owner}
+            connector={selectedDataSource.connector}
+            dataSource={selectedDataSource}
+            isOpen={showConnectorModal && !!selectedDataSource}
+            onClose={() => {
+              setShowConnectorModal(false);
+            }}
+            isAdmin={isAdmin}
+            readOnly={readOnly}
+            plan={plan}
+            dustClientFacingUrl={dustClientFacingUrl}
+            user={user}
+          />
         )}
       </Page.Vertical>
     </AppLayout>

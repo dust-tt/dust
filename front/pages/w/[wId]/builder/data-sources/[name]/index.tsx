@@ -41,7 +41,6 @@ import * as React from "react";
 
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
-import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEditionModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import { subNavigationBuild } from "@app/components/navigation/config";
@@ -1000,7 +999,6 @@ function ManagedDataSourceView({
   const sendNotification = useContext(SendNotificationsContext);
 
   const [showPermissionModal, setShowPermissionModal] = useState(false);
-  const [showEditionModal, setShowEditionModal] = useState(false);
 
   const connectorProvider = dataSource.connectorProvider;
   if (!connectorProvider) {
@@ -1061,8 +1059,6 @@ function ManagedDataSourceView({
   };
 
   const {
-    displayEditionModal,
-    displayManageConnectionButton,
     addDataWithConnection,
     displayAddDataButton,
     displayWebcrawlerSettingsButton,
@@ -1148,24 +1144,6 @@ function ManagedDataSourceView({
             })()}
             icon={CONNECTOR_CONFIGURATIONS[connectorProvider].logoComponent}
           />
-          {isAdmin && displayManageConnectionButton ? (
-            <Button
-              className="ml-auto"
-              label="Manage connection"
-              variant="tertiary"
-              icon={LockIcon}
-              disabled={readOnly || !isAdmin}
-              onClick={() => {
-                if (displayEditionModal) {
-                  setShowEditionModal(true);
-                } else {
-                  void handleUpdatePermissions();
-                }
-              }}
-            />
-          ) : (
-            <></>
-          )}
           {isBuilder && displayWebcrawlerSettingsButton ? (
             <Link
               className="ml-auto"
@@ -1205,8 +1183,6 @@ function ManagedDataSourceView({
                     onClick={() => {
                       if (!addDataWithConnection) {
                         setShowPermissionModal(true);
-                      } else if (displayEditionModal) {
-                        setShowEditionModal(true);
                       } else {
                         void handleUpdatePermissions();
                       }
@@ -1287,29 +1263,17 @@ function ManagedDataSourceView({
             />
           </div>
         </div>
-        <DataSourceEditionModal
-          isOpen={showEditionModal}
-          onClose={() => setShowEditionModal(false)}
-          dataSource={dataSource}
-          owner={owner}
-          user={user}
-          onEditPermissionsClick={() => {
-            void handleUpdatePermissions();
-          }}
-          dustClientFacingUrl={dustClientFacingUrl}
-        />
         <ConnectorPermissionsModal
           owner={owner}
           connector={connector}
           dataSource={dataSource}
           isOpen={showPermissionModal}
           onClose={() => setShowPermissionModal(false)}
-          setShowEditionModal={setShowEditionModal}
-          handleUpdatePermissions={handleUpdatePermissions}
           plan={plan}
           readOnly={false}
           isAdmin={isAdmin}
           dustClientFacingUrl={dustClientFacingUrl}
+          user={user}
         />
       </div>
     </>

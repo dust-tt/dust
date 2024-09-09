@@ -18,14 +18,12 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { isValidContentNodesViewType } from "@dust-tt/types";
-import PlusIcon from "@heroicons/react/20/solid/esm/PlusIcon";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useContext, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
-import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEditionModal";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type {
   ContentActionKey,
   ContentActionsRef,
@@ -36,7 +34,6 @@ import {
 } from "@app/components/vaults/ContentActions";
 import { FoldersHeaderMenu } from "@app/components/vaults/FoldersHeaderMenu";
 import { WebsitesHeaderMenu } from "@app/components/vaults/WebsitesHeaderMenu";
-import { handleUpdatePermissions } from "@app/lib/connector_utils";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
@@ -116,15 +113,12 @@ export const VaultDataSourceViewContentList = ({
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
-  const [showEditionModal, setShowEditionModal] = useState(false);
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
   });
   const [viewType, setViewType] = useHashParam("viewType", "documents");
-  const sendNotification = useContext(SendNotificationsContext);
-  const router = useRouter();
 
   const handleViewTypeChange = (newViewType: ContentNodesViewType) => {
     if (newViewType !== viewType) {
@@ -199,14 +193,23 @@ export const VaultDataSourceViewContentList = ({
               }}
             />
           </>
-        ) : dataSourceView.category === "managed" ? (
+        ) : dataSourceView.category === "managed" && connector ? (
           <div className="flex flex-col items-center gap-2 text-sm text-element-700">
             <span>No data sources were added yet.</span>
-            <Button
-              variant="primary"
-              icon={PlusIcon}
-              label="Add data"
-              onClick={() => {
+            <ConnectorPermissionsModal
+              owner={owner}
+              connector={connector}
+              dataSource={dataSourceView.dataSource}
+              isOpen={showConnectorPermissionsModal}
+              onClose={() => {
+                setShowConnectorPermissionsModal(false);
+              }}
+              plan={plan}
+              readOnly={false}
+              isAdmin={isAdmin}
+              dustClientFacingUrl={dustClientFacingUrl}
+              user={user}
+              onManageButtonClick={() => {
                 setShowConnectorPermissionsModal(true);
               }}
             />
@@ -283,40 +286,20 @@ export const VaultDataSourceViewContentList = ({
         }}
       />
       {connector && (
-        <>
-          <ConnectorPermissionsModal
-            owner={owner}
-            connector={connector}
-            dataSource={dataSourceView.dataSource}
-            isOpen={showConnectorPermissionsModal}
-            onClose={() => {
-              setShowConnectorPermissionsModal(false);
-            }}
-            setShowEditionModal={setShowEditionModal}
-            handleUpdatePermissions={handleUpdatePermissions}
-            plan={plan}
-            readOnly={false}
-            isAdmin={isAdmin}
-            dustClientFacingUrl={dustClientFacingUrl}
-          />
-          <DataSourceEditionModal
-            isOpen={showEditionModal}
-            onClose={() => setShowEditionModal(false)}
-            dataSource={dataSourceView.dataSource}
-            owner={owner}
-            user={user}
-            onEditPermissionsClick={() => {
-              void handleUpdatePermissions(
-                connector,
-                dataSourceView.dataSource,
-                owner,
-                dustClientFacingUrl,
-                sendNotification
-              );
-            }}
-            dustClientFacingUrl={dustClientFacingUrl}
-          />
-        </>
+        <ConnectorPermissionsModal
+          owner={owner}
+          connector={connector}
+          dataSource={dataSourceView.dataSource}
+          isOpen={showConnectorPermissionsModal}
+          onClose={() => {
+            setShowConnectorPermissionsModal(false);
+          }}
+          plan={plan}
+          readOnly={false}
+          isAdmin={isAdmin}
+          dustClientFacingUrl={dustClientFacingUrl}
+          user={user}
+        />
       )}
     </>
   );
