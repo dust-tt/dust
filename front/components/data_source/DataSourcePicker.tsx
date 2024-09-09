@@ -1,20 +1,26 @@
 import { Input } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceViewType,
+  VaultType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { useDataSources } from "@app/lib/swr/data_sources";
+import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
 
 export default function DataSourcePicker({
   owner,
+  vault,
   currentDataSources, // [{ workspace_id, data_source_id }]
   readOnly,
   onDataSourcesUpdate,
 }: {
   owner: WorkspaceType;
+  vault: VaultType;
   currentDataSources: {
     workspace_id: string;
     data_source_id: string;
@@ -24,62 +30,89 @@ export default function DataSourcePicker({
     dataSources: { workspace_id: string; data_source_id: string }[]
   ) => void;
 }) {
-  const hasDataSource =
+  const hasDataSourceView =
     currentDataSources.length > 0 &&
     currentDataSources[0].workspace_id &&
     currentDataSources[0].workspace_id.length > 0 &&
     currentDataSources[0].data_source_id &&
     currentDataSources[0].data_source_id.length > 0;
 
-  const [name, setName] = useState(
-    hasDataSource ? currentDataSources[0].data_source_id : null
-  );
-
-  const { dataSources, isDataSourcesLoading, isDataSourcesError } =
-    useDataSources(owner, { disabled: readOnly });
+  const {
+    vaultDataSourceViews,
+    isVaultDataSourceViewsLoading,
+    isVaultDataSourceViewsError,
+  } = useVaultDataSourceViews({
+    vaultId: vault.sId,
+    workspaceId: owner.sId,
+  });
 
   const [searchFilter, setSearchFilter] = useState("");
-  const [filteredDataSources, setFilteredDataSources] = useState(dataSources);
+  const [filteredDataSourceViews, setFilteredDataSourceViews] =
+    useState(vaultDataSourceViews);
 
-  useEffect(() => {
-    if (!isDataSourcesLoading && !isDataSourcesError && !readOnly) {
-      if (!dataSources.find((ds) => ds.name === name)) {
-        onDataSourcesUpdate([]);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [readOnly, isDataSourcesLoading, isDataSourcesError, dataSources, name]);
+  const selectedDataSourceView = hasDataSourceView
+    ? vaultDataSourceViews.find(
+        (dsv) =>
+          dsv.sId === currentDataSources[0].data_source_id ||
+          dsv.dataSource.name === currentDataSources[0].data_source_id
+      )
+    : undefined;
 
   useEffect(() => {
     if (
-      currentDataSources.length > 0 &&
-      currentDataSources[0].workspace_id &&
-      currentDataSources[0].workspace_id.length > 0 &&
-      currentDataSources[0].data_source_id &&
-      currentDataSources[0].data_source_id.length > 0
+      !isVaultDataSourceViewsLoading &&
+      !isVaultDataSourceViewsError &&
+      !readOnly &&
+      hasDataSourceView
     ) {
-      setName(currentDataSources[0].data_source_id);
-    } else {
-      setName(null);
+      if (!selectedDataSourceView) {
+        onDataSourcesUpdate([]);
+      } else if (
+        selectedDataSourceView.sId !== currentDataSources[0].data_source_id
+      ) {
+        // Update config with data_source_view id instead of data_source name
+        onDataSourcesUpdate([
+          {
+            workspace_id: owner.sId,
+            data_source_id: selectedDataSourceView.sId,
+          },
+        ]);
+      }
     }
-  }, [currentDataSources]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    hasDataSourceView,
+    selectedDataSourceView,
+    readOnly,
+    isVaultDataSourceViewsLoading,
+    isVaultDataSourceViewsError,
+    vaultDataSourceViews,
+  ]);
+
+  const getEditLink = (dsv: DataSourceViewType) => {
+    return owner.flags.includes("data_vaults_feature")
+      ? `/w/${owner.sId}/data-sources/vaults/${dsv.vaultId}/categories/${dsv.category}/data_source_views/${dsv.sId}`
+      : `/w/${owner.sId}/builder/data-sources/${dsv.dataSource.name}`;
+  };
 
   useEffect(() => {
     const newDataSources = searchFilter
-      ? dataSources.filter((t) =>
-          t.name.toLowerCase().includes(searchFilter.toLowerCase())
+      ? vaultDataSourceViews.filter((t) =>
+          t.dataSource.name.toLowerCase().includes(searchFilter.toLowerCase())
         )
-      : dataSources;
-    setFilteredDataSources(newDataSources.slice(0, 30));
-  }, [dataSources, searchFilter]);
+      : vaultDataSourceViews;
+    setFilteredDataSourceViews(newDataSources.slice(0, 30));
+  }, [vaultDataSourceViews, searchFilter]);
 
   return (
     <div className="flex items-center">
       <div className="flex items-center">
         {readOnly ? (
-          name ? (
-            <Link href={`/${owner.sId}/builder/data-sources/${name}`}>
-              <div className="text-sm font-bold text-action-500">{name}</div>
+          selectedDataSourceView ? (
+            <Link href={getEditLink(selectedDataSourceView)}>
+              <div className="text-sm font-bold text-action-500">
+                {selectedDataSourceView.dataSource.name}
+              </div>
             </Link>
           ) : (
             "No DataSource"
@@ -90,27 +123,27 @@ export default function DataSourcePicker({
               <Menu.Button
                 className={classNames(
                   "inline-flex items-center rounded-md py-1 text-sm font-normal text-gray-700",
-                  name && name.length > 0 ? "px-0" : "border px-3",
+                  selectedDataSourceView ? "px-0" : "border px-3",
                   readOnly
                     ? "border-white text-gray-300"
                     : "border-orange-400 text-gray-700",
                   "focus:outline-none focus:ring-0"
                 )}
               >
-                {name && name.length > 0 ? (
+                {selectedDataSourceView ? (
                   <>
-                    <Link href={`/w/${owner.sId}/builder/data-sources/${name}`}>
+                    <Link href={getEditLink(selectedDataSourceView)}>
                       <div className="mr-1 text-sm font-bold text-action-500">
-                        {name}
+                        {selectedDataSourceView.dataSource.name}
                       </div>
                     </Link>
                     <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
                   </>
-                ) : dataSources && dataSources.length > 0 ? (
+                ) : vaultDataSourceViews && vaultDataSourceViews.length > 0 ? (
                   "Select DataSource"
                 ) : (
                   <Link
-                    href={`/w/${owner.sId}/builder/data-sources/static`}
+                    href={`/w/${owner.sId}/data-sources/vaults`}
                     className={classNames(
                       readOnly
                         ? "border-white text-gray-300"
@@ -123,11 +156,11 @@ export default function DataSourcePicker({
               </Menu.Button>
             </div>
 
-            {(dataSources || []).length > 0 ? (
+            {(vaultDataSourceViews || []).length > 0 ? (
               <Menu.Items
                 className={classNames(
                   "absolute z-10 mt-1 w-max origin-top-left rounded-md bg-white shadow-sm ring-1 ring-black ring-opacity-5 focus:outline-none",
-                  name && name.length > 0 ? "-left-4" : "left-1"
+                  selectedDataSourceView ? "-left-4" : "left-1"
                 )}
               >
                 <Input
@@ -138,9 +171,9 @@ export default function DataSourcePicker({
                   className="w-48"
                 />
                 <div className="py-1">
-                  {(filteredDataSources || []).map((ds) => {
+                  {(filteredDataSourceViews || []).map((dsv) => {
                     return (
-                      <Menu.Item key={ds.name}>
+                      <Menu.Item key={dsv.sId}>
                         {({ active }) => (
                           <span
                             className={classNames(
@@ -153,19 +186,19 @@ export default function DataSourcePicker({
                               onDataSourcesUpdate([
                                 {
                                   workspace_id: owner.sId,
-                                  data_source_id: ds.name,
+                                  data_source_id: dsv.sId,
                                 },
                               ]);
                               setSearchFilter("");
                             }}
                           >
-                            {ds.name}
+                            {dsv.dataSource.name}
                           </span>
                         )}
                       </Menu.Item>
                     );
                   })}
-                  {filteredDataSources.length === 0 && (
+                  {filteredDataSourceViews.length === 0 && (
                     <span className="block px-4 py-2 text-sm text-gray-700">
                       No datasources found
                     </span>

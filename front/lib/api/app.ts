@@ -3,6 +3,9 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { App } from "@app/lib/resources/storage/models/apps";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export async function getApp(
   auth: Authenticator,
@@ -27,6 +30,9 @@ export async function getApp(
           visibility: ["public"],
           sId: aId,
         },
+    include: [
+      { model: VaultModel, as: "vault", include: [{ model: GroupModel }] },
+    ],
   });
 
   if (!app) {
@@ -43,6 +49,7 @@ export async function getApp(
     savedConfig: app.savedConfig,
     savedRun: app.savedRun,
     dustAPIProjectId: app.dustAPIProjectId,
+    vault: VaultResource.fromModel(app.vault).toJSON(),
   };
 }
 
@@ -64,6 +71,10 @@ export async function getApps(auth: Authenticator): Promise<AppType[]> {
           workspaceId: owner.id,
           visibility: "public",
         },
+    include: [
+      { model: VaultModel, as: "vault", include: [{ model: GroupModel }] },
+    ],
+
     order: [["updatedAt", "DESC"]],
   });
 
@@ -78,6 +89,7 @@ export async function getApps(auth: Authenticator): Promise<AppType[]> {
       savedConfig: app.savedConfig,
       savedRun: app.savedRun,
       dustAPIProjectId: app.dustAPIProjectId,
+      vault: VaultResource.fromModel(app.vault).toJSON(),
     };
   });
 }
