@@ -7,7 +7,7 @@ module.exports = {
   ],
   plugins: ["import", "simple-import-sort"],
   rules: {
-    "import/no-cycle": "warn",
+    "import/no-cycle": "error",
     /**
     "@typescript-eslint/naming-convention": [
       "error",
