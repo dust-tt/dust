@@ -145,7 +145,7 @@ export function CreateVaultModal({
       await mutateVaults();
       await mutateVaultsAsAdmin();
 
-      await router.push(`/w/${owner.sId}/data-sources/vaults/${r.vault.sId}`);
+      await router.push(`/w/${owner.sId}/vaults/${r.vault.sId}`);
     } finally {
       setIsSaving(false);
     }

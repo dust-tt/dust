@@ -88,7 +88,7 @@ export default function VaultFolderModal({
       const response: PostVaultDataSourceResponseBody = await res.json();
       const { dataSourceView } = response;
       await router.push(
-        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
+        `/w/${owner.sId}/vaults/${vault.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
       );
       sendNotification({
         type: "success",
@@ -186,7 +186,7 @@ export default function VaultFolderModal({
       await mutate();
       handleOnClose();
       await router.push(
-        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/folder`
+        `/w/${owner.sId}/vaults/${vault.sId}/categories/folder`
       );
       sendNotification({
         type: "success",

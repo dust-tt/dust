@@ -125,12 +125,12 @@ function VaultBreadCrumbs({
       {
         icon: getVaultIcon(vault),
         label: vault.kind === "global" ? "Company Data" : vault.name,
-        href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}`,
+        href: `/w/${owner.sId}/vaults/${vault.sId}`,
       },
       {
         icon: CATEGORY_DETAILS[category].icon,
         label: CATEGORY_DETAILS[category].label,
-        href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`,
+        href: `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`,
       },
     ];
 
@@ -159,13 +159,13 @@ function VaultBreadCrumbs({
           FolderIcon
         ),
         label: getDataSourceNameFromView(dataSourceView),
-        href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
+        href: `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
       });
 
       for (const node of [...folders].reverse()) {
         items.push({
           label: node.title,
-          href: `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${node.internalId}`,
+          href: `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${node.internalId}`,
           icon: FolderIcon,
         });
       }
