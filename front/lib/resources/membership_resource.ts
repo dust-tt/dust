@@ -247,7 +247,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
-  // Caller of this method should call `ServerSideTracking.trackCreateMembership`.
+  /**
+   * Caller of this method should call `ServerSideTracking.trackCreateMembership`.
+   */
   static async createMembership({
     user,
     workspace,
@@ -293,7 +295,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return new MembershipResource(MembershipModel, newMembership.get());
   }
 
-  // Caller of this method should call `ServerSideTracking.trackRevokeMembership`.
+  /**
+   * Caller of this method should call `ServerSideTracking.trackRevokeMembership`.
+   */
   static async revokeMembership({
     user,
     workspace,
@@ -338,7 +342,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
-  // Caller of this method should call `ServerSideTracking.trackUpdateMembershipRole`.
+  /**
+   * Caller of this method should call `ServerSideTracking.trackUpdateMembershipRole`.
+   */
   static async updateMembershipRole({
     user,
     workspace,
@@ -415,7 +421,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         { role: newRole },
         { where: { id: membership.id }, transaction }
       );
-      Object.assign(membership, { role: newRole });
     } else {
       // If the last membership was terminated, we create a new membership with the new role.
       await this.createMembership({

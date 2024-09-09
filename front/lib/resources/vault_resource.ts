@@ -1,3 +1,5 @@
+import assert from "node:assert";
+
 import type { ACLType, ModelId, Result, VaultType } from "@dust-tt/types";
 import { assertNever, Ok } from "@dust-tt/types";
 import type {
@@ -65,6 +67,8 @@ export class VaultResource extends BaseResource<VaultModel> {
       globalGroup: GroupResource;
     }
   ) {
+    assert(auth.isAdmin(), "Only admins can call `makeDefaultsForWorkspace`");
+
     const existingVaults = await this.listWorkspaceDefaultVaults(auth);
     const systemVault =
       existingVaults.find((v) => v.kind === "system") ||
