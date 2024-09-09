@@ -504,13 +504,14 @@ export class Authenticator {
     }
 
     // Verify that one of the user has an active membership in the specified workspace.
-    const activeMemberships = await MembershipResource.getActiveMemberships({
-      users,
-      workspace: owner,
-    });
+    const { memberships: activeMemberships, total } =
+      await MembershipResource.getActiveMemberships({
+        users,
+        workspace: owner,
+      });
     // If none of the user has an active membership in the workspace,
     // simply ignore and return null.
-    if (activeMemberships.length === 0) {
+    if (total === 0) {
       return null;
     }
 

@@ -23,11 +23,11 @@ const backfillCustomerIo = async (execute: boolean) => {
         i + 1
       }/${chunks.length})`
     );
-    const membershipsByUserId = _.groupBy(
-      await MembershipResource.getLatestMemberships({
-        users: c.map((u) => u.toJSON()),
-      }),
-      (m) => m.userId.toString()
+    const { memberships } = await MembershipResource.getLatestMemberships({
+      users: c.map((u) => u.toJSON()),
+    });
+    const membershipsByUserId = _.groupBy(memberships, (m) =>
+      m.userId.toString()
     );
 
     const workspaceIds = Object.values(membershipsByUserId)

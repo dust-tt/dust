@@ -116,11 +116,11 @@ export async function fetchRevokedWorkspace(
     return new Err(new Error(message));
   }
 
-  const memberships = await MembershipResource.getLatestMemberships({
+  const { memberships, total } = await MembershipResource.getLatestMemberships({
     users: [u],
   });
 
-  if (!memberships.length) {
+  if (total === 0) {
     const message = "Unreachable: user has no memberships.";
     logger.error({ userId: user.id }, message);
     return new Err(new Error(message));

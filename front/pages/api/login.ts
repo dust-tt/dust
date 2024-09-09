@@ -153,7 +153,7 @@ async function handleEnterpriseSignUpFlow(
   workspace: Workspace | null;
 }> {
   // Combine queries to optimize database calls.
-  const [activeMemberships, workspace] = await Promise.all([
+  const [{ total }, workspace] = await Promise.all([
     MembershipResource.getActiveMemberships({
       users: [user],
     }),
@@ -165,7 +165,7 @@ async function handleEnterpriseSignUpFlow(
   ]);
 
   // Early return if user is already a member of a workspace.
-  if (activeMemberships.length !== 0) {
+  if (total !== 0) {
     return { flow: null, workspace: null };
   }
 
@@ -220,12 +220,13 @@ async function handleRegularSignupFlow(
     AuthFlowError | SSOEnforcedError
   >
 > {
-  const activeMemberships = await MembershipResource.getActiveMemberships({
-    users: [user],
-  });
+  const { memberships: activeMemberships, total } =
+    await MembershipResource.getActiveMemberships({
+      users: [user],
+    });
 
   // Return early if the user is already a member of a workspace and is not attempting to join another one.
-  if (activeMemberships.length !== 0 && !targetWorkspaceId) {
+  if (total !== 0 && !targetWorkspaceId) {
     return new Ok({
       flow: null,
       workspace: null,

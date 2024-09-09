@@ -366,7 +366,9 @@ export async function handleMembershipInvitations(
     });
   }
 
-  const existingMembers = await getMembers(auth, { activeOnly: true });
+  const { members: existingMembers } = await getMembers(auth, {
+    activeOnly: true,
+  });
   const unconsumedInvitations =
     await getRecentPendingAndRevokedInvitations(auth);
   if (

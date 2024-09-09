@@ -141,9 +141,10 @@ export class CustomerioServerSideTracking {
       return;
     }
 
-    const userMemberships = await MembershipResource.getLatestMemberships({
-      users: [u],
-    });
+    const { memberships: userMemberships } =
+      await MembershipResource.getLatestMemberships({
+        users: [u],
+      });
 
     const workspaces = _.keyBy(
       await Workspace.findAll({

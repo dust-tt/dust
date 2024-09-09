@@ -357,9 +357,8 @@ async function handler(
               "Couldn't get owner or subscription from `auth`."
             );
           }
-          const adminEmails = (
-            await getMembers(auth, { roles: ["admin"] })
-          ).map((u) => u.email);
+          const { members } = await getMembers(auth, { roles: ["admin"] });
+          const adminEmails = members.map((u) => u.email);
           const customerEmail = invoice.customer_email;
           if (customerEmail && !adminEmails.includes(customerEmail)) {
             adminEmails.push(customerEmail);
@@ -487,9 +486,8 @@ async function handler(
             }
 
             // then email admins
-            const adminEmails = (
-              await getMembers(auth, { roles: ["admin"] })
-            ).map((u) => u.email);
+            const { members } = await getMembers(auth, { roles: ["admin"] });
+            const adminEmails = members.map((u) => u.email);
             if (adminEmails.length === 0) {
               return apiError(req, res, {
                 status_code: 500,

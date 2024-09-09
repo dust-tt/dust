@@ -377,9 +377,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     // The global group does not have a DB entry for each workspace member.
     // TODO(GROUPS_INFRA): Remove this once we consolidate memberships with group memberships.
     if (this.isGlobal()) {
-      memberships = await MembershipResource.getActiveMemberships({
+      const { memberships: m } = await MembershipResource.getActiveMemberships({
         workspace: auth.getNonNullableWorkspace(),
       });
+      memberships = m;
     } else {
       memberships = await GroupMembershipModel.findAll({
         where: {
@@ -419,10 +420,11 @@ export class GroupResource extends BaseResource<GroupModel> {
         )
       );
     }
-    const workspaceMemberships = await MembershipResource.getActiveMemberships({
-      users: userResources,
-      workspace: owner,
-    });
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getActiveMemberships({
+        users: userResources,
+        workspace: owner,
+      });
 
     if (
       new Set(workspaceMemberships.map((m) => m.userId)).size !== userIds.length
@@ -508,12 +510,12 @@ export class GroupResource extends BaseResource<GroupModel> {
         )
       );
     }
-    const workspaceMemberships = await MembershipResource.getActiveMemberships({
+    const { total } = await MembershipResource.getActiveMemberships({
       users: userResources,
       workspace: owner,
     });
 
-    if (workspaceMemberships.length !== userIds.length) {
+    if (total !== userIds.length) {
       return new Err(
         new DustError(
           "user_not_member",

@@ -43,7 +43,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const allMembers = await getMembers(workspaceAuth, {
+      const { members: allMembers } = await getMembers(workspaceAuth, {
         activeOnly: !!activeOnly,
       });
 

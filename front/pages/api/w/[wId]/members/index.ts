@@ -4,13 +4,17 @@ import type {
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getPaginationParams } from "@app/lib/api/pagination";
 import { getMembers } from "@app/lib/api/workspace";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
+const DEFAULT_PAGE_LIMIT = 50;
+
 export type GetMembersResponseBody = {
   members: UserTypeWithWorkspaces[];
+  total: number;
 };
 
 async function handler(
@@ -20,9 +24,37 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
+      const paginationRes = getPaginationParams(req, {
+        defaultLimit: DEFAULT_PAGE_LIMIT,
+        defaultOrderColumn: "createdAt",
+        defaultOrderDirection: "desc",
+        supportedOrderColumn: ["createdAt"],
+      });
+
+      if (paginationRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: paginationRes.error.message,
+          },
+        });
+      }
+
+      const paginationParams = paginationRes.value;
+
       if (auth.isBuilder() && req.query.role && req.query.role === "admin") {
-        const members = await getMembers(auth, { roles: ["admin"] });
-        res.status(200).json({ members });
+        const { members, total } = await getMembers(
+          auth,
+          {
+            roles: ["admin"],
+          },
+          paginationParams
+        );
+        res.status(200).json({
+          members,
+          total,
+        });
         return;
       }
 
@@ -37,9 +69,12 @@ async function handler(
         });
       }
 
-      const members = await getMembers(auth);
+      const { members, total } = await getMembers(auth, {}, paginationParams);
 
-      res.status(200).json({ members });
+      res.status(200).json({
+        members,
+        total,
+      });
       return;
 
     default:
