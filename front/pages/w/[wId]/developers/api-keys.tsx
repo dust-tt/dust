@@ -34,7 +34,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       groups,
       subscription,
       gaTrackingId: config.getGaTrackingId(),
-      user,
+      user: user.toJSON(),
     },
   };
 });

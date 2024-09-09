@@ -183,7 +183,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       gaTrackingId: config.getGaTrackingId(),
       dustClientFacingUrl: config.getClientFacingUrl(),
-      user,
+      user: user.toJSON(),
     },
   };
 });

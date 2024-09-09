@@ -48,7 +48,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   return {
     props: {
-      user,
+      user: user.toJSON(),
       isBuilder: auth.isBuilder(),
       owner,
       subscription,

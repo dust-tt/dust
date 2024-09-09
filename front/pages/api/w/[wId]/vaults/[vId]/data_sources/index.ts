@@ -165,7 +165,7 @@ async function handler(
         >;
         await handleDataSourceWithProvider({
           auth,
-          user,
+          user: user.toJSON(),
           plan,
           owner,
           vault,
@@ -179,7 +179,7 @@ async function handler(
         >;
         await handleDataSourceWithoutProvider({
           auth,
-          user,
+          user: user.toJSON(),
           plan,
           owner,
           vault,

@@ -39,7 +39,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       members,
       pendingInvitations,
       owner,
-      user,
+      user: user.toJSON(),
     },
   };
 });

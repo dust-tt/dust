@@ -30,7 +30,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       gaTrackingId: config.getGaTrackingId(),
-      user,
+      user: user.toJSON(),
     },
   };
 });

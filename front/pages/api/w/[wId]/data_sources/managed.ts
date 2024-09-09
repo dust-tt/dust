@@ -399,7 +399,7 @@ async function handler(
 
       void ServerSideTracking.trackDataSourceCreated({
         dataSource: dataSource.toJSON(),
-        user,
+        user: user.toJSON(),
         workspace: owner,
       });
       return;

@@ -68,7 +68,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       subscription,
       vault: vault.toJSON(),
       systemVault: systemVault.toJSON(),
-      user,
+      user: user.toJSON(),
     },
   };
 });

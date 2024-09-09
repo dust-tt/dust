@@ -78,7 +78,7 @@ export const getServerSideProps =
 
     return {
       props: {
-        user: auth.user(),
+        user: auth.user()?.toJSON() ?? null,
         owner,
         subscription,
         readOnly,

@@ -68,7 +68,7 @@ async function handler(
       const contentFragmentPayload = bodyValidation.right;
       const baseContext = {
         username: user.username,
-        fullName: user.fullName,
+        fullName: user.fullName(),
         email: user.email,
       };
 

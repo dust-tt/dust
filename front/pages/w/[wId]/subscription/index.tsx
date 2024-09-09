@@ -86,7 +86,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       trialDaysRemaining,
       gaTrackingId: config.getGaTrackingId(),
-      user,
+      user: user.toJSON(),
       workspaceSeats,
       perSeatPricing,
     },

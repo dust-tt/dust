@@ -81,10 +81,10 @@ async function handler(
       const created = await createMessageReaction(auth, {
         messageId,
         conversation,
-        user,
+        user: user.toJSON(),
         context: {
           username: user.username,
-          fullName: user.fullName,
+          fullName: user.fullName(),
         },
         reaction: bodyValidation.right.reaction,
       });
@@ -105,10 +105,10 @@ async function handler(
       const deleted = await deleteMessageReaction(auth, {
         messageId,
         conversation,
-        user,
+        user: user.toJSON(),
         context: {
           username: user.username,
-          fullName: user.fullName,
+          fullName: user.fullName(),
         },
         reaction: bodyValidation.right.reaction,
       });

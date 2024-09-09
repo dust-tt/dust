@@ -94,7 +94,7 @@ async function handler(
         workspaceAdminAuth,
         {
           owner,
-          user,
+          user: user.toJSON(),
           subscription,
           invitationRequests: [bodyValidation.right],
         }

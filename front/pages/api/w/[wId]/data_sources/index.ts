@@ -220,7 +220,7 @@ async function handler(
       });
 
       void ServerSideTracking.trackDataSourceCreated({
-        user,
+        user: user.toJSON(),
         workspace: owner,
         dataSource: ds.toJSON(),
       });

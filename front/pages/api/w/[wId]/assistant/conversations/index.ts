@@ -77,7 +77,7 @@ async function handler(
 
       const baseContext = {
         username: user.username,
-        fullName: user.fullName,
+        fullName: user.fullName(),
         email: user.email,
       };
 
@@ -129,7 +129,7 @@ async function handler(
             context: {
               timezone: message.context.timezone,
               username: user.username,
-              fullName: user.fullName,
+              fullName: user.fullName(),
               email: user.email,
               profilePictureUrl: message.context.profilePictureUrl,
               origin: "web",

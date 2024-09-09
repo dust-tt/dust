@@ -38,9 +38,9 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     };
   }
   const isAdmin = auth.isAdmin();
-  const expertise = await getUserMetadata(user, "expertise");
+  const expertise = await getUserMetadata(user.toJSON(), "expertise");
   const adminInterest = isAdmin
-    ? await getUserMetadata(user, "interest")
+    ? await getUserMetadata(user.toJSON(), "interest")
     : null;
 
   // If user was in onboarding flow "domain_conversation_link"
@@ -50,7 +50,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
 
   return {
     props: {
-      user,
+      user: user.toJSON(),
       owner,
       isAdmin,
       defaultExpertise: expertise?.value || "",
