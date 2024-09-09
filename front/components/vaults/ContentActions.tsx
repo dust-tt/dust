@@ -129,7 +129,11 @@ export const getMenuItems = (
   const actions: ContentActionsMenu = [];
 
   // View in source
-  if (canReadInVault) {
+  // We have a source for all types of docs excepts folder docs unless manually set by the user.
+  if (
+    canReadInVault &&
+    (!isFolder(dataSourceView.dataSource) || contentNode.sourceUrl)
+  ) {
     actions.push(makeViewSourceUrlContentAction(contentNode, dataSourceView));
   }
 
@@ -140,8 +144,9 @@ export const getMenuItems = (
 
   // Edit & Delete
   if (
-    (canWriteInVault && isFolder(dataSourceView.dataSource)) ||
-    isWebsite(dataSourceView.dataSource)
+    canWriteInVault &&
+    (isFolder(dataSourceView.dataSource) ||
+      isWebsite(dataSourceView.dataSource))
   ) {
     actions.push({
       label: "Edit",
@@ -177,8 +182,13 @@ const makeViewSourceUrlContentAction = (
   contentNode: LightContentNode,
   dataSourceView: DataSourceViewType
 ) => {
+  const dataSource = dataSourceView.dataSource;
+  const label = isFolder(dataSource)
+    ? "View associated URL"
+    : `View in ${capitalize(getDataSourceName(dataSource))}`;
+
   return {
-    label: `View in ${capitalize(getDataSourceName(dataSourceView.dataSource))}`,
+    label,
     icon: ExternalLinkIcon,
     link: contentNode.sourceUrl
       ? { href: contentNode.sourceUrl, target: "_blank" }
