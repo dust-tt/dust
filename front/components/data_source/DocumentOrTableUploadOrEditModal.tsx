@@ -44,6 +44,7 @@ interface DocumentOrTableUploadOrEditModalProps {
   onClose: (save: boolean) => void;
   owner: LightWorkspaceType;
   plan: PlanType;
+  totalNodesCount: number;
   viewType: ContentNodesViewType;
 }
 
@@ -79,6 +80,7 @@ export function DocumentOrTableUploadOrEditModal({
   onClose,
   owner,
   plan,
+  totalNodesCount,
   viewType,
 }: DocumentOrTableUploadOrEditModalProps) {
   const sendNotification = useContext(SendNotificationsContext);
@@ -154,12 +156,10 @@ export function DocumentOrTableUploadOrEditModal({
   const isLoading = isTableLoading || isDocumentLoading;
   const isError = isDocumentError || isTableError;
 
-  const total = 0; // TODO: Get the total number of documents
-
   if (
     !initialId &&
     plan.limits.dataSources.documents.count !== -1 &&
-    total >= plan.limits.dataSources.documents.count
+    totalNodesCount >= plan.limits.dataSources.documents.count
   ) {
     return (
       <DocumentLimitPopup

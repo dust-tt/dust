@@ -4,6 +4,7 @@ import {
   DropdownMenu,
   Searchbar,
   Spinner,
+  useHashParam,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
 import type {
@@ -16,8 +17,7 @@ import type {
 } from "@dust-tt/types";
 import { isValidContentNodesViewType } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useRouter } from "next/router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import type {
   ContentActionKey,
@@ -100,48 +100,31 @@ export const VaultDataSourceViewContentList = ({
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
-  const { pagination, setPagination } = usePaginationFromUrl("table");
-
-  const router = useRouter();
-  const viewType: ContentNodesViewType = isValidContentNodesViewType(
-    router.query.viewType
-  )
-    ? router.query.viewType
-    : "documents";
-
-  // Set a default viewType if not present in the URL
-  useEffect(() => {
-    if (!router.query.viewType) {
-      void router.replace(
-        {
-          query: { ...router.query, viewType: "documents" },
-        },
-        undefined,
-        { shallow: true }
-      );
-    }
-  }, [router]);
+  const { pagination, setPagination } = usePaginationFromUrl({
+    urlPrefix: "table",
+  });
+  const [viewType, setViewType] = useHashParam("viewType", "documents");
 
   const handleViewTypeChange = (newViewType: ContentNodesViewType) => {
     if (newViewType !== viewType) {
-      void router.replace(
-        {
-          query: { ...router.query, viewType: newViewType },
-        },
-        undefined,
-        { shallow: true }
-      );
+      setPagination({ pageIndex: 0, pageSize: pagination.pageSize }, "replace");
+      setViewType(newViewType);
     }
   };
 
-  const { isNodesLoading, mutateDataSourceViewContentNodes, nodes } =
-    useDataSourceViewContentNodes({
-      dataSourceView,
-      owner,
-      internalIds: parentId ? [parentId] : undefined,
-      includeChildren: true,
-      viewType,
-    });
+  const {
+    isNodesLoading,
+    mutateDataSourceViewContentNodes,
+    nodes,
+    totalNodesCount,
+  } = useDataSourceViewContentNodes({
+    dataSourceView,
+    owner,
+    internalIds: parentId ? [parentId] : undefined,
+    includeChildren: true,
+    pagination,
+    viewType: isValidContentNodesViewType(viewType) ? viewType : "documents",
+  });
 
   const rows: RowData[] = useMemo(
     () =>
@@ -244,6 +227,7 @@ export const VaultDataSourceViewContentList = ({
           filter={dataSourceSearch}
           filterColumn="title"
           initialColumnOrder={[{ desc: false, id: "title" }]}
+          totalRowCount={totalNodesCount}
           pagination={pagination}
           setPagination={setPagination}
         />
@@ -251,6 +235,7 @@ export const VaultDataSourceViewContentList = ({
       <ContentActions
         ref={contentActionsRef}
         dataSourceView={dataSourceView}
+        totalNodesCount={totalNodesCount}
         owner={owner}
         plan={plan}
         onSave={async (action?: ContentActionKey) => {

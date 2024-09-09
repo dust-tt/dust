@@ -183,6 +183,8 @@ async function botAnswerMessage(
     throw new Error("Failed to get slack user info");
   }
 
+  let requestedGroups: string[] | undefined = undefined;
+
   if (slackUserInfo.is_bot) {
     const isBotAllowedRes = await isBotAllowed(connector, slackUserInfo);
     if (isBotAllowedRes.isErr()) {
@@ -203,6 +205,9 @@ async function botAnswerMessage(
     if (!hasChatbotAccess.authorized) {
       return new Ok(undefined);
     }
+
+    // If the user is allowed, we retrieve the groups he has access to.
+    requestedGroups = hasChatbotAccess.groupIds;
   }
 
   const displayName = slackUserInfo.display_name ?? "";
@@ -246,12 +251,11 @@ async function botAnswerMessage(
     throw new Error("DUST_FRONT_API environment variable is not defined");
   }
 
-  let requestedGroups: string[] | undefined = undefined;
-
   if (slackUserInfo.is_bot) {
     const botName = slackUserInfo.real_name;
     requestedGroups = await slackConfig.getBotGroupIds(botName);
   }
+
   const dustAPI = new DustAPI(
     apiConfig.getDustAPIConfig(),
     {
