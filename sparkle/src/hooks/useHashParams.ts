@@ -47,8 +47,11 @@ const setHashParam = (
 };
 
 type Updater = (prevValue?: string) => string;
+
+export type HistoryOptions = "replace" | "push";
+
 type SetterOptions = {
-  history: "replace" | "push";
+  history: HistoryOptions;
 };
 type Setter = (value?: string | Updater, options?: SetterOptions) => void;
 
