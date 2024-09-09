@@ -6,8 +6,8 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
+  DataSourceViewContentNode,
   DataSourceViewType,
-  LightContentNode,
   PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -31,7 +31,7 @@ export type ContentActionKey =
 
 export type ContentAction = {
   action?: ContentActionKey;
-  contentNode?: LightContentNode;
+  contentNode?: DataSourceViewContentNode;
 };
 
 type ContentActionsProps = {
@@ -45,7 +45,7 @@ type ContentActionsProps = {
 export type ContentActionsRef = {
   callAction: (
     action: ContentActionKey,
-    contentNode?: LightContentNode
+    contentNode?: DataSourceViewContentNode
   ) => void;
 };
 
@@ -67,7 +67,7 @@ export const ContentActions = React.forwardRef<
     useImperativeHandle(ref, () => ({
       callAction: (
         action: ContentActionKey,
-        contentNode?: LightContentNode
+        contentNode?: DataSourceViewContentNode
       ) => {
         setCurrentAction({ action, contentNode });
       },
@@ -140,7 +140,7 @@ type ContentActionsMenu = ComponentProps<typeof DataTable.Row>["moreMenuItems"];
 
 export const getMenuItems = (
   dataSourceView: DataSourceViewType,
-  contentNode: LightContentNode,
+  contentNode: DataSourceViewContentNode,
   contentActionsRef: RefObject<ContentActionsRef>
 ): ContentActionsMenu => {
   if (isFolder(dataSourceView.dataSource)) {
@@ -197,7 +197,7 @@ export const getMenuItems = (
 };
 
 function makeViewRawContentAction(
-  contentNode: LightContentNode,
+  contentNode: DataSourceViewContentNode,
   contentActionsRef: RefObject<ContentActionsRef>
 ) {
   return [
