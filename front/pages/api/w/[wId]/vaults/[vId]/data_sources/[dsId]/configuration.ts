@@ -129,7 +129,6 @@ async function handler(
         });
       }
 
-      // TODO(VAULTS_INFRA) Do we need this?
       if (!auth.isBuilder()) {
         return apiError(req, res, {
           status_code: 403,
