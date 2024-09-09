@@ -90,7 +90,7 @@ export function useVaultDataSourceViews<
   vaultId,
   workspaceId,
 }: {
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category?: Exclude<DataSourceViewCategory, "apps">;
   disabled?: boolean;
   includeConnectorDetails?: IncludeConnectorDetails;
   includeEditedBy?: boolean;
@@ -101,9 +101,10 @@ export function useVaultDataSourceViews<
     GetVaultDataSourceViewsResponseBody<IncludeConnectorDetails>
   > = fetcher;
 
-  const queryParams = new URLSearchParams({
-    category,
-  });
+  const queryParams = new URLSearchParams();
+  if (category) {
+    queryParams.set("category", category);
+  }
 
   if (includeConnectorDetails) {
     queryParams.set("includeConnectorDetails", "true");

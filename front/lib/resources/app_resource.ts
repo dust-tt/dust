@@ -121,6 +121,7 @@ export class AppResource extends ResourceWithVault<App> {
       savedConfig: this.savedConfig,
       savedRun: this.savedRun,
       dustAPIProjectId: this.dustAPIProjectId,
+      vault: this.vault.toJSON(),
     };
   }
 }

@@ -43,6 +43,14 @@ export class VaultResource extends BaseResource<VaultModel> {
     super(VaultModel, blob);
   }
 
+  static fromModel(vault: VaultModel) {
+    return new VaultResource(
+      VaultModel,
+      vault.get(),
+      vault.groups.map((group) => new GroupResource(GroupModel, group.get()))
+    );
+  }
+
   static async makeNew(
     blob: CreationAttributes<VaultModel>,
     group: GroupResource
@@ -143,16 +151,7 @@ export class VaultResource extends BaseResource<VaultModel> {
       order,
     });
 
-    return vaultModels.map(
-      (vault) =>
-        new this(
-          VaultModel,
-          vault.get(),
-          vault.groups.map(
-            (group) => new GroupResource(GroupModel, group.get())
-          )
-        )
-    );
+    return vaultModels.map(this.fromModel);
   }
 
   static async listWorkspaceVaults(

@@ -5,6 +5,7 @@ import { Op } from "sequelize";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { App } from "@app/lib/resources/storage/models/apps";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetOrPostAppResponseBody = {
@@ -56,6 +57,7 @@ async function handler(
           savedConfig: app.savedConfig,
           savedRun: app.savedRun,
           dustAPIProjectId: app.dustAPIProjectId,
+          vault: VaultResource.fromModel(app.vault).toJSON(),
         },
       });
       break;
@@ -106,6 +108,7 @@ async function handler(
           savedConfig: app.savedConfig,
           savedRun: app.savedRun,
           dustAPIProjectId: app.dustAPIProjectId,
+          vault: VaultResource.fromModel(app.vault).toJSON(),
         },
       });
       break;
