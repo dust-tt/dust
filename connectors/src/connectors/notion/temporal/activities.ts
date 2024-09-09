@@ -1063,12 +1063,7 @@ async function findResourcesNotSeenInGarbageCollectionRun(
     return { pageIdsSeenInRun, databaseIdsSeenInRun };
   })();
 
-  const pagesNotSeenInGarbageCollectionRun: Array<{
-    lastSeenTs: Date;
-    resourceType: "page";
-    resourceId: string;
-  }> = [];
-  const pages = (
+  const pagesNotSeenInGarbageCollectionRun = (
     await NotionPage.findAll({
       where: {
         connectorId,
@@ -1086,14 +1081,7 @@ async function findResourcesNotSeenInGarbageCollectionRun(
       resourceType: "page" as const,
     }));
 
-  pagesNotSeenInGarbageCollectionRun.push(...pages);
-
-  const databasesNotSeenInGarbageCollectionRun: Array<{
-    lastSeenTs: Date;
-    resourceType: "database";
-    resourceId: string;
-  }> = [];
-  const databases = (
+  const databasesNotSeenInGarbageCollectionRun = (
     await NotionDatabase.findAll({
       where: {
         connectorId,
@@ -1110,8 +1098,6 @@ async function findResourcesNotSeenInGarbageCollectionRun(
       resourceId: p.notionDatabaseId,
       resourceType: "database" as const,
     }));
-
-  databasesNotSeenInGarbageCollectionRun.push(...databases);
 
   const allResourcesNotSeenInGarbageCollectionRun = [
     ...pagesNotSeenInGarbageCollectionRun,
