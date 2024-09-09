@@ -57,6 +57,12 @@ then
 fi
 
 DUST_APPS_WORKSPACE_NUMERIC_ID=$(psql ${FRONT_DATABASE_URI} -c "COPY (select id from workspaces where \"sId\"='${DEVELOPMENT_DUST_APPS_WORKSPACE_ID}') TO STDOUT")
+if [ -z "$DUST_APPS_WORKSPACE_NUMERIC_ID" ] 
+then
+    echo "Cannot find workspace ${DEVELOPMENT_DUST_APPS_WORKSPACE_ID} on your local instance."
+    exit 0
+fi
+
 
 mkdir -p /tmp/dust-apps
 
@@ -112,31 +118,26 @@ echo "Fetching prodbox pod..."
 PRODBOX_POD_NAME=$(kubectl get pods |grep prodbox |cut -d \  -f1)
 
 # ---- front
+VAULT_ID=$(psql ${FRONT_DATABASE_URI} -c "COPY (SELECT id from vaults where \"workspaceId\"=${DUST_APPS_WORKSPACE_NUMERIC_ID} and kind='global') TO STDOUT")
+fetch FRONT apps "id createdAt updatedAt sId name description visibility savedSpecification savedConfig savedRun dustAPIProjectId ${DUST_APPS_WORKSPACE_NUMERIC_ID} ${VAULT_ID}" "\\\"workspaceId\\\"=5069"
+PROJECT_IDS=$(cut -f 11 /tmp/dust-apps/FRONT_apps.csv |paste -sd "," -)
 
-fetch FRONT apps "id createdAt updatedAt sId name description visibility savedSpecification savedConfig savedRun dustAPIProjectId workspaceId" "\\\"workspaceId\\\"=5069"
-project_ids=$(cut -f 11 /tmp/dust-apps/FRONT_apps.csv |paste -sd "," -)
-fetch FRONT datasets "id createdAt updatedAt name description schema appId workspaceId" "\\\"workspaceId\\\"=5069"
-
-
+fetch FRONT datasets "id createdAt updatedAt name description schema appId ${DUST_APPS_WORKSPACE_NUMERIC_ID}" "\\\"workspaceId\\\"=5069"
 # ---- apps
-cat /tmp/dust-apps/FRONT_apps.csv | cut -f1-11 | sed -E "s/^(.*)$/\1\t${DUST_APPS_WORKSPACE_NUMERIC_ID}/g" > /tmp/dust-apps/FRONT_apps_transformed.csv
-mv /tmp/dust-apps/FRONT_apps_transformed.csv /tmp/dust-apps/FRONT_apps.csv
-import FRONT apps "id createdAt updatedAt sId name description visibility savedSpecification savedConfig savedRun dustAPIProjectId workspaceId" "updatedAt name description visibility savedSpecification savedConfig savedRun dustAPIProjectId"
+import FRONT apps "id createdAt updatedAt sId name description visibility savedSpecification savedConfig savedRun dustAPIProjectId workspaceId vaultId" "updatedAt name description visibility savedSpecification savedConfig savedRun dustAPIProjectId"
 
 # ---- datasets
-cat /tmp/dust-apps/FRONT_datasets.csv | cut -f1-7 | sed -E "s/^(.*)$/\1\t${DUST_APPS_WORKSPACE_NUMERIC_ID}/g" > /tmp/dust-apps/FRONT_datasets_transformed.csv
-mv /tmp/dust-apps/FRONT_datasets_transformed.csv /tmp/dust-apps/FRONT_datasets.csv
 import FRONT datasets "id createdAt updatedAt name description schema appId workspaceId" "updatedAt name description schema"
 
 # ---- core
 
-fetch CORE projects "id" "\\\"id\\\" in (${project_ids})"
-fetch CORE specifications "id project created hash specification" "\\\"project\\\" in (${project_ids})"
-fetch CORE datasets "id project created dataset_id hash" "\\\"project\\\" in (${project_ids})"
-dataset_ids=$(cut -f 1 /tmp/dust-apps/CORE_datasets.csv |paste -sd "," -)
-fetch CORE datasets_joins "id dataset point point_idx" "\\\"dataset\\\" in (${dataset_ids})"
-dataset_points_ids=$(cut -f 3 /tmp/dust-apps/CORE_datasets_joins.csv |paste -sd "," -)
-fetch CORE datasets_points "id hash json" "\\\"id\\\" in (${dataset_points_ids})"
+fetch CORE projects "id" "\\\"id\\\" in (${PROJECT_IDS})"
+fetch CORE specifications "id project created hash specification" "\\\"project\\\" in (${PROJECT_IDS})"
+fetch CORE datasets "id project created dataset_id hash" "\\\"project\\\" in (${PROJECT_IDS})"
+DATASET_IDS=$(cut -f 1 /tmp/dust-apps/CORE_datasets.csv |paste -sd "," -)
+fetch CORE datasets_joins "id dataset point point_idx" "\\\"dataset\\\" in (${DATASET_IDS})"
+DATASET_POINT_IDS=$(cut -f 3 /tmp/dust-apps/CORE_datasets_joins.csv |paste -sd "," -)
+fetch CORE datasets_points "id hash json" "\\\"id\\\" in (${DATASET_POINT_IDS})"
 
 # ---- projects
 import CORE projects "id" "id"
