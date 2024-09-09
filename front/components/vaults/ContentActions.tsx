@@ -19,8 +19,7 @@ import { DocumentOrTableDeleteDialog } from "@app/components/data_source/Documen
 import { DocumentOrTableUploadOrEditModal } from "@app/components/data_source/DocumentOrTableUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
-import { getDataSourceName } from "@app/lib/connector_providers";
-import { isFolder, isWebsite } from "@app/lib/data_sources";
+import { getDataSourceName, isFolder, isWebsite } from "@app/lib/data_sources";
 
 export type ContentActionKey =
   | "DocumentUploadOrEdit"

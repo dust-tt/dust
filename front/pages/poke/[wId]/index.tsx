@@ -37,7 +37,7 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { renderSubscriptionFromModels } from "@app/lib/plans/subscription";
+import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { DustProdActionRegistry } from "@app/lib/registry";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{

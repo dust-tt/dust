@@ -6,6 +6,7 @@ import { getUserForWorkspace } from "@app/lib/api/user";
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
@@ -62,6 +63,7 @@ async function handler(
         user,
         workspace: owner,
       });
+
       if (revokeResult.isErr()) {
         switch (revokeResult.error.type) {
           case "not_found":
@@ -78,6 +80,16 @@ async function handler(
           default:
             assertNever(revokeResult.error.type);
         }
+      }
+
+      if (revokeResult.isOk()) {
+        void ServerSideTracking.trackRevokeMembership({
+          user: user.toJSON(),
+          workspace: owner,
+          role: revokeResult.value.role,
+          startAt: revokeResult.value.startAt,
+          endAt: revokeResult.value.endAt,
+        });
       }
 
       await launchUpdateUsageWorkflow({ workspaceId: owner.sId });

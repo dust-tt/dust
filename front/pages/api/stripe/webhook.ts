@@ -637,9 +637,34 @@ async function handler(
           break;
 
         case "customer.subscription.trial_will_end":
+          logger.info(
+            { event },
+            "[Stripe Webhook] Received customer.subscription.trial_will_end."
+          );
           stripeSubscription = event.data.object as Stripe.Subscription;
 
-          await maybeCancelInactiveTrials(stripeSubscription);
+          const trialingSubscription = await Subscription.findOne({
+            where: { stripeSubscriptionId: stripeSubscription.id },
+            include: [Workspace],
+          });
+
+          if (!trialingSubscription) {
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message:
+                  "Stripe Webhook: Error handling customer.subscription.trial_will_end. Matching subscription not found on db.",
+              },
+            });
+          }
+
+          await maybeCancelInactiveTrials(
+            await Authenticator.internalAdminForWorkspace(
+              trialingSubscription.workspace.sId
+            ),
+            stripeSubscription
+          );
 
           break;
 

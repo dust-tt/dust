@@ -53,7 +53,10 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       const { systemGroup, globalGroup } =
         await GroupResource.makeDefaultsForWorkspace(lightWorkspace);
 
-      await VaultResource.makeDefaultsForWorkspace(lightWorkspace, {
+      const auth = await Authenticator.internalAdminForWorkspace(
+        lightWorkspace.sId
+      );
+      await VaultResource.makeDefaultsForWorkspace(auth, {
         systemGroup,
         globalGroup,
       });

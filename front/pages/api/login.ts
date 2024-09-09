@@ -7,7 +7,7 @@ import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
-import { getSession, subscriptionForWorkspace } from "@app/lib/auth";
+import { getSession } from "@app/lib/auth";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
 import {
   getPendingMembershipInvitationForEmailAndWorkspace,
@@ -24,8 +24,10 @@ import {
 } from "@app/lib/iam/workspaces";
 import type { MembershipInvitation } from "@app/lib/models/workspace";
 import { Workspace } from "@app/lib/models/workspace";
+import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
@@ -81,11 +83,27 @@ async function handleMembershipInvite(
   });
 
   if (m?.isRevoked()) {
-    await MembershipResource.updateMembershipRole({
+    const updateRes = await MembershipResource.updateMembershipRole({
       user,
       workspace: renderLightWorkspaceType({ workspace }),
       newRole: membershipInvite.initialRole,
       allowTerminated: true,
+    });
+
+    if (updateRes.isErr()) {
+      return new Err(
+        new AuthFlowError(
+          "membership_update_error",
+          `Error updating previously revoked membership: ${updateRes.error.type}`
+        )
+      );
+    }
+
+    void ServerSideTracking.trackUpdateMembershipRole({
+      user: user.toJSON(),
+      workspace: renderLightWorkspaceType({ workspace }),
+      previousRole: updateRes.value.previousRole,
+      role: updateRes.value.newRole,
     });
   }
 
@@ -440,6 +458,13 @@ export async function createAndLogMembership({
     role,
     user,
     workspace: renderLightWorkspaceType({ workspace }),
+  });
+
+  void ServerSideTracking.trackCreateMembership({
+    user: user.toJSON(),
+    workspace: renderLightWorkspaceType({ workspace }),
+    role: m.role,
+    startAt: m.startAt,
   });
 
   // Update workspace subscription usage when a new user joins.

@@ -2,8 +2,8 @@ import type { LightWorkspaceType, Result } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import type Stripe from "stripe";
 
+import { reportActiveSeats } from "@app/lib/plans/stripe";
 import { reportMonthlyActiveUsers } from "@app/lib/plans/usage/mau";
-import { reportActiveSeats } from "@app/lib/plans/usage/seats";
 import type {
   InvalidRecurringPriceError,
   SupportedReportUsage,

@@ -11,15 +11,11 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
-  DataSourceType,
-  DataSourceViewType,
   PlanType,
   WhitelistableFeature,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { ComponentType } from "react";
-
-import { isManaged } from "@app/lib/data_sources";
 
 export type ConnectorProviderConfiguration = {
   name: string;
@@ -148,18 +144,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isSearchEnabled: false,
   },
 };
-
-export function getDataSourceNameFromView(dsv: DataSourceViewType): string {
-  return getDataSourceName(dsv.dataSource);
-}
-
-export function getDataSourceName(ds: DataSourceType): string {
-  if (isManaged(ds)) {
-    return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
-  }
-
-  return ds.name;
-}
 
 export function getConnectorProviderLogoWithFallback(
   provider: ConnectorProvider | null,

@@ -22,7 +22,7 @@ import {
   isOldFreePlan,
   isProPlan,
 } from "@app/lib/plans/plan_codes";
-import { renderSubscriptionFromModels } from "@app/lib/plans/subscription";
+import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";

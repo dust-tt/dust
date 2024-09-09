@@ -11,7 +11,7 @@ import { useRouter } from "next/router";
 import React, { useContext } from "react";
 
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { SidebarContext } from "@app/components/sparkle/AppLayout";
+import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { classNames } from "@app/lib/utils";
 
 type AssistantSidebarMenuProps = {

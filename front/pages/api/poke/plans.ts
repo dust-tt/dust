@@ -7,7 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Plan } from "@app/lib/models/plan";
-import { renderPlanFromModel } from "@app/lib/plans/subscription";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { apiError } from "@app/logger/withlogging";
 
 export const PlanTypeSchema = t.type({
