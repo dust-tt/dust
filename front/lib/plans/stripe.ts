@@ -444,3 +444,15 @@ export function assertStripeSubscriptionItemIsValid({
 
   return new Ok(true);
 }
+
+export async function reportActiveSeats(
+  stripeSubscriptionItem: Stripe.SubscriptionItem,
+  workspace: LightWorkspaceType
+): Promise<void> {
+  const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
+
+  await updateStripeQuantityForSubscriptionItem(
+    stripeSubscriptionItem,
+    activeSeats
+  );
+}
