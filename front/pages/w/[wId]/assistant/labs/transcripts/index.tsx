@@ -539,8 +539,8 @@ export default function LabsTranscriptsIndex({
               ) : (
                 <>
                   <Page.P>
-                    Connect to Google Drive so Dust can access 'My Drive' where
-                    your meeting transcripts are stored.
+                    Connect to Google so Dust can access your meeting
+                    transcripts.
                   </Page.P>
                   <div>
                     <Button
