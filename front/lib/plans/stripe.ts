@@ -1,4 +1,9 @@
-import type { BillingPeriod, LightWorkspaceType, Result, WorkspaceType } from "@dust-tt/types";
+import type {
+  BillingPeriod,
+  LightWorkspaceType,
+  Result,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import { Stripe } from "stripe";

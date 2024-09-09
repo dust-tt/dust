@@ -29,4 +29,3 @@ export const countActiveSeatsInWorkspaceCached = cacheWithRedis(
   },
   60 * 10 * 1000 // 10 minutes
 );
-

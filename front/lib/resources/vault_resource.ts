@@ -1,9 +1,4 @@
-import type {
-  ACLType,
-  ModelId,
-  Result,
-  VaultType,
-} from "@dust-tt/types";
+import type { ACLType, ModelId, Result, VaultType } from "@dust-tt/types";
 import { assertNever, Ok } from "@dust-tt/types";
 import type {
   Attributes,

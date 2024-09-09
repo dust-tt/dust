@@ -48,7 +48,7 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import {setupConnection} from "@app/components/vaults/AddConnectionMenu";
+import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
 import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";

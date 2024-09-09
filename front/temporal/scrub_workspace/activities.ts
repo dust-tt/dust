@@ -21,7 +21,7 @@ import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
-import {subscriptionForWorkspaces} from "@app/lib/plans/subscription";
+import { subscriptionForWorkspaces } from "@app/lib/plans/subscription";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";

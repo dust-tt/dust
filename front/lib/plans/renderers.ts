@@ -1,7 +1,4 @@
-import type {
-  PlanType,
-  SubscriptionType,
-} from "@dust-tt/types";
+import type { PlanType, SubscriptionType } from "@dust-tt/types";
 
 import type { Subscription } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
