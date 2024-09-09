@@ -18,7 +18,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -30,6 +29,8 @@ import {
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
+
+import { DataSourceViewModel } from "./storage/models/data_source_view";
 
 export type FetchDataSourceOrigin =
   | "labs_transcripts_resource"
@@ -310,7 +311,15 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
       },
     });
 
-    await DataSourceViewResource.deleteForDataSource(auth, this, transaction);
+    // We directly delete the DataSourceViewResource.model here to avoid a circular dependency.
+    // DataSourceViewResource depends on DataSourceResource
+    await DataSourceViewModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        dataSourceId: this.id,
+      },
+      transaction,
+    });
 
     try {
       await this.model.destroy({
