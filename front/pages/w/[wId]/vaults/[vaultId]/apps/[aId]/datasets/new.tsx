@@ -89,7 +89,9 @@ export default function NewDatasetView({
   // this should happen.
   useEffect(() => {
     if (isFinishedEditing) {
-      void router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
+      void router.push(
+        `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets`
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFinishedEditing]);

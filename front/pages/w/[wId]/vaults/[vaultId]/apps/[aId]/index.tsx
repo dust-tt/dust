@@ -381,7 +381,9 @@ export default function AppView({
                   label="Clone"
                   icon={DocumentDuplicateIcon}
                   onClick={() => {
-                    void router.push(`/w/${owner.sId}/a/${app.sId}/clone`);
+                    void router.push(
+                      `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/clone`
+                    );
                   }}
                 />
               </div>

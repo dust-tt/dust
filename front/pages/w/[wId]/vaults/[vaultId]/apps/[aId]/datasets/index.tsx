@@ -98,7 +98,9 @@ export default function DatasetsView({
           },
         }
       );
-      await router.push(`/w/${owner.sId}/a/${app.sId}/datasets`);
+      await router.push(
+        `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets`
+      );
     }
   };
 
@@ -137,7 +139,7 @@ export default function DatasetsView({
                   icon={PlusIcon}
                   onClick={() => {
                     void router.push(
-                      `/w/${owner.sId}/a/${app.sId}/datasets/new`
+                      `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/new`
                     );
                   }}
                 />
@@ -148,7 +150,7 @@ export default function DatasetsView({
                     return (
                       <Link
                         key={d.name}
-                        href={`/w/${owner.sId}/a/${app.sId}/datasets/${d.name}`}
+                        href={`/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${d.name}`}
                         className="block"
                       >
                         <div
