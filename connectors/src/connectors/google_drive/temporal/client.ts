@@ -108,6 +108,9 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
 
   const workflowId = googleDriveIncrementalSyncWorkflowId(connectorId);
 
+  // Randomize the initial minute to avoid all incremental syncs starting at the same time.
+  const intialMinute = Math.floor(Math.random() * 5);
+
   try {
     await terminateWorkflow(workflowId);
     await client.workflow.start(googleDriveIncrementalSync, {
@@ -118,7 +121,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
         connectorId: [connectorId],
       },
       // Every 5 minutes.
-      cronSchedule: "*/5 * * * *",
+      cronSchedule: `${intialMinute}-59/5 * * * *`,
       memo: {
         connectorId: connectorId,
       },
