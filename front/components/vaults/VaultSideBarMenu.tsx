@@ -17,10 +17,10 @@ import type {
   VaultType,
 } from "@dust-tt/types";
 import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@dust-tt/types";
-import { groupBy } from "lodash";
+import { groupBy, uniqBy } from "lodash";
 import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   getConnectorProviderLogoWithFallback,
@@ -53,9 +53,11 @@ export default function VaultSideBarMenu({
   isAdmin,
   setShowVaultCreationModal,
 }: VaultSideBarMenuProps) {
-  const { vaults, isVaultsLoading } = useVaultsAsAdmin({
-    workspaceId: owner.sId,
-  });
+  const { vaults: vaultsAsAdmin, isVaultsLoading: isVaultsAsAdminLoading } =
+    useVaultsAsAdmin({
+      workspaceId: owner.sId,
+      disabled: !isAdmin,
+    });
 
   const { vaults: vaultsAsUser, isVaultsLoading: isVaultsAsUserLoading } =
     useVaults({
@@ -65,8 +67,8 @@ export default function VaultSideBarMenu({
   // Vaults that are in the vaultsAsUser list should be displayed first, use the name as a tiebreaker.
   const compareVaults = useCallback(
     (v1: VaultType, v2: VaultType) => {
-      const v1IsMember = !!vaultsAsUser?.find((v) => v.sId === v1.sId);
-      const v2IsMember = !!vaultsAsUser?.find((v) => v.sId === v2.sId);
+      const v1IsMember = !!vaultsAsUser.find((v) => v.sId === v1.sId);
+      const v2IsMember = !!vaultsAsUser.find((v) => v.sId === v2.sId);
 
       if (v1IsMember && !v2IsMember) {
         return -1;
@@ -79,7 +81,11 @@ export default function VaultSideBarMenu({
     [vaultsAsUser]
   );
 
-  if (!vaults || !vaultsAsUser || isVaultsLoading || isVaultsAsUserLoading) {
+  const vaults = useMemo(() => {
+    return uniqBy(vaultsAsAdmin.concat(vaultsAsUser), "sId");
+  }, [vaultsAsAdmin, vaultsAsUser]);
+
+  if (isVaultsAsAdminLoading || isVaultsAsUserLoading || !vaultsAsUser) {
     return <></>;
   }
 

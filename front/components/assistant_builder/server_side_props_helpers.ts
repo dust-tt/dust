@@ -37,9 +37,9 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
-  const accessibleVaults = [
-    ...(await VaultResource.listWorkspaceVaults(auth)),
-  ].filter((vault) => !vault.isSystem());
+  const accessibleVaults = (
+    await VaultResource.listWorkspaceVaults(auth)
+  ).filter((vault) => !vault.isSystem());
 
   const [dsViews, allDustApps] = await Promise.all([
     DataSourceViewResource.listByVaults(auth, accessibleVaults),

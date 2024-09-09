@@ -46,6 +46,16 @@ async function handler(
       let vaults: VaultResource[] = [];
 
       if (role && role === "admin") {
+        if (!auth.isAdmin()) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message:
+                "Only users that are `admins` can see all vaults in the workspace.",
+            },
+          });
+        }
         vaults = await VaultResource.listWorkspaceVaultsAsAdmin(auth);
       } else {
         vaults = await VaultResource.listWorkspaceVaults(auth);

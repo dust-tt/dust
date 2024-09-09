@@ -23,8 +23,8 @@ export function useVaults({
   );
 
   return {
-    vaults: data ? data.vaults : null,
-    isVaultsLoading: !error && !data,
+    vaults: data ? data.vaults : [],
+    isVaultsLoading: !error && !data && !disabled,
     isVaultsError: error,
     mutate,
   };
@@ -46,8 +46,8 @@ export function useVaultsAsAdmin({
   );
 
   return {
-    vaults: data ? data.vaults : null,
-    isVaultsLoading: !error && !data,
+    vaults: data ? data.vaults : [],
+    isVaultsLoading: !error && !data && !disabled,
     isVaultsError: error,
     mutate,
   };
