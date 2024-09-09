@@ -23,23 +23,19 @@ import {
   Ok,
   WHITELISTABLE_FEATURES,
 } from "@dust-tt/types";
-import * as _ from "lodash";
 import type {
   GetServerSidePropsContext,
   NextApiRequest,
   NextApiResponse,
 } from "next";
 
+import config from "@app/lib/api/config";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isValidSession } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
-import type { PlanAttributes } from "@app/lib/plans/free_plans";
-import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { renderSubscriptionFromModels } from "@app/lib/plans/subscription";
-import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
+import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -48,7 +44,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
-import config from "./api/config";
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
 const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
@@ -509,13 +504,14 @@ export class Authenticator {
     }
 
     // Verify that one of the user has an active membership in the specified workspace.
-    const activeMemberships = await MembershipResource.getActiveMemberships({
-      users,
-      workspace: owner,
-    });
+    const { memberships: activeMemberships, total } =
+      await MembershipResource.getActiveMemberships({
+        users,
+        workspace: owner,
+      });
     // If none of the user has an active membership in the workspace,
     // simply ignore and return null.
-    if (activeMemberships.length === 0) {
+    if (total === 0) {
       return null;
     }
 
@@ -750,100 +746,6 @@ export async function getAPIKey(
   }
 
   return new Ok(key);
-}
-
-/**
- * Construct the SubscriptionType for the provided workspace.
- * @param w WorkspaceType the workspace to get the plan for
- * @returns SubscriptionType
- */
-export async function subscriptionForWorkspace(
-  workspace: LightWorkspaceType
-): Promise<SubscriptionType> {
-  const res = await subscriptionForWorkspaces([workspace]);
-
-  const subscription = res[workspace.sId];
-  if (!subscription) {
-    throw new Error(
-      `Could not find subscription for workspace ${workspace.sId}`
-    );
-  }
-
-  return subscription;
-}
-
-/**
- * Construct the SubscriptionType for the provided workspaces.
- * @param w WorkspaceType the workspace to get the plan for
- * @returns SubscriptionType
- */
-export async function subscriptionForWorkspaces(
-  workspaces: LightWorkspaceType[]
-): Promise<{ [key: string]: SubscriptionType }> {
-  const workspaceModelBySid = _.keyBy(workspaces, "sId");
-
-  const activeSubscriptionByWorkspaceId = _.keyBy(
-    await Subscription.findAll({
-      attributes: [
-        "endDate",
-        "id",
-        "paymentFailingSince",
-        "sId",
-        "startDate",
-        "status",
-        "stripeSubscriptionId",
-        "trialing",
-        "workspaceId",
-      ],
-      where: {
-        workspaceId: Object.values(workspaceModelBySid).map((w) => w.id),
-        status: "active",
-      },
-      include: [
-        {
-          model: Plan,
-          as: "plan",
-          required: true,
-        },
-      ],
-    }),
-    "workspaceId"
-  );
-
-  const renderedSubscriptionByWorkspaceSid: Record<string, SubscriptionType> =
-    {};
-
-  for (const [sId, workspace] of Object.entries(workspaceModelBySid)) {
-    const activeSubscription =
-      activeSubscriptionByWorkspaceId[workspace.id.toString()];
-
-    // Default values when no subscription
-    let plan: PlanAttributes = FREE_NO_PLAN_DATA;
-
-    if (activeSubscription) {
-      // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
-      if (isTrial(activeSubscription)) {
-        plan = getTrialVersionForPlan(activeSubscription.plan);
-      } else if (activeSubscription.plan) {
-        plan = activeSubscription.plan;
-      } else {
-        logger.error(
-          {
-            workspaceId: sId,
-            activeSubscription,
-          },
-          "Cannot find plan for active subscription. Will use limits of FREE_TEST_PLAN instead. Please check and fix."
-        );
-      }
-    }
-
-    renderedSubscriptionByWorkspaceSid[sId] = renderSubscriptionFromModels({
-      plan,
-      activeSubscription,
-    });
-  }
-
-  return renderedSubscriptionByWorkspaceSid;
 }
 
 /**

@@ -4,7 +4,7 @@ import Head from "next/head";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import Script from "next/script";
-import React, { Fragment, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { HelpAndQuickGuideWrapper } from "@app/components/assistant/conversation/HelpAndQuickGuideWrapper";
@@ -19,30 +19,6 @@ import { classNames } from "@app/lib/utils";
  * IncidentBanner component at bottom of the page)
  */
 const SHOW_INCIDENT_BANNER = false;
-
-export const SidebarContext = React.createContext<{
-  sidebarOpen: boolean;
-  setSidebarOpen: (value: boolean) => void;
-}>({
-  sidebarOpen: false,
-  setSidebarOpen: (value) => {
-    throw new Error("SidebarContext not initialized: " + value);
-  },
-});
-
-export const SidebarProvider = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  return (
-    <SidebarContext.Provider value={{ sidebarOpen, setSidebarOpen }}>
-      {children}
-    </SidebarContext.Provider>
-  );
-};
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
 // fallback to the landing if we linked directly to that modal.

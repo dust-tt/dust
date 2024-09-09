@@ -7,7 +7,7 @@ import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { evaluateWorkspaceSeatAvailability } from "@app/lib/api/workspace";
-import { getSession, subscriptionForWorkspace } from "@app/lib/auth";
+import { getSession } from "@app/lib/auth";
 import { AuthFlowError, SSOEnforcedError } from "@app/lib/iam/errors";
 import {
   getPendingMembershipInvitationForEmailAndWorkspace,
@@ -24,8 +24,10 @@ import {
 } from "@app/lib/iam/workspaces";
 import type { MembershipInvitation } from "@app/lib/models/workspace";
 import { Workspace } from "@app/lib/models/workspace";
+import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
@@ -81,11 +83,27 @@ async function handleMembershipInvite(
   });
 
   if (m?.isRevoked()) {
-    await MembershipResource.updateMembershipRole({
+    const updateRes = await MembershipResource.updateMembershipRole({
       user,
       workspace: renderLightWorkspaceType({ workspace }),
       newRole: membershipInvite.initialRole,
       allowTerminated: true,
+    });
+
+    if (updateRes.isErr()) {
+      return new Err(
+        new AuthFlowError(
+          "membership_update_error",
+          `Error updating previously revoked membership: ${updateRes.error.type}`
+        )
+      );
+    }
+
+    void ServerSideTracking.trackUpdateMembershipRole({
+      user: user.toJSON(),
+      workspace: renderLightWorkspaceType({ workspace }),
+      previousRole: updateRes.value.previousRole,
+      role: updateRes.value.newRole,
     });
   }
 
@@ -135,7 +153,7 @@ async function handleEnterpriseSignUpFlow(
   workspace: Workspace | null;
 }> {
   // Combine queries to optimize database calls.
-  const [activeMemberships, workspace] = await Promise.all([
+  const [{ total }, workspace] = await Promise.all([
     MembershipResource.getActiveMemberships({
       users: [user],
     }),
@@ -147,7 +165,7 @@ async function handleEnterpriseSignUpFlow(
   ]);
 
   // Early return if user is already a member of a workspace.
-  if (activeMemberships.length !== 0) {
+  if (total !== 0) {
     return { flow: null, workspace: null };
   }
 
@@ -202,12 +220,13 @@ async function handleRegularSignupFlow(
     AuthFlowError | SSOEnforcedError
   >
 > {
-  const activeMemberships = await MembershipResource.getActiveMemberships({
-    users: [user],
-  });
+  const { memberships: activeMemberships, total } =
+    await MembershipResource.getActiveMemberships({
+      users: [user],
+    });
 
   // Return early if the user is already a member of a workspace and is not attempting to join another one.
-  if (activeMemberships.length !== 0 && !targetWorkspaceId) {
+  if (total !== 0 && !targetWorkspaceId) {
     return new Ok({
       flow: null,
       workspace: null,
@@ -440,6 +459,13 @@ export async function createAndLogMembership({
     role,
     user,
     workspace: renderLightWorkspaceType({ workspace }),
+  });
+
+  void ServerSideTracking.trackCreateMembership({
+    user: user.toJSON(),
+    workspace: renderLightWorkspaceType({ workspace }),
+    role: m.role,
+    startAt: m.startAt,
   });
 
   // Update workspace subscription usage when a new user joins.

@@ -260,7 +260,7 @@ export default function VaultWebsiteModal({
         const response: PostVaultDataSourceResponseBody = await res.json();
         const { dataSourceView } = response;
         await router.push(
-          `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${WEBSITE_CAT}/data_source_views/${dataSourceView.sId}`
+          `/w/${owner.sId}/vaults/${vault.sId}/categories/${WEBSITE_CAT}/data_source_views/${dataSourceView.sId}`
         );
       } else {
         const err: { error: APIError } = await res.json();
@@ -335,7 +335,7 @@ export default function VaultWebsiteModal({
     if (res.ok) {
       await mutateVaultDataSourceViews();
       await router.push(
-        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${WEBSITE_CAT}`
+        `/w/${owner.sId}/vaults/${vault.sId}/categories/${WEBSITE_CAT}`
       );
     } else {
       const err = (await res.json()) as { error: APIError };

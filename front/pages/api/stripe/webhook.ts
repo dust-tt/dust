@@ -357,9 +357,8 @@ async function handler(
               "Couldn't get owner or subscription from `auth`."
             );
           }
-          const adminEmails = (
-            await getMembers(auth, { roles: ["admin"] })
-          ).map((u) => u.email);
+          const { members } = await getMembers(auth, { roles: ["admin"] });
+          const adminEmails = members.map((u) => u.email);
           const customerEmail = invoice.customer_email;
           if (customerEmail && !adminEmails.includes(customerEmail)) {
             adminEmails.push(customerEmail);
@@ -487,9 +486,8 @@ async function handler(
             }
 
             // then email admins
-            const adminEmails = (
-              await getMembers(auth, { roles: ["admin"] })
-            ).map((u) => u.email);
+            const { members } = await getMembers(auth, { roles: ["admin"] });
+            const adminEmails = members.map((u) => u.email);
             if (adminEmails.length === 0) {
               return apiError(req, res, {
                 status_code: 500,
@@ -637,9 +635,34 @@ async function handler(
           break;
 
         case "customer.subscription.trial_will_end":
+          logger.info(
+            { event },
+            "[Stripe Webhook] Received customer.subscription.trial_will_end."
+          );
           stripeSubscription = event.data.object as Stripe.Subscription;
 
-          await maybeCancelInactiveTrials(stripeSubscription);
+          const trialingSubscription = await Subscription.findOne({
+            where: { stripeSubscriptionId: stripeSubscription.id },
+            include: [Workspace],
+          });
+
+          if (!trialingSubscription) {
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message:
+                  "Stripe Webhook: Error handling customer.subscription.trial_will_end. Matching subscription not found on db.",
+              },
+            });
+          }
+
+          await maybeCancelInactiveTrials(
+            await Authenticator.internalAdminForWorkspace(
+              trialingSubscription.workspace.sId
+            ),
+            stripeSubscription
+          );
 
           break;
 

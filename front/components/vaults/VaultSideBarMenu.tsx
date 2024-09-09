@@ -22,10 +22,8 @@ import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  getConnectorProviderLogoWithFallback,
-  getDataSourceNameFromView,
-} from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useApps } from "@app/lib/swr/apps";
 import {
   useVaultDataSourceViews,
@@ -236,7 +234,7 @@ const SystemVaultItem = ({
 }) => {
   const router = useRouter();
 
-  const itemPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`;
+  const itemPath = `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`;
   const isAncestorToCurrentPage = router.asPath.startsWith(itemPath + "/");
 
   // Unfold the item if it's an ancestor of the current page.
@@ -313,7 +311,7 @@ const VaultMenuItem = ({
 }) => {
   const router = useRouter();
 
-  const vaultPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}`;
+  const vaultPath = `/w/${owner.sId}/vaults/${vault.sId}`;
   const isAncestorToCurrentPage = router.asPath.startsWith(vaultPath + "/");
 
   // Unfold the vault if it's an ancestor of the current page.
@@ -418,7 +416,7 @@ const VaultDataSourceViewItem = ({
     item.dataSource.connectorProvider,
     FolderIcon
   );
-  const dataSourceViewPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${item.category}/data_source_views/${item.sId}`;
+  const dataSourceViewPath = `/w/${owner.sId}/vaults/${vault.sId}/categories/${item.category}/data_source_views/${item.sId}`;
 
   return (
     <Tree.Item
@@ -448,7 +446,7 @@ const VaultDataSourceViewSubMenu = ({
 }) => {
   const router = useRouter();
 
-  const vaultCategoryPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`;
+  const vaultCategoryPath = `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`;
   const isAncestorToCurrentPage = router.asPath.includes(
     vaultCategoryPath + "/"
   );
@@ -536,7 +534,7 @@ const VaultAppSubMenu = ({
 }) => {
   const router = useRouter();
 
-  const vaultCategoryPath = `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${category}`;
+  const vaultCategoryPath = `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`;
   const isAncestorToCurrentPage = router.asPath.includes(
     vaultCategoryPath + "/"
   );

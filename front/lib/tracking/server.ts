@@ -11,8 +11,8 @@ import type {
 } from "@dust-tt/types";
 import * as _ from "lodash";
 
-import { subscriptionForWorkspaces } from "@app/lib/auth";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { subscriptionForWorkspaces } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { AmplitudeServerSideTracking } from "@app/lib/tracking/amplitude/server";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
@@ -110,7 +110,7 @@ export class ServerSideTracking {
     }
   }
 
-  static async trackUserMessage({
+  static trackUserMessage({
     userMessage,
     workspace,
     userId,
@@ -124,7 +124,7 @@ export class ServerSideTracking {
     agentMessages: AgentMessageType[];
   }) {
     try {
-      await AmplitudeServerSideTracking.trackUserMessage({
+      AmplitudeServerSideTracking.trackUserMessage({
         userMessage,
         workspace,
         userId,
@@ -139,7 +139,7 @@ export class ServerSideTracking {
     }
   }
 
-  static async trackDataSourceCreated({
+  static trackDataSourceCreated({
     user,
     workspace,
     dataSource,
@@ -149,7 +149,7 @@ export class ServerSideTracking {
     dataSource: DataSourceType;
   }) {
     try {
-      await AmplitudeServerSideTracking.trackDataSourceCreated({
+      AmplitudeServerSideTracking.trackDataSourceCreated({
         user,
         workspace,
         dataSource,
@@ -162,7 +162,7 @@ export class ServerSideTracking {
     }
   }
 
-  static async trackDataSourceUpdated({
+  static trackDataSourceUpdated({
     user,
     workspace,
     dataSource,
@@ -172,7 +172,7 @@ export class ServerSideTracking {
     dataSource: DataSourceType;
   }) {
     try {
-      await AmplitudeServerSideTracking.trackDataSourceUpdated({
+      AmplitudeServerSideTracking.trackDataSourceUpdated({
         user,
         workspace,
         dataSource,
@@ -185,7 +185,7 @@ export class ServerSideTracking {
     }
   }
 
-  static async trackAssistantCreated({
+  static trackAssistantCreated({
     user,
     workspace,
     assistant,
@@ -195,7 +195,7 @@ export class ServerSideTracking {
     assistant: AgentConfigurationType;
   }) {
     try {
-      await AmplitudeServerSideTracking.trackAssistantCreated({
+      AmplitudeServerSideTracking.trackAssistantCreated({
         user,
         workspace,
         assistant,

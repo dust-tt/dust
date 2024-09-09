@@ -36,7 +36,7 @@ export async function getUserFromSession(
     return null;
   }
 
-  const memberships = await MembershipResource.getActiveMemberships({
+  const { memberships } = await MembershipResource.getActiveMemberships({
     users: [user],
   });
   const workspaces = await Workspace.findAll({

@@ -13,7 +13,7 @@ import {
   getWorkspaceInfos,
   unsafeGetWorkspacesByModelId,
 } from "@app/lib/api/workspace";
-import { Authenticator, subscriptionForWorkspaces } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { destroyConversation } from "@app/lib/conversation";
 import { sendAdminDataDeletionEmail } from "@app/lib/email";
 import { Conversation } from "@app/lib/models/assistant/conversation";
@@ -21,6 +21,7 @@ import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
+import { subscriptionForWorkspaces } from "@app/lib/plans/subscription";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -45,7 +46,7 @@ export async function sendDataDeletionEmail({
     if (!ws) {
       throw new Error("No workspace found");
     }
-    const admins = await getMembers(auth, { roles: ["admin"] });
+    const { members: admins } = await getMembers(auth, { roles: ["admin"] });
     for (const a of admins) {
       await sendAdminDataDeletionEmail({
         email: a.email,
@@ -185,22 +186,26 @@ async function cleanupCustomerio(auth: Authenticator) {
   }
 
   // Fetch all the memberships for the workspace.
-  const workspaceMemberships = await MembershipResource.getLatestMemberships({
-    workspace: w,
-  });
+  const { memberships: workspaceMemberships } =
+    await MembershipResource.getLatestMemberships({
+      workspace: w,
+    });
 
   // Fetch all the users in the workspace.
   const userIds = workspaceMemberships.map((m) => m.userId);
   const users = await UserResource.fetchByModelIds(userIds);
 
   // For each user, fetch all their memberships.
-  const allMembershipsByUserId = _.groupBy(
-    userIds.length
-      ? await MembershipResource.getLatestMemberships({
-          users,
-        })
-      : [],
-    (m) => m.userId.toString()
+  let latestMemberships: MembershipResource[] = [];
+  if (userIds.length) {
+    const { memberships } = await MembershipResource.getLatestMemberships({
+      users,
+    });
+    latestMemberships = memberships;
+  }
+
+  const allMembershipsByUserId = _.groupBy(latestMemberships, (m) =>
+    m.userId.toString()
   );
 
   // For every membership, fetch the workspace.

@@ -371,14 +371,26 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async getActiveMembers(auth: Authenticator): Promise<UserResource[]> {
     const owner = auth.getNonNullableWorkspace();
-    const memberships = await GroupMembershipModel.findAll({
-      where: {
-        groupId: this.id,
-        workspaceId: owner.id,
-        startAt: { [Op.lte]: new Date() },
-        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-      },
-    });
+
+    let memberships: GroupMembershipModel[] | MembershipResource[];
+
+    // The global group does not have a DB entry for each workspace member.
+    // TODO(GROUPS_INFRA): Remove this once we consolidate memberships with group memberships.
+    if (this.isGlobal()) {
+      const { memberships: m } = await MembershipResource.getActiveMemberships({
+        workspace: auth.getNonNullableWorkspace(),
+      });
+      memberships = m;
+    } else {
+      memberships = await GroupMembershipModel.findAll({
+        where: {
+          groupId: this.id,
+          workspaceId: owner.id,
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+      });
+    }
 
     return UserResource.fetchByModelIds(memberships.map((m) => m.userId));
   }
@@ -408,10 +420,11 @@ export class GroupResource extends BaseResource<GroupModel> {
         )
       );
     }
-    const workspaceMemberships = await MembershipResource.getActiveMemberships({
-      users: userResources,
-      workspace: owner,
-    });
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getActiveMemberships({
+        users: userResources,
+        workspace: owner,
+      });
 
     if (
       new Set(workspaceMemberships.map((m) => m.userId)).size !== userIds.length
@@ -497,12 +510,12 @@ export class GroupResource extends BaseResource<GroupModel> {
         )
       );
     }
-    const workspaceMemberships = await MembershipResource.getActiveMemberships({
+    const { total } = await MembershipResource.getActiveMemberships({
       users: userResources,
       workspace: owner,
     });
 
-    if (workspaceMemberships.length !== userIds.length) {
+    if (total !== userIds.length) {
       return new Err(
         new DustError(
           "user_not_member",
@@ -704,6 +717,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   isSystem(): boolean {
     return this.kind === "system";
+  }
+
+  isGlobal(): boolean {
+    return this.kind === "global";
   }
 
   // JSON Serialization

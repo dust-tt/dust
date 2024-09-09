@@ -100,7 +100,7 @@ export async function updateTrackedDocuments(
     : [];
 
   // restrict to users in the workspace
-  const memberships = await MembershipResource.getActiveMemberships({
+  const { memberships } = await MembershipResource.getActiveMemberships({
     workspace: owner,
   });
   const userIdsInWorkspace = new Set(
