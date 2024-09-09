@@ -207,9 +207,7 @@ export const VaultDataSourceViewContentList = ({
               icon={PlusIcon}
               label="Add data"
               onClick={() => {
-                void router.push(
-                  `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${dataSourceView.category}`
-                );
+                setShowConnectorPermissionsModal(true);
               }}
             />
           </div>
