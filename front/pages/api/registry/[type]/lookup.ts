@@ -234,7 +234,8 @@ async function handleDataSourceView(
   }
 
   if (hasAccessToDataSourceView) {
-    const dataSource = dataSourceView.dataSource;
+    const { dataSource } = dataSourceView;
+
     return new Ok({
       project_id: parseInt(dataSource.dustAPIProjectId),
       data_source_id: dataSource.dustAPIDataSourceId,
