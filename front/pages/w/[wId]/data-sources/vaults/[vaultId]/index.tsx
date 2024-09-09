@@ -55,7 +55,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     },
   };
 });
-//
+
 export default function Vault({
   isAdmin,
   owner,

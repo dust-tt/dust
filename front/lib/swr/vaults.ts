@@ -23,7 +23,7 @@ export function useVaults({
   );
 
   return {
-    vaults: data ? data.vaults : [],
+    vaults: useMemo(() => (data ? data.vaults : []), [data]),
     isVaultsLoading: !error && !data && !disabled,
     isVaultsError: error,
     mutate,
@@ -46,7 +46,7 @@ export function useVaultsAsAdmin({
   );
 
   return {
-    vaults: data ? data.vaults : [],
+    vaults: useMemo(() => (data ? data.vaults : []), [data]),
     isVaultsLoading: !error && !data && !disabled,
     isVaultsError: error,
     mutate,
