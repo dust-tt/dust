@@ -124,7 +124,7 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
   }
 
   try {
-    const headers = getSanitizedHeaders(rawHeaders);
+    const headers = rawHeaders;
 
     const validRows: string[][] = filteredRows.map((row, index) => {
       // Return raw headers.

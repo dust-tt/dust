@@ -132,6 +132,7 @@ export async function upsertTableFromCsv({
   tableParents,
   csv,
   truncate,
+  useAppForHeaderDetection,
 }: {
   auth: Authenticator;
   dataSource: DataSourceResource;
@@ -143,8 +144,11 @@ export async function upsertTableFromCsv({
   tableParents: string[];
   csv: string | null;
   truncate: boolean;
+  useAppForHeaderDetection: boolean;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
-  const csvRowsRes = csv ? await rowsFromCsv(auth, csv) : null;
+  const csvRowsRes = csv
+    ? await rowsFromCsv(auth, csv, useAppForHeaderDetection)
+    : null;
 
   const owner = auth.workspace();
 
@@ -303,7 +307,8 @@ export async function upsertTableFromCsv({
 
 export async function rowsFromCsv(
   auth: Authenticator,
-  csv: string
+  csv: string,
+  useApp: boolean
 ): Promise<Result<CoreAPIRow[], CsvParsingError>> {
   const delimiter = await guessDelimiter(csv);
   if (!delimiter) {
@@ -313,59 +318,11 @@ export async function rowsFromCsv(
     });
   }
 
-  const headParser = parse(csv, { delimiter });
-  let header: string[] | undefined = undefined;
-  const records = [];
-  for await (const anyRecord of headParser) {
-    // Assert that record is string[].
-    if (!Array.isArray(anyRecord)) {
-      throw new Error("Record is not an array");
-    }
-    if (anyRecord.some((r) => typeof r !== "string")) {
-      throw new Error("Record contains non-string values");
-    }
-
-    const record = anyRecord as string[];
-    records.push(record);
-
-    if (records.length === 10) {
-      break;
-    }
+  const headerRes = await detectHeaders(auth, csv, delimiter, useApp);
+  if (headerRes.isErr()) {
+    return headerRes;
   }
-  headParser.destroy();
-
-  const action = DustProdActionRegistry["table-header-parser"];
-
-  const model = getSmallWhitelistedModel(auth.getNonNullableWorkspace());
-  if (!model) {
-    throw new Error("Could not find a whitelisted model for the workspace.");
-  }
-
-  const config = cloneBaseConfig(action.config);
-  config.MODEL.provider_id = model.providerId;
-  config.MODEL.model_id = model.modelId;
-
-  const res = await callAction(auth, {
-    action,
-    config,
-    input: { tableData: records },
-    responseValueSchema: t.type({
-      headers: t.array(t.string),
-      rowIndex: t.Integer,
-    }),
-  });
-
-  logger.info({ res }, "Header detection result");
-
-  if (res.isErr()) {
-    return new Err({
-      type: "invalid_record_length",
-      message: `Cannot detect headers.`,
-    });
-  }
-
-  header = getSanitizedHeaders(res.value.headers);
-  const rowIndex = res.value.rowIndex;
+  const { header, rowIndex } = headerRes.value;
 
   let i = 0;
   const parser = parse(csv, { delimiter });
@@ -499,4 +456,69 @@ export async function rowsFromCsv(
   }
 
   return new Ok(rows);
+}
+
+async function detectHeaders(
+  auth: Authenticator,
+  csv: string,
+  delimiter: string,
+  useApp: boolean
+): Promise<Result<{ header: string[]; rowIndex: number }, CsvParsingError>> {
+  const headParser = parse(csv, { delimiter });
+  const records = [];
+  for await (const anyRecord of headParser) {
+    // Assert that record is string[].
+    if (!Array.isArray(anyRecord)) {
+      throw new Error("Record is not an array.");
+    }
+
+    if (anyRecord.some((r) => typeof r !== "string")) {
+      throw new Error("Record contains non-string values.");
+    }
+
+    if (!useApp) {
+      return new Ok({ header: getSanitizedHeaders(anyRecord), rowIndex: 1 });
+    }
+
+    const record = anyRecord as string[];
+    records.push(record);
+
+    if (records.length === 10) {
+      break;
+    }
+  }
+  headParser.destroy();
+
+  const action = DustProdActionRegistry["table-header-parser"];
+
+  const model = getSmallWhitelistedModel(auth.getNonNullableWorkspace());
+  if (!model) {
+    throw new Error("Could not find a whitelisted model for the workspace.");
+  }
+
+  const config = cloneBaseConfig(action.config);
+  config.MODEL.provider_id = model.providerId;
+  config.MODEL.model_id = model.modelId;
+
+  const res = await callAction(auth, {
+    action,
+    config,
+    input: { tableData: records },
+    responseValueSchema: t.type({
+      headers: t.array(t.string),
+      rowIndex: t.Integer,
+    }),
+  });
+
+  logger.info({ res }, "Header detection result");
+
+  if (res.isErr()) {
+    return new Err({
+      type: "invalid_record_length",
+      message: `Cannot detect headers.`,
+    });
+  }
+  const rowIndex = res.value.rowIndex;
+  const header = getSanitizedHeaders(res.value.headers);
+  return new Ok({ header, rowIndex });
 }

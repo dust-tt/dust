@@ -1005,7 +1005,7 @@ export async function renderDatabaseFromPages({
     )
   );
 
-  const sanitizedHeaders = getSanitizedHeaders(header);
+  const sanitizedHeaders = header;
 
   let csv = await new Promise<string>((resolve, reject) => {
     stringify(

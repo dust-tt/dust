@@ -181,7 +181,7 @@ async function processSheet({
 
   // Assuming the first line as headers, at least one additional data line is required.
   if (rawHeaders && rows.length > 1) {
-    const headers = getSanitizedHeaders(rawHeaders);
+    const headers = rawHeaders;
 
     const parents = [
       worksheetInternalId,
