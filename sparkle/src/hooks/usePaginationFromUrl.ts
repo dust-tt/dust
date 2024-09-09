@@ -8,11 +8,11 @@ const defaultPageSize = 25;
 export const usePaginationFromUrl = ({
   urlPrefix,
   initialPageSize = defaultPageSize,
-  history = "push",
+  defaultHistory = "push",
 }: {
   urlPrefix?: string;
   initialPageSize?: number;
-  history?: "push" | "replace";
+  defaultHistory?: "push" | "replace";
 }) => {
   const [pageIndexParam, setPageIndexParam] = useHashParam(
     urlPrefix ? `${urlPrefix}PageIndex` : "pageIndex"
@@ -27,9 +27,14 @@ export const usePaginationFromUrl = ({
   const res = useMemo(() => {
     const pagination: PaginationState = { pageIndex, pageSize };
 
-    const setPagination = (newValue: PaginationState) => {
+    const setPagination = (
+      newValue: PaginationState,
+      history?: "push" | "replace"
+    ) => {
       if (newValue.pageIndex !== pageIndex || newValue.pageSize !== pageSize) {
-        setPageIndexParam(newValue.pageIndex.toString(), { history });
+        setPageIndexParam(newValue.pageIndex.toString(), {
+          history: history ?? defaultHistory,
+        });
         setPageSizeParam(newValue.pageSize.toString());
       }
     };
