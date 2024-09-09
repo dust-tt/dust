@@ -11,6 +11,8 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
+const DEFAULT_PAGE_LIMIT = 50;
+
 export type GetMembersResponseBody = {
   members: UserTypeWithWorkspaces[];
   paginationParams: PaginationParams;
@@ -24,7 +26,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       const paginationRes = getPaginationParams(req, {
-        defaultLimit: 1,
+        defaultLimit: DEFAULT_PAGE_LIMIT,
         defaultOrderColumn: "createdAt",
         defaultOrderDirection: "desc",
         supportedOrderColumn: ["createdAt"],
