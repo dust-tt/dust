@@ -30,7 +30,7 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { getRunnerforActionConfiguration } from "@app/lib/api/assistant/actions/runners";
+import { getRunnerForActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -46,6 +46,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
+
+import { getCitationsCount } from "./actions/utils";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
@@ -215,14 +217,13 @@ async function* runMultiActionsAgentLoop(
           }
 
           // After we are done running actions we update the inter step refsOffset.
-          event.actions.forEach(({ action }) => {
-            citationsRefsOffset += getRunnerforActionConfiguration(
-              action
-            ).getCitationsCount({
+          for (let j = 0; j < event.actions.length; j++) {
+            citationsRefsOffset += getCitationsCount({
               agentConfiguration: configuration,
               stepActions: event.actions.map((a) => a.action),
+              stepActionIndex: j,
             });
-          });
+          }
 
           break;
 
@@ -392,7 +393,7 @@ export async function* runMultiActionsAgent(
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    const specRes = await getRunnerforActionConfiguration(a).buildSpecification(
+    const specRes = await getRunnerForActionConfiguration(a).buildSpecification(
       auth,
       {
         name: a.name,
@@ -799,7 +800,7 @@ async function* runAction(
   const now = Date.now();
 
   if (isRetrievalConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerforActionConfiguration(
+    const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
     ).run(
       auth,
@@ -876,7 +877,7 @@ async function* runAction(
       return;
     }
 
-    const eventStream = getRunnerforActionConfiguration(
+    const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
     ).run(
       auth,
@@ -932,7 +933,7 @@ async function* runAction(
       }
     }
   } else if (isTablesQueryConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerforActionConfiguration(
+    const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
@@ -979,7 +980,7 @@ async function* runAction(
       }
     }
   } else if (isProcessConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerforActionConfiguration(
+    const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,
@@ -1027,7 +1028,7 @@ async function* runAction(
       }
     }
   } else if (isWebsearchConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerforActionConfiguration(
+    const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
     ).run(
       auth,
@@ -1082,7 +1083,7 @@ async function* runAction(
       }
     }
   } else if (isBrowseConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerforActionConfiguration(
+    const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
     ).run(auth, {
       agentConfiguration: configuration,

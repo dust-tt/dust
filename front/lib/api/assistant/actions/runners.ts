@@ -80,7 +80,7 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
   retrieval_configuration: RetrievalConfigurationServerRunner,
 } as const;
 
-export function getRunnerforActionConfiguration<K extends keyof CombinedMap>(
+export function getRunnerForActionConfiguration<K extends keyof CombinedMap>(
   actionConfiguration: {
     type: K;
   } & CombinedMap[K]["configType"]
