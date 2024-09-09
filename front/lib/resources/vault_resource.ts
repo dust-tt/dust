@@ -159,14 +159,10 @@ export class VaultResource extends BaseResource<VaultModel> {
     return vaults.filter((vault) => vault.canList(auth));
   }
 
-  static async listWorkspaceVaultsAsAdmin(
-    auth: Authenticator
-  ): Promise<VaultResource[]> {
-    if (!auth.isAdmin()) {
-      return [];
-    }
-
-    return this.baseFetch(auth);
+  static async listWorkspaceVaultsAsMember(auth: Authenticator) {
+    const vaults = await this.baseFetch(auth);
+    // using canRead() as we know that only members can read vaults (but admins can list them)
+    return vaults.filter((vault) => vault.canList(auth) && vault.canRead(auth));
   }
 
   static async listWorkspaceDefaultVaults(auth: Authenticator) {

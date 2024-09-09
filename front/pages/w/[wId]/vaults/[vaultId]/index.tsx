@@ -9,7 +9,7 @@ import {
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { VaultCategoriesList } from "@app/components/vaults/VaultCategoriesList";
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
@@ -69,7 +69,10 @@ export default function Vault({
 
   const router = useRouter();
   const [currentTab, setCurrentTab] = useState("resources");
-  const isMember = vaultInfo?.members?.some((m) => m.sId === userId);
+  const isMember = useMemo(
+    () => vaultInfo?.members?.some((m) => m.sId === userId),
+    [userId, vaultInfo?.members]
+  );
 
   return (
     <Page.Vertical gap="xl" align="stretch">
@@ -78,7 +81,7 @@ export default function Vault({
         icon={getVaultIcon(vault)}
         description="Manage connections to your products and the real-time data feeds Dust has access to."
       />
-      {!isMember && (
+      {vaultInfo && !isMember && (
         <Chip
           color="warning"
           label="You are not a member of this vault."
