@@ -335,20 +335,6 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     });
   }
 
-  static async deleteForDataSource(
-    auth: Authenticator,
-    dataSource: DataSourceResource,
-    transaction?: Transaction
-  ) {
-    return this.model.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        dataSourceId: dataSource.id,
-      },
-      transaction,
-    });
-  }
-
   // Getters.
 
   get dataSource(): DataSourceResource {

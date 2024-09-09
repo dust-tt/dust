@@ -1,36 +1,12 @@
-import type {
-  AgentUserListStatus,
-  LightAgentConfigurationType,
-  Result,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
+import type { AgentUserListStatus, Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  agentUserListStatus,
+  getAgentConfiguration,
+} from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
-
-export function agentUserListStatus({
-  agentConfiguration,
-  listStatusOverride,
-}: {
-  agentConfiguration: LightAgentConfigurationType;
-  listStatusOverride: AgentUserListStatus | null;
-}): AgentUserListStatus {
-  if (listStatusOverride === null) {
-    switch (agentConfiguration.scope) {
-      case "global":
-      case "workspace":
-      case "private":
-        return "in-list";
-      case "published":
-        return "not-in-list";
-      default:
-        assertNever(agentConfiguration.scope);
-    }
-  }
-
-  return listStatusOverride;
-}
 
 export async function getAgentUserListStatus({
   auth,
