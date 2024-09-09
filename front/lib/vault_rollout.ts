@@ -16,5 +16,5 @@ export const getDustAppsListUrl = async (
   if (!vault) {
     return defaultUrl;
   }
-  return `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/apps`;
+  return `/w/${owner.sId}/vaults/${vault.sId}/categories/apps`;
 };

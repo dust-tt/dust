@@ -408,7 +408,7 @@ export const VaultResourcesList = ({
 
     if (res.ok) {
       await router.push(
-        `/w/${owner.sId}/data-sources/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`
+        `/w/${owner.sId}/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`
       );
       sendNotification({
         type: "success",
