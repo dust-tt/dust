@@ -377,9 +377,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     // The global group does not have a DB entry for each workspace member.
     // TODO(GROUPS_INFRA): Remove this once we consolidate memberships with group memberships.
     if (this.isGlobal()) {
-      memberships = await MembershipResource.getActiveMemberships({
+      const { memberships: m } = await MembershipResource.getActiveMemberships({
         workspace: auth.getNonNullableWorkspace(),
       });
+      memberships = m;
     } else {
       memberships = await GroupMembershipModel.findAll({
         where: {
