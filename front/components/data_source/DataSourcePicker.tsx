@@ -42,7 +42,6 @@ export default function DataSourcePicker({
     isVaultDataSourceViewsLoading,
     isVaultDataSourceViewsError,
   } = useVaultDataSourceViews({
-    disabled: readOnly,
     vaultId: vault.sId,
     workspaceId: owner.sId,
   });
@@ -68,6 +67,16 @@ export default function DataSourcePicker({
     ) {
       if (!selectedDataSourceView) {
         onDataSourcesUpdate([]);
+      } else if (
+        selectedDataSourceView.sId !== currentDataSources[0].data_source_id
+      ) {
+        // Update config with data_source_view id instead of data_source name
+        onDataSourcesUpdate([
+          {
+            workspace_id: owner.sId,
+            data_source_id: selectedDataSourceView.sId,
+          },
+        ]);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
