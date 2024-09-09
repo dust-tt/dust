@@ -6,8 +6,8 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
+  DataSourceViewContentNode,
   DataSourceViewType,
-  LightContentNode,
   PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -31,11 +31,12 @@ export type ContentActionKey =
 
 export type ContentAction = {
   action?: ContentActionKey;
-  contentNode?: LightContentNode;
+  contentNode?: DataSourceViewContentNode;
 };
 
 type ContentActionsProps = {
   dataSourceView: DataSourceViewType;
+  totalNodesCount: number;
   plan: PlanType;
   owner: WorkspaceType;
   onSave: (action?: ContentActionKey) => void;
@@ -44,76 +45,94 @@ type ContentActionsProps = {
 export type ContentActionsRef = {
   callAction: (
     action: ContentActionKey,
-    contentNode?: LightContentNode
+    contentNode?: DataSourceViewContentNode
   ) => void;
 };
 
 export const ContentActions = React.forwardRef<
   ContentActionsRef,
   ContentActionsProps
->(({ dataSourceView, owner, plan, onSave }: ContentActionsProps, ref) => {
-  const [currentAction, setCurrentAction] = useState<ContentAction>({});
-  useImperativeHandle(ref, () => ({
-    callAction: (action: ContentActionKey, contentNode?: LightContentNode) => {
-      setCurrentAction({ action, contentNode });
-    },
-  }));
+>(
+  (
+    {
+      dataSourceView,
+      totalNodesCount,
+      owner,
+      plan,
+      onSave,
+    }: ContentActionsProps,
+    ref
+  ) => {
+    const [currentAction, setCurrentAction] = useState<ContentAction>({});
+    useImperativeHandle(ref, () => ({
+      callAction: (
+        action: ContentActionKey,
+        contentNode?: DataSourceViewContentNode
+      ) => {
+        setCurrentAction({ action, contentNode });
+      },
+    }));
 
-  const onClose = (save: boolean) => {
-    // Keep current to have it during closing animation
-    setCurrentAction({ contentNode: currentAction.contentNode });
-    if (save) {
-      onSave(currentAction.action);
-    }
-  };
-  // TODO(2024-08-30 flav) Refactor component below to remove conditional code between
-  // tables and documents which currently leads to 5xx.
-  return (
-    <>
-      <DocumentOrTableUploadOrEditModal
-        contentNode={currentAction.contentNode}
-        dataSourceView={dataSourceView}
-        isOpen={
-          currentAction.action === "DocumentUploadOrEdit" ||
-          currentAction.action === "TableUploadOrEdit"
-        }
-        onClose={onClose}
-        owner={owner}
-        plan={plan}
-        viewType={
-          currentAction.action === "TableUploadOrEdit" ? "tables" : "documents"
-        }
-      />
-      <MultipleDocumentsUpload
-        dataSourceView={dataSourceView}
-        isOpen={currentAction.action === "MultipleDocumentsUpload"}
-        onClose={onClose}
-        owner={owner}
-        plan={plan}
-      />
-      {currentAction.contentNode && (
-        <DocumentOrTableDeleteDialog
+    const onClose = (save: boolean) => {
+      // Keep current to have it during closing animation
+      setCurrentAction({ contentNode: currentAction.contentNode });
+      if (save) {
+        onSave(currentAction.action);
+      }
+    };
+    // TODO(2024-08-30 flav) Refactor component below to remove conditional code between
+    // tables and documents which currently leads to 5xx.
+    return (
+      <>
+        <DocumentOrTableUploadOrEditModal
+          contentNode={currentAction.contentNode}
           dataSourceView={dataSourceView}
-          isOpen={currentAction.action === "DocumentOrTableDeleteDialog"}
+          isOpen={
+            currentAction.action === "DocumentUploadOrEdit" ||
+            currentAction.action === "TableUploadOrEdit"
+          }
           onClose={onClose}
           owner={owner}
-          contentNode={currentAction.contentNode}
+          plan={plan}
+          totalNodesCount={totalNodesCount}
+          viewType={
+            currentAction.action === "TableUploadOrEdit"
+              ? "tables"
+              : "documents"
+          }
         />
-      )}
-      <DataSourceViewDocumentModal
-        owner={owner}
-        dataSourceView={
-          currentAction.action === "DocumentViewRawContent"
-            ? dataSourceView
-            : null
-        }
-        documentId={currentAction.contentNode?.dustDocumentId ?? null}
-        isOpen={currentAction.action === "DocumentViewRawContent"}
-        onClose={() => onClose(false)}
-      />
-    </>
-  );
-});
+        <MultipleDocumentsUpload
+          dataSourceView={dataSourceView}
+          isOpen={currentAction.action === "MultipleDocumentsUpload"}
+          onClose={onClose}
+          owner={owner}
+          totalNodesCount={totalNodesCount}
+          plan={plan}
+        />
+        {currentAction.contentNode && (
+          <DocumentOrTableDeleteDialog
+            dataSourceView={dataSourceView}
+            isOpen={currentAction.action === "DocumentOrTableDeleteDialog"}
+            onClose={onClose}
+            owner={owner}
+            contentNode={currentAction.contentNode}
+          />
+        )}
+        <DataSourceViewDocumentModal
+          owner={owner}
+          dataSourceView={
+            currentAction.action === "DocumentViewRawContent"
+              ? dataSourceView
+              : null
+          }
+          documentId={currentAction.contentNode?.dustDocumentId ?? null}
+          isOpen={currentAction.action === "DocumentViewRawContent"}
+          onClose={() => onClose(false)}
+        />
+      </>
+    );
+  }
+);
 
 ContentActions.displayName = "ContentActions";
 
@@ -123,7 +142,7 @@ export const getMenuItems = (
   canReadInVault: boolean,
   canWriteInVault: boolean,
   dataSourceView: DataSourceViewType,
-  contentNode: LightContentNode,
+  contentNode: DataSourceViewContentNode,
   contentActionsRef: RefObject<ContentActionsRef>
 ): ContentActionsMenu => {
   const actions: ContentActionsMenu = [];
@@ -174,7 +193,7 @@ export const getMenuItems = (
 };
 
 const makeViewSourceUrlContentAction = (
-  contentNode: LightContentNode,
+  contentNode: DataSourceViewContentNode,
   dataSourceView: DataSourceViewType
 ) => {
   return {
@@ -189,7 +208,7 @@ const makeViewSourceUrlContentAction = (
 };
 
 const makeViewRawContentAction = (
-  contentNode: LightContentNode,
+  contentNode: DataSourceViewContentNode,
   contentActionsRef: RefObject<ContentActionsRef>
 ) => {
   return {

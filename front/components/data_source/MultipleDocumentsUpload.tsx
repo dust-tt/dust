@@ -8,6 +8,7 @@ import type {
 import { Err, Ok } from "@dust-tt/types";
 import { useContext, useEffect, useRef, useState } from "react";
 
+import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { ClientSideTracking } from "@app/lib/tracking/client";
@@ -19,6 +20,7 @@ type MultipleDocumentsUploadProps = {
   isOpen: boolean;
   onClose: (save: boolean) => void;
   owner: LightWorkspaceType;
+  totalNodesCount: number;
   plan: PlanType;
 };
 
@@ -27,10 +29,11 @@ export const MultipleDocumentsUpload = ({
   isOpen,
   onClose,
   owner,
-  // plan //TODO(GROUPS_UI) check max files upload
+  totalNodesCount,
+  plan,
 }: MultipleDocumentsUploadProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const [isLimitPopupOpen, setIsLimitPopupOpen] = useState(false);
   useEffect(() => {
     if (isOpen) {
       fileInputRef.current?.click();
@@ -97,6 +100,12 @@ export const MultipleDocumentsUpload = ({
 
   return (
     <>
+      <DocumentLimitPopup
+        isOpen={isLimitPopupOpen}
+        plan={plan}
+        onClose={() => setIsLimitPopupOpen(false)}
+        owner={owner}
+      />
       <Dialog
         onCancel={() => {
           //no-op as we can't cancel file upload
@@ -117,7 +126,6 @@ export const MultipleDocumentsUpload = ({
           </>
         )}
       </Dialog>
-      {/* TODO(GROUPS_UI) use useFileUploaderService */}
       <input
         className="hidden"
         type="file"
@@ -126,6 +134,13 @@ export const MultipleDocumentsUpload = ({
         multiple={true}
         onChange={async (e) => {
           if (e.target.files && e.target.files.length > 0) {
+            if (
+              e.target.files.length + totalNodesCount >
+              plan.limits.dataSources.documents.count
+            ) {
+              setIsLimitPopupOpen(true);
+              return;
+            }
             const files = e.target.files;
             ClientSideTracking.trackMultiFilesUploadUsed({
               fileCount: files.length,
