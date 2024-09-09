@@ -5,12 +5,12 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getApp } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { getDatasets } from "@app/lib/api/datasets";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { Dataset } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -63,7 +63,7 @@ async function handler(
 
   const owner = auth.getNonNullableWorkspace();
 
-  const app = await getApp(auth, req.query.aId as string);
+  const app = await AppResource.fetchById(auth, req.query.aId as string);
   if (!app) {
     return apiError(req, res, {
       status_code: 404,
@@ -76,7 +76,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const datasets = await getDatasets(auth, app);
+      const datasets = await getDatasets(auth, app.toJSON());
 
       res.status(200).json({
         datasets,

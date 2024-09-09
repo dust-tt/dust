@@ -20,10 +20,10 @@ import {
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import { getApp } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { withDefaultUserAuthRequirementsNoWorkspaceCheck } from "@app/lib/iam/session";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { classNames } from "@app/lib/utils";
 import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
@@ -54,7 +54,10 @@ export const getServerSideProps =
       };
     }
 
-    const app = await getApp(auth, context.params?.aId as string);
+    const app = await AppResource.fetchById(
+      auth,
+      context.params?.aId as string
+    );
 
     if (!app) {
       return {
@@ -69,7 +72,7 @@ export const getServerSideProps =
         user,
         owner,
         subscription,
-        app,
+        app: app.toJSON(),
         dustAppsListUrl,
         gaTrackingId: config.getGaTrackingId(),
       },

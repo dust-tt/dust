@@ -1,11 +1,9 @@
 import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { App } from "@app/lib/resources/storage/models/apps";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetOrPostAppResponseBody = {
@@ -17,23 +15,7 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetOrPostAppResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const app = await App.findOne({
-    where: auth.isUser()
-      ? {
-          workspaceId: owner.id,
-          visibility: {
-            [Op.or]: ["public", "private"],
-          },
-          sId: req.query.aId,
-        }
-      : {
-          workspaceId: owner.id,
-          visibility: "public",
-          sId: req.query.aId,
-        },
-  });
+  const app = await AppResource.fetchById(auth, req.query.aId as string);
   if (!app) {
     return apiError(req, res, {
       status_code: 404,
@@ -47,18 +29,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       res.status(200).json({
-        app: {
-          id: app.id,
-          sId: app.sId,
-          name: app.name,
-          description: app.description,
-          visibility: app.visibility,
-          savedSpecification: app.savedSpecification,
-          savedConfig: app.savedConfig,
-          savedRun: app.savedRun,
-          dustAPIProjectId: app.dustAPIProjectId,
-          vault: VaultResource.fromModel(app.vault).toJSON(),
-        },
+        app: app.toJSON(),
       });
       break;
     case "POST":
@@ -91,27 +62,15 @@ async function handler(
 
       const description = req.body.description ? req.body.description : null;
 
-      await app.update({
+      await app.updateSettings(auth, {
         name: req.body.name,
         description,
         visibility: req.body.visibility,
       });
 
-      res.status(200).json({
-        app: {
-          id: app.id,
-          sId: app.sId,
-          name: app.name,
-          description: app.description,
-          visibility: app.visibility,
-          savedSpecification: app.savedSpecification,
-          savedConfig: app.savedConfig,
-          savedRun: app.savedRun,
-          dustAPIProjectId: app.dustAPIProjectId,
-          vault: VaultResource.fromModel(app.vault).toJSON(),
-        },
+      return res.status(200).json({
+        app: app.toJSON(),
       });
-      break;
 
     case "DELETE":
       if (!auth.isBuilder()) {
@@ -125,9 +84,7 @@ async function handler(
         });
       }
 
-      await app.update({
-        visibility: "deleted",
-      });
+      await app.markAsDeleted(auth);
 
       res.status(204).end();
       return;

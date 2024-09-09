@@ -3,14 +3,14 @@ import { credentialsFromProviders } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getApp } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
-import { App, Provider } from "@app/lib/resources/storage/models/apps";
+import { Provider } from "@app/lib/resources/storage/models/apps";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -49,7 +49,7 @@ async function handler(
   let owner = auth.getNonNullableWorkspace();
   const user = auth.getNonNullableUser();
 
-  const app = await getApp(auth, req.query.aId as string);
+  const app = await AppResource.fetchById(auth, req.query.aId as string);
   if (!app) {
     return apiError(req, res, {
       status_code: 404,
@@ -144,18 +144,11 @@ async function handler(
           runType: "local",
           workspaceId: owner.id,
         }),
-        App.update(
-          {
-            savedSpecification: req.body.specification,
-            savedConfig: req.body.config,
-            savedRun: dustRun.value.run.run_id,
-          },
-          {
-            where: {
-              id: app.id,
-            },
-          }
-        ),
+        app.updateState(auth, {
+          savedSpecification: req.body.specification,
+          savedConfig: req.body.config,
+          savedRun: dustRun.value.run.run_id,
+        }),
       ]);
 
       res.status(200).json({ run: dustRun.value.run });

@@ -119,7 +119,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       agentConfiguration: configuration,
       baseUrl: config.getClientFacingUrl(),
       dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
-      dustApps,
+      dustApps: dustApps.map((a) => a.toJSON()),
       flow,
       gaTrackingId: config.getGaTrackingId(),
       isAdmin: auth.isAdmin(),

@@ -17,11 +17,11 @@ import { CoreAPI } from "@dust-tt/types";
 import { createParser } from "eventsource-parser";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getApp } from "@app/lib/api/app";
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { Authenticator, getAPIKey } from "@app/lib/auth";
 import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
+import { AppResource } from "@app/lib/resources/app_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { Provider } from "@app/lib/resources/storage/models/apps";
@@ -193,7 +193,7 @@ async function handler(
   }
 
   const [app, providers, secrets] = await Promise.all([
-    getApp(workspaceAuth, req.query.aId as string),
+    AppResource.fetchById(workspaceAuth, req.query.aId as string),
     Provider.findAll({
       where: {
         workspaceId: keyRes.value.workspaceId,

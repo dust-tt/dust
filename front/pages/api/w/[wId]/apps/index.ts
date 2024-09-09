@@ -2,7 +2,6 @@ import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getApps } from "@app/lib/api/app";
 import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -29,9 +28,11 @@ async function handler(
   const owner = auth.getNonNullableWorkspace();
   switch (req.method) {
     case "GET":
-      const apps = await getApps(auth);
-      res.status(200).json({ apps });
-      return;
+      return res.status(200).json({
+        apps: (await AppResource.listByWorkspace(auth)).map((app) =>
+          app.toJSON()
+        ),
+      });
     case "POST":
       if (!auth.isBuilder()) {
         return apiError(req, res, {
