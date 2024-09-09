@@ -304,7 +304,6 @@ async function handleDataSource(
     );
   }
 
-  // TODO(2024-08-02 flav) Uncomment.
   if (hasAccessToDataSource) {
     return new Ok({
       project_id: parseInt(dataSource.dustAPIProjectId),
