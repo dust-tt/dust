@@ -51,9 +51,7 @@ export class AppResource extends ResourceWithVault<App> {
       ...options,
     });
 
-    return apps.filter(
-      (app) => auth.isAdmin() || auth.hasPermission([app.vault.acl()], "read")
-    );
+    return apps.filter((app) => auth.isAdmin() || app.canRead(auth));
   }
 
   // fetchByIds filters out private apps if the auth is not a user on the workspace. This will be
