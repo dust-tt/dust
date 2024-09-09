@@ -19,11 +19,8 @@ import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableVi
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 
 import { PermissionTree } from "./ConnectorPermissionsTree";
-import type {
-  NotificationType} from "./sparkle/Notification";
-import {
-  SendNotificationsContext,
-} from "./sparkle/Notification";
+import type { NotificationType } from "./sparkle/Notification";
+import { SendNotificationsContext } from "./sparkle/Notification";
 
 const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "confluence",
@@ -79,6 +76,7 @@ export function ConnectorPermissionsModal({
   plan,
   readOnly,
   isAdmin,
+  dustClientFacingUrl,
 }: {
   owner: WorkspaceType;
   connector: ConnectorType;

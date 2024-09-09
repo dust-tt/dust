@@ -14,18 +14,14 @@ import {
 import type {
   APIError,
   ConnectorProvider,
-  ConnectorType,
-  DataSourceType,
   DataSourceViewCategory,
   DataSourceViewType,
   DataSourceViewWithConnectorType,
   PlanType,
-  UpdateConnectorRequestBody,
   UserType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
 import { isWebsiteOrFolderCategory } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
@@ -42,13 +38,11 @@ import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEd
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import {
-  AddConnectionMenu,
-  setupConnection,
-} from "@app/components/vaults/AddConnectionMenu";
+import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { handleUpdatePermissions } from "@app/lib/connector_utils";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSources } from "@app/lib/swr/data_sources";
 import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
@@ -239,78 +233,6 @@ export const VaultResourcesList = ({
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
   });
-
-  const handleUpdatePermissions = async (
-    connector: ConnectorType,
-    dataSource: DataSourceType
-  ) => {
-    const provider = connector.type;
-
-    const connectionIdRes = await setupConnection({
-      dustClientFacingUrl,
-      owner,
-      provider,
-    });
-    if (connectionIdRes.isErr()) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update the permissions of the Data Source",
-        description: connectionIdRes.error.message,
-      });
-      return;
-    }
-
-    const updateRes = await updateConnectorConnectionId(
-      connectionIdRes.value,
-      provider,
-      dataSource
-    );
-    if (updateRes.error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update the permissions of the Data Source",
-        description: updateRes.error,
-      });
-      return;
-    }
-  };
-
-  const updateConnectorConnectionId = async (
-    newConnectionId: string,
-    provider: string,
-    dataSource: DataSourceType
-  ) => {
-    const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/update`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          connectionId: newConnectionId,
-        } satisfies UpdateConnectorRequestBody),
-      }
-    );
-
-    if (res.ok) {
-      return { success: true, error: null };
-    }
-
-    const jsonErr = await res.json();
-    const error = jsonErr.error;
-
-    if (error.type === "connector_oauth_target_mismatch") {
-      return {
-        success: false,
-        error: CONNECTOR_TYPE_TO_MISMATCH_ERROR[provider as ConnectorProvider],
-      };
-    }
-    return {
-      success: false,
-      error: `Failed to update the permissions of the Data Source: (contact support@dust.tt for assistance)`,
-    };
-  };
 
   // DataSources Views of the current vault.
   const {
@@ -550,6 +472,7 @@ export const VaultResourcesList = ({
               plan={plan}
               readOnly={false}
               isAdmin={isAdmin}
+              dustClientFacingUrl={dustClientFacingUrl}
             />
             <DataSourceEditionModal
               isOpen={showEditionModal}
@@ -563,7 +486,10 @@ export const VaultResourcesList = ({
                 }
                 void handleUpdatePermissions(
                   selectedDataSourceView.dataSource.connector,
-                  selectedDataSourceView.dataSource
+                  selectedDataSourceView.dataSource,
+                  owner,
+                  dustClientFacingUrl,
+                  sendNotification
                 );
               }}
               dustClientFacingUrl={dustClientFacingUrl}

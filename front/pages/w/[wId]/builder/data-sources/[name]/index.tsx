@@ -1309,6 +1309,7 @@ function ManagedDataSourceView({
           plan={plan}
           readOnly={false}
           isAdmin={isAdmin}
+          dustClientFacingUrl={dustClientFacingUrl}
         />
       </div>
     </>
