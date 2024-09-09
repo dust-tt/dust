@@ -4,6 +4,7 @@ import type {
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
+  LightWorkspaceType,
   PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -18,7 +19,11 @@ import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableVi
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 
 import { PermissionTree } from "./ConnectorPermissionsTree";
-import { SendNotificationsContext } from "./sparkle/Notification";
+import type {
+  NotificationType} from "./sparkle/Notification";
+import {
+  SendNotificationsContext,
+} from "./sparkle/Notification";
 
 const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "confluence",
@@ -83,9 +88,13 @@ export function ConnectorPermissionsModal({
   setShowEditionModal: (show: boolean) => void;
   handleUpdatePermissions: (
     connector: ConnectorType,
-    dataSource: DataSourceType
+    dataSource: DataSourceType,
+    owner: LightWorkspaceType,
+    dustClientFacingUrl: string,
+    sendNotification: (notification: NotificationType) => void
   ) => Promise<void>;
   plan: PlanType;
+  dustClientFacingUrl: string;
   readOnly: boolean;
   isAdmin: boolean;
 }) {
@@ -184,7 +193,13 @@ export function ConnectorPermissionsModal({
                 setShowEditionModal(true);
                 onClose();
               } else {
-                void handleUpdatePermissions(connector, dataSource);
+                void handleUpdatePermissions(
+                  connector,
+                  dataSource,
+                  owner,
+                  dustClientFacingUrl,
+                  sendNotification
+                );
               }
             }}
           />
