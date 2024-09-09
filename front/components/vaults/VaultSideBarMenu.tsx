@@ -34,6 +34,7 @@ import {
 import { getVaultIcon, getVaultName } from "@app/lib/vaults";
 
 interface VaultSideBarMenuProps {
+  isPrivateVaultsEnabled: boolean;
   owner: LightWorkspaceType;
   isAdmin: boolean;
   setShowVaultCreationModal: (show: boolean) => void;
@@ -47,6 +48,7 @@ const VAULTS_SORT_ORDER: VaultKind[] = [
 ];
 
 export default function VaultSideBarMenu({
+  isPrivateVaultsEnabled,
   owner,
   isAdmin,
   setShowVaultCreationModal,
@@ -102,6 +104,9 @@ export default function VaultSideBarMenu({
           {sortedGroupedVaults.map(({ kind, vaults }, index) => {
             // Public vaults are created manually by us to hold public dust apps - other workspaces can't create them, so we do not show the section at all if there are no vaults.
             if (kind === "public" && !vaults.length) {
+              return null;
+            }
+            if (kind === "regular" && !isPrivateVaultsEnabled) {
               return null;
             }
 

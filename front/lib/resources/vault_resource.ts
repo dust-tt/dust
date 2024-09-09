@@ -284,6 +284,10 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   canWrite(auth: Authenticator) {
+    const isPrivateVaultsEnabled = auth
+      .getNonNullableWorkspace()
+      .flags.includes("private_data_vaults_feature");
+
     switch (this.kind) {
       case "system":
         return auth.isAdmin() && auth.canWrite([this.acl()]);
@@ -292,21 +296,25 @@ export class VaultResource extends BaseResource<VaultModel> {
         return auth.isBuilder() && auth.canWrite([this.acl()]);
 
       case "regular":
+        return isPrivateVaultsEnabled ? auth.canWrite([this.acl()]) : false;
       case "public":
         return auth.canWrite([this.acl()]);
-
       default:
         assertNever(this.kind);
     }
   }
 
   canRead(auth: Authenticator) {
+    const isPrivateVaultsEnabled = auth
+      .getNonNullableWorkspace()
+      .flags.includes("private_data_vaults_feature");
+
     switch (this.kind) {
       case "global":
-      case "regular":
       case "system":
         return auth.canRead([this.acl()]);
-
+      case "regular":
+        return isPrivateVaultsEnabled ? auth.canRead([this.acl()]) : false;
       case "public":
         return true;
 
@@ -316,6 +324,14 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   canList(auth: Authenticator) {
+    const isPrivateVaultsEnabled = auth
+      .getNonNullableWorkspace()
+      .flags.includes("private_data_vaults_feature");
+
+    if (this.isRegular() && !isPrivateVaultsEnabled) {
+      return false;
+    }
+
     // Admins can list all vaults.
     if (auth.isAdmin()) {
       return true;
