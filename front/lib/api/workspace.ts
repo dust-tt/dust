@@ -9,6 +9,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 
+import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -117,6 +118,7 @@ export async function setInternalWorkspaceSegmentation(
  * their own workspaces).
  * @param auth Authenticator
  * @param role RoleType optional filter on role
+ * @param paginationParams PaginationParams optional pagination parameters
  * @returns UserType[] members of the workspace
  */
 export async function getMembers(
@@ -127,7 +129,8 @@ export async function getMembers(
   }: {
     roles?: MembershipRoleType[];
     activeOnly?: boolean;
-  } = {}
+  } = {},
+  paginationParams?: PaginationParams
 ): Promise<UserTypeWithWorkspaces[]> {
   const owner = auth.workspace();
   if (!owner) {
@@ -138,10 +141,12 @@ export async function getMembers(
     ? await MembershipResource.getActiveMemberships({
         workspace: owner,
         roles,
+        paginationParams,
       })
     : await MembershipResource.getLatestMemberships({
         workspace: owner,
         roles,
+        paginationParams,
       });
 
   const users = await UserResource.fetchByModelIds(

@@ -4,6 +4,8 @@ import type {
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { PaginationParams } from "@app/lib/api/pagination";
+import { getPaginationParams } from "@app/lib/api/pagination";
 import { getMembers } from "@app/lib/api/workspace";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -11,6 +13,7 @@ import { apiError } from "@app/logger/withlogging";
 
 export type GetMembersResponseBody = {
   members: UserTypeWithWorkspaces[];
+  paginationParams: PaginationParams;
 };
 
 async function handler(
@@ -20,9 +23,41 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
+      const paginationRes = getPaginationParams(req, {
+        defaultLimit: 1,
+        defaultOrderColumn: "createdAt",
+        defaultOrderDirection: "desc",
+        supportedOrderColumn: ["createdAt"],
+      });
+
+      if (paginationRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: paginationRes.error.message,
+          },
+        });
+      }
+
+      const paginationParams = paginationRes.value;
+
       if (auth.isBuilder() && req.query.role && req.query.role === "admin") {
-        const members = await getMembers(auth, { roles: ["admin"] });
-        res.status(200).json({ members });
+        const members = await getMembers(
+          auth,
+          {
+            roles: ["admin"],
+          },
+          paginationParams
+        );
+        res.status(200).json({
+          members,
+          paginationParams: {
+            limit: paginationParams.limit,
+            orderColumn: paginationParams.orderColumn,
+            orderDirection: paginationParams.orderDirection,
+          },
+        });
         return;
       }
 
@@ -37,9 +72,16 @@ async function handler(
         });
       }
 
-      const members = await getMembers(auth);
+      const members = await getMembers(auth, {}, paginationParams);
 
-      res.status(200).json({ members });
+      res.status(200).json({
+        members,
+        paginationParams: {
+          limit: paginationParams.limit,
+          orderColumn: paginationParams.orderColumn,
+          orderDirection: paginationParams.orderDirection,
+        },
+      });
       return;
 
     default:

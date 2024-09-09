@@ -7,6 +7,7 @@ import type {
 import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
+  FindOptions,
   InferAttributes,
   ModelStatic,
   Transaction,
@@ -14,6 +15,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { canForceUserRole } from "@app/lib/development";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -51,10 +53,14 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     roles,
     transaction,
-  }: GetMembershipsOptions): Promise<MembershipResource[]> {
+    paginationParams,
+  }: GetMembershipsOptions & {
+    paginationParams?: PaginationParams;
+  }): Promise<MembershipResource[]> {
     if (!workspace && !users?.length) {
       throw new Error("At least one of workspace or userIds must be provided.");
     }
+
     const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {
       startAt: {
         [Op.lte]: new Date(),
@@ -76,10 +82,29 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       };
     }
 
-    const memberships = await MembershipModel.findAll({
+    const findOptions: FindOptions<InferAttributes<MembershipModel>> = {
       where: whereClause,
       transaction,
-    });
+    };
+
+    if (paginationParams) {
+      const { limit, orderColumn, orderDirection, lastValue } =
+        paginationParams;
+
+      if (lastValue) {
+        const op = orderDirection === "desc" ? Op.lt : Op.gt;
+        whereClause[orderColumn as any] = {
+          [op]: lastValue,
+        };
+      }
+
+      findOptions.order = [
+        [orderColumn, orderDirection === "desc" ? "DESC" : "ASC"],
+      ];
+      findOptions.limit = limit;
+    }
+
+    const memberships = await MembershipModel.findAll(findOptions);
 
     return memberships.map(
       (membership) => new MembershipResource(MembershipModel, membership.get())
@@ -91,7 +116,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     roles,
     transaction,
-  }: GetMembershipsOptions): Promise<MembershipResource[]> {
+    paginationParams,
+  }: GetMembershipsOptions & {
+    paginationParams?: PaginationParams;
+  }): Promise<MembershipResource[]> {
     const orderedResourcesFromModels = (resources: MembershipModel[]) =>
       resources
         .sort((a, b) => a.startAt.getTime() - b.startAt.getTime())
@@ -99,15 +127,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           (resource) => new MembershipResource(MembershipModel, resource.get())
         );
 
-    const where: WhereOptions<InferAttributes<MembershipModel>> = {};
+    const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {};
     if (roles) {
-      where.role = roles;
+      whereClause.role = roles;
     }
     if (users) {
-      where.userId = users.map((u) => u.id);
+      whereClause.userId = users.map((u) => u.id);
     }
     if (workspace) {
-      where.workspaceId = workspace.id;
+      whereClause.workspaceId = workspace.id;
     }
 
     if (!workspace && !users?.length) {
@@ -117,12 +145,30 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       return [];
     }
 
-    // Get all the memberships matching the criteria.
-    const memberships = await MembershipModel.findAll({
-      where,
-      order: [["startAt", "DESC"]],
+    const findOptions: FindOptions<InferAttributes<MembershipModel>> = {
+      where: whereClause,
       transaction,
-    });
+    };
+
+    if (paginationParams) {
+      const { limit, orderColumn, orderDirection, lastValue } =
+        paginationParams;
+
+      if (lastValue) {
+        const op = orderDirection === "desc" ? Op.lt : Op.gt;
+        whereClause[orderColumn as any] = {
+          [op]: lastValue,
+        };
+      }
+
+      findOptions.order = [
+        [orderColumn, orderDirection === "desc" ? "DESC" : "ASC"],
+      ];
+      findOptions.limit = limit;
+    }
+
+    // Get all the memberships matching the criteria.
+    const memberships = await MembershipModel.findAll(findOptions);
     // Then, we only keep the latest membership for each (user, workspace).
     const latestMembershipByUserAndWorkspace = new Map<
       string,
