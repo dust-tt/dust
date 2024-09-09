@@ -40,7 +40,10 @@ import { RequestDataSourceModal } from "@app/components/data_source/RequestDataS
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
+import {
+  AddConnectionMenu,
+  setupConnection,
+} from "@app/components/vaults/AddConnectionMenu";
 import config from "@app/lib/api/config";
 import {
   augmentDataSourceWithConnectorDetails,
