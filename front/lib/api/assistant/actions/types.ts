@@ -61,15 +61,6 @@ export abstract class BaseActionConfigurationServerRunner<
     { name, description }: { name: string | null; description: string | null }
   ): Promise<Result<AgentActionSpecification, Error>>;
 
-  // Computes the max number of citation for the actions as part of this step.
-  abstract getCitationsCount({
-    agentConfiguration,
-    stepActions,
-  }: {
-    agentConfiguration: AgentConfigurationType;
-    stepActions: AgentActionConfigurationType[];
-  }): number;
-
   // Action execution.
   abstract run(
     auth: Authenticator,

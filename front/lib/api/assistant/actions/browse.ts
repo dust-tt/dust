@@ -111,11 +111,6 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
     });
   }
 
-  // Browse does not use citations.
-  getCitationsCount(): number {
-    return 0;
-  }
-
   // This method is in charge of running the browse and creating an AgentBrowseAction object in
   // the database. It does not create any generic model related to the conversation. It is possible
   // for an AgentBrowseAction to be stored (once the query params are infered) but for its execution
