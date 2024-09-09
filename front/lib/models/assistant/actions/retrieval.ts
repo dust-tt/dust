@@ -4,12 +4,14 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
+  NonAttribute,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export class AgentRetrievalConfiguration extends Model<
   InferAttributes<AgentRetrievalConfiguration>,
@@ -269,6 +271,8 @@ export class RetrievalDocument extends Model<
   declare score: number | null;
 
   declare retrievalActionId: ForeignKey<AgentRetrievalAction["id"]>;
+
+  declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
 
 RetrievalDocument.init(
@@ -292,6 +296,7 @@ RetrievalDocument.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    // TODO(DATASOURCE_SID); state storing the datasource name
     dataSourceId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -334,6 +339,15 @@ AgentRetrievalAction.hasMany(RetrievalDocument, {
 });
 RetrievalDocument.belongsTo(AgentRetrievalAction, {
   foreignKey: { name: "retrievalActionId", allowNull: false },
+});
+
+DataSourceViewModel.hasMany(RetrievalDocument, {
+  foreignKey: { allowNull: true },
+  onDelete: "SET NULL",
+});
+RetrievalDocument.belongsTo(DataSourceViewModel, {
+  as: "dataSourceView",
+  foreignKey: { allowNull: false },
 });
 
 export class RetrievalDocumentChunk extends Model<
