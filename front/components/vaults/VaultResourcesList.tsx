@@ -45,10 +45,8 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
-import {
-  getConnectorProviderLogoWithFallback,
-  getDataSourceNameFromView,
-} from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSources } from "@app/lib/swr/data_sources";
 import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";

@@ -3,6 +3,7 @@ import type {
   ContentNodesViewType,
   CoreAPIDocument,
   DataSourceType,
+  DataSourceViewType,
   WithConnector,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
@@ -84,4 +85,16 @@ export function canBeExpanded(
   // Folders with viewType "documents" are always considered leaf items.
   // For viewType "tables", folders are not leaf items because users need to select a specific table.
   return !isFolder(ds) || viewType === "tables";
+}
+
+export function getDataSourceNameFromView(dsv: DataSourceViewType): string {
+  return getDataSourceName(dsv.dataSource);
+}
+
+export function getDataSourceName(ds: DataSourceType): string {
+  if (isManaged(ds)) {
+    return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
+  }
+
+  return ds.name;
 }
