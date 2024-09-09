@@ -107,16 +107,6 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       : null;
   }
 
-  private async update(
-    blob: Partial<Attributes<LabsTranscriptsConfigurationModel>>
-  ): Promise<[affectedCount: number]> {
-    return this.model.update(blob, {
-      where: {
-        id: this.id,
-      },
-    });
-  }
-
   async getUser(): Promise<UserResource | null> {
     return UserResource.fetchByModelId(this.userId);
   }

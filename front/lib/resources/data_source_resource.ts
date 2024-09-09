@@ -326,21 +326,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     }
   }
 
-  async update(
-    blob: Partial<Attributes<DataSource>>,
-    transaction?: Transaction
-  ): Promise<[affectedCount: number]> {
-    const [affectedCount, affectedRows] = await this.model.update(blob, {
-      where: {
-        id: this.id,
-      },
-      transaction,
-      returning: true,
-    });
-    // Update the current instance with the new values to avoid stale data
-    Object.assign(this, affectedRows[0].get());
-    return [affectedCount];
-  }
+  // Updating.
 
   async setEditedBy(auth: Authenticator) {
     await this.update({
@@ -366,6 +352,24 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
         userId: editedByUser.sId,
       },
     };
+  }
+
+  async setDefaultSelectedForAssistant(defaultSelected: boolean) {
+    return this.update({
+      assistantDefaultSelected: defaultSelected,
+    });
+  }
+
+  async setDescription(description: string) {
+    return this.update({
+      description,
+    });
+  }
+
+  async setConnectorId(connectorId: string) {
+    return this.update({
+      connectorId,
+    });
   }
 
   getUsagesByAgents(auth: Authenticator) {
