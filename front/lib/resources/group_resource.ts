@@ -371,14 +371,25 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async getActiveMembers(auth: Authenticator): Promise<UserResource[]> {
     const owner = auth.getNonNullableWorkspace();
-    const memberships = await GroupMembershipModel.findAll({
-      where: {
-        groupId: this.id,
-        workspaceId: owner.id,
-        startAt: { [Op.lte]: new Date() },
-        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-      },
-    });
+
+    let memberships: GroupMembershipModel[] | MembershipResource[];
+
+    // The global group does not have a DB entry for each workspace member.
+    // TODO(GROUPS_INFRA): Remove this once we consolidate memberships with group memberships.
+    if (this.isGlobal()) {
+      memberships = await MembershipResource.getActiveMemberships({
+        workspace: auth.getNonNullableWorkspace(),
+      });
+    } else {
+      memberships = await GroupMembershipModel.findAll({
+        where: {
+          groupId: this.id,
+          workspaceId: owner.id,
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+      });
+    }
 
     return UserResource.fetchByModelIds(memberships.map((m) => m.userId));
   }
@@ -704,6 +715,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   isSystem(): boolean {
     return this.kind === "system";
+  }
+
+  isGlobal(): boolean {
+    return this.kind === "global";
   }
 
   // JSON Serialization
