@@ -236,7 +236,9 @@ export const VaultResourcesList = ({
     Partial<Record<ConnectorProvider, boolean>>
   >({});
 
-  const { pagination, setPagination } = usePaginationFromUrl("table");
+  const { pagination, setPagination } = usePaginationFromUrl({
+    urlPrefix: "table",
+  });
 
   const handleUpdatePermissions = async (
     connector: ConnectorType,
