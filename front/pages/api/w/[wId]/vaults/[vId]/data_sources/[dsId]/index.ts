@@ -146,9 +146,7 @@ async function handler(
       }
       const { description } = bodyValidation.right;
 
-      await dataSource.update({
-        description,
-      });
+      await dataSource.setDescription(description);
 
       return res.status(200).json({
         dataSource: dataSource.toJSON(),

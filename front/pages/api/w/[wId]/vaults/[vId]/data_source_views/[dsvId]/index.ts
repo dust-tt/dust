@@ -70,7 +70,7 @@ async function handler(
       }
 
       const { parentsIn } = bodyValidation.right;
-      const updateResult = await dataSourceView.updateParents(auth, parentsIn);
+      const updateResult = await dataSourceView.updateParents(parentsIn);
 
       if (updateResult.isErr()) {
         return apiError(req, res, {

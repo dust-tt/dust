@@ -159,25 +159,11 @@ export class FileResource extends BaseResource<FileModel> {
 
   // Status logic.
 
-  private async update(
-    blob: Partial<CreationAttributes<FileModel>>
-  ): Promise<void> {
-    const [, affectedRows] = await this.model.update(blob, {
-      where: {
-        id: this.id,
-      },
-      returning: true,
-    });
-
-    // Update the resource to reflect the new status.
-    Object.assign(this, affectedRows[0].get());
-  }
-
-  async markAsFailed(): Promise<void> {
+  async markAsFailed() {
     return this.update({ status: "failed" });
   }
 
-  async markAsReady(): Promise<void> {
+  async markAsReady() {
     return this.update({ status: "ready" });
   }
 

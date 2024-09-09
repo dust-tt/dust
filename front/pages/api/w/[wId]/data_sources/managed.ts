@@ -388,9 +388,7 @@ async function handler(
         });
       }
 
-      await dataSource.update({
-        connectorId: connectorsRes.value.id,
-      });
+      await dataSource.setConnectorId(connectorsRes.value.id);
 
       res.status(201).json({
         dataSource: dataSource.toJSON(),

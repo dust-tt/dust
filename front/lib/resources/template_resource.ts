@@ -95,20 +95,11 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     }
   }
 
-  async update(
-    blob: Partial<Attributes<TemplateModel>>,
+  async updateAttributes(
+    blob: Partial<Omit<Attributes<TemplateModel>, "id">>,
     transaction?: Transaction
   ): Promise<[affectedCount: number]> {
-    const [affectedCount, affectedRows] = await this.model.update(blob, {
-      where: {
-        id: this.id,
-      },
-      transaction,
-      returning: true,
-    });
-    // Update the current instance with the new values to avoid stale data
-    Object.assign(this, affectedRows[0].get());
-    return [affectedCount];
+    return this.update(blob, transaction);
   }
 
   isPublished() {

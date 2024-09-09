@@ -267,24 +267,8 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   // Updating.
 
-  private async update(
-    auth: Authenticator,
-    blob: Partial<Attributes<DataSourceViewModel>>
-  ): Promise<[affectedCount: number]> {
-    const [affectedCount, affectedRows] = await this.model.update(blob, {
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        id: this.id,
-      },
-      returning: true,
-    });
-    // Update the current instance with the new values to avoid stale data
-    Object.assign(this, affectedRows[0].get());
-    return [affectedCount];
-  }
-
   async setEditedBy(auth: Authenticator) {
-    await this.update(auth, {
+    await this.update({
       editedByUserId: auth.getNonNullableUser().id,
       editedAt: new Date(),
     });
@@ -310,10 +294,9 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   }
 
   async updateParents(
-    auth: Authenticator,
     parentsIn: string[] | null
   ): Promise<Result<undefined, Error>> {
-    await this.update(auth, { parentsIn });
+    await this.update({ parentsIn });
 
     return new Ok(undefined);
   }

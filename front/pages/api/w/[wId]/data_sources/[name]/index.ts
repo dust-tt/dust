@@ -82,9 +82,10 @@ async function handler(
             },
           });
         }
-        await dataSource.update({
-          assistantDefaultSelected: req.body.assistantDefaultSelected,
-        });
+
+        await dataSource.setDefaultSelectedForAssistant(
+          req.body.assistantDefaultSelected
+        );
       } else {
         // non-managed data source
         if (
@@ -101,20 +102,15 @@ async function handler(
           });
         }
 
-        const toUpdate: {
-          description?: string | null;
-          assistantDefaultSelected?: boolean;
-        } = {};
-
         if (typeof req.body.description === "string") {
-          toUpdate.description = req.body.description || null;
+          await dataSource.setDescription(req.body.description);
         }
 
         if (typeof req.body.assistantDefaultSelected === "boolean") {
-          toUpdate.assistantDefaultSelected = req.body.assistantDefaultSelected;
+          await dataSource.setDefaultSelectedForAssistant(
+            req.body.assistantDefaultSelected
+          );
         }
-
-        await dataSource.update(toUpdate);
       }
 
       return res.status(200).json({
