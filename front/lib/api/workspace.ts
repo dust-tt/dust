@@ -119,7 +119,7 @@ export async function setInternalWorkspaceSegmentation(
  * @param auth Authenticator
  * @param role RoleType optional filter on role
  * @param paginationParams PaginationParams optional pagination parameters
- * @returns UserType[] members of the workspace
+ * @returns An object containing an array of UserTypeWithWorkspaces and the total count of members.
  */
 export async function getMembers(
   auth: Authenticator,
@@ -131,13 +131,13 @@ export async function getMembers(
     activeOnly?: boolean;
   } = {},
   paginationParams?: PaginationParams
-): Promise<UserTypeWithWorkspaces[]> {
+): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
   const owner = auth.workspace();
   if (!owner) {
-    return [];
+    return { members: [], total: 0 };
   }
 
-  const { memberships } = activeOnly
+  const { memberships, total } = activeOnly
     ? await MembershipResource.getActiveMemberships({
         workspace: owner,
         roles,
@@ -153,7 +153,7 @@ export async function getMembers(
     memberships.map((m) => m.userId)
   );
 
-  return users.map((u) => {
+  const usersWithWorkspaces = users.map((u) => {
     const m = memberships.find((m) => m.userId === u.id);
     let role = "none" as RoleType;
     if (m && !m.isRevoked()) {
@@ -173,6 +173,8 @@ export async function getMembers(
       workspaces: [{ ...owner, role, flags: null }],
     };
   });
+
+  return { members: usersWithWorkspaces, total };
 }
 
 export async function getMembersCount(

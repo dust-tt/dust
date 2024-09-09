@@ -29,7 +29,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const [members, pendingInvitations] = await Promise.all([
+  const [{ members }, pendingInvitations] = await Promise.all([
     getMembers(auth),
     getPendingInvitations(auth),
   ]);

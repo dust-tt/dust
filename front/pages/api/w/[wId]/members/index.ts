@@ -4,7 +4,6 @@ import type {
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import type { PaginationParams } from "@app/lib/api/pagination";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { getMembers } from "@app/lib/api/workspace";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
@@ -15,7 +14,7 @@ const DEFAULT_PAGE_LIMIT = 50;
 
 export type GetMembersResponseBody = {
   members: UserTypeWithWorkspaces[];
-  paginationParams: PaginationParams;
+  total: number;
 };
 
 async function handler(
@@ -45,7 +44,7 @@ async function handler(
       const paginationParams = paginationRes.value;
 
       if (auth.isBuilder() && req.query.role && req.query.role === "admin") {
-        const members = await getMembers(
+        const { members, total } = await getMembers(
           auth,
           {
             roles: ["admin"],
@@ -54,11 +53,7 @@ async function handler(
         );
         res.status(200).json({
           members,
-          paginationParams: {
-            limit: paginationParams.limit,
-            orderColumn: paginationParams.orderColumn,
-            orderDirection: paginationParams.orderDirection,
-          },
+          total,
         });
         return;
       }
@@ -74,15 +69,11 @@ async function handler(
         });
       }
 
-      const members = await getMembers(auth, {}, paginationParams);
+      const { members, total } = await getMembers(auth, {}, paginationParams);
 
       res.status(200).json({
         members,
-        paginationParams: {
-          limit: paginationParams.limit,
-          orderColumn: paginationParams.orderColumn,
-          orderDirection: paginationParams.orderDirection,
-        },
+        total,
       });
       return;
 

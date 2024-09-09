@@ -46,7 +46,7 @@ export async function sendDataDeletionEmail({
     if (!ws) {
       throw new Error("No workspace found");
     }
-    const admins = await getMembers(auth, { roles: ["admin"] });
+    const { members: admins } = await getMembers(auth, { roles: ["admin"] });
     for (const a of admins) {
       await sendAdminDataDeletionEmail({
         email: a.email,
