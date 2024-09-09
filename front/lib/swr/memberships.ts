@@ -1,12 +1,23 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
+import type { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  appendPaginationParams,
+  fetcher,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 
-export function useMembers(owner: LightWorkspaceType) {
+export function useMembers(
+  owner: LightWorkspaceType,
+  pagination?: PaginationState
+) {
+  const params = new URLSearchParams();
+  appendPaginationParams(params, pagination);
+
   const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/members`,
@@ -18,6 +29,7 @@ export function useMembers(owner: LightWorkspaceType) {
     isMembersLoading: !error && !data,
     isMembersError: error,
     mutateMembers: mutate,
+    total: data ? data.total : 0,
   };
 }
 
