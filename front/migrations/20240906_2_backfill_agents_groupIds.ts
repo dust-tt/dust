@@ -1,23 +1,15 @@
-import assert from "assert";
-
-import { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
-import { App } from "@app/lib/resources/storage/models/apps";
-import { VaultResource } from "@app/lib/resources/vault_resource";
-import { makeScript } from "@app/scripts/helpers";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { Sequelize } from "sequelize";
+import type { PostOrPatchAgentConfigurationRequestBody } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 import _ from "lodash";
-import {
-  getAgentConfiguration,
-  getAgentConfigurations,
-} from "@app/lib/api/assistant/configuration";
-import { Logger } from "pino";
-import {
-  PostOrPatchAgentConfigurationRequestBody,
-  removeNulls,
-} from "@dust-tt/types";
+import type { Logger } from "pino";
+import { Sequelize } from "sequelize";
+
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { Authenticator } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   // All workspaces that have at least one agent
