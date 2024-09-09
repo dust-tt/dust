@@ -2,7 +2,7 @@ import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
   Conversation,
@@ -12,8 +12,7 @@ import {
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-
-import { frontSequelize } from "./resources/storage";
+import { frontSequelize } from "@app/lib/resources/storage";
 
 export interface WorkspaceUsageQueryResult {
   createdAt: string;
@@ -470,19 +469,21 @@ function generateCsvFromQueryResult(
  *   - Existence of a custom assistant
  *   - A conversation occurred within the past 7 days
  */
-export async function checkWorkspaceActivity(workspace: Workspace) {
+export async function checkWorkspaceActivity(auth: Authenticator) {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const hasDataSource =
     (await DataSourceResource.listByWorkspace(auth, { limit: 1 })).length > 0;
 
   const hasCreatedAssistant = await AgentConfiguration.findOne({
-    where: { workspaceId: workspace.id },
+    where: { workspaceId: auth.getNonNullableWorkspace().id },
   });
 
   const hasRecentConversation = await Conversation.findOne({
-    where: { workspaceId: workspace.id, updatedAt: { [Op.gte]: sevenDaysAgo } },
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      updatedAt: { [Op.gte]: sevenDaysAgo },
+    },
   });
 
   return hasDataSource || hasCreatedAssistant || hasRecentConversation;

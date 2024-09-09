@@ -1,4 +1,9 @@
-import type { BillingPeriod, Result, WorkspaceType } from "@dust-tt/types";
+import type {
+  BillingPeriod,
+  LightWorkspaceType,
+  Result,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import { Stripe } from "stripe";
@@ -443,4 +448,16 @@ export function assertStripeSubscriptionItemIsValid({
   }
 
   return new Ok(true);
+}
+
+export async function reportActiveSeats(
+  stripeSubscriptionItem: Stripe.SubscriptionItem,
+  workspace: LightWorkspaceType
+): Promise<void> {
+  const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
+
+  await updateStripeQuantityForSubscriptionItem(
+    stripeSubscriptionItem,
+    activeSeats
+  );
 }

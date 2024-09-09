@@ -20,7 +20,6 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
@@ -248,6 +247,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
+  /**
+   * Caller of this method should call `ServerSideTracking.trackCreateMembership`.
+   */
   static async createMembership({
     user,
     workspace,
@@ -290,16 +292,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       { transaction }
     );
 
-    void ServerSideTracking.trackCreateMembership({
-      user: user.toJSON(),
-      workspace,
-      role: newMembership.role,
-      startAt: newMembership.startAt,
-    });
-
     return new MembershipResource(MembershipModel, newMembership.get());
   }
 
+  /**
+   * Caller of this method should call `ServerSideTracking.trackRevokeMembership`.
+   */
   static async revokeMembership({
     user,
     workspace,
@@ -312,7 +310,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     transaction?: Transaction;
   }): Promise<
     Result<
-      undefined,
+      { role: MembershipRoleType; startAt: Date; endAt: Date },
       {
         type: "not_found" | "already_revoked";
       }
@@ -337,17 +335,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       { where: { id: membership.id }, transaction }
     );
 
-    void ServerSideTracking.trackRevokeMembership({
-      user: user.toJSON(),
-      workspace,
+    return new Ok({
       role: membership.role,
       startAt: membership.startAt,
       endAt,
     });
-
-    return new Ok(undefined);
   }
 
+  /**
+   * Caller of this method should call `ServerSideTracking.trackUpdateMembershipRole`.
+   */
   static async updateMembershipRole({
     user,
     workspace,
@@ -363,7 +360,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     transaction?: Transaction;
   }): Promise<
     Result<
-      void,
+      { previousRole: MembershipRoleType; newRole: MembershipRoleType },
       {
         type:
           | "not_found"
@@ -435,14 +432,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       });
     }
 
-    void ServerSideTracking.trackUpdateMembershipRole({
-      user: user.toJSON(),
-      workspace,
-      previousRole: membership.role,
-      role: newRole,
-    });
-
-    return new Ok(undefined);
+    return new Ok({ previousRole, newRole });
   }
 
   async delete(

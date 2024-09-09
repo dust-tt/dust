@@ -1,10 +1,10 @@
 import { removeNulls } from "@dust-tt/types";
 import * as _ from "lodash";
 
-import { subscriptionForWorkspaces } from "@app/lib/auth";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { subscriptionForWorkspaces } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";

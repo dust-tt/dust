@@ -4,12 +4,18 @@ import type {
   ConnectorType,
   DataSourceType,
   DataSourceWithConnectorDetailsType,
+  LightWorkspaceType,
   PlanType,
+  Result,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
   CONNECTOR_PROVIDERS,
+  Err,
   isConnectorProviderAllowed,
+  isOAuthProvider,
+  Ok,
+  setupOAuthConnection,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
@@ -23,7 +29,6 @@ import {
   isConnectorProviderAllowedForPlan,
 } from "@app/lib/connector_providers";
 import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
-import { setupConnection } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
 type AddConnectionMenuProps = {
   owner: WorkspaceType;
@@ -33,6 +38,36 @@ type AddConnectionMenuProps = {
   setIsProviderLoading: (provider: ConnectorProvider, value: boolean) => void;
   onCreated(dataSource: DataSourceType): void;
 };
+
+export async function setupConnection({
+  dustClientFacingUrl,
+  owner,
+  provider,
+}: {
+  dustClientFacingUrl: string;
+  owner: LightWorkspaceType;
+  provider: ConnectorProvider;
+}): Promise<Result<string, Error>> {
+  let connectionId: string;
+
+  if (isOAuthProvider(provider)) {
+    // OAuth flow
+    const cRes = await setupOAuthConnection({
+      dustClientFacingUrl,
+      owner,
+      provider,
+      useCase: "connection",
+    });
+    if (!cRes.isOk()) {
+      return cRes;
+    }
+    connectionId = cRes.value.connection_id;
+  } else {
+    return new Err(new Error(`Unknown provider ${provider}`));
+  }
+
+  return new Ok(connectionId);
+}
 
 export const AddConnectionMenu = ({
   owner,

@@ -1,10 +1,12 @@
 import type {
   BillingPeriod,
   EnterpriseUpgradeFormType,
+  LightWorkspaceType,
   PlanType,
   SubscriptionType,
 } from "@dust-tt/types";
 import { sendUserOperationMessage } from "@dust-tt/types";
+import * as _ from "lodash";
 import type Stripe from "stripe";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -19,11 +21,16 @@ import {
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
 import {
+  renderPlanFromModel,
+  renderSubscriptionFromModels,
+} from "@app/lib/plans/renderers";
+import {
   cancelSubscriptionImmediately,
   createProPlanCheckoutSession,
   getProPlanStripeProductId,
   getStripeSubscription,
 } from "@app/lib/plans/stripe";
+import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -32,67 +39,98 @@ import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
 
-// Helper function to render PlanType from PlanAttributes
-export function renderPlanFromModel({
-  plan,
-}: {
-  plan: PlanAttributes;
-}): PlanType {
-  return {
-    code: plan.code,
-    name: plan.name,
-    limits: {
-      assistant: {
-        isSlackBotAllowed: plan.isSlackbotAllowed,
-        maxMessages: plan.maxMessages,
-        maxMessagesTimeframe: plan.maxMessagesTimeframe,
-      },
-      connections: {
-        isConfluenceAllowed: plan.isManagedConfluenceAllowed,
-        isSlackAllowed: plan.isManagedSlackAllowed,
-        isNotionAllowed: plan.isManagedNotionAllowed,
-        isGoogleDriveAllowed: plan.isManagedGoogleDriveAllowed,
-        isGithubAllowed: plan.isManagedGithubAllowed,
-        isIntercomAllowed: plan.isManagedIntercomAllowed,
-        isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
-      },
-      dataSources: {
-        count: plan.maxDataSourcesCount,
-        documents: {
-          count: plan.maxDataSourcesDocumentsCount,
-          sizeMb: plan.maxDataSourcesDocumentsSizeMb,
-        },
-      },
-      users: {
-        maxUsers: plan.maxUsersInWorkspace,
-      },
-      canUseProduct: plan.canUseProduct,
-    },
-    trialPeriodDays: plan.trialPeriodDays,
-  };
+/**
+ * Construct the SubscriptionType for the provided workspace.
+ * @param w WorkspaceType the workspace to get the plan for
+ * @returns SubscriptionType
+ */
+export async function subscriptionForWorkspace(
+  workspace: LightWorkspaceType
+): Promise<SubscriptionType> {
+  const res = await subscriptionForWorkspaces([workspace]);
+
+  const subscription = res[workspace.sId];
+  if (!subscription) {
+    throw new Error(
+      `Could not find subscription for workspace ${workspace.sId}`
+    );
+  }
+
+  return subscription;
 }
 
-// Helper in charge of rendering the SubscriptionType object form PlanAttributes and optionally an
-// active Subscription model.
-export function renderSubscriptionFromModels({
-  plan,
-  activeSubscription,
-}: {
-  plan: PlanAttributes;
-  activeSubscription: Subscription | null;
-}): SubscriptionType {
-  return {
-    status: activeSubscription?.status ?? "active",
-    trialing: activeSubscription?.trialing === true,
-    sId: activeSubscription?.sId || null,
-    stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
-    startDate: activeSubscription?.startDate?.getTime() || null,
-    endDate: activeSubscription?.endDate?.getTime() || null,
-    paymentFailingSince:
-      activeSubscription?.paymentFailingSince?.getTime() || null,
-    plan: renderPlanFromModel({ plan }),
-    requestCancelAt: activeSubscription?.requestCancelAt?.getTime() ?? null,
-  };
+/**
+ * Construct the SubscriptionType for the provided workspaces.
+ * @param w WorkspaceType the workspace to get the plan for
+ * @returns SubscriptionType
+ */
+export async function subscriptionForWorkspaces(
+  workspaces: LightWorkspaceType[]
+): Promise<{ [key: string]: SubscriptionType }> {
+  const workspaceModelBySid = _.keyBy(workspaces, "sId");
+
+  const activeSubscriptionByWorkspaceId = _.keyBy(
+    await Subscription.findAll({
+      attributes: [
+        "endDate",
+        "id",
+        "paymentFailingSince",
+        "sId",
+        "startDate",
+        "status",
+        "stripeSubscriptionId",
+        "trialing",
+        "workspaceId",
+      ],
+      where: {
+        workspaceId: Object.values(workspaceModelBySid).map((w) => w.id),
+        status: "active",
+      },
+      include: [
+        {
+          model: Plan,
+          as: "plan",
+          required: true,
+        },
+      ],
+    }),
+    "workspaceId"
+  );
+
+  const renderedSubscriptionByWorkspaceSid: Record<string, SubscriptionType> =
+    {};
+
+  for (const [sId, workspace] of Object.entries(workspaceModelBySid)) {
+    const activeSubscription =
+      activeSubscriptionByWorkspaceId[workspace.id.toString()];
+
+    // Default values when no subscription
+    let plan: PlanAttributes = FREE_NO_PLAN_DATA;
+
+    if (activeSubscription) {
+      // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
+      if (isTrial(activeSubscription)) {
+        plan = getTrialVersionForPlan(activeSubscription.plan);
+      } else if (activeSubscription.plan) {
+        plan = activeSubscription.plan;
+      } else {
+        logger.error(
+          {
+            workspaceId: sId,
+            activeSubscription,
+          },
+          "Cannot find plan for active subscription. Will use limits of FREE_TEST_PLAN instead. Please check and fix."
+        );
+      }
+    }
+
+    renderedSubscriptionByWorkspaceSid[sId] = renderSubscriptionFromModels({
+      plan,
+      activeSubscription,
+    });
+  }
+
+  return renderedSubscriptionByWorkspaceSid;
 }
 
 /**
@@ -495,6 +533,7 @@ export async function getPerSeatSubscriptionPricing(
  * Proactively cancel inactive trials.
  */
 export async function maybeCancelInactiveTrials(
+  auth: Authenticator,
   eventStripeSubscription: Stripe.Subscription
 ) {
   const { id: stripeSubscriptionId } = eventStripeSubscription;
@@ -523,7 +562,7 @@ export async function maybeCancelInactiveTrials(
     return;
   }
 
-  const isWorkspaceActive = await checkWorkspaceActivity(workspace);
+  const isWorkspaceActive = await checkWorkspaceActivity(auth);
 
   if (!isWorkspaceActive) {
     logger.info(

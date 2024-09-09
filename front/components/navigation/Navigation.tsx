@@ -9,7 +9,7 @@ import {
   NavigationSidebar,
   ToggleNavigationSidebarButton,
 } from "@app/components/navigation/NavigationSidebar";
-import { SidebarContext } from "@app/components/sparkle/AppLayout";
+import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { classNames } from "@app/lib/utils";
 
 interface NavigationProps {

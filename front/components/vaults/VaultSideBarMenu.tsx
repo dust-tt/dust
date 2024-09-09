@@ -22,10 +22,8 @@ import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  getConnectorProviderLogoWithFallback,
-  getDataSourceNameFromView,
-} from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useApps } from "@app/lib/swr/apps";
 import {
   useVaultDataSourceViews,

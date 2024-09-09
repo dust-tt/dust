@@ -1,5 +1,6 @@
 import { sendUserOperationMessage } from "@dust-tt/types";
 
+import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -44,7 +45,10 @@ export async function createWorkspaceInternal({
   const { systemGroup, globalGroup } =
     await GroupResource.makeDefaultsForWorkspace(lightWorkspace);
 
-  await VaultResource.makeDefaultsForWorkspace(lightWorkspace, {
+  const auth = await Authenticator.internalAdminForWorkspace(
+    lightWorkspace.sId
+  );
+  await VaultResource.makeDefaultsForWorkspace(auth, {
     systemGroup,
     globalGroup,
   });

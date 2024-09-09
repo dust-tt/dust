@@ -10,6 +10,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { canForceUserRole } from "@app/lib/development";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
@@ -71,6 +72,7 @@ async function handler(
           user,
           workspace: owner,
         });
+
         if (revokeResult.isErr()) {
           switch (revokeResult.error.type) {
             case "not_found":
@@ -89,6 +91,16 @@ async function handler(
           }
         }
 
+        if (revokeResult.isOk()) {
+          void ServerSideTracking.trackRevokeMembership({
+            user: user.toJSON(),
+            workspace: owner,
+            role: revokeResult.value.role,
+            startAt: revokeResult.value.startAt,
+            endAt: revokeResult.value.endAt,
+          });
+        }
+
         await launchUpdateUsageWorkflow({ workspaceId: owner.sId });
       } else {
         const role = req.body.role;
@@ -102,15 +114,17 @@ async function handler(
             },
           });
         }
-        const updateRoleResult = await MembershipResource.updateMembershipRole({
+
+        const updateRes = await MembershipResource.updateMembershipRole({
           user,
           workspace: owner,
           newRole: role,
           // We allow to re-activate a terminated membership when updating the role here.
           allowTerminated: true,
         });
-        if (updateRoleResult.isErr()) {
-          switch (updateRoleResult.error.type) {
+
+        if (updateRes.isErr()) {
+          switch (updateRes.error.type) {
             case "not_found":
               return apiError(req, res, {
                 status_code: 404,
@@ -135,8 +149,17 @@ async function handler(
                 },
               });
             default:
-              assertNever(updateRoleResult.error.type);
+              assertNever(updateRes.error.type);
           }
+        }
+
+        if (updateRes.isOk()) {
+          void ServerSideTracking.trackUpdateMembershipRole({
+            user: user.toJSON(),
+            workspace: owner,
+            previousRole: updateRes.value.previousRole,
+            role: updateRes.value.newRole,
+          });
         }
       }
 

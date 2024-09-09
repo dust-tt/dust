@@ -14,10 +14,8 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { CreateVaultModal } from "@app/components/vaults/CreateVaultModal";
 import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
 import VaultSideBarMenu from "@app/components/vaults/VaultSideBarMenu";
-import {
-  getConnectorProviderLogoWithFallback,
-  getDataSourceNameFromView,
-} from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { getVaultIcon } from "@app/lib/vaults";
 
