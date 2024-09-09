@@ -25,7 +25,7 @@ const { updateParentsFields } = proxyActivities<typeof activities>({
 
 const {
   getPagesAndDatabasesToSync,
-  garbageCollectorMarkAsSeen,
+  garbageCollectorMarkAsSeenAndReturnNewEntities,
   fetchDatabaseChildPages,
   cachePage,
   cacheBlockChildren,
@@ -772,12 +772,13 @@ async function performUpserts({
   if (isGarbageCollectionRun) {
     // Mark pages and databases as visited to avoid deleting them and return pages and databases
     // that are new.
-    const { newPageIds, newDatabaseIds } = await garbageCollectorMarkAsSeen({
-      connectorId,
-      pageIds,
-      databaseIds,
-      runTimestamp,
-    });
+    const { newPageIds, newDatabaseIds } =
+      await garbageCollectorMarkAsSeenAndReturnNewEntities({
+        connectorId,
+        pageIds,
+        databaseIds,
+        runTimestamp,
+      });
     pagesToSync = newPageIds;
     databasesToSync = newDatabaseIds;
   } else {
