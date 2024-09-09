@@ -3,10 +3,12 @@ import type {
   DataSourceViewType,
   LightWorkspaceType,
 } from "@dust-tt/types";
+import type { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
 import {
+  appendPaginationParams,
   fetcher,
   fetcherMultiple,
   postFetcher,
@@ -99,18 +101,19 @@ export function useMultipleDataSourceViewsContentNodes({
   );
 }
 
-// TODO(GROUPS_INFRA) Implement pagination.
 export function useDataSourceViewContentNodes({
   owner,
   dataSourceView,
   internalIds,
   includeChildren,
+  pagination,
   viewType = "documents",
 }: {
   owner: LightWorkspaceType;
   dataSourceView?: DataSourceViewType;
   internalIds?: string[];
   includeChildren: boolean;
+  pagination?: PaginationState;
   viewType?: ContentNodesViewType;
 }): {
   isNodesError: boolean;
@@ -119,8 +122,11 @@ export function useDataSourceViewContentNodes({
   nodes: GetDataSourceViewContentNodes["nodes"];
   totalNodesCount: number;
 } {
+  const params = new URLSearchParams();
+  appendPaginationParams(params, pagination);
+
   const url = dataSourceView
-    ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
+    ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
     : null;
 
   const body = JSON.stringify({

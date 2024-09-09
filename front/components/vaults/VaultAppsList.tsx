@@ -72,7 +72,9 @@ export const VaultAppsList = ({
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
-  const { pagination, setPagination } = usePaginationFromUrl("table");
+  const { pagination, setPagination } = usePaginationFromUrl({
+    urlPrefix: "table",
+  });
 
   const rows: RowData[] = React.useMemo(
     () =>
