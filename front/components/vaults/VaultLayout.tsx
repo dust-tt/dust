@@ -49,6 +49,10 @@ export function VaultLayout({
     parentId,
   } = pageProps;
 
+  const isPrivateVaultsEnabled = owner.flags.includes(
+    "private_data_vaults_feature"
+  );
+
   return (
     <RootLayout>
       <AppLayout
@@ -59,6 +63,7 @@ export function VaultLayout({
           <VaultSideBarMenu
             owner={owner}
             isAdmin={isAdmin}
+            isPrivateVaultsEnabled={isPrivateVaultsEnabled}
             setShowVaultCreationModal={setShowVaultCreationModal}
           />
         }
@@ -71,7 +76,7 @@ export function VaultLayout({
           parentId={parentId ?? undefined}
         />
         {children}
-        {isAdmin && (
+        {isAdmin && isPrivateVaultsEnabled && (
           <CreateVaultModal
             owner={owner}
             isOpen={showVaultCreationModal}
