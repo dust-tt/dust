@@ -70,7 +70,7 @@ async function handler(
     });
   }
 
-  if (!auth.hasPermission([dataSource.acl()], "read")) {
+  if (!dataSource.canRead(auth)) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -118,7 +118,7 @@ async function handler(
       });
 
     case "PATCH":
-      if (!auth.hasPermission([dataSource.acl()], "write")) {
+      if (!dataSource.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
