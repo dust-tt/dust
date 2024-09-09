@@ -4,6 +4,7 @@ import {
   DropdownMenu,
   Searchbar,
   Spinner,
+  useHashParam,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
 import type {
@@ -99,36 +100,14 @@ export const VaultDataSourceViewContentList = ({
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
   const { pagination, setPagination } = usePaginationFromUrl("table", 5);
-
-  const router = useRouter();
-  const viewType: ContentNodesViewType = isValidContentNodesViewType(
-    router.query.viewType
-  )
-    ? router.query.viewType
-    : "documents";
-
-  // Set a default viewType if not present in the URL
-  useEffect(() => {
-    if (!router.query.viewType) {
-      void router.replace(
-        {
-          query: { ...router.query, viewType: "documents" },
-        },
-        undefined,
-        { shallow: true }
-      );
-    }
-  }, [router]);
+  const [viewType, setViewType] = useHashParam("viewType", "documents");
 
   const handleViewTypeChange = (newViewType: ContentNodesViewType) => {
     if (newViewType !== viewType) {
-      void router.replace(
-        {
-          query: { ...router.query, viewType: newViewType },
-        },
-        undefined,
-        { shallow: true }
-      );
+      setPagination({ pageIndex: 0, pageSize: pagination.pageSize });
+      setViewType(newViewType, {
+        history: pagination.pageIndex !== 0 ? "replace" : "push",
+      });
     }
   };
 
@@ -143,7 +122,7 @@ export const VaultDataSourceViewContentList = ({
     internalIds: parentId ? [parentId] : undefined,
     includeChildren: true,
     pagination,
-    viewType,
+    viewType: isValidContentNodesViewType(viewType) ? viewType : "documents",
   });
 
   const rows: RowData[] = useMemo(
