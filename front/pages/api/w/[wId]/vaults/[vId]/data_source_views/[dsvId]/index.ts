@@ -26,8 +26,7 @@ async function handler(
   if (
     !dataSourceView ||
     req.query.vId !== dataSourceView.vault.sId ||
-    (!auth.isAdmin() &&
-      !auth.hasPermission([dataSourceView.vault.acl()], "read"))
+    !dataSourceView.canList(auth)
   ) {
     return apiError(req, res, {
       status_code: 404,

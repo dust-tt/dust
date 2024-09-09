@@ -139,78 +139,87 @@ ContentActions.displayName = "ContentActions";
 type ContentActionsMenu = ComponentProps<typeof DataTable.Row>["moreMenuItems"];
 
 export const getMenuItems = (
+  canReadInVault: boolean,
+  canWriteInVault: boolean,
   dataSourceView: DataSourceViewType,
   contentNode: DataSourceViewContentNode,
   contentActionsRef: RefObject<ContentActionsRef>
 ): ContentActionsMenu => {
-  if (isFolder(dataSourceView.dataSource)) {
-    return [
-      {
-        label: "Edit",
-        icon: PencilSquareIcon,
-        onClick: () => {
-          contentActionsRef.current &&
-            contentActionsRef.current?.callAction(
-              contentNode.type === "database"
-                ? "TableUploadOrEdit"
-                : "DocumentUploadOrEdit",
-              contentNode
-            );
-        },
-      },
-      {
-        label: "Delete",
-        icon: TrashIcon,
-        onClick: () => {
-          contentActionsRef.current &&
-            contentActionsRef.current?.callAction(
-              "DocumentOrTableDeleteDialog",
-              contentNode
-            );
-        },
-        variant: "warning",
-      },
-    ];
+  const actions: ContentActionsMenu = [];
+
+  // View in source
+  if (canReadInVault) {
+    actions.push(makeViewSourceUrlContentAction(contentNode, dataSourceView));
   }
 
-  if (isWebsite(dataSourceView.dataSource)) {
-    return [...makeViewRawContentAction(contentNode, contentActionsRef)];
+  // View raw content in modal
+  if (canReadInVault && contentNode.type === "file") {
+    actions.push(makeViewRawContentAction(contentNode, contentActionsRef));
   }
 
-  const actions: ContentActionsMenu = [
-    {
-      label: `View in ${capitalize(getDataSourceName(dataSourceView.dataSource))}`,
-      icon: ExternalLinkIcon,
-      link: contentNode.sourceUrl
-        ? { href: contentNode.sourceUrl, target: "_blank" }
-        : undefined,
-      disabled: contentNode.sourceUrl === null,
-      onClick: () => {},
-    },
-  ];
-
-  if (contentNode.type === "file") {
-    actions.push(...makeViewRawContentAction(contentNode, contentActionsRef));
+  // Edit & Delete
+  if (
+    (canWriteInVault && isFolder(dataSourceView.dataSource)) ||
+    isWebsite(dataSourceView.dataSource)
+  ) {
+    actions.push({
+      label: "Edit",
+      icon: PencilSquareIcon,
+      onClick: () => {
+        contentActionsRef.current &&
+          contentActionsRef.current?.callAction(
+            contentNode.type === "database"
+              ? "TableUploadOrEdit"
+              : "DocumentUploadOrEdit",
+            contentNode
+          );
+      },
+    });
+    actions.push({
+      label: "Delete",
+      icon: TrashIcon,
+      onClick: () => {
+        contentActionsRef.current &&
+          contentActionsRef.current?.callAction(
+            "DocumentOrTableDeleteDialog",
+            contentNode
+          );
+      },
+      variant: "warning",
+    });
   }
 
   return actions;
 };
 
-function makeViewRawContentAction(
+const makeViewSourceUrlContentAction = (
+  contentNode: DataSourceViewContentNode,
+  dataSourceView: DataSourceViewType
+) => {
+  return {
+    label: `View in ${capitalize(getDataSourceName(dataSourceView.dataSource))}`,
+    icon: ExternalLinkIcon,
+    link: contentNode.sourceUrl
+      ? { href: contentNode.sourceUrl, target: "_blank" }
+      : undefined,
+    disabled: contentNode.sourceUrl === null,
+    onClick: () => {},
+  };
+};
+
+const makeViewRawContentAction = (
   contentNode: DataSourceViewContentNode,
   contentActionsRef: RefObject<ContentActionsRef>
-) {
-  return [
-    {
-      label: "View raw content",
-      icon: EyeIcon,
-      onClick: () => {
-        contentActionsRef.current &&
-          contentActionsRef.current?.callAction(
-            "DocumentViewRawContent",
-            contentNode
-          );
-      },
+) => {
+  return {
+    label: "View raw content",
+    icon: EyeIcon,
+    onClick: () => {
+      contentActionsRef.current &&
+        contentActionsRef.current?.callAction(
+          "DocumentViewRawContent",
+          contentNode
+        );
     },
-  ];
-}
+  };
+};
