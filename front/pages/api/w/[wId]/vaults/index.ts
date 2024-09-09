@@ -56,9 +56,9 @@ async function handler(
             },
           });
         }
-        vaults = await VaultResource.listWorkspaceVaultsAsAdmin(auth);
-      } else {
         vaults = await VaultResource.listWorkspaceVaults(auth);
+      } else {
+        vaults = await VaultResource.listWorkspaceVaultsAsMember(auth);
       }
 
       return res.status(200).json({
