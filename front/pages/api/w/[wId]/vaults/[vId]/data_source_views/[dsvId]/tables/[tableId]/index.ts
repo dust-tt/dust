@@ -41,13 +41,7 @@ async function handler(
   }
 
   const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId);
-  // TODO(GROUPS_INFRA) Move to DataSourceViewResource.fetchById once it handles permission.
-  const hasAccessToDataSourceView =
-    auth.isAdmin() ||
-    (dataSourceView &&
-      auth.hasPermission([dataSourceView.vault.acl()], "read"));
-
-  if (!dataSourceView || !hasAccessToDataSourceView) {
+  if (!dataSourceView || !dataSourceView.canList(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

@@ -107,7 +107,21 @@ export abstract class ResourceWithVault<
     });
   }
 
+  // Permissions.
+
   acl() {
     return this.vault.acl();
+  }
+
+  canList(auth: Authenticator) {
+    return this.vault.canList(auth);
+  }
+
+  canRead(auth: Authenticator) {
+    return this.vault.canRead(auth);
+  }
+
+  canWrite(auth: Authenticator) {
+    return this.vault.canWrite(auth);
   }
 }

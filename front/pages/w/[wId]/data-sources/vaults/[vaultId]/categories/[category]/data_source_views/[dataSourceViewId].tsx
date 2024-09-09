@@ -59,10 +59,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     auth,
     dataSourceViewId
   );
+
   if (
     !dataSourceView ||
     dataSourceView.vault.sId !== vaultId ||
-    !dataSourceView.canRead(auth)
+    !dataSourceView.canList(auth)
   ) {
     return {
       notFound: true,

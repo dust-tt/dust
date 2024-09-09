@@ -161,9 +161,7 @@ export class VaultResource extends BaseResource<VaultModel> {
   ): Promise<VaultResource[]> {
     const vaults = await this.baseFetch(auth);
     return vaults.filter(
-      (vault) =>
-        (auth.isAdmin() && adminsBypassACL) ||
-        auth.hasPermission([vault.acl()], "read")
+      (vault) => (auth.isAdmin() && adminsBypassACL) || vault.canRead(auth)
     );
   }
 
@@ -290,8 +288,10 @@ export class VaultResource extends BaseResource<VaultModel> {
     switch (this.kind) {
       case "system":
         return auth.isAdmin() && auth.canWrite([this.acl()]);
+
       case "global":
         return auth.isBuilder() && auth.canWrite([this.acl()]);
+
       case "regular":
       case "public":
         return auth.canWrite([this.acl()]);
@@ -303,16 +303,31 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   canRead(auth: Authenticator) {
     switch (this.kind) {
-      case "system":
-        return auth.isAdmin() && auth.canRead([this.acl()]);
       case "global":
       case "regular":
+      case "system":
         return auth.canRead([this.acl()]);
+
       case "public":
         return true;
+
       default:
         assertNever(this.kind);
     }
+  }
+
+  canList(auth: Authenticator) {
+    // Admins can list all vaults.
+    if (auth.isAdmin()) {
+      return true;
+    }
+
+    // Public vaults can be listed by anyone.
+    if (this.isPublic()) {
+      return true;
+    }
+
+    return auth.canRead([this.acl()]);
   }
 
   isGlobal() {

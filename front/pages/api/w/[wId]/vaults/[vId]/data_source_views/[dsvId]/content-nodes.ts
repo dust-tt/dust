@@ -53,7 +53,7 @@ async function handler(
   if (
     !dataSourceView ||
     vId !== dataSourceView.vault.sId ||
-    !dataSourceView.canRead(auth)
+    !dataSourceView.canList(auth)
   ) {
     return apiError(req, res, {
       status_code: 404,
