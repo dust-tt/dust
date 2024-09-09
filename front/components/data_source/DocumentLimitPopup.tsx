@@ -26,7 +26,7 @@ export const DocumentLimitPopup = ({
         void router.push(`/w/${owner.sId}/subscription`);
       }}
       onClose={onClose}
-      className="absolute bottom-8 right-0"
+      className="absolute bottom-8 right-8 z-60"
     />
   );
 };
