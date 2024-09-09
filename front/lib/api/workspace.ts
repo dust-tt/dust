@@ -137,7 +137,7 @@ export async function getMembers(
     return [];
   }
 
-  const memberships = activeOnly
+  const { memberships } = activeOnly
     ? await MembershipResource.getActiveMemberships({
         workspace: owner,
         roles,

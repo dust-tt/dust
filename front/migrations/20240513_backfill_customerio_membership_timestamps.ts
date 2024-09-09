@@ -59,9 +59,10 @@ const backfillCustomerIo = async (execute: boolean) => {
       continue;
     }
 
-    const workspaceMemberships = await MembershipResource.getLatestMemberships({
-      workspace: renderLightWorkspaceType({ workspace }),
-    });
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getLatestMemberships({
+        workspace: renderLightWorkspaceType({ workspace }),
+      });
     const userIds = workspaceMemberships.map((m) => m.userId);
     const users = await UserResource.fetchByModelIds(userIds);
 

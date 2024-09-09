@@ -229,7 +229,7 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
       console.log(`  name: ${u.name}`);
       console.log(`  email: ${u.email}`);
 
-      const memberships = await MembershipResource.getLatestMemberships({
+      const { memberships } = await MembershipResource.getLatestMemberships({
         users: [u],
       });
 

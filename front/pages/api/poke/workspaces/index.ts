@@ -181,10 +181,11 @@ async function handler(
           // We can have 2 users with the same email if a Google user and a Github user have the same email.
           const users = await UserResource.listByEmail(searchTerm);
           if (users.length) {
-            const memberships = await MembershipResource.getLatestMemberships({
-              users,
-            });
-            if (memberships.length) {
+            const { memberships, total } =
+              await MembershipResource.getLatestMemberships({
+                users,
+              });
+            if (total > 0) {
               conditions.push({
                 id: {
                   [Op.in]: memberships.map((m) => m.workspaceId),
@@ -296,12 +297,13 @@ async function handler(
             const dataSources = await DataSourceResource.listByWorkspace(auth);
             const dataSourcesCount = dataSources.length;
 
-            const admins = await MembershipResource.getActiveMemberships({
-              workspace: lightWorkspace,
-              roles: ["admin" as MembershipRoleType],
-            });
+            const { memberships: admins, total } =
+              await MembershipResource.getActiveMemberships({
+                workspace: lightWorkspace,
+                roles: ["admin" as MembershipRoleType],
+              });
 
-            const firstAdmin = admins.length
+            const firstAdmin = total
               ? await UserResource.fetchByModelId(
                   admins.sort(
                     (a, b) => a.createdAt.getTime() - b.createdAt.getTime()

@@ -32,6 +32,11 @@ type GetMembershipsOptions = RequireAtLeastOne<{
   transaction?: Transaction;
 };
 
+type MembershipsWithTotal = {
+  memberships: MembershipResource[];
+  total: number;
+};
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -56,7 +61,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     paginationParams,
   }: GetMembershipsOptions & {
     paginationParams?: PaginationParams;
-  }): Promise<MembershipResource[]> {
+  }): Promise<MembershipsWithTotal> {
     if (!workspace && !users?.length) {
       throw new Error("At least one of workspace or userIds must be provided.");
     }
@@ -104,11 +109,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       findOptions.limit = limit;
     }
 
-    const memberships = await MembershipModel.findAll(findOptions);
+    const { rows, count } = await MembershipModel.findAndCountAll(findOptions);
 
-    return memberships.map(
-      (membership) => new MembershipResource(MembershipModel, membership.get())
-    );
+    return {
+      memberships: rows.map(
+        (membership) =>
+          new MembershipResource(MembershipModel, membership.get())
+      ),
+      total: count,
+    };
   }
 
   static async getLatestMemberships({
@@ -119,7 +128,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     paginationParams,
   }: GetMembershipsOptions & {
     paginationParams?: PaginationParams;
-  }): Promise<MembershipResource[]> {
+  }): Promise<MembershipsWithTotal> {
     const orderedResourcesFromModels = (resources: MembershipModel[]) =>
       resources
         .sort((a, b) => a.startAt.getTime() - b.startAt.getTime())
@@ -142,7 +151,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       throw new Error("At least one of workspace or userIds must be provided.");
     }
     if (users && !users.length) {
-      return [];
+      return {
+        memberships: [],
+        total: 0,
+      };
     }
 
     const findOptions: FindOptions<InferAttributes<MembershipModel>> = {
@@ -168,13 +180,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     // Get all the memberships matching the criteria.
-    const memberships = await MembershipModel.findAll(findOptions);
+    const { rows, count } = await MembershipModel.findAndCountAll(findOptions);
     // Then, we only keep the latest membership for each (user, workspace).
     const latestMembershipByUserAndWorkspace = new Map<
       string,
       MembershipModel
     >();
-    for (const m of memberships) {
+    for (const m of rows) {
       const key = `${m.userId}__${m.workspaceId}`;
       const latest = latestMembershipByUserAndWorkspace.get(key);
       if (!latest || latest.startAt < m.startAt) {
@@ -182,9 +194,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       }
     }
 
-    return orderedResourcesFromModels(
-      Array.from(latestMembershipByUserAndWorkspace.values())
-    );
+    return {
+      memberships: orderedResourcesFromModels(
+        Array.from(latestMembershipByUserAndWorkspace.values())
+      ),
+      total: count,
+    };
   }
 
   static async getLatestMembershipOfUserInWorkspace({
@@ -196,12 +211,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace: LightWorkspaceType;
     transaction?: Transaction;
   }): Promise<MembershipResource | null> {
-    const memberships = await this.getLatestMemberships({
+    const { memberships, total } = await this.getLatestMemberships({
       users: [user],
       workspace,
       transaction,
     });
-    if (memberships.length === 0) {
+    if (total === 0) {
       return null;
     }
     if (memberships.length > 1) {
@@ -230,15 +245,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace: LightWorkspaceType;
     transaction?: Transaction;
   }): Promise<MembershipResource | null> {
-    const memberships = await this.getActiveMemberships({
+    const { memberships, total } = await this.getActiveMemberships({
       users: [user],
       workspace,
       transaction,
     });
-    if (memberships.length === 0) {
+    if (total === 0) {
       return null;
     }
-    if (memberships.length > 1) {
+    if (total > 1) {
       logger.error(
         {
           panic: true,

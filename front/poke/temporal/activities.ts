@@ -510,7 +510,7 @@ export async function deleteMembersActivity({
       transaction: t,
     });
 
-    const memberships = await MembershipResource.getLatestMemberships({
+    const { memberships } = await MembershipResource.getLatestMemberships({
       workspace,
       transaction: t,
     });
@@ -518,12 +518,11 @@ export async function deleteMembersActivity({
     for (const membership of memberships) {
       const user = await UserResource.fetchByModelId(membership.userId, t);
       if (user) {
-        const membershipsOfUser = await MembershipResource.getLatestMemberships(
-          {
+        const { memberships: membershipsOfUser } =
+          await MembershipResource.getLatestMemberships({
             users: [user],
             transaction: t,
-          }
-        );
+          });
 
         // If the user we're removing the membership of only has one membership, we delete the user.
         if (membershipsOfUser.length === 1) {
