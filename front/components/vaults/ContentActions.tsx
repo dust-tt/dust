@@ -162,11 +162,8 @@ export const getMenuItems = (
   }
 
   // Edit & Delete
-  if (
-    canWriteInVault &&
-    (isFolder(dataSourceView.dataSource) ||
-      isWebsite(dataSourceView.dataSource))
-  ) {
+  // We can edit/delete the documents on on Folders
+  if (canWriteInVault && isFolder(dataSourceView.dataSource)) {
     actions.push({
       label: "Edit",
       icon: PencilSquareIcon,
@@ -202,9 +199,10 @@ const makeViewSourceUrlContentAction = (
   dataSourceView: DataSourceViewType
 ) => {
   const dataSource = dataSourceView.dataSource;
-  const label = isFolder(dataSource)
-    ? "View associated URL"
-    : `View in ${capitalize(getDataSourceName(dataSource))}`;
+  const label =
+    isFolder(dataSource) || isWebsite(dataSource)
+      ? "View associated URL"
+      : `View in ${capitalize(getDataSourceName(dataSource))}`;
 
   return {
     label,
