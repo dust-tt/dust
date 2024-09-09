@@ -63,7 +63,7 @@ async function handler(
       },
     });
   }
-  if (!auth.hasPermission([vault.acl()], "write")) {
+  if (!vault.canWrite(auth)) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
