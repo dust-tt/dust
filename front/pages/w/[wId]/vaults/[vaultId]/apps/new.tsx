@@ -1,5 +1,5 @@
 import { Button, Page } from "@dust-tt/sparkle";
-import type { AppType, AppVisibility } from "@dust-tt/types";
+import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";

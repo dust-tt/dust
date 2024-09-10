@@ -71,7 +71,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   return {
     props: {
-      user: auth.user(),
       owner,
       subscription,
       readOnly,
@@ -138,7 +137,6 @@ const isRunnable = (
 };
 
 export default function AppView({
-  user,
   owner,
   subscription,
   readOnly,

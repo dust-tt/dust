@@ -3,10 +3,9 @@ import {
   Input,
   Modal,
   Page,
-  RadioButton,
   TextArea,
 } from "@dust-tt/sparkle";
-import type { APIError, AppVisibility, WorkspaceType } from "@dust-tt/types";
+import type { APIError, WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 

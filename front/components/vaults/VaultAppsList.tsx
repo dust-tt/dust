@@ -1,6 +1,5 @@
 import {
   Button,
-  Chip,
   CommandLineIcon,
   DataTable,
   PlusIcon,
