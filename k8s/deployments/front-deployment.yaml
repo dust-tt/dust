@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: front-deployment
 spec:
-  replicas: 12
+  replicas: 10
   selector:
     matchLabels:
       app: front
@@ -60,11 +60,12 @@ spec:
 
           resources:
             requests:
-              cpu: 1250m
+              # 1000m for nodejs (mono-threaded) + 500m to absorb spikes from contaner
+              cpu: 1500m
               memory: 1.5Gi
 
             limits:
-              cpu: 1250m
+              cpu: 1500m
               memory: 1.5Gi
 
       volumes:
