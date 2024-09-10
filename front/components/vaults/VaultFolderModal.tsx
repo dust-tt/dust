@@ -264,6 +264,7 @@ export default function VaultFolderModal({
                 }}
                 error={errors.description}
                 showErrorLabel
+                rows={2}
               />
             </div>
 
