@@ -80,7 +80,6 @@ export default function SettingsView({
   const [appNameError, setAppNameError] = useState("");
 
   const [appDescription, setAppDescription] = useState(app.description || "");
-  const [appVisibility, setAppVisibility] = useState(app.visibility);
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -141,7 +140,7 @@ export default function SettingsView({
       body: JSON.stringify({
         name: appName.slice(0, MODELS_STRING_MAX_LENGTH),
         description: appDescription.slice(0, MODELS_STRING_MAX_LENGTH),
-        visibility: appVisibility,
+        visibility: "private",
       }),
     });
     if (res.ok) {
@@ -252,49 +251,6 @@ export default function SettingsView({
                       description, members won't be able to select this app in
                       the Assistant Builder.
                     </p>
-                  </div>
-
-                  <div className="sm:col-span-6">
-                    <fieldset className="mt-2">
-                      <legend className="contents text-sm font-medium text-gray-700">
-                        Visibility
-                      </legend>
-                      <div className="mt-4 space-y-4">
-                        <div className="flex items-center">
-                          <input
-                            id="appVisibilityPrivate"
-                            name="visibility"
-                            type="radio"
-                            value="private"
-                            className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
-                            checked={appVisibility == "private"}
-                            onChange={(e) => {
-                              if (e.target.value != appVisibility) {
-                                setAppVisibility(
-                                  e.target.value as AppVisibility
-                                );
-                              }
-                            }}
-                          />
-                          <label
-                            htmlFor="appVisibilityPrivate"
-                            className="ml-3 block text-sm font-medium text-gray-700"
-                          >
-                            Private
-                            <p className="mt-0 text-sm font-normal text-gray-500">
-                              Only members of your workspace can see and edit
-                              the app.
-                            </p>
-                          </label>
-                        </div>
-                      </div>
-                      {appVisibility == "deleted" ? (
-                        <p className="mt-4 text-sm font-normal text-gray-500">
-                          This app is currently marked as deleted. Change its
-                          visibility above to restore it.
-                        </p>
-                      ) : null}
-                    </fieldset>
                   </div>
                 </div>
               </div>
