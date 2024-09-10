@@ -1,11 +1,4 @@
-import {
-  Chip,
-  InformationCircleIcon,
-  Page,
-  PuzzleIcon,
-  Tab,
-  UserGroupIcon,
-} from "@dust-tt/sparkle";
+import { Chip, InformationCircleIcon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -15,7 +8,6 @@ import { CreateOrEditVaultModal } from "@app/components/vaults/CreateOrEditVault
 import { VaultCategoriesList } from "@app/components/vaults/VaultCategoriesList";
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
-import { VaultMembers } from "@app/components/vaults/VaultMembers";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { VaultResource } from "@app/lib/resources/vault_resource";
@@ -68,7 +60,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 });
 
 export default function Vault({
-  isAdmin,
   owner,
   vault,
   userId,
@@ -79,7 +70,6 @@ export default function Vault({
   });
 
   const router = useRouter();
-  const [currentTab, setCurrentTab] = useState("resources");
   const [showVaultEditionModal, setShowVaultEditionModal] = useState(false);
   const isMember = useMemo(
     () => vaultInfo?.members?.some((m) => m.sId === userId),
@@ -97,47 +87,16 @@ export default function Vault({
           icon={InformationCircleIcon}
         />
       )}
-
-      {vault.kind !== "global" && isAdmin && (
-        <div className="w-[320px]">
-          <Tab
-            tabs={[
-              {
-                label: "Resources",
-                id: "resources",
-                current: currentTab === "resources",
-                icon: PuzzleIcon,
-                sizing: "expand",
-              },
-              {
-                label: "Members",
-                id: "members",
-                current: currentTab === "members",
-                icon: UserGroupIcon,
-                sizing: "expand",
-              },
-            ]}
-            setCurrentTab={(tabId) => {
-              setCurrentTab(tabId);
-            }}
-          />
-        </div>
-      )}
-      {currentTab === "resources" && (
-        <VaultCategoriesList
-          owner={owner}
-          vault={vault}
-          onSelect={(category) => {
-            void router.push(
-              `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`
-            );
-          }}
-          onButtonClick={() => setShowVaultEditionModal(true)}
-        />
-      )}
-      {currentTab === "members" && isAdmin && (
-        <VaultMembers owner={owner} vault={vault} isAdmin={isAdmin} />
-      )}
+      <VaultCategoriesList
+        owner={owner}
+        vault={vault}
+        onSelect={(category) => {
+          void router.push(
+            `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`
+          );
+        }}
+        onButtonClick={() => setShowVaultEditionModal(true)}
+      />
       <CreateOrEditVaultModal
         owner={owner}
         isOpen={showVaultEditionModal}
