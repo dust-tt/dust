@@ -38,7 +38,7 @@ export function useSlackChannel({
     useSlackChannelsLinkedWithAgent({
       workspaceId,
       dataSourceName: slackDataSource?.dataSource.name ?? undefined,
-      disabled: !isBuilder,
+      disabled: !isBuilder || !slackDataSource,
     });
 
   // This effect is used to initially set the selectedSlackChannels state using the data retrieved from the API.
