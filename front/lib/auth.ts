@@ -40,6 +40,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -89,6 +90,25 @@ export class Authenticator {
     this._subscription = subscription || null;
     this._flags = flags;
     this._key = key;
+  }
+
+  static aclsFromGroupIds(groupIds: string[]): ACLType[] {
+    const getIdFromSIdOrThrow = (groupId: string) => {
+      const id = getResourceIdFromSId(groupId);
+      if (!id) {
+        throw new Error(`Unexpected: Could not find id for group ${groupId}`);
+      }
+      return id;
+    };
+
+    return groupIds.map((groupId) => ({
+      aclEntries: [
+        {
+          groupId: getIdFromSIdOrThrow(groupId),
+          permissions: ["read", "write"],
+        },
+      ],
+    }));
   }
 
   /**
@@ -667,9 +687,11 @@ export class Authenticator {
   }
 
   hasPermission(acls: ACLType[], permission: Permission): boolean {
-    // Does the user belongs to a group which has the required permission on all ACLs ?
-    return this.groups().some((group) =>
-      acls.every((acl) => groupHasPermission(acl, permission, group.id))
+    // For each acl, does the user belongs to a group that has the permission?
+    return acls.every((acl) =>
+      this.groups().some((group) =>
+        groupHasPermission(acl, permission, group.id)
+      )
     );
   }
 

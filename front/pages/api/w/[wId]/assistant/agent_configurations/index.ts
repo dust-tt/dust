@@ -446,7 +446,7 @@ export async function createOrUpgradeAgentConfiguration({
   return new Ok(agentConfiguration);
 }
 
-function getDataSourceViewIdsFromActions(
+export function getDataSourceViewIdsFromActions(
   actions: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"]
 ): string[] {
   const relevantActions = actions.filter(
