@@ -192,7 +192,6 @@ function DataSourceEditionModal({
     return null;
   }
 
-  const dataSourceOwner = editedByUser ?? null;
   const isDataSourceOwner = editedByUser?.userId === user.sId;
 
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
@@ -235,14 +234,14 @@ function DataSourceEditionModal({
         <div className="flex flex-col gap-2 border-t pb-4 pt-4">
           <Page.SectionHeader title="Connection Owner" />
           <div className="flex items-center gap-2">
-            <Avatar visual={dataSourceOwner?.imageUrl} size="sm" />
+            <Avatar visual={editedByUser?.imageUrl} size="sm" />
             <div>
               <span className="font-bold">
-                {isDataSourceOwner ? "You" : dataSourceOwner?.fullName}
+                {isDataSourceOwner ? "You" : editedByUser?.fullName}
               </span>{" "}
               set it up
-              {dataSourceOwner?.editedAt
-                ? ` on ${formatTimestampToFriendlyDate(dataSourceOwner?.editedAt)}`
+              {editedByUser?.editedAt
+                ? ` on ${formatTimestampToFriendlyDate(editedByUser?.editedAt)}`
                 : "."}
             </div>
           </div>
