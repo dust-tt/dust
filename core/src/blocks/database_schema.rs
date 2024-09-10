@@ -133,10 +133,10 @@ pub async fn load_tables_from_identifiers(
     .await?;
 
     // Create a hashmap of (workspace_id, data_source_id) -> project_id.
-    let project_by_data_source = data_source_identifiers
+    let project_and_data_source_by_data_source_view = data_source_identifiers
         .iter()
         .zip(project_ids_view_filters.iter())
-        .map(|((w, d), p)| ((*w, *d), p.0.clone()))
+        .map(|((w, d), p)| ((*w, *d), (p.0.clone(), p.2.clone())))
         .collect::<std::collections::HashMap<_, _>>();
 
     let filters_by_project = project_ids_view_filters
@@ -152,10 +152,10 @@ pub async fn load_tables_from_identifiers(
 
     // Concurrently load all tables.
     (try_join_all(table_identifiers.iter().map(|(w, d, t)| {
-        let p = project_by_data_source
+        let p = project_and_data_source_by_data_source_view
             .get(&(*w, *d))
             .expect("Unreachable: missing project.");
-        store.load_table(&p, &d, &t)
+        store.load_table(&p.0, &p.1, &t)
     }))
     .await?)
         // Unwrap the results.
