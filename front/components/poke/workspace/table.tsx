@@ -1,6 +1,6 @@
 import { Button, ClipboardCheckIcon, ClipboardIcon } from "@dust-tt/sparkle";
 import type { WorkspaceDomain, WorkspaceType } from "@dust-tt/types";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 import {
   PokeTable,
@@ -8,33 +8,7 @@ import {
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-
-export function useCopyToClipboard(
-  resetInterval = 2000
-): [isCopied: boolean, copy: (d: ClipboardItem) => Promise<boolean>] {
-  const [isCopied, setCopied] = useState(false);
-
-  const copy = useCallback(
-    async (d: ClipboardItem) => {
-      if (!navigator?.clipboard) {
-        console.warn("Clipboard not supported");
-        return false;
-      }
-      try {
-        await navigator.clipboard.write([d]);
-        setCopied(true);
-        setTimeout(() => setCopied(false), resetInterval);
-        return true;
-      } catch (error) {
-        setCopied(false);
-        return false;
-      }
-    },
-    [resetInterval]
-  );
-
-  return [isCopied, copy];
-}
+import { useCopyToClipboard } from "@app/hooks/useCopyToClipboard";
 
 export function WorkspaceInfoTable({
   owner,
@@ -67,13 +41,7 @@ export function WorkspaceInfoTable({
                   onClick={useCallback(
                     async (e: any) => {
                       e.preventDefault();
-                      await copyToClipboardId(
-                        new ClipboardItem({
-                          "text/plain": new Blob([`${owner.id}`], {
-                            type: "text/plain",
-                          }),
-                        })
-                      );
+                      await copyToClipboardId(owner.id);
                     },
                     [copyToClipboardId, owner.id]
                   )}
@@ -94,13 +62,7 @@ export function WorkspaceInfoTable({
                   onClick={useCallback(
                     async (e: any) => {
                       e.preventDefault();
-                      await copyToClipboardSid(
-                        new ClipboardItem({
-                          "text/plain": new Blob([owner.sId], {
-                            type: "text/plain",
-                          }),
-                        })
-                      );
+                      await copyToClipboardSid(owner.sId);
                     },
                     [copyToClipboardSid, owner.sId]
                   )}
@@ -115,7 +77,7 @@ export function WorkspaceInfoTable({
               <PokeTableCell>{worspaceCreationDay}</PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
-              <PokeTableCell>SSO</PokeTableCell>
+              <PokeTableCell>SSO Enforced</PokeTableCell>
               <PokeTableCell>{owner.ssoEnforced ? "✅" : "❌"}</PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
