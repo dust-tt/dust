@@ -1,5 +1,7 @@
 import {
+  Button,
   CloudArrowLeftRightIcon,
+  Cog6ToothIcon,
   CommandLineIcon,
   DataTable,
   FolderIcon,
@@ -32,6 +34,7 @@ type VaultCategoriesListProps = {
   owner: WorkspaceType;
   vault: VaultType;
   onSelect: (category: string) => void;
+  onButtonClick?: () => void;
 };
 
 export const CATEGORY_DETAILS: {
@@ -92,6 +95,7 @@ export const VaultCategoriesList = ({
   owner,
   vault,
   onSelect,
+  onButtonClick,
 }: VaultCategoriesListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
 
@@ -142,6 +146,13 @@ export const VaultCategoriesList = ({
             onChange={(s) => {
               setDataSourceSearch(s);
             }}
+          />
+        )}
+        {onButtonClick && (
+          <Button
+            label="Settings and Members"
+            icon={Cog6ToothIcon}
+            onClick={onButtonClick}
           />
         )}
       </div>
