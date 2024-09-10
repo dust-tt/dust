@@ -265,6 +265,8 @@ export async function getContentNodesForDataSourceView(
     contentNodesResult = contentNodesRes.value;
   }
 
+  console.log("contentNodesResult", contentNodesResult.nodes);
+
   const contentNodesInView = filterAndCropContentNodesByView(
     dataSourceView,
     contentNodesResult.nodes

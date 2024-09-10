@@ -299,7 +299,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    const parents: string[] = [];
+    const parents: string[] = [internalId];
     let parentUrl: string | null = null;
 
     // First we get the Page or Folder for which we want to retrieve the parents
