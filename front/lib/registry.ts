@@ -1,4 +1,3 @@
-import type { DustAppType } from "@dust-tt/types";
 import { isDevelopment } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
@@ -8,7 +7,12 @@ export const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
 export const PRODUCTION_DUST_APPS_VAULT_ID = "vlt_rICtlrSEpWqX";
 
 export type Action = {
-  app: DustAppType;
+  app: {
+    workspaceId: string;
+    appId: string;
+    appHash: string;
+    appVaultId: string;
+  };
   config: { [key: string]: unknown };
 };
 
@@ -16,11 +20,18 @@ const createActionRegistry = <K extends string, R extends Record<K, Action>>(
   registry: R
 ) => {
   const developmentWorkspaceId = config.getDevelopmentDustAppsWorkspaceId();
+  const developmentVaultId = config.getDevelopmentDustAppsVaultId();
 
   if (isDevelopment() && developmentWorkspaceId) {
+    if (!developmentVaultId) {
+      throw new Error(
+        "DEVELOPMENT_DUST_APPS_VAULT_ID must be set in development if DEVELOPMENT_DUST_APPS_WORKSPACE_ID is set"
+      );
+    }
     const actions: Action[] = Object.values(registry);
     actions.forEach((action) => {
       action.app.workspaceId = developmentWorkspaceId;
+      action.app.appVaultId = developmentVaultId;
     });
   }
 

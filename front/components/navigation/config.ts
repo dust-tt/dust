@@ -131,7 +131,7 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
       isCurrent: (currentRoute: string) =>
         currentRoute.startsWith("/w/[wId]/builder/") ||
         (!owner.flags.includes("data_vaults_feature") &&
-          currentRoute.includes("/apps/")),
+          !!currentRoute.match("^/w/.+/vaults/.+/apps$")),
       sizing: "expand",
     });
   }
