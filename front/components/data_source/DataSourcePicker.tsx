@@ -134,7 +134,7 @@ export default function DataSourcePicker({
                 {selectedDataSourceView ? (
                   <>
                     <Link href={getEditLink(selectedDataSourceView)}>
-                      <div className="max-w-20 mr-1 truncate text-sm font-bold text-action-500">
+                      <div className="mr-1 max-w-xs truncate text-sm font-bold text-action-500">
                         {selectedDataSourceView.dataSource.name}
                       </div>
                     </Link>
