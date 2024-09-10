@@ -71,12 +71,12 @@ async function handler(
           },
         });
       }
-      if (groupRes.value.kind === "system") {
+      if (groupRes.value.isSystem()) {
         return apiError(req, res, {
-          status_code: 400,
+          status_code: 403,
           api_error: {
             type: "invalid_request_error",
-            message: "Can administrate the system group.",
+            message: "System group can't be updated.",
           },
         });
       }
