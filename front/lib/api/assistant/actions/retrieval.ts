@@ -479,7 +479,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
     const { eventStream, dustRunId } = res.value;
 
-    const blobs: {
+    let blobs: {
       blob: RetrievalDocumentBlob;
       chunks: RetrievalDocumentChunkType[];
     }[] = [];
@@ -591,27 +591,25 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           const refs = getRefs().slice(refsOffset, refsOffset + topK);
 
           // Prepare an array of document blobs and chunks to be passed to makeNewBatch.
-          blobs.push(
-            ...v.map((d, i) => {
-              const reference = refs[i % refs.length];
-              const dsDetails = dataSourcesIdToWorkspaceId[d.data_source_id];
+          blobs = v.map((d, i) => {
+            const reference = refs[i % refs.length];
+            const dsDetails = dataSourcesIdToWorkspaceId[d.data_source_id];
 
-              return {
-                blob: {
-                  dataSourceWorkspaceId: dsDetails.workspaceId,
-                  dataSourceId: d.data_source_id,
-                  sourceUrl: d.source_url,
-                  documentId: d.document_id,
-                  reference,
-                  documentTimestamp: new Date(d.timestamp),
-                  tags: d.tags,
-                  score: Math.max(...d.chunks.map((c) => c.score)),
-                  retrievalActionId: action.id,
-                },
-                chunks: d.chunks,
-              };
-            })
-          );
+            return {
+              blob: {
+                dataSourceWorkspaceId: dsDetails.workspaceId,
+                dataSourceId: d.data_source_id,
+                sourceUrl: d.source_url,
+                documentId: d.document_id,
+                reference,
+                documentTimestamp: new Date(d.timestamp),
+                tags: d.tags,
+                score: Math.max(...d.chunks.map((c) => c.score)),
+                retrievalActionId: action.id,
+              },
+              chunks: d.chunks,
+            };
+          });
         }
       }
     }
