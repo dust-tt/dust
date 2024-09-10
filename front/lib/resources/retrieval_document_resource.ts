@@ -20,6 +20,8 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
+export type RetrievalDocumentBlob = CreationAttributes<RetrievalDocument>;
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface RetrievalDocumentResource
   extends ReadonlyAttributesType<RetrievalDocument> {}
@@ -38,32 +40,51 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<RetrievalDocument>, "dataSourceViewId">,
+    blob: RetrievalDocumentBlob,
     chunks: RetrievalDocumentChunkType[]
     // TODO(GROUPS_INFRA) Add supports for dataSourceViewId.
   ) {
-    // TODO(GROUPS_INFRA) Use auth.workspaceId.
-    const doc = await frontSequelize.transaction(async (transaction) => {
-      const doc = await RetrievalDocument.create(blob, { transaction });
+    const [doc] = await this.makeNewBatch(auth, [{ blob, chunks }]);
 
-      await Promise.all(
-        chunks.map(async (c) => {
-          await RetrievalDocumentChunk.create(
-            {
-              text: c.text,
-              offset: c.offset,
-              score: c.score,
-              retrievalDocumentId: doc.id,
-            },
-            { transaction }
+    return doc;
+  }
+
+  static async makeNewBatch(
+    auth: Authenticator,
+    blobs: {
+      blob: RetrievalDocumentBlob;
+      chunks: RetrievalDocumentChunkType[];
+      // TODO(GROUPS_INFRA) Add supports for dataSourceViewId.
+    }[]
+  ) {
+    // TODO(GROUPS_INFRA) Use auth.workspaceId.
+    const results = await frontSequelize.transaction(async (transaction) => {
+      const createdDocuments = await Promise.all(
+        blobs.map(async ({ blob, chunks }) => {
+          const doc = await RetrievalDocument.create(blob, { transaction });
+
+          await Promise.all(
+            chunks.map(async (c) => {
+              await RetrievalDocumentChunk.create(
+                {
+                  text: c.text,
+                  offset: c.offset,
+                  score: c.score,
+                  retrievalDocumentId: doc.id,
+                },
+                { transaction }
+              );
+            })
           );
+
+          return new this(RetrievalDocument, doc.get(), chunks);
         })
       );
 
-      return doc;
+      return createdDocuments;
     });
 
-    return new this(RetrievalDocument, doc.get(), chunks);
+    return results;
   }
 
   static async listAllForActions(actionIds: ModelId[]) {

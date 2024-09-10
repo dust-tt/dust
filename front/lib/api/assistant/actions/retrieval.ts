@@ -3,6 +3,7 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
+  RetrievalDocumentChunkType,
   RetrievalErrorEvent,
   RetrievalParamsEvent,
   RetrievalSuccessEvent,
@@ -35,6 +36,7 @@ import {
   DustProdActionRegistry,
   PRODUCTION_DUST_WORKSPACE_ID,
 } from "@app/lib/registry";
+import type { RetrievalDocumentBlob } from "@app/lib/resources/retrieval_document_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import logger from "@app/logger/logger";
 
@@ -477,7 +479,10 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
     const { eventStream, dustRunId } = res.value;
 
-    let documents: RetrievalDocumentResource[] = [];
+    const blobs: {
+      blob: RetrievalDocumentBlob;
+      chunks: RetrievalDocumentChunkType[];
+    }[] = [];
 
     // This is not perfect and will be erroneous in case of two data sources with the same id from
     // two different workspaces. We don't support cross workspace data sources right now. But we'll
@@ -585,14 +590,14 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
           const refs = getRefs().slice(refsOffset, refsOffset + topK);
 
-          documents = await Promise.all(
-            v.map(async (d, i) => {
+          // Prepare an array of document blobs and chunks to be passed to makeNewBatch.
+          blobs.push(
+            ...v.map((d, i) => {
               const reference = refs[i % refs.length];
               const dsDetails = dataSourcesIdToWorkspaceId[d.data_source_id];
 
-              const doc = await RetrievalDocumentResource.makeNew(
-                auth,
-                {
+              return {
+                blob: {
                   dataSourceWorkspaceId: dsDetails.workspaceId,
                   dataSourceId: d.data_source_id,
                   sourceUrl: d.source_url,
@@ -603,15 +608,16 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
                   score: Math.max(...d.chunks.map((c) => c.score)),
                   retrievalActionId: action.id,
                 },
-                d.chunks
-              );
-
-              return doc;
+                chunks: d.chunks,
+              };
             })
           );
         }
       }
     }
+
+    // We are done, store documents and chunks in database and yield the final events.
+    const documents = await RetrievalDocumentResource.makeNewBatch(auth, blobs);
 
     logger.info(
       {
