@@ -42,6 +42,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       notFound: true,
     };
   }
+  // No root page for System vaults since it contains only managed data sources.
+  if (vault.isSystem()) {
+    return {
+      redirect: {
+        destination: `/w/${owner.sId}/vaults/${vault.sId}/categories/managed`,
+        permanent: false,
+      },
+    };
+  }
+
   const isAdmin = auth.isAdmin();
 
   return {
