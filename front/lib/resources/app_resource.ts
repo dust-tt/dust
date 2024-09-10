@@ -94,7 +94,7 @@ export class AppResource extends ResourceWithVault<App> {
     return this.baseFetch(auth, {
       where: {
         vaultId: vault.id,
-        visibility: auth.isUser() ? ["public", "private"] : ["public"],
+        visibility: { [Op.ne]: "deleted" },
       },
     });
   }
