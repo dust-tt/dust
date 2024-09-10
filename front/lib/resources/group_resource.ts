@@ -125,7 +125,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       where: {
         workspaceId: key.workspaceId,
         [Op.or]: [
-          { kind: key.isSystem ? ["system", "global"] : "global" },
+          { kind: key.isSystem ? "system" : "global" },
           { id: key.groupId },
         ],
       },
