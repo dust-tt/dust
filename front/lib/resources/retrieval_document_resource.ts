@@ -85,6 +85,21 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
     );
   }
 
+  static async deleteAllForActions(actionIds: ModelId[]) {
+    const retrievalDocuments = await RetrievalDocument.findAll({
+      attributes: ["id"],
+      where: { retrievalActionId: actionIds },
+    });
+
+    await RetrievalDocumentChunk.destroy({
+      where: { retrievalDocumentId: retrievalDocuments.map((d) => d.id) },
+    });
+
+    await RetrievalDocument.destroy({
+      where: { retrievalActionId: actionIds },
+    });
+  }
+
   delete(): Promise<Result<undefined, Error>> {
     throw new Error("Method not implemented.");
   }
