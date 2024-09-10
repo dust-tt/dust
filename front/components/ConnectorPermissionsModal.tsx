@@ -15,7 +15,6 @@ import type {
   DataSourceType,
   LightWorkspaceType,
   PlanType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { UpdateConnectorRequestBody } from "@dust-tt/types";
@@ -60,7 +59,6 @@ interface DataSourceEditionModalProps {
   onClose: () => void;
   onEditPermissionsClick: () => void;
   owner: LightWorkspaceType;
-  user: UserType;
 }
 
 export async function handleUpdatePermissions(
@@ -184,18 +182,18 @@ function DataSourceEditionModal({
   onClose,
   onEditPermissionsClick,
   owner,
-  user,
 }: DataSourceEditionModalProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const { user } = useUser();
 
   const { connectorProvider, editedByUser } = dataSource;
 
-  const dataSourceOwner = editedByUser ?? null;
-  const isDataSourceOwner = editedByUser?.userId === user.sId;
-
-  if (!connectorProvider) {
+  if (!connectorProvider || !user) {
     return null;
   }
+
+  const dataSourceOwner = editedByUser ?? null;
+  const isDataSourceOwner = editedByUser?.userId === user.sId;
 
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
 
@@ -532,7 +530,6 @@ export function ConnectorPermissionsModal({
         onClose={closeModal}
         dataSource={dataSource}
         owner={owner}
-        user={user}
         onEditPermissionsClick={() => {
           void handleUpdatePermissions(
             connector,
