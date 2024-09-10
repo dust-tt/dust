@@ -1,10 +1,9 @@
-import { Input } from "@dust-tt/sparkle";
+import { DropdownMenu, Input } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { Menu } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -50,6 +49,7 @@ export default function DataSourcePicker({
   const [filteredDataSourceViews, setFilteredDataSourceViews] =
     useState(vaultDataSourceViews);
 
+  // Look for the selected data source view in the list - data_source_id can contain either dsv sId or dataSource name, try to find a match
   const selectedDataSourceView = hasDataSourceView
     ? vaultDataSourceViews.find(
         (dsv) =>
@@ -66,11 +66,12 @@ export default function DataSourcePicker({
       hasDataSourceView
     ) {
       if (!selectedDataSourceView) {
+        // If the selected data source view is not found in the list, reset the config
         onDataSourcesUpdate([]);
       } else if (
         selectedDataSourceView.sId !== currentDataSources[0].data_source_id
       ) {
-        // Update config with data_source_view id instead of data_source name
+        // If the selected data source view is found in the list, but the id is not the dsv sId (so dataSource name), update the config
         onDataSourcesUpdate([
           {
             workspace_id: owner.sId,
@@ -91,7 +92,7 @@ export default function DataSourcePicker({
 
   const getEditLink = (dsv: DataSourceViewType) => {
     return owner.flags.includes("data_vaults_feature")
-      ? `/w/${owner.sId}/data-sources/vaults/${dsv.vaultId}/categories/${dsv.category}/data_source_views/${dsv.sId}`
+      ? `/w/${owner.sId}/vaults/${dsv.vaultId}/categories/${dsv.category}/data_source_views/${dsv.sId}`
       : `/w/${owner.sId}/builder/data-sources/${dsv.dataSource.name}`;
   };
 
@@ -110,7 +111,7 @@ export default function DataSourcePicker({
         {readOnly ? (
           selectedDataSourceView ? (
             <Link href={getEditLink(selectedDataSourceView)}>
-              <div className="text-sm font-bold text-action-500">
+              <div className="max-w-20 mr-1 truncate text-sm font-bold text-action-500">
                 {selectedDataSourceView.dataSource.name}
               </div>
             </Link>
@@ -118,9 +119,9 @@ export default function DataSourcePicker({
             "No DataSource"
           )
         ) : (
-          <Menu as="div" className="relative inline-block text-left">
+          <DropdownMenu>
             <div>
-              <Menu.Button
+              <DropdownMenu.Button
                 className={classNames(
                   "inline-flex items-center rounded-md py-1 text-sm font-normal text-gray-700",
                   selectedDataSourceView ? "px-0" : "border px-3",
@@ -133,7 +134,7 @@ export default function DataSourcePicker({
                 {selectedDataSourceView ? (
                   <>
                     <Link href={getEditLink(selectedDataSourceView)}>
-                      <div className="mr-1 text-sm font-bold text-action-500">
+                      <div className="mr-1 max-w-xs truncate text-sm font-bold text-action-500">
                         {selectedDataSourceView.dataSource.name}
                       </div>
                     </Link>
@@ -153,60 +154,44 @@ export default function DataSourcePicker({
                     Create DataSource
                   </Link>
                 )}
-              </Menu.Button>
+              </DropdownMenu.Button>
             </div>
 
             {(vaultDataSourceViews || []).length > 0 ? (
-              <Menu.Items
-                className={classNames(
-                  "absolute z-10 mt-1 w-max origin-top-left rounded-md bg-white shadow-sm ring-1 ring-black ring-opacity-5 focus:outline-none",
-                  selectedDataSourceView ? "-left-4" : "left-1"
-                )}
-              >
+              <DropdownMenu.Items width={300}>
                 <Input
                   name="search"
                   placeholder="Search"
                   value={searchFilter}
                   onChange={(value) => setSearchFilter(value)}
-                  className="w-48"
+                  className="mt-4 w-full"
                 />
-                <div className="py-1">
-                  {(filteredDataSourceViews || []).map((dsv) => {
-                    return (
-                      <Menu.Item key={dsv.sId}>
-                        {({ active }) => (
-                          <span
-                            className={classNames(
-                              active
-                                ? "bg-gray-50 text-gray-900"
-                                : "text-gray-700",
-                              "block cursor-pointer px-4 py-2 text-sm"
-                            )}
-                            onClick={() => {
-                              onDataSourcesUpdate([
-                                {
-                                  workspace_id: owner.sId,
-                                  data_source_id: dsv.sId,
-                                },
-                              ]);
-                              setSearchFilter("");
-                            }}
-                          >
-                            {dsv.dataSource.name}
-                          </span>
-                        )}
-                      </Menu.Item>
-                    );
-                  })}
-                  {filteredDataSourceViews.length === 0 && (
-                    <span className="block px-4 py-2 text-sm text-gray-700">
-                      No datasources found
-                    </span>
-                  )}
-                </div>
-              </Menu.Items>
+                {(filteredDataSourceViews || []).map((dsv) => {
+                  return (
+                    <DropdownMenu.Item
+                      key={dsv.sId}
+                      label={dsv.dataSource.name}
+                      onClick={() => {
+                        onDataSourcesUpdate([
+                          {
+                            workspace_id: owner.sId,
+                            data_source_id: dsv.sId,
+                          },
+                        ]);
+                        setSearchFilter("");
+                      }}
+                    />
+                  );
+                })}
+                {filteredDataSourceViews.length === 0 && (
+                  <span className="block px-4 py-2 text-sm text-gray-700">
+                    No datasources found
+                  </span>
+                )}
+                {/* </div> */}
+              </DropdownMenu.Items>
             ) : null}
-          </Menu>
+          </DropdownMenu>
         )}
       </div>
     </div>
