@@ -52,11 +52,12 @@ export class AppResource extends ResourceWithVault<App> {
       ...options,
     });
 
+    // This is what enforces the accessibility to an app.
     return apps.filter((app) => auth.isAdmin() || app.canRead(auth));
   }
 
-  // fetchByIds filters out private apps if the auth is not a user on the workspace. This will be
-  // removed soon as we remove public apps.
+  // `fetchByIds` filters out deleted apps. The accessibility of an app is enforced by its
+  // associated vault enforced in `baseFetch`.
   static async fetchByIds(
     auth: Authenticator,
     ids: string[]
@@ -64,7 +65,7 @@ export class AppResource extends ResourceWithVault<App> {
     return this.baseFetch(auth, {
       where: {
         sId: ids,
-        visibility: auth.isUser() ? ["public", "private"] : ["public"],
+        visibility: { [Op.ne]: "deleted" },
       },
     });
   }
@@ -78,13 +79,13 @@ export class AppResource extends ResourceWithVault<App> {
     return app ?? null;
   }
 
-  // listByWorkspace filters out private apps if the auth is not a user on the workspace. This will
-  // be removed soon as we remove public apps.
+  // `listByWorkspace` filters out deleted apps. The accessibility of an app is enforced by its
+  // associated vault enforced in `baseFetch`.
   static async listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth, {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        visibility: auth.isUser() ? ["public", "private"] : ["public"],
+        visibility: { [Op.ne]: "deleted" },
       },
     });
   }

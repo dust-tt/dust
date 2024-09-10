@@ -1,10 +1,4 @@
-import {
-  Button,
-  DocumentDuplicateIcon,
-  DocumentTextIcon,
-  PlayIcon,
-  Tab,
-} from "@dust-tt/sparkle";
+import { Button, DocumentTextIcon, PlayIcon, Tab } from "@dust-tt/sparkle";
 import type {
   APIErrorResponse,
   AppType,
@@ -14,7 +8,6 @@ import type {
   SpecificationBlockType,
   SpecificationType,
   SubscriptionType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -33,7 +26,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import config from "@app/lib/api/config";
 import { extractConfig } from "@app/lib/config";
-import { withDefaultUserAuthRequirementsNoWorkspaceCheck } from "@app/lib/iam/session";
+import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import {
   addBlock,
@@ -44,54 +37,48 @@ import {
 import { useSavedRunStatus } from "@app/lib/swr/apps";
 import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
-export const getServerSideProps =
-  withDefaultUserAuthRequirementsNoWorkspaceCheck<{
-    user: UserType | null;
-    owner: WorkspaceType;
-    subscription: SubscriptionType;
-    readOnly: boolean;
-    url: string;
-    dustAppsListUrl: string;
-    app: AppType;
-    gaTrackingId: string;
-  }>(async (context, auth) => {
-    const owner = auth.workspace();
-    const subscription = auth.subscription();
+export const getServerSideProps = withDefaultUserAuthRequirements<{
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+  readOnly: boolean;
+  url: string;
+  dustAppsListUrl: string;
+  app: AppType;
+  gaTrackingId: string;
+}>(async (context, auth) => {
+  const owner = auth.workspace();
+  const subscription = auth.subscription();
 
-    if (!owner || !subscription) {
-      return {
-        notFound: true,
-      };
-    }
-
-    const readOnly = !auth.isBuilder();
-
-    const app = await AppResource.fetchById(
-      auth,
-      context.params?.aId as string
-    );
-
-    if (!app) {
-      return {
-        notFound: true,
-      };
-    }
-
-    const dustAppsListUrl = await getDustAppsListUrl(auth);
-
+  if (!owner || !subscription) {
     return {
-      props: {
-        user: auth.user(),
-        owner,
-        subscription,
-        readOnly,
-        url: config.getClientFacingUrl(),
-        dustAppsListUrl,
-        app: app.toJSON(),
-        gaTrackingId: config.getGaTrackingId(),
-      },
+      notFound: true,
     };
-  });
+  }
+
+  const readOnly = !auth.isBuilder();
+
+  const app = await AppResource.fetchById(auth, context.params?.aId as string);
+
+  if (!app) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const dustAppsListUrl = await getDustAppsListUrl(auth);
+
+  return {
+    props: {
+      owner,
+      subscription,
+      readOnly,
+      url: config.getClientFacingUrl(),
+      dustAppsListUrl,
+      app: app.toJSON(),
+      gaTrackingId: config.getGaTrackingId(),
+    },
+  };
+});
 
 let saveTimeout = null as string | number | NodeJS.Timeout | null;
 
@@ -148,7 +135,6 @@ const isRunnable = (
 };
 
 export default function AppView({
-  user,
   owner,
   subscription,
   readOnly,
@@ -372,20 +358,6 @@ export default function AppView({
                       return `Error: ${runError.message}`;
                   }
                 })()}
-              </div>
-            ) : null}
-            {readOnly && user ? (
-              <div className="flex-initial">
-                <Button
-                  variant="secondary"
-                  label="Clone"
-                  icon={DocumentDuplicateIcon}
-                  onClick={() => {
-                    void router.push(
-                      `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/clone`
-                    );
-                  }}
-                />
               </div>
             ) : null}
             <div className="flex-1"></div>

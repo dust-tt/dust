@@ -1,5 +1,5 @@
 import { Button, Page } from "@dust-tt/sparkle";
-import type { AppType, AppVisibility } from "@dust-tt/types";
+import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
@@ -53,7 +53,6 @@ export default function NewApp({
   const [appName, setAppName] = useState("");
   const [appNameError, setAppNameError] = useState("");
   const [appDescription, setAppDescription] = useState("");
-  const [appVisibility, setAppVisibility] = useState<AppVisibility>("private");
 
   const [creating, setCreating] = useState(false);
 
@@ -89,7 +88,7 @@ export default function NewApp({
       body: JSON.stringify({
         name: appName.slice(0, MODELS_STRING_MAX_LENGTH),
         description: appDescription.slice(0, MODELS_STRING_MAX_LENGTH),
-        visibility: appVisibility,
+        visibility: "private",
       }),
     });
     if (res.ok) {
@@ -179,65 +178,6 @@ export default function NewApp({
               user inquiries. If you don't provide a description, members won't
               be able to select this app in the Assistant Builder.
             </p>
-          </div>
-
-          <div className="sm:col-span-6">
-            <fieldset className="mt-2">
-              <legend className="contents text-sm font-medium text-gray-700">
-                Visibility
-              </legend>
-              <div className="mt-4 space-y-4">
-                <div className="flex items-center">
-                  <input
-                    id="appVisibilityPublic"
-                    name="visibility"
-                    type="radio"
-                    className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
-                    value="public"
-                    checked={appVisibility == "public"}
-                    onChange={(e) => {
-                      if (e.target.value != appVisibility) {
-                        setAppVisibility(e.target.value as AppVisibility);
-                      }
-                    }}
-                  />
-                  <label
-                    htmlFor="appVisibilityPublic"
-                    className="ml-3 block text-sm font-medium text-gray-700"
-                  >
-                    Public
-                    <p className="mt-0 text-sm font-normal text-gray-500">
-                      Anyone on the Internet with the link can see the app. Only
-                      builders of your workspace can edit.
-                    </p>
-                  </label>
-                </div>
-                <div className="flex items-center">
-                  <input
-                    id="appVisibilityPrivate"
-                    name="visibility"
-                    type="radio"
-                    value="private"
-                    className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
-                    checked={appVisibility == "private"}
-                    onChange={(e) => {
-                      if (e.target.value != appVisibility) {
-                        setAppVisibility(e.target.value as AppVisibility);
-                      }
-                    }}
-                  />
-                  <label
-                    htmlFor="appVisibilityPrivate"
-                    className="ml-3 block text-sm font-medium text-gray-700"
-                  >
-                    Private
-                    <p className="mt-0 text-sm font-normal text-gray-500">
-                      Only builders of your workspace can see and edit the app.
-                    </p>
-                  </label>
-                </div>
-              </div>
-            </fieldset>
           </div>
         </div>
 
