@@ -4,6 +4,7 @@ import type {
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
+  NonAttribute,
 } from "sequelize";
 import { DataTypes, Model } from "sequelize";
 
@@ -269,6 +270,8 @@ export class RetrievalDocument extends Model<
   declare score: number | null;
 
   declare retrievalActionId: ForeignKey<AgentRetrievalAction["id"]>;
+
+  declare chunks: NonAttribute<RetrievalDocumentChunk[]>;
 }
 
 RetrievalDocument.init(
@@ -391,6 +394,7 @@ RetrievalDocumentChunk.init(
 RetrievalDocument.hasMany(RetrievalDocumentChunk, {
   foreignKey: { name: "retrievalDocumentId", allowNull: false },
   onDelete: "CASCADE",
+  as: "chunks",
 });
 RetrievalDocumentChunk.belongsTo(RetrievalDocument, {
   foreignKey: { name: "retrievalDocumentId", allowNull: false },

@@ -72,22 +72,25 @@ export type RetrievalConfigurationType = {
  * Retrieval action
  */
 
-export type RetrievalDocumentType = {
-  id: ModelId;
-  dataSourceWorkspaceId: string;
-  dataSourceId: string;
-  sourceUrl: string | null;
-  documentId: string;
-  reference: string; // Short random string so that the model can refer to the document.
-  timestamp: number;
-  tags: string[];
+export interface RetrievalDocumentChunkType {
+  offset: number;
   score: number | null;
-  chunks: {
-    text: string;
-    offset: number;
-    score: number | null;
-  }[];
-};
+  text: string;
+}
+
+export interface RetrievalDocumentType {
+  chunks: RetrievalDocumentChunkType[];
+  dataSourceId: string;
+  // TODO(GROUPS_INFRA) Add support for dataSourceViewId.
+  dataSourceWorkspaceId: string;
+  documentId: string;
+  id: ModelId;
+  reference: string; // Short random string so that the model can refer to the document.
+  score: number | null;
+  sourceUrl: string | null;
+  tags: string[];
+  timestamp: number;
+}
 
 type ConnectorProviderDocumentType =
   | Exclude<ConnectorProvider, "webcrawler">

@@ -3,6 +3,7 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
+  RetrievalDocumentChunkType,
   RetrievalErrorEvent,
   RetrievalParamsEvent,
   RetrievalSuccessEvent,
@@ -29,17 +30,14 @@ import {
 import { getRefs } from "@app/lib/api/assistant/citations";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentRetrievalAction,
-  RetrievalDocument,
-  RetrievalDocumentChunk,
-} from "@app/lib/models/assistant/actions/retrieval";
+import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
   PRODUCTION_DUST_WORKSPACE_ID,
 } from "@app/lib/registry";
-import { frontSequelize } from "@app/lib/resources/storage";
+import type { RetrievalDocumentBlob } from "@app/lib/resources/retrieval_document_resource";
+import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import logger from "@app/logger/logger";
 
 /**
@@ -481,15 +479,22 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
     const { eventStream, dustRunId } = res.value;
 
-    let documents: RetrievalDocumentType[] = [];
+    let blobs: {
+      blob: RetrievalDocumentBlob;
+      chunks: RetrievalDocumentChunkType[];
+    }[] = [];
 
     // This is not perfect and will be erroneous in case of two data sources with the same id from
     // two different workspaces. We don't support cross workspace data sources right now. But we'll
     // likely want `core` to return the `workspace_id` that was used eventualy.
     // TODO(spolu): make `core` return data source workspace id.
-    const dataSourcesIdToWorkspaceId: { [key: string]: string } = {};
+    const dataSourcesIdToWorkspaceId: {
+      [key: string]: { workspaceId: string };
+    } = {};
     for (const ds of actionConfiguration.dataSources) {
-      dataSourcesIdToWorkspaceId[ds.dataSourceId] = ds.workspaceId;
+      dataSourcesIdToWorkspaceId[ds.dataSourceId] = {
+        workspaceId: ds.workspaceId,
+      };
     }
 
     for await (const event of eventStream) {
@@ -557,7 +562,6 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
               offset: number;
               score: number;
             }[];
-            token_count: number;
           }[];
 
           if (refsOffset + topK > getRefs().length) {
@@ -586,24 +590,24 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
           const refs = getRefs().slice(refsOffset, refsOffset + topK);
 
-          documents = v.map((d, i) => {
+          // Prepare an array of document blobs and chunks to be passed to makeNewBatch.
+          blobs = v.map((d, i) => {
             const reference = refs[i % refs.length];
+            const dsDetails = dataSourcesIdToWorkspaceId[d.data_source_id];
+
             return {
-              id: 0, // dummy pending database insertion
-              dataSourceWorkspaceId:
-                dataSourcesIdToWorkspaceId[d.data_source_id],
-              dataSourceId: d.data_source_id,
-              documentId: d.document_id,
-              reference,
-              timestamp: d.timestamp,
-              tags: d.tags,
-              sourceUrl: d.source_url ?? null,
-              score: d.chunks.map((c) => c.score)[0],
-              chunks: d.chunks.map((c) => ({
-                text: c.text,
-                offset: c.offset,
-                score: c.score,
-              })),
+              blob: {
+                dataSourceWorkspaceId: dsDetails.workspaceId,
+                dataSourceId: d.data_source_id,
+                sourceUrl: d.source_url,
+                documentId: d.document_id,
+                reference,
+                documentTimestamp: new Date(d.timestamp),
+                tags: d.tags,
+                score: Math.max(...d.chunks.map((c) => c.score)),
+                retrievalActionId: action.id,
+              },
+              chunks: d.chunks,
             };
           });
         }
@@ -611,39 +615,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     }
 
     // We are done, store documents and chunks in database and yield the final events.
-
-    await frontSequelize.transaction(async (t) => {
-      for (const d of documents) {
-        const document = await RetrievalDocument.create(
-          {
-            dataSourceWorkspaceId: d.dataSourceWorkspaceId,
-            dataSourceId: d.dataSourceId,
-            sourceUrl: d.sourceUrl,
-            documentId: d.documentId,
-            reference: d.reference,
-            documentTimestamp: new Date(d.timestamp),
-            tags: d.tags,
-            score: d.score,
-            retrievalActionId: action.id,
-          },
-          { transaction: t }
-        );
-
-        d.id = document.id;
-
-        for (const c of d.chunks) {
-          await RetrievalDocumentChunk.create(
-            {
-              text: c.text,
-              offset: c.offset,
-              score: c.score,
-              retrievalDocumentId: document.id,
-            },
-            { transaction: t }
-          );
-        }
-      }
-    });
+    const documents = await RetrievalDocumentResource.makeNewBatch(auth, blobs);
 
     logger.info(
       {
@@ -674,7 +646,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         },
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
-        documents,
+        documents: documents.map((d) => d.toJSON()),
         step: action.step,
       }),
     };
@@ -755,14 +727,10 @@ export async function retrievalActionTypesFromAgentMessageIds(
 
   const actionIds = models.map((a) => a.id);
 
-  const documentRowsByActionId = (
-    await RetrievalDocument.findAll({
-      where: {
-        retrievalActionId: actionIds,
-      },
-    })
-  ).reduce<{
-    [id: ModelId]: RetrievalDocument[];
+  const documents =
+    await RetrievalDocumentResource.listAllForActions(actionIds);
+  const documentRowsByActionId = documents.reduce<{
+    [id: ModelId]: RetrievalDocumentResource[];
   }>((acc, d) => {
     if (!acc[d.retrievalActionId]) {
       acc[d.retrievalActionId] = [];
@@ -771,32 +739,11 @@ export async function retrievalActionTypesFromAgentMessageIds(
     return acc;
   }, {});
 
-  const chunkRowsByDocumentId = (
-    await RetrievalDocumentChunk.findAll({
-      where: {
-        retrievalDocumentId: Object.values(documentRowsByActionId).flatMap(
-          (docs) => docs.map((d) => d.id)
-        ),
-      },
-    })
-  ).reduce<{
-    [id: ModelId]: RetrievalDocumentChunk[];
-  }>((acc, c) => {
-    if (!acc[c.retrievalDocumentId]) {
-      acc[c.retrievalDocumentId] = [];
-    }
-    acc[c.retrievalDocumentId].push(c);
-    return acc;
-  }, {});
-
   const actions: RetrievalActionType[] = [];
 
   for (const id of actionIds) {
     const action = actionById[id];
     const documentRows = documentRowsByActionId[id] ?? [];
-    const chunkRows = documentRows.flatMap(
-      (d) => chunkRowsByDocumentId[d.id] ?? []
-    );
 
     let relativeTimeFrame: TimeFrame | null = null;
     if (action.relativeTimeFrameDuration && action.relativeTimeFrameUnit) {
@@ -806,39 +753,9 @@ export async function retrievalActionTypesFromAgentMessageIds(
       };
     }
 
-    const documents: RetrievalDocumentType[] = documentRows.map((d) => {
-      const chunks = chunkRows
-        .filter((c) => c.retrievalDocumentId === d.id)
-        .map((c) => ({
-          text: c.text,
-          offset: c.offset,
-          score: c.score,
-        }));
-      chunks.sort((a, b) => {
-        if (a.score === null && b.score === null) {
-          return a.offset - b.offset;
-        }
-        if (a.score !== null && b.score !== null) {
-          return b.score - a.score;
-        }
-        throw new Error(
-          "Unexpected comparison of null and non-null scored chunks."
-        );
-      });
-
-      return {
-        id: d.id,
-        dataSourceWorkspaceId: d.dataSourceWorkspaceId,
-        dataSourceId: d.dataSourceId,
-        sourceUrl: d.sourceUrl,
-        documentId: d.documentId,
-        reference: d.reference,
-        timestamp: d.documentTimestamp.getTime(),
-        tags: d.tags,
-        score: d.score,
-        chunks,
-      };
-    });
+    const documents: RetrievalDocumentType[] = documentRows.map((d) =>
+      d.toJSON()
+    );
 
     documents.sort((a, b) => {
       if (a.score === null && b.score === null) {

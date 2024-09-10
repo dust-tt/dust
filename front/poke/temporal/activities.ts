@@ -50,6 +50,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { Provider } from "@app/lib/resources/storage/models/apps";
@@ -184,21 +185,9 @@ export async function deleteConversationsActivity({
                     transaction: t,
                   });
                   if (retrievalAction) {
-                    const retrievalDocuments = await RetrievalDocument.findAll({
-                      where: {
-                        retrievalActionId: retrievalAction.id,
-                      },
-                      transaction: t,
-                    });
-                    for (const retrievalDocument of retrievalDocuments) {
-                      await RetrievalDocumentChunk.destroy({
-                        where: {
-                          retrievalDocumentId: retrievalDocument.id,
-                        },
-                        transaction: t,
-                      });
-                      await retrievalDocument.destroy({ transaction: t });
-                    }
+                    await RetrievalDocumentResource.deleteAllForActions([
+                      retrievalAction.id,
+                    ]);
 
                     await AgentRetrievalAction.destroy({
                       where: { id: retrievalAction.id },

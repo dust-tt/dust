@@ -5,11 +5,7 @@ import { chunk } from "lodash";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
-import {
-  AgentRetrievalAction,
-  RetrievalDocument,
-  RetrievalDocumentChunk,
-} from "@app/lib/models/assistant/actions/retrieval";
+import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentVisualizationAction } from "@app/lib/models/assistant/actions/visualization";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
@@ -23,6 +19,7 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
@@ -32,18 +29,12 @@ async function destroyActionsRelatedResources(agentMessageIds: Array<ModelId>) {
     attributes: ["id"],
     where: { agentMessageId: agentMessageIds },
   });
-  const retrievalDocuments = await RetrievalDocument.findAll({
-    attributes: ["id"],
-    where: { retrievalActionId: retrievalActions.map((a) => a.id) },
-  });
 
   // Destroy retrieval resources.
-  await RetrievalDocumentChunk.destroy({
-    where: { retrievalDocumentId: retrievalDocuments.map((d) => d.id) },
-  });
-  await RetrievalDocument.destroy({
-    where: { retrievalActionId: retrievalActions.map((a) => a.id) },
-  });
+  await RetrievalDocumentResource.deleteAllForActions(
+    retrievalActions.map((a) => a.id)
+  );
+
   await AgentRetrievalAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
