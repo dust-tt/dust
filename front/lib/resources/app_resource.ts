@@ -1,5 +1,6 @@
 import type { AppType, AppVisibility, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import assert from "assert";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
@@ -102,19 +103,12 @@ export class AppResource extends ResourceWithVault<App> {
       savedRun?: string;
     }
   ) {
-    await this.model.update(
-      {
-        savedSpecification,
-        savedConfig,
-        savedRun,
-      },
-      {
-        where: {
-          id: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-      }
-    );
+    assert(this.canWrite(auth), "Unauthorized write attempt");
+    await this.update({
+      savedSpecification,
+      savedConfig,
+      savedRun,
+    });
   }
 
   async updateSettings(
@@ -129,33 +123,19 @@ export class AppResource extends ResourceWithVault<App> {
       visibility: AppVisibility;
     }
   ) {
-    await this.model.update(
-      {
-        name,
-        description,
-        visibility,
-      },
-      {
-        where: {
-          id: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-      }
-    );
+    assert(this.canWrite(auth), "Unauthorized write attempt");
+    await this.update({
+      name,
+      description,
+      visibility,
+    });
   }
 
   async markAsDeleted(auth: Authenticator) {
-    await this.model.update(
-      {
-        visibility: "deleted",
-      },
-      {
-        where: {
-          id: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-      }
-    );
+    assert(this.canWrite(auth), "Unauthorized write attempt");
+    await this.update({
+      visibility: "deleted",
+    });
   }
 
   // Deletion.
