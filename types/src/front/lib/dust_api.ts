@@ -139,6 +139,9 @@ export type DustAPICredentials = {
   // Dust system API keys can request to be authenticated as a list of specific group IDs.
   // This is for internal use only.
   groupIds?: string[];
+  // Dust system API keys can request to be authenticated as a specific user email.
+  // This is for internal use only.
+  userEmail?: string;
 };
 
 export const DustGroupIdsHeader = "X-Dust-Group-Ids";
@@ -483,18 +486,16 @@ export class DustAPI {
     return new Ok(r.value.data_sources);
   }
 
-  async getAgentConfigurations({
-    userEmailHeader,
-  }: {
-    userEmailHeader?: string;
-  } = {}): Promise<DustAPIResponse<LightAgentConfigurationType[]>> {
+  async getAgentConfigurations(): Promise<
+    DustAPIResponse<LightAgentConfigurationType[]>
+  > {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this._credentials.apiKey}`,
       "Content-Type": "application/json",
     };
 
-    if (userEmailHeader) {
-      headers[DustUserEmailHeader] = userEmailHeader;
+    if (this._credentials.userEmail) {
+      headers[DustUserEmailHeader] = this._credentials.userEmail;
     }
 
     if (this._credentials.groupIds) {
@@ -525,14 +526,24 @@ export class DustAPI {
     conversationId: string;
     contentFragment: PublicPostContentFragmentRequestBody;
   }): Promise<DustAPIResponse<ContentFragmentType>> {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this._credentials.apiKey}`,
+      "Content-Type": "application/json",
+    };
+
+    if (this._credentials.userEmail) {
+      headers[DustUserEmailHeader] = this._credentials.userEmail;
+    }
+
+    if (this._credentials.groupIds) {
+      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
+    }
+
     const res = await this._fetchWithError(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/content_fragments`,
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${this._credentials.apiKey}`,
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           ...contentFragment,
         }),
@@ -555,10 +566,7 @@ export class DustAPI {
     message,
     contentFragment,
     blocking = false,
-    userEmailHeader,
-  }: t.TypeOf<typeof PublicPostConversationsRequestBodySchema> & {
-    userEmailHeader?: string;
-  }): Promise<
+  }: t.TypeOf<typeof PublicPostConversationsRequestBodySchema>): Promise<
     DustAPIResponse<{
       conversation: ConversationType;
       message: UserMessageType;
@@ -569,8 +577,8 @@ export class DustAPI {
       "Content-Type": "application/json",
     };
 
-    if (userEmailHeader) {
-      headers[DustUserEmailHeader] = userEmailHeader;
+    if (this._credentials.userEmail) {
+      headers[DustUserEmailHeader] = this._credentials.userEmail;
     }
     if (this._credentials.groupIds) {
       headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
@@ -597,20 +605,19 @@ export class DustAPI {
   async postUserMessage({
     conversationId,
     message,
-    userEmailHeader,
   }: {
     conversationId: string;
     message: t.TypeOf<typeof PublicPostMessagesRequestBodySchema>;
-    userEmailHeader?: string;
   }): Promise<DustAPIResponse<UserMessageType>> {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this._credentials.apiKey}`,
       "Content-Type": "application/json",
     };
 
-    if (userEmailHeader) {
-      headers[DustUserEmailHeader] = userEmailHeader;
+    if (this._credentials.userEmail) {
+      headers[DustUserEmailHeader] = this._credentials.userEmail;
     }
+
     if (this._credentials.groupIds) {
       headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
     }
@@ -641,10 +648,18 @@ export class DustAPI {
     conversation: ConversationType;
     message: AgentMessageType;
   }) {
-    const headers = {
-      "Content-Type": "application/json",
+    const headers: Record<string, string> = {
       Authorization: `Bearer ${this._credentials.apiKey}`,
+      "Content-Type": "application/json",
     };
+
+    if (this._credentials.userEmail) {
+      headers[DustUserEmailHeader] = this._credentials.userEmail;
+    }
+
+    if (this._credentials.groupIds) {
+      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
+    }
 
     const res = await this._fetchWithError(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${
@@ -759,6 +774,19 @@ export class DustAPI {
   }: {
     conversationId: string;
   }): Promise<DustAPIResponse<ConversationType>> {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this._credentials.apiKey}`,
+      "Content-Type": "application/json",
+    };
+
+    if (this._credentials.userEmail) {
+      headers[DustUserEmailHeader] = this._credentials.userEmail;
+    }
+
+    if (this._credentials.groupIds) {
+      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
+    }
+
     const res = await this._fetchWithError(
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}`,
       {

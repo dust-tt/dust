@@ -256,12 +256,18 @@ async function botAnswerMessage(
     requestedGroups = await slackConfig.getBotGroupIds(botName);
   }
 
+  const userEmailHeader =
+    slackChatBotMessage.slackEmail !== "unknown"
+      ? slackChatBotMessage.slackEmail
+      : undefined;
+
   const dustAPI = new DustAPI(
     apiConfig.getDustAPIConfig(),
     {
       workspaceId: connector.workspaceId,
       apiKey: connector.workspaceAPIKey,
       groupIds: requestedGroups,
+      userEmail: userEmailHeader,
     },
     logger,
     {
@@ -314,19 +320,11 @@ async function botAnswerMessage(
     );
   }
 
-  const userEmailHeader =
-    slackChatBotMessage.slackEmail !== "unknown"
-      ? slackChatBotMessage.slackEmail
-      : undefined;
-
-  const agentConfigurationsRes = await dustAPI.getAgentConfigurations({
-    userEmailHeader,
-  });
+  const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
   if (agentConfigurationsRes.isErr()) {
     return new Err(new Error(agentConfigurationsRes.error.message));
   }
   const agentConfigurations = agentConfigurationsRes.value;
-
   if (mentionCandidates.length === 1) {
     for (const mc of mentionCandidates) {
       let bestCandidate:
@@ -451,7 +449,6 @@ async function botAnswerMessage(
     const mesasgeRes = await dustAPI.postUserMessage({
       conversationId: lastSlackChatBotMessage.conversationId,
       message: messageReqBody,
-      userEmailHeader,
     });
     if (mesasgeRes.isErr()) {
       return new Err(new Error(mesasgeRes.error.message));
@@ -459,7 +456,6 @@ async function botAnswerMessage(
     userMessage = mesasgeRes.value;
     const conversationRes = await dustAPI.getConversation({
       conversationId: lastSlackChatBotMessage.conversationId,
-      // TODO(VAULTS_INFRA) Add support for userEmailHeader and group
     });
     if (conversationRes.isErr()) {
       return new Err(new Error(conversationRes.error.message));
@@ -471,7 +467,6 @@ async function botAnswerMessage(
       visibility: "unlisted",
       message: messageReqBody,
       contentFragment: buildContentFragmentRes.value || undefined,
-      userEmailHeader,
     });
     if (convRes.isErr()) {
       return new Err(new Error(convRes.error.message));
