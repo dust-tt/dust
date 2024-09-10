@@ -1,7 +1,7 @@
 import {
   Avatar,
   Button,
-  Cog6ToothIcon,
+  CloudArrowLeftRightIcon,
   Dialog,
   Icon,
   LockIcon,
@@ -15,14 +15,13 @@ import type {
   DataSourceType,
   LightWorkspaceType,
   PlanType,
+  UpdateConnectorRequestBody,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { UpdateConnectorRequestBody } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
+import { assertNever, CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import { useContext, useEffect, useState } from "react";
 import * as React from "react";
+import { useContext, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
@@ -31,6 +30,7 @@ import { RequestDataSourceModal } from "@app/components/data_source/RequestDataS
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { getDataSourceName } from "@app/lib/data_sources";
 import { useUser } from "@app/lib/swr/user";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
@@ -343,7 +343,7 @@ export function ConnectorPermissionsModal({
   connector: ConnectorType;
   dataSource: DataSourceType;
   isOpen: boolean;
-  onClose: () => void;
+  onClose: (save: boolean) => void;
   plan: PlanType;
   dustClientFacingUrl: string;
   readOnly: boolean;
@@ -362,9 +362,9 @@ export function ConnectorPermissionsModal({
   const sendNotification = useContext(SendNotificationsContext);
   const { user } = useUser();
 
-  function closeModal() {
+  function closeModal(save: boolean) {
     setModalToShow(null);
-    onClose();
+    onClose(save);
     setTimeout(() => {
       setUpdatedPermissionByInternalId({});
     }, 300);
@@ -400,7 +400,6 @@ export function ConnectorPermissionsModal({
           const error: { error: { message: string } } = await r.json();
           window.alert(error.error.message);
         }
-
         await mutate(
           (key) =>
             typeof key === "string" &&
@@ -408,9 +407,11 @@ export function ConnectorPermissionsModal({
               `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions`
             )
         );
-      }
 
-      closeModal();
+        closeModal(true);
+      } else {
+        closeModal(false);
+      }
     } catch (e) {
       sendNotification({
         type: "error",
@@ -442,9 +443,10 @@ export function ConnectorPermissionsModal({
     <>
       {onManageButtonClick && (
         <Button
-          label="Manage"
-          variant="secondary"
-          icon={Cog6ToothIcon}
+          size="sm"
+          label={`Manage ${getDataSourceName(dataSource)}`}
+          icon={CloudArrowLeftRightIcon}
+          variant="primary"
           disabled={readOnly || !isAdmin}
           onClick={() => {
             if (showAddDataModal(connector.type)) {
@@ -459,7 +461,7 @@ export function ConnectorPermissionsModal({
       <Modal
         title="Selected data sources"
         isOpen={modalToShow === "selection"}
-        onClose={closeModal}
+        onClose={() => closeModal(false)}
         onSave={save}
         saveLabel="Save"
         savingLabel="Saving..."
@@ -524,7 +526,7 @@ export function ConnectorPermissionsModal({
       </Modal>
       <DataSourceEditionModal
         isOpen={modalToShow === "edition"}
-        onClose={closeModal}
+        onClose={() => closeModal(false)}
         dataSource={dataSource}
         owner={owner}
         onEditPermissionsClick={() => {
