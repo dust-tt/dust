@@ -1,14 +1,4 @@
-import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
-import type { NextApiRequest, NextApiResponse } from "next";
-
-import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { AppResource } from "@app/lib/resources/app_resource";
-import { apiError } from "@app/logger/withlogging";
-
-export type GetAppsResponseBody = {
-  apps: AppType[];
-};
+import handler from "@app/pages/api/v1/w/[wId]/vaults/[vId]/apps";
 
 /**
  * @swagger
@@ -79,29 +69,4 @@ export type GetAppsResponseBody = {
  *         description: Internal Server Error.
  */
 
-async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetAppsResponseBody>>,
-  auth: Authenticator
-): Promise<void> {
-  switch (req.method) {
-    case "GET":
-      const apps = await AppResource.listByWorkspace(auth);
-
-      res.status(200).json({
-        apps: apps.map((app) => app.toJSON()),
-      });
-      return;
-
-    default:
-      return apiError(req, res, {
-        status_code: 405,
-        api_error: {
-          type: "method_not_supported_error",
-          message: "The method passed is not supported, GET is expected.",
-        },
-      });
-  }
-}
-
-export default withPublicAPIAuthentication(handler);
+export default handler;
