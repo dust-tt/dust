@@ -1,4 +1,9 @@
-import { Button, Dialog, DropdownMenu, PlusIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  CloudArrowLeftRightIcon,
+  Dialog,
+  DropdownMenu,
+} from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
   ConnectorType,
@@ -267,7 +272,7 @@ export const AddConnectionMenu = ({
             <Button
               label="Add Connections"
               variant="primary"
-              icon={PlusIcon}
+              icon={CloudArrowLeftRightIcon}
               size="sm"
             />
           </DropdownMenu.Button>
