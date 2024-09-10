@@ -117,8 +117,9 @@ export function RequestDataSourceModal({
           {selectedDataSource && (
             <div>
               <p className="s-mb-2 s-text-sm s-text-element-700">
-                The administrator for {getDataSourceName(selectedDataSource)} is{" "}
-                {selectedDataSource.editedByUser?.fullName}. Send an email to{" "}
+                {selectedDataSource.editedByUser?.fullName} is the administrator
+                for the {getDataSourceName(selectedDataSource)} connection
+                within Dust. Send an email to{" "}
                 {selectedDataSource.editedByUser?.fullName}, explaining your
                 request.
               </p>
