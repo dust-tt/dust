@@ -198,7 +198,8 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
         });
       }
 
-      // Authenticator created from the a key has the builder role if the key is associated with the workspace.
+      // Authenticator created from the a key has the builder role if the key is associated with
+      // the workspace.
       if (!workspaceAuth.isBuilder() && !allowUserOutsideCurrentWorkspace) {
         return apiError(req, res, {
           status_code: 401,

@@ -234,8 +234,8 @@ async function handler(
     });
   }
 
-  const owner = await auth.getNonNullableWorkspace();
-  const plan = await auth.getNonNullablePlan();
+  const owner = auth.getNonNullableWorkspace();
+  const plan = auth.getNonNullablePlan();
 
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   switch (req.method) {
