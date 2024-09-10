@@ -31,15 +31,7 @@ import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-<<<<<<< HEAD
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import {
-  AddConnectionMenu,
-  setupConnection,
-} from "@app/components/vaults/AddConnectionMenu";
-=======
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
->>>>>>> 5d1eba24a ([front/components] - refactor: streamline ConnectorPermissionsModal integration)
 import config from "@app/lib/api/config";
 import {
   augmentDataSourceWithConnectorDetails,

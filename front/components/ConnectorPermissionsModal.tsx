@@ -30,13 +30,13 @@ import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnab
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
+import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 import { PermissionTree } from "./ConnectorPermissionsTree";
 import type { NotificationType } from "./sparkle/Notification";
 import { SendNotificationsContext } from "./sparkle/Notification";
-import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
 
 const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "confluence",
