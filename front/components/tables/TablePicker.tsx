@@ -1,11 +1,12 @@
-import { Input } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import { DropdownMenu, Input } from "@dust-tt/sparkle";
+import type { VaultType, WorkspaceType } from "@dust-tt/types";
 import type { CoreAPITable } from "@dust-tt/types";
 import { Menu } from "@headlessui/react";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 
 import { useDataSourceTables } from "@app/lib/swr/data_sources";
+import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
 
 export default function TablePicker({
@@ -13,6 +14,7 @@ export default function TablePicker({
   dataSource,
   currentTableId,
   readOnly,
+  vault,
   onTableUpdate,
 }: {
   owner: WorkspaceType;
@@ -22,15 +24,27 @@ export default function TablePicker({
   };
   currentTableId?: string;
   readOnly: boolean;
+  vault: VaultType;
   onTableUpdate: (table: CoreAPITable) => void;
 }) {
   void owner;
   void dataSource;
 
-  // TODO(GROUPS_INFRA): Use data source views to get tables.
+  const { vaultDataSourceViews } = useVaultDataSourceViews({
+    vaultId: vault.sId,
+    workspaceId: owner.sId,
+  });
+
+  // Look for the selected data source view in the list - data_source_id can contain either dsv sId or dataSource name, try to find a match
+  const selectedDataSourceView = vaultDataSourceViews.find(
+    (dsv) =>
+      dsv.sId === dataSource.data_source_id ||
+      dsv.dataSource.name === dataSource.data_source_id
+  );
+
   const { tables } = useDataSourceTables({
     workspaceId: dataSource.workspace_id,
-    dataSourceName: dataSource.data_source_id,
+    dataSourceName: selectedDataSourceView?.dataSource.name,
   });
 
   const currentTable = currentTableId
@@ -61,9 +75,9 @@ export default function TablePicker({
             "No Table"
           )
         ) : (
-          <Menu as="div" className="relative inline-block text-left">
+          <DropdownMenu>
             <div>
-              <Menu.Button
+              <DropdownMenu.Button
                 className={classNames(
                   "inline-flex items-center rounded-md py-1 text-sm font-normal text-gray-700",
                   currentTable ? "px-0" : "border px-3",
@@ -85,55 +99,38 @@ export default function TablePicker({
                 ) : (
                   "No Tables"
                 )}
-              </Menu.Button>
+              </DropdownMenu.Button>
             </div>
 
             {(tables || []).length > 0 ? (
-              <Menu.Items
-                className={classNames(
-                  "absolute z-10 mt-1 w-max origin-top-left rounded-md bg-white shadow-sm ring-1 ring-black ring-opacity-5 focus:outline-none",
-                  currentTable ? "-left-4" : "left-1"
-                )}
-              >
+              <DropdownMenu.Items width={300}>
                 <Input
                   name="search"
                   placeholder="Search"
                   value={searchFilter}
                   onChange={(value) => setSearchFilter(value)}
-                  className="w-48"
+                  className="mt-4 w-full"
                 />
-                <div className="py-1">
-                  {(filteredTables || []).map((t) => {
-                    return (
-                      <Menu.Item key={t.table_id}>
-                        {({ active }) => (
-                          <span
-                            className={classNames(
-                              active
-                                ? "bg-gray-50 text-gray-900"
-                                : "text-gray-700",
-                              "block cursor-pointer px-4 py-2 text-sm"
-                            )}
-                            onClick={() => {
-                              onTableUpdate(t);
-                              setSearchFilter("");
-                            }}
-                          >
-                            {t.name}
-                          </span>
-                        )}
-                      </Menu.Item>
-                    );
-                  })}
-                  {filteredTables.length === 0 && (
-                    <span className="block px-4 py-2 text-sm text-gray-700">
-                      No tables found
-                    </span>
-                  )}
-                </div>
-              </Menu.Items>
+                {(filteredTables || []).map((t) => {
+                  return (
+                    <DropdownMenu.Item
+                      key={t.table_id}
+                      label={t.name}
+                      onClick={() => {
+                        onTableUpdate(t);
+                        setSearchFilter("");
+                      }}
+                    />
+                  );
+                })}
+                {filteredTables.length === 0 && (
+                  <span className="block px-4 py-2 text-sm text-gray-700">
+                    No tables found
+                  </span>
+                )}
+              </DropdownMenu.Items>
             ) : null}
-          </Menu>
+          </DropdownMenu>
         )}
       </div>
     </div>
