@@ -8529,6 +8529,7 @@ const DISPOSABLE_EMAIL_DOMAINS = new Set([
   "zzi.us",
   "zzrgg.com",
   "zzz.com",
+  "namya.app",
 ]);
 
 export function isDisposableEmailDomain(emailDomain: string) {
