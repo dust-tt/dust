@@ -580,6 +580,7 @@ export class DustAPI {
     if (this._credentials.userEmail) {
       headers[DustUserEmailHeader] = this._credentials.userEmail;
     }
+
     if (this._credentials.groupIds) {
       headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
     }
@@ -667,7 +668,7 @@ export class DustAPI {
       }/messages/${message.sId}/events`,
       {
         method: "GET",
-        headers: headers,
+        headers,
       }
     );
 
@@ -791,10 +792,7 @@ export class DustAPI {
       `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}`,
       {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${this._credentials.apiKey}`,
-          "Content-Type": "application/json",
-        },
+        headers,
       }
     );
 
