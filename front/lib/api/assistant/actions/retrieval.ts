@@ -29,11 +29,7 @@ import {
 import { getRefs } from "@app/lib/api/assistant/citations";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentRetrievalAction,
-  RetrievalDocument,
-  RetrievalDocumentChunk,
-} from "@app/lib/models/assistant/actions/retrieval";
+import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import {
   cloneBaseConfig,
   DustProdActionRegistry,
