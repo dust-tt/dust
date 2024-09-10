@@ -1,7 +1,7 @@
 import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withPublicApiAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -104,4 +104,4 @@ async function handler(
   }
 }
 
-export default withPublicApiAuthentication(handler);
+export default withPublicAPIAuthentication(handler);

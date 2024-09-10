@@ -17,7 +17,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import apiConfig from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { withPublicApiAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator } from "@app/lib/auth";
 import { getDocumentsPostDeleteHooksToRun } from "@app/lib/documents_post_process_hooks/hooks";
 import {
@@ -550,4 +550,4 @@ async function handler(
   }
 }
 
-export default withPublicApiAuthentication(handler);
+export default withPublicAPIAuthentication(handler);

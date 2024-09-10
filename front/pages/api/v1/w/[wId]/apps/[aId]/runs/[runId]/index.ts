@@ -3,7 +3,7 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import apiConfig from "@app/lib/api/config";
-import { withPublicApiAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
@@ -147,4 +147,4 @@ async function handler(
   }
 }
 
-export default withPublicApiAuthentication(handler);
+export default withPublicAPIAuthentication(handler);

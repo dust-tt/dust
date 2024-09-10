@@ -6,7 +6,7 @@ import {
   getConversationWithoutContent,
 } from "@app/lib/api/assistant/conversation";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
-import { withPublicApiAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
@@ -175,4 +175,4 @@ async function handler(
   }
 }
 
-export default withPublicApiAuthentication(handler, { isStreaming: true });
+export default withPublicAPIAuthentication(handler, { isStreaming: true });

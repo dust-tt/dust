@@ -143,7 +143,7 @@ export function withSessionAuthenticationForWorkspace<T>(
  * @param opts
  * @returns
  */
-export function withPublicApiAuthentication<T, U extends boolean>(
+export function withPublicAPIAuthentication<T, U extends boolean>(
   handler: (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
@@ -209,10 +209,12 @@ export function withPublicApiAuthentication<T, U extends boolean>(
         });
       }
 
-      // /!\ This is reserved for internal use!
-      // If the header "x-api-user-email" is present and valid,
-      // exchange the workspace auth for a user auth.
-      // This only works if the user is a member of the workspace.
+      // NOTE: This section is for internal use only!
+      // If the "x-api-user-email" header is present and contains a valid email address, attempt
+      // to exchange the current workspace authentication for user authentication.
+      // This operation is only performed if:
+      // 1. The user associated with the email is a member of the current workspace.
+      // 2. The system key is being used for authentication.
       const userEmailFromHeader = req.headers[DustUserEmailHeader];
       if (
         typeof userEmailFromHeader === "string" &&

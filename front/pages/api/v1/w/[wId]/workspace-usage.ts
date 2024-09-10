@@ -6,7 +6,7 @@ import * as reporter from "io-ts-reporters";
 import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withPublicApiAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getAssistantsUsageData,
@@ -251,4 +251,4 @@ async function fetchUsageData({
   }
 }
 
-export default withPublicApiAuthentication(handler);
+export default withPublicAPIAuthentication(handler);

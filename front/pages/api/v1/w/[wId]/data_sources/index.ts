@@ -2,7 +2,7 @@ import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSources } from "@app/lib/api/data_sources";
-import { withPublicApiAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
@@ -70,4 +70,4 @@ async function handler(
   }
 }
 
-export default withPublicApiAuthentication(handler);
+export default withPublicAPIAuthentication(handler);

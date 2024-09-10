@@ -6,7 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { withPublicApiAuthentication } from "@app/lib/api/wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { parse_payload } from "@app/lib/http_utils";
 import logger from "@app/logger/logger";
@@ -283,4 +283,4 @@ async function handler(
   }
 }
 
-export default withPublicApiAuthentication(handler);
+export default withPublicAPIAuthentication(handler);
