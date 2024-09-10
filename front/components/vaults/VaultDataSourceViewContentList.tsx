@@ -189,8 +189,8 @@ export const VaultDataSourceViewContentList = ({
             />
           </>
         ) : dataSourceView.category === "managed" && connector ? (
-          <div className="flex flex-col items-center gap-2 text-sm text-element-700">
-            <span>No data sources were added yet.</span>
+          <div className="flex flex-col items-center gap-4 text-sm text-element-700">
+            <span>Connection ready. Select the data to sync.</span>
             <ConnectorPermissionsModal
               owner={owner}
               connector={connector}

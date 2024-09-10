@@ -363,6 +363,7 @@ export function ConnectorPermissionsModal({
   const { user } = useUser();
 
   function closeModal() {
+    setModalToShow(null);
     onClose();
     setTimeout(() => {
       setUpdatedPermissionByInternalId({});
@@ -446,14 +447,12 @@ export function ConnectorPermissionsModal({
           icon={Cog6ToothIcon}
           disabled={readOnly || !isAdmin}
           onClick={() => {
-            if (isOpen) {
-              if (showAddDataModal(connector.type)) {
-                setModalToShow("selection");
-              } else {
-                setModalToShow("edition");
-              }
-              onManageButtonClick();
+            if (showAddDataModal(connector.type)) {
+              setModalToShow("selection");
+            } else {
+              setModalToShow("edition");
             }
+            onManageButtonClick();
           }}
         />
       )}
