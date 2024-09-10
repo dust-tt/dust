@@ -59,7 +59,7 @@ export function useVaultInfo({
   disabled,
 }: {
   workspaceId: string;
-  vaultId: string;
+  vaultId: string | null;
   disabled?: boolean;
 }) {
   const vaultsCategoriesFetcher: Fetcher<GetVaultResponseBody> = fetcher;
@@ -68,7 +68,7 @@ export function useVaultInfo({
     `/api/w/${workspaceId}/vaults/${vaultId}`,
     vaultsCategoriesFetcher,
     {
-      disabled,
+      disabled: disabled || vaultId === null,
     }
   );
 

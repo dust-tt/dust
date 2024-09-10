@@ -11,7 +11,7 @@ import React, { useMemo, useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { CreateVaultModal } from "@app/components/vaults/CreateVaultModal";
+import { CreateOrEditVaultModal } from "@app/components/vaults/CreateOrEditVaultModal";
 import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
 import VaultSideBarMenu from "@app/components/vaults/VaultSideBarMenu";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -77,7 +77,7 @@ export function VaultLayout({
         />
         {children}
         {isAdmin && isPrivateVaultsEnabled && (
-          <CreateVaultModal
+          <CreateOrEditVaultModal
             owner={owner}
             isOpen={showVaultCreationModal}
             onClose={() => setShowVaultCreationModal(false)}

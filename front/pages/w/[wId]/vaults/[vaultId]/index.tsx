@@ -11,6 +11,7 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useMemo, useState } from "react";
 
+import { CreateOrEditVaultModal } from "@app/components/vaults/CreateOrEditVaultModal";
 import { VaultCategoriesList } from "@app/components/vaults/VaultCategoriesList";
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
@@ -79,6 +80,7 @@ export default function Vault({
 
   const router = useRouter();
   const [currentTab, setCurrentTab] = useState("resources");
+  const [showVaultEditionModal, setShowVaultEditionModal] = useState(false);
   const isMember = useMemo(
     () => vaultInfo?.members?.some((m) => m.sId === userId),
     [userId, vaultInfo?.members]
@@ -86,11 +88,7 @@ export default function Vault({
 
   return (
     <Page.Vertical gap="xl" align="stretch">
-      <Page.Header
-        title={getVaultName(vault)}
-        icon={getVaultIcon(vault)}
-        description="Manage connections to your products and the real-time data feeds Dust has access to."
-      />
+      <Page.Header title={getVaultName(vault)} icon={getVaultIcon(vault)} />
       {vaultInfo && !isMember && (
         <Chip
           color="warning"
@@ -134,11 +132,18 @@ export default function Vault({
               `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`
             );
           }}
+          onButtonClick={() => setShowVaultEditionModal(true)}
         />
       )}
       {currentTab === "members" && isAdmin && (
         <VaultMembers owner={owner} vault={vault} isAdmin={isAdmin} />
       )}
+      <CreateOrEditVaultModal
+        owner={owner}
+        isOpen={showVaultEditionModal}
+        onClose={() => setShowVaultEditionModal(false)}
+        vault={vault}
+      />
     </Page.Vertical>
   );
 }

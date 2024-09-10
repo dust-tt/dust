@@ -9,18 +9,23 @@ import {
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, UserType } from "@dust-tt/types";
+import type { LightWorkspaceType, UserType, VaultType } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type { CellContext } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import { useRouter } from "next/router";
-import React, { useCallback, useContext, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useMembers } from "@app/lib/swr/memberships";
-import { useVaults, useVaultsAsAdmin } from "@app/lib/swr/vaults";
+import { useVaultInfo, useVaults, useVaultsAsAdmin } from "@app/lib/swr/vaults";
 import logger from "@app/logger/logger";
-import type { PostVaultsResponseBody } from "@app/pages/api/w/[wId]/vaults";
 
 type RowData = {
   icon: string;
@@ -31,10 +36,11 @@ type RowData = {
 
 type Info = CellContext<RowData, unknown>;
 
-interface CreateVaultModalProps {
+interface CreateOrEditVaultModalProps {
   owner: LightWorkspaceType;
   isOpen: boolean;
   onClose: () => void;
+  vault?: VaultType;
 }
 
 function getTableRows(allUsers: UserType[]): RowData[] {
@@ -45,12 +51,15 @@ function getTableRows(allUsers: UserType[]): RowData[] {
   }));
 }
 
-export function CreateVaultModal({
+export function CreateOrEditVaultModal({
   owner,
   isOpen,
   onClose,
-}: CreateVaultModalProps) {
-  const [vaultName, setVaultName] = useState<string | null>(null);
+  vault,
+}: CreateOrEditVaultModalProps) {
+  const [vaultName, setVaultName] = useState<string | null>(
+    vault?.name ?? null
+  );
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
@@ -62,8 +71,20 @@ export function CreateVaultModal({
     workspaceId: owner.sId,
     disabled: true, // Disable as we just want the mutation function
   });
-  const router = useRouter();
   const { members, isMembersLoading } = useMembers(owner);
+  const { vaultInfo } = useVaultInfo({
+    workspaceId: owner.sId,
+    vaultId: vault?.sId ?? null,
+  });
+  const vaultMembers = vaultInfo?.members ?? null;
+
+  useEffect(() => {
+    if (vaultMembers) {
+      setSelectedMembers(vaultMembers.map((vm) => vm.sId));
+    }
+  }, [vaultMembers]);
+
+  const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
 
   const getTableColumns = useCallback(() => {
@@ -121,11 +142,16 @@ export function CreateVaultModal({
     ];
   }, [selectedMembers]);
 
-  const createVault = async () => {
+  const createOrUpdateVault = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch(`/api/w/${owner.sId}/vaults`, {
-        method: "POST",
+      const url = vault
+        ? `/api/w/${owner.sId}/vaults/${vault.sId}`
+        : `/api/w/${owner.sId}/vaults`;
+      const method = vault ? "PATCH" : "POST";
+
+      const res = await fetch(url, {
+        method: method,
         headers: {
           "Content-Type": "application/json",
         },
@@ -137,9 +163,12 @@ export function CreateVaultModal({
 
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error?.message || "Failed to create vault");
+        throw new Error(
+          errorData.error?.message ||
+            `Failed to ${vault ? "update" : "create"} vault`
+        );
       }
-      const r: PostVaultsResponseBody = await res.json();
+      const r = await res.json();
 
       // Invalidate the vaults list
       await mutateVaults();
@@ -159,15 +188,15 @@ export function CreateVaultModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Create a Vault"
-      saveLabel="Create"
+      title={vault ? `Edit ${vault.name}` : "Create a Vault"}
+      saveLabel={vault ? "Save" : "Create"}
       variant="side-md"
       hasChanged={!!vaultName && selectedMembers.length > 0}
       isSaving={isSaving}
       className="flex"
       onSave={async () => {
         try {
-          await createVault();
+          await createOrUpdateVault();
           sendNotification({
             type: "success",
             title: "Successfully created vault",
@@ -207,13 +236,17 @@ export function CreateVaultModal({
               placeholder="Vault's name"
               value={vaultName}
               name="vaultName"
+              className={vault ? "text-gray-300 hover:cursor-not-allowed" : ""}
               size="sm"
               onChange={(value) => setVaultName(value)}
+              disabled={!!vault}
             />
-            <div className="flex gap-1 text-xs text-element-700">
-              <Icon visual={InformationCircleIcon} size="xs" />
-              <span>Vault name must be unique</span>
-            </div>
+            {!vault && (
+              <div className="flex gap-1 text-xs text-element-700">
+                <Icon visual={InformationCircleIcon} size="xs" />
+                <span>Vault name must be unique</span>
+              </div>
+            )}
           </div>
           <div className="flex w-full grow flex-col gap-y-2 border-t pt-2">
             <Page.SectionHeader title="Vault members" />
