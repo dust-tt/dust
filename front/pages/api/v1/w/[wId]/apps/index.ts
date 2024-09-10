@@ -1,9 +1,10 @@
 import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { withPublicApiAuthentication } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type GetAppsResponseBody = {
   apps: AppType[];
@@ -80,23 +81,15 @@ export type GetAppsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetAppsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetAppsResponseBody>>,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
   switch (req.method) {
     case "GET":
+      const apps = await AppResource.listByWorkspace(auth);
+
       res.status(200).json({
-        apps: (await AppResource.listByWorkspace(workspaceAuth)).map((app) =>
-          app.toJSON()
-        ),
+        apps: apps.map((app) => app.toJSON()),
       });
       return;
 
@@ -111,4 +104,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicApiAuthentication(handler);

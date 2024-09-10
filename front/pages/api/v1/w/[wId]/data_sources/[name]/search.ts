@@ -6,10 +6,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { withPublicApiAuthentication } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { parse_payload } from "@app/lib/http_utils";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type DatasourceSearchQuery = {
   query: string;
@@ -177,18 +178,11 @@ type DatasourceSearchResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<DatasourceSearchResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<DatasourceSearchResponseBody>>,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  if (!workspaceAuth.isBuilder()) {
+  const { name } = req.query;
+  if (typeof name !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -198,11 +192,7 @@ async function handler(
     });
   }
 
-  const dataSource = await getDataSource(
-    workspaceAuth,
-    req.query.name as string
-  );
-
+  const dataSource = await getDataSource(auth, name);
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
@@ -293,4 +283,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicApiAuthentication(handler);

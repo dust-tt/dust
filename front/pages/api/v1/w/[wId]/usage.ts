@@ -3,9 +3,10 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { withPublicApiAuthentication } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { unsafeGetUsageData } from "@app/lib/workspace_usage";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 const DateString = t.refinement(
   t.string,
@@ -29,28 +30,10 @@ const GetWorkspaceUsageSchema = t.intersection([
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  const owner = workspaceAuth.workspace();
-  if (!owner || !workspaceAuth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
-      },
-    });
-  }
-
+  const owner = auth.getNonNullableWorkspace();
   if (!owner.flags.includes("usage_data_api")) {
     return apiError(req, res, {
       status_code: 403,
@@ -97,4 +80,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicApiAuthentication(handler);

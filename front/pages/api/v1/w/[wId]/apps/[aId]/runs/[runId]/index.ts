@@ -3,10 +3,11 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import apiConfig from "@app/lib/api/config";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { withPublicApiAuthentication } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export const config = {
   api: {
@@ -61,33 +62,23 @@ export type GetRunResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetRunResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetRunResponseBody>>,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  const owner = workspaceAuth.workspace();
-  if (!owner) {
+  const { aId } = req.query;
+  if (typeof aId !== "string") {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 400,
       api_error: {
-        type: "app_not_found",
-        message: "The app you're trying to run was not found",
+        type: "invalid_request_error",
+        message: "The app ID is invalid.",
       },
     });
   }
 
-  const app = await AppResource.fetchById(
-    workspaceAuth,
-    req.query.aId as string
-  );
+  const owner = auth.getNonNullableWorkspace();
 
+  const app = await AppResource.fetchById(auth, aId);
   if (!app) {
     return apiError(req, res, {
       status_code: 404,
@@ -156,4 +147,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicApiAuthentication(handler);

@@ -10,8 +10,9 @@ import {
   normalizeContentFragmentType,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { withPublicApiAuthentication } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
 
 export type PostContentFragmentsResponseBody = {
   contentFragment: ContentFragmentType;
@@ -67,35 +68,21 @@ export type PostContentFragmentRequestBody = t.TypeOf<
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostContentFragmentsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostContentFragmentsResponseBody>>,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-
-  const { keyAuth, workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  if (
-    !workspaceAuth.isBuilder() ||
-    keyAuth.getNonNullableWorkspace().sId !== req.query.wId
-  ) {
+  const { cId } = req.query;
+  if (typeof cId !== "string") {
     return apiError(req, res, {
-      status_code: 400,
+      status_code: 404,
       api_error: {
-        type: "invalid_request_error",
-        message: "The Assistant API is only available on your own workspace.",
+        type: "conversation_not_found",
+        message: "Conversation not found.",
       },
     });
   }
 
-  const conversation = await getConversation(
-    workspaceAuth,
-    req.query.cId as string
-  );
+  const conversation = await getConversation(auth, cId);
   if (!conversation) {
     return apiError(req, res, {
       status_code: 404,
@@ -144,7 +131,7 @@ async function handler(
       });
 
       const contentFragmentRes = await postNewContentFragment(
-        workspaceAuth,
+        auth,
         conversation,
         {
           ...contentFragmentBody,
@@ -176,4 +163,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicApiAuthentication(handler);

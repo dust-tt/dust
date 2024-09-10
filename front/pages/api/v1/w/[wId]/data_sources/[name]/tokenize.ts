@@ -7,9 +7,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { withPublicApiAuthentication } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type PostDatasourceTokenizeBody = {
   text: string;
@@ -30,32 +31,23 @@ type PostDatasourceTokenizeResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostDatasourceTokenizeResponseBody>>
+  res: NextApiResponse<
+    WithAPIErrorResponse<PostDatasourceTokenizeResponseBody>
+  >,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  if (!workspaceAuth.workspace() || !workspaceAuth.isBuilder()) {
+  const { name } = req.query;
+  if (typeof name !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you requested was not found.",
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
     });
   }
 
-  const dataSource = await getDataSource(
-    workspaceAuth,
-    req.query.name as string
-  );
-
+  const dataSource = await getDataSource(auth, name);
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
@@ -113,4 +105,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicApiAuthentication(handler);

@@ -4,8 +4,9 @@ import type {
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { withPublicApiAuthentication } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
 
 export type WorkspaceFeatureFlagsResponseBody = {
   feature_flags: WhitelistableFeature[];
@@ -18,20 +19,11 @@ export type WorkspaceFeatureFlagsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<WorkspaceFeatureFlagsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<WorkspaceFeatureFlagsResponseBody>>,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  const owner = workspaceAuth.workspace();
-  const isSystemKey = keyRes.value.isSystem;
-  if (!owner || !isSystemKey || !workspaceAuth.isBuilder()) {
+  const owner = auth.getNonNullableWorkspace();
+  if (!auth.isSystemKey()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -56,4 +48,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicApiAuthentication(handler);
