@@ -712,7 +712,6 @@ function retrievalActionSpecification({
 export async function retrievalActionTypesFromAgentMessageIds(
   agentMessageIds: ModelId[]
 ): Promise<RetrievalActionType[]> {
-  // Use RetrievalDocument resources here!
   const models = await AgentRetrievalAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
@@ -769,8 +768,6 @@ export async function retrievalActionTypesFromAgentMessageIds(
         "Unexpected comparison of null and non-null scored documents."
       );
     });
-
-    console.log("documents", documents);
 
     actions.push(
       new RetrievalAction({
