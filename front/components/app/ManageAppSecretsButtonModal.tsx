@@ -2,7 +2,7 @@ import { BracesIcon, Button, Modal, Page } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
-import { DustAppSecrets } from "@app/pages/w/[wId]/a";
+import { DustAppSecrets } from "@app/pages/w/[wId]/vaults/[vaultId]/apps";
 
 export const ManageAppSecretsButtonModal = ({
   owner,

@@ -93,8 +93,10 @@ export default function NewApp({
       }),
     });
     if (res.ok) {
-      const appRes = (await res.json()) as { app: AppType };
-      await router.push(`/w/${owner.sId}/a/${appRes.app.sId}`);
+      const { app } = (await res.json()) as { app: AppType };
+      await router.push(
+        `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`
+      );
     } else {
       const err = (await res.json()) as { error: APIError };
       setCreating(false);

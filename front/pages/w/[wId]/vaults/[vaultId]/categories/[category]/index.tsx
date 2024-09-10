@@ -93,7 +93,7 @@ export default function Vault({
           owner={owner}
           isBuilder={isBuilder}
           onSelect={(sId) => {
-            void router.push(`/w/${owner.sId}/a/${sId}`);
+            void router.push(`/w/${owner.sId}/vaults/${vault.sId}/apps/${sId}`);
           }}
         />
       ) : (

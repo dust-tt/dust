@@ -8,7 +8,7 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { APIKeys } from "@app/pages/w/[wId]/a";
+import { APIKeys } from "@app/pages/w/[wId]/vaults/[vaultId]/apps";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

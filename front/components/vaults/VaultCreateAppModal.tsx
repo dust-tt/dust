@@ -80,7 +80,9 @@ export const VaultCreateAppModal = ({
         await mutateApps();
         const response: PostAppResponseBody = await res.json();
         const { app } = response;
-        await router.push(`/w/${owner.sId}/a/${app.sId}`);
+        await router.push(
+          `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`
+        );
         setIsOpen(false);
 
         sendNotification({

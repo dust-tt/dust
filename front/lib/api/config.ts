@@ -99,6 +99,11 @@ const config = {
       "DEVELOPMENT_DUST_APPS_WORKSPACE_ID"
     );
   },
+  getDevelopmentDustAppsVaultId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "DEVELOPMENT_DUST_APPS_VAULT_ID"
+    );
+  },
   // OAuth
   getOAuthGithubApp: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_GITHUB_APP");

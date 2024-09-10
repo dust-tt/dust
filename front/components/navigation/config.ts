@@ -130,7 +130,8 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
       href: `/w/${owner.sId}/builder/assistants`,
       isCurrent: (currentRoute: string) =>
         currentRoute.startsWith("/w/[wId]/builder/") ||
-        currentRoute === "/w/[wId]/a",
+        (!owner.flags.includes("data_vaults_feature") &&
+          !!currentRoute.match("^/w/.+/vaults/.+/apps$")),
       sizing: "expand",
     });
   }
@@ -381,7 +382,7 @@ export const subNavigationApp = ({
       id: "specification",
       label: "Specification",
       icon: CommandLineIcon,
-      href: `/w/${owner.sId}/a/${app.sId}`,
+      href: `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`,
       sizing: "expand",
       current: current === "specification",
     },
@@ -389,7 +390,7 @@ export const subNavigationApp = ({
       id: "datasets",
       label: "Datasets",
       icon: DocumentTextIcon,
-      href: `/w/${owner.sId}/a/${app.sId}/datasets`,
+      href: `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets`,
       sizing: "expand",
       current: current === "datasets",
     },
@@ -401,7 +402,7 @@ export const subNavigationApp = ({
         id: "runs",
         label: "Logs",
         icon: FolderOpenIcon,
-        href: `/w/${owner.sId}/a/${app.sId}/runs`,
+        href: `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs`,
         sizing: "expand",
         current: current === "runs",
       },
@@ -409,7 +410,7 @@ export const subNavigationApp = ({
         id: "settings",
         label: "Settings",
         icon: Cog6ToothIcon,
-        href: `/w/${owner.sId}/a/${app.sId}/settings`,
+        href: `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/settings`,
         sizing: "expand",
         current: current === "settings",
       },

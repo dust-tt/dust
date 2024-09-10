@@ -55,6 +55,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   apps: AppType[];
   gaTrackingId: string;
+  vaultId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const groups = auth.groups();
@@ -74,6 +75,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       apps: (await AppResource.listByWorkspace(auth)).map((app) =>
         app.toJSON()
       ),
+      vaultId: context.params?.vaultId as string,
       gaTrackingId: config.getGaTrackingId(),
     },
   };
@@ -684,7 +686,15 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   );
 }
 
-function Apps({ apps, owner }: { apps: AppType[]; owner: WorkspaceType }) {
+function Apps({
+  apps,
+  owner,
+  vaultId,
+}: {
+  apps: AppType[];
+  owner: WorkspaceType;
+  vaultId: string;
+}) {
   const router = useRouter();
   return (
     <Page.Vertical align="stretch">
@@ -695,7 +705,7 @@ function Apps({ apps, owner }: { apps: AppType[]; owner: WorkspaceType }) {
           label: "Create App",
           variant: "primary",
           onClick: async () => {
-            void router.push(`/w/${owner.sId}/a/new`);
+            void router.push(`/w/${owner.sId}/vaults/${vaultId}/apps/new`);
           },
           icon: PlusIcon,
         }}
@@ -705,7 +715,10 @@ function Apps({ apps, owner }: { apps: AppType[]; owner: WorkspaceType }) {
           <li key={app.sId} className="px-2">
             <div className="py-4">
               <div className="flex items-center justify-between">
-                <Link href={`/w/${owner.sId}/a/${app.sId}`} className="block">
+                <Link
+                  href={`/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`}
+                  className="block"
+                >
                   <p className="truncate text-base font-bold text-action-600">
                     {app.name}
                   </p>
@@ -767,6 +780,7 @@ export default function Developers({
   subscription,
   apps,
   gaTrackingId,
+  vaultId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [currentTab, setCurrentTab] = useState("apps");
   const router = useRouter();
@@ -861,7 +875,7 @@ export default function Developers({
         {(() => {
           switch (currentTab) {
             case "apps":
-              return <Apps apps={apps} owner={owner} />;
+              return <Apps apps={apps} owner={owner} vaultId={vaultId} />;
             case "providers":
               return <Providers owner={owner} />;
             case "apikeys":
