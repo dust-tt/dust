@@ -8,6 +8,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  DustUserEmailHeader,
   Err,
   GetAgentConfigurationsQuerySchema,
   Ok,
@@ -50,12 +51,25 @@ async function handler(
       | void
     >
   >,
-  auth: Authenticator
+  baseAuth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
+  const owner = baseAuth.getNonNullableWorkspace();
+
+  let auth = baseAuth;
 
   switch (req.method) {
     case "GET":
+      // /!\ This is reserved for internal use!
+      // If the header "x-api-user-email" is present and valid,
+      // associate the message with the provided user email if it belongs to the same workspace.
+      const userEmailFromHeader = req.headers[DustUserEmailHeader];
+      if (typeof userEmailFromHeader === "string") {
+        auth =
+          (await auth.exchangeSystemKeyForUserAuthByEmail(auth, {
+            userEmail: userEmailFromHeader,
+          })) ?? auth;
+      }
+
       // extract the view from the query parameters
       const queryValidation = GetAgentConfigurationsQuerySchema.decode({
         ...req.query,
