@@ -13,7 +13,6 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
   PlanType,
-  UserType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -52,7 +51,6 @@ type VaultDataSourceViewContentListProps = {
   owner: WorkspaceType;
   parentId?: string;
   isAdmin: boolean;
-  user: UserType;
   dustClientFacingUrl: string;
   connector: ConnectorType | null;
 };
@@ -104,7 +102,6 @@ export const VaultDataSourceViewContentList = ({
   onSelect,
   parentId,
   isAdmin,
-  user,
   dustClientFacingUrl,
   connector,
 }: VaultDataSourceViewContentListProps) => {
@@ -206,7 +203,6 @@ export const VaultDataSourceViewContentList = ({
               readOnly={false}
               isAdmin={isAdmin}
               dustClientFacingUrl={dustClientFacingUrl}
-              user={user}
               onManageButtonClick={() => {
                 setShowConnectorPermissionsModal(true);
               }}
@@ -296,7 +292,6 @@ export const VaultDataSourceViewContentList = ({
           readOnly={false}
           isAdmin={isAdmin}
           dustClientFacingUrl={dustClientFacingUrl}
-          user={user}
         />
       )}
     </>

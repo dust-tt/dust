@@ -32,6 +32,7 @@ import { RequestDataSourceModal } from "@app/components/data_source/RequestDataS
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { useUser } from "@app/lib/swr/user";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 import { PermissionTree } from "./ConnectorPermissionsTree";
@@ -339,7 +340,6 @@ export function ConnectorPermissionsModal({
   readOnly,
   isAdmin,
   dustClientFacingUrl,
-  user,
   onManageButtonClick,
 }: {
   owner: WorkspaceType;
@@ -351,7 +351,6 @@ export function ConnectorPermissionsModal({
   dustClientFacingUrl: string;
   readOnly: boolean;
   isAdmin: boolean;
-  user: UserType;
   onManageButtonClick?: () => void;
 }) {
   const { mutate } = useSWRConfig();
@@ -363,6 +362,7 @@ export function ConnectorPermissionsModal({
 
   const [saving, setSaving] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
+  const { user } = useUser();
 
   function closeModal() {
     onClose();
@@ -437,6 +437,10 @@ export function ConnectorPermissionsModal({
       setShowDataSelectionModal(false);
     }
   }, [connector.type, isOpen]);
+
+  if (!user) {
+    return;
+  }
 
   return (
     <>

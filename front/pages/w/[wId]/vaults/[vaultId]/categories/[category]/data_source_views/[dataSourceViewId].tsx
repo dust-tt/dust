@@ -5,7 +5,6 @@ import type {
   DataSourceViewCategory,
   DataSourceViewType,
   PlanType,
-  UserType,
 } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -31,7 +30,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     canReadInVault: boolean;
     parentId?: string;
     plan: PlanType;
-    user: UserType;
     dustClientFacingUrl: string;
     connector: ConnectorType | null;
   }
@@ -39,7 +37,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
   const plan = auth.plan();
-  const user = auth.getNonNullableUser();
 
   if (!subscription || !plan) {
     return {
@@ -111,7 +108,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       plan,
       subscription,
       vault: vault.toJSON(),
-      user,
       dustClientFacingUrl: apiConfig.getClientFacingUrl(),
       connector,
     },
@@ -128,7 +124,6 @@ export default function Vault({
   parentId,
   plan,
   isAdmin,
-  user,
   dustClientFacingUrl,
   connector,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -149,7 +144,6 @@ export default function Vault({
           );
         }}
         isAdmin={isAdmin}
-        user={user}
         dustClientFacingUrl={dustClientFacingUrl}
         connector={connector}
       />

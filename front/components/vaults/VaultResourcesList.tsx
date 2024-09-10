@@ -18,7 +18,6 @@ import type {
   DataSourceViewType,
   DataSourceViewWithConnectorType,
   PlanType,
-  UserType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -65,7 +64,6 @@ type RowData = {
 type VaultResourcesListProps = {
   dustClientFacingUrl: string;
   owner: WorkspaceType;
-  user: UserType;
   plan: PlanType;
   isAdmin: boolean;
   canWriteInVault: boolean;
@@ -191,7 +189,6 @@ const getTableColumns = ({
 
 export const VaultResourcesList = ({
   owner,
-  user,
   plan,
   isAdmin,
   canWriteInVault,
@@ -458,7 +455,6 @@ export const VaultResourcesList = ({
             readOnly={false}
             isAdmin={isAdmin}
             dustClientFacingUrl={dustClientFacingUrl}
-            user={user}
           />
         )}
     </>

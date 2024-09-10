@@ -982,7 +982,6 @@ function ManagedDataSourceView({
   connector,
   dustClientFacingUrl,
   plan,
-  user,
 }: {
   owner: WorkspaceType;
   readOnly: boolean;
@@ -992,7 +991,6 @@ function ManagedDataSourceView({
   connector: ConnectorType;
   dustClientFacingUrl: string;
   plan: PlanType;
-  user: UserType;
 }) {
   const router = useRouter();
 
@@ -1273,7 +1271,6 @@ function ManagedDataSourceView({
           readOnly={false}
           isAdmin={isAdmin}
           dustClientFacingUrl={dustClientFacingUrl}
-          user={user}
         />
       </div>
     </>

@@ -186,7 +186,6 @@ export default function DataSourcesView({
   plan,
   gaTrackingId,
   dustClientFacingUrl,
-  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isLoadingByProvider, setIsLoadingByProvider] = useState(
     {} as Record<ConnectorProvider, boolean>
@@ -341,7 +340,6 @@ export default function DataSourcesView({
             readOnly={readOnly}
             plan={plan}
             dustClientFacingUrl={dustClientFacingUrl}
-            user={user}
           />
         )}
       </Page.Vertical>
