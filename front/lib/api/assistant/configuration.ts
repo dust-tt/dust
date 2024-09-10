@@ -52,7 +52,7 @@ import {
 } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import { compareAgentsForSort } from "@app/lib/assistant";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -627,13 +627,14 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     }),
   ]);
 
+  // Rolled back:
   // Filter out agents that the user does not have access to
   // user should be in all groups that are in the agent's groupIds
-  const allowedAgentConfigurations = allAgentConfigurations
-    .flat()
-    .filter((a) => auth.canRead(Authenticator.aclsFromGroupIds(a.groupIds)));
-
-  return applySortAndLimit(allowedAgentConfigurations.flat());
+  // const allowedAgentConfigurations = allAgentConfigurations
+  //   .flat()
+  //   .filter((a) => auth.canRead(Authenticator.aclsFromGroupIds(a.groupIds)));
+  // return applySortAndLimit(allowedAgentConfigurations.flat());
+  return applySortAndLimit(allAgentConfigurations.flat());
 }
 
 async function getConversationMentions(
