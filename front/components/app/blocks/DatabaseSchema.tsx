@@ -117,7 +117,7 @@ export default function DatabaseSchema({
                   currentTableId={block.config.tables?.[0].table_id}
                   onTableUpdate={(table) => {
                     const b = shallowBlockClone(block);
-                    block.config.tables[0].table_id = table.table_id;
+                    block.config.tables[0].table_id = table.dustDocumentId;
                     onBlockUpdate(b);
                   }}
                 />

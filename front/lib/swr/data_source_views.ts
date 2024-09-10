@@ -17,6 +17,7 @@ import {
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
 import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/content-nodes";
 import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/documents/[documentId]";
+import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/tables";
 import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources/[dsId]/configuration";
 
 type DataSourceViewsAndInternalIds = {
@@ -209,5 +210,30 @@ export function useDataSourceViewConnectorConfiguration({
     configuration: data ? data.configuration : null,
     isDocumentLoading: !disabled && !error && !data,
     isDocumentError: error,
+  };
+}
+
+export function useDataSourceViewTables({
+  dataSourceView,
+  workspaceId,
+}: {
+  dataSourceView: DataSourceViewType | null;
+  workspaceId: string;
+}) {
+  const tablesFetcher: Fetcher<ListTablesResponseBody> = fetcher;
+  const disabled = !dataSourceView;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/w/${workspaceId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/tables`,
+    tablesFetcher
+  );
+
+  return {
+    tables: useMemo(() => (data ? data.tables : []), [data]),
+    isTablesLoading: !error && !data,
+    isTablesError: error,
+    mutateTables: mutate,
   };
 }
