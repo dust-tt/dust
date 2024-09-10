@@ -83,6 +83,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler, {
-  allowUserOutsideCurrentWorkspace: true,
-});
+export default withSessionAuthenticationForWorkspace(handler);

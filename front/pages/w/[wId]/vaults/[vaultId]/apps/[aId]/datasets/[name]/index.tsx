@@ -19,75 +19,74 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import config from "@app/lib/api/config";
 import { getDatasetHash, getDatasetSchema } from "@app/lib/api/datasets";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
-import { withDefaultUserAuthRequirementsNoWorkspaceCheck } from "@app/lib/iam/session";
+import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
-export const getServerSideProps =
-  withDefaultUserAuthRequirementsNoWorkspaceCheck<{
-    owner: WorkspaceType;
-    subscription: SubscriptionType;
-    readOnly: boolean;
-    app: AppType;
-    dataset: DatasetType;
-    schema: DatasetSchema | null;
-    dustAppsListUrl: string;
-    gaTrackingId: string;
-  }>(async (context, auth) => {
-    const owner = auth.workspace();
-    const subscription = auth.subscription();
+export const getServerSideProps = withDefaultUserAuthRequirements<{
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+  readOnly: boolean;
+  app: AppType;
+  dataset: DatasetType;
+  schema: DatasetSchema | null;
+  dustAppsListUrl: string;
+  gaTrackingId: string;
+}>(async (context, auth) => {
+  const owner = auth.workspace();
+  const subscription = auth.subscription();
 
-    if (!owner || !subscription) {
-      return {
-        notFound: true,
-      };
-    }
-
-    const readOnly = !auth.isBuilder();
-
-    const { aId } = context.params;
-    if (typeof aId !== "string") {
-      return {
-        notFound: true,
-      };
-    }
-
-    const app = await AppResource.fetchById(auth, aId);
-    if (!app) {
-      return {
-        notFound: true,
-      };
-    }
-
-    const dataset = await getDatasetHash(
-      auth,
-      app,
-      context.params?.name as string,
-      "latest"
-    );
-
-    if (!dataset) {
-      return {
-        notFound: true,
-      };
-    }
-
-    const schema = await getDatasetSchema(auth, app, dataset.name);
-    const dustAppsListUrl = await getDustAppsListUrl(auth);
-
+  if (!owner || !subscription) {
     return {
-      props: {
-        owner,
-        subscription,
-        readOnly,
-        app: app.toJSON(),
-        dataset,
-        schema,
-        dustAppsListUrl,
-        gaTrackingId: config.getGaTrackingId(),
-      },
+      notFound: true,
     };
-  });
+  }
+
+  const readOnly = !auth.isBuilder();
+
+  const { aId } = context.params;
+  if (typeof aId !== "string") {
+    return {
+      notFound: true,
+    };
+  }
+
+  const app = await AppResource.fetchById(auth, aId);
+  if (!app) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const dataset = await getDatasetHash(
+    auth,
+    app,
+    context.params?.name as string,
+    "latest"
+  );
+
+  if (!dataset) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const schema = await getDatasetSchema(auth, app, dataset.name);
+  const dustAppsListUrl = await getDustAppsListUrl(auth);
+
+  return {
+    props: {
+      owner,
+      subscription,
+      readOnly,
+      app: app.toJSON(),
+      dataset,
+      schema,
+      dustAppsListUrl,
+      gaTrackingId: config.getGaTrackingId(),
+    },
+  };
+});
 
 export default function ViewDatasetView({
   owner,
