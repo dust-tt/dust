@@ -39,82 +39,92 @@ async function migrateApps(
   execute: boolean
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+  const vaults = await VaultResource.listWorkspaceVaults(auth);
 
-  const dataSourceNames = new Set<string>();
-  const dataSourceNameFinder = (obj: any, key: string) => {
-    const value = obj[key];
-    if (!isResourceSId("data_source_view", value)) {
-      dataSourceNames.add(value);
-    }
-  };
+  for (const vault of vaults) {
+    const apps = await AppResource.listByVault(auth, vault);
+    if (apps.length > 0) {
+      logger.info(`Found ${apps.length} apps in vault ${vault.name}.`);
 
-  const apps = await AppResource.listByWorkspace(auth);
-
-  for (const app of apps) {
-    if (app.savedConfig) {
-      const config = JSON.parse(app.savedConfig);
-      searchInJson(config, "data_source_id", dataSourceNameFinder);
-    }
-
-    if (app.savedSpecification) {
-      const specification = JSON.parse(app.savedSpecification);
-      searchInJson(specification, "data_source_id", dataSourceNameFinder);
-    }
-  }
-
-  logger.info({}, `Found data sources : ${[...dataSourceNames]}`);
-
-  const dataSources = removeNulls(
-    await Promise.all(
-      [...dataSourceNames].map((dataSource) =>
-        DataSourceResource.fetchByNameOrId(auth, dataSource)
-      )
-    )
-  );
-
-  const dataSourceViews: Record<string, DataSourceViewResource> = (
-    await DataSourceViewResource.listForDataSourcesInVault(
-      auth,
-      dataSources,
-      globalVault
-    )
-  ).reduce(
-    (acc, dataSourceView) => ({
-      ...acc,
-      [dataSourceView.dataSource.name]: dataSourceView,
-    }),
-    {}
-  );
-
-  const replacer = (obj: any, key: string) => {
-    const value = obj[key];
-    if (!isResourceSId("data_source_view", value)) {
-      obj[key] = dataSourceViews[value]?.sId;
-    }
-  };
-
-  for (const app of apps) {
-    if (app.savedConfig && app.savedSpecification) {
-      const state = {
-        savedSpecification: app.savedSpecification,
-        savedConfig: app.savedConfig,
+      const dataSourceNames = new Set<string>();
+      const dataSourceNameFinder = (obj: any, key: string) => {
+        const value = obj[key];
+        if (!isResourceSId("data_source_view", value)) {
+          dataSourceNames.add(value);
+        }
       };
-      const config = JSON.parse(app.savedConfig);
-      searchInJson(config, "data_source_id", replacer);
-      state.savedConfig = JSON.stringify(config);
 
-      const specification = JSON.parse(app.savedSpecification);
-      searchInJson(specification, "data_source_id", replacer);
-      state.savedSpecification = JSON.stringify(specification);
-      if (
-        state.savedConfig !== app.savedConfig ||
-        state.savedSpecification !== app.savedSpecification
-      ) {
-        logger.info(`Migrating ${app.name}).`);
+      for (const app of apps) {
+        if (app.savedConfig) {
+          const config = JSON.parse(app.savedConfig);
+          searchInJson(config, "data_source_id", dataSourceNameFinder);
+        }
 
-        if (execute) {
-          await app.updateState(auth, state);
+        if (app.savedSpecification) {
+          const specification = JSON.parse(app.savedSpecification);
+          searchInJson(specification, "data_source_id", dataSourceNameFinder);
+        }
+      }
+
+      logger.info({}, `Found data sources : ${[...dataSourceNames]}`);
+
+      const dataSources = removeNulls(
+        await Promise.all(
+          [...dataSourceNames].map((dataSource) =>
+            DataSourceResource.fetchByNameOrId(auth, dataSource)
+          )
+        )
+      );
+
+      const dataSourceViews: Record<string, DataSourceViewResource> = (
+        await DataSourceViewResource.listForDataSourcesInVault(
+          auth,
+          dataSources,
+          vault
+        )
+      ).reduce(
+        (acc, dataSourceView) => ({
+          ...acc,
+          [dataSourceView.dataSource.name]: dataSourceView,
+        }),
+        {}
+      );
+
+      logger.info(
+        {},
+        `Will replace : ${Object.entries(dataSourceViews).map((dsv) => dsv[0] + " -> " + dsv[1].sId)}`
+      );
+
+      const replacer = (obj: any, key: string) => {
+        const value = obj[key];
+        if (!isResourceSId("data_source_view", value)) {
+          obj[key] = dataSourceViews[value]?.sId;
+        }
+      };
+
+      for (const app of apps) {
+        if (app.savedConfig && app.savedSpecification) {
+          const state = {
+            savedSpecification: app.savedSpecification,
+            savedConfig: app.savedConfig,
+          };
+          const config = JSON.parse(app.savedConfig);
+          searchInJson(config, "data_source_id", replacer);
+          state.savedConfig = JSON.stringify(config);
+
+          const specification = JSON.parse(app.savedSpecification);
+          searchInJson(specification, "data_source_id", replacer);
+          state.savedSpecification = JSON.stringify(specification);
+          if (
+            state.savedConfig !== app.savedConfig ||
+            state.savedSpecification !== app.savedSpecification
+          ) {
+            logger.info(`Migrating ${app.name}).`);
+
+            if (execute) {
+              await app.updateState(auth, state);
+            }
+          }
         }
       }
     }
