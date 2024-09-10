@@ -1,5 +1,6 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
+import * as fs from "fs";
 import type { Logger } from "pino";
 
 import { Authenticator } from "@app/lib/auth";
@@ -36,7 +37,9 @@ function searchInJson(
 async function migrateApps(
   workspace: LightWorkspaceType,
   logger: Logger,
-  execute: boolean
+  execute: boolean,
+  before: fs.WriteStream,
+  after: fs.WriteStream
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const vaults = await VaultResource.listWorkspaceVaults(auth);
@@ -119,6 +122,24 @@ async function migrateApps(
             state.savedConfig !== app.savedConfig ||
             state.savedSpecification !== app.savedSpecification
           ) {
+            before.write(
+              JSON.stringify({
+                id: app.id,
+                savedConfig: app.savedConfig,
+                savedSpecification: app.savedSpecification,
+              })
+            );
+            before.write("\n");
+
+            after.write(
+              JSON.stringify({
+                id: app.id,
+                savedConfig: state.savedConfig,
+                savedSpecification: state.savedSpecification,
+              })
+            );
+            after.write("\n");
+
             logger.info(`Migrating ${app.name}).`);
 
             if (execute) {
@@ -132,9 +153,13 @@ async function migrateApps(
 }
 
 makeScript({}, async ({ execute }, logger) => {
-  return runOnAllWorkspaces(async (workspace) => {
+  const before = fs.createWriteStream("apps-before.jsonl");
+  const after = fs.createWriteStream("apps-after.jsonl");
+  await runOnAllWorkspaces(async (workspace) => {
     logger.info(`Migrate apps for ${workspace.sId}.`);
-    await migrateApps(workspace, logger, execute);
+    await migrateApps(workspace, logger, execute, before, after);
     logger.info(`Finished migrate apps (${workspace.sId}).`);
   });
+  before.end();
+  after.end();
 });
