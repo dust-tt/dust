@@ -32,7 +32,17 @@ async function handler<T extends boolean>(
         supportedOrderColumn: ["createdAt"],
       });
 
-      const returnLight = req.query.light as string;
+      const returnLight = req.query.light;
+
+      if (typeof returnLight !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Parameter 'light' needs to be a string",
+          },
+        });
+      }
 
       if (paginationRes.isErr()) {
         return apiError(req, res, {

@@ -71,7 +71,7 @@ export function CreateVaultModal({
   const router = useRouter();
   const { members, isMembersLoading } = useMembers({
     owner,
-    returnLight: true,
+    light: true,
   });
   const sendNotification = useContext(SendNotificationsContext);
 

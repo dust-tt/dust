@@ -11,23 +11,25 @@ import {
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 
-export function useMembers<T extends boolean = false>({
+export function useMembers<Light extends boolean = false>({
   owner,
   pagination,
-  returnLight,
+  light,
 }: {
   owner: LightWorkspaceType;
   pagination?: PaginationState;
-  returnLight?: T;
+  light?: Light;
 }) {
-  const params = new URLSearchParams();
-  appendPaginationParams(params, pagination);
+  const queryParams = new URLSearchParams();
+  appendPaginationParams(queryParams, pagination);
 
-  const url = returnLight
-    ? `/api/w/${owner.sId}/members?light=true`
-    : `/api/w/${owner.sId}/members`;
+  if (light) {
+    queryParams.set("light", "true");
+  }
 
-  const membersFetcher: Fetcher<GetMembersResponseBody<T>> = fetcher;
+  const url = `/api/w/${owner.sId}/members${queryParams.toString()}`;
+
+  const membersFetcher: Fetcher<GetMembersResponseBody<Light>> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(url, membersFetcher);
 
   return {
