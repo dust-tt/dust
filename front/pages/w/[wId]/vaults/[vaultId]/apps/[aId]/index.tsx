@@ -8,7 +8,6 @@ import type {
   SpecificationBlockType,
   SpecificationType,
   SubscriptionType,
-  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -39,7 +38,6 @@ import { useSavedRunStatus } from "@app/lib/swr/apps";
 import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  user: UserType | null;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   readOnly: boolean;
