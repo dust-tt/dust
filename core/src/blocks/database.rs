@@ -64,7 +64,6 @@ impl Block for Database {
         name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-        project_id: i64,
     ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
@@ -102,7 +101,7 @@ impl Block for Database {
         };
 
         let query = replace_variables_in_string(&self.query, "query", env)?;
-        let tables = load_tables_from_identifiers(&table_identifiers, env, project_id).await?;
+        let tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
         match query_database(&tables, env.store.clone(), &query).await {
             Ok((results, schema)) => Ok(BlockResult {
