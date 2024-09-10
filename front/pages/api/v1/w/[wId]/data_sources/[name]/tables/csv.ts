@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
 import { handlePostTableCsvUpsertRequest } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/csv";
 
 export const config = {
@@ -19,22 +20,10 @@ export const config = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  const owner = workspaceAuth.workspace();
-  const plan = workspaceAuth.plan();
-  const isSystemKey = keyRes.value.isSystem;
-  if (!owner || !plan || !workspaceAuth.isBuilder() || !isSystemKey) {
+  if (!auth.isSystemKey()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -46,7 +35,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      return handlePostTableCsvUpsertRequest(workspaceAuth, req, res);
+      return handlePostTableCsvUpsertRequest(auth, req, res);
 
     default:
       return apiError(req, res, {
@@ -59,4 +48,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicAPIAuthentication(handler);

@@ -19,14 +19,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { Provider } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 export type PostRunResponseBody = {
   run: RunType;
@@ -168,38 +168,20 @@ function extractUsageFromExecutions(
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostRunResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostRunResponseBody>>,
+  auth: Authenticator,
+  keyAuth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-
-  const { keyAuth, workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string,
-    getGroupIdsFromHeaders(req.headers)
-  );
-
-  const owner = workspaceAuth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
-      },
-    });
-  }
+  const keyWorkspaceId = keyAuth.getNonNullableWorkspace().id;
 
   const [app, providers, secrets] = await Promise.all([
-    AppResource.fetchById(workspaceAuth, req.query.aId as string),
+    AppResource.fetchById(auth, req.query.aId as string),
     Provider.findAll({
       where: {
-        workspaceId: keyRes.value.workspaceId,
+        workspaceId: keyWorkspaceId,
       },
     }),
-    getDustAppSecrets(workspaceAuth, true),
+    getDustAppSecrets(auth, true),
   ]);
 
   if (!app) {
@@ -211,6 +193,8 @@ async function handler(
       },
     });
   }
+
+  const owner = auth.getNonNullableWorkspace();
 
   // This variable is used in the context of the DustAppRun action to use the workspace credentials
   // instead of our managed credentials when running an app with a system API key.
@@ -252,14 +236,14 @@ async function handler(
       }
 
       let credentials: CredentialsType | null = null;
-      if (keyRes.value.isSystem && !useWorkspaceCredentials) {
+      if (auth.isSystemKey() && !useWorkspaceCredentials) {
         // Dust managed credentials: system API key (packaged apps).
         credentials = dustManagedCredentials();
       } else {
         credentials = credentialsFromProviders(providers);
       }
 
-      if (!keyRes.value.isSystem) {
+      if (!auth.isSystemKey()) {
         const remaining = await rateLimiter({
           key: `app_run:w:${owner.sId}:a:${app.sId}`,
           maxPerTimeframe: 10000,
@@ -426,7 +410,7 @@ async function handler(
         dustRunId,
         appId: app.id,
         runType: "deploy",
-        workspaceId: keyRes.value.workspaceId,
+        workspaceId: keyWorkspaceId,
       });
 
       await run.recordRunUsage(usages);
@@ -500,4 +484,6 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicAPIAuthentication(handler, {
+  allowUserOutsideCurrentWorkspace: true,
+});

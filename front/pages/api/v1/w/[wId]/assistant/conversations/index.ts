@@ -5,7 +5,6 @@ import type {
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
-  DustUserEmailHeader,
   isEmptyString,
   PublicPostConversationsRequestBodySchema,
 } from "@dust-tt/types";
@@ -20,9 +19,9 @@ import {
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
 
 export type PostConversationsResponseBody = {
   conversation: ConversationType;
@@ -92,45 +91,9 @@ export type PostConversationsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostConversationsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostConversationsResponseBody>>,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-
-  const authenticator = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string,
-    getGroupIdsFromHeaders(req.headers)
-  );
-  let { workspaceAuth } = authenticator;
-  const { keyAuth } = authenticator;
-
-  if (
-    !workspaceAuth.isBuilder() ||
-    keyAuth.getNonNullableWorkspace().sId !== req.query.wId
-  ) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The Assistant API is only available on your own workspace.",
-      },
-    });
-  }
-
-  const owner = workspaceAuth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you're trying to access was not found",
-      },
-    });
-  }
-
   switch (req.method) {
     case "POST":
       const bodyValidation = PublicPostConversationsRequestBodySchema.decode(
@@ -181,21 +144,7 @@ async function handler(
         }
       }
 
-      // /!\ This is reserved for internal use!
-      // If the header "x-api-user-email" is present and valid,
-      // associate the message with the provided user email if it belongs to the same workspace.
-      const userEmailFromHeader = req.headers[DustUserEmailHeader];
-      if (typeof userEmailFromHeader === "string") {
-        workspaceAuth =
-          (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
-            workspaceAuth,
-            {
-              userEmail: userEmailFromHeader,
-            }
-          )) ?? workspaceAuth;
-      }
-
-      let conversation = await createConversation(workspaceAuth, {
+      let conversation = await createConversation(auth, {
         title,
         visibility,
       });
@@ -210,7 +159,7 @@ async function handler(
         });
 
         const cfRes = await postNewContentFragment(
-          workspaceAuth,
+          auth,
           conversation,
           {
             ...contentFragment,
@@ -236,7 +185,7 @@ async function handler(
 
         newContentFragment = cfRes.value;
         const updatedConversation = await getConversation(
-          workspaceAuth,
+          auth,
           conversation.sId
         );
         if (updatedConversation) {
@@ -250,7 +199,7 @@ async function handler(
         // PostUserMessageWithPubSub returns swiftly since it only waits for the
         // initial message creation event (or error)
         const messageRes = await postUserMessageWithPubSub(
-          workspaceAuth,
+          auth,
           {
             conversation,
             content: message.content,
@@ -280,7 +229,7 @@ async function handler(
         // created as well, so pulling the conversation again will allow to have an up to date view
         // of the conversation with agent messages included so that the user of the API can start
         // streaming events from these agent messages directly.
-        const updated = await getConversation(workspaceAuth, conversation.sId);
+        const updated = await getConversation(auth, conversation.sId);
 
         if (!updated) {
           throw `Conversation unexpectedly not found after creation: ${conversation.sId}`;
@@ -307,4 +256,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicAPIAuthentication(handler);

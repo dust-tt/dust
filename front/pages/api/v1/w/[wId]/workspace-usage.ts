@@ -6,14 +6,15 @@ import * as reporter from "io-ts-reporters";
 import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import {
   getAssistantsUsageData,
   getBuildersUsageData,
   getMessageUsageData,
   getUserUsageData,
 } from "@app/lib/workspace_usage";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 import { getSupportedUsageTablesCodec } from "@app/pages/api/w/[wId]/workspace-usage";
 
 export const usageTables = [
@@ -118,28 +119,10 @@ const GetWorkspaceUsageSchema = t.union([
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse
+  res: NextApiResponse,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  const owner = workspaceAuth.workspace();
-  if (!owner || !workspaceAuth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
-      },
-    });
-  }
-
+  const owner = auth.getNonNullableWorkspace();
   if (!owner.flags.includes("usage_data_api")) {
     return apiError(req, res, {
       status_code: 403,
@@ -268,4 +251,4 @@ async function fetchUsageData({
   }
 }
 
-export default withLogging(handler);
+export default withPublicAPIAuthentication(handler);
