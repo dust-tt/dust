@@ -1,7 +1,4 @@
-import type { PostOrPatchAgentConfigurationRequestBody } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
 import _ from "lodash";
-import type { Logger } from "@app/logger/logger";
 import { Sequelize } from "sequelize";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -9,8 +6,9 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { makeScript } from "@app/scripts/helpers";
+import type { Logger } from "@app/logger/logger";
 import { getDataSourceViewIdsFromActions } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   // All workspaces that have at least one agent
