@@ -354,8 +354,9 @@ export function ConnectorPermissionsModal({
 
   const [updatedPermissionByInternalId, setUpdatedPermissionByInternalId] =
     useState<Record<string, ConnectorPermission>>({});
-  const [showEditionModal, setShowEditionModal] = useState(false);
-  const [showDataSelectionModal, setShowDataSelectionModal] = useState(false);
+  const [modalToShow, setModalToShow] = useState<
+    "edition" | "selection" | null
+  >(null);
 
   const [saving, setSaving] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
@@ -423,15 +424,12 @@ export function ConnectorPermissionsModal({
   useEffect(() => {
     if (isOpen) {
       if (showAddDataModal(connector.type)) {
-        setShowDataSelectionModal(true);
-        setShowEditionModal(false);
+        setModalToShow("selection");
       } else {
-        setShowEditionModal(true);
-        setShowDataSelectionModal(false);
+        setModalToShow("edition");
       }
     } else {
-      setShowEditionModal(false);
-      setShowDataSelectionModal(false);
+      setModalToShow(null);
     }
   }, [connector.type, isOpen]);
 
@@ -448,18 +446,20 @@ export function ConnectorPermissionsModal({
           icon={Cog6ToothIcon}
           disabled={readOnly || !isAdmin}
           onClick={() => {
-            if (showAddDataModal(connector.type)) {
-              setShowDataSelectionModal(isOpen);
-            } else {
-              setShowEditionModal(isOpen);
+            if (isOpen) {
+              if (showAddDataModal(connector.type)) {
+                setModalToShow("selection");
+              } else {
+                setModalToShow("edition");
+              }
+              onManageButtonClick();
             }
-            onManageButtonClick();
           }}
         />
       )}
       <Modal
         title="Selected data sources"
-        isOpen={showDataSelectionModal}
+        isOpen={modalToShow === "selection"}
         onClose={closeModal}
         onSave={save}
         saveLabel="Save"
@@ -476,8 +476,7 @@ export function ConnectorPermissionsModal({
               variant="tertiary"
               icon={LockIcon}
               onClick={() => {
-                setShowEditionModal(true);
-                setShowDataSelectionModal(false);
+                setModalToShow("edition");
               }}
             />
           </div>
@@ -525,7 +524,7 @@ export function ConnectorPermissionsModal({
         </div>
       </Modal>
       <DataSourceEditionModal
-        isOpen={showEditionModal}
+        isOpen={modalToShow === "edition"}
         onClose={closeModal}
         dataSource={dataSource}
         owner={owner}
