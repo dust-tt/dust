@@ -9,10 +9,7 @@ import {
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
-import type {
-  LightUserType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
+import type { LightUserType, LightWorkspaceType } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type { CellContext } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";

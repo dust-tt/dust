@@ -1,8 +1,4 @@
-import type {
-  LightUserType,
-  LightWorkspaceType,
-  UserTypeWithWorkspaces,
-} from "@dust-tt/types";
+import type { LightWorkspaceType } from "@dust-tt/types";
 import type { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -22,7 +18,7 @@ export function useMembers<T extends boolean = false>({
 }: {
   owner: LightWorkspaceType;
   pagination?: PaginationState;
-  returnLight?: boolean;
+  returnLight?: T;
 }) {
   const params = new URLSearchParams();
   appendPaginationParams(params, pagination);
@@ -35,13 +31,7 @@ export function useMembers<T extends boolean = false>({
   const { data, error, mutate } = useSWRWithDefaults(url, membersFetcher);
 
   return {
-    members: useMemo(
-      () =>
-        (data ? data.members : []) as T extends true
-          ? LightUserType[]
-          : UserTypeWithWorkspaces[],
-      [data]
-    ),
+    members: useMemo(() => (data ? data.members : []), [data]),
     isMembersLoading: !error && !data,
     isMembersError: error,
     mutateMembers: mutate,
