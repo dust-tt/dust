@@ -101,30 +101,16 @@ async function handler(
     });
   }
 
-  const globalVault =
-    await VaultResource.fetchWorkspaceGlobalVault(workspaceAuth);
-  if (!globalVault) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "vault_not_found",
-        message: "The vault you're trying to access was not found",
-      },
-    });
-  }
-
-  if (req.query.vId !== undefined && req.query.vId !== globalVault.sId) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "vault_not_found",
-        message: "The vault you're trying to access was not found",
-      },
-    });
+  let vaultId = req.query.vId;
+  // Handling the case where vId is undefined to keep support
+  // for the legacy endpoint (not under vault, global vault assumed).
+  if (vaultId === undefined) {
+    const globalVault = await VaultResource.fetchWorkspaceGlobalVault(keyAuth);
+    vaultId = globalVault.sId;
   }
 
   const [app, providers, secrets] = await Promise.all([
-    AppResource.fetchById(workspaceAuth, req.query.aId as string),
+    AppResource.fetchById(keyAuth, req.query.aId as string),
     Provider.findAll({
       where: {
         workspaceId: keyRes.value.workspaceId,
@@ -133,7 +119,7 @@ async function handler(
     getDustAppSecrets(workspaceAuth, true),
   ]);
 
-  if (!app || app.vault.sId !== globalVault.sId) {
+  if (!app || !app.canWrite(keyAuth) || app.vault.sId !== vaultId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

@@ -47,30 +47,18 @@ async function handler(
     });
   }
 
-  const globalVault = await VaultResource.fetchWorkspaceGlobalVault(keyAuth);
-  if (!globalVault) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "vault_not_found",
-        message: "The vault you're trying to access was not found",
-      },
-    });
-  }
+  let vaultId = req.query.vId;
 
-  if (req.query.vId !== undefined && req.query.vId !== globalVault.sId) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "vault_not_found",
-        message: "The vault you're trying to access was not found",
-      },
-    });
+  // Handling the case where vId is undefined to keep support
+  // for the legacy endpoint (not under vault, global vault assumed).
+  if (vaultId === undefined) {
+    const globalVault = await VaultResource.fetchWorkspaceGlobalVault(keyAuth);
+    vaultId = globalVault.sId;
   }
 
   const app = await AppResource.fetchById(keyAuth, req.query.aId as string);
 
-  if (!app || app.vault.sId !== globalVault.sId) {
+  if (!app || !app.canRead(keyAuth) || app.vault.sId !== vaultId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
