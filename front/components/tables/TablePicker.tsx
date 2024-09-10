@@ -1,7 +1,5 @@
 import { DropdownMenu, Input } from "@dust-tt/sparkle";
-import type { VaultType, WorkspaceType } from "@dust-tt/types";
-import type { CoreAPITable } from "@dust-tt/types";
-import { Menu } from "@headlessui/react";
+import type { CoreAPITable, VaultType, WorkspaceType } from "@dust-tt/types";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 
