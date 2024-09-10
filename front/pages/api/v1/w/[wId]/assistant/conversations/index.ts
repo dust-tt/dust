@@ -5,6 +5,7 @@ import type {
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
+  DustUserEmailHeader,
   isEmptyString,
   PublicPostConversationsRequestBodySchema,
 } from "@dust-tt/types";
@@ -183,7 +184,7 @@ async function handler(
       // /!\ This is reserved for internal use!
       // If the header "x-api-user-email" is present and valid,
       // associate the message with the provided user email if it belongs to the same workspace.
-      const userEmailFromHeader = req.headers["x-api-user-email"];
+      const userEmailFromHeader = req.headers[DustUserEmailHeader];
       if (typeof userEmailFromHeader === "string") {
         workspaceAuth =
           (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(

@@ -314,7 +314,14 @@ async function botAnswerMessage(
     );
   }
 
-  const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
+  const userEmailHeader =
+    slackChatBotMessage.slackEmail !== "unknown"
+      ? slackChatBotMessage.slackEmail
+      : undefined;
+
+  const agentConfigurationsRes = await dustAPI.getAgentConfigurations({
+    userEmailHeader,
+  });
   if (agentConfigurationsRes.isErr()) {
     return new Err(new Error(agentConfigurationsRes.error.message));
   }
@@ -444,10 +451,7 @@ async function botAnswerMessage(
     const mesasgeRes = await dustAPI.postUserMessage({
       conversationId: lastSlackChatBotMessage.conversationId,
       message: messageReqBody,
-      userEmailHeader:
-        slackChatBotMessage.slackEmail !== "unknown"
-          ? slackChatBotMessage.slackEmail
-          : undefined,
+      userEmailHeader,
     });
     if (mesasgeRes.isErr()) {
       return new Err(new Error(mesasgeRes.error.message));
@@ -455,6 +459,7 @@ async function botAnswerMessage(
     userMessage = mesasgeRes.value;
     const conversationRes = await dustAPI.getConversation({
       conversationId: lastSlackChatBotMessage.conversationId,
+      // TODO(VAULTS_INFRA) Add support for userEmailHeader and group
     });
     if (conversationRes.isErr()) {
       return new Err(new Error(conversationRes.error.message));
@@ -466,10 +471,7 @@ async function botAnswerMessage(
       visibility: "unlisted",
       message: messageReqBody,
       contentFragment: buildContentFragmentRes.value || undefined,
-      userEmailHeader:
-        slackChatBotMessage.slackEmail !== "unknown"
-          ? slackChatBotMessage.slackEmail
-          : undefined,
+      userEmailHeader,
     });
     if (convRes.isErr()) {
       return new Err(new Error(convRes.error.message));
