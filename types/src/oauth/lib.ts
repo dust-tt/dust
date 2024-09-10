@@ -14,7 +14,7 @@ export const OAUTH_PROVIDERS = [
   "notion",
   "slack",
   "gong",
-  "microsoft"
+  "microsoft",
 ] as const;
 
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
