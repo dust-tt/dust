@@ -1,6 +1,5 @@
 import {
   Button,
-  DocumentDuplicateIcon,
   DocumentTextIcon,
   PlayIcon,
   Tab,
@@ -372,20 +371,6 @@ export default function AppView({
                       return `Error: ${runError.message}`;
                   }
                 })()}
-              </div>
-            ) : null}
-            {readOnly && user ? (
-              <div className="flex-initial">
-                <Button
-                  variant="secondary"
-                  label="Clone"
-                  icon={DocumentDuplicateIcon}
-                  onClick={() => {
-                    void router.push(
-                      `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/clone`
-                    );
-                  }}
-                />
               </div>
             ) : null}
             <div className="flex-1"></div>

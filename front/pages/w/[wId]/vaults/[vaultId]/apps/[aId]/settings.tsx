@@ -262,33 +262,6 @@ export default function SettingsView({
                       <div className="mt-4 space-y-4">
                         <div className="flex items-center">
                           <input
-                            id="appVisibilityPublic"
-                            name="visibility"
-                            type="radio"
-                            className="h-4 w-4 cursor-pointer border-gray-300 text-action-600 focus:ring-action-500"
-                            value="public"
-                            checked={appVisibility == "public"}
-                            onChange={(e) => {
-                              if (e.target.value != appVisibility) {
-                                setAppVisibility(
-                                  e.target.value as AppVisibility
-                                );
-                              }
-                            }}
-                          />
-                          <label
-                            htmlFor="appVisibilityPublic"
-                            className="ml-3 block text-sm font-medium text-gray-700"
-                          >
-                            Public
-                            <p className="mt-0 text-sm font-normal text-gray-500">
-                              Anyone on the Internet with the link can see the
-                              app. Only builders of your workspace can edit.
-                            </p>
-                          </label>
-                        </div>
-                        <div className="flex items-center">
-                          <input
                             id="appVisibilityPrivate"
                             name="visibility"
                             type="radio"
@@ -309,7 +282,7 @@ export default function SettingsView({
                           >
                             Private
                             <p className="mt-0 text-sm font-normal text-gray-500">
-                              Only builders of your workspace can see and edit
+                              Only members of your workspace can see and edit
                               the app.
                             </p>
                           </label>
@@ -333,17 +306,6 @@ export default function SettingsView({
                 label={isUpdating ? "Updating..." : "Update"}
               />
               <div className="flex-1"></div>
-              <div className="flex">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    void router.push(
-                      `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/clone`
-                    );
-                  }}
-                  label="Clone"
-                />
-              </div>
               <div className="ml-2 flex">
                 <Button
                   variant="secondaryWarning"

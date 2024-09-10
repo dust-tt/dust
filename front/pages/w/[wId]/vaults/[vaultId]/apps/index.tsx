@@ -726,10 +726,7 @@ function Apps({
                 <div className="ml-2 flex flex-shrink-0">
                   <p
                     className={classNames(
-                      "inline-flex rounded-full px-2 text-xs font-semibold leading-5",
-                      app.visibility == "public"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
+                      "inline-flex rounded-full bg-gray-100 px-2 text-xs font-semibold leading-5 text-gray-800"
                     )}
                   >
                     {app.visibility}

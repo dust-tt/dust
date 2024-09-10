@@ -48,7 +48,7 @@ async function handler(
         !req.body ||
         !(typeof req.body.name == "string") ||
         !(typeof req.body.description == "string") ||
-        !["public", "private"].includes(req.body.visibility)
+        !["private"].includes(req.body.visibility)
       ) {
         return apiError(req, res, {
           status_code: 400,

@@ -1,4 +1,4 @@
-import type { DatasetSchema } from "@dust-tt/types";
+import type { AppVisibility, DatasetSchema } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -23,7 +23,7 @@ export class App extends Model<
   declare sId: string;
   declare name: string;
   declare description: string | null;
-  declare visibility: "public" | "private" | "deleted";
+  declare visibility: AppVisibility;
   declare savedSpecification: string | null;
   declare savedConfig: string | null;
   declare savedRun: string | null;

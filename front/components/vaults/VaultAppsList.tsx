@@ -25,7 +25,6 @@ type RowData = {
   icon: ComponentType;
   connector?: ConnectorType;
   fetchConnectorError?: string;
-  visibility: string;
   workspaceId: string;
   onClick?: () => void;
 };
@@ -46,15 +45,6 @@ const getTableColumns = () => {
         </DataTable.CellContent>
       ),
       accessorFn: (row: RowData) => row.name,
-    },
-    {
-      id: "visibility",
-      cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent>
-          <Chip color="slate">{info.getValue()}</Chip>
-        </DataTable.CellContent>
-      ),
-      accessorFn: (row: RowData) => row.visibility,
     },
   ];
 };
@@ -84,7 +74,6 @@ export const VaultAppsList = ({
         name: app.name,
         icon: CommandLineIcon,
         workspaceId: owner.sId,
-        visibility: app.visibility === "private" ? "Private" : "Public",
         onClick: () => onSelect(app.sId),
       })) || [],
     [apps, onSelect, owner]
