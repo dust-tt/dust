@@ -14,18 +14,13 @@ import {
 import type {
   APIError,
   ConnectorProvider,
-  ConnectorType,
-  DataSourceType,
   DataSourceViewCategory,
   DataSourceViewType,
   DataSourceViewWithConnectorType,
   PlanType,
-  UpdateConnectorRequestBody,
-  UserType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
 import { isWebsiteOrFolderCategory } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
@@ -34,18 +29,11 @@ import { useContext, useMemo } from "react";
 import { useRef } from "react";
 import { useState } from "react";
 
-import {
-  ConnectorPermissionsModal,
-  getRenderingConfigForConnectorProvider,
-} from "@app/components/ConnectorPermissionsModal";
-import { DataSourceEditionModal } from "@app/components/data_source/DataSourceEditionModal";
+import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import {
-  AddConnectionMenu,
-  setupConnection,
-} from "@app/components/vaults/AddConnectionMenu";
+import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -76,7 +64,6 @@ type RowData = {
 type VaultResourcesListProps = {
   dustClientFacingUrl: string;
   owner: WorkspaceType;
-  user: UserType;
   plan: PlanType;
   isAdmin: boolean;
   canWriteInVault: boolean;
@@ -202,7 +189,6 @@ const getTableColumns = ({
 
 export const VaultResourcesList = ({
   owner,
-  user,
   plan,
   isAdmin,
   canWriteInVault,
@@ -213,7 +199,6 @@ export const VaultResourcesList = ({
   onSelect,
 }: VaultResourcesListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
-  const [showEditionModal, setShowEditionModal] = useState(false);
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
@@ -239,78 +224,6 @@ export const VaultResourcesList = ({
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
   });
-
-  const handleUpdatePermissions = async (
-    connector: ConnectorType,
-    dataSource: DataSourceType
-  ) => {
-    const provider = connector.type;
-
-    const connectionIdRes = await setupConnection({
-      dustClientFacingUrl,
-      owner,
-      provider,
-    });
-    if (connectionIdRes.isErr()) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update the permissions of the Data Source",
-        description: connectionIdRes.error.message,
-      });
-      return;
-    }
-
-    const updateRes = await updateConnectorConnectionId(
-      connectionIdRes.value,
-      provider,
-      dataSource
-    );
-    if (updateRes.error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update the permissions of the Data Source",
-        description: updateRes.error,
-      });
-      return;
-    }
-  };
-
-  const updateConnectorConnectionId = async (
-    newConnectionId: string,
-    provider: string,
-    dataSource: DataSourceType
-  ) => {
-    const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/update`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          connectionId: newConnectionId,
-        } satisfies UpdateConnectorRequestBody),
-      }
-    );
-
-    if (res.ok) {
-      return { success: true, error: null };
-    }
-
-    const jsonErr = await res.json();
-    const error = jsonErr.error;
-
-    if (error.type === "connector_oauth_target_mismatch") {
-      return {
-        success: false,
-        error: CONNECTOR_TYPE_TO_MISMATCH_ERROR[provider as ConnectorProvider],
-      };
-    }
-    return {
-      success: false,
-      error: `Failed to update the permissions of the Data Source: (contact support@dust.tt for assistance)`,
-    };
-  };
 
   // DataSources Views of the current vault.
   const {
@@ -363,13 +276,7 @@ export const VaultResourcesList = ({
           buttonOnClick: (e) => {
             e.stopPropagation();
             setSelectedDataSourceView(dataSourceView);
-            const { addDataWithConnection } =
-              getRenderingConfigForConnectorProvider(provider);
-            if (addDataWithConnection) {
-              setShowEditionModal(addDataWithConnection);
-            } else {
-              setShowConnectorPermissionsModal(true);
-            }
+            setShowConnectorPermissionsModal(true);
           },
           onClick: () => onSelect(dataSourceView.sId),
         };
@@ -536,39 +443,19 @@ export const VaultResourcesList = ({
       )}
       {selectedDataSourceView &&
         selectedDataSourceView.dataSource.connector && (
-          <>
-            <ConnectorPermissionsModal
-              owner={owner}
-              connector={selectedDataSourceView.dataSource.connector}
-              dataSource={selectedDataSourceView.dataSource}
-              isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
-              onClose={() => {
-                setShowConnectorPermissionsModal(false);
-              }}
-              setShowEditionModal={setShowEditionModal}
-              handleUpdatePermissions={handleUpdatePermissions}
-              plan={plan}
-              readOnly={false}
-              isAdmin={isAdmin}
-            />
-            <DataSourceEditionModal
-              isOpen={showEditionModal}
-              onClose={() => setShowEditionModal(false)}
-              dataSource={selectedDataSourceView.dataSource}
-              owner={owner}
-              user={user}
-              onEditPermissionsClick={() => {
-                if (!selectedDataSourceView?.dataSource.connector) {
-                  return;
-                }
-                void handleUpdatePermissions(
-                  selectedDataSourceView.dataSource.connector,
-                  selectedDataSourceView.dataSource
-                );
-              }}
-              dustClientFacingUrl={dustClientFacingUrl}
-            />
-          </>
+          <ConnectorPermissionsModal
+            owner={owner}
+            connector={selectedDataSourceView.dataSource.connector}
+            dataSource={selectedDataSourceView.dataSource}
+            isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
+            onClose={() => {
+              setShowConnectorPermissionsModal(false);
+            }}
+            plan={plan}
+            readOnly={false}
+            isAdmin={isAdmin}
+            dustClientFacingUrl={dustClientFacingUrl}
+          />
         )}
     </>
   );

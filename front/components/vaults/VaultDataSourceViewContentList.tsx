@@ -8,6 +8,7 @@ import {
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
 import type {
+  ConnectorType,
   ContentNodesViewType,
   DataSourceViewContentNode,
   DataSourceViewType,
@@ -19,6 +20,7 @@ import { isValidContentNodesViewType } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useRef, useState } from "react";
 
+import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import type {
   ContentActionKey,
   ContentActionsRef,
@@ -48,6 +50,9 @@ type VaultDataSourceViewContentListProps = {
   onSelect: (parentId: string) => void;
   owner: WorkspaceType;
   parentId?: string;
+  isAdmin: boolean;
+  dustClientFacingUrl: string;
+  connector: ConnectorType | null;
 };
 
 const getTableColumns = (): ColumnDef<RowData, string>[] => {
@@ -96,8 +101,13 @@ export const VaultDataSourceViewContentList = ({
   canReadInVault,
   onSelect,
   parentId,
+  isAdmin,
+  dustClientFacingUrl,
+  connector,
 }: VaultDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
+  const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
+    useState(false);
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
   const { pagination, setPagination } = usePaginationFromUrl({
@@ -167,7 +177,7 @@ export const VaultDataSourceViewContentList = ({
             : ""
         )}
       >
-        {rows.length > 0 && (
+        {rows.length > 0 ? (
           <>
             <Searchbar
               name="search"
@@ -178,6 +188,28 @@ export const VaultDataSourceViewContentList = ({
               }}
             />
           </>
+        ) : dataSourceView.category === "managed" && connector ? (
+          <div className="flex flex-col items-center gap-4 text-sm text-element-700">
+            <span>Connection ready. Select the data to sync.</span>
+            <ConnectorPermissionsModal
+              owner={owner}
+              connector={connector}
+              dataSource={dataSourceView.dataSource}
+              isOpen={showConnectorPermissionsModal}
+              onClose={() => {
+                setShowConnectorPermissionsModal(false);
+              }}
+              plan={plan}
+              readOnly={false}
+              isAdmin={isAdmin}
+              dustClientFacingUrl={dustClientFacingUrl}
+              onManageButtonClick={() => {
+                setShowConnectorPermissionsModal(true);
+              }}
+            />
+          </div>
+        ) : (
+          <></>
         )}
         {isFolder(dataSourceView.dataSource) && (
           <>
@@ -244,10 +276,24 @@ export const VaultDataSourceViewContentList = ({
           } else if (action === "TableUploadOrEdit") {
             handleViewTypeChange("tables");
           }
-
           await mutateDataSourceViewContentNodes();
         }}
       />
+      {connector && (
+        <ConnectorPermissionsModal
+          owner={owner}
+          connector={connector}
+          dataSource={dataSourceView.dataSource}
+          isOpen={showConnectorPermissionsModal}
+          onClose={() => {
+            setShowConnectorPermissionsModal(false);
+          }}
+          plan={plan}
+          readOnly={false}
+          isAdmin={isAdmin}
+          dustClientFacingUrl={dustClientFacingUrl}
+        />
+      )}
     </>
   );
 };

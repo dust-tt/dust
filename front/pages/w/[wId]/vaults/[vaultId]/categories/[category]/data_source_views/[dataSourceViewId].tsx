@@ -1,10 +1,12 @@
 import { Page } from "@dust-tt/sparkle";
 import type {
+  ConnectorType,
   DataSourceType,
   DataSourceViewCategory,
   DataSourceViewType,
   PlanType,
 } from "@dust-tt/types";
+import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -14,19 +16,22 @@ import { VaultDataSourceViewContentList } from "@app/components/vaults/VaultData
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
 import config from "@app/lib/api/config";
+import apiConfig from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import logger from "@app/logger/logger";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
     category: DataSourceViewCategory;
     dataSource: DataSourceType;
     dataSourceView: DataSourceViewType;
-    isAdmin: boolean;
     canWriteInVault: boolean;
     canReadInVault: boolean;
     parentId?: string;
     plan: PlanType;
+    dustClientFacingUrl: string;
+    connector: ConnectorType | null;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -74,6 +79,20 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const canWriteInVault = vault.canWrite(auth);
   const canReadInVault = vault.canRead(auth);
 
+  let connector: ConnectorType | null = null;
+  if (dataSourceView.dataSource.connectorId) {
+    const connectorsAPI = new ConnectorsAPI(
+      config.getConnectorsAPIConfig(),
+      logger
+    );
+    const connectorRes = await connectorsAPI.getConnector(
+      dataSourceView.dataSource.connectorId
+    );
+    if (connectorRes.isOk()) {
+      connector = connectorRes.value;
+    }
+  }
+
   return {
     props: {
       category: context.query.category as DataSourceViewCategory,
@@ -89,6 +108,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       plan,
       subscription,
       vault: vault.toJSON(),
+      dustClientFacingUrl: apiConfig.getClientFacingUrl(),
+      connector,
     },
   };
 });
@@ -102,6 +123,9 @@ export default function Vault({
   owner,
   parentId,
   plan,
+  isAdmin,
+  dustClientFacingUrl,
+  connector,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   return (
@@ -119,6 +143,9 @@ export default function Vault({
             `/w/${owner.sId}/vaults/${dataSourceView.vaultId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${parentId}`
           );
         }}
+        isAdmin={isAdmin}
+        dustClientFacingUrl={dustClientFacingUrl}
+        connector={connector}
       />
     </Page.Vertical>
   );
