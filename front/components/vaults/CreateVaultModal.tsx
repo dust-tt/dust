@@ -31,6 +31,8 @@ type RowData = {
 
 type Info = CellContext<RowData, unknown>;
 
+const defaultPageSize = 25;
+
 interface CreateVaultModalProps {
   owner: LightWorkspaceType;
   isOpen: boolean;
@@ -54,6 +56,10 @@ export function CreateVaultModal({
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: defaultPageSize,
+  });
   const { mutate: mutateVaults } = useVaults({
     workspaceId: owner.sId,
     disabled: true, // Disable as we just want the mutation function
@@ -239,6 +245,8 @@ export function CreateVaultModal({
                   columns={columns}
                   filterColumn="name"
                   filter={searchTerm}
+                  pagination={pagination}
+                  setPagination={setPagination}
                 />
               </div>
             )}
