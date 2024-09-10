@@ -59,27 +59,25 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
   ) {
     // TODO(GROUPS_INFRA) Use auth.workspaceId.
     const results = await frontSequelize.transaction(async (transaction) => {
-      const createdDocuments = await Promise.all(
-        blobs.map(async ({ blob, chunks }) => {
-          const doc = await RetrievalDocument.create(blob, { transaction });
+      const createdDocuments = [];
 
-          await Promise.all(
-            chunks.map(async (c) => {
-              await RetrievalDocumentChunk.create(
-                {
-                  text: c.text,
-                  offset: c.offset,
-                  score: c.score,
-                  retrievalDocumentId: doc.id,
-                },
-                { transaction }
-              );
-            })
+      for (const { blob, chunks } of blobs) {
+        const doc = await RetrievalDocument.create(blob, { transaction });
+
+        for (const c of chunks) {
+          await RetrievalDocumentChunk.create(
+            {
+              text: c.text,
+              offset: c.offset,
+              score: c.score,
+              retrievalDocumentId: doc.id,
+            },
+            { transaction }
           );
+        }
 
-          return new this(RetrievalDocument, doc.get(), chunks);
-        })
-      );
+        createdDocuments.push(new this(RetrievalDocument, doc.get(), chunks));
+      }
 
       return createdDocuments;
     });
