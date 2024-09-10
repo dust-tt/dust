@@ -9,7 +9,10 @@ import {
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, UserType } from "@dust-tt/types";
+import type {
+  LightUserType,
+  LightWorkspaceType,
+} from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type { CellContext } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
@@ -37,7 +40,7 @@ interface CreateVaultModalProps {
   onClose: () => void;
 }
 
-function getTableRows(allUsers: UserType[]): RowData[] {
+function getTableRows(allUsers: LightUserType[]): RowData[] {
   return allUsers.map((user) => ({
     icon: user.image ?? "",
     name: user.fullName,
@@ -63,7 +66,10 @@ export function CreateVaultModal({
     disabled: true, // Disable as we just want the mutation function
   });
   const router = useRouter();
-  const { members, isMembersLoading } = useMembers(owner);
+  const { members, isMembersLoading } = useMembers({
+    owner,
+    returnLight: true,
+  });
   const sendNotification = useContext(SendNotificationsContext);
 
   const getTableColumns = useCallback(() => {

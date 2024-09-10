@@ -1,25 +1,26 @@
 import type {
+  LightUserType,
   UserTypeWithWorkspaces,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getPaginationParams } from "@app/lib/api/pagination";
-import { getMembers } from "@app/lib/api/workspace";
+import { getMembers, getMembersLight } from "@app/lib/api/workspace";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
 const DEFAULT_PAGE_LIMIT = 50;
 
-export type GetMembersResponseBody = {
-  members: UserTypeWithWorkspaces[];
+export type GetMembersResponseBody<T extends boolean> = {
+  members: T extends true ? LightUserType[] : UserTypeWithWorkspaces[];
   total: number;
 };
 
-async function handler(
+async function handler<T extends boolean>(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetMembersResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetMembersResponseBody<T>>>,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
@@ -30,6 +31,8 @@ async function handler(
         defaultOrderDirection: "desc",
         supportedOrderColumn: ["createdAt"],
       });
+
+      const returnLight = req.query.light as string;
 
       if (paginationRes.isErr()) {
         return apiError(req, res, {
@@ -44,17 +47,21 @@ async function handler(
       const paginationParams = paginationRes.value;
 
       if (auth.isBuilder() && req.query.role && req.query.role === "admin") {
-        const { members, total } = await getMembers(
-          auth,
-          {
-            roles: ["admin"],
-          },
-          paginationParams
-        );
+        const { members, total } = returnLight
+          ? await getMembersLight(auth, {
+              roles: ["admin"],
+            })
+          : await getMembers(
+              auth,
+              {
+                roles: ["admin"],
+              },
+              paginationParams
+            );
         res.status(200).json({
           members,
           total,
-        });
+        } as GetMembersResponseBody<T>);
         return;
       }
 
@@ -69,12 +76,14 @@ async function handler(
         });
       }
 
-      const { members, total } = await getMembers(auth, {}, paginationParams);
+      const { members, total } = returnLight
+        ? await getMembersLight(auth, {})
+        : await getMembers(auth, {}, paginationParams);
 
       res.status(200).json({
         members,
         total,
-      });
+      } as GetMembersResponseBody<T>);
       return;
 
     default:

@@ -1,4 +1,8 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
+import type {
+  LightUserType,
+  LightWorkspaceType,
+  UserTypeWithWorkspaces,
+} from "@dust-tt/types";
 import type { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -11,21 +15,33 @@ import {
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 
-export function useMembers(
-  owner: LightWorkspaceType,
-  pagination?: PaginationState
-) {
+export function useMembers<T extends boolean = false>({
+  owner,
+  pagination,
+  returnLight,
+}: {
+  owner: LightWorkspaceType;
+  pagination?: PaginationState;
+  returnLight?: boolean;
+}) {
   const params = new URLSearchParams();
   appendPaginationParams(params, pagination);
 
-  const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/members`,
-    membersFetcher
-  );
+  const url = returnLight
+    ? `/api/w/${owner.sId}/members?light=true`
+    : `/api/w/${owner.sId}/members`;
+
+  const membersFetcher: Fetcher<GetMembersResponseBody<T>> = fetcher;
+  const { data, error, mutate } = useSWRWithDefaults(url, membersFetcher);
 
   return {
-    members: useMemo(() => (data ? data.members : []), [data]),
+    members: useMemo(
+      () =>
+        (data ? data.members : []) as T extends true
+          ? LightUserType[]
+          : UserTypeWithWorkspaces[],
+      [data]
+    ),
     isMembersLoading: !error && !data,
     isMembersError: error,
     mutateMembers: mutate,
@@ -34,7 +50,7 @@ export function useMembers(
 }
 
 export function useAdmins(owner: LightWorkspaceType) {
-  const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
+  const membersFetcher: Fetcher<GetMembersResponseBody<true>> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/members?role=admin`,
     membersFetcher

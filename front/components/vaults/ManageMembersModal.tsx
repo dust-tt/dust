@@ -7,7 +7,11 @@ import {
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, UserType } from "@dust-tt/types";
+import type {
+  LightUserType,
+  LightWorkspaceType,
+  UserType,
+} from "@dust-tt/types";
 import type { CellContext, Row } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -30,7 +34,7 @@ interface ManageMembersModalProps {
   onClose: () => void;
 }
 
-function getTableRows(allUsers: UserType[]): RowData[] {
+function getTableRows(allUsers: LightUserType[]): RowData[] {
   return allUsers
     .map((user) => ({
       icon: user.image ?? "",
@@ -50,7 +54,7 @@ export function ManageMembersModal({
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
-  const { members, isMembersLoading } = useMembers(owner);
+  const { members, isMembersLoading } = useMembers({ owner });
 
   const existingMemberIds = useMemo(
     () => existingMembers.map((m) => m.sId).sort(),

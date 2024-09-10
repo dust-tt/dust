@@ -1,4 +1,5 @@
 import type {
+  LightUserType,
   ModelId,
   Result,
   UserProviderType,
@@ -59,6 +60,23 @@ export class UserResource extends BaseResource<User> {
     });
 
     return users.map((user) => new UserResource(User, user.get()));
+  }
+
+  static async fetchLightUsersByModelIds(
+    ids: ModelId[]
+  ): Promise<LightUserType[]> {
+    const users = await User.findAll({
+      where: {
+        id: ids,
+      },
+      attributes: ["sId", "imageUrl", "name"],
+    });
+
+    return users.map((user) => ({
+      sId: user.sId,
+      image: user.imageUrl,
+      fullName: user.name,
+    }));
   }
 
   static async listByUsername(username: string): Promise<UserResource[]> {

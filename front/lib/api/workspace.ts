@@ -3,7 +3,6 @@ import type {
   MembershipRoleType,
   RoleType,
   SubscriptionType,
-  UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceSegmentationType,
   WorkspaceType,
@@ -15,6 +14,7 @@ import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 
 export async function getWorkspaceInfos(
   wId: string
@@ -131,7 +131,7 @@ export async function getMembers(
     activeOnly?: boolean;
   } = {},
   paginationParams?: PaginationParams
-): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
+): Promise<GetMembersResponseBody<false>> {
   const owner = auth.workspace();
   if (!owner) {
     return { members: [], total: 0 };
@@ -175,6 +175,45 @@ export async function getMembers(
   });
 
   return { members: usersWithWorkspaces, total };
+}
+
+/**
+ * Returns the users members of the workspace associated with the authenticator (without listing
+ * their own workspaces).
+ * @param auth Authenticator
+ * @param role RoleType optional filter on role
+ * @returns An object containing an array of UserTypeWithWorkspaces and the total count of members.
+ */
+export async function getMembersLight(
+  auth: Authenticator,
+  {
+    roles,
+    activeOnly,
+  }: {
+    roles?: MembershipRoleType[];
+    activeOnly?: boolean;
+  } = {}
+): Promise<GetMembersResponseBody<true>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return { members: [], total: 0 };
+  }
+
+  const { memberships } = activeOnly
+    ? await MembershipResource.getActiveMemberships({
+        workspace: owner,
+        roles,
+      })
+    : await MembershipResource.getLatestMemberships({
+        workspace: owner,
+        roles,
+      });
+
+  const users = await UserResource.fetchLightUsersByModelIds(
+    memberships.map((m) => m.userId)
+  );
+
+  return { members: users, total: users.length };
 }
 
 export async function getMembersCount(

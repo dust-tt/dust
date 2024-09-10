@@ -212,7 +212,7 @@ export default function WorkspaceAdmin({
       useState<WorkspaceLimit | null>(null);
 
     const [searchText, setSearchText] = useState("");
-    const { members, isMembersLoading } = useMembers(owner);
+    const { members, isMembersLoading } = useMembers({ owner });
 
     const [inviteEmailModalOpen, setInviteEmailModalOpen] = useState(false);
 

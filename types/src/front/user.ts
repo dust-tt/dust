@@ -63,6 +63,12 @@ export type UserType = {
   image: string | null;
 };
 
+export type LightUserType = {
+  sId: string;
+  fullName: string;
+  image: string | null;
+}
+
 export type UserTypeWithWorkspaces = UserType & {
   workspaces: LightWorkspaceType[];
 };
