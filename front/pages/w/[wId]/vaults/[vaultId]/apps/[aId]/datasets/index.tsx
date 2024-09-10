@@ -86,7 +86,7 @@ export default function DatasetsView({
       })
     ) {
       await fetch(
-        `/api/w/${owner.sId}/apps/${app.sId}/datasets/${datasetName}`,
+        `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${datasetName}`,
         {
           method: "DELETE",
           headers: {

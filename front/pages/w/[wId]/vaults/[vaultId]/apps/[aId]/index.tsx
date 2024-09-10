@@ -178,16 +178,19 @@ export default function AppView({
 
     saveTimeout = setTimeout(async () => {
       if (!readOnly) {
-        await fetch(`/api/w/${owner.sId}/apps/${app.sId}/state`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            specification: JSON.stringify(spec),
-            config: JSON.stringify(config),
-          }),
-        });
+        await fetch(
+          `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/state`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              specification: JSON.stringify(spec),
+              config: JSON.stringify(config),
+            }),
+          }
+        );
 
         console.log("STATE SAVED", spec, config);
       }
@@ -266,16 +269,19 @@ export default function AppView({
     // setTimeout to yield execution so that the button updates right away.
     setTimeout(async () => {
       const [runRes] = await Promise.all([
-        fetch(`/api/w/${owner.sId}/apps/${app.sId}/runs`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            specification: JSON.stringify(spec),
-            config: JSON.stringify(config),
-          }),
-        }),
+        fetch(
+          `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              specification: JSON.stringify(spec),
+              config: JSON.stringify(config),
+            }),
+          }
+        ),
       ]);
 
       if (!runRes.ok) {
@@ -286,13 +292,15 @@ export default function AppView({
         const [run] = await Promise.all([runRes.json()]);
 
         // Mutate the run status to trigger a refresh of `useSavedRunStatus`.
-        await mutate(`/api/w/${owner.sId}/apps/${app.sId}/runs/saved/status`);
+        await mutate(
+          `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs/saved/status`
+        );
 
         // Mutate all blocks to trigger a refresh of `useRunBlock` in each block `Output`.
         await Promise.all(
           spec.map(async (block) => {
             return mutate(
-              `/api/w/${owner.sId}/apps/${app.sId}/runs/${run.run.run_id}/blocks/${block.type}/${block.name}`
+              `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs/${run.run.run_id}/blocks/${block.type}/${block.name}`
             );
           })
         );

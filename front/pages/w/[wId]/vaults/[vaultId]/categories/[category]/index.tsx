@@ -22,7 +22,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     category: DataSourceViewCategory;
     dustClientFacingUrl: string;
     isAdmin: boolean;
-    isBuilder: boolean;
     canWriteInVault: boolean;
     vault: VaultType;
     systemVault: VaultType;
@@ -77,7 +76,6 @@ export default function Vault({
   category,
   dustClientFacingUrl,
   isAdmin,
-  isBuilder,
   canWriteInVault,
   owner,
   user,
@@ -91,7 +89,8 @@ export default function Vault({
       {category === "apps" ? (
         <VaultAppsList
           owner={owner}
-          isBuilder={isBuilder}
+          vault={vault}
+          canWriteInVault={canWriteInVault}
           onSelect={(sId) => {
             void router.push(`/w/${owner.sId}/vaults/${vault.sId}/apps/${sId}`);
           }}

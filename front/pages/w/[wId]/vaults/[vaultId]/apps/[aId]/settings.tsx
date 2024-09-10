@@ -112,9 +112,12 @@ export default function SettingsView({
       })
     ) {
       setIsDeleting(true);
-      const res = await fetch(`/api/w/${owner.sId}/apps/${app.sId}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`,
+        {
+          method: "DELETE",
+        }
+      );
       if (res.ok) {
         await router.push(dustAppsListUrl);
       } else {
@@ -132,17 +135,20 @@ export default function SettingsView({
 
   const handleUpdate = async () => {
     setIsUpdating(true);
-    const res = await fetch(`/api/w/${owner.sId}/apps/${app.sId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: appName.slice(0, MODELS_STRING_MAX_LENGTH),
-        description: appDescription.slice(0, MODELS_STRING_MAX_LENGTH),
-        visibility: "private",
-      }),
-    });
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: appName.slice(0, MODELS_STRING_MAX_LENGTH),
+          description: appDescription.slice(0, MODELS_STRING_MAX_LENGTH),
+          visibility: "private",
+        }),
+      }
+    );
     if (res.ok) {
       await router.push(
         `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`
