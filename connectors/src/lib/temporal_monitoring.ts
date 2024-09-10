@@ -145,7 +145,10 @@ export class ActivityInboundLogInterceptor
             await connectorManager.stop();
           } else {
             this.logger.error(
-              `Connector manager not found for connector ${connector.id}`
+              {
+                connectorId: connector.id,
+              },
+              `Connector manager not found for connector`
             );
           }
         }
