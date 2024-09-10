@@ -232,7 +232,7 @@ export function useDataSourceViewTables({
 
   return {
     tables: useMemo(() => (data ? data.tables : []), [data]),
-    isTablesLoading: !error && !data,
+    isTablesLoading: !disabled && !error && !data,
     isTablesError: error,
     mutateTables: mutate,
   };

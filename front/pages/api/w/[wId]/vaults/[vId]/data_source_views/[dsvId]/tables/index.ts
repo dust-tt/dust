@@ -22,14 +22,22 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<ListTablesResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const dataSourceView = await DataSourceViewResource.fetchById(
-    auth,
-    req.query.dsvId as string
-  );
+  const { dsvId, vId } = req.query;
+  if (typeof dsvId !== "string" || typeof vId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid request query parameters.",
+      },
+    });
+  }
+
+  const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId);
 
   if (
     !dataSourceView ||
-    req.query.vId !== dataSourceView.vault.sId ||
+    vId !== dataSourceView.vault.sId ||
     !dataSourceView.canList(auth)
   ) {
     return apiError(req, res, {
@@ -64,6 +72,7 @@ async function handler(
         {
           includeChildren: false,
           viewType: "tables",
+          // Use core api as ww want a flat list of all tables, even for managed datasources.
           onlyCoreAPI: true,
           pagination,
         }
