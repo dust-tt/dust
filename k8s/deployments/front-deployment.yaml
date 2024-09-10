@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: front-deployment
 spec:
-  replicas: 8
+  replicas: 12
   selector:
     matchLabels:
       app: front
@@ -60,12 +60,12 @@ spec:
 
           resources:
             requests:
-              cpu: 2000m
-              memory: 2.5Gi
+              cpu: 1250m
+              memory: 1.5Gi
 
             limits:
-              cpu: 2000m
-              memory: 2.5Gi
+              cpu: 1250m
+              memory: 1.5Gi
 
       volumes:
         - name: cert-volume
