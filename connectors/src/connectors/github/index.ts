@@ -128,10 +128,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return new Err(new Error("Connector state not found"));
       }
 
-      if (!connectorState.webhooksEnabledAt) {
-        return new Err(new Error("Connector is already stopped"));
-      }
-
       await connectorState.update({
         webhooksEnabledAt: null,
       });

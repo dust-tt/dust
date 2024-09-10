@@ -40,6 +40,7 @@ export async function getOAuthConnectionAccessTokenWithThrow({
 
     if (
       tokRes.error.code === "token_revoked_error" ||
+      tokRes.error.code === "connection_not_found" ||
       isMicrosoftApplicationDisabledError(tokRes.error, provider)
     ) {
       throw new ExternalOAuthTokenError(new Error(tokRes.error.message));
