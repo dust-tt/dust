@@ -1,9 +1,13 @@
 import { DropdownMenu, Input } from "@dust-tt/sparkle";
-import type { CoreAPITable, VaultType, WorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceViewContentNode,
+  VaultType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 
-import { useDataSourceTables } from "@app/lib/swr/data_sources";
+import { useDataSourceViewTables } from "@app/lib/swr/data_source_views";
 import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
 
@@ -23,7 +27,7 @@ export default function TablePicker({
   currentTableId?: string;
   readOnly: boolean;
   vault: VaultType;
-  onTableUpdate: (table: CoreAPITable) => void;
+  onTableUpdate: (table: DataSourceViewContentNode) => void;
 }) {
   void owner;
   void dataSource;
@@ -40,13 +44,13 @@ export default function TablePicker({
       dsv.dataSource.name === dataSource.data_source_id
   );
 
-  const { tables } = useDataSourceTables({
+  const { tables } = useDataSourceViewTables({
     workspaceId: dataSource.workspace_id,
-    dataSourceName: selectedDataSourceView?.dataSource.name,
+    dataSourceView: selectedDataSourceView ?? null,
   });
 
   const currentTable = currentTableId
-    ? tables.find((t) => t.table_id === currentTableId)
+    ? tables.find((t) => t.dustDocumentId === currentTableId)
     : null;
 
   const [searchFilter, setSearchFilter] = useState("");
@@ -55,7 +59,7 @@ export default function TablePicker({
   useEffect(() => {
     const newTables = searchFilter
       ? tables.filter((t) =>
-          t.name.toLowerCase().includes(searchFilter.toLowerCase())
+          t.title.toLowerCase().includes(searchFilter.toLowerCase())
         )
       : tables;
     setFilteredTables(newTables.slice(0, 30));
@@ -67,7 +71,7 @@ export default function TablePicker({
         {readOnly ? (
           currentTable ? (
             <div className="text-sm font-bold text-action-500">
-              {currentTable.name}
+              {currentTable.title}
             </div>
           ) : (
             "No Table"
@@ -88,7 +92,7 @@ export default function TablePicker({
                 {currentTable ? (
                   <>
                     <div className="mr-1 text-sm font-bold text-action-500">
-                      {currentTable.name}
+                      {currentTable.title}
                     </div>
                     <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
                   </>
@@ -112,8 +116,8 @@ export default function TablePicker({
                 {(filteredTables || []).map((t) => {
                   return (
                     <DropdownMenu.Item
-                      key={t.table_id}
-                      label={t.name}
+                      key={t.dustDocumentId}
+                      label={t.title}
                       onClick={() => {
                         onTableUpdate(t);
                         setSearchFilter("");
