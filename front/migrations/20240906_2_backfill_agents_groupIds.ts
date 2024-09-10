@@ -1,7 +1,7 @@
 import type { PostOrPatchAgentConfigurationRequestBody } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 import _ from "lodash";
-import type { Logger } from "pino";
+import type { Logger } from "@app/logger/logger";
 import { Sequelize } from "sequelize";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -10,6 +10,7 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { makeScript } from "@app/scripts/helpers";
+import { getDataSourceViewIdsFromActions } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 makeScript({}, async ({ execute }, logger) => {
   // All workspaces that have at least one agent
@@ -125,31 +126,4 @@ async function updateAgent(
       "Would have updated agent"
     );
   }
-}
-
-function getDataSourceViewIdsFromActions(
-  actions: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"]
-): string[] {
-  const relevantActions = actions.filter(
-    (action) =>
-      action.type === "retrieval_configuration" ||
-      action.type === "process_configuration" ||
-      action.type === "tables_query_configuration"
-  );
-
-  return removeNulls(
-    relevantActions.flatMap((action) => {
-      if (
-        action.type === "retrieval_configuration" ||
-        action.type === "process_configuration"
-      ) {
-        return action.dataSources.map(
-          (dataSource) => dataSource.dataSourceViewId
-        );
-      } else if (action.type === "tables_query_configuration") {
-        return action.tables.map((table) => table.dataSourceViewId);
-      }
-      return [];
-    })
-  );
 }
