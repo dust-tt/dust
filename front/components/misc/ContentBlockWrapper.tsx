@@ -4,8 +4,9 @@ import {
   ClipboardIcon,
   IconButton,
 } from "@dust-tt/sparkle";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
+import { useCopyToClipboard } from "@app/hooks/useCopyToClipboard";
 import { classNames } from "@app/lib/utils";
 
 type SupportedContentType = "application/json" | "text/csv";
@@ -117,32 +118,4 @@ export function ContentBlockWrapper({
       </div>
     </div>
   );
-}
-
-function useCopyToClipboard(
-  resetInterval = 2000
-): [isCopied: boolean, copy: (d: ClipboardItem) => Promise<boolean>] {
-  const [isCopied, setCopied] = useState(false);
-
-  const copy = useCallback(
-    async (d: ClipboardItem) => {
-      if (!navigator?.clipboard) {
-        console.warn("Clipboard not supported");
-        return false;
-      }
-      try {
-        await navigator.clipboard.write([d]);
-        setCopied(true);
-        setTimeout(() => setCopied(false), resetInterval);
-        return true;
-      } catch (error) {
-        console.warn("Copy failed", error);
-        setCopied(false);
-        return false;
-      }
-    },
-    [resetInterval]
-  );
-
-  return [isCopied, copy];
 }
