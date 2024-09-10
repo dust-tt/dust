@@ -1,11 +1,12 @@
 import type { DatasetType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDatasetHash } from "@app/lib/api/datasets";
+import { getDatasets } from "@app/lib/api/datasets";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { checkDatasetData } from "@app/lib/datasets";
@@ -14,30 +15,56 @@ import { Dataset } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
-import { PostDatasetRequestBodySchema } from "..";
+export type GetDatasetsResponseBody = {
+  datasets: DatasetType[];
+};
 
-export type GetDatasetResponseBody = { dataset: DatasetType };
+export type PostDatasetResponseBody = {
+  dataset: DatasetType;
+};
+
+export const PostDatasetRequestBodySchema = t.type({
+  dataset: t.type({
+    name: t.string,
+    description: t.union([t.string, t.null]),
+    data: t.array(t.record(t.string, t.any)),
+  }),
+  schema: t.array(
+    t.type({
+      key: t.string,
+      type: t.union([
+        t.literal("string"),
+        t.literal("number"),
+        t.literal("boolean"),
+        t.literal("json"),
+      ]),
+      description: t.union([t.string, t.null]),
+    })
+  ),
+});
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetDatasetResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetDatasetsResponseBody | PostDatasetResponseBody>
+  >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const { aId } = req.query;
-  if (typeof aId !== "string") {
+  const vaultId = req.query.vId;
+  if (typeof vaultId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid query paramteter `aId`",
+        message: "Invalid query parameter `vId`",
       },
     });
   }
 
-  const app = await AppResource.fetchById(auth, aId);
-  if (!app) {
+  const owner = auth.getNonNullableWorkspace();
+
+  const app = await AppResource.fetchById(auth, req.query.aId as string);
+  if (!app || app.vault.sId !== vaultId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -47,54 +74,27 @@ async function handler(
     });
   }
 
-  const [dataset] = await Promise.all([
-    Dataset.findOne({
-      where: {
-        workspaceId: owner.id,
-        appId: app.id,
-        name: req.query.name,
-      },
-    }),
-  ]);
-
-  if (!dataset) {
+  if (!app.canWrite(auth)) {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 403,
       api_error: {
-        type: "dataset_not_found",
+        type: "app_auth_error",
         message:
-          "The dataset you're trying to view, modify or delete was not found.",
+          "Interacting with datasets requires write access to the app's vault.",
       },
     });
   }
 
   switch (req.method) {
     case "GET":
-      const showData = req.query.data === "true";
-      const datasetHash = showData
-        ? await getDatasetHash(auth, app, dataset.name, "latest")
-        : null;
-      return res.status(200).json({
-        dataset: {
-          name: dataset.name,
-          description: dataset.description,
-          schema: showData ? dataset.schema : null,
-          data: showData && datasetHash ? datasetHash.data : null,
-        },
+      const datasets = await getDatasets(auth, app.toJSON());
+
+      res.status(200).json({
+        datasets,
       });
+      return;
 
     case "POST":
-      if (!auth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message:
-              "Only the users that are `builders` for the current workspace can interact with datasets",
-          },
-        });
-      }
-
       const bodyValidation = PostDatasetRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -103,6 +103,31 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
+      // Check that dataset does not already exist.
+      const existing = await Dataset.findAll({
+        where: {
+          workspaceId: owner.id,
+          appId: app.id,
+        },
+        attributes: ["name"],
+      });
+
+      let exists = false;
+      existing.forEach((e) => {
+        if (e.name == bodyValidation.right.dataset.name) {
+          exists = true;
+        }
+      });
+      if (exists) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The dataset name already exists in this app.",
           },
         });
       }
@@ -132,21 +157,19 @@ async function handler(
             return obj;
           }, {});
       });
-
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      // Register dataset with the Dust internal API.
-      const d = await coreAPI.createDataset({
+      const dataset = await coreAPI.createDataset({
         projectId: app.dustAPIProjectId,
         datasetId: bodyValidation.right.dataset.name,
         data,
       });
-      if (d.isErr()) {
+      if (dataset.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
             message: "The dataset creation failed.",
-            app_error: d.error,
+            app_error: dataset.error,
           },
         });
       }
@@ -155,37 +178,22 @@ async function handler(
         ? bodyValidation.right.dataset.description
         : null;
 
-      await dataset.update({
+      await Dataset.create({
         name: bodyValidation.right.dataset.name,
         description,
+        appId: app.id,
+        workspaceId: owner.id,
         schema: bodyValidation.right.schema,
       });
 
-      res.status(200).json({
+      res.status(201).json({
         dataset: {
-          name: bodyValidation.right.dataset.name,
+          name: req.body.name,
           description,
           data: null,
         },
       });
       return;
-
-    case "DELETE":
-      await Dataset.destroy({
-        where: {
-          workspaceId: owner.id,
-          appId: app.id,
-          name: dataset.name,
-        },
-      });
-
-      return res.status(200).json({
-        dataset: {
-          name: dataset.name,
-          description: dataset.description,
-          data: null,
-        },
-      });
 
     default:
       return apiError(req, res, {

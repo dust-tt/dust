@@ -15,24 +15,25 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostStateResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message:
-          "Only the users that are `builders` for the current workspace can modify an app.",
-      },
-    });
-  }
+  const vaultId = req.query.vId as string;
 
   const app = await AppResource.fetchById(auth, req.query.aId as string);
-  if (!app) {
+  if (!app || app.vault.sId !== vaultId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "app_not_found",
         message: "The app was not found.",
+      },
+    });
+  }
+
+  if (!app.canWrite(auth)) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Modifying an app requires write access to the app's vault.",
       },
     });
   }

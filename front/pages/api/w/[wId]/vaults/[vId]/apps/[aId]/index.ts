@@ -15,8 +15,19 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetOrPostAppResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
+  const vaultId = req.query.vId as string;
+  if (typeof vaultId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query parameter `vId`",
+      },
+    });
+  }
+
   const app = await AppResource.fetchById(auth, req.query.aId as string);
-  if (!app) {
+  if (!app || app.vault.sId !== vaultId || !app.canRead(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -33,13 +44,13 @@ async function handler(
       });
       break;
     case "POST":
-      if (!auth.isBuilder()) {
+      if (!app.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "app_auth_error",
             message:
-              "Only the users that are `builders` for the current workspace can modify an app.",
+              "Modifying an app requires write access to the app's vault.",
           },
         });
       }
@@ -73,13 +84,13 @@ async function handler(
       });
 
     case "DELETE":
-      if (!auth.isBuilder()) {
+      if (!app.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "app_auth_error",
             message:
-              "Only the users that are `builders` for the current workspace can delete an app.",
+              "Deleting an app requires write access to the app's vault.",
           },
         });
       }

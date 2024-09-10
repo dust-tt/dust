@@ -155,7 +155,7 @@ export default function ViewDatasetView({
   const handleSubmit = async () => {
     setLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/apps/${app.sId}/datasets/${dataset.name}`,
+      `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${dataset.name}`,
       {
         method: "POST",
         headers: {

@@ -32,30 +32,28 @@ async function handler(
   auth: Authenticator,
   session: SessionWithUser
 ) {
-  // Only the users that are `builders` for the current workspace can create runs or retrieve
-  // runs. Note that we have a special wIdTarget flow to let dust super users retrieve runs from
-  // other workspaces on apps that they have access to (used for dust-apps).
-  if (!auth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message:
-          "Only the users that are `builders` for the current workspace can create runs.",
-      },
-    });
-  }
+  const vaultId = req.query.vId as string;
 
   let owner = auth.getNonNullableWorkspace();
   const user = auth.getNonNullableUser();
 
   const app = await AppResource.fetchById(auth, req.query.aId as string);
-  if (!app) {
+  if (!app || app.vault.sId !== vaultId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "app_not_found",
         message: "The app was not found.",
+      },
+    });
+  }
+
+  if (!app.canWrite(auth)) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_auth_error",
+        message: "Creating a run requires write access to the app's vault.",
       },
     });
   }

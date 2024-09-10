@@ -90,6 +90,15 @@ export class AppResource extends ResourceWithVault<App> {
     });
   }
 
+  static async listByVault(auth: Authenticator, vault: VaultResource) {
+    return this.baseFetch(auth, {
+      where: {
+        vaultId: vault.id,
+        visibility: { [Op.ne]: "deleted" },
+      },
+    });
+  }
+
   // Mutation.
 
   async updateState(

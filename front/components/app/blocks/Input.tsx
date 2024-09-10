@@ -72,7 +72,7 @@ export default function Input({
     setDatasetModalData(null);
     if (dataset) {
       const res = await fetch(
-        `/api/w/${owner.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
+        `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
         {
           method: "POST",
           headers: {

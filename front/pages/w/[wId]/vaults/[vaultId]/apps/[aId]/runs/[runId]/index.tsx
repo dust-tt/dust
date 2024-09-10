@@ -125,17 +125,20 @@ export default function AppRun({
       }
     }
 
-    await fetch(`/api/w/${owner.sId}/apps/${app.sId}/state`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        specification: JSON.stringify(specCopy),
-        config: JSON.stringify(run.config.blocks),
-        run: run.run_id,
-      }),
-    });
+    await fetch(
+      `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/state`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          specification: JSON.stringify(specCopy),
+          config: JSON.stringify(run.config.blocks),
+          run: run.run_id,
+        }),
+      }
+    );
 
     setIsLoading(false);
     setSavedRunId(run.run_id);

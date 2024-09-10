@@ -26,15 +26,36 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
+  const vaultId = req.query.vId as string;
+  if (typeof vaultId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid query parameter `vId`",
+      },
+    });
+  }
+  const vault = await VaultResource.fetchById(auth, vaultId);
+  if (!vault || !vault.canList(auth)) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "vault_not_found",
+        message: "The vault you requested was not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
       return res.status(200).json({
-        apps: (await AppResource.listByWorkspace(auth)).map((app) =>
+        apps: (await AppResource.listByVault(auth, vault)).map((app) =>
           app.toJSON()
         ),
       });
     case "POST":
-      if (!auth.isBuilder()) {
+      if (!vault.canWrite(auth)) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -60,8 +81,6 @@ async function handler(
         });
       }
 
-      const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
-
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const p = await coreAPI.createProject();
       if (p.isErr()) {
@@ -86,7 +105,7 @@ async function handler(
           dustAPIProjectId: p.value.project.project_id.toString(),
           workspaceId: owner.id,
         },
-        globalVault
+        vault
       );
 
       res.status(201).json({

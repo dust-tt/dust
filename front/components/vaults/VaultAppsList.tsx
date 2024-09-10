@@ -7,7 +7,7 @@ import {
   Spinner,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
-import type { ConnectorType, WorkspaceType } from "@dust-tt/types";
+import type { ConnectorType, VaultType, WorkspaceType } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
 import { useRef } from "react";
@@ -30,7 +30,8 @@ type RowData = {
 
 type VaultAppListProps = {
   owner: WorkspaceType;
-  isBuilder: boolean;
+  vault: VaultType;
+  canWriteInVault: boolean;
   onSelect: (sId: string) => void;
 };
 
@@ -50,14 +51,15 @@ const getTableColumns = () => {
 
 export const VaultAppsList = ({
   owner,
-  isBuilder,
+  canWriteInVault,
+  vault,
   onSelect,
 }: VaultAppListProps) => {
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
   const [appSearch, setAppSearch] = useState<string>("");
 
-  const { apps, isAppsLoading } = useApps(owner);
+  const { apps, isAppsLoading } = useApps({ owner, vault });
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
@@ -92,7 +94,7 @@ export const VaultAppsList = ({
         <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg border bg-structure-50">
           <Button
             label="Create App"
-            disabled={!isBuilder}
+            disabled={!canWriteInVault}
             onClick={() => {
               setIsCreateAppModalOpened(true);
             }}
@@ -110,7 +112,7 @@ export const VaultAppsList = ({
                 setAppSearch(s);
               }}
             />
-            {isBuilder && (
+            {canWriteInVault && (
               <>
                 <Button
                   label="New App"
@@ -137,6 +139,7 @@ export const VaultAppsList = ({
       )}
       <VaultCreateAppModal
         owner={owner}
+        vault={vault}
         isOpen={isCreateAppModalOpened}
         setIsOpen={setIsCreateAppModalOpened}
       />

@@ -114,16 +114,19 @@ export default function NewDatasetView({
 
   const handleSubmit = async () => {
     setLoading(true);
-    const res = await fetch(`/api/w/${owner.sId}/apps/${app.sId}/datasets`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        dataset,
-        schema,
-      }),
-    });
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dataset,
+          schema,
+        }),
+      }
+    );
     await res.json();
     setEditorDirty(false);
     setIsFinishedEditing(true);
