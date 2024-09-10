@@ -178,11 +178,10 @@ export async function getMembers(
 }
 
 /**
- * Returns the users members of the workspace associated with the authenticator (without listing
- * their own workspaces).
+ * Returns the users members of the workspace.
  * @param auth Authenticator
  * @param role RoleType optional filter on role
- * @returns An object containing an array of UserTypeWithWorkspaces and the total count of members.
+ * @returns An object containing an array of LightUserType and the total count of members.
  */
 export async function getMembersLight(
   auth: Authenticator,
