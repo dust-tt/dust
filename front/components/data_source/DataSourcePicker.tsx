@@ -69,13 +69,13 @@ export default function DataSourcePicker({
         // If the selected data source view is not found in the list, reset the config
         onDataSourcesUpdate([]);
       } else if (
-        selectedDataSourceView.sId !== currentDataSources[0].data_source_id
+        selectedDataSourceView.sId !== selectedDataSourceView.dataSource.name
       ) {
         // If the selected data source view is found in the list, but the id is not the dsv sId (so dataSource name), update the config
         onDataSourcesUpdate([
           {
             workspace_id: owner.sId,
-            data_source_id: selectedDataSourceView.sId,
+            data_source_id: selectedDataSourceView.dataSource.name,
           },
         ]);
       }
@@ -175,7 +175,7 @@ export default function DataSourcePicker({
                         onDataSourcesUpdate([
                           {
                             workspace_id: owner.sId,
-                            data_source_id: dsv.sId,
+                            data_source_id: dsv.dataSource.name,
                           },
                         ]);
                         setSearchFilter("");
