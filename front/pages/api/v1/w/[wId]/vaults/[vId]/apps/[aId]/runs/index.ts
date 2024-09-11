@@ -103,7 +103,7 @@ async function handler(
   }
 
   const [app, providers, secrets] = await Promise.all([
-    AppResource.fetchById(keyAuth, req.query.aId as string),
+    AppResource.fetchById(auth, req.query.aId as string),
     Provider.findAll({
       where: {
         workspaceId: keyWorkspaceId,
@@ -112,12 +112,22 @@ async function handler(
     getDustAppSecrets(auth, true),
   ]);
 
-  if (!app || !app.canRead(keyAuth) || app.vault.sId !== vaultId) {
+  if (!app || app.vault.sId !== vaultId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "app_not_found",
         message: "The app you're trying to run was not found",
+      },
+    });
+  }
+
+  if (!app.canRead(keyAuth)) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "app_not_found",
+        message: "Running an app requires read access to the app's vault.",
       },
     });
   }
