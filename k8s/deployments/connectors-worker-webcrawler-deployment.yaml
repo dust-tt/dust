@@ -44,12 +44,12 @@ spec:
           resources:
             requests:
               cpu: 3000m
-              memory: 8Gi
+              memory: 16Gi
               ephemeral-storage: 4Gi
 
             limits:
               cpu: 3000m
-              memory: 8Gi
+              memory: 16Gi
               ephemeral-storage: 4Gi
 
       volumes:
