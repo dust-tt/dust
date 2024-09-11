@@ -19,11 +19,13 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useVaultInfo, useVaults, useVaultsAsAdmin } from "@app/lib/swr/vaults";
+import { debounce } from "@app/lib/utils/debounce";
 import logger from "@app/logger/logger";
 
 type RowData = {
@@ -72,6 +74,7 @@ export function CreateOrEditVaultModal({
 
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
+  const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const { mutate: mutateVaults } = useVaults({
     workspaceId: owner.sId,
     disabled: true, // Disable as we just want the mutation function
@@ -93,22 +96,44 @@ export function CreateOrEditVaultModal({
     }
   }, [vaultMembers]);
 
+  const debouncedFetch = useCallback(
+    (searchTerm: string, lastValue: number) => {
+      debounce(
+        debounceHandle,
+        async () => {
+          setIsLoading(true);
+          try {
+            const searchParams = new URLSearchParams({
+              searchTerm: searchTerm,
+              orderBy: "name",
+              lastValue: lastValue.toString(),
+            });
+
+            const res = await fetch(
+              `/api/w/${owner.sId}/members/search?${searchParams.toString()}`
+            );
+            if (res.ok) {
+              const searchedMembers = await res.json();
+              setMembers(searchedMembers.members);
+              setMembersCount(searchedMembers.total);
+            }
+          } catch (e) {
+            console.error(e);
+          } finally {
+            setIsLoading(false);
+          }
+        },
+        300
+      );
+    },
+    [owner.sId, setIsLoading, setMembers, setMembersCount]
+  );
+
   useEffect(() => {
-    setIsLoading(true);
     const lastValue = pagination.pageIndex * pagination.pageSize;
-    fetch(
-      `/api/w/${owner.sId}/members/search?searchTerm=${searchTerm}&orderBy=name&lastValue=${lastValue}`
-    )
-      .then(async (res) => {
-        if (res.ok) {
-          const searchedMembers = await res.json();
-          setMembers(searchedMembers.members);
-          setMembersCount(searchedMembers.total);
-        }
-        setIsLoading(false);
-      })
-      .catch((e) => console.error(e));
-  }, [owner.sId, searchTerm, pagination]);
+    debouncedFetch(searchTerm, lastValue);
+  }, [searchTerm, pagination, debouncedFetch]);
+
   const getTableColumns = useCallback(() => {
     return [
       {
