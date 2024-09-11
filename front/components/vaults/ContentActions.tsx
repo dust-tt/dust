@@ -3,6 +3,7 @@ import {
   ExternalLinkIcon,
   EyeIcon,
   PencilSquareIcon,
+  PlusIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -19,14 +20,21 @@ import { DocumentOrTableDeleteDialog } from "@app/components/data_source/Documen
 import { DocumentOrTableUploadOrEditModal } from "@app/components/data_source/DocumentOrTableUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
-import { getDataSourceName, isFolder, isWebsite } from "@app/lib/data_sources";
+import {
+  getDataSourceName,
+  isFolder,
+  isManaged,
+  isWebsite,
+} from "@app/lib/data_sources";
+import { AddToVaultDialog } from "@app/components/vaults/AddToVaultDialog";
 
 export type ContentActionKey =
   | "DocumentUploadOrEdit"
   | "TableUploadOrEdit"
   | "MultipleDocumentsUpload"
   | "DocumentOrTableDeleteDialog"
-  | "DocumentViewRawContent";
+  | "DocumentViewRawContent"
+  | "AddToVaultDialog";
 
 export type ContentAction = {
   action?: ContentActionKey;
@@ -128,6 +136,15 @@ export const ContentActions = React.forwardRef<
           isOpen={currentAction.action === "DocumentViewRawContent"}
           onClose={() => onClose(false)}
         />
+        {currentAction.contentNode && (
+          <AddToVaultDialog
+            contentNode={currentAction.contentNode}
+            dataSourceView={dataSourceView}
+            isOpen={currentAction.action === "AddToVaultDialog"}
+            onClose={onClose}
+            owner={owner}
+          />
+        )}
       </>
     );
   }
@@ -187,6 +204,23 @@ export const getMenuItems = (
           );
       },
       variant: "warning",
+    });
+  }
+
+  if (
+    dataSourceView.kind === "default" &&
+    isManaged(dataSourceView.dataSource)
+  ) {
+    actions.push({
+      label: "Add to vault",
+      icon: PlusIcon,
+      onClick: () => {
+        contentActionsRef.current &&
+          contentActionsRef.current?.callAction(
+            "AddToVaultDialog",
+            contentNode
+          );
+      },
     });
   }
 
