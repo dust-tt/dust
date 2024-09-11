@@ -33,7 +33,8 @@ type CsvParsingError = {
     | "duplicate_header"
     | "invalid_record_length"
     | "empty_csv"
-    | "invalid_row_id";
+    | "invalid_row_id"
+    | "app_error";
   message: string;
 };
 
@@ -313,6 +314,9 @@ export async function rowsFromCsv(
   }
 
   const headerRes = await detectHeaders(auth, csv, delimiter, useApp);
+
+  logger.info({ headerRes, useApp }, "Header detection result");
+
   if (headerRes.isErr()) {
     return headerRes;
   }
@@ -452,6 +456,17 @@ export async function rowsFromCsv(
   return new Ok(rows);
 }
 
+async function staticHeaderDetection(
+  firstRow: string[]
+): Promise<Result<{ header: string[]; rowIndex: number }, CsvParsingError>> {
+  const firstRecordCells = firstRow.map(
+    (h) => h.trim().toLocaleLowerCase() || "unknown"
+  );
+  const header = getSanitizedHeaders(firstRecordCells);
+
+  return new Ok({ header, rowIndex: 1 });
+}
+
 async function detectHeaders(
   auth: Authenticator,
   csv: string,
@@ -470,11 +485,12 @@ async function detectHeaders(
       throw new Error("Record contains non-string values.");
     }
 
+    const record = anyRecord as string[];
+
     if (!useApp) {
-      return new Ok({ header: getSanitizedHeaders(anyRecord), rowIndex: 1 });
+      return staticHeaderDetection(record);
     }
 
-    const record = anyRecord as string[];
     records.push(record);
 
     if (records.length === 10) {
@@ -504,11 +520,9 @@ async function detectHeaders(
     }),
   });
 
-  logger.info({ res }, "Header detection result");
-
   if (res.isErr()) {
     return new Err({
-      type: "invalid_record_length",
+      type: "app_error",
       message: `Cannot detect headers.`,
     });
   }

@@ -87,30 +87,20 @@ async function upsertTable(
 
 function findDataRangeAndSelectRows(allRows: string[][]): string[][] {
   // Find the first row with data to determine the range.
-  const firstNonEmptyRow = allRows.find((row) =>
+  const nonEmptyRow = allRows.filter((row) =>
     row.some((cell) => cell.trim() !== "")
   );
-  if (!firstNonEmptyRow) {
-    return []; // No data found.
-  }
 
-  // Identify the range of data: Start at the first non-empty cell and end at the nearest following empty cell or row end.
-  const startIndex = firstNonEmptyRow.findIndex((cell) => cell.trim() !== "");
-  let endIndex = firstNonEmptyRow.findIndex(
-    (cell, idx) => idx > startIndex && cell.trim() === ""
-  );
-  if (endIndex === -1) {
-    endIndex = firstNonEmptyRow.length;
-  }
-
-  // Select only rows and columns within the data range.
-  return allRows
-    .map((row) => row.slice(startIndex, endIndex))
-    .filter((row) => row.some((cell) => cell.trim() !== ""));
+  return nonEmptyRow;
 }
 
 function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
   const filteredRows = findDataRangeAndSelectRows(allRows);
+
+  const maxCols = filteredRows.reduce(
+    (acc, row) => (row.length > acc ? row.length : acc),
+    0
+  );
 
   // We assume that the first row is always the headers.
   // Headers are used to assert the number of cells per row.
@@ -124,23 +114,11 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
   }
 
   try {
-    const headers = rawHeaders;
-
     const validRows: string[][] = filteredRows.map((row, index) => {
-      // Return raw headers.
-      if (index === 0) {
-        return headers;
-      }
-
       // If a row has less cells than headers, we fill the gap with empty strings.
-      if (row.length < headers.length) {
-        const shortfall = headers.length - row.length;
+      if (row.length < maxCols) {
+        const shortfall = maxCols - row.length;
         return [...row, ...Array(shortfall).fill("")];
-      }
-
-      // If a row has more cells than headers we truncate the row.
-      if (row.length > headers.length) {
-        return row.slice(0, headers.length);
       }
 
       return row;
