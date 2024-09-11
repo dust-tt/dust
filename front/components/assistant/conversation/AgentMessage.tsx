@@ -633,7 +633,7 @@ function Citations({
             isBlinking={lastHoveredReference === index}
             type={documentCitation.type}
             title={documentCitation.title}
-            href={documentCitation.href}
+            href={documentCitation.href ?? undefined}
             index={index}
           />
         );

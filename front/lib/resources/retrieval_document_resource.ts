@@ -180,7 +180,7 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
         this.dataSourceWorkspaceId
       }/vaults/${dsv.vaultId}/categories/${
         dsv.category
-      }/data_source_views/${dsv.sId}?documentId=${encodeURIComponent(this.documentId)}`;
+      }/data_source_views/${dsv.sId}#?documentId=${encodeURIComponent(this.documentId)}`;
     }
 
     return `${config.getClientFacingUrl()}/w/${
