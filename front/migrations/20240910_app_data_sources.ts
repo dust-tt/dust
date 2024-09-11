@@ -143,7 +143,11 @@ async function migrateApps(
             logger.info(`Migrating ${app.name}).`);
 
             if (execute) {
-              await app.updateState(auth, state);
+              await AppResource.model.update(state, {
+                where: {
+                  id: app.id,
+                },
+              });
             }
           }
         }
