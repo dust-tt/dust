@@ -63,10 +63,8 @@ export function CreateOrEditVaultModal({
     vault?.name ?? null
   );
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
-  // const [members, setMembers] = useState<UserType[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
-  // const [isLoading, setIsLoading] = useState(false);
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 25,
