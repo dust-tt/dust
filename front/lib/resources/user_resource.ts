@@ -146,7 +146,7 @@ export class UserResource extends BaseResource<User> {
   }
 
   static async searchUsers(
-    workspaceId: string,
+    workspaceId: number,
     options: {
       searchTerm?: string;
     },

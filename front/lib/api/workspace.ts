@@ -191,7 +191,7 @@ export async function searchMembers(
   }
 
   const { users, total } = await UserResource.searchUsers(
-    owner.sId,
+    owner.id,
     {
       searchTerm: options.searchTerm,
     },

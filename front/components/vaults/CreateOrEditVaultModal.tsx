@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, UserType, VaultType } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, PaginationState } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import React, {
@@ -23,7 +23,6 @@ import React, {
 } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useMembers } from "@app/lib/swr/memberships";
 import { useVaultInfo, useVaults, useVaultsAsAdmin } from "@app/lib/swr/vaults";
 import logger from "@app/logger/logger";
 
@@ -61,8 +60,18 @@ export function CreateOrEditVaultModal({
     vault?.name ?? null
   );
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [members, setMembers] = useState<UserType[]>([]);
+  const [membersCount, setMembersCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 25,
+  });
+
+  const router = useRouter();
+  const sendNotification = useContext(SendNotificationsContext);
   const { mutate: mutateVaults } = useVaults({
     workspaceId: owner.sId,
     disabled: true, // Disable as we just want the mutation function
@@ -71,7 +80,7 @@ export function CreateOrEditVaultModal({
     workspaceId: owner.sId,
     disabled: true, // Disable as we just want the mutation function
   });
-  const { members, isMembersLoading } = useMembers(owner);
+
   const { vaultInfo } = useVaultInfo({
     workspaceId: owner.sId,
     vaultId: vault?.sId ?? null,
@@ -84,9 +93,22 @@ export function CreateOrEditVaultModal({
     }
   }, [vaultMembers]);
 
-  const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
-
+  useEffect(() => {
+    setIsLoading(true);
+    const lastValue = pagination.pageIndex * pagination.pageSize;
+    fetch(
+      `/api/w/${owner.sId}/members/search?searchTerm=${searchTerm}&orderBy=name&lastValue=${lastValue}`
+    )
+      .then(async (res) => {
+        if (res.ok) {
+          const searchedMembers = await res.json();
+          setMembers(searchedMembers.members);
+          setMembersCount(searchedMembers.total);
+        }
+        setIsLoading(false);
+      })
+      .catch((e) => console.error(e));
+  }, [owner.sId, searchTerm, pagination]);
   const getTableColumns = useCallback(() => {
     return [
       {
@@ -97,6 +119,7 @@ export function CreateOrEditVaultModal({
             {info.row.original.name}
           </DataTable.CellContent>
         ),
+        enableSorting: false,
       },
       {
         id: "action",
@@ -258,7 +281,7 @@ export function CreateOrEditVaultModal({
                 onChange={setSearchTerm}
               />
             </div>
-            {isMembersLoading ? (
+            {isLoading ? (
               <div className="mt-8 flex justify-center">
                 <Spinner size="lg" variant="color" />
               </div>
@@ -267,8 +290,9 @@ export function CreateOrEditVaultModal({
                 <DataTable
                   data={rows}
                   columns={columns}
-                  filterColumn="name"
-                  filter={searchTerm}
+                  pagination={pagination}
+                  setPagination={setPagination}
+                  totalRowCount={membersCount}
                 />
               </div>
             )}

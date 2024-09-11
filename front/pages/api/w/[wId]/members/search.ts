@@ -7,7 +7,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
-const DEFAULT_PAGE_LIMIT = 20;
+const DEFAULT_PAGE_LIMIT = 25;
 
 export type SearchMembersResponseBody = {
   members: UserType[];
@@ -49,7 +49,7 @@ async function handler(
         defaultLimit: DEFAULT_PAGE_LIMIT,
         defaultOrderColumn: orderBy || "name",
         defaultOrderDirection: "desc",
-        supportedOrderColumn: ["createdAt", "email", "fullName"],
+        supportedOrderColumn: ["createdAt", "email", "name"],
       });
 
       if (paginationRes.isErr()) {
