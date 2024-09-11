@@ -1,36 +1,24 @@
 import { Chip, Icon, RadioButton, Spinner } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewType,
-  LightWorkspaceType,
-  VaultType,
-} from "@dust-tt/types";
-import { groupBy } from "lodash";
-import { useMemo, useState } from "react";
+import type { LightWorkspaceType, VaultType } from "@dust-tt/types";
+import { useState } from "react";
 
 import { useVaults } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
 import { getVaultIcon, getVaultName } from "@app/lib/vaults";
 
-interface VaultSelctorProps {
+interface VaultSelectorProps {
   owner: LightWorkspaceType;
-  dataSourceViews: DataSourceViewType[];
   allowedVaults?: VaultType[];
   defaultVault: string;
-  renderChildren: (dataSourceViews: DataSourceViewType[]) => React.ReactNode;
+  renderChildren: (vault?: VaultType) => React.ReactNode;
 }
 
 export function VaultSelector({
   owner,
-  dataSourceViews,
   allowedVaults,
   defaultVault,
   renderChildren,
-}: VaultSelctorProps) {
-  const dataSourceViewsByVaultId = useMemo(
-    () => groupBy(dataSourceViews, (dsv) => dsv.vaultId),
-    [dataSourceViews]
-  );
-
+}: VaultSelectorProps) {
   const { vaults, isVaultsError, isVaultsLoading } = useVaults({
     workspaceId: owner.sId,
   });
@@ -41,74 +29,65 @@ export function VaultSelector({
     return <Spinner />;
   }
 
-  if (Object.keys(dataSourceViewsByVaultId).length === 1) {
-    return renderChildren(dataSourceViews);
-  } else {
-    return (
-      <div>
-        <div className="h-px w-full bg-structure-200" />
-        {Object.keys(dataSourceViewsByVaultId).map((vaultId) => {
-          const vault = vaults.find((v) => v.sId === vaultId);
-          if (!vault) {
-            // Should never happen
-            return null;
-          }
-          const disabled = !(allowedVaults
-            ? allowedVaults.find((v) => v.sId === vaultId)
-            : false);
-          return (
-            <>
-              <div key={vaultId} className="py-2">
-                <RadioButton
-                  name={`Vault ${vaultId}`}
-                  choices={[
-                    {
-                      label: (
-                        <>
-                          <Icon
-                            visual={getVaultIcon(vault)}
-                            size="md"
-                            className="ml-3 mr-2 inline-block flex-shrink-0 align-middle text-brand"
-                          />
-                          <span
-                            className={classNames(
-                              "text-element-900",
-                              "align-middle",
-                              !disabled ? "font-bold" : "italic"
-                            )}
-                          >
-                            {getVaultName(vault)}{" "}
-                            {disabled && (
-                              <Chip
-                                key="xs-warning"
-                                size="xs"
-                                className="ml-2"
-                                label="Disabled: only one vault allowed per assistant"
-                                color="warning"
-                              />
-                            )}
-                          </span>
-                        </>
-                      ),
-                      value: vaultId,
-                      disabled: disabled,
-                    },
-                  ]}
-                  value={selectedVault}
-                  onChange={() => setSelectedVault(vaultId)}
-                />
-              </div>
-              {selectedVault === vaultId && (
-                <div className="mb-2">
-                  {renderChildren(dataSourceViewsByVaultId[vaultId])}
-                </div>
-              )}
+  const shouldRenderDirectly = !allowedVaults || vaults.length === 1;
+  const selectedVaultObj = vaults.find((v) => v.sId === selectedVault);
 
-              <div className="h-px w-full bg-structure-200" />
-            </>
-          );
-        })}
-      </div>
-    );
-  }
+  return (
+    <div>
+      {shouldRenderDirectly
+        ? renderChildren(allowedVaults ? allowedVaults[0] : undefined)
+        : vaults.map((vault) => {
+            const isDisabled = !allowedVaults?.some((v) => v.sId === vault.sId);
+
+            return (
+              <div key={vault.sId}>
+                <div className="h-px w-full bg-structure-200" />
+                <div className="py-2">
+                  <RadioButton
+                    name={`Vault ${vault.name}`}
+                    choices={[
+                      {
+                        label: (
+                          <>
+                            <Icon
+                              visual={getVaultIcon(vault)}
+                              size="md"
+                              className="ml-3 mr-2 inline-block flex-shrink-0 align-middle text-brand"
+                            />
+                            <span
+                              className={classNames(
+                                "text-element-900",
+                                "align-middle",
+                                !isDisabled ? "font-bold" : "italic"
+                              )}
+                            >
+                              {getVaultName(vault)}
+                              {isDisabled && (
+                                <Chip
+                                  size="xs"
+                                  className="ml-2"
+                                  label="Disabled: only one vault allowed per assistant"
+                                  color="warning"
+                                />
+                              )}
+                            </span>
+                          </>
+                        ),
+                        value: vault.sId,
+                        disabled: isDisabled,
+                      },
+                    ]}
+                    value={selectedVault}
+                    onChange={() => setSelectedVault(vault.sId)}
+                  />
+                </div>
+                {selectedVault === vault.sId && (
+                  <div className="mb-2">{renderChildren(selectedVaultObj)}</div>
+                )}
+              </div>
+            );
+          })}
+      <div className="h-px w-full bg-structure-200" />
+    </div>
+  );
 }

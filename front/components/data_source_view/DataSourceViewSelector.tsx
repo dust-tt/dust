@@ -95,18 +95,27 @@ export function DataSourceViewsSelector({
     return (
       <VaultSelector
         owner={owner}
-        dataSourceViews={dataSourceViews}
         allowedVaults={allowedVaults}
         defaultVault={defaultVault}
-        renderChildren={(dataSourceViews) => (
-          <DataSourceViewsSelector
-            owner={owner}
-            dataSourceViews={dataSourceViews}
-            selectionConfigurations={selectionConfigurations}
-            setSelectionConfigurations={setSelectionConfigurations}
-            viewType={viewType}
-          />
-        )}
+        renderChildren={(vault) => {
+          const dataSourceViewsForVault = vault
+            ? dataSourceViews.filter((dsv) => dsv.vaultId === vault.sId)
+            : dataSourceViews;
+
+          if (dataSourceViewsForVault.length === 0) {
+            return <>No data source in this vault.</>;
+          }
+
+          return (
+            <DataSourceViewsSelector
+              owner={owner}
+              dataSourceViews={dataSourceViewsForVault}
+              selectionConfigurations={selectionConfigurations}
+              setSelectionConfigurations={setSelectionConfigurations}
+              viewType={viewType}
+            />
+          );
+        }}
       />
     );
   } else {
