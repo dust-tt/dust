@@ -160,10 +160,6 @@ pub async fn load_tables_from_identifiers(
         })
         .collect::<std::collections::HashMap<_, _>>();
 
-    println!(
-        "================== {:?}",
-        project_and_data_source_by_data_source_view
-    );
     let store = env.store.clone();
 
     // Concurrently load all tables.
