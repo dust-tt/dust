@@ -270,7 +270,8 @@ export class RetrievalDocument extends Model<
   declare tags: string[];
   declare score: number | null;
 
-  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
+  // TODO(VAULTS_INFRA) Make not nullable once backfilled.
+  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
   declare retrievalActionId: ForeignKey<AgentRetrievalAction["id"]>;
 
   declare chunks: NonAttribute<RetrievalDocumentChunk[]>;
