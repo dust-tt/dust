@@ -6,7 +6,7 @@ import {
 } from "@dust-tt/types";
 
 interface RetrievedDocumentCitation {
-  href: string | null;
+  href: string | undefined;
   title: string;
   type: Exclude<React.ComponentProps<typeof Citation>["type"], undefined>;
 }
@@ -16,7 +16,7 @@ export function makeDocumentCitations(
 ): RetrievedDocumentCitation[] {
   return documents.reduce((acc, doc) => {
     acc.push({
-      href: doc.sourceUrl,
+      href: doc.sourceUrl ?? undefined,
       title: getTitleFromRetrievedDocument(doc),
       type: getProviderFromRetrievedDocument(doc),
     });
