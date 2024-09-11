@@ -30,7 +30,7 @@ export default function AssistantBuilderDustAppModal({
       isOpen={isOpen}
       onClose={onClose}
       hasChanged={false}
-      variant="full-screen"
+      variant="side-md"
       title="Select Dust App"
     >
       <div className="w-full pt-12">
