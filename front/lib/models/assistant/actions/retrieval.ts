@@ -270,8 +270,7 @@ export class RetrievalDocument extends Model<
   declare tags: string[];
   declare score: number | null;
 
-  // TODO(VAULTS_INFRA) Make not nullable once backfilled.
-  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
+  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
   declare retrievalActionId: ForeignKey<AgentRetrievalAction["id"]>;
 
   declare chunks: NonAttribute<RetrievalDocumentChunk[]>;
@@ -343,14 +342,13 @@ RetrievalDocument.belongsTo(AgentRetrievalAction, {
   foreignKey: { name: "retrievalActionId", allowNull: false },
 });
 
-// TODO(VAULTS_INFRA) Set to not null once backfilled.
 DataSourceViewModel.hasMany(RetrievalDocument, {
-  foreignKey: { allowNull: true },
+  foreignKey: { allowNull: false },
   onDelete: "SET NULL",
 });
 RetrievalDocument.belongsTo(DataSourceViewModel, {
   as: "dataSourceView",
-  foreignKey: { allowNull: true },
+  foreignKey: { allowNull: false },
 });
 
 export class RetrievalDocumentChunk extends Model<
