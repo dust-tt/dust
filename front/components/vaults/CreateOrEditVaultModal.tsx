@@ -81,8 +81,9 @@ export function CreateOrEditVaultModal({
   useEffect(() => {
     if (vaultMembers) {
       setSelectedMembers(vaultMembers.map((vm) => vm.sId));
+      setVaultName(vault?.name ?? null);
     }
-  }, [vaultMembers]);
+  }, [vault?.name, vaultMembers]);
 
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
@@ -145,36 +146,48 @@ export function CreateOrEditVaultModal({
   const createOrUpdateVault = async () => {
     setIsSaving(true);
     try {
-      const url = vault
-        ? `/api/w/${owner.sId}/vaults/${vault.sId}`
-        : `/api/w/${owner.sId}/vaults`;
-      const method = vault ? "PATCH" : "POST";
+      if (selectedMembers.length > 0 && vault) {
+        const groupsUrl = `/api/w/${owner.sId}/groups/${vault.groupIds[0]}`;
+        const groupsRes = await fetch(groupsUrl, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            memberIds: selectedMembers,
+          }),
+        });
 
-      const res = await fetch(url, {
-        method: method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: vaultName,
-          memberIds: selectedMembers,
-        }),
-      });
+        if (!groupsRes.ok) {
+          const groupsErrorData = await groupsRes.json();
+          throw new Error(
+            groupsErrorData.error?.message || "Failed to update vault members"
+          );
+        }
+      } else if (!vault) {
+        const url = `/api/w/${owner.sId}/vaults`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: vaultName,
+            memberIds: selectedMembers,
+          }),
+        });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(
-          errorData.error?.message ||
-            `Failed to ${vault ? "update" : "create"} vault`
-        );
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error?.message || "Failed to create vault");
+        }
+        const r = await res.json();
+
+        await mutateVaults();
+        await mutateVaultsAsAdmin();
+
+        await router.push(`/w/${owner.sId}/vaults/${r.vault.sId}`);
       }
-      const r = await res.json();
-
-      // Invalidate the vaults list
-      await mutateVaults();
-      await mutateVaultsAsAdmin();
-
-      await router.push(`/w/${owner.sId}/vaults/${r.vault.sId}`);
     } finally {
       setIsSaving(false);
     }
