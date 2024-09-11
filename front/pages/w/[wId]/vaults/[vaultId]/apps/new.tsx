@@ -1,5 +1,5 @@
 import { Button, Page } from "@dust-tt/sparkle";
-import type { AppType } from "@dust-tt/types";
+import type { AppType, VaultType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
@@ -12,6 +12,7 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { getDustAppsListUrl } from "@app/lib/vault_rollout";
 
@@ -20,11 +21,23 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   dustAppsListUrl: string;
   gaTrackingId: string;
+  vault: VaultType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
 
-  if (!owner || !auth.isBuilder() || !subscription) {
+  const vault = await VaultResource.fetchById(
+    auth,
+    context.query.vaultId as string
+  );
+
+  if (
+    !owner ||
+    !auth.isBuilder() ||
+    !subscription ||
+    !vault ||
+    !vault.canWrite(auth)
+  ) {
     return {
       notFound: true,
     };
@@ -38,6 +51,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       dustAppsListUrl,
       gaTrackingId: config.getGaTrackingId(),
+      vault: vault.toJSON(),
     },
   };
 });
@@ -47,6 +61,7 @@ export default function NewApp({
   subscription,
   dustAppsListUrl,
   gaTrackingId,
+  vault,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
 
@@ -80,7 +95,7 @@ export default function NewApp({
 
   const handleCreate = async () => {
     setCreating(true);
-    const res = await fetch(`/api/w/${owner.sId}/apps`, {
+    const res = await fetch(`/api/w/${owner.sId}/vaults/${vault.sId}/apps`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
