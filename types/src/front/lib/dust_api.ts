@@ -383,7 +383,7 @@ export class DustAPI {
       useWorkspaceCredentials: false,
     }
   ): Promise<DustAPIResponse<RunType>> {
-    let url = `${this.apiUrl()}/api/v1/w/vaults/${appVaultId}/${workspaceId}/apps/${appId}/runs`;
+    let url = `${this.apiUrl()}/api/v1/w/${workspaceId}/vaults/${appVaultId}/apps/${appId}/runs`;
     if (useWorkspaceCredentials) {
       url += "?use_workspace_credentials=true";
     }
@@ -443,7 +443,7 @@ export class DustAPI {
       useWorkspaceCredentials: false,
     }
   ) {
-    let url = `${this.apiUrl()}/api/v1/w/vaults/${appVaultId}/${workspaceId}/apps/${appId}/runs`;
+    let url = `${this.apiUrl()}/api/v1/w/${workspaceId}/vaults/${appVaultId}/apps/${appId}/runs`;
     if (useWorkspaceCredentials) {
       url += "?use_workspace_credentials=true";
     }
