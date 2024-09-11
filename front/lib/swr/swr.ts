@@ -1,4 +1,5 @@
 import type { PaginationState } from "@tanstack/react-table";
+import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
 import useSWR, { useSWRConfig } from "swr";
 
@@ -13,19 +14,57 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
   fetcher: Fetcher<TData, TKey> | null,
   config?: SWRConfiguration & { disabled?: boolean }
 ) {
-  const { mutate: globalMutate } = useSWRConfig();
+  const { mutate: globalMutate, cache } = useSWRConfig();
 
   const mergedConfig = { ...DEFAULT_SWR_CONFIG, ...config };
   const disabled = !!mergedConfig.disabled;
 
   const result = useSWR(disabled ? null : key, fetcher, mergedConfig);
 
+  const mutateKeysWithSameUrl = useCallback(
+    (key: TKey) => {
+      // If the key looks like an url, we need to remove the query params
+      // to make sure we don't cache different pages together
+      // Naive way to detect url by checking for '/'
+      if (typeof key === "string" && key.includes("/")) {
+        const keyWithoutQueryParams = key.split("?")[0];
+
+        // Cycle through all the keys in the cache that start with the same url
+        // and mutate them too
+        for (const k of cache.keys()) {
+          if (
+            k !== key &&
+            typeof k === "string" &&
+            k.startsWith(keyWithoutQueryParams)
+          ) {
+            void globalMutate<TData>(k);
+          }
+        }
+      }
+    },
+    [globalMutate, cache]
+  );
+
   if (disabled) {
     // When disabled, as the key is null, the mutate function is not working
     // so we need to provide a custom mutate function that will work
-    return { ...result, mutate: () => globalMutate<TData>(key) };
+    return {
+      ...result,
+      mutate: () => {
+        mutateKeysWithSameUrl(key);
+        return globalMutate(key);
+      },
+    };
   } else {
-    return result;
+    const myMutate: typeof result.mutate = (data, opts) => {
+      mutateKeysWithSameUrl(key);
+      return result.mutate(data, opts);
+    };
+
+    return {
+      ...result,
+      mutate: myMutate,
+    };
   }
 }
 
