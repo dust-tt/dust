@@ -145,17 +145,17 @@ export class UserResource extends BaseResource<User> {
     return user ? new UserResource(User, user.get()) : null;
   }
 
-  static async searchUsers(
+  static async listUsersWithEmailPredicat(
     workspaceId: number,
     options: {
-      searchTerm?: string;
+      email?: string;
     },
     paginationParams: PaginationParams
-  ): Promise<{ users: User[]; total: number }> {
+  ): Promise<{ users: UserResource[]; total: number }> {
     const userWhereClause: any = {};
-    if (options.searchTerm) {
+    if (options.email) {
       userWhereClause.email = {
-        [Op.iLike]: `%${options.searchTerm}%`,
+        [Op.iLike]: `%${options.email}%`,
       };
     }
 
@@ -178,7 +178,10 @@ export class UserResource extends BaseResource<User> {
       offset: paginationParams.lastValue,
     });
 
-    return { users, total: count };
+    return {
+      users: users.map((u) => new UserResource(User, u.get())),
+      total: count,
+    };
   }
 
   async updateAuth0Sub(sub: string): Promise<void> {

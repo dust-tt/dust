@@ -49,7 +49,7 @@ async function handler(
         defaultLimit: DEFAULT_PAGE_LIMIT,
         defaultOrderColumn: orderBy || "name",
         defaultOrderDirection: "desc",
-        supportedOrderColumn: ["createdAt", "email", "name"],
+        supportedOrderColumn: ["name"],
       });
 
       if (paginationRes.isErr()) {
@@ -67,7 +67,7 @@ async function handler(
       const { members, total } = await searchMembers(
         auth,
         {
-          searchTerm,
+          email: searchTerm,
         },
         paginationParams
       );

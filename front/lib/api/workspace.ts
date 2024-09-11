@@ -181,7 +181,7 @@ export async function getMembers(
 export async function searchMembers(
   auth: Authenticator,
   options: {
-    searchTerm?: string;
+    email?: string;
   },
   paginationParams: PaginationParams
 ): Promise<{ members: UserType[]; total: number }> {
@@ -190,27 +190,16 @@ export async function searchMembers(
     return { members: [], total: 0 };
   }
 
-  const { users, total } = await UserResource.searchUsers(
+  const { users, total } = await UserResource.listUsersWithEmailPredicat(
     owner.id,
     {
-      searchTerm: options.searchTerm,
+      email: options.email,
     },
     paginationParams
   );
 
   const usersJson = users.map((u) => {
-    return {
-      fullName: u.name,
-      image: u.imageUrl,
-      createdAt: u.createdAt.getTime(),
-      sId: u.sId,
-      id: u.id,
-      provider: u.provider,
-      username: u.username,
-      email: u.email,
-      firstName: u.firstName,
-      lastName: u.lastName,
-    };
+    return u.toJSON();
   });
   return { members: usersJson, total };
 }
