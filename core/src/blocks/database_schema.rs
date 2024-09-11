@@ -120,23 +120,35 @@ pub async fn load_tables_from_identifiers(
     // Get a vec of unique (workspace_id, data_source_id) pairs.
     let data_source_identifiers = table_identifiers
         .iter()
-        .map(|(workspace_id, data_source_id, _)| (*workspace_id, *data_source_id))
+        .map(|(workspace_id, data_source_or_view_id, _)| (*workspace_id, *data_source_or_view_id))
         .unique()
         .collect::<Vec<_>>();
 
     // Get a vec of the corresponding project ids for each (workspace_id, data_source_id) pair.
-    let project_ids_view_filters = try_join_all(
-        data_source_identifiers
-            .iter()
-            .map(|(w, d)| get_data_source_project_and_view_filter(w, d, env, "database_schema")),
-    )
+    let project_ids_view_filters = try_join_all(data_source_identifiers.iter().map(
+        |(workspace_id, data_source_or_view_id)| {
+            get_data_source_project_and_view_filter(
+                workspace_id,
+                data_source_or_view_id,
+                env,
+                "database_schema",
+            )
+        },
+    ))
     .await?;
 
     // Create a hashmap of (workspace_id, data_source_id) -> project_id.
     let project_and_data_source_by_data_source_view = data_source_identifiers
         .iter()
         .zip(project_ids_view_filters.iter())
-        .map(|((w, d), (project, _, data_source_name))| ((*w, *d), (project.clone(), *data_source_name)))
+        .map(
+            |((workspace_id, data_source_or_view_id), (project, _, data_source_name))| {
+                (
+                    (*workspace_id, *data_source_or_view_id),
+                    (project.clone(), data_source_name.clone()),
+                )
+            },
+        )
         .collect::<std::collections::HashMap<_, _>>();
 
     let filters_by_project = project_ids_view_filters
@@ -148,15 +160,21 @@ pub async fn load_tables_from_identifiers(
         })
         .collect::<std::collections::HashMap<_, _>>();
 
+    println!(
+        "================== {:?}",
+        project_and_data_source_by_data_source_view
+    );
     let store = env.store.clone();
 
     // Concurrently load all tables.
-    (try_join_all(table_identifiers.iter().map(|(w, d, t)| {
-        let p = project_and_data_source_by_data_source_view
-            .get(&(*w, *d))
-            .expect("Unreachable: missing project.");
-        store.load_table(&p.0, &p.1, &t)
-    }))
+    (try_join_all(table_identifiers.iter().map(
+        |(workspace_id, data_source_or_view_id, table_id)| {
+            let (project, data_source_name) = project_and_data_source_by_data_source_view
+                .get(&(*workspace_id, *data_source_or_view_id))
+                .expect("Unreachable: missing project.");
+            store.load_table(&project, &data_source_name, &table_id)
+        },
+    ))
     .await?)
         // Unwrap the results.
         .into_iter()
