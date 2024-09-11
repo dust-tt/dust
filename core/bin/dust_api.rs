@@ -27,7 +27,6 @@ use dust::{
     providers::provider::{provider, ProviderID},
     run,
     search_filter::{Filterable, SearchFilter},
-    secondary_api::forward_middleware,
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{postgres, store},
     utils::{self, error_response, APIError, APIResponse, CoreRequestMakeSpan},
@@ -2987,7 +2986,6 @@ fn main() {
                 .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
         )
         .layer(from_fn(validate_api_key))
-        .layer(from_fn(forward_middleware))
         .with_state(state.clone());
 
         let sqlite_heartbeat_router = Router::new()
