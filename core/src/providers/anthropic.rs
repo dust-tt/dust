@@ -780,6 +780,7 @@ impl AnthropicLLM {
         headers.insert("Content-Type", "application/json".parse()?);
         headers.insert("X-API-Key", self.api_key.clone().unwrap().parse()?);
         headers.insert("anthropic-version", "2023-06-01".parse()?);
+        // headers.insert("anthropic-beta", "alpaca-2024-09-05".parse()?);
 
         if !tools.is_empty() {
             headers.insert("anthropic-beta", "tools-2024-05-16".parse()?);
