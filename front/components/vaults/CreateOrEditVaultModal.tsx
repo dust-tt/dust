@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, UserType, VaultType } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, PaginationState } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import React, {
@@ -23,7 +23,7 @@ import React, {
 } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useMembers } from "@app/lib/swr/memberships";
+import { useSearchMembers } from "@app/lib/swr/user";
 import { useVaultInfo, useVaults, useVaultsAsAdmin } from "@app/lib/swr/vaults";
 import logger from "@app/logger/logger";
 
@@ -31,6 +31,7 @@ type RowData = {
   icon: string;
   name: string;
   userId: string;
+  email: string;
   onClick?: () => void;
 };
 
@@ -48,6 +49,7 @@ function getTableRows(allUsers: UserType[]): RowData[] {
     icon: user.image ?? "",
     name: user.fullName,
     userId: user.sId,
+    email: user.email ?? "",
   }));
 }
 
@@ -63,6 +65,14 @@ export function CreateOrEditVaultModal({
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 25,
+  });
+
+  const router = useRouter();
+  const sendNotification = useContext(SendNotificationsContext);
+
   const { mutate: mutateVaults } = useVaults({
     workspaceId: owner.sId,
     disabled: true, // Disable as we just want the mutation function
@@ -71,7 +81,7 @@ export function CreateOrEditVaultModal({
     workspaceId: owner.sId,
     disabled: true, // Disable as we just want the mutation function
   });
-  const { members, isMembersLoading } = useMembers(owner);
+
   const { vaultInfo } = useVaultInfo({
     workspaceId: owner.sId,
     vaultId: vault?.sId ?? null,
@@ -85,8 +95,12 @@ export function CreateOrEditVaultModal({
     }
   }, [vault?.name, vaultMembers]);
 
-  const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
+  const { members, totalMembersCount, isLoading } = useSearchMembers(
+    owner.sId,
+    searchTerm,
+    pagination.pageIndex,
+    pagination.pageSize
+  );
 
   const getTableColumns = useCallback(() => {
     return [
@@ -98,6 +112,17 @@ export function CreateOrEditVaultModal({
             {info.row.original.name}
           </DataTable.CellContent>
         ),
+        enableSorting: false,
+      },
+      {
+        id: "email",
+        accessorKey: "email",
+        cell: (info: Info) => (
+          <DataTable.CellContent>
+            <span className="text-element-700">{info.row.original.email}</span>
+          </DataTable.CellContent>
+        ),
+        enableSorting: false,
       },
       {
         id: "action",
@@ -105,7 +130,7 @@ export function CreateOrEditVaultModal({
           const isSelected = selectedMembers.includes(info.row.original.userId);
           if (isSelected) {
             return (
-              <div className="full-width flex justify-end">
+              <div className="full-width ml-4 flex justify-end">
                 <Button
                   label="Remove"
                   onClick={() =>
@@ -123,7 +148,7 @@ export function CreateOrEditVaultModal({
             );
           }
           return (
-            <div className="full-width flex justify-end">
+            <div className="full-width ml-4 flex justify-end">
               <Button
                 label="Add"
                 onClick={() =>
@@ -266,12 +291,12 @@ export function CreateOrEditVaultModal({
             <div className="flex w-full">
               <Searchbar
                 name="search"
-                placeholder="Search members"
+                placeholder="Search members (email)"
                 value={searchTerm}
                 onChange={setSearchTerm}
               />
             </div>
-            {isMembersLoading ? (
+            {isLoading ? (
               <div className="mt-8 flex justify-center">
                 <Spinner size="lg" variant="color" />
               </div>
@@ -280,8 +305,9 @@ export function CreateOrEditVaultModal({
                 <DataTable
                   data={rows}
                   columns={columns}
-                  filterColumn="name"
-                  filter={searchTerm}
+                  pagination={pagination}
+                  setPagination={setPagination}
+                  totalRowCount={totalMembersCount}
                 />
               </div>
             )}

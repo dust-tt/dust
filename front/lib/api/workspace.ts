@@ -3,6 +3,7 @@ import type {
   MembershipRoleType,
   RoleType,
   SubscriptionType,
+  UserType,
   UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceSegmentationType,
@@ -175,6 +176,29 @@ export async function getMembers(
   });
 
   return { members: usersWithWorkspaces, total };
+}
+
+export async function searchMembers(
+  auth: Authenticator,
+  options: {
+    email?: string;
+  },
+  paginationParams: PaginationParams
+): Promise<{ members: UserType[]; total: number }> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return { members: [], total: 0 };
+  }
+
+  const { users, total } = await UserResource.listUsersWithEmailPredicat(
+    owner.id,
+    {
+      email: options.email,
+    },
+    paginationParams
+  );
+
+  return { members: users.map((u) => u.toJSON()), total };
 }
 
 export async function getMembersCount(
