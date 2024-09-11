@@ -2,13 +2,13 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 
-import {
-  removeNulls,
-  type ModelId,
-  type Result,
-  type RetrievalDocumentChunkType,
-  type RetrievalDocumentType,
+import type {
+  ModelId,
+  Result,
+  RetrievalDocumentChunkType,
+  RetrievalDocumentType,
 } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
