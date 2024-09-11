@@ -151,7 +151,7 @@ export const VaultCategoriesList = ({
             }}
           />
         )}
-        {onButtonClick && (
+        {onButtonClick && vault.kind === "regular" && (
           <Button
             label="Settings and Members"
             icon={Cog6ToothIcon}

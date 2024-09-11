@@ -11,21 +11,20 @@ import {
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, UserType, VaultType } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import type { CellContext, PaginationState } from "@tanstack/react-table";
+import type { CellContext, PaginationState, Row } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import { useRouter } from "next/router";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { ConfirmDeleteVaultDialog } from "@app/components/vaults/ConfirmDeleteVaultDialog";
 import { useSearchMembers } from "@app/lib/swr/user";
-import { useVaultInfo, useVaults, useVaultsAsAdmin } from "@app/lib/swr/vaults";
-import logger from "@app/logger/logger";
+import {
+  useCreateVault,
+  useDeleteVault,
+  useUpdateVault,
+  useVaultInfo,
+} from "@app/lib/swr/vaults";
+import { removeDiacritics } from "@app/lib/utils";
 
 type RowData = {
   icon: string;
@@ -70,17 +69,12 @@ export function CreateOrEditVaultModal({
     pageSize: 25,
   });
 
-  const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const doCreate = useCreateVault({ owner });
+  const doUpdate = useUpdateVault({ owner });
+  const doDelete = useDeleteVault({ owner });
 
-  const { mutate: mutateVaults } = useVaults({
-    workspaceId: owner.sId,
-    disabled: true, // Disable as we just want the mutation function
-  });
-  const { mutate: mutateVaultsAsAdmin } = useVaultsAsAdmin({
-    workspaceId: owner.sId,
-    disabled: true, // Disable as we just want the mutation function
-  });
+  const router = useRouter();
 
   const { vaultInfo } = useVaultInfo({
     workspaceId: owner.sId,
@@ -113,6 +107,15 @@ export function CreateOrEditVaultModal({
           </DataTable.CellContent>
         ),
         enableSorting: false,
+        filterFn: (row: Row<RowData>, columnId: string, filterValue: any) => {
+          if (!filterValue) {
+            return true;
+          }
+
+          return removeDiacritics(row.getValue(columnId))
+            .toLowerCase()
+            .includes(removeDiacritics(filterValue).toLowerCase());
+        },
       },
       {
         id: "email",
@@ -171,59 +174,45 @@ export function CreateOrEditVaultModal({
     ];
   }, [selectedMembers]);
 
-  const createOrUpdateVault = async () => {
-    setIsSaving(true);
-    try {
-      if (selectedMembers.length > 0 && vault) {
-        const groupsUrl = `/api/w/${owner.sId}/groups/${vault.groupIds[0]}`;
-        const groupsRes = await fetch(groupsUrl, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            memberIds: selectedMembers,
-          }),
-        });
-
-        if (!groupsRes.ok) {
-          const groupsErrorData = await groupsRes.json();
-          throw new Error(
-            groupsErrorData.error?.message || "Failed to update vault members"
-          );
-        }
-      } else if (!vault) {
-        const url = `/api/w/${owner.sId}/vaults`;
-        const res = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: vaultName,
-            memberIds: selectedMembers,
-          }),
-        });
-
-        if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.error?.message || "Failed to create vault");
-        }
-        const r = await res.json();
-
-        await mutateVaults();
-        await mutateVaultsAsAdmin();
-
-        await router.push(`/w/${owner.sId}/vaults/${r.vault.sId}`);
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const rows = useMemo(() => getTableRows(members), [members]);
 
   const columns = useMemo(() => getTableColumns(), [getTableColumns]);
+
+  const onSave = useCallback(async () => {
+    setIsSaving(true);
+
+    if (selectedMembers.length > 0 && vault) {
+      await doUpdate(vault, selectedMembers);
+    } else if (!vault) {
+      const createdVault = await doCreate(vaultName, selectedMembers);
+      if (createdVault) {
+        await router.push(`/w/${owner.sId}/vaults/${createdVault.sId}`);
+      }
+    }
+    setIsSaving(false);
+    onClose();
+  }, [
+    doCreate,
+    doUpdate,
+    onClose,
+    owner.sId,
+    router,
+    selectedMembers,
+    vault,
+    vaultName,
+  ]);
+
+  const onDelete = useCallback(async () => {
+    if (!vault) {
+      return;
+    }
+
+    const res = await doDelete(vault);
+    if (res) {
+      onClose();
+      await router.push(`/w/${owner.sId}/vaults`);
+    }
+  }, [doDelete, onClose, owner.sId, router, vault]);
 
   return (
     <Modal
@@ -234,40 +223,8 @@ export function CreateOrEditVaultModal({
       variant="side-md"
       hasChanged={!!vaultName && selectedMembers.length > 0}
       isSaving={isSaving}
-      className="flex"
-      onSave={async () => {
-        try {
-          await createOrUpdateVault();
-          sendNotification({
-            type: "success",
-            title: "Successfully created vault",
-            description: "Vault was successfully created.",
-          });
-        } catch (err) {
-          if ((err as Error).message === "This vault name is already used.") {
-            sendNotification({
-              type: "error",
-              title: "Vault name is already used.",
-              description: "Please choose a different vault name",
-            });
-            return;
-          }
-          logger.error(
-            {
-              workspaceId: owner.id,
-              error: err,
-            },
-            "Error creating vault"
-          );
-          sendNotification({
-            type: "error",
-            title: "Failed to create vault",
-            description:
-              "An unexpected error occurred while creating the vault.",
-          });
-        }
-        onClose();
-      }}
+      className="flex overflow-visible" // overflow-visible is needed to avoid clipping the delete button
+      onSave={onSave}
     >
       <Page.Vertical gap="md" sizing="grow">
         <div className="flex w-full flex-col gap-y-4">
@@ -315,6 +272,25 @@ export function CreateOrEditVaultModal({
               </div>
             )}
           </div>
+          {vault && (
+            <>
+              <Page.Separator />
+              <ConfirmDeleteVaultDialog
+                vault={vault}
+                handleDelete={onDelete}
+                isOpen={showDeleteConfirmDialog}
+                onClose={() => setShowDeleteConfirmDialog(false)}
+              />
+              <div className="flex w-full justify-end">
+                <Button
+                  size="sm"
+                  label="Delete Vault"
+                  variant="primaryWarning"
+                  onClick={() => setShowDeleteConfirmDialog(true)}
+                />
+              </div>
+            </>
+          )}
         </div>
       </Page.Vertical>
     </Modal>

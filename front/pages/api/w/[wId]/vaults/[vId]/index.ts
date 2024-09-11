@@ -7,6 +7,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { deleteVault } from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -51,7 +52,7 @@ async function handler(
   }
 
   switch (req.method) {
-    case "GET":
+    case "GET": {
       const dataSourceViews = await DataSourceViewResource.listByVault(
         auth,
         vault
@@ -88,10 +89,11 @@ async function handler(
           members: currentMembers.map((member) => member.toJSON()),
         },
       });
+    }
 
-    case "PATCH":
+    case "PATCH": {
       if (!auth.isAdmin() || !auth.isBuilder()) {
-        // Only admins, or builders who have to the vault, can patch
+        // Only admins, or builders who have access to the vault, can patch
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -163,9 +165,26 @@ async function handler(
           }
         }
       }
+      return res.status(200).json({ vault: vault.toJSON() });
+    }
+
+    case "DELETE": {
+      if (!auth.isAdmin()) {
+        // Only admins, who have access to the vault, can delete
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only users that are `admins` or `builder` can administrate vaults.",
+          },
+        });
+      }
+
+      await deleteVault(auth, vault);
 
       return res.status(200).json({ vault: vault.toJSON() });
-
+    }
     default:
       return apiError(req, res, {
         status_code: 405,

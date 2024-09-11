@@ -367,8 +367,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.map((group) => new this(GroupModel, group.get()));
   }
 
-  // Group methods
-
   async getActiveMembers(auth: Authenticator): Promise<UserResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
@@ -629,9 +627,9 @@ export class GroupResource extends BaseResource<GroupModel> {
         transaction,
       });
 
-      await this.model.destroy({
+      await GroupMembershipModel.destroy({
         where: {
-          id: this.id,
+          groupId: this.id,
         },
         transaction,
       });

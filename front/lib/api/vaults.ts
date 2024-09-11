@@ -1,18 +1,43 @@
-import type { DataSourceViewCategory } from "@dust-tt/types";
+import type { Authenticator } from "@app/lib/auth";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
+import type { VaultResource } from "@app/lib/resources/vault_resource";
 
-import { isFolder, isWebsite } from "@app/lib/data_sources";
-import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-
-export const getDataSourceCategory = (
-  dataSourceResource: DataSourceResource
-): DataSourceViewCategory => {
-  if (isFolder(dataSourceResource)) {
-    return "folder";
+export const deleteVault = async (
+  auth: Authenticator,
+  vault: VaultResource
+) => {
+  if (!auth.isAdmin()) {
+    throw new Error("Only admins can delete vaults.");
+  }
+  if (!vault.isRegular()) {
+    throw new Error("Cannot delete non regular vaults.");
   }
 
-  if (isWebsite(dataSourceResource)) {
-    return "website";
-  }
+  const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
+  // Check if any data source view is in use in a agent configuration
 
-  return "managed";
+  await frontSequelize.transaction(async (t) => {
+    // delete all data source views
+    for (const view of dataSourceViews) {
+      const res = await view.delete(auth, t);
+      if (res.isErr()) {
+        throw res.error;
+      }
+    }
+
+    // delete all vaults groups
+    for (const group of vault.groups) {
+      const res = await group.delete(auth, t);
+      if (res.isErr()) {
+        throw res.error;
+      }
+    }
+
+    // Finally, delete the vault
+    const res = await vault.delete(auth, t);
+    if (res.isErr()) {
+      throw res.error;
+    }
+  });
 };

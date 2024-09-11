@@ -272,6 +272,7 @@ export default function VaultFolderModal({
               <>
                 <Page.Separator />
                 <DeleteStaticDataSourceDialog
+                  dataSource={folder}
                   handleDelete={onDeleteFolder}
                   isOpen={showDeleteConfirmDialog}
                   onClose={onClose}
