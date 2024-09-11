@@ -37,8 +37,8 @@ import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
-import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { useVaults } from "@app/lib/swr/vaults";
+import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
@@ -79,10 +79,12 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
       accessorKey: "vaults",
       cell: (info: CellContext<RowData, VaultType[]>) => (
         <DataTable.CellContent>
-          {info
-            .getValue()
-            .map((v) => v.name)
-            .join(",")}
+          {info.getValue().length > 0
+            ? info
+                .getValue()
+                .map((v) => v.name)
+                .join(",")
+            : "-"}
         </DataTable.CellContent>
       ),
     });
@@ -92,19 +94,13 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
     header: "Last updated",
     accessorKey: "lastUpdatedAt",
     id: "lastUpdatedAt",
-    cell: (info: CellContext<RowData, number>) => {
-      const lastUpdatedAt = info.getValue();
-
-      if (!lastUpdatedAt) {
-        return <DataTable.CellContent>-</DataTable.CellContent>;
-      }
-
-      return (
-        <DataTable.CellContent>
-          {formatTimestampToFriendlyDate(lastUpdatedAt, "short")}
-        </DataTable.CellContent>
-      );
-    },
+    cell: (info: CellContext<RowData, number>) => (
+      <DataTable.CellContent>
+        {info.getValue()
+          ? formatTimestampToFriendlyDate(info.getValue(), "short")
+          : "-"}
+      </DataTable.CellContent>
+    ),
   });
 
   return columns;
