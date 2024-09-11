@@ -101,7 +101,11 @@ async function migrateApps(
       const replacer = (obj: any, key: string) => {
         const value = obj[key];
         if (!isResourceSId("data_source_view", value)) {
-          obj[key] = dataSourceViews[value]?.sId;
+          if (dataSourceViews[value]?.sId) {
+            obj[key] = dataSourceViews[value]?.sId;
+          } else {
+            logger.warn({}, `Cannot find datasource ${value} in ${vault.name}`);
+          }
         }
       };
 
