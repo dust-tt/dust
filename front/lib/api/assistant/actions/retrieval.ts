@@ -486,38 +486,32 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       dataSourceView: DataSourceViewResource;
     }[] = [];
 
-    // This is not perfect and will be erroneous in case of two data sources with the same id from
-    // two different workspaces. We don't support cross workspace data sources right now. But we'll
-    // likely want `core` to return the `workspace_id` that was used eventualy.
-    // TODO(spolu): make `core` return data source workspace id.
-    const dataSourcesIdToWorkspaceId: {
-      [key: string]: {
-        dataSourceView: DataSourceViewResource;
-        workspaceId: string;
-      };
-    } = {};
-    const uniqueDataSourceViewIds = [
-      ...new Set(
-        actionConfiguration.dataSources.map((ds) => ds.dataSourceViewId)
-      ),
-    ];
+    const uniqueDataSourceViewIds = Array.from(
+      new Set(actionConfiguration.dataSources.map((ds) => ds.dataSourceViewId))
+    );
+
     const dataSourceViews = await DataSourceViewResource.fetchByIds(
       auth,
       uniqueDataSourceViewIds
     );
-    const dataSourceViewsMap = dataSourceViews.reduce<
-      Record<string, DataSourceViewResource>
-    >((acc, dsv) => {
-      acc[dsv.sId] = dsv;
-      return acc;
-    }, {});
 
-    for (const ds of actionConfiguration.dataSources) {
-      dataSourcesIdToWorkspaceId[ds.dataSourceId] = {
-        dataSourceView: dataSourceViewsMap[ds.dataSourceViewId],
-        workspaceId: ds.workspaceId,
-      };
-    }
+    const dataSourceViewsMap = Object.fromEntries(
+      dataSourceViews.map((dsv) => [dsv.sId, dsv])
+    );
+
+    // This is not perfect and will be erroneous in case of two data sources with the same id from
+    // two different workspaces. We don't support cross workspace data sources right now. But we'll
+    // likely want `core` to return the `workspace_id` that was used eventualy.
+    // TODO(spolu): make `core` return data source workspace id.
+    const dataSourcesIdToWorkspaceId = Object.fromEntries(
+      actionConfiguration.dataSources.map((ds) => [
+        ds.dataSourceId,
+        {
+          dataSourceView: dataSourceViewsMap[ds.dataSourceViewId],
+          workspaceId: ds.workspaceId,
+        },
+      ])
+    );
 
     for await (const event of eventStream) {
       if (event.type === "error") {
@@ -617,8 +611,6 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
             const reference = refs[i % refs.length];
             const dsDetails = dataSourcesIdToWorkspaceId[d.data_source_id];
 
-            console.log(">> found documents:", d);
-
             return {
               blob: {
                 dataSourceWorkspaceId: dsDetails.workspaceId,
@@ -638,8 +630,6 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         }
       }
     }
-
-    console.log(">> about to create documents:", blobs);
 
     // We are done, store documents and chunks in database and yield the final events.
     const documents = await RetrievalDocumentResource.makeNewBatch(auth, blobs);
