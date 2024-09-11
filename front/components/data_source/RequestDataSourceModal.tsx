@@ -6,6 +6,7 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
+import * as _ from "lodash";
 import { useContext, useEffect, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -117,10 +118,12 @@ export function RequestDataSourceModal({
           {selectedDataSource && (
             <div>
               <p className="s-mb-2 s-text-sm s-text-element-700">
-                The administrator for {getDataSourceName(selectedDataSource)} is{" "}
-                {selectedDataSource.editedByUser?.fullName}. Send an email to{" "}
-                {selectedDataSource.editedByUser?.fullName}, explaining your
-                request.
+                {_.capitalize(selectedDataSource.editedByUser?.fullName ?? "")}{" "}
+                is the administrator for the{" "}
+                {getDataSourceName(selectedDataSource)} connection within Dust.
+                Send an email to{" "}
+                {_.capitalize(selectedDataSource.editedByUser?.fullName ?? "")},
+                explaining your request.
               </p>
               <TextArea
                 placeholder={`Hello ${selectedDataSource.editedByUser?.fullName},`}

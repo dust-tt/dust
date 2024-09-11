@@ -47,6 +47,9 @@ spec:
               value: https://front-edge.dust.tt
             - name: DUST_CLIENT_FACING_URL
               value: https://front-edge.dust.tt
+            # Make public prod API point to front-edge instead of front
+            - name: DUST_PROD_API
+              value: https://front-edge.dust.tt
 
             - name: DD_AGENT_HOST
               valueFrom:

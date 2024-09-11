@@ -68,18 +68,6 @@ export default function DataSourcePicker({
       if (!selectedDataSourceView) {
         // If the selected data source view is not found in the list, reset the config
         onDataSourcesUpdate([]);
-      } else if (
-        currentDataSources[0].data_source_id !==
-        selectedDataSourceView.dataSource.name
-      ) {
-        // If the selected data source view is found in the list, but the id is not the dataSource name, update the config
-        // Switch back to datasource view id when core is fixed
-        onDataSourcesUpdate([
-          {
-            workspace_id: owner.sId,
-            data_source_id: selectedDataSourceView.dataSource.name,
-          },
-        ]);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -177,7 +165,7 @@ export default function DataSourcePicker({
                         onDataSourcesUpdate([
                           {
                             workspace_id: owner.sId,
-                            data_source_id: dsv.dataSource.name,
+                            data_source_id: dsv.sId,
                           },
                         ]);
                         setSearchFilter("");
