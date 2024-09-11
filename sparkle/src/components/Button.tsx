@@ -161,7 +161,7 @@ const transitionClasses =
   "s-transition-all s-ease-out s-duration-200 s-cursor-pointer";
 
 const magnifyingClasses =
-  "hover:s-scale-105 hover:s-drop-shadow-md active:s-scale-100 active:s-drop-shadow-none";
+  "hover:s-scale-105 hover:s-drop-shadow-md active:s-scale-100 active:s-drop-shadow-none s-m-1";
 
 export function Button({
   variant = "primary",

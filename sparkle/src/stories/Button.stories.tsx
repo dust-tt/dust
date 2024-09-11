@@ -295,6 +295,33 @@ export const ButtonExamples = () => (
         disabled
       />
     </div>
+    <div className="s-flex s-items-center s-gap-4">
+      <div className="s-border-2 s-border-red-500">
+        <Button
+          variant="primary"
+          size="xs"
+          label="Within a div"
+          icon={Cog6ToothIcon}
+        />
+      </div>
+      <div className="s-border-2 s-border-red-500">
+        <Button
+          variant="primary"
+          size="sm"
+          label="Within a div"
+          icon={Cog6ToothIcon}
+        />
+      </div>
+
+      <div className="s-border-2 s-border-red-500">
+        <Button
+          variant="primary"
+          size="lg"
+          label="Within a div"
+          icon={Cog6ToothIcon}
+        />
+      </div>
+    </div>
   </div>
 );
 
