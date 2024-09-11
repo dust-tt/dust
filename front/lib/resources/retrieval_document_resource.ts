@@ -2,11 +2,12 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 
-import type {
-  ModelId,
-  Result,
-  RetrievalDocumentChunkType,
-  RetrievalDocumentType,
+import {
+  removeNulls,
+  type ModelId,
+  type Result,
+  type RetrievalDocumentChunkType,
+  type RetrievalDocumentType,
 } from "@dust-tt/types";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
@@ -36,7 +37,7 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
     model: ModelStatic<RetrievalDocument>,
     blob: Attributes<RetrievalDocument>,
     readonly chunks: RetrievalDocumentChunkType[],
-    readonly dataSourceView: DataSourceViewResource
+    readonly dataSourceView?: DataSourceViewResource
   ) {
     super(RetrievalDocument, blob);
   }
@@ -114,9 +115,9 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
       ],
     });
 
-    const uniqueDataSourceViewIds = [
+    const uniqueDataSourceViewIds = removeNulls([
       ...new Set(docs.map((d) => d.dataSourceViewId)),
-    ];
+    ]);
     const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
       auth,
       uniqueDataSourceViewIds
@@ -135,7 +136,9 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
           this.model,
           d.get(),
           d.chunks,
-          dataSourceViewsMap[d.dataSourceViewId]
+          d.dataSourceViewId
+            ? dataSourceViewsMap[d.dataSourceViewId]
+            : undefined
         )
     );
   }
