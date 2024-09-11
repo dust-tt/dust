@@ -18,6 +18,7 @@ export async function runNotionWorker() {
     reuseV8Context: true,
     namespace,
     maxConcurrentActivityTaskExecutions: 8,
+    maxCachedWorkflows: 200,
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
