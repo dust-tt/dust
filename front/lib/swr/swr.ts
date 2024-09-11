@@ -21,39 +21,40 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
 
   const result = useSWR(disabled ? null : key, fetcher, mergedConfig);
 
-  const mutateKeysWithSameUrl = useCallback(
-    (key: TKey) => {
-      // If the key looks like an url, we need to remove the query params
-      // to make sure we don't cache different pages together
-      // Naive way to detect url by checking for '/'
-      if (typeof key === "string" && key.includes("/")) {
-        console.log(key);
+  // If the key looks like an url, we need to remove the query params
+  // to make sure we don't cache different pages together
+  // Naive way to detect url by checking for '/'
+  const tryMakeUrlWithoutParams = useCallback((key: TKey) => {
+    if (typeof key === "string" && key.includes("/")) {
+      try {
         const urlFromKey = new URL(
           key,
           key.indexOf("://") == -1 ? "https://example.org/" : undefined // We need to provide a base url to make sure the URL is parsed correctly
         );
-        const urlFromKeyWithoutQueryParams =
-          urlFromKey.origin + urlFromKey.pathname;
+        return urlFromKey.origin + urlFromKey.pathname;
+      } catch {
+        return null;
+      }
+    } else {
+      return null;
+    }
+  }, []);
 
+  const mutateKeysWithSameUrl = useCallback(
+    (key: TKey) => {
+      const keyAsUrl = tryMakeUrlWithoutParams(key);
+      if (keyAsUrl) {
         // Cycle through all the keys in the cache that start with the same url
         // and mutate them too
         for (const k of cache.keys()) {
-          if (k !== key && typeof k === "string") {
-            const urlFromK = new URL(
-              k,
-              key.indexOf("://") == -1 ? "https://example.org/" : undefined
-            );
-            const urlFromKWithoutQueryParams =
-              urlFromK.origin + urlFromK.pathname;
-
-            if (urlFromKWithoutQueryParams === urlFromKeyWithoutQueryParams) {
-              void globalMutate<TData>(k);
-            }
+          const kAsUrl = tryMakeUrlWithoutParams(k as TKey);
+          if (kAsUrl === keyAsUrl) {
+            void globalMutate<TData>(k);
           }
         }
       }
     },
-    [globalMutate, cache]
+    [tryMakeUrlWithoutParams, cache, globalMutate]
   );
 
   if (disabled) {
