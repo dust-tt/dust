@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -67,8 +67,8 @@ export function useSearchMembers(
     }
   );
   return {
-    members: data?.members ?? [],
-    membersCount: data?.total ?? 0,
+    members: useMemo(() => (data ? data.members : []), [data]),
+    totalMembersCount: data?.total ?? 0,
     isLoading: !error && !data,
     isError: !!error,
     mutateMembers: mutate,

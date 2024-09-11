@@ -198,10 +198,7 @@ export async function searchMembers(
     paginationParams
   );
 
-  const usersJson = users.map((u) => {
-    return u.toJSON();
-  });
-  return { members: usersJson, total };
+  return { members: users.map((u) => u.toJSON()), total };
 }
 
 export async function getMembersCount(

@@ -94,7 +94,7 @@ export function CreateOrEditVaultModal({
     }
   }, [vaultMembers]);
 
-  const { members, membersCount, isLoading } = useSearchMembers(
+  const { members, totalMembersCount, isLoading } = useSearchMembers(
     owner.sId,
     searchTerm,
     pagination.pageIndex,
@@ -294,7 +294,7 @@ export function CreateOrEditVaultModal({
                   columns={columns}
                   pagination={pagination}
                   setPagination={setPagination}
-                  totalRowCount={membersCount}
+                  totalRowCount={totalMembersCount}
                 />
               </div>
             )}
