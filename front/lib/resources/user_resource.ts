@@ -6,7 +6,9 @@ import type {
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
+import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { User } from "@app/lib/models/user";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -141,6 +143,42 @@ export class UserResource extends BaseResource<User> {
     });
 
     return user ? new UserResource(User, user.get()) : null;
+  }
+
+  static async searchUsers(
+    workspaceId: string,
+    options: {
+      searchTerm?: string;
+    },
+    paginationParams: PaginationParams
+  ): Promise<{ users: User[]; total: number }> {
+    const userWhereClause: any = {};
+    if (options.searchTerm) {
+      userWhereClause.email = {
+        [Op.iLike]: `%${options.searchTerm}%`,
+      };
+    }
+
+    const { count, rows: users } = await User.findAndCountAll({
+      where: userWhereClause,
+      include: [
+        {
+          model: MembershipModel,
+          as: "memberships",
+          where: {
+            workspaceId,
+            startAt: { [Op.lte]: new Date() },
+            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+          },
+          required: true,
+        },
+      ],
+      order: [[paginationParams.orderColumn, paginationParams.orderDirection]],
+      limit: paginationParams.limit,
+      offset: paginationParams.lastValue,
+    });
+
+    return { users, total: count };
   }
 
   async updateAuth0Sub(sub: string): Promise<void> {
