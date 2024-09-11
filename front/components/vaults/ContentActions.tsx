@@ -20,13 +20,13 @@ import { DocumentOrTableDeleteDialog } from "@app/components/data_source/Documen
 import { DocumentOrTableUploadOrEditModal } from "@app/components/data_source/DocumentOrTableUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
+import { AddToVaultDialog } from "@app/components/vaults/AddToVaultDialog";
 import {
   getDataSourceName,
   isFolder,
   isManaged,
   isWebsite,
 } from "@app/lib/data_sources";
-import { AddToVaultDialog } from "@app/components/vaults/AddToVaultDialog";
 
 export type ContentActionKey =
   | "DocumentUploadOrEdit"
@@ -209,7 +209,8 @@ export const getMenuItems = (
 
   if (
     dataSourceView.kind === "default" &&
-    isManaged(dataSourceView.dataSource)
+    isManaged(dataSourceView.dataSource) &&
+    contentNode.type === "folder"
   ) {
     actions.push({
       label: "Add to vault",

@@ -1,24 +1,16 @@
-import {
-  Button,
-  CloudArrowLeftRightIcon,
-  Dialog,
-  DropdownMenu,
-} from "@dust-tt/sparkle";
+import { Button, Dialog, DropdownMenu, LockIcon } from "@dust-tt/sparkle";
 import type {
   APIError,
   DataSourceViewContentNode,
   DataSourceViewType,
-  LightContentNode,
   LightWorkspaceType,
   VaultType,
 } from "@dust-tt/types";
-import * as _ from "lodash";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useVaults } from "@app/lib/swr/vaults";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
-import { LockIcon } from "lucide-react";
+import { useVaults } from "@app/lib/swr/vaults";
 
 interface AddToVaultDialogProps {
   dataSourceView: DataSourceViewType;
@@ -40,6 +32,8 @@ export const AddToVaultDialog = ({
   const dataSource = dataSourceView.dataSource;
   const { vaults } = useVaults({ workspaceId: owner.sId });
   const { dataSourceViews } = useDataSourceViews(owner);
+
+  const sendNotification = useContext(SendNotificationsContext);
 
   const allViews = dataSourceViews.filter(
     (dsv) => dsv.dataSource.sId === dataSource.sId && dsv.kind !== "default"
@@ -102,10 +96,26 @@ export const AddToVaultDialog = ({
 
       if (!res.ok) {
         const rawError: { error: APIError } = await res.json();
-        return rawError.error.message;
+        sendNotification({
+          title: `Error while adding data to vault`,
+          description: rawError.error.message,
+          type: "error",
+        });
+        onClose(false);
+      } else {
+        sendNotification({
+          title: `Data added to vault`,
+          type: "success",
+        });
+        onClose(true);
       }
     } catch (e) {
-      return `An Unknown error ${e} occurred while adding data to vault.`;
+      sendNotification({
+        title: `Error while adding data to vault`,
+        description: `An Unknown error ${e} occurred while adding data to vault.`,
+        type: "error",
+      });
+      onClose(false);
     }
   };
 
@@ -122,27 +132,25 @@ export const AddToVaultDialog = ({
           This data is already available in all vaults.
         </div>
       ) : (
-        <div className="flex w-full flex-col items-center">
-          <DropdownMenu>
-            <DropdownMenu.Button>
-              <Button
-                label={vault ? vault.name : "Select vault"}
-                variant="primary"
-                icon={LockIcon}
-                size="sm"
+        <DropdownMenu>
+          <DropdownMenu.Button>
+            <Button
+              label={vault ? vault.name : "Select vault"}
+              variant="primary"
+              icon={LockIcon}
+              size="sm"
+            />
+          </DropdownMenu.Button>
+          <DropdownMenu.Items>
+            {availableVaults.map((currentVault) => (
+              <DropdownMenu.Item
+                key={currentVault.sId}
+                label={currentVault.name}
+                onClick={() => setVault(currentVault)}
               />
-            </DropdownMenu.Button>
-            <DropdownMenu.Items>
-              {availableVaults.map((currentVault) => (
-                <DropdownMenu.Item
-                  key={currentVault.sId}
-                  label={currentVault.name}
-                  onClick={() => setVault(currentVault)}
-                />
-              ))}
-            </DropdownMenu.Items>
-          </DropdownMenu>
-        </div>
+            ))}
+          </DropdownMenu.Items>
+        </DropdownMenu>
       )}
     </Dialog>
   );
