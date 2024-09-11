@@ -19,19 +19,19 @@ import React, {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { useSearchMembers } from "@app/lib/swr/user";
 import { useVaultInfo, useVaults, useVaultsAsAdmin } from "@app/lib/swr/vaults";
-import { debounce } from "@app/lib/utils/debounce";
 import logger from "@app/logger/logger";
 
 type RowData = {
   icon: string;
   name: string;
   userId: string;
+  email: string;
   onClick?: () => void;
 };
 
@@ -49,6 +49,7 @@ function getTableRows(allUsers: UserType[]): RowData[] {
     icon: user.image ?? "",
     name: user.fullName,
     userId: user.sId,
+    email: user.email ?? "",
   }));
 }
 
@@ -62,11 +63,10 @@ export function CreateOrEditVaultModal({
     vault?.name ?? null
   );
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
-  const [members, setMembers] = useState<UserType[]>([]);
-  const [membersCount, setMembersCount] = useState(0);
+  // const [members, setMembers] = useState<UserType[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  // const [isLoading, setIsLoading] = useState(false);
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 25,
@@ -74,7 +74,7 @@ export function CreateOrEditVaultModal({
 
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
-  const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
+
   const { mutate: mutateVaults } = useVaults({
     workspaceId: owner.sId,
     disabled: true, // Disable as we just want the mutation function
@@ -96,43 +96,12 @@ export function CreateOrEditVaultModal({
     }
   }, [vaultMembers]);
 
-  const debouncedFetch = useCallback(
-    (searchTerm: string, lastValue: number) => {
-      debounce(
-        debounceHandle,
-        async () => {
-          setIsLoading(true);
-          try {
-            const searchParams = new URLSearchParams({
-              searchTerm: searchTerm,
-              orderBy: "name",
-              lastValue: lastValue.toString(),
-            });
-
-            const res = await fetch(
-              `/api/w/${owner.sId}/members/search?${searchParams.toString()}`
-            );
-            if (res.ok) {
-              const searchedMembers = await res.json();
-              setMembers(searchedMembers.members);
-              setMembersCount(searchedMembers.total);
-            }
-          } catch (e) {
-            console.error(e);
-          } finally {
-            setIsLoading(false);
-          }
-        },
-        300
-      );
-    },
-    [owner.sId, setIsLoading, setMembers, setMembersCount]
+  const { members, membersCount, isLoading } = useSearchMembers(
+    owner.sId,
+    searchTerm,
+    pagination.pageIndex,
+    pagination.pageSize
   );
-
-  useEffect(() => {
-    const lastValue = pagination.pageIndex * pagination.pageSize;
-    debouncedFetch(searchTerm, lastValue);
-  }, [searchTerm, pagination, debouncedFetch]);
 
   const getTableColumns = useCallback(() => {
     return [
@@ -147,12 +116,22 @@ export function CreateOrEditVaultModal({
         enableSorting: false,
       },
       {
+        id: "email",
+        accessorKey: "email",
+        cell: (info: Info) => (
+          <DataTable.CellContent>
+            <span className="text-element-700">{info.row.original.email}</span>
+          </DataTable.CellContent>
+        ),
+        enableSorting: false,
+      },
+      {
         id: "action",
         cell: (info: Info) => {
           const isSelected = selectedMembers.includes(info.row.original.userId);
           if (isSelected) {
             return (
-              <div className="full-width flex justify-end">
+              <div className="full-width ml-4 flex justify-end">
                 <Button
                   label="Remove"
                   onClick={() =>
@@ -170,7 +149,7 @@ export function CreateOrEditVaultModal({
             );
           }
           return (
-            <div className="full-width flex justify-end">
+            <div className="full-width ml-4 flex justify-end">
               <Button
                 label="Add"
                 onClick={() =>
@@ -301,7 +280,7 @@ export function CreateOrEditVaultModal({
             <div className="flex w-full">
               <Searchbar
                 name="search"
-                placeholder="Search members"
+                placeholder="Search members (email)"
                 value={searchTerm}
                 onChange={setSearchTerm}
               />
