@@ -131,14 +131,14 @@ async function handler(
       if (contentFragment) {
         if (
           contentFragment.content.length === 0 ||
-          contentFragment.content.length > 64 * 1024
+          contentFragment.content.length > 128 * 1024
         ) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
               message:
-                "The content must be a non-empty string of less than 64kb.",
+                "The content must be a non-empty string of less than 128kb.",
             },
           });
         }
