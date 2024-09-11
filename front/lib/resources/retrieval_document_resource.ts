@@ -8,7 +8,6 @@ import type {
   RetrievalDocumentChunkType,
   RetrievalDocumentType,
 } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
@@ -37,7 +36,7 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
     model: ModelStatic<RetrievalDocument>,
     blob: Attributes<RetrievalDocument>,
     readonly chunks: RetrievalDocumentChunkType[],
-    readonly dataSourceView?: DataSourceViewResource
+    readonly dataSourceView: DataSourceViewResource
   ) {
     super(RetrievalDocument, blob);
   }
@@ -115,9 +114,9 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
       ],
     });
 
-    const uniqueDataSourceViewIds = removeNulls([
+    const uniqueDataSourceViewIds = [
       ...new Set(docs.map((d) => d.dataSourceViewId)),
-    ]);
+    ];
     const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
       auth,
       uniqueDataSourceViewIds
@@ -136,9 +135,7 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
           this.model,
           d.get(),
           d.chunks,
-          d.dataSourceViewId
-            ? dataSourceViewsMap[d.dataSourceViewId]
-            : undefined
+          dataSourceViewsMap[d.dataSourceViewId]
         )
     );
   }
