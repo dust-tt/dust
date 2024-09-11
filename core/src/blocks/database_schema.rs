@@ -136,7 +136,7 @@ pub async fn load_tables_from_identifiers(
     let project_and_data_source_by_data_source_view = data_source_identifiers
         .iter()
         .zip(project_ids_view_filters.iter())
-        .map(|((w, d), p)| ((*w, *d), (p.0.clone(), p.2.clone())))
+        .map(|((w, d), (project, _, data_source_name))| ((*w, *d), (project.clone(), *data_source_name)))
         .collect::<std::collections::HashMap<_, _>>();
 
     let filters_by_project = project_ids_view_filters
