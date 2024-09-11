@@ -1,5 +1,9 @@
 import { ContentMessage } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type {
+  LightWorkspaceType,
+  VaultType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { assertNever, slugify } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
@@ -23,14 +27,11 @@ export function isActionDustAppRunValid(
     : "Please select a Dust App.";
 }
 
-export function ActionDustAppRun({
-  owner,
-  action,
-  updateAction,
-  setEdited,
-}: {
-  owner: WorkspaceType;
+interface ActionDustAppRunProps {
   action: AssistantBuilderActionConfiguration;
+  allowedVaults: VaultType[];
+  owner: LightWorkspaceType;
+  setEdited: (edited: boolean) => void;
   updateAction: (args: {
     actionName: string;
     actionDescription: string;
@@ -38,8 +39,15 @@ export function ActionDustAppRun({
       old: AssistantBuilderActionConfiguration["configuration"]
     ) => AssistantBuilderActionConfiguration["configuration"];
   }) => void;
-  setEdited: (edited: boolean) => void;
-}) {
+}
+
+export function ActionDustAppRun({
+  action,
+  allowedVaults,
+  owner,
+  setEdited,
+  updateAction,
+}: ActionDustAppRunProps) {
   const { dustApps } = useContext(AssistantBuilderContext);
   const [showDustAppsModal, setShowDustAppsModal] = useState(false);
 
@@ -66,6 +74,8 @@ export function ActionDustAppRun({
   return (
     <>
       <AssistantBuilderDustAppModal
+        allowedVaults={allowedVaults}
+        owner={owner}
         isOpen={showDustAppsModal}
         setOpen={(isOpen) => {
           setShowDustAppsModal(isOpen);

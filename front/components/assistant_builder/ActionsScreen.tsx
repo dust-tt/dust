@@ -141,39 +141,46 @@ export default function ActionsScreen({
   const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
 
   const vaultIdToActions = useMemo(() => {
-    const vaultIdToActions: VaultIdToActions = {};
+    return configurableActions.reduce<
+      Record<string, AssistantBuilderActionConfiguration[]>
+    >((acc, action) => {
+      const addActionToVault = (vaultId?: string) => {
+        if (vaultId) {
+          acc[vaultId] = (acc[vaultId] || []).concat(action);
+        }
+      };
 
-    configurableActions.forEach((action) => {
       const actionType = action.type;
 
       switch (actionType) {
         case "TABLES_QUERY":
           Object.values(action.configuration).forEach((config) => {
-            vaultIdToActions[config.dataSourceView.vaultId] = (
-              vaultIdToActions[config.dataSourceView.vaultId] ?? []
-            ).concat(action);
+            addActionToVault(config.dataSourceView.vaultId);
           });
           break;
+
         case "RETRIEVAL_SEARCH":
         case "RETRIEVAL_EXHAUSTIVE":
         case "PROCESS":
           Object.values(action.configuration.dataSourceConfigurations).forEach(
             (config) => {
-              vaultIdToActions[config.dataSourceView.vaultId] = (
-                vaultIdToActions[config.dataSourceView.vaultId] ?? []
-              ).concat(action);
+              addActionToVault(config.dataSourceView.vaultId);
             }
           );
           break;
+
         case "DUST_APP_RUN":
+          addActionToVault(action.configuration.app?.vault.sId);
+          break;
+
         case "WEB_NAVIGATION":
           break;
+
         default:
           assertNever(actionType);
       }
-    });
-
-    return vaultIdToActions;
+      return acc;
+    }, {});
   }, [configurableActions]);
 
   const nonGlobalVaultsUsedInActions = useMemo(() => {
@@ -677,6 +684,7 @@ function ActionConfigEditor({
     case "DUST_APP_RUN":
       return (
         <ActionDustAppRun
+          allowedVaults={allowedVaults}
           owner={owner}
           action={action}
           updateAction={updateAction}
@@ -761,7 +769,7 @@ function ActionConfigEditor({
   }
 }
 
-type ActionEditorProps = {
+interface ActionEditorProps {
   action: AssistantBuilderActionConfiguration;
   vaultsUsedInActions: VaultIdToActions;
   showInvalidActionNameError: string | null;
@@ -779,7 +787,7 @@ type ActionEditorProps = {
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
   builderState: AssistantBuilderState;
-};
+}
 
 function ActionEditor({
   action,
