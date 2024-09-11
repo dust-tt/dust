@@ -112,7 +112,7 @@ async function handler(
     getDustAppSecrets(auth, true),
   ]);
 
-  if (!app || !app.canWrite(keyAuth) || app.vault.sId !== vaultId) {
+  if (!app || !app.canRead(keyAuth) || app.vault.sId !== vaultId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
