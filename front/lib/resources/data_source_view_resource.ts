@@ -14,6 +14,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import { getDataSourceCategory } from "@app/lib/api/vaults";
@@ -257,7 +258,25 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       fetchDataSourceViewOptions,
       {
         where: {
-          id: dataSourceViewModelIds,
+          id: {
+            [Op.in]: dataSourceViewModelIds,
+          },
+        },
+      }
+    );
+
+    return dataSourceViews ?? null;
+  }
+
+  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+    const dataSourceViews = await this.baseFetch(
+      auth,
+      {},
+      {
+        where: {
+          id: {
+            [Op.in]: ids,
+          },
         },
       }
     );

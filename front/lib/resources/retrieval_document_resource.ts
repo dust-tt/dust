@@ -8,7 +8,9 @@ import type {
   RetrievalDocumentChunkType,
   RetrievalDocumentType,
 } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/types";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
+import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -17,6 +19,7 @@ import {
   RetrievalDocumentChunk,
 } from "@app/lib/models/assistant/actions/retrieval";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
@@ -33,7 +36,8 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
   constructor(
     model: ModelStatic<RetrievalDocument>,
     blob: Attributes<RetrievalDocument>,
-    readonly chunks: RetrievalDocumentChunkType[]
+    readonly chunks: RetrievalDocumentChunkType[],
+    readonly dataSourceView?: DataSourceViewResource
   ) {
     super(RetrievalDocument, blob);
   }
@@ -41,10 +45,12 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
   static async makeNew(
     auth: Authenticator,
     blob: RetrievalDocumentBlob,
-    chunks: RetrievalDocumentChunkType[]
-    // TODO(GROUPS_INFRA) Add supports for dataSourceViewId.
+    chunks: RetrievalDocumentChunkType[],
+    dataSourceView: DataSourceViewResource
   ) {
-    const [doc] = await this.makeNewBatch(auth, [{ blob, chunks }]);
+    const [doc] = await this.makeNewBatch(auth, [
+      { blob, chunks, dataSourceView },
+    ]);
 
     return doc;
   }
@@ -54,15 +60,21 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
     blobs: {
       blob: RetrievalDocumentBlob;
       chunks: RetrievalDocumentChunkType[];
-      // TODO(GROUPS_INFRA) Add supports for dataSourceViewId.
+      dataSourceView: DataSourceViewResource;
     }[]
   ) {
     // TODO(GROUPS_INFRA) Use auth.workspaceId.
     const results = await frontSequelize.transaction(async (transaction) => {
       const createdDocuments = [];
 
-      for (const { blob, chunks } of blobs) {
-        const doc = await RetrievalDocument.create(blob, { transaction });
+      for (const { blob, chunks, dataSourceView } of blobs) {
+        const doc = await RetrievalDocument.create(
+          {
+            ...blob,
+            dataSourceViewId: dataSourceView.id,
+          },
+          { transaction }
+        );
 
         for (const c of chunks) {
           await RetrievalDocumentChunk.create(
@@ -76,7 +88,9 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
           );
         }
 
-        createdDocuments.push(new this(RetrievalDocument, doc.get(), chunks));
+        createdDocuments.push(
+          new this(RetrievalDocument, doc.get(), chunks, dataSourceView)
+        );
       }
 
       return createdDocuments;
@@ -85,10 +99,12 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
     return results;
   }
 
-  static async listAllForActions(actionIds: ModelId[]) {
+  static async listAllForActions(auth: Authenticator, actionIds: ModelId[]) {
     const docs = await RetrievalDocument.findAll({
       where: {
-        retrievalActionId: actionIds,
+        retrievalActionId: {
+          [Op.in]: actionIds,
+        },
       },
       order: [["documentTimestamp", "DESC"]],
       include: [
@@ -99,8 +115,31 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
       ],
     });
 
+    const uniqueDataSourceViewIds = removeNulls([
+      ...new Set(docs.map((d) => d.dataSourceViewId)),
+    ]);
+    const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
+      auth,
+      uniqueDataSourceViewIds
+    );
+
+    const dataSourceViewsMap = dataSourceViews.reduce<
+      Record<string, DataSourceViewResource>
+    >((acc, dsv) => {
+      acc[dsv.sId] = dsv;
+      return acc;
+    }, {});
+
     return docs.map(
-      (d) => new RetrievalDocumentResource(this.model, d.get(), d.chunks)
+      (d) =>
+        new RetrievalDocumentResource(
+          this.model,
+          d.get(),
+          d.chunks,
+          d.dataSourceViewId
+            ? dataSourceViewsMap[d.dataSourceViewId]
+            : undefined
+        )
     );
   }
 
