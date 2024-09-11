@@ -145,7 +145,7 @@ pub async fn load_tables_from_identifiers(
             |((workspace_id, data_source_or_view_id), (project, _, data_source_name))| {
                 (
                     (*workspace_id, *data_source_or_view_id),
-                    (project.clone(), data_source_name.clone()),
+                    (project, data_source_name),
                 )
             },
         )
