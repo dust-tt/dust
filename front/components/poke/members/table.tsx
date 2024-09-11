@@ -1,4 +1,8 @@
-import type { UserTypeWithWorkspaces, WorkspaceType } from "@dust-tt/types";
+import type {
+  RoleType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { UserType } from "@dust-tt/types";
 import { MEMBERSHIP_ROLE_TYPES } from "@dust-tt/types";
 import { useRouter } from "next/router";
@@ -61,6 +65,36 @@ export function MembersDataTable({
     }
   };
 
+  const onUpdateMemberRole = async (m: MemberDisplayType, role: RoleType) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to update role of ${m.email} to ${role}?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const r = await fetch(`/api/poke/workspaces/${owner.sId}/roles`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: m.sId,
+          role,
+        }),
+      });
+      if (!r.ok) {
+        throw new Error("Failed to update user role.");
+      }
+      router.reload();
+    } catch (e) {
+      console.error(e);
+      window.alert(`An error occurred while updating the user role: ${e}`);
+    }
+  };
+
   return (
     <>
       <div className="border-material-200 my-4 flex w-full flex-col rounded-lg border p-4">
@@ -69,7 +103,10 @@ export function MembersDataTable({
           <InviteMemberDialog owner={owner} user={user} />
         </div>
         <PokeDataTable
-          columns={makeColumnsForMembers({ onRevokeMember })}
+          columns={makeColumnsForMembers({
+            onRevokeMember,
+            onUpdateMemberRole,
+          })}
           data={prepareMembersForDisplay(members)}
           facets={[
             {
