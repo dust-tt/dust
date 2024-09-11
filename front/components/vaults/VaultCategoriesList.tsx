@@ -70,8 +70,8 @@ const getTableColumns = () => {
       accessorKey: "name",
       cell: (info: Info) => (
         <DataTable.CellContent icon={info.row.original.icon}>
-          <span className="font-bold">{info.row.original.name}</span> (
-          {info.row.original.count} items)
+          <span>{info.row.original.name}</span> ({info.row.original.count}{" "}
+          items)
         </DataTable.CellContent>
       ),
     },

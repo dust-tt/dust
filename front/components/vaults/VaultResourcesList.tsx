@@ -87,7 +87,7 @@ const getTableColumns = ({
     sortingFn: "text", // built-in sorting function case-insensitive
     cell: (info: CellContext<RowData, string>) => (
       <DataTable.CellContent icon={info.row.original.icon}>
-        <span className="font-bold"> {info.getValue()}</span>
+        <span>{info.getValue()}</span>
       </DataTable.CellContent>
     ),
   };
