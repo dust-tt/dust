@@ -345,6 +345,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       purgeOnStart: true,
       persistStorage: false,
       logLevel: LogLevel.OFF,
+      availableMemoryRatio: 0.1,
     })
   );
 
