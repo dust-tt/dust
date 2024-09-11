@@ -142,7 +142,8 @@ export async function batchRenderAgentMessages(
       ).filter((a) => a !== null) as LightAgentConfigurationType[];
       return agents;
     })(),
-    (async () => retrievalActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () =>
+      retrievalActionTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () => dustAppRunTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => tableQueryTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
