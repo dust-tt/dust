@@ -32,7 +32,7 @@ import {
 import { FoldersHeaderMenu } from "@app/components/vaults/FoldersHeaderMenu";
 import { WebsitesHeaderMenu } from "@app/components/vaults/WebsitesHeaderMenu";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { isFolder, isWebsite } from "@app/lib/data_sources";
+import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
@@ -188,26 +188,6 @@ export const VaultDataSourceViewContentList = ({
               }}
             />
           </>
-        ) : dataSourceView.category === "managed" && connector ? (
-          <div className="flex flex-col items-center gap-4 text-sm text-element-700">
-            <span>Connection ready. Select the data to sync.</span>
-            <ConnectorPermissionsModal
-              owner={owner}
-              connector={connector}
-              dataSource={dataSourceView.dataSource}
-              isOpen={showConnectorPermissionsModal}
-              onClose={() => {
-                setShowConnectorPermissionsModal(false);
-              }}
-              plan={plan}
-              readOnly={false}
-              isAdmin={isAdmin}
-              dustClientFacingUrl={dustClientFacingUrl}
-              onManageButtonClick={() => {
-                setShowConnectorPermissionsModal(true);
-              }}
-            />
-          </div>
         ) : (
           <></>
         )}
@@ -251,6 +231,36 @@ export const VaultDataSourceViewContentList = ({
             dataSourceView={dataSourceView}
           />
         )}
+        {isManaged(dataSourceView.dataSource) &&
+          connector &&
+          !parentId &&
+          vault.kind === "system" && (
+            <div className="flex flex-col items-center gap-2 text-sm text-element-700">
+              {rows.length === 0 && (
+                <div>Connection ready. Select the data to sync.</div>
+              )}
+
+              <ConnectorPermissionsModal
+                owner={owner}
+                connector={connector}
+                dataSource={dataSourceView.dataSource}
+                isOpen={showConnectorPermissionsModal}
+                onClose={(save) => {
+                  setShowConnectorPermissionsModal(false);
+                  if (save) {
+                    void mutateDataSourceViewContentNodes();
+                  }
+                }}
+                plan={plan}
+                readOnly={false}
+                isAdmin={isAdmin}
+                dustClientFacingUrl={dustClientFacingUrl}
+                onManageButtonClick={() => {
+                  setShowConnectorPermissionsModal(true);
+                }}
+              />
+            </div>
+          )}
       </div>
       {rows.length > 0 && (
         <DataTable
@@ -279,21 +289,6 @@ export const VaultDataSourceViewContentList = ({
           await mutateDataSourceViewContentNodes();
         }}
       />
-      {connector && (
-        <ConnectorPermissionsModal
-          owner={owner}
-          connector={connector}
-          dataSource={dataSourceView.dataSource}
-          isOpen={showConnectorPermissionsModal}
-          onClose={() => {
-            setShowConnectorPermissionsModal(false);
-          }}
-          plan={plan}
-          readOnly={false}
-          isAdmin={isAdmin}
-          dustClientFacingUrl={dustClientFacingUrl}
-        />
-      )}
     </>
   );
 };
