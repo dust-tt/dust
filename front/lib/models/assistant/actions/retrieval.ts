@@ -11,6 +11,7 @@ import { DataTypes, Model } from "sequelize";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export class AgentRetrievalConfiguration extends Model<
   InferAttributes<AgentRetrievalConfiguration>,
@@ -269,9 +270,11 @@ export class RetrievalDocument extends Model<
   declare tags: string[];
   declare score: number | null;
 
+  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
   declare retrievalActionId: ForeignKey<AgentRetrievalAction["id"]>;
 
   declare chunks: NonAttribute<RetrievalDocumentChunk[]>;
+  declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
 
 RetrievalDocument.init(
@@ -337,6 +340,16 @@ AgentRetrievalAction.hasMany(RetrievalDocument, {
 });
 RetrievalDocument.belongsTo(AgentRetrievalAction, {
   foreignKey: { name: "retrievalActionId", allowNull: false },
+});
+
+// TODO(VAULTS_INFRA) Set to not null once backfilled.
+DataSourceViewModel.hasMany(RetrievalDocument, {
+  foreignKey: { allowNull: true },
+  onDelete: "SET NULL",
+});
+RetrievalDocument.belongsTo(DataSourceViewModel, {
+  as: "dataSourceView",
+  foreignKey: { allowNull: true },
 });
 
 export class RetrievalDocumentChunk extends Model<
