@@ -8,7 +8,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import apiConfig from "@app/lib/api/config";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
@@ -26,18 +26,10 @@ export type GetRunResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetRunResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetRunResponseBody>>,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { keyAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  const owner = keyAuth.workspace();
+  const owner = auth.workspace();
   if (!owner) {
     return apiError(req, res, {
       status_code: 404,
@@ -53,13 +45,13 @@ async function handler(
   // Handling the case where vId is undefined to keep support
   // for the legacy endpoint (not under vault, global vault assumed).
   if (vaultId === undefined) {
-    const globalVault = await VaultResource.fetchWorkspaceGlobalVault(keyAuth);
+    const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
     vaultId = globalVault.sId;
   }
 
-  const app = await AppResource.fetchById(keyAuth, req.query.aId as string);
+  const app = await AppResource.fetchById(auth, req.query.aId as string);
 
-  if (!app || !app.canRead(keyAuth) || app.vault.sId !== vaultId) {
+  if (!app || !app.canRead(auth) || app.vault.sId !== vaultId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

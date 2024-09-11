@@ -366,16 +366,24 @@ export class DustAPI {
    * @param inputs any[] the app inputs
    */
   async runApp(
-    app: DustAppType,
+    {
+      workspaceId,
+      appId,
+      appHash,
+      appVaultId,
+    }: {
+      workspaceId: string;
+      appId: string;
+      appVaultId: string;
+      appHash: string;
+    },
     config: DustAppConfigType,
     inputs: unknown[],
     { useWorkspaceCredentials }: { useWorkspaceCredentials: boolean } = {
       useWorkspaceCredentials: false,
     }
   ): Promise<DustAPIResponse<RunType>> {
-    let url = `${this.apiUrl()}/api/v1/w/${app.workspaceId}/apps/${
-      app.appId
-    }/runs`;
+    let url = `${this.apiUrl()}/api/v1/w/vaults/${appVaultId}/${workspaceId}/apps/${appId}/runs`;
     if (useWorkspaceCredentials) {
       url += "?use_workspace_credentials=true";
     }
@@ -392,7 +400,7 @@ export class DustAPI {
       method: "POST",
       headers,
       body: JSON.stringify({
-        specification_hash: app.appHash,
+        specification_hash: appHash,
         config: config,
         stream: false,
         blocking: true,
@@ -417,7 +425,17 @@ export class DustAPI {
    * @param inputs any[] the app inputs
    */
   async runAppStreamed(
-    app: DustAppType,
+    {
+      workspaceId,
+      appId,
+      appHash,
+      appVaultId,
+    }: {
+      workspaceId: string;
+      appId: string;
+      appVaultId: string;
+      appHash: string;
+    },
     config: DustAppConfigType,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     inputs: any[],
@@ -425,9 +443,7 @@ export class DustAPI {
       useWorkspaceCredentials: false,
     }
   ) {
-    let url = `${this.apiUrl()}/api/v1/w/${app.workspaceId}/apps/${
-      app.appId
-    }/runs`;
+    let url = `${this.apiUrl()}/api/v1/w/vaults/${appVaultId}/${workspaceId}/apps/${appId}/runs`;
     if (useWorkspaceCredentials) {
       url += "?use_workspace_credentials=true";
     }
@@ -444,7 +460,7 @@ export class DustAPI {
       method: "POST",
       headers,
       body: JSON.stringify({
-        specification_hash: app.appHash,
+        specification_hash: appHash,
         config: config,
         stream: true,
         blocking: false,

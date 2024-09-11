@@ -6,7 +6,7 @@ import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -17,18 +17,10 @@ export type GetAppsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetAppsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<GetAppsResponseBody>>,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { keyAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  const owner = keyAuth.workspace();
+  const owner = auth.workspace();
   if (!owner) {
     return apiError(req, res, {
       status_code: 404,
@@ -43,8 +35,8 @@ async function handler(
   // for the legacy endpoint (not under vault, global vault assumed).
   const vault =
     req.query.vId === undefined
-      ? await VaultResource.fetchWorkspaceGlobalVault(keyAuth)
-      : await VaultResource.fetchById(keyAuth, req.query.vId as string);
+      ? await VaultResource.fetchWorkspaceGlobalVault(auth)
+      : await VaultResource.fetchById(auth, req.query.vId as string);
 
   if (!vault) {
     return apiError(req, res, {
@@ -58,7 +50,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const apps = (await AppResource.listByVault(keyAuth, vault)).map((app) =>
+      const apps = (await AppResource.listByVault(auth, vault)).map((app) =>
         app.toJSON()
       );
       res.status(200).json({

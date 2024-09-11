@@ -24,8 +24,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
+import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -78,20 +77,13 @@ function extractUsageFromExecutions(
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostRunResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostRunResponseBody>>,
+  auth: Authenticator,
+  keyAuth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
+  const keyWorkspaceId = keyAuth.getNonNullableWorkspace().id;
 
-  const { keyAuth, workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string,
-    getGroupIdsFromHeaders(req.headers)
-  );
-
-  const owner = workspaceAuth.workspace();
+  const owner = auth.workspace();
   if (!owner) {
     return apiError(req, res, {
       status_code: 404,
@@ -114,10 +106,10 @@ async function handler(
     AppResource.fetchById(keyAuth, req.query.aId as string),
     Provider.findAll({
       where: {
-        workspaceId: keyRes.value.workspaceId,
+        workspaceId: keyWorkspaceId,
       },
     }),
-    getDustAppSecrets(workspaceAuth, true),
+    getDustAppSecrets(auth, true),
   ]);
 
   if (!app || !app.canWrite(keyAuth) || app.vault.sId !== vaultId) {
@@ -170,14 +162,14 @@ async function handler(
       }
 
       let credentials: CredentialsType | null = null;
-      if (keyRes.value.isSystem && !useWorkspaceCredentials) {
+      if (auth.isSystemKey() && !useWorkspaceCredentials) {
         // Dust managed credentials: system API key (packaged apps).
         credentials = dustManagedCredentials();
       } else {
         credentials = credentialsFromProviders(providers);
       }
 
-      if (!keyRes.value.isSystem) {
+      if (!auth.isSystemKey()) {
         const remaining = await rateLimiter({
           key: `app_run:w:${owner.sId}:a:${app.sId}`,
           maxPerTimeframe: 10000,
@@ -344,7 +336,7 @@ async function handler(
         dustRunId,
         appId: app.id,
         runType: "deploy",
-        workspaceId: keyRes.value.workspaceId,
+        workspaceId: keyWorkspaceId,
       });
 
       await run.recordRunUsage(usages);
