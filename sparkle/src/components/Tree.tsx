@@ -94,7 +94,7 @@ Tree.Item = function ({
   type = "node",
   className = "",
   size = "sm",
-  tailwindIconTextColor = "s-text-element-600",
+  tailwindIconTextColor = "s-text-element-800",
   visual,
   checkbox,
   onChevronClick,

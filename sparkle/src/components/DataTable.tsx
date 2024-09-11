@@ -384,7 +384,7 @@ DataTable.CellContent = function CellContent({
           visual={icon}
           size="sm"
           className={classNames(
-            "s-mr-2 s-text-element-600",
+            "s-mr-2 s-text-element-800",
             iconClassName || ""
           )}
         />
