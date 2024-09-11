@@ -1,7 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import {
   getGoogleSheetTableId,
-  getSanitizedHeaders,
   InvalidStructuredDataHeaderError,
   slugify,
 } from "@dust-tt/types";
@@ -80,6 +79,7 @@ async function upsertTable(
     },
     truncate: true,
     parents: [tableId, ...parents],
+    useAppForHeaderDetection: true,
   });
 
   logger.info(loggerArgs, "[Spreadsheet] Table upserted.");

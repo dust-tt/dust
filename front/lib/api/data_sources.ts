@@ -396,6 +396,7 @@ export async function upsertTable({
   async,
   dataSource,
   auth,
+  useAppForHeaderDetection,
 }: {
   tableId?: string | null;
   name: string;
@@ -408,6 +409,7 @@ export async function upsertTable({
   async: boolean;
   dataSource: DataSourceResource;
   auth: Authenticator;
+  useAppForHeaderDetection?: boolean;
 }) {
   const nonNullTableId = tableId ?? generateLegacyModelSId();
   const tableParents: string[] = parents ?? [];
@@ -416,7 +418,7 @@ export async function upsertTable({
     tableParents.push(nonNullTableId);
   }
 
-  const useAppForHeaderDetection = auth
+  const useAppForHeaderDetectionFlag = auth
     .getNonNullableWorkspace()
     .flags.includes("use_app_for_header_detection");
 
@@ -439,7 +441,8 @@ export async function upsertTable({
         tableParents,
         csv: csv ?? null,
         truncate,
-        useAppForHeaderDetection,
+        useAppForHeaderDetection:
+          !!useAppForHeaderDetection && useAppForHeaderDetectionFlag,
       },
     });
     if (enqueueRes.isErr()) {
@@ -460,7 +463,8 @@ export async function upsertTable({
     tableParents,
     csv: csv ?? null,
     truncate,
-    useAppForHeaderDetection,
+    useAppForHeaderDetection:
+      !!useAppForHeaderDetection && useAppForHeaderDetectionFlag,
   });
 
   return tableRes;
