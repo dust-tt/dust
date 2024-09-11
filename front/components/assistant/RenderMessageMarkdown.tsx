@@ -24,7 +24,6 @@ import {
 } from "tailwindcss/colors";
 import { visit } from "unist-util-visit";
 
-import { makeLinkForRetrievedDocument } from "@app/components/actions/retrieval/utils";
 import {
   MermaidDisplayProvider,
   MermaidGraph,
@@ -421,15 +420,12 @@ function CiteBlock(props: ReactMarkdownProps) {
       <span className="inline-flex space-x-1">
         {refs.map((r, i) => {
           const document = references[r.ref];
-          const link =
-            "link" in document
-              ? document.link
-              : makeLinkForRetrievedDocument(document);
+          const link = "link" in document ? document.link : document.sourceUrl;
 
           return (
             <sup key={`${r.ref}-${i}`}>
               <a
-                href={link}
+                href={link ?? undefined}
                 target="_blank"
                 rel="noopener noreferrer"
                 onMouseEnter={() => setHoveredReference(r.counter)}
