@@ -573,9 +573,12 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     return new Ok(contentNodes);
   }
 
-  async retrieveContentNodeParents(): Promise<Result<string[], Error>> {
-    // Slack is flat.
-    return new Ok([]);
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    return new Ok([internalId]);
   }
 
   async setConfigurationKey({

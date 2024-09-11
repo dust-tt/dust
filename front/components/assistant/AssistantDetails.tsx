@@ -52,7 +52,6 @@ import {
   getDisplayNameForDataSource,
   isFolder,
 } from "@app/lib/data_sources";
-import { useApp } from "@app/lib/swr/apps";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
 import {
   useDataSourceViewContentNodes,
@@ -292,7 +291,7 @@ export function AssistantDetails({
                 <div className="text-lg font-bold text-element-800">
                   Run Actions
                 </div>
-                <DustAppSection dustApp={action} owner={owner} />
+                <DustAppSection dustApp={action} />
               </div>
             ) : isTablesQueryConfiguration(action) ? (
               <div className="flex flex-col gap-2" key={`action-${index}`}>
@@ -554,14 +553,7 @@ function DataSourceViewSelectedNodes({
   );
 }
 
-function DustAppSection({
-  owner,
-  dustApp,
-}: {
-  owner: WorkspaceType;
-  dustApp: DustAppRunConfigurationType;
-}) {
-  const { app } = useApp({ workspaceId: owner.sId, appId: dustApp.appId });
+function DustAppSection({ dustApp }: { dustApp: DustAppRunConfigurationType }) {
   return (
     <div className="flex flex-col gap-2">
       <div>The following tool is run before answering:</div>
@@ -569,7 +561,7 @@ function DustAppSection({
         <div>
           <CommandLineIcon />
         </div>
-        <div>{app ? app.name : ""}</div>
+        <div>{dustApp.name}</div>
       </div>
     </div>
   );

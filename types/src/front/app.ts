@@ -1,7 +1,7 @@
 import { BlockType } from "../front/run";
+import { VaultType } from "../front/vault";
 import { ModelId } from "../shared/model_id";
-import { VaultType } from "./vault";
-export type AppVisibility = "public" | "private" | "deleted";
+export type AppVisibility = "private" | "deleted";
 
 export type BlockRunConfig = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

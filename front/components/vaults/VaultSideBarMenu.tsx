@@ -509,7 +509,7 @@ const VaultAppItem = ({
 }): ReactElement => {
   const router = useRouter();
 
-  const appPath = `/w/${owner.sId}/a/${app.sId}`;
+  const appPath = `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`;
 
   return (
     <Tree.Item
@@ -554,7 +554,11 @@ const VaultAppSubMenu = ({
 
   const categoryDetails = DATA_SOURCE_OR_VIEW_SUB_ITEMS[category];
 
-  const { isAppsLoading, apps } = useApps(owner, !isExpanded);
+  const { isAppsLoading, apps } = useApps({
+    owner,
+    disabled: !isExpanded,
+    vault,
+  });
 
   return (
     <Tree.Item

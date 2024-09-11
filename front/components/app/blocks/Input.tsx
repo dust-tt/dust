@@ -72,7 +72,7 @@ export default function Input({
     setDatasetModalData(null);
     if (dataset) {
       const res = await fetch(
-        `/api/w/${owner.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
+        `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${block.config.dataset}`,
         {
           method: "POST",
           headers: {
@@ -154,7 +154,7 @@ export default function Input({
                   className="ml-1 mt-2"
                   variant="secondary"
                   onClick={() => {
-                    window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.config.dataset}`;
+                    window.location.href = `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${block.config.dataset}`;
                   }}
                   icon={PencilSquareIcon}
                   label={"Edit schema"}

@@ -84,7 +84,7 @@ export function useDataSourceTables({
   dataSourceName,
 }: {
   workspaceId: string;
-  dataSourceName: string;
+  dataSourceName: string | undefined;
 }) {
   const tablesFetcher: Fetcher<ListTablesResponseBody> = fetcher;
 

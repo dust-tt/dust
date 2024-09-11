@@ -17,7 +17,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import apiConfig from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import { Authenticator } from "@app/lib/auth";
 import { getDocumentsPostDeleteHooksToRun } from "@app/lib/documents_post_process_hooks/hooks";
 import {
   enqueueUpsertDocument,
@@ -25,7 +26,7 @@ import {
 } from "@app/lib/upsert_queue";
 import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 import { launchRunPostDeleteHooksWorkflow } from "@app/temporal/documents_post_process_hooks/client";
 
 export const config = {
@@ -208,20 +209,11 @@ async function handler(
       | DeleteDocumentResponseBody
       | UpsertDocumentResponseBody
     >
-  >
+  >,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  const owner = workspaceAuth.workspace();
-  const plan = workspaceAuth.plan();
-  if (!owner || !plan || !workspaceAuth.isBuilder()) {
+  const { name } = req.query;
+  if (typeof name !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -231,11 +223,7 @@ async function handler(
     });
   }
 
-  const dataSource = await getDataSource(
-    workspaceAuth,
-    req.query.name as string
-  );
-
+  const dataSource = await getDataSource(auth, name);
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
@@ -245,6 +233,9 @@ async function handler(
       },
     });
   }
+
+  const owner = auth.getNonNullableWorkspace();
+  const plan = auth.getNonNullablePlan();
 
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   switch (req.method) {
@@ -272,7 +263,7 @@ async function handler(
       return;
 
     case "POST":
-      if (dataSource.connectorId && !keyRes.value.isSystem) {
+      if (dataSource.connectorId && !auth.isSystemKey()) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -282,7 +273,7 @@ async function handler(
         });
       }
 
-      if (!keyRes.value.isSystem) {
+      if (!auth.isSystemKey()) {
         const remaining = await rateLimiter({
           key: `upsert-document-w-${owner.sId}`,
           maxPerTimeframe: 120,
@@ -494,18 +485,7 @@ async function handler(
       }
 
     case "DELETE":
-      if (!workspaceAuth.isBuilder()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "You can only alter the data souces of the workspaces for which you are a builder.",
-          },
-        });
-      }
-
-      if (dataSource.connectorId && !keyRes.value.isSystem) {
+      if (dataSource.connectorId && !auth.isSystemKey()) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -570,4 +550,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicAPIAuthentication(handler);

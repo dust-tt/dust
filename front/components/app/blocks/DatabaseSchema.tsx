@@ -108,6 +108,7 @@ export default function DatabaseSchema({
               <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                 <TablePicker
                   owner={owner}
+                  vault={app.vault}
                   dataSource={{
                     workspace_id: block.config.tables?.[0].workspace_id,
                     data_source_id: block.config.tables?.[0].data_source_id,
@@ -116,7 +117,7 @@ export default function DatabaseSchema({
                   currentTableId={block.config.tables?.[0].table_id}
                   onTableUpdate={(table) => {
                     const b = shallowBlockClone(block);
-                    block.config.tables[0].table_id = table.table_id;
+                    block.config.tables[0].table_id = table.dustDocumentId;
                     onBlockUpdate(b);
                   }}
                 />

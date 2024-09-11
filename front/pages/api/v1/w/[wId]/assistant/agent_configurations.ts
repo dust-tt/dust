@@ -2,8 +2,9 @@ import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 /**
@@ -46,40 +47,15 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetAgentConfigurationsResponseBody>>
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetAgentConfigurationsResponseBody>
+  >,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-
-  const { wId } = req.query;
-  if (typeof wId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Workspace ID not found",
-      },
-    });
-  }
-
-  const { workspaceAuth } = await Authenticator.fromKey(keyRes.value, wId);
-
-  if (!workspaceAuth || !workspaceAuth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 401,
-      api_error: {
-        type: "workspace_not_found",
-        message: "Workspace not found",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET": {
       const agentConfigurations = await getAgentConfigurations({
-        auth: workspaceAuth,
+        auth,
         agentsGetView: "all",
         variant: "light",
       });
@@ -98,4 +74,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicAPIAuthentication(handler);

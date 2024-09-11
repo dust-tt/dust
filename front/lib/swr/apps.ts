@@ -1,27 +1,34 @@
-import type { AppType, LightWorkspaceType, RunRunType } from "@dust-tt/types";
+import type {
+  AppType,
+  LightWorkspaceType,
+  RunRunType,
+  VaultType,
+} from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetAppsResponseBody } from "@app/pages/api/w/[wId]/apps";
-import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs";
-import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
-import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/runs/[runId]/status";
 import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
+import type { GetAppsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/apps";
+import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/apps/[aId]/runs";
+import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
+import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/apps/[aId]/runs/[runId]/status";
 
 export function useApp({
-  workspaceId,
+  owner,
   appId,
+  vault,
 }: {
-  workspaceId: string;
+  owner: LightWorkspaceType;
   appId: string;
+  vault: VaultType;
 }) {
   const appFetcher: Fetcher<{ app: AppType }> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/apps/${appId}`,
+    `/api/w/${owner.sId}/vaults/${vault.sId}/apps/${appId}`,
     appFetcher
   );
 
@@ -33,11 +40,19 @@ export function useApp({
   };
 }
 
-export function useApps(owner: LightWorkspaceType, disabled?: boolean) {
+export function useApps({
+  owner,
+  vault,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  vault: VaultType;
+  disabled?: boolean;
+}) {
   const appsFetcher: Fetcher<GetAppsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/apps`,
+    `/api/w/${owner.sId}/vaults/${vault.sId}/apps`,
     appsFetcher,
     {
       disabled,
@@ -59,7 +74,7 @@ export function useSavedRunStatus(
 ) {
   const runStatusFetcher: Fetcher<GetRunStatusResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/apps/${app.sId}/runs/saved/status`,
+    `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs/saved/status`,
     runStatusFetcher,
     {
       refreshInterval: refresh,
@@ -83,7 +98,7 @@ export function useRunBlock(
 ) {
   const runBlockFetcher: Fetcher<GetRunBlockResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/apps/${app.sId}/runs/${runId}/blocks/${type}/${name}`,
+    `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs/${runId}/blocks/${type}/${name}`,
     runBlockFetcher,
     {
       refreshInterval: refresh,
@@ -120,7 +135,7 @@ export function useRuns(
   wIdTarget: string | null
 ) {
   const runsFetcher: Fetcher<GetRunsResponseBody> = fetcher;
-  let url = `/api/w/${owner.sId}/apps/${app.sId}/runs?limit=${limit}&offset=${offset}&runType=${runType}`;
+  let url = `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs?limit=${limit}&offset=${offset}&runType=${runType}`;
   if (wIdTarget) {
     url += `&wIdTarget=${wIdTarget}`;
   }

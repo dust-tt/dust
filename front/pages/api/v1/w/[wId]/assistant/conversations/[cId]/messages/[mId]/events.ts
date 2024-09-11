@@ -6,8 +6,9 @@ import {
   getConversationWithoutContent,
 } from "@app/lib/api/assistant/conversation";
 import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
 
 /**
  * @swagger
@@ -76,47 +77,31 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<void>>
+  res: NextApiResponse<WithAPIErrorResponse<void>>,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-
-  const { keyAuth, workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  if (
-    !workspaceAuth.isBuilder() ||
-    keyAuth.getNonNullableWorkspace().sId !== req.query.wId
-  ) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The Assistant API is only available on your own workspace.",
-      },
-    });
-  }
-
-  const owner = workspaceAuth.workspace();
-  if (!owner) {
+  const { cId, mId } = req.query;
+  if (typeof cId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you're trying to modify was not found.",
+        type: "conversation_not_found",
+        message: "Conversation not found.",
       },
     });
   }
 
-  const conversation = await getConversationWithoutContent(
-    workspaceAuth,
-    req.query.cId as string
-  );
+  if (typeof mId !== "string") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "message_not_found",
+        message: "Message not found.",
+      },
+    });
+  }
 
+  const conversation = await getConversationWithoutContent(auth, cId);
   if (!conversation) {
     return apiError(req, res, {
       status_code: 404,
@@ -127,24 +112,7 @@ async function handler(
     });
   }
 
-  if (!(typeof req.query.mId === "string")) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid query parameters, `cId` (string) is required.",
-      },
-    });
-  }
-
-  const messageId = req.query.mId;
-
-  const messageType = await getConversationMessageType(
-    workspaceAuth,
-    conversation,
-    messageId
-  );
-
+  const messageType = await getConversationMessageType(auth, conversation, mId);
   if (!messageType) {
     return apiError(req, res, {
       status_code: 404,
@@ -178,7 +146,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const eventStream = getMessagesEvents(messageId, lastEventId);
+      const eventStream = getMessagesEvents(mId, lastEventId);
 
       res.writeHead(200, {
         "Content-Type": "text/event-stream",
@@ -207,4 +175,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler, true);
+export default withPublicAPIAuthentication(handler, { isStreaming: true });

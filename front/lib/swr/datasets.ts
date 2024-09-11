@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets";
-import type { GetDatasetResponseBody } from "@app/pages/api/w/[wId]/apps/[aId]/datasets/[name]";
+import type { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/apps/[aId]/datasets";
+import type { GetDatasetResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/apps/[aId]/datasets/[name]";
 
 export function useDatasets({
   owner,
@@ -18,7 +18,7 @@ export function useDatasets({
   const datasetsFetcher: Fetcher<GetDatasetsResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/apps/${app.sId}/datasets`,
+    `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets`,
     datasetsFetcher,
     {
       disabled,
@@ -41,7 +41,7 @@ export function useDataset(
   const datasetFetcher: Fetcher<GetDatasetResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/apps/${app.sId}/datasets/${dataset}${
+    `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${dataset}${
       showData ? "?data=true" : ""
     }`,
     datasetFetcher

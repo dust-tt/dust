@@ -35,7 +35,6 @@ impl Block for DatabaseSchema {
         name: &str,
         env: &Env,
         _event_sender: Option<UnboundedSender<Value>>,
-        project_id: i64,
     ) -> Result<BlockResult> {
         let config = env.config.config_for_block(name);
 
@@ -72,7 +71,7 @@ impl Block for DatabaseSchema {
             _ => Err(anyhow!(err_msg.clone()))?,
         };
 
-        let mut tables = load_tables_from_identifiers(&table_identifiers, env, project_id).await?;
+        let mut tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
         // Compute the unique table names for each table.
         let unique_table_names = get_unique_table_names_for_database(&tables);
@@ -117,7 +116,6 @@ impl Block for DatabaseSchema {
 pub async fn load_tables_from_identifiers(
     table_identifiers: &Vec<(&String, &String, &String)>,
     env: &Env,
-    project_id: i64,
 ) -> Result<Vec<Table>> {
     // Get a vec of unique (workspace_id, data_source_id) pairs.
     let data_source_identifiers = table_identifiers
@@ -125,12 +123,12 @@ pub async fn load_tables_from_identifiers(
         .map(|(workspace_id, data_source_id, _)| (*workspace_id, *data_source_id))
         .unique()
         .collect::<Vec<_>>();
-    let origin = format!("database_schema_project_id_{}", project_id);
+
     // Get a vec of the corresponding project ids for each (workspace_id, data_source_id) pair.
     let project_ids_view_filters = try_join_all(
         data_source_identifiers
             .iter()
-            .map(|(w, d)| get_data_source_project_and_view_filter(w, d, env, origin.as_str())),
+            .map(|(w, d)| get_data_source_project_and_view_filter(w, d, env, "database_schema")),
     )
     .await?;
 

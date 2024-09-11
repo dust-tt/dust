@@ -2,8 +2,9 @@ import type { WithAPIErrorResponse, WorkspaceDomain } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
-import { Authenticator, getAPIKey } from "@app/lib/auth";
-import { apiError, withLogging } from "@app/logger/withlogging";
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
 
 export type ListMemberEmailsResponseBody = {
   verified_domains: WorkspaceDomain[];
@@ -16,20 +17,10 @@ export type ListMemberEmailsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<ListMemberEmailsResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<ListMemberEmailsResponseBody>>,
+  auth: Authenticator
 ): Promise<void> {
-  const keyRes = await getAPIKey(req);
-  if (keyRes.isErr()) {
-    return apiError(req, res, keyRes.error);
-  }
-  const { workspaceAuth } = await Authenticator.fromKey(
-    keyRes.value,
-    req.query.wId as string
-  );
-
-  const owner = workspaceAuth.workspace();
-  const isSystemKey = keyRes.value.isSystem;
-  if (!owner || !isSystemKey || !workspaceAuth.isBuilder()) {
+  if (!auth.isSystemKey()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -41,7 +32,9 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const verifiedDomain = await getWorkspaceVerifiedDomain(owner);
+      const verifiedDomain = await getWorkspaceVerifiedDomain(
+        auth.getNonNullableWorkspace()
+      );
 
       return res
         .status(200)
@@ -58,4 +51,4 @@ async function handler(
   }
 }
 
-export default withLogging(handler);
+export default withPublicAPIAuthentication(handler);

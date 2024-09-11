@@ -55,6 +55,10 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
     viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>>;
 
+  /**
+   * Retrieves the parent IDs of a content node in hierarchical order.
+   * The first ID is the internal ID of the content node itself.
+   */
   abstract retrieveContentNodeParents(params: {
     internalId: string;
     memoizationKey?: string;

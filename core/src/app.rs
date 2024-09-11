@@ -531,10 +531,9 @@ impl App {
                     Some(ref skips) => skips[input_idx],
                     None => false,
                 };
-                let project_id = project.project_id();
                 tokio::spawn(async move {
                     match skip {
-                        false => match b.execute(&name, &e, event_sender, project_id).await {
+                        false => match b.execute(&name, &e, event_sender).await {
                             Ok(v) => {
                                 let block_status = {
                                     let mut block_status = block_status.lock();

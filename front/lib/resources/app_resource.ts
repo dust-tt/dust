@@ -1,5 +1,6 @@
 import type { AppType, AppVisibility, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import assert from "assert";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
@@ -51,11 +52,12 @@ export class AppResource extends ResourceWithVault<App> {
       ...options,
     });
 
+    // This is what enforces the accessibility to an app.
     return apps.filter((app) => auth.isAdmin() || app.canRead(auth));
   }
 
-  // fetchByIds filters out private apps if the auth is not a user on the workspace. This will be
-  // removed soon as we remove public apps.
+  // `fetchByIds` filters out deleted apps. The accessibility of an app is enforced by its
+  // associated vault enforced in `baseFetch`.
   static async fetchByIds(
     auth: Authenticator,
     ids: string[]
@@ -63,7 +65,7 @@ export class AppResource extends ResourceWithVault<App> {
     return this.baseFetch(auth, {
       where: {
         sId: ids,
-        visibility: auth.isUser() ? ["public", "private"] : ["public"],
+        visibility: { [Op.ne]: "deleted" },
       },
     });
   }
@@ -77,13 +79,22 @@ export class AppResource extends ResourceWithVault<App> {
     return app ?? null;
   }
 
-  // listByWorkspace filters out private apps if the auth is not a user on the workspace. This will
-  // be removed soon as we remove public apps.
+  // `listByWorkspace` filters out deleted apps. The accessibility of an app is enforced by its
+  // associated vault enforced in `baseFetch`.
   static async listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth, {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        visibility: auth.isUser() ? ["public", "private"] : ["public"],
+        visibility: { [Op.ne]: "deleted" },
+      },
+    });
+  }
+
+  static async listByVault(auth: Authenticator, vault: VaultResource) {
+    return this.baseFetch(auth, {
+      where: {
+        vaultId: vault.id,
+        visibility: { [Op.ne]: "deleted" },
       },
     });
   }
@@ -102,19 +113,12 @@ export class AppResource extends ResourceWithVault<App> {
       savedRun?: string;
     }
   ) {
-    await this.model.update(
-      {
-        savedSpecification,
-        savedConfig,
-        savedRun,
-      },
-      {
-        where: {
-          id: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-      }
-    );
+    assert(this.canWrite(auth), "Unauthorized write attempt");
+    await this.update({
+      savedSpecification,
+      savedConfig,
+      savedRun,
+    });
   }
 
   async updateSettings(
@@ -129,33 +133,19 @@ export class AppResource extends ResourceWithVault<App> {
       visibility: AppVisibility;
     }
   ) {
-    await this.model.update(
-      {
-        name,
-        description,
-        visibility,
-      },
-      {
-        where: {
-          id: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-      }
-    );
+    assert(this.canWrite(auth), "Unauthorized write attempt");
+    await this.update({
+      name,
+      description,
+      visibility,
+    });
   }
 
   async markAsDeleted(auth: Authenticator) {
-    await this.model.update(
-      {
-        visibility: "deleted",
-      },
-      {
-        where: {
-          id: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-      }
-    );
+    assert(this.canWrite(auth), "Unauthorized write attempt");
+    await this.update({
+      visibility: "deleted",
+    });
   }
 
   // Deletion.

@@ -90,7 +90,7 @@ export default function Data({
             <Button
               variant="secondary"
               onClick={() => {
-                window.location.href = `/w/${owner.sId}/a/${app.sId}/datasets/${block.spec.dataset}`;
+                window.location.href = `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${block.spec.dataset}`;
               }}
               icon={PencilSquareIcon}
               label={readOnly ? "View" : "Edit"}

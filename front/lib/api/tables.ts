@@ -21,7 +21,6 @@ import { DateTime } from "luxon";
 import { callAction } from "@app/lib/actions/helpers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
@@ -109,14 +108,9 @@ export async function deleteTable({
       message: "Failed to delete table.",
     });
   }
-  await AgentTablesQueryConfigurationTable.destroy({
-    where: {
-      dataSourceWorkspaceId: owner.sId,
-      // TODO(DATASOURCE_SID); state storing the datasource name
-      dataSourceId: dataSource.name,
-      tableId,
-    },
-  });
+  // We do not delete the related AgentTablesQueryConfigurationTable entry if any.
+  // This is because the table might be created again with the same name and we want to keep the configuration.
+  // The Assistant Builder displays an error on the action card if it misses a table.
 
   return new Ok(null);
 }

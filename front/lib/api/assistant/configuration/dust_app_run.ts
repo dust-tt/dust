@@ -47,21 +47,20 @@ export async function fetchDustAppRunActionConfigurations(
     for (const c of configs) {
       const dustApp = dustApps.find((app) => app.sId === c.appId);
 
-      if (!dustApp) {
-        // unreachable
-        throw new Error(
-          `Couldn't find dust app for dust app run configuration ${c.id}`
-        );
+      // If the dust app is not found (was deleted) we just skip the action. This is not ideal as it
+      // will change the behavior of the assistant without notice, but we don't want to crash or let
+      // the app be used if it was deleted.
+      if (dustApp) {
+        actions.push({
+          id: c.id,
+          sId: c.sId,
+          type: "dust_app_run_configuration",
+          appWorkspaceId: c.appWorkspaceId,
+          appId: c.appId,
+          name: dustApp.name,
+          description: dustApp.description,
+        });
       }
-      actions.push({
-        id: c.id,
-        sId: c.sId,
-        type: "dust_app_run_configuration",
-        appWorkspaceId: c.appWorkspaceId,
-        appId: c.appId,
-        name: dustApp.name,
-        description: dustApp.description,
-      });
     }
 
     actionsByConfigurationId.set(parseInt(agentConfigurationId, 10), actions);

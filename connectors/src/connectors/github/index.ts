@@ -128,10 +128,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return new Err(new Error("Connector state not found"));
       }
 
-      if (!connectorState.webhooksEnabledAt) {
-        return new Err(new Error("Connector is already stopped"));
-      }
-
       await connectorState.update({
         webhooksEnabledAt: null,
       });
@@ -651,6 +647,8 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
+    const baseParents: string[] = [internalId];
+
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       return new Err(
@@ -666,9 +664,9 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
           internalId,
           repoId
         );
-        return new Ok(parents);
+        return new Ok([...baseParents, ...parents]);
       } else {
-        return new Ok([`${repoId}`]);
+        return new Ok([...baseParents, `${repoId}`]);
       }
     } else {
       const repoId = parseInt(internalId.split("-")[0] || "", 10);
@@ -676,9 +674,9 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         internalId.endsWith("-issues") ||
         internalId.endsWith("-discussions")
       ) {
-        return new Ok([`${repoId}`]);
+        return new Ok([...baseParents, `${repoId}`]);
       }
-      return new Ok([]);
+      return new Ok(baseParents);
     }
   }
 

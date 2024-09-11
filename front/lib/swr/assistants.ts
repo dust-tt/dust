@@ -226,7 +226,7 @@ export function useSlackChannelsLinkedWithAgent({
     `/api/w/${workspaceId}/data_sources/${dataSourceName}/managed/slack/channels_linked_with_agent`,
     slackChannelsLinkedWithAgentFetcher,
     {
-      disabled,
+      disabled: !!disabled || !dataSourceName,
     }
   );
 

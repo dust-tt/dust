@@ -3,24 +3,25 @@ import {
   Input,
   Modal,
   Page,
-  RadioButton,
   TextArea,
 } from "@dust-tt/sparkle";
-import type { APIError, AppVisibility, WorkspaceType } from "@dust-tt/types";
+import type { APIError, VaultType, WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useApps } from "@app/lib/swr/apps";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
-import type { PostAppResponseBody } from "@app/pages/api/w/[wId]/apps";
+import type { PostAppResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/apps";
 
 export const VaultCreateAppModal = ({
   owner,
+  vault,
   isOpen,
   setIsOpen,
 }: {
   owner: WorkspaceType;
+  vault: VaultType;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
 }) => {
@@ -29,7 +30,6 @@ export const VaultCreateAppModal = ({
 
   const [name, setName] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);
-  const [visibility, setVisibility] = useState<AppVisibility>("private");
 
   const [errors, setErrors] = useState<{
     name: string | null;
@@ -39,7 +39,7 @@ export const VaultCreateAppModal = ({
     description: null,
   });
 
-  const { apps, mutateApps } = useApps(owner);
+  const { apps, mutateApps } = useApps({ owner, vault });
 
   const onSave = async () => {
     let nameError: string | null = null;
@@ -65,7 +65,7 @@ export const VaultCreateAppModal = ({
     });
 
     if (name && description && !nameError && !descriptionError) {
-      const res = await fetch(`/api/w/${owner.sId}/apps`, {
+      const res = await fetch(`/api/w/${owner.sId}/vaults/${vault.sId}/apps`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -73,14 +73,16 @@ export const VaultCreateAppModal = ({
         body: JSON.stringify({
           name: name.slice(0, MODELS_STRING_MAX_LENGTH),
           description: description.slice(0, MODELS_STRING_MAX_LENGTH),
-          visibility,
+          visibility: "private",
         }),
       });
       if (res.ok) {
         await mutateApps();
         const response: PostAppResponseBody = await res.json();
         const { app } = response;
-        await router.push(`/w/${owner.sId}/a/${app.sId}`);
+        await router.push(
+          `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`
+        );
         setIsOpen(false);
 
         sendNotification({
@@ -150,38 +152,6 @@ export const VaultCreateAppModal = ({
                 error={errors.description}
                 showErrorLabel
               />
-            </div>
-            <Page.Separator />
-            <Page.SectionHeader title="Visibility" />
-            <RadioButton
-              name="visibility"
-              className="s-flex-col"
-              choices={[
-                {
-                  label: "Private",
-                  value: "private",
-                  disabled: false,
-                },
-                {
-                  label: "Public",
-                  value: "public",
-                  disabled: false,
-                },
-              ]}
-              value={visibility}
-              onChange={(v) => {
-                setVisibility(v as AppVisibility);
-              }}
-            />
-            <div className="mt-4 space-y-4">
-              <p className="text-sm text-gray-500">
-                <b>Private: </b> Only builders of your workspace can see and
-                edit the app.
-              </p>
-              <p className="text-sm text-gray-500">
-                <b>Public: </b> Anyone on the Internet with the link can see the
-                app. Only builders of your workspace can edit.
-              </p>
             </div>
           </Page.Vertical>
         </div>
