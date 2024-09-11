@@ -107,14 +107,16 @@ export default function VaultFolderModal({
         );
       }
     } else {
-      if (await doUpdate(folder, description)) {
+      const res = await doUpdate(folder, description);
+      if (res) {
         handleOnClose();
       }
     }
   };
 
   const onDeleteFolder = async () => {
-    if (await doDelete(folder)) {
+    const res = await doDelete(folder);
+    if (res) {
       handleOnClose();
       await router.push(
         `/w/${owner.sId}/vaults/${vault.sId}/categories/folder`

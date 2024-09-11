@@ -27,17 +27,28 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
       // to make sure we don't cache different pages together
       // Naive way to detect url by checking for '/'
       if (typeof key === "string" && key.includes("/")) {
-        const keyWithoutQueryParams = key.split("?")[0];
+        console.log(key);
+        const urlFromKey = new URL(
+          key,
+          key.indexOf("://") == -1 ? "https://example.org/" : undefined // We need to provide a base url to make sure the URL is parsed correctly
+        );
+        const urlFromKeyWithoutQueryParams =
+          urlFromKey.origin + urlFromKey.pathname;
 
         // Cycle through all the keys in the cache that start with the same url
         // and mutate them too
         for (const k of cache.keys()) {
-          if (
-            k !== key &&
-            typeof k === "string" &&
-            k.startsWith(keyWithoutQueryParams)
-          ) {
-            void globalMutate<TData>(k);
+          if (k !== key && typeof k === "string") {
+            const urlFromK = new URL(
+              k,
+              key.indexOf("://") == -1 ? "https://example.org/" : undefined
+            );
+            const urlFromKWithoutQueryParams =
+              urlFromK.origin + urlFromK.pathname;
+
+            if (urlFromKWithoutQueryParams === urlFromKeyWithoutQueryParams) {
+              void globalMutate<TData>(k);
+            }
           }
         }
       }
