@@ -4,7 +4,6 @@ import {
   FolderIcon,
   GlobeAltIcon,
   Icon,
-  Page,
   RadioButton,
   Spinner,
   Tree,
@@ -97,7 +96,7 @@ function VaultSelector({
   } else {
     return (
       <div>
-        <Page.Separator />
+        <div className="h-px w-full bg-structure-200" />
         {Object.keys(dataSourceViewsByVaultId).map((vaultId) => {
           const vault = vaults.find((v) => v.sId === vaultId);
           if (!vault) {
@@ -108,56 +107,61 @@ function VaultSelector({
             ? allowedVaults.find((v) => v.sId === vaultId)
             : false);
           return (
-            <div key={vaultId}>
-              <RadioButton
-                name={`Vault ${vaultId}`}
-                choices={[
-                  {
-                    label: (
-                      <>
-                        <Icon
-                          visual={getVaultIcon(vault)}
-                          size="md"
-                          className="ml-3 inline-block flex-shrink-0 align-middle text-brand"
-                        />
-                        <span
-                          className={classNames(
-                            "text-element-900",
-                            "align-middle",
-                            !disabled ? "font-bold" : "italic"
-                          )}
-                        >
-                          {getVaultName(vault)}{" "}
-                          {disabled && (
-                            <Chip
-                              key="xs-warning"
-                              size="xs"
-                              className="ml-2"
-                              label="Disabled: only one vault allowed per assistant"
-                              color="warning"
-                            />
-                          )}
-                        </span>
-                      </>
-                    ),
-                    value: vaultId,
-                    disabled: disabled,
-                  },
-                ]}
-                value={selectedVault}
-                onChange={() => setSelectedVault(vaultId)}
-              />
-              {selectedVault === vaultId && (
-                <DataSourceViewsSelector
-                  owner={owner}
-                  dataSourceViews={dataSourceViewsByVaultId[selectedVault]}
-                  selectionConfigurations={selectionConfigurations}
-                  setSelectionConfigurations={setSelectionConfigurations}
-                  viewType={viewType}
+            <>
+              <div key={vaultId} className="py-2">
+                <RadioButton
+                  name={`Vault ${vaultId}`}
+                  choices={[
+                    {
+                      label: (
+                        <>
+                          <Icon
+                            visual={getVaultIcon(vault)}
+                            size="md"
+                            className="ml-3 mr-2 inline-block flex-shrink-0 align-middle text-brand"
+                          />
+                          <span
+                            className={classNames(
+                              "text-element-900",
+                              "align-middle",
+                              !disabled ? "font-bold" : "italic"
+                            )}
+                          >
+                            {getVaultName(vault)}{" "}
+                            {disabled && (
+                              <Chip
+                                key="xs-warning"
+                                size="xs"
+                                className="ml-2"
+                                label="Disabled: only one vault allowed per assistant"
+                                color="warning"
+                              />
+                            )}
+                          </span>
+                        </>
+                      ),
+                      value: vaultId,
+                      disabled: disabled,
+                    },
+                  ]}
+                  value={selectedVault}
+                  onChange={() => setSelectedVault(vaultId)}
                 />
+              </div>
+              {selectedVault === vaultId && (
+                <div className="mb-2">
+                  <DataSourceViewsSelector
+                    owner={owner}
+                    dataSourceViews={dataSourceViewsByVaultId[selectedVault]}
+                    selectionConfigurations={selectionConfigurations}
+                    setSelectionConfigurations={setSelectionConfigurations}
+                    viewType={viewType}
+                  />
+                </div>
               )}
-              <Page.Separator />
-            </div>
+
+              <div className="h-px w-full bg-structure-200" />
+            </>
           );
         })}
       </div>
