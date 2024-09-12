@@ -96,8 +96,6 @@ export function CreateOrEditVaultModal({
     pagination.pageSize
   );
 
-  console.log(members);
-
   const getTableColumns = useCallback(() => {
     return [
       {
