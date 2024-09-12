@@ -58,7 +58,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   perSeatPricing: SubscriptionPerSeatPricing | null;
   enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails;
   plan: PlanType;
-  gaTrackingId: string;
   workspaceHasAvailableSeats: boolean;
   workspaceVerifiedDomain: WorkspaceDomain | null;
 }>(async (context, auth) => {
@@ -93,7 +92,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       perSeatPricing,
       enterpriseConnectionStrategyDetails,
       plan,
-      gaTrackingId: config.getGaTrackingId(),
       workspaceHasAvailableSeats,
       workspaceVerifiedDomain,
     },
@@ -107,7 +105,6 @@ export default function WorkspaceAdmin({
   perSeatPricing,
   enterpriseConnectionStrategyDetails,
   plan,
-  gaTrackingId,
   workspaceVerifiedDomain,
   workspaceHasAvailableSeats,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -123,7 +120,6 @@ export default function WorkspaceAdmin({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationAdmin({ owner, current: "members" })}
     >
       <Page.Vertical gap="xl" align="stretch">

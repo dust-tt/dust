@@ -12,12 +12,10 @@ import {
 } from "@app/components/home/Particles";
 import { PricePlans } from "@app/components/plans/PlansTables";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
-import config from "@app/lib/api/config";
 
 export async function getServerSideProps() {
   return {
     props: {
-      gaTrackingId: config.getGaTrackingId(),
       shape: getParticleShapeIndexByName(shapeNames.bigSphere),
     },
   };

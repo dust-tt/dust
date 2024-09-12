@@ -32,7 +32,6 @@ import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useConversations } from "@app/lib/swr/conversations";
@@ -43,7 +42,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   tabScope: AgentConfigurationScope;
   loadFromChatMenu: boolean;
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -64,7 +62,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       tabScope,
       subscription,
       loadFromChatMenu: false,
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -74,7 +71,6 @@ export default function WorkspaceAssistants({
   tabScope,
   subscription,
   loadFromChatMenu,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
   const [orderBy, setOrderBy] = useState<SearchOrderType>("name");
@@ -243,7 +239,6 @@ export default function WorkspaceAssistants({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigation}
       navChildren={navChildren}
     >

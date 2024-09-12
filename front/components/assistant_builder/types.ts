@@ -307,7 +307,6 @@ export type AssistantBuilderProps = {
   defaultIsEdited?: boolean;
   defaultTemplate: FetchAssistantTemplateResponse | null;
   flow: BuilderFlow;
-  gaTrackingId: string;
   initialBuilderState: AssistantBuilderInitialState | null;
   isAdmin: boolean;
   owner: WorkspaceType;

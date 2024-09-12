@@ -27,7 +27,6 @@ import { classNames } from "@app/lib/utils";
 
 export interface LandingLayoutProps {
   shape: number;
-  gaTrackingId: string;
   postLoginReturnToUrl?: string;
 }
 
@@ -39,7 +38,6 @@ export default function LandingLayout({
   pageProps: LandingLayoutProps;
 }) {
   const {
-    gaTrackingId,
     postLoginReturnToUrl = "/api/login",
     shape,
   } = pageProps;
@@ -157,7 +155,7 @@ export default function LandingLayout({
         {hasAcceptedCookies && (
           <>
             <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${gaTrackingId}`}
+              src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_TRACKING_ID}`}
               strategy="afterInteractive"
             />
             <Script id="google-analytics" strategy="afterInteractive">
@@ -166,7 +164,7 @@ export default function LandingLayout({
              function gtag(){window.dataLayer.push(arguments);}
              gtag('js', new Date());
 
-             gtag('config', '${gaTrackingId}');
+             gtag('config', '${process.env.NEXT_PUBLIC_GA_TRACKING_ID}');
             `}
             </Script>
           </>
