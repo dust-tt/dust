@@ -111,7 +111,7 @@ AgentDataSourceConfiguration.belongsTo(AgentProcessConfiguration, {
 DataSource.hasMany(AgentDataSourceConfiguration, {
   as: "dataSource",
   foreignKey: { name: "dataSourceId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 AgentDataSourceConfiguration.belongsTo(DataSource, {
   as: "dataSource",
@@ -122,7 +122,7 @@ AgentDataSourceConfiguration.belongsTo(DataSource, {
 DataSourceViewModel.hasMany(AgentDataSourceConfiguration, {
   as: "dataSourceView",
   foreignKey: { allowNull: true },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 // TODO(GROUPS_INFRA): This should be a required relationship.
 AgentDataSourceConfiguration.belongsTo(DataSourceViewModel, {
