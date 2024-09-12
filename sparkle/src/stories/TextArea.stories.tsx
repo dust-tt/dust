@@ -26,7 +26,7 @@ export const TextAreaExample = () => {
           onChange={(v) =>
             setTextValues([v, textValues[1], textValues[2], textValues[3]])
           }
-          rows={2}
+          minRows={2}
         />
         <TextArea
           placeholder="placeholder"

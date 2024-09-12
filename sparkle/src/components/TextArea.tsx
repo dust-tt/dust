@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 
 import { classNames } from "@sparkle/lib/utils";
 
@@ -9,7 +9,7 @@ type TextAreaProps = {
   error?: string | null;
   showErrorLabel?: boolean;
   className?: string;
-  rows?: number;
+  minRows?: number;
 };
 
 export function TextArea({
@@ -19,21 +19,14 @@ export function TextArea({
   error,
   showErrorLabel = false,
   className,
-  rows = 10
+  minRows = 10
 }: TextAreaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto'; // Reset height
-      textarea.style.height = `${textarea.scrollHeight}px`; // Set to scroll height
-    }
-  }, [value]); // Re-run when value changes
   return (
     <div className="s-flex s-flex-col s-gap-1 s-p-px">
       <textarea
-        rows={rows}
+        rows={minRows}
         ref={textareaRef}
         className={classNames(
           "overflow-y-auto s-block s-w-full s-min-w-0 s-rounded-xl s-text-sm s-placeholder-element-700 s-transition-all s-duration-200 s-scrollbar-hide",
@@ -47,15 +40,6 @@ export function TextArea({
         placeholder={placeholder}
         value={value ?? ""}
         onChange={(e) => {
-          const newValue = e.target.value;
-          const textAreaComponent = textareaRef.current;
-          if (
-            textAreaComponent &&
-            value?.length &&
-            newValue.length < value.length
-          ) {
-            textAreaComponent.style.height = "auto"; // Reset height to recalculate
-          }
           onChange(e.target.value);
         }}
       />

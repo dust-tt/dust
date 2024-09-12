@@ -13,22 +13,16 @@ import {
   shapeNames,
 } from "@app/components/home/Particles";
 import config from "@app/lib/api/config";
-import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
 
-export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
-  requireUserPrivilege: "none",
-})<{
-  gaTrackingId: string;
-  shape: number;
-}>(async () => {
+export async function getServerSideProps() {
   return {
     props: {
       gaTrackingId: config.getGaTrackingId(),
       shape: getParticleShapeIndexByName(shapeNames.galaxy),
     },
   };
-});
+}
 
 export default function DustPlatform() {
   return (

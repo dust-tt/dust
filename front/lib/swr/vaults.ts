@@ -1,11 +1,19 @@
-import type { DataSourceViewCategory } from "@dust-tt/types";
-import { useMemo } from "react";
+import type {
+  APIError,
+  DataSourceType,
+  DataSourceViewCategory,
+  LightWorkspaceType,
+} from "@dust-tt/types";
+import { useContext, useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { getDataSourceName } from "@app/lib/data_sources";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetVaultsResponseBody } from "@app/pages/api/w/[wId]/vaults";
 import type { GetVaultResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]";
 import type { GetVaultDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
+import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 export function useVaults({
   workspaceId,
@@ -130,4 +138,172 @@ export function useVaultDataSourceViews<
     isVaultDataSourceViewsLoading: !error && !data,
     isVaultDataSourceViewsError: error,
   };
+}
+
+// Convenient hooks for creating, updating and deleting folders, handle mutations and notifications
+
+export function useCreateFolder({
+  owner,
+  vaultId,
+}: {
+  owner: LightWorkspaceType;
+  vaultId: string;
+}) {
+  const sendNotification = useContext(SendNotificationsContext);
+  const { mutateVaultDataSourceViews } = useVaultDataSourceViews({
+    workspaceId: owner.sId,
+    vaultId: vaultId,
+    category: "folder",
+    disabled: true, // Needed just to mutate
+  });
+
+  // TODO(GROUPS_INFRA) - Ideally, it should be a DataSourceViewType
+  const doCreate = async (name: string | null, description: string | null) => {
+    if (!name || !description) {
+      return null;
+    }
+
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          description,
+        }),
+      }
+    );
+    if (res.ok) {
+      void mutateVaultDataSourceViews();
+      const response: PostVaultDataSourceResponseBody = await res.json();
+      const { dataSourceView } = response;
+      sendNotification({
+        type: "success",
+        title: "Successfully created folder",
+        description: "Folder was successfully created.",
+      });
+      return dataSourceView;
+    } else {
+      const err: { error: APIError } = await res.json();
+      sendNotification({
+        type: "error",
+        title: "Error creating Folder",
+        description: `Error: ${err.error.message}`,
+      });
+      return null;
+    }
+  };
+
+  return doCreate;
+}
+
+export function useUpdateFolder({
+  owner,
+  vaultId,
+}: {
+  owner: LightWorkspaceType;
+  vaultId: string;
+}) {
+  const sendNotification = useContext(SendNotificationsContext);
+  const { mutateVaultDataSourceViews } = useVaultDataSourceViews({
+    workspaceId: owner.sId,
+    vaultId: vaultId,
+    category: "folder",
+    disabled: true, // Needed just to mutate
+  });
+
+  // TODO(GROUPS_INFRA) - Ideally, it should be a DataSourceViewType
+  const doUpdate = async (
+    dataSource: DataSourceType | null,
+    description: string | null
+  ) => {
+    if (!dataSource || !description) {
+      return false;
+    }
+    const res = await fetch(
+      // TODO(DATASOURCE_SID) - move to sId
+      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSource.name}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          description,
+        }),
+      }
+    );
+    if (res.ok) {
+      void mutateVaultDataSourceViews();
+
+      sendNotification({
+        type: "success",
+        title: "Successfully updated folder",
+        description: "Folder was successfully updated.",
+      });
+    } else {
+      const err: { error: APIError } = await res.json();
+      sendNotification({
+        type: "error",
+        title: "Error updating Folder",
+        description: `Error: ${err.error.message}`,
+      });
+    }
+    return res.ok;
+  };
+
+  return doUpdate;
+}
+
+export function useDeleteFolderOrWebsite({
+  owner,
+  vaultId,
+  category,
+}: {
+  owner: LightWorkspaceType;
+  vaultId: string;
+  category: Exclude<DataSourceViewCategory, "apps">;
+}) {
+  const sendNotification = useContext(SendNotificationsContext);
+  const { mutateVaultDataSourceViews } = useVaultDataSourceViews({
+    workspaceId: owner.sId,
+    vaultId: vaultId,
+    category: category,
+    disabled: true, // Needed just to mutate
+  });
+
+  // TODO(GROUPS_INFRA) - Ideally, it should be a DataSourceViewType
+  const doDelete = async (dataSource: DataSourceType | null) => {
+    if (!dataSource) {
+      return false;
+    }
+    // TODO(DATASOURCE_SID) - move to sId
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSource.name}`,
+      { method: "DELETE" }
+    );
+
+    if (res.ok) {
+      void mutateVaultDataSourceViews();
+
+      sendNotification({
+        type: "success",
+        title: `Successfully deleted ${category}`,
+        description: `${getDataSourceName(dataSource)} was successfully deleted.`,
+      });
+    } else {
+      const err: { error: APIError } = await res.json();
+      sendNotification({
+        type: "error",
+        title: `Error deleting ${category}`,
+        description: `Error: ${err.error.message}`,
+      });
+    }
+    return res.ok;
+  };
+
+  return doDelete;
 }

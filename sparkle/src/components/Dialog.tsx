@@ -10,6 +10,7 @@ import { Button } from "./Button";
 export type ModalProps = {
   title: string;
   children: React.ReactNode;
+  disabled?: boolean;
   isOpen: boolean;
   onCancel: () => void;
   onValidate: () => void;
@@ -21,14 +22,15 @@ export type ModalProps = {
 };
 
 export function Dialog({
+  title,
   isOpen,
   children,
+  disabled,
   onCancel,
   onValidate,
   cancelLabel = "Cancel",
   validateLabel = "Ok",
   validateVariant = "primary",
-  title,
   isSaving,
   backgroundType = "none",
 }: ModalProps) {
@@ -84,6 +86,7 @@ export function Dialog({
                           onClick={onCancel}
                         />
                         <Button
+                          disabled={disabled}
                           label={validateLabel}
                           variant={validateVariant}
                           onClick={onValidate}

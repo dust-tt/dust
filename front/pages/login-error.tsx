@@ -67,6 +67,20 @@ function getErrorMessage(domain: string | null, reason: string | null) {
         </>
       );
 
+    case "blacklisted_domain":
+      // Deliberately shady message, to avoid frauders to know they are
+      // blacklisted and try another domain
+      return (
+        <>
+          {headerNode}
+          <p className={defaultErrorMessageClassName}>
+            Unfortunately, we cannot provide access to Dust at this time.
+            <br />
+            Have a nice day.
+          </p>
+        </>
+      );
+
     case "email_not_verified":
       return (
         <>

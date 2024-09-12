@@ -33,7 +33,11 @@ import { FoldersHeaderMenu } from "@app/components/vaults/FoldersHeaderMenu";
 import { WebsitesHeaderMenu } from "@app/components/vaults/WebsitesHeaderMenu";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import {
+  useDataSourceViewContentNodes,
+  useDataSourceViews,
+} from "@app/lib/swr/data_source_views";
+import { useVaults } from "@app/lib/swr/vaults";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 type RowData = DataSourceViewContentNode & {
@@ -55,39 +59,49 @@ type VaultDataSourceViewContentListProps = {
   connector: ConnectorType | null;
 };
 
-const getTableColumns = (): ColumnDef<RowData, string>[] => {
-  const columns: ColumnDef<RowData, string>[] = [
-    {
-      header: "Name",
-      accessorKey: "title",
-      id: "title",
-      sortingFn: "text", // built-in sorting function case-insensitive
-      cell: (info: CellContext<RowData, unknown>) => (
-        <DataTable.CellContent icon={info.row.original.icon}>
-          <span>{info.row.original.title}</span>
+const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
+  const columns: ColumnDef<RowData, any>[] = [];
+  columns.push({
+    header: "Name",
+    accessorKey: "title",
+    id: "title",
+    sortingFn: "text", // built-in sorting function case-insensitive
+    cell: (info: CellContext<RowData, string>) => (
+      <DataTable.CellContent icon={info.row.original.icon}>
+        <span>{info.getValue()}</span>
+      </DataTable.CellContent>
+    ),
+  });
+
+  if (showVaultUsage) {
+    columns.push({
+      header: "Available to",
+      accessorKey: "vaults",
+      cell: (info: CellContext<RowData, VaultType[]>) => (
+        <DataTable.CellContent>
+          {info.getValue().length > 0
+            ? info
+                .getValue()
+                .map((v) => v.name)
+                .join(",")
+            : "-"}
         </DataTable.CellContent>
       ),
-    },
-    {
-      header: "Last updated",
-      accessorKey: "lastUpdatedAt",
-      id: "lastUpdatedAt",
-      sortingFn: "text", // built-in sorting function case-insensitive
-      cell: (info: CellContext<RowData, unknown>) => {
-        const { lastUpdatedAt } = info.row.original;
+    });
+  }
 
-        if (!lastUpdatedAt) {
-          return <DataTable.CellContent>-</DataTable.CellContent>;
-        }
-
-        return (
-          <DataTable.CellContent>
-            {formatTimestampToFriendlyDate(lastUpdatedAt, "short")}
-          </DataTable.CellContent>
-        );
-      },
-    },
-  ];
+  columns.push({
+    header: "Last updated",
+    accessorKey: "lastUpdatedAt",
+    id: "lastUpdatedAt",
+    cell: (info: CellContext<RowData, number>) => (
+      <DataTable.CellContent>
+        {info.getValue()
+          ? formatTimestampToFriendlyDate(info.getValue(), "short")
+          : "-"}
+      </DataTable.CellContent>
+    ),
+  });
 
   return columns;
 };
@@ -115,6 +129,16 @@ export const VaultDataSourceViewContentList = ({
   });
   const [viewType, setViewType] = useHashParam("viewType", "documents");
 
+  const showVaultUsage =
+    dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource);
+  const { vaults } = useVaults({
+    workspaceId: owner.sId,
+    disabled: !showVaultUsage,
+  });
+  const { dataSourceViews } = useDataSourceViews(owner, {
+    disabled: !showVaultUsage,
+  });
+
   const handleViewTypeChange = (newViewType: ContentNodesViewType) => {
     if (newViewType !== viewType) {
       setPagination({ pageIndex: 0, pageSize: pagination.pageSize }, "replace");
@@ -141,6 +165,21 @@ export const VaultDataSourceViewContentList = ({
       nodes?.map((contentNode) => ({
         ...contentNode,
         icon: getVisualForContentNode(contentNode),
+        vaults: vaults.filter((vault) =>
+          dataSourceViews
+            .filter(
+              (dsv) =>
+                dsv.dataSource.sId === dataSourceView.dataSource.sId &&
+                dsv.kind !== "default" &&
+                contentNode.parentInternalIds &&
+                contentNode.parentInternalIds.some(
+                  (parentId) =>
+                    !dsv.parentsIn || dsv.parentsIn.includes(parentId)
+                )
+            )
+            .map((dsv) => dsv.vaultId)
+            .includes(vault.sId)
+        ),
         ...(contentNode.expandable && {
           onClick: () => {
             if (contentNode.expandable) {
@@ -156,7 +195,15 @@ export const VaultDataSourceViewContentList = ({
           contentActionsRef
         ),
       })) || [],
-    [canWriteInVault, canReadInVault, dataSourceView, nodes, onSelect]
+    [
+      canWriteInVault,
+      canReadInVault,
+      dataSourceView,
+      nodes,
+      onSelect,
+      vaults,
+      dataSourceViews,
+    ]
   );
 
   if (isNodesLoading) {
@@ -265,7 +312,7 @@ export const VaultDataSourceViewContentList = ({
       {rows.length > 0 && (
         <DataTable
           data={rows}
-          columns={getTableColumns()}
+          columns={getTableColumns(showVaultUsage)}
           filter={dataSourceSearch}
           filterColumn="title"
           initialColumnOrder={[{ desc: false, id: "title" }]}

@@ -33,13 +33,13 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
 
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
 
-  let pageId = 0;
+  let lastSeenId = 0;
   let totalDeletedCount = 0;
 
   do {
     // paginate by id
     const deletedDocumentsData = await coreReplica.query(
-      `SELECT * FROM data_sources_documents WHERE status = 'deleted' AND id > ${pageId} ORDER BY id LIMIT 1000`
+      `SELECT * FROM data_sources_documents WHERE status = 'deleted' AND id > ${lastSeenId} ORDER BY id LIMIT 100`
     );
 
     const deletedDocuments = deletedDocumentsData[0] as {
@@ -96,11 +96,11 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
       "Done scrubbing deleted core document versions for this page"
     );
     totalDeletedCount += deletedCount;
-    pageId =
+    lastSeenId =
       deletedDocuments.length > 0
         ? deletedDocuments[deletedDocuments.length - 1].id
         : -1;
-  } while (pageId !== -1);
+  } while (lastSeenId !== -1);
 
   reportSuccess({
     totalDeletedCount,
