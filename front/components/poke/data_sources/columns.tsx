@@ -1,6 +1,10 @@
 import { IconButton, TrashIcon } from "@dust-tt/sparkle";
 import type { AgentConfigurationType, WorkspaceType } from "@dust-tt/types";
-import { isRetrievalConfiguration } from "@dust-tt/types";
+import {
+  isProcessConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
+} from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
@@ -120,17 +124,20 @@ async function deleteDataSource(
   dataSourceName: string,
   reload: () => void
 ) {
-  const retrievalAgents = agentConfigurations.filter((agt) =>
+  const agents = agentConfigurations.filter((agt) =>
     agt.actions.some(
       (a) =>
-        isRetrievalConfiguration(a) &&
-        a.dataSources.some((ds) => ds.dataSourceId === dataSourceName)
+        ((isRetrievalConfiguration(a) || isProcessConfiguration(a)) &&
+          a.dataSources.some((ds) => ds.dataSourceId === dataSourceName)) ||
+        (isTablesQueryConfiguration(a) &&
+          a.tables.some((t) => t.dataSourceId === dataSourceName))
     )
   );
-  if (retrievalAgents.length > 0) {
+
+  if (agents.length > 0) {
     window.alert(
       "Please archive agents using this data source first: " +
-        retrievalAgents.map((a) => a.name).join(", ")
+        agents.map((a) => a.name).join(", ")
     );
     return;
   }
