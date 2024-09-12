@@ -11,7 +11,6 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import logger from "@app/logger/logger";
 
 export class AgentTablesQueryConfiguration extends Model<
   InferAttributes<AgentTablesQueryConfiguration>,
@@ -150,23 +149,6 @@ AgentTablesQueryConfigurationTable.init(
       },
     ],
     sequelize: frontSequelize,
-  }
-);
-
-// todo(@daph): Remove this once we have understood why some AgentTablesQueryConfigurationTable disappear.
-AgentTablesQueryConfigurationTable.addHook(
-  "beforeDestroy",
-  async (instance: AgentTablesQueryConfigurationTable) => {
-    const stackTrace = new Error().stack;
-    logger.error(
-      {
-        tableId: instance.tableId,
-        dataSourceId: instance.dataSourceId,
-        dataSourceWorkspaceId: instance.dataSourceWorkspaceId,
-        stackTrace,
-      },
-      "[AgentTablesQueryConfigurationTable deleted] Source = Hook from model."
-    );
   }
 );
 
