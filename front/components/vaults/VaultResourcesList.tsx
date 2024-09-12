@@ -98,6 +98,9 @@ const getTableColumns = ({
       (row.dataSourceView.kind === "default"
         ? row.dataSourceView.dataSource.editedByUser?.imageUrl
         : row.dataSourceView.editedByUser?.imageUrl) ?? "",
+    meta: {
+      width: "6rem",
+    },
     id: "managedBy",
     cell: (info: CellContext<RowData, string>) => {
       const dsv = info.row.original.dataSourceView;
@@ -117,6 +120,9 @@ const getTableColumns = ({
     header: "Last sync",
     accessorFn: (row: RowData) =>
       row.dataSourceView.dataSource.connector?.lastSyncSuccessfulTime,
+    meta: {
+      width: "12rem",
+    },
     cell: (info: CellContext<RowData, number>) => (
       <DataTable.CellContent className="pr-2">
         <>
@@ -146,6 +152,9 @@ const getTableColumns = ({
 
   const actionColumn = {
     id: "action",
+    meta: {
+      width: "10rem",
+    },
     cell: (info: CellContext<RowData, unknown>) => {
       const original = info.row.original;
       const disabled = original.isLoading || !original.isAdmin;

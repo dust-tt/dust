@@ -359,6 +359,9 @@ function getTableColumns() {
     {
       header: "Used by",
       accessorKey: "managedDataSource.usage",
+      meta: {
+        width: "6rem",
+      },
       cell: (info: CellContext<RowData, number | null>) => (
         <>
           {info.getValue() ? (
@@ -374,6 +377,9 @@ function getTableColumns() {
       accessorFn: (row: RowData) =>
         row.managedDataSource.editedByUser?.imageUrl ?? "",
       id: "managedBy",
+      meta: {
+        width: "6rem",
+      },
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent
           avatarUrl={info.getValue()}
@@ -385,6 +391,9 @@ function getTableColumns() {
       header: "Last sync",
       accessorFn: (row: RowData) =>
         row.managedDataSource.connector?.lastSyncSuccessfulTime,
+      meta: {
+        width: "12rem",
+      },
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.CellContent className="pr-2">
           {(() => {
@@ -415,6 +424,9 @@ function getTableColumns() {
     },
     {
       id: "action",
+      meta: {
+        width: "10rem",
+      },
       cell: (info: CellContext<RowData, unknown>) => {
         const original = info.row.original;
         const disabled = original.isLoading || !original.isAdmin;
