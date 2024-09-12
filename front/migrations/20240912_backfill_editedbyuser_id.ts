@@ -14,58 +14,65 @@ makeScript({}, async ({ execute }, logger) => {
         [Op.is]: undefined,
       },
       connectorProvider: {
-        [Op.not]: undefined
-      }
-    }
+        [Op.not]: undefined,
+      },
+    },
   });
 
   for (const ds of dataSources) {
     const workspace = await Workspace.findOne({
       where: {
-        id: ds.workspaceId
-      }
-    })
+        id: ds.workspaceId,
+      },
+    });
     assert(workspace, `Failed to find workspace for dataSource ${ds.id}`);
 
     const oldestAdminMembership = await MembershipModel.findOne({
       where: {
         workspaceId: workspace.id,
         role: "admin",
-        endAt: null
+        endAt: null,
       },
       order: [["startAt", "ASC"]],
-      include: [{
-        model: User,
-        attributes: ["id", "username", "email"]
-      }]
+      include: [
+        {
+          model: User,
+          attributes: ["id", "username", "email"],
+        },
+      ],
     });
 
     if (!oldestAdminMembership) {
-      logger.error({
-        workspaceId: workspace.id
-      },
+      logger.error(
+        {
+          workspaceId: workspace.id,
+        },
         "Workspace has no admin"
-        )
-      return
+      );
+      return;
     }
 
     if (execute) {
       await ds.update({
-        editedByUserId: oldestAdminMembership.userId
-      })
-      logger.info({
-        workspaceId: workspace.id,
-        dataSourceId: ds.id,
-        editedByUserId: oldestAdminMembership.userId
-      },
-        "Updated data source")
-    } else {
-      logger.info({
+        editedByUserId: oldestAdminMembership.userId,
+      });
+      logger.info(
+        {
           workspaceId: workspace.id,
           dataSourceId: ds.id,
-          editedByUserId: oldestAdminMembership.userId
+          editedByUserId: oldestAdminMembership.userId,
         },
-        "Would have updated data source")
+        "Updated data source"
+      );
+    } else {
+      logger.info(
+        {
+          workspaceId: workspace.id,
+          dataSourceId: ds.id,
+          editedByUserId: oldestAdminMembership.userId,
+        },
+        "Would have updated data source"
+      );
     }
   }
 });
