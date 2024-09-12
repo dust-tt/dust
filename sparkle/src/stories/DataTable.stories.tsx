@@ -69,6 +69,22 @@ const data: Data[] = [
     onClick: () => alert("Design clicked"),
   },
   {
+    name: "Very long name that should be truncated at some point to avoid overflow and make the table more readable",
+    usedBy: 2,
+    addedBy: "Another very long user name that should be truncated",
+    lastUpdated: "2023-07-09",
+    size: "64kb",
+    icon: FolderIcon,
+    moreMenuItems: [
+      {
+        label: "Edit (disabled)",
+        onClick: () => alert("Design menu clicked"),
+        disabled: true,
+      },
+    ],
+    onClick: () => alert("Design clicked"),
+  },
+  {
     name: "design",
     usedBy: 3,
     addedBy: "User21",
@@ -110,6 +126,9 @@ const columns: ColumnDef<Data>[] = [
     accessorKey: "name",
     header: "Name",
     sortingFn: "text",
+    meta: {
+      grow: true,
+    },
     cell: (info) => (
       <DataTable.CellContent
         avatarUrl={info.row.original.avatarUrl}
@@ -124,6 +143,8 @@ const columns: ColumnDef<Data>[] = [
   },
   {
     accessorKey: "usedBy",
+    minSize: 100,
+    size: 100,
     header: "Used by",
     cell: (info) => (
       <DataTable.CellContent>{info.row.original.usedBy}</DataTable.CellContent>
@@ -132,6 +153,7 @@ const columns: ColumnDef<Data>[] = [
   {
     accessorKey: "addedBy",
     header: "Added by",
+    size: 100,
     cell: (info) => (
       <DataTable.CellContent>{info.row.original.addedBy}</DataTable.CellContent>
     ),
@@ -167,6 +189,7 @@ export const DataTableExample = () => {
         onChange={(v) => setFilter(v)}
       />
       <DataTable
+        widthClassName="s-w-full s-max-w-4xl"
         data={data}
         filter={filter}
         filterColumn="name"
@@ -192,6 +215,7 @@ export const DataTablePaginatedExample = () => {
         onChange={(v) => setFilter(v)}
       />
       <DataTable
+        className="s-w-full s-max-w-4xl s-overflow-x-auto"
         data={data}
         filter={filter}
         filterColumn="name"
@@ -227,6 +251,7 @@ export const DataTablePaginatedServerSideExample = () => {
         onChange={(v) => setFilter(v)}
       />
       <DataTable
+        className="s-w-full s-max-w-4xl s-overflow-x-auto"
         data={rows}
         totalRowCount={data.length}
         filter={filter}
