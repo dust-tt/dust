@@ -135,8 +135,9 @@ export const MultipleDocumentsUpload = ({
         onChange={async (e) => {
           if (e.target.files && e.target.files.length > 0) {
             if (
+              plan.limits.dataSources.documents.count != -1 &&
               e.target.files.length + totalNodesCount >
-              plan.limits.dataSources.documents.count
+                plan.limits.dataSources.documents.count
             ) {
               setIsLimitPopupOpen(true);
               return;
