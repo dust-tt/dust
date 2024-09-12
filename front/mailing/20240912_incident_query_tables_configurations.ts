@@ -23,14 +23,14 @@ export const sendIncidentEmail = async ({
     // to: "spolu@pm.me",
     from: "spolu@dust.tt",
     subject:
-      "[Dust] Resolved incident: Assistant Table Query configurations issue",
+      "[Dust] Resolved incident: Assistant Query Tables configurations issue",
     html: `<p>Hi there,</p>
     <p>An erroneous deletion logic introduced on Sept 4th impacted the selection of tables in assistants relying on the Query Tables action. We fixed the issue and were able to recover the last valid selection of tables for assistants that were used in the past 4 weeks. Inactive assistants may still be affected.</p>
-    <p>As last editor of the following assistants relying on Table Query, we invite you to check and potentialy repair the Query Tables action configuration for each of them:</p>
+    <p>As last editor of the following assistants relying on Query Tables, we invite you to check and potentialy repair the Query Tables action configuration for each of them:</p>
     <ul>
     ${assistants.map((a) => `<li>${a.agentName}: <a href="${a.assistantBuilderURL}">${a.assistantBuilderURL}</a></li>`).join("\n")}
     </ul>
-    <p>We take the safety of your assitant configurations very seriously, a full incident report is availabe here[0]. As an editor of assistants, your contribution is key to the success of Dust. Please simply reply to this email if you have any outstanding questions, we're here to help.</p>
+    <p>We take the safety of your assitant configurations very seriously, a full incident report is availabe here[0]. As an editor of assistants, your contribution is key to the success of Dust, please simply reply to this email if you have any outstanding questions, we're here to help.</p>
     <p>-stan</p>
     <p>[0] <a href="https://dust-tt.notion.site/Incident-L2-Table-Query-Configuration-Loss-5f68431d4f3d4542ae833b8900ea0cc1">https://dust-tt.notion.site/Incident-L2-Table-Query-Configuration-Loss-5f68431d4f3d4542ae833b8900ea0cc1</a>
 `,
