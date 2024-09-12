@@ -11,7 +11,6 @@ import {
   SortingFn,
   type SortingState,
   Updater,
-  RowData,
   useReactTable,
 } from "@tanstack/react-table";
 import React, { ReactNode, useEffect, useState } from "react";
@@ -31,7 +30,8 @@ import { Icon } from "./Icon";
 import { breakpoints, useWindowSize } from "./WindowUtility";
 
 declare module "@tanstack/table-core" {
-  interface ColumnMeta<TData extends RowData, TValue> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData, TValue> {
     className?: string;
     grow?: boolean;
   }
@@ -378,6 +378,7 @@ DataTable.Cell = function Cell({
   );
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getSize(columnDef: ColumnDef<any>) {
   if (columnDef.meta?.grow) {
     return { flex: 1 };
