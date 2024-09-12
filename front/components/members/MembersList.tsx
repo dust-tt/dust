@@ -80,6 +80,9 @@ export function MembersList({
         </DataTable.CellContent>
       ),
       enableSorting: false,
+      meta: {
+        width: "46rem",
+      },
     },
     {
       id: "role",
@@ -91,6 +94,9 @@ export function MembersList({
           />
         </DataTable.CellContent>
       ),
+      meta: {
+        width: "5rem",
+      },
     },
     {
       id: "open",
