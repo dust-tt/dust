@@ -92,7 +92,7 @@ export class VaultResource extends BaseResource<VaultModel> {
       existingVaults.find((v) => v.kind === "global") ||
       (await VaultResource.makeNew(
         {
-          name: "Workspace",
+          name: "Company Data",
           kind: "global",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
