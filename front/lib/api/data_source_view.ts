@@ -91,8 +91,13 @@ export async function getContentNodesForManagedDataSourceView(
     "Connector ID is required for managed data sources."
   );
 
-  // If the request is for children, we need to fetch the children of the internal ids.
-  if (includeChildren) {
+  // Determine if child nodes should be fetched:
+  // - Fetch children if 'includeChildren' is true and 'internalIds' are provided,
+  //   signifying a request for specific node children.
+  // - Fetch children if the 'parentsIn' field is not specified in the current view,
+  //   indicating that the view does not have predefined parent nodes.
+  // In cases where these conditions are not met, the logic defaults to fetching root nodes.
+  if ((includeChildren && internalIds) || !dataSourceView.parentsIn) {
     const [parentInternalId] = internalIds || [];
 
     const connectorsRes = await connectorsAPI.getConnectorPermissions({
@@ -121,7 +126,7 @@ export async function getContentNodesForManagedDataSourceView(
     const connectorsRes = await connectorsAPI.getContentNodes({
       connectorId: dataSource.connectorId,
       includeParents: true,
-      internalIds: internalIds ?? [],
+      internalIds: internalIds ?? dataSourceView.parentsIn ?? [],
       viewType,
     });
     if (connectorsRes.isErr()) {
