@@ -29,7 +29,7 @@ import { classNames } from "@sparkle/lib/utils";
 import { Icon } from "./Icon";
 import { breakpoints, useWindowSize } from "./WindowUtility";
 
-declare module "@tanstack/table-core" {
+declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
     className?: string;
