@@ -25,8 +25,8 @@ export const sendIncidentEmail = async ({
     subject:
       "[Dust] Resolved incident: Assistant Query Tables configurations issue",
     html: `<p>Hi there,</p>
-    <p>An erroneous deletion logic introduced on Sept 4th impacted the selection of tables in assistants relying on the Query Tables action. The other elements of configuration of these assistants—instructions, other tools—weren't affected. We fixed the issue and were able to recover the last valid selection of tables for assistants that were used in the past 4 weeks. Inactive assistants may still be affected.</p>
-    <p>As last editor of the following assistants relying on Query Tables, we invite you to check and potentialy repair the Query Tables action configuration for each of them:</p>
+    <p>An erroneous deletion logic introduced on Sept 4th impacted the selection of tables in assistants relying on the "Query Tables" tool. The other elements of configuration of these assistants—instructions, other tools—weren't affected. We fixed the issue and were able to recover the last valid selection of tables for assistants that were used in the past 4 weeks. Inactive assistants may still be affected.</p>
+    <p>As last editor of the following assistants relying on Query Tables, we invite you to check and potentialy repair the Query Tables tool configuration for each of them:</p>
     <ul>
     ${assistants.map((a) => `<li>${a.agentName}: <a href="${a.assistantBuilderURL}">${a.assistantBuilderURL}</a></li>`).join("\n")}
     </ul>
