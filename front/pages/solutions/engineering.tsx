@@ -14,21 +14,15 @@ import {
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSection } from "@app/components/home/SolutionSection";
 import config from "@app/lib/api/config";
-import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 
-export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
-  requireUserPrivilege: "none",
-})<{
-  gaTrackingId: string;
-  shape: number;
-}>(async () => {
+export async function getServerSideProps() {
   return {
     props: {
       gaTrackingId: config.getGaTrackingId(),
       shape: getParticleShapeIndexByName(shapeNames.cube),
     },
   };
-});
+}
 
 interface pageSettingsProps {
   uptitle: string;
