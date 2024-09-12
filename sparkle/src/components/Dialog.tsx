@@ -73,10 +73,8 @@ export function Dialog({
                 <HeadlessDialog.Title className="s-text-element-950 s-truncate s-text-lg s-font-medium">
                   {title}
                 </HeadlessDialog.Title>
-                <div className="s-z-10 s-text-base s-text-element-700">
-                  {children}
-                </div>
-                <div className="s-z-10 s-flex s-w-full s-justify-end">
+                <div className="s-text-base s-text-element-700">{children}</div>
+                <div className="s-flex s-w-full s-justify-end">
                   <Button.List>
                     {!isSaving && (
                       <>
