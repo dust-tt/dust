@@ -149,7 +149,14 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         },
       });
       if (!parent) {
-        return new Err(new Error("Parent not found"));
+        logger.error(
+          {
+            connectorId: connector.id,
+            parentInternalId,
+          },
+          "Webcrawler: Parent not found"
+        );
+        return new Ok([]);
       }
       parentUrl = parent.url;
     }
