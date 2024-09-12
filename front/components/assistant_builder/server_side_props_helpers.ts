@@ -224,7 +224,27 @@ async function renderDataSourcesConfigurations(
       );
 
       if (contentNodesRes.isErr()) {
-        throw contentNodesRes.error;
+        logger.error(
+          {
+            action: {
+              id: action.id,
+              type: action.type,
+            },
+            dataSourceView: dataSourceView.toTraceJSON(),
+            error: contentNodesRes.error,
+            internalIds: sr.resources,
+            workspace: {
+              id: dataSourceView.workspaceId,
+            },
+          },
+          "Assistant Builder: Error fetching content nodes for documents."
+        );
+
+        return {
+          dataSourceView: serializedDataSourceView,
+          selectedResources: [],
+          isSelectAll: sr.isSelectAll,
+        };
       }
 
       return {
@@ -283,13 +303,20 @@ async function renderTableDataSourcesConfigurations(
         if (contentNodesRes.isErr()) {
           logger.error(
             {
+              action: {
+                id: action.id,
+                type: action.type,
+              },
+              dataSourceView: dataSourceView.toTraceJSON(),
               error: contentNodesRes.error,
-              workspaceId: dataSourceView.workspaceId,
-              dataSourceViewId: sr.dataSourceViewId,
               internalIds: sr.resources,
+              workspace: {
+                id: dataSourceView.workspaceId,
+              },
             },
-            `Assistant Builder: Error fetching content nodes.`
+            "Assistant Builder: Error fetching content nodes for tables."
           );
+
           return {
             dataSourceView: serializedDataSourceView,
             selectedResources: [],

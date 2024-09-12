@@ -412,6 +412,14 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     };
   }
 
+  toTraceJSON() {
+    return {
+      id: this.id,
+      sId: this.sId,
+      kind: this.kind,
+    };
+  }
+
   toViewFilter() {
     return {
       parents: {
