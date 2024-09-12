@@ -22,7 +22,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { isWebsiteOrFolderCategory } from "@dust-tt/types";
-import type { CellContext, ColumnDef, ColumnMeta } from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useContext, useMemo } from "react";
