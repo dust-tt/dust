@@ -6,7 +6,7 @@ import type {
   LightWorkspaceType,
   VaultType,
 } from "@dust-tt/types";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
@@ -50,6 +50,12 @@ export const AddToVaultDialog = ({
     .map((dsv) => dsv.vaultId);
 
   const availableVaults = vaults.filter((v) => !alreadyInVault.includes(v.sId));
+
+  useEffect(() => {
+    if (isOpen) {
+      setVault(undefined);
+    }
+  }, [isOpen]);
 
   const addToVault = async () => {
     if (!vault) {
@@ -121,6 +127,7 @@ export const AddToVaultDialog = ({
 
   return (
     <Dialog
+      disabled={vault === undefined}
       isOpen={isOpen}
       onCancel={() => onClose(false)}
       onValidate={addToVault}
