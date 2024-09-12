@@ -13,8 +13,8 @@ import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
 
-const { garbageCollect } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "120 minute",
+const { garbageCollectBatch } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "30 minute",
   heartbeatTimeout: "5 minute",
 });
 
@@ -27,6 +27,8 @@ const {
   getPagesAndDatabasesToSync,
   garbageCollectorMarkAsSeenAndReturnNewEntities,
   fetchDatabaseChildPages,
+  createResourcesNotSeenInGarbageCollectionRunBatches,
+  completeGarbageCollectionRun,
   cachePage,
   cacheBlockChildren,
   renderAndUpsertPageFromCache,
@@ -58,6 +60,8 @@ const MAX_CONCURRENT_CHILD_WORKFLOWS = 1;
 const MAX_PAGE_IDS_PER_CHILD_WORKFLOW = 100;
 
 const MAX_PENDING_UPSERT_ACTIVITIES = 5;
+
+const MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES = 5;
 
 // If set to true, the workflow will process all discovered resources until empty.
 const PROCESS_ALL_DISCOVERED_RESOURCES = false;
@@ -229,11 +233,39 @@ export async function notionSyncWorkflow({
     } else {
       // Look at pages and databases that were not visited in this run, check with the notion API if
       // they were really deleted and delete them from the database if they were.
-      await garbageCollect({
-        connectorId,
-        runTimestamp,
-        startTs: new Date().getTime(),
+      // Find the resources not seen in the GC run
+
+      // Create batches of resources to check, by chunk of 100
+      const batches = await createResourcesNotSeenInGarbageCollectionRunBatches(
+        {
+          connectorId,
+          batchSize: 100,
+        }
+      );
+
+      // For each chunk, run a garbage collection activity
+      const queue = new PQueue({
+        concurrency: MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES,
       });
+      const promises: Promise<void>[] = [];
+      batches.forEach((batch, batchIndex) => {
+        promises.push(
+          queue.add(async () =>
+            garbageCollectBatch({
+              connectorId,
+              runTimestamp,
+              batch,
+              batchIndex,
+              startTs: new Date().getTime(),
+            })
+          )
+        );
+      });
+
+      await Promise.all(promises);
+
+      // Once done, clear all the redis keys used for garbage collection
+      await completeGarbageCollectionRun(connectorId);
     }
 
     iterations += 1;
