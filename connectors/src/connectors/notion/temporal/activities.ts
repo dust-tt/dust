@@ -1792,7 +1792,7 @@ export async function renderAndUpsertPageFromCache({
         const parents = await getParents(
           connector.id,
           parentDb.notionDatabaseId,
-          new Set<string>(),
+          [],
           runTimestamp.toString()
         );
 
@@ -1980,7 +1980,7 @@ export async function renderAndUpsertPageFromCache({
     const parents = await getParents(
       connectorId,
       pageId,
-      new Set<string>(),
+      [],
       runTimestamp.toString()
     );
 
@@ -2449,7 +2449,7 @@ export async function upsertDatabaseStructuredDataFromCache({
   const parents = await getParents(
     connector.id,
     databaseId,
-    new Set<string>(),
+    [],
     runTimestamp.toString()
   );
 
