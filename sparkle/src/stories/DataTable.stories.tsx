@@ -169,6 +169,7 @@ const columns: ColumnDef<Data>[] = [
     enableSorting: false,
   },
   {
+    size: 100,
     accessorKey: "size",
     header: "Size",
     cell: (info) => (

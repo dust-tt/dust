@@ -367,7 +367,7 @@ DataTable.Cell = function Cell({
     <td
       style={getSize(column.columnDef)}
       className={classNames(
-        "s-align-center s-flex s-h-12 s-max-w-sm s-truncate s-whitespace-nowrap s-pl-1.5 s-text-element-800",
+        "s-align-center s-flex s-h-12 s-truncate s-whitespace-nowrap s-pl-1.5 s-text-element-800",
         column.columnDef.meta?.className || "",
         className || ""
       )}
