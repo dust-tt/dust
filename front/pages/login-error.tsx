@@ -8,20 +8,17 @@ import {
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
-import config from "@app/lib/api/config";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
 })<{
   domain: string | null;
-  gaTrackingId: string;
   reason: string | null;
 }>(async (context) => {
   return {
     props: {
       domain: (context.query.domain as string) ?? null,
-      gaTrackingId: config.getGaTrackingId(),
       reason: (context.query.reason as string) ?? null,
     },
   };

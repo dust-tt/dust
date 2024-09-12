@@ -13,12 +13,10 @@ import {
 } from "@app/components/home/Particles";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { SolutionSection } from "@app/components/home/SolutionSection";
-import config from "@app/lib/api/config";
 
 export async function getServerSideProps() {
   return {
     props: {
-      gaTrackingId: config.getGaTrackingId(),
       shape: getParticleShapeIndexByName(shapeNames.wave),
     },
   };

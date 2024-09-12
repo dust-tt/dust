@@ -13,13 +13,11 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
-import config from "@app/lib/api/config";
 import { classNames } from "@app/lib/utils";
 
 export async function getServerSideProps() {
   return {
     props: {
-      gaTrackingId: config.getGaTrackingId(),
       shape: getParticleShapeIndexByName(shapeNames.icosahedron),
     },
   };

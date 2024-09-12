@@ -22,7 +22,6 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import config from "@app/lib/api/config";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -32,7 +31,6 @@ import { useDataSources } from "@app/lib/swr/data_sources";
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -47,7 +45,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -55,7 +52,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function EditDustAssistant({
   owner,
   subscription,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
@@ -152,7 +148,6 @@ export default function EditDustAssistant({
       subscription={subscription}
       hideSidebar
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "workspace_assistants",

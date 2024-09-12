@@ -72,7 +72,6 @@ export default function AssistantBuilder({
   owner,
   subscription,
   plan,
-  gaTrackingId,
   initialBuilderState,
   agentConfigurationId,
   flow,
@@ -406,7 +405,6 @@ export default function AssistantBuilder({
         hideSidebar
         isWideMode
         owner={owner}
-        gaTrackingId={gaTrackingId}
         subNavigation={subNavigationBuild({
           owner,
           current: "workspace_assistants",

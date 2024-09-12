@@ -16,7 +16,6 @@ import {
 } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import config from "@app/lib/api/config";
 import { getRun } from "@app/lib/api/run";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -30,7 +29,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   run: RunType;
   spec: SpecificationType;
   dustAppsListUrl: string;
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -69,7 +67,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       spec,
       run,
       dustAppsListUrl,
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -82,7 +79,6 @@ export default function AppRun({
   spec,
   run,
   dustAppsListUrl,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [savedRunId, setSavedRunId] = useState<string | null | undefined>(
     app.savedRun
@@ -150,7 +146,6 @@ export default function AppRun({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "developers",

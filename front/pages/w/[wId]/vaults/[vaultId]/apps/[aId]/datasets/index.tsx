@@ -15,7 +15,6 @@ import {
 } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import config from "@app/lib/api/config";
 import { getDatasets } from "@app/lib/api/datasets";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -29,7 +28,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   app: AppType;
   datasets: DatasetType[];
   dustAppsListUrl: string;
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -60,7 +58,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       app: app.toJSON(),
       datasets,
       dustAppsListUrl,
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -72,7 +69,6 @@ export default function DatasetsView({
   app,
   datasets,
   dustAppsListUrl,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const confirm = useContext(ConfirmContext);
@@ -104,7 +100,6 @@ export default function DatasetsView({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "developers",

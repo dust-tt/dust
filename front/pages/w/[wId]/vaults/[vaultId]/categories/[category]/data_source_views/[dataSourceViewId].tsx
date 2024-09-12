@@ -98,7 +98,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       category: context.query.category as DataSourceViewCategory,
       dataSource: dataSourceView.dataSource.toJSON(),
       dataSourceView: dataSourceView.toJSON(),
-      gaTrackingId: config.getGaTrackingId(),
       isAdmin,
       canWriteInVault,
       canReadInVault,

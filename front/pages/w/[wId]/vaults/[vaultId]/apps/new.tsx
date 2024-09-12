@@ -10,7 +10,6 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
@@ -20,7 +19,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dustAppsListUrl: string;
-  gaTrackingId: string;
   vault: VaultType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -50,7 +48,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       dustAppsListUrl,
-      gaTrackingId: config.getGaTrackingId(),
       vault: vault.toJSON(),
     },
   };
@@ -60,7 +57,6 @@ export default function NewApp({
   owner,
   subscription,
   dustAppsListUrl,
-  gaTrackingId,
   vault,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
@@ -122,7 +118,6 @@ export default function NewApp({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({ owner, current: "developers" })}
     >
       <div className="flex flex-col">

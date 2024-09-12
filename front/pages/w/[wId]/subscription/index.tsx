@@ -26,7 +26,6 @@ import { PricePlans } from "@app/components/plans/PlansTables";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
-import config from "@app/lib/api/config";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -45,7 +44,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   user: UserType;
   trialDaysRemaining: number | null;
-  gaTrackingId: string;
   workspaceSeats: number;
   perSeatPricing: SubscriptionPerSeatPricing | null;
 }>(async (context, auth) => {
@@ -85,7 +83,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       trialDaysRemaining,
-      gaTrackingId: config.getGaTrackingId(),
       user,
       workspaceSeats,
       perSeatPricing,
@@ -98,7 +95,6 @@ export default function Subscription({
   user,
   subscription,
   trialDaysRemaining,
-  gaTrackingId,
   workspaceSeats,
   perSeatPricing,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -282,7 +278,6 @@ export default function Subscription({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationAdmin({ owner, current: "subscription" })}
     >
       {perSeatPricing && (

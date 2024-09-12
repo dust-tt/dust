@@ -8,12 +8,10 @@ import { TeamSection } from "@app/components/home/content/Product/TeamSection";
 import { VerticalSection } from "@app/components/home/content/Product/VerticalSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import config from "@app/lib/api/config";
 
 export async function getServerSideProps() {
   return {
     props: {
-      gaTrackingId: config.getGaTrackingId(),
       shape: 0,
     },
   };

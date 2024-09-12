@@ -40,7 +40,6 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
 })<{
   baseUrl: string;
-  gaTrackingId: string;
   invitationEmail: string | null;
   onboardingType: OnboardingType;
   signUpCallbackUrl: string;
@@ -124,7 +123,6 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   return {
     props: {
       baseUrl: config.getClientFacingUrl(),
-      gaTrackingId: config.getGaTrackingId(),
       invitationEmail,
       onboardingType,
       signUpCallbackUrl,
@@ -134,7 +132,6 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 });
 
 export default function Join({
-  gaTrackingId,
   invitationEmail,
   onboardingType,
   signUpCallbackUrl,
@@ -149,7 +146,6 @@ export default function Join({
   return (
     <OnboardingLayout
       owner={workspace}
-      gaTrackingId={gaTrackingId}
       headerTitle="Welcome to Dust"
       headerRightActions={
         <Button
