@@ -1,104 +1,159 @@
-import { Avatar, ChevronRightIcon, Chip, Icon } from "@dust-tt/sparkle";
-import type { UserTypeWithWorkspaces } from "@dust-tt/types";
-import assert from "assert";
+import {
+  Button,
+  ChevronRightIcon,
+  Chip,
+  DataTable,
+  Icon,
+  PlusIcon,
+  Searchbar,
+  Spinner,
+} from "@dust-tt/sparkle";
+import type {
+  ActiveRoleType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@dust-tt/types";
+import type { CellContext, PaginationState } from "@tanstack/react-table";
+import _ from "lodash";
+import React, { useMemo, useState } from "react";
 
-import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import { ROLES_DATA } from "@app/components/members/Roles";
+import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
+import { useSearchMembers } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 
+type RowData = {
+  icon: string;
+  name: string;
+  userId: string;
+  email: string;
+  role: ActiveRoleType;
+  onClick: () => void
+};
+
+type Info = CellContext<RowData, unknown>;
+
+function getTableRows(
+  allUsers: UserTypeWithWorkspaces[],
+  onClick: (user: UserTypeWithWorkspaces) => void
+) : RowData[] {
+  return allUsers.map((user) => ({
+    icon: user.image ?? "",
+    name: user.fullName,
+    userId: user.sId,
+    email: user.email ?? "",
+    role: user.workspaces[0].role as ActiveRoleType,
+    onClick: () => onClick(user)
+  }));
+}
+
 export function MembersList({
-  users,
+  owner,
   currentUserId,
-  isMembersLoading,
-  onClickEvent,
-  searchText,
+  onInviteClick,
 }: {
-  users: UserTypeWithWorkspaces[];
-  currentUserId: number;
-  isMembersLoading: boolean;
-  onClickEvent: (role: UserTypeWithWorkspaces) => void;
-  searchText?: string;
+  owner: WorkspaceType;
+  currentUserId: string;
+  onInviteClick: () => void;
 }) {
-  const filteredUsers = users
-    .sort((a, b) => a.fullName.localeCompare(b.fullName))
-    .filter((m) => m.workspaces[0].role !== "none")
-    .filter(
-      (m) =>
-        !searchText ||
-        m.fullName.toLowerCase().includes(searchText.toLowerCase()) ||
-        m.email?.toLowerCase().includes(searchText.toLowerCase()) ||
-        m.username?.toLowerCase().includes(searchText.toLowerCase())
-    );
+  const [searchText, setSearchText] = useState("");
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 25,
+  });
+  const [selectedMember, setSelectedMember] = useState<UserTypeWithWorkspaces | null>(null)
+  const { members, totalMembersCount, isLoading } = useSearchMembers(
+    owner.sId,
+    searchText,
+    pagination.pageIndex,
+    pagination.pageSize
+  );
+
+  const columns = [
+    {
+      id: "name",
+      accessorKey: "name",
+      cell: (info: Info) => (
+        <DataTable.CellContent
+          avatarUrl={info.row.original.icon}
+          description={info.row.original.email}
+        >
+          {info.row.original.name}{" "}
+          {info.row.original.userId === currentUserId ? " (you)" : ""}
+        </DataTable.CellContent>
+      ),
+      enableSorting: false,
+    },
+    {
+      id: "role",
+      cell: (info: Info) => (
+        <DataTable.CellContent>
+          <Chip
+            label={_.capitalize(info.row.original.role)}
+            color={ROLES_DATA[info.row.original.role]["color"]}
+          />
+        </DataTable.CellContent>
+      ),
+    },
+    {
+      id: "open",
+      cell: (info: Info) => (
+        <DataTable.CellContent>
+          <Icon
+            visual={ChevronRightIcon}
+            className={classNames(
+              "text-element-600",
+              info.row.original.userId === currentUserId ? "invisible" : ""
+            )}
+          />
+        </DataTable.CellContent>
+      ),
+    },
+  ];
+
+  const rows = useMemo(
+    () => getTableRows(
+      members,
+      (user: UserTypeWithWorkspaces | null) => {setSelectedMember(user)}
+    ),
+    [members]
+  );
+
   return (
-    <div className="s-w-full">
-      {filteredUsers.map((user) => {
-        const role = user.workspaces[0].role;
-        assert(
-          role !== "none",
-          "Unreachable (typescript pleasing): role cannot be none"
-        );
-        return (
-          <div
-            key={`member-${user.id}`}
-            className="transition-color flex cursor-pointer items-center justify-center gap-3 border-t border-structure-200 p-2 text-xs duration-200 hover:bg-action-50 sm:text-sm"
-            onClick={async () => {
-              if (currentUserId === user.id) {
-                return;
-              }
-              onClickEvent(user);
-            }}
-          >
-            <div className="hidden sm:block">
-              <Avatar visual={user.image} name={user.fullName} size="sm" />
-            </div>
-            <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-              <div className="font-medium text-element-900">
-                {user.fullName}
-                {user.id === currentUserId && " (you)"}
-              </div>
-              <div className="grow font-normal text-element-700">
-                {user.email || user.username}
-              </div>
-            </div>
-            <div>
-              <Chip
-                size="xs"
-                color={ROLES_DATA[role]["color"]}
-                className="capitalize"
-              >
-                {displayRole(role)}
-              </Chip>
-            </div>
-            <div className="hidden sm:block">
-              <Icon
-                visual={ChevronRightIcon}
-                className={classNames(
-                  "text-element-600",
-                  user.id === currentUserId ? "invisible" : ""
-                )}
-              />
-            </div>
-          </div>
-        );
-      })}
-      {isMembersLoading && (
-        <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
-          <div className="hidden sm:block">
-            <Avatar size="xs" />
-          </div>
-          <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-            <div className="font-medium text-element-900">Loading...</div>
-            <div className="grow font-normal text-element-700"></div>
-          </div>
-          <div>
-            <Chip size="xs" color="slate">
-              Loading...
-            </Chip>
-          </div>
-          <div className="hidden sm:block">
-            <ChevronRightIcon />
-          </div>
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-row gap-2">
+        <Searchbar
+          placeholder="Search members (email)"
+          value={searchText}
+          name="search"
+          onChange={(s) => {
+            setSearchText(s)
+          }}
+        />
+        <Button
+          label="Invite members"
+          icon={PlusIcon}
+          onClick={onInviteClick}
+        />
+      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8">
+          <Spinner size="lg" />
         </div>
+      ) : (
+        <DataTable
+          data={rows}
+          columns={columns}
+          pagination={pagination}
+          setPagination={setPagination}
+          totalRowCount={totalMembersCount}
+        />
       )}
+      <ChangeMemberModal
+        onClose={() => setSelectedMember(null)}
+        member={selectedMember}
+        owner={owner}
+      />
     </div>
   );
 }
