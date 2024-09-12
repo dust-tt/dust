@@ -31,7 +31,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const { role, type } = req.query;
+      const { role } = req.query;
 
       if (role && typeof role !== "string") {
         return apiError(req, res, {
