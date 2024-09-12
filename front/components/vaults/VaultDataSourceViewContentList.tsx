@@ -77,6 +77,9 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
     columns.push({
       header: "Available to",
       accessorKey: "vaults",
+      meta: {
+        width: "14rem",
+      },
       cell: (info: CellContext<RowData, VaultType[]>) => (
         <DataTable.CellContent>
           {info.getValue().length > 0
@@ -94,6 +97,9 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
     header: "Last updated",
     accessorKey: "lastUpdatedAt",
     id: "lastUpdatedAt",
+    meta: {
+      width: "12rem",
+    },
     cell: (info: CellContext<RowData, number>) => (
       <DataTable.CellContent>
         {info.getValue()

@@ -78,6 +78,9 @@ const getTableColumns = () => {
     {
       header: "Used by",
       accessorKey: "usage",
+      meta: {
+        width: "6rem",
+      },
       cell: (info: Info) => (
         <>
           {info.row.original.usage ? (
