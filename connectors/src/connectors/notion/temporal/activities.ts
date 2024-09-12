@@ -789,16 +789,11 @@ export async function deleteDatabase({
 // - will give up after `GARBAGE_COLLECT_MAX_DURATION_MS` milliseconds (including retries if any)
 export async function garbageCollectBatch({
   connectorId,
-  batch,
   batchIndex,
   runTimestamp,
   startTs,
 }: {
   connectorId: ModelId;
-  batch: {
-    resourceType: "page" | "database";
-    resourceId: string;
-  }[];
   batchIndex: number;
   runTimestamp: number;
   startTs: number;
@@ -837,12 +832,17 @@ export async function garbageCollectBatch({
   let stillAccessiblePagesCount = 0;
   let stillAccessibleDatabasesCount = 0;
 
+  const batch = await getResourcesNotSeenInGarbageCollectionRunBatch(
+    connectorId,
+    batchIndex
+  );
+
   for (const [i, x] of batch.entries()) {
     await heartbeat();
 
     const iterationLogger = localLogger.child({
-      pageId: x.resourceType === "page" ? x.resourceId : undefined,
-      databaseId: x.resourceType === "database" ? x.resourceId : undefined,
+      pageId: x.type === "page" ? x.id : undefined,
+      databaseId: x.type === "database" ? x.id : undefined,
       batchCount: batch.length,
       index: i,
       batchIndex: batchIndex,
@@ -856,8 +856,8 @@ export async function garbageCollectBatch({
     try {
       resourceIsAccessible = await isAccessibleAndUnarchived(
         notionAccessToken,
-        x.resourceId,
-        x.resourceType,
+        x.id,
+        x.type,
         iterationLogger
       );
     } catch (e) {
@@ -890,7 +890,7 @@ export async function garbageCollectBatch({
 
     if (resourceIsAccessible) {
       // Mark the resource as seen, so it is lower priority if we run into it again in a future GC run.
-      if (x.resourceType === "page") {
+      if (x.type === "page") {
         await NotionPage.update(
           {
             lastSeenTs: new Date(runTimestamp),
@@ -898,12 +898,12 @@ export async function garbageCollectBatch({
           {
             where: {
               connectorId: connector.id,
-              notionPageId: x.resourceId,
+              notionPageId: x.id,
             },
           }
         );
         stillAccessiblePagesCount++;
-      } else if (x.resourceType === "database") {
+      } else if (x.type === "database") {
         await NotionDatabase.update(
           {
             lastSeenTs: new Date(runTimestamp),
@@ -911,21 +911,21 @@ export async function garbageCollectBatch({
           {
             where: {
               connectorId: connector.id,
-              notionDatabaseId: x.resourceId,
+              notionDatabaseId: x.id,
             },
           }
         );
         stillAccessibleDatabasesCount++;
       } else {
-        assertNever(x.resourceType);
+        assertNever(x.type);
       }
     } else {
       const dataSourceConfig = dataSourceConfigFromConnector(connector);
-      if (x.resourceType === "page") {
+      if (x.type === "page") {
         await deletePage({
           connectorId: connector.id,
           dataSourceConfig,
-          pageId: x.resourceId,
+          pageId: x.id,
           logger: iterationLogger,
         });
         deletedPagesCount++;
@@ -933,7 +933,7 @@ export async function garbageCollectBatch({
         await deleteDatabase({
           connectorId: connector.id,
           dataSourceConfig,
-          databaseId: x.resourceId,
+          databaseId: x.id,
           logger: iterationLogger,
         });
         deletedDatabasesCount++;
@@ -955,11 +955,17 @@ export async function garbageCollectBatch({
   }
 }
 
-export async function completeGarbageCollectionRun(connectorId: ModelId) {
+export async function completeGarbageCollectionRun(
+  connectorId: ModelId,
+  nbOfBatches: number
+) {
   const redisCli = await redisClient();
   const redisKey = redisGarbageCollectorKey(connectorId);
   await redisCli.del(`${redisKey}-pages`);
   await redisCli.del(`${redisKey}-databases`);
+  for (let i = 0; i < nbOfBatches; i++) {
+    await redisCli.del(`${redisKey}-resources-not-seen-batch-${i}`);
+  }
 
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -1058,6 +1064,11 @@ export async function deletePageOrDatabaseIfArchived({
   }
 }
 
+type GCResource = {
+  id: string;
+  type: "page" | "database";
+};
+
 // Compute resources to check for garbage collection that weren't seen in the notion search api results
 export async function createResourcesNotSeenInGarbageCollectionRunBatches({
   connectorId,
@@ -1122,16 +1133,44 @@ export async function createResourcesNotSeenInGarbageCollectionRunBatches({
     (a, b) => a.lastSeenTs.getTime() - b.lastSeenTs.getTime()
   );
 
-  return chunk(
+  const batches: GCResource[][] = chunk(
     allResourcesNotSeenInGarbageCollectionRun.map(
       ({ resourceId, resourceType }) => ({
-        // We don't need the lastSeenTs anymore
-        resourceId,
-        resourceType,
+        // We don't need the lastSeenTs anymore, shorten keys to save space of the serialized object
+        id: resourceId,
+        type: resourceType,
       })
     ),
     batchSize
   );
+
+  // Store each batch in redis
+  for (const [i, batch] of batches.entries()) {
+    await redisCli.set(
+      `${redisKey}-resources-not-seen-batch-${i}`,
+      JSON.stringify(batch)
+    );
+  }
+
+  return batches.length;
+}
+
+async function getResourcesNotSeenInGarbageCollectionRunBatch(
+  connectorId: ModelId,
+  batchIndex: number
+): Promise<GCResource[]> {
+  const redisKey = redisGarbageCollectorKey(connectorId);
+  const redisCli = await redisClient();
+
+  const batch = await redisCli.get(
+    `${redisKey}-resources-not-seen-batch-${batchIndex}`
+  );
+
+  if (!batch) {
+    return [];
+  }
+
+  return JSON.parse(batch) as GCResource[];
 }
 
 export async function updateParentsFields(connectorId: ModelId) {
