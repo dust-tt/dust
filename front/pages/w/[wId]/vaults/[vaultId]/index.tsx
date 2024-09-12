@@ -78,12 +78,14 @@ export default function Vault({
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header title={getVaultName(vault)} icon={getVaultIcon(vault)} />
       {vaultInfo && !isMember && (
-        <Chip
-          color="warning"
-          label="You are not a member of this vault."
-          size="sm"
-          icon={InformationCircleIcon}
-        />
+        <div>
+          <Chip
+            color="pink"
+            label="You are not a member of this vault."
+            size="sm"
+            icon={InformationCircleIcon}
+          />
+        </div>
       )}
       <VaultCategoriesList
         owner={owner}
