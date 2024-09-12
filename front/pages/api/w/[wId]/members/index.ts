@@ -4,13 +4,10 @@ import type {
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getPaginationParams } from "@app/lib/api/pagination";
 import { getMembers } from "@app/lib/api/workspace";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-
-const DEFAULT_PAGE_LIMIT = 1500;
 
 export type GetMembersResponseBody = {
   members: UserTypeWithWorkspaces[];
@@ -24,33 +21,10 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const paginationRes = getPaginationParams(req, {
-        defaultLimit: DEFAULT_PAGE_LIMIT,
-        defaultOrderColumn: "createdAt",
-        defaultOrderDirection: "desc",
-        supportedOrderColumn: ["createdAt"],
-      });
-
-      if (paginationRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: paginationRes.error.message,
-          },
-        });
-      }
-
-      const paginationParams = paginationRes.value;
-
       if (auth.isBuilder() && req.query.role && req.query.role === "admin") {
-        const { members, total } = await getMembers(
-          auth,
-          {
-            roles: ["admin"],
-          },
-          paginationParams
-        );
+        const { members, total } = await getMembers(auth, {
+          roles: ["admin"],
+        });
         res.status(200).json({
           members,
           total,
@@ -69,7 +43,7 @@ async function handler(
         });
       }
 
-      const { members, total } = await getMembers(auth, {}, paginationParams);
+      const { members, total } = await getMembers(auth, {});
 
       res.status(200).json({
         members,
