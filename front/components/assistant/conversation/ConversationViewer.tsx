@@ -282,6 +282,7 @@ const ConversationViewer = React.forwardRef<
             break;
 
           case "conversation_title": {
+            console.log("Conversation title event", event);
             void mutateConversation();
             void mutateConversations(); // to refresh the list of convos in the sidebar
             break;
