@@ -39,6 +39,19 @@ import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
 
+interface AssistantBuilderRightPanelProps {
+  screen: BuilderScreen;
+  template: FetchAssistantTemplateResponse | null;
+  removeTemplate: () => Promise<void>;
+  resetToTemplateInstructions: () => Promise<void>;
+  resetToTemplateActions: () => Promise<void>;
+  owner: WorkspaceType;
+  rightPanelStatus: AssistantBuilderRightPanelStatus;
+  openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
+  builderState: AssistantBuilderState;
+  setAction: (action: AssistantBuilderSetActionType) => void;
+}
+
 export default function AssistantBuilderRightPanel({
   screen,
   template,
@@ -50,18 +63,7 @@ export default function AssistantBuilderRightPanel({
   openRightPanelTab,
   builderState,
   setAction,
-}: {
-  screen: BuilderScreen;
-  template: FetchAssistantTemplateResponse | null;
-  removeTemplate: () => Promise<void>;
-  resetToTemplateInstructions: () => Promise<void>;
-  resetToTemplateActions: () => Promise<void>;
-  owner: WorkspaceType;
-  rightPanelStatus: AssistantBuilderRightPanelStatus;
-  openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
-  builderState: AssistantBuilderState;
-  setAction: (action: AssistantBuilderSetActionType) => void;
-}) {
+}: AssistantBuilderRightPanelProps) {
   const tabsConfig = useMemo(
     () => [
       {
