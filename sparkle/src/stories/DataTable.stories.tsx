@@ -126,9 +126,6 @@ const columns: ColumnDef<Data>[] = [
     accessorKey: "name",
     header: "Name",
     sortingFn: "text",
-    meta: {
-      grow: true,
-    },
     cell: (info) => (
       <DataTable.CellContent
         avatarUrl={info.row.original.avatarUrl}
@@ -146,6 +143,9 @@ const columns: ColumnDef<Data>[] = [
     minSize: 100,
     size: 100,
     header: "Used by",
+    meta: {
+      width: "100px",
+    },
     cell: (info) => (
       <DataTable.CellContent>{info.row.original.usedBy}</DataTable.CellContent>
     ),
@@ -153,7 +153,9 @@ const columns: ColumnDef<Data>[] = [
   {
     accessorKey: "addedBy",
     header: "Added by",
-    size: 100,
+    meta: {
+      width: "100px",
+    },
     cell: (info) => (
       <DataTable.CellContent>{info.row.original.addedBy}</DataTable.CellContent>
     ),
@@ -161,6 +163,9 @@ const columns: ColumnDef<Data>[] = [
   {
     accessorKey: "lastUpdated",
     header: "Last updated",
+    meta: {
+      width: "200px",
+    },
     cell: (info) => (
       <DataTable.CellContent>
         {info.row.original.lastUpdated}
@@ -169,9 +174,11 @@ const columns: ColumnDef<Data>[] = [
     enableSorting: false,
   },
   {
-    size: 100,
     accessorKey: "size",
     header: "Size",
+    meta: {
+      width: "100px",
+    },
     cell: (info) => (
       <DataTable.CellContent>{info.row.original.size}</DataTable.CellContent>
     ),
@@ -190,7 +197,6 @@ export const DataTableExample = () => {
         onChange={(v) => setFilter(v)}
       />
       <DataTable
-        widthClassName="s-w-full s-max-w-4xl"
         data={data}
         filter={filter}
         filterColumn="name"

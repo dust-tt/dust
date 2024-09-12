@@ -33,7 +33,8 @@ declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
     className?: string;
-    grow?: boolean;
+    width?: string;
+    flex?: number;
   }
 }
 
@@ -76,7 +77,7 @@ export function DataTable<TData extends TBaseData>({
   totalRowCount,
   columns,
   className,
-  widthClassName,
+  widthClassName = "s-w-full s-max-w-4xl",
   filter,
   filterColumn,
   initialColumnOrder,
@@ -380,13 +381,11 @@ DataTable.Cell = function Cell({
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function getSize(columnDef: ColumnDef<any>) {
-  if (columnDef.meta?.grow) {
-    return { flex: 1 };
+  if (columnDef.meta?.width) {
+    return { width: columnDef.meta.width };
   }
   return {
-    width: columnDef.size,
-    minWidth: columnDef.minSize,
-    maxWidth: columnDef.maxSize,
+    flex: columnDef.meta?.flex ?? 1,
   };
 }
 
