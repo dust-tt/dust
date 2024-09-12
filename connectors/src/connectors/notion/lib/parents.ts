@@ -31,7 +31,6 @@ async function _getParents(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
   memoizationKey?: string
 ): Promise<string[]> {
-  logger.info({ connectorId, pageOrDbId }, "getParents");
   const parents: string[] = [pageOrDbId];
   const pageOrDb =
     (await getNotionPageFromConnectorsDb(connectorId, pageOrDbId)) ||
@@ -65,7 +64,7 @@ async function _getParents(
           {
             connectorId,
             pageOrDbId,
-            seen,
+            seen: seen.entries(),
             parentId: pageOrDb.parentId,
           },
           "getParents infinite loop"
