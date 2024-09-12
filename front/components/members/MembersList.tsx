@@ -28,7 +28,7 @@ type RowData = {
   userId: string;
   email: string;
   role: ActiveRoleType;
-  onClick: () => void
+  onClick: () => void;
 };
 
 type Info = CellContext<RowData, unknown>;
@@ -36,14 +36,14 @@ type Info = CellContext<RowData, unknown>;
 function getTableRows(
   allUsers: UserTypeWithWorkspaces[],
   onClick: (user: UserTypeWithWorkspaces) => void
-) : RowData[] {
+): RowData[] {
   return allUsers.map((user) => ({
     icon: user.image ?? "",
     name: user.fullName,
     userId: user.sId,
     email: user.email ?? "",
     role: user.workspaces[0].role as ActiveRoleType,
-    onClick: () => onClick(user)
+    onClick: () => onClick(user),
   }));
 }
 
@@ -61,7 +61,8 @@ export function MembersList({
     pageIndex: 0,
     pageSize: 25,
   });
-  const [selectedMember, setSelectedMember] = useState<UserTypeWithWorkspaces | null>(null)
+  const [selectedMember, setSelectedMember] =
+    useState<UserTypeWithWorkspaces | null>(null);
   const { members, totalMembersCount, isLoading } = useSearchMembers(
     owner.sId,
     searchText,
@@ -112,10 +113,10 @@ export function MembersList({
   ];
 
   const rows = useMemo(
-    () => getTableRows(
-      members,
-      (user: UserTypeWithWorkspaces | null) => {setSelectedMember(user)}
-    ),
+    () =>
+      getTableRows(members, (user: UserTypeWithWorkspaces | null) => {
+        setSelectedMember(user);
+      }),
     [members]
   );
 
@@ -127,7 +128,7 @@ export function MembersList({
           value={searchText}
           name="search"
           onChange={(s) => {
-            setSearchText(s)
+            setSearchText(s);
           }}
         />
         <Button

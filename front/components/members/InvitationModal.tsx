@@ -13,7 +13,6 @@ import type {
   MembershipInvitationType,
   RoleType,
   SubscriptionPerSeatPricing,
-  UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useContext, useEffect, useState } from "react";
@@ -39,14 +38,12 @@ export function InviteEmailModal({
   onClose,
   owner,
   prefillText,
-  members,
   perSeatPricing,
 }: {
   showModal: boolean;
   onClose: () => void;
   owner: WorkspaceType;
   prefillText: string;
-  members: UserTypeWithWorkspaces[];
   perSeatPricing: SubscriptionPerSeatPricing | null;
 }) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
@@ -88,24 +85,31 @@ export function InviteEmailModal({
       return;
     }
 
+    const existingMembersResponses = await Promise.all(
+      inviteEmailsList.map(async (email) => {
+        const response = await fetch(
+          `/api/w/${owner.sId}/members/search?searchTerm=${encodeURIComponent(email)}&orderBy=name`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch member information");
+        }
+        return response.json();
+      })
+    );
+    const existingMembers = existingMembersResponses.flatMap(
+      (response) => response.members
+    );
+
     const invitesByCase = {
-      activeSameRole: members.filter((m) =>
-        inviteEmailsList.find(
-          (e) => m.email === e && m.workspaces[0].role === invitationRole
-        )
+      activeSameRole: existingMembers.filter(
+        (m) => m && m.role === invitationRole
       ),
-      activeDifferentRole: members.filter((m) =>
-        inviteEmailsList.find(
-          (e) =>
-            m.email === e &&
-            m.workspaces[0].role !== invitationRole &&
-            m.workspaces[0].role !== "none"
-        )
+      activeDifferentRole: existingMembers.filter(
+        (m) => m && m.role !== invitationRole && m.role !== "none"
       ),
       notInWorkspace: inviteEmailsList.filter(
-        (e) =>
-          !members.find((m) => m.email === e) ||
-          members.find((m) => m.email === e)?.workspaces[0].role === "none"
+        (_, index) =>
+          !existingMembers[index] || existingMembers[index].role === "none"
       ),
     };
 
@@ -124,9 +128,7 @@ export function InviteEmailModal({
               {activeDifferentRole.map((user) => (
                 <div key={user.email}>{`- ${
                   user.fullName
-                } (current role: ${displayRole(
-                  user.workspaces[0].role
-                )})`}</div>
+                } (current role: ${displayRole(user.workspaces[0].role)})`}</div>
               ))}
             </div>
           </div>
@@ -135,6 +137,7 @@ export function InviteEmailModal({
         <div>Do you want to proceed?</div>
       </div>
     );
+
     const hasExistingMembers = activeDifferentRole.length > 0;
 
     const shouldProceedWithInvites =

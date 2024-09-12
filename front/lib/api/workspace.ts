@@ -1,15 +1,14 @@
-import {
-  ACTIVE_ROLES,
+import type {
   LightWorkspaceType,
   MembershipRoleType,
   RoleType,
   SubscriptionType,
-  UserType,
   UserTypeWithWorkspaces,
   WorkspaceDomain,
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { ACTIVE_ROLES } from "@dust-tt/types";
 
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
@@ -208,8 +207,8 @@ export async function searchMembers(
       membership && !membership.isRevoked()
         ? ACTIVE_ROLES.includes(membership.role)
           ? membership.role
-          : "none" as RoleType
-        : "none" as RoleType;
+          : ("none" as RoleType)
+        : ("none" as RoleType);
 
     return {
       ...u.toJSON(),
