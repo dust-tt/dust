@@ -39,7 +39,7 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
   do {
     // paginate by id
     const deletedDocumentsData = await coreReplica.query(
-      `SELECT * FROM data_sources_documents WHERE status = 'deleted' AND id > ${lastSeenId} ORDER BY id LIMIT 1000`
+      `SELECT * FROM data_sources_documents WHERE status = 'deleted' AND id > ${lastSeenId} ORDER BY id LIMIT 100`
     );
 
     const deletedDocuments = deletedDocumentsData[0] as {
