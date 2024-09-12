@@ -10,7 +10,7 @@ interface CitationItem {
   description?: string;
   title: string;
   type: CitationType;
-  href: string;
+  href?: string;
 }
 
 interface PaginatedCitationsGridProps {

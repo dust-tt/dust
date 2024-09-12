@@ -62,11 +62,11 @@ spec:
             requests:
               # 1000m for nodejs (mono-threaded) + 500m to absorb spikes from contaner
               cpu: 1500m
-              memory: 1.5Gi
+              memory: 2.5Gi
 
             limits:
               cpu: 1500m
-              memory: 1.5Gi
+              memory: 2.5Gi
 
       volumes:
         - name: cert-volume
