@@ -21,6 +21,7 @@ pub struct Error {
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum SearchProviderID {
+    SearchApi,
     SerpAPI,
     Serper,
 }
@@ -28,6 +29,7 @@ pub enum SearchProviderID {
 impl ToString for SearchProviderID {
     fn to_string(&self) -> String {
         match self {
+            SearchProviderID::SearchApi => String::from("searchapi"),
             SearchProviderID::SerpAPI => String::from("serpapi"),
             SearchProviderID::Serper => String::from("serper"),
         }
@@ -39,10 +41,11 @@ impl FromStr for SearchProviderID {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s {
+            "searchapi" => Ok(SearchProviderID::SearchApi),
             "serpapi" => Ok(SearchProviderID::SerpAPI),
             "serper" => Ok(SearchProviderID::Serper),
             _ => Err(ParseError::with_message(
-                "Unknown search provider ID (possible values: serpapi, serper)",
+                "Unknown search provider ID (possible values: searchapi, serpapi, serper)",
             )),
         }
     }
@@ -200,6 +203,7 @@ impl Block for Search {
         let query = replace_variables_in_string(&self.query, "query", env)?;
 
         let credential_key = match provider_id {
+            SearchProviderID::SearchApi => "SEARCH_API_KEY",
             SearchProviderID::SerpAPI => "SERP_API_KEY",
             SearchProviderID::Serper => "SERPER_API_KEY",
         };
@@ -221,6 +225,24 @@ impl Block for Search {
         };
 
         let request = match provider_id {
+            SearchProviderID::SearchApi => {
+                let url = format!(
+                    "https://www.searchapi.io/api/v1/search?q={}&engine={}&num={}",
+                    encode(&query),
+                    self.engine,
+                    num.unwrap_or(10)
+                );
+
+                let headers = json!({
+                    "Authorization": format!("Bearer {}", provider_api_key),
+                    "Content-Type": "application/json",
+                    "X-SearchApi-Source": "dust"
+                });
+                
+                let request = HttpRequest::new("GET", url.as_str(), headers, Value::Null)?;
+
+                request
+            }
             SearchProviderID::SerpAPI => {
                 let url = match num {
                     None => format!(
