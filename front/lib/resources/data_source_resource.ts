@@ -317,7 +317,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     await DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        dataSourceId: this.id,
+        dataSourceId: this.id.toString(),
       },
       transaction,
     });
