@@ -68,8 +68,6 @@ function PickDustApp({
     (app) => !app.description || app.description.length === 0
   );
 
-  // TODO: Refresh vault when removing the dust apps.
-
   return (
     <Transition show={show} className="mx-auto max-w-6xl">
       <Page>
