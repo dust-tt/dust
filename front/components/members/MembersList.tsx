@@ -95,7 +95,7 @@ export function MembersList({
         </DataTable.CellContent>
       ),
       meta: {
-        width: "5rem",
+        width: "6rem",
       },
     },
     {
