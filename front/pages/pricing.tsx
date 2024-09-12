@@ -13,21 +13,15 @@ import {
 import { PricePlans } from "@app/components/plans/PlansTables";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import config from "@app/lib/api/config";
-import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 
-export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
-  requireUserPrivilege: "none",
-})<{
-  gaTrackingId: string;
-  shape: number;
-}>(async () => {
+export async function getServerSideProps() {
   return {
     props: {
       gaTrackingId: config.getGaTrackingId(),
       shape: getParticleShapeIndexByName(shapeNames.bigSphere),
     },
   };
-});
+}
 
 export default function Pricing() {
   const [showContactUsDrawer, setShowContactUsDrawer] =
