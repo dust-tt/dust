@@ -127,7 +127,7 @@ export function CreateOrEditVaultModal({
       {
         id: "action",
         meta: {
-          width: "150px",
+          width: "10rem",
         },
         cell: (info: Info) => {
           const isSelected = selectedMembers.includes(info.row.original.userId);
