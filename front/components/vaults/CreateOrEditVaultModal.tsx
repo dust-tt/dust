@@ -126,11 +126,14 @@ export function CreateOrEditVaultModal({
       },
       {
         id: "action",
+        meta: {
+          width: "150px",
+        },
         cell: (info: Info) => {
           const isSelected = selectedMembers.includes(info.row.original.userId);
           if (isSelected) {
             return (
-              <div className="full-width ml-4 flex justify-end">
+              <div className="ml-4 flex w-full justify-end pr-2">
                 <Button
                   label="Remove"
                   onClick={() =>
@@ -148,7 +151,7 @@ export function CreateOrEditVaultModal({
             );
           }
           return (
-            <div className="full-width ml-4 flex justify-end">
+            <div className="ml-4 flex w-full justify-end pr-2">
               <Button
                 label="Add"
                 onClick={() =>

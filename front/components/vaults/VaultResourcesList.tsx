@@ -22,7 +22,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { isWebsiteOrFolderCategory } from "@dust-tt/types";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type { CellContext, ColumnDef, ColumnMeta } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useContext, useMemo } from "react";
@@ -98,6 +98,9 @@ const getTableColumns = ({
       (row.dataSourceView.kind === "default"
         ? row.dataSourceView.dataSource.editedByUser?.imageUrl
         : row.dataSourceView.editedByUser?.imageUrl) ?? "",
+    meta: {
+      width: "100px",
+    },
     id: "managedBy",
     cell: (info: CellContext<RowData, string>) => {
       const dsv = info.row.original.dataSourceView;
@@ -117,6 +120,9 @@ const getTableColumns = ({
     header: "Last sync",
     accessorFn: (row: RowData) =>
       row.dataSourceView.dataSource.connector?.lastSyncSuccessfulTime,
+    meta: {
+      width: "200px",
+    },
     cell: (info: CellContext<RowData, number>) => (
       <DataTable.CellContent className="pr-2">
         <>
@@ -430,6 +436,7 @@ export const VaultResourcesList = ({
           </>
         )}
       </div>
+
       {rows.length > 0 && (
         <DataTable
           data={rows}
