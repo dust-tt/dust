@@ -302,7 +302,7 @@ interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   onClick?: () => void;
   moreMenuItems?: DropdownItemProps[];
-  widthClassName?: string;
+  widthClassName: string;
 }
 
 DataTable.Row = function Row({
@@ -318,7 +318,7 @@ DataTable.Row = function Row({
       className={classNames(
         "s-group/dt s-flex s-items-center s-border-b s-border-structure-200 s-text-sm s-transition-colors s-duration-300 s-ease-out",
         onClick ? "s-cursor-pointer hover:s-bg-structure-50" : "",
-        widthClassName || "",
+        widthClassName,
         className || ""
       )}
       onClick={onClick ? onClick : undefined}
