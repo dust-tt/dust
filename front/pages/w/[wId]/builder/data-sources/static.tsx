@@ -220,6 +220,9 @@ function getTableColumns() {
       header: "Used by",
       accessorKey: "usage",
       id: "usage",
+      meta: {
+        width: "6rem",
+      },
       cell: (info: Info) => (
         <DataTable.CellContent icon={RobotIcon}>
           {info.row.original.usage}
@@ -229,6 +232,9 @@ function getTableColumns() {
     {
       header: "Added by",
       id: "addedBy",
+      meta: {
+        width: "6rem",
+      },
       cell: (info: Info) => (
         <DataTable.CellContent
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
@@ -240,6 +246,9 @@ function getTableColumns() {
       header: "Last updated",
       accessorKey: "editedByUser.editedAt",
       id: "editedAt",
+      meta: {
+        width: "10rem",
+      },
       cell: (info: Info) => (
         <DataTable.CellContent>
           {info.row.original.editedByUser?.editedAt
