@@ -33,7 +33,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
   flow: BuilderFlow;
-  gaTrackingId: string;
   isAdmin: boolean;
   owner: WorkspaceType;
   plan: PlanType;
@@ -92,7 +91,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
       dustApps: dustApps.map((a) => a.toJSON()),
       flow,
-      gaTrackingId: config.getGaTrackingId(),
       isAdmin: auth.isAdmin(),
       owner,
       plan,
@@ -110,7 +108,6 @@ export default function EditAssistant({
   dataSourceViews,
   dustApps,
   flow,
-  gaTrackingId,
   isAdmin,
   owner,
   plan,
@@ -136,7 +133,6 @@ export default function EditAssistant({
         owner={owner}
         subscription={subscription}
         plan={plan}
-        gaTrackingId={gaTrackingId}
         flow={flow}
         initialBuilderState={{
           scope: agentConfiguration.scope,

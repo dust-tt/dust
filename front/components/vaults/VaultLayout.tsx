@@ -20,7 +20,6 @@ import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { getVaultIcon } from "@app/lib/vaults";
 
 export interface VaultLayoutProps {
-  gaTrackingId: string;
   owner: WorkspaceType;
   isAdmin: boolean;
   subscription: SubscriptionType;
@@ -39,7 +38,6 @@ export function VaultLayout({
 }) {
   const [showVaultCreationModal, setShowVaultCreationModal] = useState(false);
   const {
-    gaTrackingId,
     owner,
     isAdmin,
     subscription,
@@ -58,7 +56,6 @@ export function VaultLayout({
       <AppLayout
         subscription={subscription}
         owner={owner}
-        gaTrackingId={gaTrackingId}
         navChildren={
           <VaultSideBarMenu
             owner={owner}

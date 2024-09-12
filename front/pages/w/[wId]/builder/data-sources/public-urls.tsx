@@ -55,7 +55,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   readOnly: boolean;
   dataSources: DataSourceWithConnector[];
-  gaTrackingId: string;
   dataSourcesUsage: DataSourcesUsageByAgent;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -124,7 +123,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       readOnly,
       dataSources,
-      gaTrackingId: config.getGaTrackingId(),
       dataSourcesUsage,
     },
   };
@@ -136,7 +134,6 @@ export default function DataSourcesView({
   plan,
   readOnly,
   dataSources,
-  gaTrackingId,
   dataSourcesUsage,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -175,7 +172,6 @@ export default function DataSourcesView({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_url",

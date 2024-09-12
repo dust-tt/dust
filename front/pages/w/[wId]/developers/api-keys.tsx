@@ -6,7 +6,6 @@ import React from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { APIKeys } from "@app/pages/w/[wId]/vaults/[vaultId]/apps";
 
@@ -15,7 +14,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   groups: GroupType[];
   user: UserType;
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -26,14 +24,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const groups = await auth.groups();
-
   return {
     props: {
       owner,
-      groups,
+      groups: auth.groups(),
       subscription,
-      gaTrackingId: config.getGaTrackingId(),
       user,
     },
   };
@@ -43,13 +38,11 @@ export default function APIKeysPage({
   owner,
   subscription,
   groups,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationAdmin({ owner, current: "api_keys" })}
     >
       <Page.Vertical gap="xl" align="stretch">

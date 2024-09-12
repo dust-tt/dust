@@ -46,9 +46,6 @@ const config = {
   getServiceAccount: (): string => {
     return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
   },
-  getGaTrackingId: (): string => {
-    return EnvironmentConfig.getEnvVariable("GA_TRACKING_ID");
-  },
   getCustomerIoSiteId: (): string => {
     return EnvironmentConfig.getEnvVariable("CUSTOMERIO_SITE_ID");
   },

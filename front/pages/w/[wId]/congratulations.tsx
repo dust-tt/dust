@@ -10,13 +10,11 @@ import { useRouter } from "next/router";
 import { useRef } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
-import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   conversationId: string | null;
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const user = auth.user();
@@ -39,7 +37,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       conversationId,
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -47,7 +44,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function Congratulations({
   owner,
   conversationId,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const referentRef = useRef<HTMLDivElement>(null);
@@ -62,7 +58,6 @@ export default function Congratulations({
     <div className="h-full" ref={referentRef}>
       <OnboardingLayout
         owner={owner}
-        gaTrackingId={gaTrackingId}
         headerTitle="Joining Dust"
         headerRightActions={<></>}
       >

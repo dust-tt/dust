@@ -4,7 +4,6 @@ import type { InferGetServerSidePropsType } from "next";
 import * as React from "react";
 
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
-import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import WorkspaceAssistants from "@app/pages/w/[wId]/builder/assistants";
 
@@ -16,7 +15,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   tabScope: AgentConfigurationScope;
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -36,7 +34,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       tabScope,
       subscription,
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -45,14 +42,12 @@ export default function ManageAssistants({
   owner,
   tabScope,
   subscription,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <WorkspaceAssistants
       owner={owner}
       tabScope={tabScope}
       subscription={subscription}
-      gaTrackingId={gaTrackingId}
       loadFromChatMenu={true}
     />
   );
