@@ -5,6 +5,7 @@ import {
   PencilSquareIcon,
   PlusIcon,
   TrashIcon,
+  useHashParam,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewContentNode,
@@ -14,7 +15,7 @@ import type {
 } from "@dust-tt/types";
 import { capitalize } from "lodash";
 import type { ComponentProps, RefObject } from "react";
-import React, { useImperativeHandle, useState } from "react";
+import React, { useEffect, useImperativeHandle, useState } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentOrTableUploadOrEditModal } from "@app/components/data_source/DocumentOrTableUploadOrEditModal";
@@ -80,6 +81,15 @@ export const ContentActions = React.forwardRef<
       },
     }));
 
+    const [currentDocumentId, setCurrentDocumentId] =
+      useHashParam("documentId");
+
+    useEffect(() => {
+      if (currentAction.action === "DocumentViewRawContent") {
+        setCurrentDocumentId(currentAction.contentNode?.dustDocumentId ?? "");
+      }
+    }, [currentAction, setCurrentDocumentId]);
+
     const onClose = (save: boolean) => {
       // Keep current to have it during closing animation
       setCurrentAction({ contentNode: currentAction.contentNode });
@@ -87,6 +97,7 @@ export const ContentActions = React.forwardRef<
         onSave(currentAction.action);
       }
     };
+
     // TODO(2024-08-30 flav) Refactor component below to remove conditional code between
     // tables and documents which currently leads to 5xx.
     return (
@@ -127,14 +138,13 @@ export const ContentActions = React.forwardRef<
         )}
         <DataSourceViewDocumentModal
           owner={owner}
-          dataSourceView={
-            currentAction.action === "DocumentViewRawContent"
-              ? dataSourceView
-              : null
-          }
-          documentId={currentAction.contentNode?.dustDocumentId ?? null}
-          isOpen={currentAction.action === "DocumentViewRawContent"}
-          onClose={() => onClose(false)}
+          dataSourceView={dataSourceView}
+          documentId={currentDocumentId ?? null}
+          isOpen={currentDocumentId !== undefined}
+          onClose={() => {
+            setCurrentDocumentId(undefined);
+            onClose(false);
+          }}
         />
         {currentAction.contentNode && (
           <AddToVaultDialog

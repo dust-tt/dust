@@ -124,9 +124,9 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
     );
 
     const dataSourceViewsMap = dataSourceViews.reduce<
-      Record<string, DataSourceViewResource>
+      Record<ModelId, DataSourceViewResource>
     >((acc, dsv) => {
-      acc[dsv.sId] = dsv;
+      acc[dsv.id] = dsv;
       return acc;
     }, {});
 
@@ -163,9 +163,24 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
   }
 
   // Helpers.
-  getSourceUrl(): string | null {
+  getSourceUrl(auth: Authenticator): string | null {
     if (this.sourceUrl) {
       return this.sourceUrl;
+    }
+
+    // If the workspace has the data vaults feature, we should use the new data vaults URL.
+    if (auth.getNonNullableWorkspace().flags.includes("data_vaults_feature")) {
+      if (!this.dataSourceView) {
+        return null;
+      }
+
+      const dsv = this.dataSourceView.toJSON();
+
+      return `${config.getClientFacingUrl()}/w/${
+        this.dataSourceWorkspaceId
+      }/vaults/${dsv.vaultId}/categories/${
+        dsv.category
+      }/data_source_views/${dsv.sId}#?documentId=${encodeURIComponent(this.documentId)}`;
     }
 
     return `${config.getClientFacingUrl()}/w/${
@@ -177,12 +192,13 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
 
   // Serialization.
 
-  toJSON(): RetrievalDocumentType {
+  // TODO(VAULTS_INFRA) Remove authenticator once new connection management UI is released.
+  toJSON(auth: Authenticator): RetrievalDocumentType {
     return {
       id: this.id,
       dataSourceWorkspaceId: this.dataSourceWorkspaceId,
       dataSourceId: this.dataSourceId,
-      sourceUrl: this.getSourceUrl(),
+      sourceUrl: this.getSourceUrl(auth),
       documentId: this.documentId,
       reference: this.reference,
       timestamp: this.documentTimestamp.getTime(),
