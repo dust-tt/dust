@@ -21,6 +21,7 @@ import {
   isBuilder,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
+import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import React from "react";
@@ -118,7 +119,10 @@ export default function AssistantBuilder({
           generationSettings: initialBuilderState.generationSettings ?? {
             ...getDefaultAssistantState().generationSettings,
           },
-          actions: initialBuilderState.actions,
+          actions: initialBuilderState.actions.map((action) => ({
+            id: uniqueId(),
+            ...action,
+          })),
           maxStepsPerRun:
             initialBuilderState.maxStepsPerRun ??
             getDefaultAssistantState().maxStepsPerRun,

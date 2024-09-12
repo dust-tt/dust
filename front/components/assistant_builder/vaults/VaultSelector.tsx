@@ -1,4 +1,4 @@
-import { Chip, Icon, RadioButton, Spinner } from "@dust-tt/sparkle";
+import { Chip, Icon, Page, RadioButton, Spinner } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, VaultType } from "@dust-tt/types";
 import { useState } from "react";
 
@@ -41,53 +41,51 @@ export function VaultSelector({
 
             return (
               <div key={vault.sId}>
-                <div className="h-px w-full bg-structure-200" />
-                <div className="py-2">
-                  <RadioButton
-                    name={`Vault ${vault.name}`}
-                    choices={[
-                      {
-                        label: (
-                          <>
-                            <Icon
-                              visual={getVaultIcon(vault)}
-                              size="md"
-                              className="ml-3 mr-2 inline-block flex-shrink-0 align-middle text-brand"
-                            />
-                            <span
-                              className={classNames(
-                                "text-element-900",
-                                "align-middle",
-                                !isDisabled ? "font-bold" : "italic"
-                              )}
-                            >
-                              {getVaultName(vault)}
-                              {isDisabled && (
-                                <Chip
-                                  size="xs"
-                                  className="ml-2"
-                                  label="Disabled: only one vault allowed per assistant"
-                                  color="warning"
-                                />
-                              )}
-                            </span>
-                          </>
-                        ),
-                        value: vault.sId,
-                        disabled: isDisabled,
-                      },
-                    ]}
-                    value={selectedVault}
-                    onChange={() => setSelectedVault(vault.sId)}
-                  />
-                </div>
+                <Page.Separator />
+                <RadioButton
+                  name={`Vault ${vault.name}`}
+                  choices={[
+                    {
+                      label: (
+                        <>
+                          <Icon
+                            visual={getVaultIcon(vault)}
+                            size="md"
+                            className="ml-3 mr-2 inline-block flex-shrink-0 align-middle text-brand"
+                          />
+                          <span
+                            className={classNames(
+                              "text-element-900",
+                              "align-middle",
+                              !isDisabled ? "font-bold" : "italic"
+                            )}
+                          >
+                            {getVaultName(vault)}
+                            {isDisabled && (
+                              <Chip
+                                size="xs"
+                                className="ml-2"
+                                label="Disabled: only one vault allowed per assistant"
+                                color="warning"
+                              />
+                            )}
+                          </span>
+                        </>
+                      ),
+                      value: vault.sId,
+                      disabled: isDisabled,
+                    },
+                  ]}
+                  value={selectedVault}
+                  onChange={() => setSelectedVault(vault.sId)}
+                />
                 {selectedVault === vault.sId && (
-                  <div className="mb-2">{renderChildren(selectedVaultObj)}</div>
+                  <div className="m-2">{renderChildren(selectedVaultObj)}</div>
                 )}
               </div>
             );
           })}
-      <div className="h-px w-full bg-structure-200" />
+      <Page.Separator />
     </div>
   );
 }

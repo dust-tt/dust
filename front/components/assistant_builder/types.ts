@@ -14,6 +14,7 @@ import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
 } from "@dust-tt/types";
+import { uniqueId } from "lodash";
 
 import {
   DEFAULT_PROCESS_ACTION_NAME,
@@ -103,6 +104,11 @@ export type AssistantBuilderActionConfiguration = (
   noConfigurationRequired?: boolean;
 };
 
+export type AssistantBuilderActionConfigurationWithId =
+  AssistantBuilderActionConfiguration & {
+    id: string;
+  };
+
 export type TemplateActionType = Omit<
   AssistantBuilderActionConfiguration,
   "configuration"
@@ -115,11 +121,11 @@ export type AssistantBuilderActionType =
 
 export type AssistantBuilderSetActionType =
   | {
-      action: AssistantBuilderActionConfiguration;
+      action: AssistantBuilderActionConfigurationWithId;
       type: "insert" | "edit" | "pending";
     }
   | {
-      action: AssistantBuilderActionConfiguration;
+      action: AssistantBuilderActionConfigurationWithId;
       type: "pending";
     }
   | {
@@ -128,7 +134,7 @@ export type AssistantBuilderSetActionType =
 
 export type AssistantBuilderPendingAction =
   | {
-      action: AssistantBuilderActionConfiguration;
+      action: AssistantBuilderActionConfigurationWithId;
       previousActionName: string | null;
     }
   | {
@@ -145,7 +151,7 @@ export type AssistantBuilderState = {
     modelSettings: SupportedModel;
     temperature: number;
   };
-  actions: Array<AssistantBuilderActionConfiguration>;
+  actions: Array<AssistantBuilderActionConfigurationWithId>;
   maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
@@ -274,25 +280,36 @@ export function getDefaultWebsearchActionConfiguration(): AssistantBuilderAction
 
 export function getDefaultActionConfiguration(
   actionType: AssistantBuilderActionType | null
-): AssistantBuilderActionConfiguration | null {
-  switch (actionType) {
-    case null:
-      return null;
-    case "RETRIEVAL_SEARCH":
-      return getDefaultRetrievalSearchActionConfiguration();
-    case "RETRIEVAL_EXHAUSTIVE":
-      return getDefaultRetrievalExhaustiveActionConfiguration();
-    case "DUST_APP_RUN":
-      return getDefaultDustAppRunActionConfiguration();
-    case "TABLES_QUERY":
-      return getDefaultTablesQueryActionConfiguration();
-    case "PROCESS":
-      return getDefaultProcessActionConfiguration();
-    case "WEB_NAVIGATION":
-      return getDefaultWebsearchActionConfiguration();
-    default:
-      assertNever(actionType);
+): AssistantBuilderActionConfigurationWithId | null {
+  const config = (() => {
+    switch (actionType) {
+      case null:
+        return null;
+      case "RETRIEVAL_SEARCH":
+        return getDefaultRetrievalSearchActionConfiguration();
+      case "RETRIEVAL_EXHAUSTIVE":
+        return getDefaultRetrievalExhaustiveActionConfiguration();
+      case "DUST_APP_RUN":
+        return getDefaultDustAppRunActionConfiguration();
+      case "TABLES_QUERY":
+        return getDefaultTablesQueryActionConfiguration();
+      case "PROCESS":
+        return getDefaultProcessActionConfiguration();
+      case "WEB_NAVIGATION":
+        return getDefaultWebsearchActionConfiguration();
+      default:
+        assertNever(actionType);
+    }
+  })();
+
+  if (config) {
+    return {
+      id: uniqueId(),
+      ...config,
+    };
   }
+
+  return null;
 }
 
 export const BUILDER_FLOWS = [
