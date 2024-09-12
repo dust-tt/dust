@@ -157,11 +157,13 @@ AgentTablesQueryConfigurationTable.init(
 AgentTablesQueryConfigurationTable.addHook(
   "beforeDestroy",
   async (instance: AgentTablesQueryConfigurationTable) => {
+    const stackTrace = new Error().stack;
     logger.error(
       {
         tableId: instance.tableId,
         dataSourceId: instance.dataSourceId,
         dataSourceWorkspaceId: instance.dataSourceWorkspaceId,
+        stackTrace,
       },
       "[AgentTablesQueryConfigurationTable deleted] Source = Hook from model."
     );
