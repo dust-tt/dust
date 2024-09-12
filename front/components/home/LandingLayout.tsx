@@ -37,10 +37,7 @@ export default function LandingLayout({
   children: React.ReactNode;
   pageProps: LandingLayoutProps;
 }) {
-  const {
-    postLoginReturnToUrl = "/api/login",
-    shape,
-  } = pageProps;
+  const { postLoginReturnToUrl = "/api/login", shape } = pageProps;
 
   const router = useRouter();
   const [currentShape, setCurrentShape] = useState(shape);

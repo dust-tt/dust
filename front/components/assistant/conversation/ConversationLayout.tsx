@@ -28,8 +28,7 @@ export default function ConversationLayout({
   children: React.ReactNode;
   pageProps: ConversationLayoutProps;
 }) {
-  const { baseUrl, conversationId, owner, subscription } =
-    pageProps;
+  const { baseUrl, conversationId, owner, subscription } = pageProps;
 
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
