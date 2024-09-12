@@ -6,7 +6,7 @@ import {
 } from "@dust-tt/types";
 
 interface RetrievedDocumentCitation {
-  href: string | undefined;
+  href?: string;
   title: string;
   type: Exclude<React.ComponentProps<typeof Citation>["type"], undefined>;
 }
