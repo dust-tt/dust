@@ -308,7 +308,8 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     const relatedAgentTablesQueryConfigurationTables =
       await AgentTablesQueryConfigurationTable.findAll({
         where: {
-          dataSourceId: this.name,
+          dataSourceWorkspaceId: auth.getNonNullableWorkspace().sId,
+          dataSourceId: this.id,
         },
       });
     if (relatedAgentTablesQueryConfigurationTables.length > 0) {
@@ -332,7 +333,8 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     // TODO(DATASOURCE_SID): state storing the datasource name.
     await AgentTablesQueryConfigurationTable.destroy({
       where: {
-        dataSourceId: this.name,
+        dataSourceWorkspaceId: auth.getNonNullableWorkspace().sId,
+        dataSourceId: this.id,
       },
     });
 
