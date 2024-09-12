@@ -320,7 +320,7 @@ DataTable.Row = function Row({
   return (
     <tr
       className={classNames(
-        "s-group/dt s-align-center s-flex s-border-b s-border-structure-200 s-text-sm s-transition-colors s-duration-300 s-ease-out",
+        "s-group/dt s-flex s-items-center s-border-b s-border-structure-200 s-text-sm s-transition-colors s-duration-300 s-ease-out",
         onClick ? "s-cursor-pointer hover:s-bg-structure-50" : "",
         widthClassName || "",
         className || ""
@@ -329,7 +329,7 @@ DataTable.Row = function Row({
       {...props}
     >
       {children}
-      <td className="s-align-center s-flex s-w-8 s-cursor-pointer s-pl-1 s-text-element-600">
+      <td className="s-flex s-w-8 s-cursor-pointer s-items-center s-pl-1 s-text-element-600">
         {moreMenuItems && moreMenuItems.length > 0 && (
           <DropdownMenu className="s-mr-1.5 s-flex">
             <DropdownMenu.Button>
@@ -368,7 +368,7 @@ DataTable.Cell = function Cell({
     <td
       style={getSize(column.columnDef)}
       className={classNames(
-        "s-align-center s-flex s-h-12 s-truncate s-whitespace-nowrap s-pl-1.5 s-text-element-800",
+        "s-flex s-h-12 s-items-center s-truncate s-whitespace-nowrap s-pl-1.5 s-text-element-800",
         column.columnDef.meta?.className || "",
         className || ""
       )}
