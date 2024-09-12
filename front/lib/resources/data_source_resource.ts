@@ -304,32 +304,6 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
       transaction,
     });
 
-    // todo(@daph): Remove this once we have understood why some AgentTablesQueryConfigurationTable disappear.
-    const relatedAgentTablesQueryConfigurationTables =
-      await AgentTablesQueryConfigurationTable.findAll({
-        where: {
-          dataSourceWorkspaceId: auth.getNonNullableWorkspace().sId,
-          dataSourceId: this.id,
-        },
-      });
-    if (relatedAgentTablesQueryConfigurationTables.length > 0) {
-      logger.error(
-        {
-          panic: true,
-          dataSourceId: this.name,
-          workspaceId: this.workspaceId,
-          sId: this.sId,
-          configIds: relatedAgentTablesQueryConfigurationTables.map(
-            (t) => t.tablesQueryConfigurationId
-          ),
-          configTableIds: relatedAgentTablesQueryConfigurationTables.map(
-            (t) => t.tableId
-          ),
-        },
-        "[AgentTablesQueryConfigurationTable deleted]. Source = Data source deleted."
-      );
-    }
-
     // TODO(DATASOURCE_SID): state storing the datasource name.
     await AgentTablesQueryConfigurationTable.destroy({
       where: {
