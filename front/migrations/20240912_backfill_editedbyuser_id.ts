@@ -1,10 +1,9 @@
 import assert from "assert";
 import { Op } from "sequelize";
 
-import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSource } from "@app/lib/resources/storage/models/data_source";
-import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
@@ -27,20 +26,7 @@ makeScript({}, async ({ execute }, logger) => {
     });
     assert(workspace, `Failed to find workspace for dataSource ${ds.id}`);
 
-    const oldestAdminMembership = await MembershipModel.findOne({
-      where: {
-        workspaceId: workspace.id,
-        role: "admin",
-        endAt: null,
-      },
-      order: [["startAt", "ASC"]],
-      include: [
-        {
-          model: User,
-          attributes: ["id", "username", "email"],
-        },
-      ],
-    });
+    const oldestAdminMembership = await getWorkspaceFirstAdmin(workspace);
 
     if (!oldestAdminMembership) {
       logger.error(
@@ -54,13 +40,13 @@ makeScript({}, async ({ execute }, logger) => {
 
     if (execute) {
       await ds.update({
-        editedByUserId: oldestAdminMembership.userId,
+        editedByUserId: oldestAdminMembership.id,
       });
       logger.info(
         {
           workspaceId: workspace.id,
           dataSourceId: ds.id,
-          editedByUserId: oldestAdminMembership.userId,
+          editedByUserId: oldestAdminMembership.id,
         },
         "Updated data source"
       );
@@ -69,7 +55,7 @@ makeScript({}, async ({ execute }, logger) => {
         {
           workspaceId: workspace.id,
           dataSourceId: ds.id,
-          editedByUserId: oldestAdminMembership.userId,
+          editedByUserId: oldestAdminMembership.id,
         },
         "Would have updated data source"
       );
