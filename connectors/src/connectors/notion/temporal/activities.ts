@@ -837,8 +837,7 @@ export async function garbageCollectBatch({
   let stillAccessiblePagesCount = 0;
   let stillAccessibleDatabasesCount = 0;
 
-  let i = 0;
-  for (const x of batch) {
+  for (const [i, x] of batch.entries()) {
     await heartbeat();
 
     const iterationLogger = localLogger.child({
@@ -953,8 +952,6 @@ export async function garbageCollectBatch({
         "Garbage collection is taking too long, giving up."
       );
     }
-
-    ++i;
   }
 }
 
