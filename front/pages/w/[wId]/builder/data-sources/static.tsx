@@ -247,7 +247,7 @@ function getTableColumns() {
       accessorKey: "editedByUser.editedAt",
       id: "editedAt",
       meta: {
-        width: "100px",
+        width: "150px",
       },
       cell: (info: Info) => (
         <DataTable.CellContent>

@@ -152,6 +152,9 @@ const getTableColumns = ({
 
   const actionColumn = {
     id: "action",
+    meta: {
+      width: "150px",
+    },
     cell: (info: CellContext<RowData, unknown>) => {
       const original = info.row.original;
       const disabled = original.isLoading || !original.isAdmin;

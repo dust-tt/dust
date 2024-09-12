@@ -98,7 +98,7 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
     accessorKey: "lastUpdatedAt",
     id: "lastUpdatedAt",
     meta: {
-      width: "100px",
+      width: "200px",
     },
     cell: (info: CellContext<RowData, number>) => (
       <DataTable.CellContent>
