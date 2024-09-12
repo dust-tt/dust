@@ -8,6 +8,7 @@ import { assertNever, getNotionDatabaseTableId, slugify } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
+import { chunk } from "lodash";
 import type { Logger } from "pino";
 import { Op } from "sequelize";
 
@@ -786,12 +787,19 @@ export async function deleteDatabase({
 //   - if the resource is not accessible, delete it from the database (and from the data source if it's a page)
 // - update the lastGarbageCollectionFinishTime
 // - will give up after `GARBAGE_COLLECT_MAX_DURATION_MS` milliseconds (including retries if any)
-export async function garbageCollect({
+export async function garbageCollectBatch({
   connectorId,
+  batch,
+  batchIndex,
   runTimestamp,
   startTs,
 }: {
   connectorId: ModelId;
+  batch: {
+    resourceType: "page" | "database";
+    resourceId: string;
+  }[];
+  batchIndex: number;
   runTimestamp: number;
   startTs: number;
 }) {
@@ -829,19 +837,15 @@ export async function garbageCollect({
   let stillAccessiblePagesCount = 0;
   let stillAccessibleDatabasesCount = 0;
 
-  // Find the resources not seen in the GC run
-  const resourcesToCheck = await findResourcesNotSeenInGarbageCollectionRun(
-    connector.id
-  );
-
-  for (const [i, x] of resourcesToCheck.entries()) {
+  for (const [i, x] of batch.entries()) {
     await heartbeat();
 
     const iterationLogger = localLogger.child({
       pageId: x.resourceType === "page" ? x.resourceId : undefined,
       databaseId: x.resourceType === "database" ? x.resourceId : undefined,
-      resourcesToCheckCount: resourcesToCheck.length,
+      batchCount: batch.length,
       index: i,
+      batchIndex: batchIndex,
       deletedPagesCount,
       deletedDatabasesCount,
       stillAccessiblePagesCount,
@@ -939,7 +943,7 @@ export async function garbageCollect({
     if (new Date().getTime() - startTs > GARBAGE_COLLECT_MAX_DURATION_MS) {
       localLogger.warn(
         {
-          resourcesToCheckCount: resourcesToCheck.length,
+          batchCount: batch.length,
           deletedPagesCount,
           deletedDatabasesCount,
           stillAccessiblePagesCount,
@@ -947,15 +951,29 @@ export async function garbageCollect({
         },
         "Garbage collection is taking too long, giving up."
       );
-
-      break;
     }
   }
+}
 
-  const redisKey = redisGarbageCollectorKey(connector.id);
+export async function completeGarbageCollectionRun(connectorId: ModelId) {
   const redisCli = await redisClient();
+  const redisKey = redisGarbageCollectorKey(connectorId);
   await redisCli.del(`${redisKey}-pages`);
   await redisCli.del(`${redisKey}-databases`);
+
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const notionConnectorState = await NotionConnectorState.findOne({
+    where: {
+      connectorId: connector.id,
+    },
+  });
+  if (!notionConnectorState) {
+    throw new Error("Could not find notionConnectorState");
+  }
 
   await notionConnectorState.update({
     lastGarbageCollectionFinishTime: new Date(),
@@ -1040,28 +1058,24 @@ export async function deletePageOrDatabaseIfArchived({
   }
 }
 
-async function findResourcesNotSeenInGarbageCollectionRun(
-  connectorId: ModelId
-): Promise<
-  Array<{
-    lastSeenTs: Date;
-    resourceId: string;
-    resourceType: "page" | "database";
-  }>
-> {
+// Compute resources to check for garbage collection that weren't seen in the notion search api results
+export async function createResourcesNotSeenInGarbageCollectionRunBatches({
+  connectorId,
+  batchSize,
+}: {
+  connectorId: ModelId;
+  batchSize: number;
+}) {
   const redisKey = redisGarbageCollectorKey(connectorId);
+  const redisCli = await redisClient();
 
-  const { pageIdsSeenInRun, databaseIdsSeenInRun } = await (async () => {
-    const redisCli = await redisClient();
-    const pageIdsSeenInRun = new Set(
-      await redisCli.sMembers(`${redisKey}-pages`)
-    );
-    const databaseIdsSeenInRun = new Set(
-      await redisCli.sMembers(`${redisKey}-databases`)
-    );
+  const [pageIdsSeenInRunRaw, databaseIdsSeenInRunRaw] = await Promise.all([
+    redisCli.sMembers(`${redisKey}-pages`),
+    redisCli.sMembers(`${redisKey}-databases`),
+  ]);
 
-    return { pageIdsSeenInRun, databaseIdsSeenInRun };
-  })();
+  const pageIdsSeenInRun = new Set(pageIdsSeenInRunRaw);
+  const databaseIdsSeenInRun = new Set(databaseIdsSeenInRunRaw);
 
   const pagesNotSeenInGarbageCollectionRun = (
     await NotionPage.findAll({
@@ -1108,7 +1122,16 @@ async function findResourcesNotSeenInGarbageCollectionRun(
     (a, b) => a.lastSeenTs.getTime() - b.lastSeenTs.getTime()
   );
 
-  return allResourcesNotSeenInGarbageCollectionRun;
+  return chunk(
+    allResourcesNotSeenInGarbageCollectionRun.map(
+      ({ resourceId, resourceType }) => ({
+        // We don't need the lastSeenTs anymore
+        resourceId,
+        resourceType,
+      })
+    ),
+    batchSize
+  );
 }
 
 export async function updateParentsFields(connectorId: ModelId) {
