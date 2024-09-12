@@ -1,4 +1,5 @@
-import type {
+import {
+  ACTIVE_ROLES,
   LightWorkspaceType,
   MembershipRoleType,
   RoleType,
@@ -184,7 +185,7 @@ export async function searchMembers(
     email?: string;
   },
   paginationParams: PaginationParams
-): Promise<{ members: UserType[]; total: number }> {
+): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
   const owner = auth.workspace();
   if (!owner) {
     return { members: [], total: 0 };
@@ -198,7 +199,25 @@ export async function searchMembers(
     paginationParams
   );
 
-  return { members: users.map((u) => u.toJSON()), total };
+  const userIds = users.map((u) => u.id);
+  const memberships = await MembershipResource.fetchByUserIds(userIds);
+
+  const usersWithWorkspaces = users.map((u) => {
+    const membership = memberships.find((m) => m.userId === u.id);
+    const role =
+      membership && !membership.isRevoked()
+        ? ACTIVE_ROLES.includes(membership.role)
+          ? membership.role
+          : "none" as RoleType
+        : "none" as RoleType;
+
+    return {
+      ...u.toJSON(),
+      workspaces: [{ ...owner, role, flags: null }],
+    };
+  });
+
+  return { members: usersWithWorkspaces, total };
 }
 
 export async function getMembersCount(
