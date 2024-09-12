@@ -15,6 +15,7 @@ steps:
       - COMMIT_HASH=$SHORT_SHA
       - --build-arg
       - NEXT_PUBLIC_VIZ_URL=https://viz.dust.tt
+      - NEXT_PUBLIC_GA_TRACKING_ID=G-K9HQ2LE04G
       - .
     secretEnv:
       - "DEPOT_TOKEN"
