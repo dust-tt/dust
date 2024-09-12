@@ -134,13 +134,13 @@ export function DataTable<TData extends TBaseData>({
       className={classNames(
         "s-flex s-flex-col s-gap-2",
         className || "",
-        widthClassName || ""
+        widthClassName
       )}
     >
       <DataTable.Root>
         <DataTable.Header>
           {table.getHeaderGroups().map((headerGroup) => (
-            <DataTable.Row key={headerGroup.id}>
+            <DataTable.Row key={headerGroup.id} widthClassName={widthClassName}>
               {headerGroup.headers.map((header) => {
                 const breakpoint = columnsBreakpoints[header.id];
                 if (
@@ -152,7 +152,6 @@ export function DataTable<TData extends TBaseData>({
                 return (
                   <DataTable.Head
                     column={header.column}
-                    widthClassName={widthClassName}
                     key={header.id}
                     onClick={header.column.getToggleSortingHandler()}
                     className={classNames(
@@ -265,14 +264,12 @@ DataTable.Header = function Header({
 interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   children?: ReactNode;
   column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  widthClassName?: string;
 }
 
 DataTable.Head = function Head({
   children,
   className,
   column,
-  widthClassName,
   ...props
 }: HeadProps) {
   return (
@@ -280,7 +277,6 @@ DataTable.Head = function Head({
       style={getSize(column.columnDef)}
       className={classNames(
         "s-py-1 s-pr-3 s-text-left s-font-medium s-text-element-800",
-        widthClassName || "",
         className || ""
       )}
       {...props}
