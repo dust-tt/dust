@@ -1,9 +1,5 @@
 import { ContentMessage } from "@dust-tt/sparkle";
-import type {
-  LightWorkspaceType,
-  VaultType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { LightWorkspaceType, VaultType } from "@dust-tt/types";
 import { assertNever, slugify } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
@@ -53,6 +49,7 @@ export function ActionDustAppRun({
 
   const deleteDustApp = () => {
     setEdited(true);
+
     updateAction({
       actionName:
         ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
