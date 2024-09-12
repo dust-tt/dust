@@ -8,7 +8,6 @@ import { CreateOrEditVaultModal } from "@app/components/vaults/CreateOrEditVault
 import { VaultCategoriesList } from "@app/components/vaults/VaultCategoriesList";
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
-import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { useVaultInfo } from "@app/lib/swr/vaults";
@@ -49,7 +48,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   return {
     props: {
-      gaTrackingId: config.getGaTrackingId(),
       isAdmin,
       owner,
       subscription,

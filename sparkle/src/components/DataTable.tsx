@@ -1,4 +1,5 @@
 import {
+  Column,
   type ColumnDef,
   ColumnFiltersState,
   flexRender,
@@ -28,6 +29,15 @@ import { classNames } from "@sparkle/lib/utils";
 import { Icon } from "./Icon";
 import { breakpoints, useWindowSize } from "./WindowUtility";
 
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData, TValue> {
+    className?: string;
+    width?: string;
+    flex?: number;
+  }
+}
+
 interface TBaseData {
   onClick?: () => void;
   moreMenuItems?: DropdownItemProps[];
@@ -42,6 +52,7 @@ interface DataTableProps<TData extends TBaseData> {
   totalRowCount?: number;
   columns: ColumnDef<TData, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   className?: string;
+  widthClassName?: string;
   filter?: string;
   filterColumn?: string;
   pagination?: PaginationState;
@@ -66,6 +77,7 @@ export function DataTable<TData extends TBaseData>({
   totalRowCount,
   columns,
   className,
+  widthClassName = "s-w-full s-max-w-4xl",
   filter,
   filterColumn,
   initialColumnOrder,
@@ -118,11 +130,17 @@ export function DataTable<TData extends TBaseData>({
   }, [filter, filterColumn]);
 
   return (
-    <div className="s-flex s-flex-col s-gap-2">
-      <DataTable.Root className={className}>
+    <div
+      className={classNames(
+        "s-flex s-flex-col s-gap-2",
+        className || "",
+        widthClassName
+      )}
+    >
+      <DataTable.Root>
         <DataTable.Header>
           {table.getHeaderGroups().map((headerGroup) => (
-            <DataTable.Row key={headerGroup.id}>
+            <DataTable.Row key={headerGroup.id} widthClassName={widthClassName}>
               {headerGroup.headers.map((header) => {
                 const breakpoint = columnsBreakpoints[header.id];
                 if (
@@ -133,6 +151,7 @@ export function DataTable<TData extends TBaseData>({
                 }
                 return (
                   <DataTable.Head
+                    column={header.column}
                     key={header.id}
                     onClick={header.column.getToggleSortingHandler()}
                     className={classNames(
@@ -172,6 +191,7 @@ export function DataTable<TData extends TBaseData>({
         <DataTable.Body>
           {table.getRowModel().rows.map((row) => (
             <DataTable.Row
+              widthClassName={widthClassName}
               key={row.id}
               onClick={row.original.onClick}
               moreMenuItems={row.original.moreMenuItems}
@@ -185,7 +205,7 @@ export function DataTable<TData extends TBaseData>({
                   return null;
                 }
                 return (
-                  <DataTable.Cell key={cell.id}>
+                  <DataTable.Cell column={cell.column} key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </DataTable.Cell>
                 );
@@ -213,14 +233,10 @@ interface DataTableRootProps extends React.HTMLAttributes<HTMLTableElement> {
 
 DataTable.Root = function DataTableRoot({
   children,
-  className,
   ...props
 }: DataTableRootProps) {
   return (
-    <table
-      className={classNames("s-w-full s-border-collapse", className || "")}
-      {...props}
-    >
+    <table className="s-w-full s-border-collapse" {...props}>
       {children}
     </table>
   );
@@ -247,13 +263,20 @@ DataTable.Header = function Header({
 
 interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   children?: ReactNode;
+  column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
-DataTable.Head = function Head({ children, className, ...props }: HeadProps) {
+DataTable.Head = function Head({
+  children,
+  className,
+  column,
+  ...props
+}: HeadProps) {
   return (
     <th
+      style={getSize(column.columnDef)}
       className={classNames(
-        "s-w-full s-py-1 s-pr-3 s-text-left s-font-medium s-text-element-800",
+        "s-py-1 s-pr-3 s-text-left s-font-medium s-text-element-800",
         className || ""
       )}
       {...props}
@@ -279,6 +302,7 @@ interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   onClick?: () => void;
   moreMenuItems?: DropdownItemProps[];
+  widthClassName: string;
 }
 
 DataTable.Row = function Row({
@@ -286,24 +310,31 @@ DataTable.Row = function Row({
   className,
   onClick,
   moreMenuItems,
+  widthClassName,
   ...props
 }: RowProps) {
   return (
     <tr
       className={classNames(
-        "s-group/dt s-border-b s-border-structure-200 s-text-sm s-transition-colors s-duration-300 s-ease-out",
+        "s-group/dt s-flex s-items-center s-border-b s-border-structure-200 s-text-sm s-transition-colors s-duration-300 s-ease-out",
         onClick ? "s-cursor-pointer hover:s-bg-structure-50" : "",
+        widthClassName,
         className || ""
       )}
       onClick={onClick ? onClick : undefined}
       {...props}
     >
       {children}
-      <td className="s-w-1 s-cursor-pointer s-pl-1 s-text-element-600">
+      <td className="s-flex s-w-8 s-cursor-pointer s-items-center s-pl-1 s-text-element-600">
         {moreMenuItems && moreMenuItems.length > 0 && (
           <DropdownMenu className="s-mr-1.5 s-flex">
             <DropdownMenu.Button>
-              <IconButton icon={MoreIcon} size="sm" variant="tertiary" />
+              <IconButton
+                icon={MoreIcon}
+                size="sm"
+                variant="tertiary"
+                className="s-m-1"
+              />
             </DropdownMenu.Button>
             <DropdownMenu.Items origin="topRight" width={220}>
               {moreMenuItems?.map((item, index) => (
@@ -319,13 +350,22 @@ DataTable.Row = function Row({
 
 interface CellProps extends React.HTMLAttributes<HTMLTableCellElement> {
   children: ReactNode;
+  column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
-DataTable.Cell = function Cell({ children, className, ...props }: CellProps) {
+DataTable.Cell = function Cell({
+  children,
+  className,
+  column,
+  ...props
+}: CellProps) {
+  column.columnDef.minSize;
   return (
     <td
+      style={getSize(column.columnDef)}
       className={classNames(
-        "s-h-12 s-whitespace-nowrap s-pl-1.5 s-text-element-800",
+        "s-flex s-h-12 s-items-center s-truncate s-whitespace-nowrap s-pl-1.5 s-text-element-800",
+        column.columnDef.meta?.className || "",
         className || ""
       )}
       {...props}
@@ -334,6 +374,16 @@ DataTable.Cell = function Cell({ children, className, ...props }: CellProps) {
     </td>
   );
 };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function getSize(columnDef: ColumnDef<any>) {
+  if (columnDef.meta?.width) {
+    return { width: columnDef.meta.width };
+  }
+  return {
+    flex: columnDef.meta?.flex ?? 1,
+  };
+}
 
 interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   avatarUrl?: string;
@@ -358,7 +408,10 @@ DataTable.CellContent = function CellContent({
 }: CellContentProps) {
   return (
     <div
-      className={classNames("s-flex s-items-center s-py-2", className || "")}
+      className={classNames(
+        "s-flex s-w-full s-items-center s-py-2",
+        className || ""
+      )}
       {...props}
     >
       {avatarUrl && avatarTooltipLabel && (
@@ -389,8 +442,10 @@ DataTable.CellContent = function CellContent({
           )}
         />
       )}
-      <div className="s-flex">
-        <span className="s-text-sm s-text-element-800">{children}</span>
+      <div className="s-flex s-shrink s-truncate">
+        <span className="s-truncate s-text-sm s-text-element-800">
+          {children}
+        </span>
         {description && (
           <span className="s-pl-2 s-text-sm s-text-element-600">
             {description}

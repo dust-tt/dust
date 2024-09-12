@@ -6,7 +6,6 @@ import React from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { Providers } from "@app/pages/w/[wId]/vaults/[vaultId]/apps";
 
@@ -14,7 +13,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -29,7 +27,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      gaTrackingId: config.getGaTrackingId(),
       user,
     },
   };
@@ -38,13 +35,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function ProvidersPage({
   owner,
   subscription,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationAdmin({ owner, current: "providers" })}
     >
       <Page.Vertical gap="xl" align="stretch">

@@ -88,7 +88,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   integrations: DataSourceIntegration[];
   managedDataSources: DataSourceWithConnectorAndUsageType[];
   plan: PlanType;
-  gaTrackingId: string;
   dustClientFacingUrl: string;
   user: UserType;
 }>(async (context, auth) => {
@@ -169,7 +168,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       managedDataSources,
       integrations,
       plan,
-      gaTrackingId: config.getGaTrackingId(),
       dustClientFacingUrl: config.getClientFacingUrl(),
       user,
     },
@@ -184,7 +182,6 @@ export default function DataSourcesView({
   managedDataSources,
   integrations,
   plan,
-  gaTrackingId,
   dustClientFacingUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isLoadingByProvider, setIsLoadingByProvider] = useState(
@@ -239,7 +236,6 @@ export default function DataSourcesView({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_managed",

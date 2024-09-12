@@ -54,6 +54,7 @@ import { AssistantBuilderContext } from "@app/components/assistant_builder/Assis
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import type {
   AssistantBuilderActionConfiguration,
+  AssistantBuilderActionConfigurationWithId,
   AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderRetrievalConfiguration,
@@ -113,16 +114,12 @@ export function hasActionError(
   }
 }
 
-type VaultIdToActions = Record<string, AssistantBuilderActionConfiguration[]>;
+type VaultIdToActions = Record<
+  string,
+  AssistantBuilderActionConfigurationWithId[]
+>;
 
-export default function ActionsScreen({
-  owner,
-  builderState,
-  setBuilderState,
-  setEdited,
-  setAction,
-  pendingAction,
-}: {
+interface ActionScreenProps {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
   setBuilderState: (
@@ -131,7 +128,16 @@ export default function ActionsScreen({
   setEdited: (edited: boolean) => void;
   setAction: (action: AssistantBuilderSetActionType) => void;
   pendingAction: AssistantBuilderPendingAction;
-}) {
+}
+
+export default function ActionsScreen({
+  owner,
+  builderState,
+  setBuilderState,
+  setEdited,
+  setAction,
+  pendingAction,
+}: ActionScreenProps) {
   const { vaults } = useContext(AssistantBuilderContext);
 
   const configurableActions = builderState.actions.filter(
@@ -141,39 +147,46 @@ export default function ActionsScreen({
   const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
 
   const vaultIdToActions = useMemo(() => {
-    const vaultIdToActions: VaultIdToActions = {};
+    return configurableActions.reduce<
+      Record<string, AssistantBuilderActionConfigurationWithId[]>
+    >((acc, action) => {
+      const addActionToVault = (vaultId?: string) => {
+        if (vaultId) {
+          acc[vaultId] = (acc[vaultId] || []).concat(action);
+        }
+      };
 
-    configurableActions.forEach((action) => {
       const actionType = action.type;
 
       switch (actionType) {
         case "TABLES_QUERY":
           Object.values(action.configuration).forEach((config) => {
-            vaultIdToActions[config.dataSourceView.vaultId] = (
-              vaultIdToActions[config.dataSourceView.vaultId] ?? []
-            ).concat(action);
+            addActionToVault(config.dataSourceView.vaultId);
           });
           break;
+
         case "RETRIEVAL_SEARCH":
         case "RETRIEVAL_EXHAUSTIVE":
         case "PROCESS":
           Object.values(action.configuration.dataSourceConfigurations).forEach(
             (config) => {
-              vaultIdToActions[config.dataSourceView.vaultId] = (
-                vaultIdToActions[config.dataSourceView.vaultId] ?? []
-              ).concat(action);
+              addActionToVault(config.dataSourceView.vaultId);
             }
           );
           break;
+
         case "DUST_APP_RUN":
+          addActionToVault(action.configuration.app?.vault.sId);
+          break;
+
         case "WEB_NAVIGATION":
           break;
+
         default:
           assertNever(actionType);
       }
-    });
-
-    return vaultIdToActions;
+      return acc;
+    }, {});
   }, [configurableActions]);
 
   const nonGlobalVaultsUsedInActions = useMemo(() => {
@@ -209,6 +222,7 @@ export default function ActionsScreen({
                 // There is no way (that I could find) to make typescript understand that
                 // type and configuration are compatible.
                 configuration: getNewActionConfig(action.configuration) as any,
+                id: action.id,
               }
             : action
         ),
@@ -429,9 +443,9 @@ export default function ActionsScreen({
 type NewActionModalProps = {
   isOpen: boolean;
   builderState: AssistantBuilderState;
-  initialAction: AssistantBuilderActionConfiguration | null;
+  initialAction: AssistantBuilderActionConfigurationWithId | null;
   vaultsUsedInActions: VaultIdToActions;
-  onSave: (newAction: AssistantBuilderActionConfiguration) => void;
+  onSave: (newAction: AssistantBuilderActionConfigurationWithId) => void;
   onClose: () => void;
   updateAction: (args: {
     actionName: string;
@@ -453,8 +467,9 @@ function NewActionModal({
   setEdited,
   builderState,
 }: NewActionModalProps) {
-  const [newAction, setNewAction] =
-    useState<AssistantBuilderActionConfiguration | null>(null);
+  const [newAction, setNewAction] = useState<
+    (AssistantBuilderActionConfiguration & { id: string }) | null
+  >(null);
 
   const [showInvalidActionError, setShowInvalidActionError] = useState<
     string | null
@@ -629,22 +644,22 @@ function ActionCard({
   );
 }
 
-type ActionConfigEditorProps = {
+interface ActionConfigEditorProps {
   owner: WorkspaceType;
-  action: AssistantBuilderActionConfiguration;
+  action: AssistantBuilderActionConfigurationWithId;
   vaultsUsedInActions: VaultIdToActions;
   instructions: string | null;
   updateAction: (args: {
     actionName: string;
     actionDescription: string;
     getNewActionConfig: (
-      old: AssistantBuilderActionConfiguration["configuration"]
-    ) => AssistantBuilderActionConfiguration["configuration"];
+      old: AssistantBuilderActionConfigurationWithId["configuration"]
+    ) => AssistantBuilderActionConfigurationWithId["configuration"];
   }) => void;
   setEdited: (edited: boolean) => void;
   description: string;
   onDescriptionChange: (v: string) => void;
-};
+}
 
 function ActionConfigEditor({
   owner,
@@ -658,16 +673,22 @@ function ActionConfigEditor({
 }: ActionConfigEditorProps) {
   const { vaults } = useContext(AssistantBuilderContext);
 
-  // Only allow one vault across all actions
+  // Only allow one vault across all actions.
   const allowedVaults = useMemo(() => {
     const isVaultUsedInOtherActions = (vault: VaultType) => {
       const actionsUsingVault = vaultsUsedInActions[vault.sId] ?? [];
-      return actionsUsingVault.some((a) => a !== action);
+
+      return actionsUsingVault.some((a) => {
+        // We use the id to compare actions, as the configuration can change.
+        return a.id !== action.id;
+      });
     };
+
     const usedVaultsInOtherActions = vaults.filter(isVaultUsedInOtherActions);
     if (usedVaultsInOtherActions.length === 0) {
       return vaults;
     }
+
     return vaults.filter((vault) =>
       usedVaultsInOtherActions.some((v) => v.sId === vault.sId)
     );
@@ -677,12 +698,14 @@ function ActionConfigEditor({
     case "DUST_APP_RUN":
       return (
         <ActionDustAppRun
+          allowedVaults={allowedVaults}
           owner={owner}
           action={action}
           updateAction={updateAction}
           setEdited={setEdited}
         />
       );
+
     case "RETRIEVAL_SEARCH":
       return (
         <ActionRetrievalSearch
@@ -700,6 +723,7 @@ function ActionConfigEditor({
           setEdited={setEdited}
         />
       );
+
     case "RETRIEVAL_EXHAUSTIVE":
       return (
         <ActionRetrievalExhaustive
@@ -717,6 +741,7 @@ function ActionConfigEditor({
           setEdited={setEdited}
         />
       );
+
     case "PROCESS":
       return (
         <ActionProcess
@@ -737,6 +762,7 @@ function ActionConfigEditor({
           onDescriptionChange={onDescriptionChange}
         />
       );
+
     case "TABLES_QUERY":
       return (
         <ActionTablesQuery
@@ -754,15 +780,17 @@ function ActionConfigEditor({
           setEdited={setEdited}
         />
       );
+
     case "WEB_NAVIGATION":
       return <ActionWebNavigation />;
+
     default:
       assertNever(action);
   }
 }
 
-type ActionEditorProps = {
-  action: AssistantBuilderActionConfiguration;
+interface ActionEditorProps {
+  action: AssistantBuilderActionConfigurationWithId;
   vaultsUsedInActions: VaultIdToActions;
   showInvalidActionNameError: string | null;
   showInvalidActionDescError: string | null;
@@ -779,7 +807,7 @@ type ActionEditorProps = {
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
   builderState: AssistantBuilderState;
-};
+}
 
 function ActionEditor({
   action,
@@ -980,11 +1008,11 @@ function AdvancedSettings({
   );
 }
 
-function AddAction({
-  onAddAction,
-}: {
-  onAddAction: (action: AssistantBuilderActionConfiguration) => void;
-}) {
+interface AddActionProps {
+  onAddAction: (action: AssistantBuilderActionConfigurationWithId) => void;
+}
+
+function AddAction({ onAddAction }: AddActionProps) {
   return (
     <DropdownMenu>
       <DropdownMenu.Button>

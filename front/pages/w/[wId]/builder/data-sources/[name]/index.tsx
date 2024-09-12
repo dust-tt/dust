@@ -74,7 +74,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   connector: ConnectorType | null;
   standardView: boolean;
   dustClientFacingUrl: string;
-  gaTrackingId: string;
   user: UserType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -132,7 +131,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       connector,
       standardView,
       dustClientFacingUrl: config.getClientFacingUrl(),
-      gaTrackingId: config.getGaTrackingId(),
       user,
     },
   };
@@ -1288,7 +1286,6 @@ export default function DataSourceView({
   connector,
   standardView,
   dustClientFacingUrl,
-  gaTrackingId,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -1297,7 +1294,6 @@ export default function DataSourceView({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: dataSource.connectorId

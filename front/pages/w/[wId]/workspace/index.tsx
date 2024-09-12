@@ -9,13 +9,11 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { QuickInsights } from "@app/components/workspace/Analytics";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
-import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -29,7 +27,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -37,7 +34,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function WorkspaceAdmin({
   owner,
   subscription,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -186,7 +182,6 @@ export default function WorkspaceAdmin({
       <AppLayout
         subscription={subscription}
         owner={owner}
-        gaTrackingId={gaTrackingId}
         subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
       >
         <Page.Vertical align="stretch" gap="xl">

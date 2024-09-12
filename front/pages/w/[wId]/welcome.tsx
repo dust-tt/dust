@@ -23,7 +23,6 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   defaultExpertise: string;
   defaultAdminInterest: string;
   conversationId: string | null;
-  gaTrackingId: string;
   baseUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -57,7 +56,6 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
       defaultAdminInterest: adminInterest?.value || "",
       conversationId,
       baseUrl: config.getClientFacingUrl(),
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -69,7 +67,6 @@ export default function Welcome({
   defaultExpertise,
   defaultAdminInterest,
   conversationId,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const [firstName, setFirstName] = useState<string>(user.firstName);
@@ -124,7 +121,6 @@ export default function Welcome({
   return (
     <OnboardingLayout
       owner={owner}
-      gaTrackingId={gaTrackingId}
       headerTitle="Joining Dust"
       headerRightActions={
         <Button

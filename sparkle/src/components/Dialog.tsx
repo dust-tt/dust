@@ -10,6 +10,7 @@ import { Button } from "./Button";
 export type ModalProps = {
   title: string;
   children: React.ReactNode;
+  disabled?: boolean;
   isOpen: boolean;
   onCancel: () => void;
   onValidate: () => void;
@@ -21,14 +22,15 @@ export type ModalProps = {
 };
 
 export function Dialog({
+  title,
   isOpen,
   children,
+  disabled,
   onCancel,
   onValidate,
   cancelLabel = "Cancel",
   validateLabel = "Ok",
   validateVariant = "primary",
-  title,
   isSaving,
   backgroundType = "none",
 }: ModalProps) {
@@ -71,10 +73,8 @@ export function Dialog({
                 <HeadlessDialog.Title className="s-text-element-950 s-truncate s-text-lg s-font-medium">
                   {title}
                 </HeadlessDialog.Title>
-                <div className="s-z-10 s-text-base s-text-element-700">
-                  {children}
-                </div>
-                <div className="s-z-10 s-flex s-w-full s-justify-end">
+                <div className="s-text-base s-text-element-700">{children}</div>
+                <div className="s-flex s-w-full s-justify-end">
                   <Button.List>
                     {!isSaving && (
                       <>
@@ -84,6 +84,7 @@ export function Dialog({
                           onClick={onCancel}
                         />
                         <Button
+                          disabled={disabled}
                           label={validateLabel}
                           variant={validateVariant}
                           onClick={onValidate}

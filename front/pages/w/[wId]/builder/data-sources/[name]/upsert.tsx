@@ -23,7 +23,6 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -36,7 +35,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   readOnly: boolean;
   dataSource: DataSourceType;
   loadDocumentId: string | null;
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -66,7 +64,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       readOnly,
       dataSource: dataSource.toJSON(),
       loadDocumentId: (context.query.documentId || null) as string | null,
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -78,7 +75,6 @@ export default function DatasourceUpsert({
   readOnly,
   dataSource,
   loadDocumentId,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -219,7 +215,6 @@ export default function DatasourceUpsert({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_static",

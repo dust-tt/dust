@@ -24,7 +24,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   app: AppType;
   specification: string;
   dustAppsListUrl: string;
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -75,7 +74,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       app: app.toJSON(),
       specification: spec,
       dustAppsListUrl,
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -86,7 +84,6 @@ export default function Specification({
   app,
   specification,
   dustAppsListUrl,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
@@ -94,7 +91,6 @@ export default function Specification({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "developers",

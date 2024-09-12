@@ -53,7 +53,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       owner,
       subscription,
       baseUrl: config.getClientFacingUrl(),
-      gaTrackingId: config.getGaTrackingId(),
       conversationId: getValidConversationId(cId),
     },
   };

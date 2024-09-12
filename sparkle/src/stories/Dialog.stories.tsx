@@ -14,6 +14,7 @@ export const DialogExample = () => {
   const [isOpen1, setisOpen1] = useState(false);
   const [isOpen2, setisOpen2] = useState(false);
   const [isOpen3, setisOpen3] = useState(false);
+  const [isOpen4, setisOpen4] = useState(false);
   return (
     <div className="items-start s-flex s-flex-col s-gap-10">
       <div>
@@ -59,6 +60,18 @@ export const DialogExample = () => {
           label="Dialog with BACKGROUND"
           onClick={() => setisOpen3(true)}
         />
+      </div>
+      <div>
+        <Dialog
+          disabled
+          isOpen={isOpen4}
+          title="Dialog title"
+          onValidate={() => setisOpen4(false)}
+          onCancel={() => setisOpen4(false)}
+        >
+          <div>I'm the modal content</div>
+        </Dialog>
+        <Button label="Dialog with disabled" onClick={() => setisOpen4(true)} />
       </div>
     </div>
   );

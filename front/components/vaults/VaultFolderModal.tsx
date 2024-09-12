@@ -6,17 +6,20 @@ import {
   Page,
   TextArea,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, VaultType, WorkspaceType } from "@dust-tt/types";
+import type {
+  APIError,
+  DataSourceType,
+  VaultType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { isDataSourceNameValid } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
-import {
-  useCreateFolder,
-  useDeleteFolderOrWebsite,
-  useUpdateFolder,
-} from "@app/lib/swr/vaults";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
+import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 export default function VaultFolderModal({
   isOpen,
@@ -33,20 +36,14 @@ export default function VaultFolderModal({
   dataSources: DataSourceType[];
   folder: DataSourceType | null;
 }) {
-  const doCreate = useCreateFolder({
-    owner,
-    vaultId: vault.sId,
-  });
-  const doUpdate = useUpdateFolder({
-    owner,
-    vaultId: vault.sId,
-  });
-  const doDelete = useDeleteFolderOrWebsite({
-    owner,
+  const router = useRouter();
+  const sendNotification = useContext(SendNotificationsContext);
+  const { mutateVaultDataSourceViews: mutate } = useVaultDataSourceViews({
+    workspaceId: owner.sId,
     vaultId: vault.sId,
     category: "folder",
+    disabled: true, // We don't need to fetch the data source views here, we want the mutate function to refresh the data elsewhere.
   });
-  const router = useRouter();
 
   const defaultName = folder?.name ?? null;
   const defaultDescription = folder?.description ?? null;
@@ -70,6 +67,74 @@ export default function VaultFolderModal({
     setName(folder ? folder.name : null);
     setDescription(folder ? folder.description : null);
   }, [folder]);
+
+  const postCreateFolder = async () => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          description,
+        }),
+      }
+    );
+    if (res.ok) {
+      await mutate();
+      handleOnClose();
+      const response: PostVaultDataSourceResponseBody = await res.json();
+      const { dataSourceView } = response;
+      await router.push(
+        `/w/${owner.sId}/vaults/${vault.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
+      );
+      sendNotification({
+        type: "success",
+        title: "Successfully created folder",
+        description: "Folder was successfully created.",
+      });
+    } else {
+      const err: { error: APIError } = await res.json();
+      sendNotification({
+        type: "error",
+        title: "Error creating Folder",
+        description: `Error: ${err.error.message}`,
+      });
+    }
+  };
+
+  // TODO(DATASOURCE_SID) - move to sId
+  const patchUpdateFolder = async (folderName: string) => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${folderName}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          description,
+        }),
+      }
+    );
+    if (res.ok) {
+      handleOnClose();
+      sendNotification({
+        type: "success",
+        title: "Successfully updated folder",
+        description: "Folder was successfully updated.",
+      });
+    } else {
+      const err: { error: APIError } = await res.json();
+      sendNotification({
+        type: "error",
+        title: "Error updating Folder",
+        description: `Error: ${err.error.message}`,
+      });
+    }
+  };
 
   const onSave = async () => {
     let nameError: string | null = null;
@@ -99,28 +164,42 @@ export default function VaultFolderModal({
     }
 
     if (folder === null) {
-      const dataSourceView = await doCreate(name, description);
-      if (dataSourceView) {
-        handleOnClose();
-        await router.push(
-          `/w/${owner.sId}/vaults/${vault.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
-        );
-      }
+      await postCreateFolder();
     } else {
-      const res = await doUpdate(folder, description);
-      if (res) {
-        handleOnClose();
-      }
+      // TODO(DATASOURCE_SID) - move to sId
+      await patchUpdateFolder(folder.name);
     }
   };
 
   const onDeleteFolder = async () => {
-    const res = await doDelete(folder);
-    if (res) {
+    if (folder === null) {
+      return;
+    }
+    const res = await fetch(
+      // TODO(DATASOURCE_SID) - move to sId
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${folder.name}`,
+      {
+        method: "DELETE",
+      }
+    );
+    if (res.ok) {
+      await mutate();
       handleOnClose();
       await router.push(
         `/w/${owner.sId}/vaults/${vault.sId}/categories/folder`
       );
+      sendNotification({
+        type: "success",
+        title: "Successfully deleted folder",
+        description: "Folder was successfully deleted.",
+      });
+    } else {
+      const err: { error: APIError } = await res.json();
+      sendNotification({
+        type: "error",
+        title: "Error deleting Folder",
+        description: `Error: ${err.error.message}`,
+      });
     }
   };
 
@@ -185,7 +264,7 @@ export default function VaultFolderModal({
                 }}
                 error={errors.description}
                 showErrorLabel
-                rows={2}
+                minRows={2}
               />
             </div>
 
