@@ -69,6 +69,22 @@ const data: Data[] = [
     onClick: () => alert("Design clicked"),
   },
   {
+    name: "Very long name that should be truncated at some point to avoid overflow and make the table more readable",
+    usedBy: 2,
+    addedBy: "Another very long user name that should be truncated",
+    lastUpdated: "2023-07-09",
+    size: "64kb",
+    icon: FolderIcon,
+    moreMenuItems: [
+      {
+        label: "Edit (disabled)",
+        onClick: () => alert("Design menu clicked"),
+        disabled: true,
+      },
+    ],
+    onClick: () => alert("Design clicked"),
+  },
+  {
     name: "design",
     usedBy: 3,
     addedBy: "User21",
@@ -124,7 +140,12 @@ const columns: ColumnDef<Data>[] = [
   },
   {
     accessorKey: "usedBy",
+    minSize: 100,
+    size: 100,
     header: "Used by",
+    meta: {
+      width: "100px",
+    },
     cell: (info) => (
       <DataTable.CellContent>{info.row.original.usedBy}</DataTable.CellContent>
     ),
@@ -132,6 +153,9 @@ const columns: ColumnDef<Data>[] = [
   {
     accessorKey: "addedBy",
     header: "Added by",
+    meta: {
+      width: "100px",
+    },
     cell: (info) => (
       <DataTable.CellContent>{info.row.original.addedBy}</DataTable.CellContent>
     ),
@@ -139,6 +163,9 @@ const columns: ColumnDef<Data>[] = [
   {
     accessorKey: "lastUpdated",
     header: "Last updated",
+    meta: {
+      width: "200px",
+    },
     cell: (info) => (
       <DataTable.CellContent>
         {info.row.original.lastUpdated}
@@ -149,6 +176,9 @@ const columns: ColumnDef<Data>[] = [
   {
     accessorKey: "size",
     header: "Size",
+    meta: {
+      width: "100px",
+    },
     cell: (info) => (
       <DataTable.CellContent>{info.row.original.size}</DataTable.CellContent>
     ),
@@ -192,6 +222,7 @@ export const DataTablePaginatedExample = () => {
         onChange={(v) => setFilter(v)}
       />
       <DataTable
+        className="s-w-full s-max-w-4xl s-overflow-x-auto"
         data={data}
         filter={filter}
         filterColumn="name"
@@ -227,6 +258,7 @@ export const DataTablePaginatedServerSideExample = () => {
         onChange={(v) => setFilter(v)}
       />
       <DataTable
+        className="s-w-full s-max-w-4xl s-overflow-x-auto"
         data={rows}
         totalRowCount={data.length}
         filter={filter}
