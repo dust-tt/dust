@@ -145,7 +145,7 @@ export function useDataSourceViewContentNodes({
 
   const { data, error, mutate } = useSWRWithDefaults(fetchKey, async () => {
     if (!url) {
-      return undefined;
+      return null;
     }
 
     return postFetcher([url, { internalIds, includeChildren, viewType }]);
