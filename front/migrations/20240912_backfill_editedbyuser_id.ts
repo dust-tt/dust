@@ -13,7 +13,9 @@ makeScript({}, async ({ execute }, logger) => {
       editedByUserId: {
         [Op.is]: undefined,
       },
-      connectorProvider: "google_drive"
+      connectorProvider: {
+        [Op.not]: undefined
+      }
     }
   });
 
