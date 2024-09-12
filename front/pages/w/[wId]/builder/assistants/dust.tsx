@@ -148,7 +148,6 @@ export default function EditDustAssistant({
       subscription={subscription}
       hideSidebar
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "workspace_assistants",

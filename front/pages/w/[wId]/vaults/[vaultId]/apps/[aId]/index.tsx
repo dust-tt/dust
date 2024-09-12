@@ -44,7 +44,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   url: string;
   dustAppsListUrl: string;
   app: AppType;
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -75,7 +74,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       url: config.getClientFacingUrl(),
       dustAppsListUrl,
       app: app.toJSON(),
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -141,7 +139,6 @@ export default function AppView({
   app,
   url,
   dustAppsListUrl,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { mutate } = useSWRConfig();
 
@@ -315,7 +312,6 @@ export default function AppView({
       subscription={subscription}
       hideSidebar
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "developers",

@@ -55,7 +55,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     props: {
       category: context.query.category as DataSourceViewCategory,
       dustClientFacingUrl: config.getClientFacingUrl(),
-      gaTrackingId: config.getGaTrackingId(),
       isAdmin,
       isBuilder,
       canWriteInVault,

@@ -19,7 +19,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   dataSources: DataSourceType[];
   dataSource: DataSourceType;
   webCrawlerConfiguration: WebCrawlerConfigurationType;
-  gaTrackingId: string;
   dataSourceUsage: number;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -71,7 +70,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       dataSource: dataSource.toJSON(),
       webCrawlerConfiguration: connectorRes.value
         .configuration as WebCrawlerConfigurationType,
-      gaTrackingId: config.getGaTrackingId(),
       dataSourceUsage: dataSourceUsageRes.isOk() ? dataSourceUsageRes.value : 0,
     },
   };
@@ -82,7 +80,6 @@ export default function DataSourceNew({
   subscription,
   dataSources,
   dataSource,
-  gaTrackingId,
   webCrawlerConfiguration,
   dataSourceUsage,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -91,7 +88,6 @@ export default function DataSourceNew({
       owner={owner}
       subscription={subscription}
       dataSources={dataSources}
-      gaTrackingId={gaTrackingId}
       webCrawlerConfiguration={webCrawlerConfiguration}
       dataSource={dataSource}
       dataSourceUsage={dataSourceUsage}

@@ -17,7 +17,6 @@ import { useConversation, useConversations } from "@app/lib/swr/conversations";
 export interface ConversationLayoutProps {
   baseUrl: string;
   conversationId: string | null;
-  gaTrackingId: string;
   owner: WorkspaceType;
   subscription: SubscriptionType;
 }
@@ -29,7 +28,7 @@ export default function ConversationLayout({
   children: React.ReactNode;
   pageProps: ConversationLayoutProps;
 }) {
-  const { baseUrl, conversationId, gaTrackingId, owner, subscription } =
+  const { baseUrl, conversationId, owner, subscription } =
     pageProps;
 
   const router = useRouter();
@@ -136,7 +135,6 @@ export default function ConversationLayout({
               ? `Dust - ${conversation?.title}`
               : `Dust - New Conversation`
           }
-          gaTrackingId={gaTrackingId}
           titleChildren={
             // TODO: Improve so we don't re-render everytime.
             conversation && (

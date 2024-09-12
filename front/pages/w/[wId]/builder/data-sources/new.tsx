@@ -11,7 +11,6 @@ import { useCallback, useEffect, useState } from "react";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
-import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
@@ -20,7 +19,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dataSources: DataSourceType[];
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -38,7 +36,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       dataSources: dataSources.map((ds) => ds.toJSON()),
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -47,7 +44,6 @@ export default function DataSourceNew({
   owner,
   subscription,
   dataSources,
-  gaTrackingId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isSaving, setIsSaving] = useState(false);
   const [isEdited, setIsEdited] = useState(false);
@@ -119,7 +115,6 @@ export default function DataSourceNew({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_static",

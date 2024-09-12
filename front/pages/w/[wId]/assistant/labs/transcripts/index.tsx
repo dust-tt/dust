@@ -46,7 +46,6 @@ const defaultTranscriptConfigurationState = {
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  gaTrackingId: string;
   dustClientFacingUrl: string;
   dataSourcesViews: DataSourceViewType[];
 }>(async (_context, auth) => {
@@ -80,7 +79,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      gaTrackingId: apiConfig.getGaTrackingId(),
       dustClientFacingUrl: apiConfig.getClientFacingUrl(),
       dataSourcesViews,
     },
@@ -90,7 +88,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function LabsTranscriptsIndex({
   owner,
   subscription,
-  gaTrackingId,
   dustClientFacingUrl,
   dataSourcesViews,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -455,7 +452,6 @@ export default function LabsTranscriptsIndex({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       pageTitle="Dust - Transcripts processing"
       navChildren={
         <AssistantSidebarMenu
