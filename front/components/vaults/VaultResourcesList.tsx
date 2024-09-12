@@ -436,7 +436,6 @@ export const VaultResourcesList = ({
           </>
         )}
       </div>
-
       {rows.length > 0 && (
         <DataTable
           data={rows}
