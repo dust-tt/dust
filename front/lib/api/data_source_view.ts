@@ -76,6 +76,7 @@ export async function getContentNodesForManagedDataSourceView(
   {
     includeChildren,
     internalIds,
+    pagination,
     viewType,
   }: GetContentNodesForDataSourceViewParams
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
@@ -118,7 +119,12 @@ export async function getContentNodesForManagedDataSourceView(
     }
 
     return new Ok({
-      nodes: connectorsRes.value.resources,
+      nodes: pagination
+        ? connectorsRes.value.resources.slice(
+            pagination?.offset,
+            pagination?.offset + pagination?.limit
+          )
+        : connectorsRes.value.resources,
       // Connectors API does not support pagination yet, so the total is the length of the nodes.
       total: connectorsRes.value.resources.length,
     });
@@ -136,9 +142,13 @@ export async function getContentNodesForManagedDataSourceView(
         )
       );
     }
-
     return new Ok({
-      nodes: connectorsRes.value.nodes,
+      nodes: pagination
+        ? connectorsRes.value.nodes.slice(
+            pagination?.offset,
+            pagination?.offset + pagination?.limit
+          )
+        : connectorsRes.value.nodes,
       // Connectors API does not support pagination yet, so the total is the length of the nodes.
       total: connectorsRes.value.nodes.length,
     });
