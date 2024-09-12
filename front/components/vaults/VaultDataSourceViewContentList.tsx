@@ -241,6 +241,8 @@ export const VaultDataSourceViewContentList = ({
               }}
             />
           </>
+        ) : vault.kind !== "system" ? (
+          <span className="text-element-700">No data has been added yet.</span>
         ) : (
           <></>
         )}
