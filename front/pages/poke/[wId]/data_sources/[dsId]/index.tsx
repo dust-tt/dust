@@ -365,7 +365,7 @@ const DataSourcePage = ({
             </>
           )}
           {dataSource.connectorProvider === "notion" && (
-            <NotionUrlCheckOrFind owner={owner} />
+            <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
           )}
           {dataSource.connectorProvider === "google_drive" && (
             <>
@@ -543,6 +543,7 @@ const DataSourcePage = ({
 async function handleCheckOrFindNotionUrl(
   url: string,
   wId: string,
+  dsId: string,
   command: "check-url" | "find-url"
 ): Promise<NotionCheckUrlResponseType | NotionFindUrlResponseType | null> {
   const res = await fetch(`/api/poke/admin`, {
@@ -556,6 +557,7 @@ async function handleCheckOrFindNotionUrl(
       args: {
         url,
         wId,
+        dsId,
       },
     }),
   });
@@ -605,7 +607,13 @@ async function handleWhitelistBot(
   alert("Bot whitelisted successfully");
 }
 
-function NotionUrlCheckOrFind({ owner }: { owner: WorkspaceType }) {
+function NotionUrlCheckOrFind({
+  owner,
+  dsId,
+}: {
+  owner: WorkspaceType;
+  dsId: string;
+}) {
   const [notionUrl, setNotionUrl] = useState("");
   const [urlDetails, setUrlDetails] = useState<
     NotionCheckUrlResponseType | NotionFindUrlResponseType | null
@@ -635,6 +643,7 @@ function NotionUrlCheckOrFind({ owner }: { owner: WorkspaceType }) {
               await handleCheckOrFindNotionUrl(
                 notionUrl,
                 owner.sId,
+                dsId,
                 "check-url"
               )
             );
@@ -646,7 +655,12 @@ function NotionUrlCheckOrFind({ owner }: { owner: WorkspaceType }) {
           onClick={async () => {
             setCommand("find-url");
             setUrlDetails(
-              await handleCheckOrFindNotionUrl(notionUrl, owner.sId, "find-url")
+              await handleCheckOrFindNotionUrl(
+                notionUrl,
+                owner.sId,
+                dsId,
+                "find-url"
+              )
             );
           }}
         />
