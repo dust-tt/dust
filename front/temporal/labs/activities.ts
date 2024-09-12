@@ -184,6 +184,11 @@ export async function processTranscriptActivity(
   let transcriptTitle = "";
   let transcriptContent = "";
 
+  localLogger.info(
+    {},
+    "[processTranscriptActivity] No history found. Proceeding."
+  );
+
   switch (transcriptsConfiguration.provider) {
     case "google_drive":
       const googleResult = await retrieveGoogleTranscriptContent(
@@ -211,33 +216,18 @@ export async function processTranscriptActivity(
       assertNever(transcriptsConfiguration.provider);
   }
 
-  try {
-    await transcriptsConfiguration.recordHistory({
-      configurationId: transcriptsConfiguration.id,
-      fileId,
-      fileName: transcriptTitle,
-    });
-  } catch (error) {
-    if (error instanceof UniqueConstraintError) {
-      localLogger.info(
-        {},
-        "[processTranscriptActivity] History record already exists. Stopping."
-      );
-      return;
-    }
-    throw error;
-  }
+  const tooShortToProcess = transcriptContent.length < minTranscriptsSize;
 
   // Short transcripts are likely not useful to process.
-  if (transcriptContent.length < minTranscriptsSize) {
+  if (tooShortToProcess) {
     localLogger.info(
-      { contentLength: transcriptContent.length },
+      { contentLength: transcriptContent.length, tooShortToProcess },
       "[processTranscriptActivity] Transcript content too short or empty. Skipping."
     );
     await transcriptsConfiguration.recordHistory({
       configurationId: transcriptsConfiguration.id,
       fileId,
-      fileName: transcriptTitle,
+      fileName: "[tooShortToProcess] " + transcriptTitle,
       conversationId: null,
     });
     const msg = {
@@ -260,6 +250,23 @@ export async function processTranscriptActivity(
     };
     await sendEmail(user.email, msg);
     return;
+  }
+
+  try {
+    await transcriptsConfiguration.recordHistory({
+      configurationId: transcriptsConfiguration.id,
+      fileId,
+      fileName: transcriptTitle,
+    });
+  } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      localLogger.info(
+        {},
+        "[processTranscriptActivity] History record already exists. Stopping."
+      );
+      return;
+    }
+    throw error;
   }
 
   const owner = auth.workspace();
