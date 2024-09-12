@@ -270,7 +270,7 @@ function getTableColumns() {
       accessorKey: "usage",
       id: "usage",
       meta: {
-        width: "100px",
+        width: "6rem",
       },
       cell: (info: Info) => (
         <DataTable.CellContent icon={RobotIcon}>
@@ -282,7 +282,7 @@ function getTableColumns() {
       header: "Added by",
       id: "addedBy",
       meta: {
-        width: "100px",
+        width: "6rem",
       },
       cell: (info: Info) => (
         <DataTable.CellContent
@@ -296,7 +296,7 @@ function getTableColumns() {
       accessorKey: "editedByUser.editedAt",
       id: "editedAt",
       meta: {
-        width: "150px",
+        width: "10rem",
       },
       cell: (info: Info) => (
         <DataTable.CellContent>

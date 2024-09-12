@@ -79,7 +79,7 @@ const getTableColumns = () => {
       header: "Used by",
       accessorKey: "usage",
       meta: {
-        width: "100px",
+        width: "6rem",
       },
       cell: (info: Info) => (
         <>

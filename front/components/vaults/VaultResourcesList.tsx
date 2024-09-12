@@ -99,7 +99,7 @@ const getTableColumns = ({
         ? row.dataSourceView.dataSource.editedByUser?.imageUrl
         : row.dataSourceView.editedByUser?.imageUrl) ?? "",
     meta: {
-      width: "100px",
+      width: "6rem",
     },
     id: "managedBy",
     cell: (info: CellContext<RowData, string>) => {
@@ -121,7 +121,7 @@ const getTableColumns = ({
     accessorFn: (row: RowData) =>
       row.dataSourceView.dataSource.connector?.lastSyncSuccessfulTime,
     meta: {
-      width: "200px",
+      width: "12rem",
     },
     cell: (info: CellContext<RowData, number>) => (
       <DataTable.CellContent className="pr-2">
@@ -153,7 +153,7 @@ const getTableColumns = ({
   const actionColumn = {
     id: "action",
     meta: {
-      width: "150px",
+      width: "10rem",
     },
     cell: (info: CellContext<RowData, unknown>) => {
       const original = info.row.original;

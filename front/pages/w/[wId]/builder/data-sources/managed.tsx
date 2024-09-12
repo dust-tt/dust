@@ -360,7 +360,7 @@ function getTableColumns() {
       header: "Used by",
       accessorKey: "managedDataSource.usage",
       meta: {
-        width: "100px",
+        width: "6rem",
       },
       cell: (info: CellContext<RowData, number | null>) => (
         <>
@@ -378,7 +378,7 @@ function getTableColumns() {
         row.managedDataSource.editedByUser?.imageUrl ?? "",
       id: "managedBy",
       meta: {
-        width: "100px",
+        width: "6rem",
       },
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent
@@ -392,7 +392,7 @@ function getTableColumns() {
       accessorFn: (row: RowData) =>
         row.managedDataSource.connector?.lastSyncSuccessfulTime,
       meta: {
-        width: "200px",
+        width: "12rem",
       },
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.CellContent className="pr-2">
@@ -425,7 +425,7 @@ function getTableColumns() {
     {
       id: "action",
       meta: {
-        width: "150px",
+        width: "10rem",
       },
       cell: (info: CellContext<RowData, unknown>) => {
         const original = info.row.original;
