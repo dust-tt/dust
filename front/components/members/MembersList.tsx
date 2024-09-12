@@ -1,11 +1,9 @@
 import {
-  Button,
   ChevronRightIcon,
   Chip,
   DataTable,
   Icon,
-  PlusIcon,
-  Searchbar,
+  Page,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -50,13 +48,12 @@ function getTableRows(
 export function MembersList({
   owner,
   currentUserId,
-  onInviteClick,
+  searchText,
 }: {
   owner: WorkspaceType;
   currentUserId: string;
-  onInviteClick: () => void;
+  searchText: string;
 }) {
-  const [searchText, setSearchText] = useState("");
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
     pageSize: 25,
@@ -73,7 +70,6 @@ export function MembersList({
   const columns = [
     {
       id: "name",
-      accessorKey: "name",
       cell: (info: Info) => (
         <DataTable.CellContent
           avatarUrl={info.row.original.icon}
@@ -122,21 +118,7 @@ export function MembersList({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-row gap-2">
-        <Searchbar
-          placeholder="Search members (email)"
-          value={searchText}
-          name="search"
-          onChange={(s) => {
-            setSearchText(s);
-          }}
-        />
-        <Button
-          label="Invite members"
-          icon={PlusIcon}
-          onClick={onInviteClick}
-        />
-      </div>
+      <Page.H variant="h5">Members</Page.H>
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
           <Spinner size="lg" />

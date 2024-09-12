@@ -1,4 +1,11 @@
-import { Button, Dialog, Page, Popup } from "@dust-tt/sparkle";
+import {
+  Button,
+  Dialog,
+  Page,
+  PlusIcon,
+  Popup,
+  Searchbar,
+} from "@dust-tt/sparkle";
 import type { UserType, WorkspaceDomain, WorkspaceType } from "@dust-tt/types";
 import type {
   PlanType,
@@ -13,6 +20,7 @@ import React, { useContext, useMemo, useState } from "react";
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { InviteEmailModal } from "@app/components/members/InvitationModal";
+import { InvitationsList } from "@app/components/members/InvitationsList";
 import { MembersList } from "@app/components/members/MembersList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -87,6 +95,7 @@ export default function WorkspaceAdmin({
   workspaceHasAvailableSeats,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+  const [searchTerm, setSearchTerm] = useState("");
   const [showNoInviteLinkPopup, setShowNoInviteLinkPopup] = useState(false);
   const [isActivateAutoJoinOpened, setIsActivateAutoJoinOpened] =
     useState(false);
@@ -203,12 +212,27 @@ export default function WorkspaceAdmin({
           plan={plan}
           strategyDetails={enterpriseConnectionStrategyDetails}
         />
+        <div className="flex flex-row gap-2">
+          <Searchbar
+            placeholder="Search members (email)"
+            value={searchTerm}
+            name="search"
+            onChange={(s) => {
+              setSearchTerm(s);
+            }}
+          />
+          <Button
+            label="Invite members"
+            icon={PlusIcon}
+            onClick={onInviteClick}
+          />
+        </div>
+        <InvitationsList owner={owner} searchText={searchTerm} />
         <MembersList
           currentUserId={user.sId}
           owner={owner}
-          onInviteClick={onInviteClick}
+          searchText={searchTerm}
         />
-
         <InviteEmailModal
           showModal={inviteEmailModalOpen}
           onClose={() => {
