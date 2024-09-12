@@ -837,7 +837,8 @@ export async function garbageCollectBatch({
   let stillAccessiblePagesCount = 0;
   let stillAccessibleDatabasesCount = 0;
 
-  batch.forEach(async (x, i) => {
+  let i = 0;
+  for (const x of batch) {
     await heartbeat();
 
     const iterationLogger = localLogger.child({
@@ -952,7 +953,9 @@ export async function garbageCollectBatch({
         "Garbage collection is taking too long, giving up."
       );
     }
-  });
+
+    ++i;
+  }
 }
 
 export async function completeGarbageCollectionRun(connectorId: ModelId) {
