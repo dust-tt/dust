@@ -62,7 +62,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   const dataSourceView = await DataSourceViewResource.fetchById(
     auth,
-    dataSourceViewId
+    dataSourceViewId,
+    { includeEditedBy: true }
   );
 
   if (
