@@ -115,6 +115,11 @@ function DataSourceViewResourceSelectorChildren({
 
   const isTablesView = viewType === "tables";
 
+  // Order by title
+  const sortedNodes = [...nodes].sort((a, b) =>
+    a.title.localeCompare(b.title, undefined, { sensitivity: "base" })
+  );
+
   return (
     <>
       <DataSourceViewDocumentModal
@@ -125,7 +130,7 @@ function DataSourceViewResourceSelectorChildren({
         onClose={() => setDocumentToDisplay(null)}
       />
       <Tree isLoading={isNodesLoading}>
-        {nodes.map((r) => {
+        {sortedNodes.map((r) => {
           const isSelected = selectedResourceIds.includes(r.internalId);
           const partiallyChecked =
             !isSelected &&

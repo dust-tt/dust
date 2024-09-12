@@ -1,4 +1,10 @@
-import { Button, ListCheckIcon, Modal, Page } from "@dust-tt/sparkle";
+import {
+  Button,
+  ListCheckIcon,
+  Modal,
+  Page,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
@@ -100,6 +106,16 @@ export default function AssistantBuilderDataSourceModal({
                       el.click();
                     }
                   });
+              }}
+            />
+
+            <Button
+              className="mr-3"
+              variant="tertiary"
+              label="Clear selection"
+              icon={XMarkIcon}
+              onClick={() => {
+                setSelectionConfigurations({});
               }}
             />
           </div>
