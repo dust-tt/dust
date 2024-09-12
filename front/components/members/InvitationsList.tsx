@@ -2,7 +2,7 @@ import { Avatar, ChevronRightIcon, Chip, Icon, Page } from "@dust-tt/sparkle";
 import type { MembershipInvitationType, WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
-import { EditInvitationModal } from "@app/components/members/InvitationModal";
+import { EditInvitationModal } from "@app/components/members/EditInvitationModal";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 
