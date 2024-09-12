@@ -272,7 +272,7 @@ export function CreateOrEditVaultModal({
               </div>
             )}
           </div>
-          {vault && (
+          {vault && vault.kind === "regular" && (
             <>
               <Page.Separator />
               <ConfirmDeleteVaultDialog

@@ -15,7 +15,7 @@ export const deleteVault = async (
   }
 
   const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
-  // Check if any data source view is in use in a agent configuration
+  // TODO(VAULTS_INFRA check if datasource is used in any agent configuration)
 
   await frontSequelize.transaction(async (t) => {
     // delete all data source views

@@ -634,6 +634,13 @@ export class GroupResource extends BaseResource<GroupModel> {
         transaction,
       });
 
+      await this.model.destroy({
+        where: {
+          id: this.id,
+        },
+        transaction,
+      });
+
       return new Ok(undefined);
     } catch (err) {
       return new Err(err as Error);

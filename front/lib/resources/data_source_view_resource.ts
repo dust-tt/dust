@@ -33,7 +33,7 @@ import {
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 
-export const getDataSourceCategory = (
+const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
 ): DataSourceViewCategory => {
   if (isFolder(dataSourceResource)) {
