@@ -119,11 +119,9 @@ export function MembersList({
   ];
 
   const rows = useMemo(() => {
-    const filteredMembers = members.filter(
-      (m) => m.workspaces[0].role !== "none"
-    );
+    console.log(">>>>> members", members)
     return getTableRows(
-      filteredMembers,
+      members,
       (user: UserTypeWithWorkspaces | null) => {
         setSelectedMember(user);
       }
