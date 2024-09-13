@@ -16,7 +16,7 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { truncate } from "@dust-tt/types";
+import { removeNulls, truncate } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -37,7 +37,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
 
 type DataSourceWithConnector = DataSourceType & {
-  connector: ConnectorType | null;
+  connector: ConnectorType;
 };
 
 type Info = {
@@ -96,29 +96,29 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     throw new Error("Failed to fetch connectors");
   }
 
-  const dataSources = websiteDataSources.map((ds) => {
+  const dataSourcesWithConnector = websiteDataSources.map((ds) => {
     const connector = connectorsRes.value.find((c) => c.id === ds.connectorId);
     if (!connector) {
       logger.error(
         {
+          panic: true, // This is a panic because we want to fix the data. This should never happen.
           workspaceId: owner.sId,
           connectorId: ds.connectorId,
           dataSourceName: ds.name,
+          dataSourceId: ds.id,
           connectorProvider: ds.connectorProvider,
         },
-        "Connector not found"
+        "Connector not found while we still have a data source."
       );
-      // Not super clean but at least we don't crash the page.
-      return {
-        ...ds,
-        connector: null,
-      };
+      return null;
     }
     return {
       ...ds,
       connector,
     };
   });
+
+  const dataSources = removeNulls(dataSourcesWithConnector);
 
   return {
     props: {
