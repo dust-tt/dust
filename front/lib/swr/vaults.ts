@@ -231,8 +231,7 @@ export function useUpdateFolder({
       return false;
     }
     const res = await fetch(
-      // TODO(DATASOURCE_SID) - move to sId
-      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSource.name}`,
+      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSource.sId}`,
       {
         method: "PATCH",
         headers: {
@@ -287,9 +286,8 @@ export function useDeleteFolderOrWebsite({
     if (!dataSource) {
       return false;
     }
-    // TODO(DATASOURCE_SID) - move to sId
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSource.name}`,
+      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSource.sId}`,
       { method: "DELETE" }
     );
 

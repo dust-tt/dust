@@ -94,7 +94,8 @@ async function handler(
     });
   }
 
-  if (!req.query.dsId || typeof req.query.dsId !== "string") {
+  const { dsId } = req.query;
+  if (typeof dsId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -105,7 +106,7 @@ async function handler(
   }
   const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,
-    req.query.dsId,
+    dsId,
     // TODO(DATASOURCE_SID): Clean-up
     { origin: "vault_patch_or_delete_data_source" }
   );

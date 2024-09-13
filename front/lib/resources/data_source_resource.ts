@@ -48,7 +48,8 @@ export type FetchDataSourceOrigin =
   | "data_source_managed_update"
   | "vault_data_source_config"
   | "vault_patch_or_delete_data_source"
-  | "vault_data_source_documents";
+  | "vault_data_source_documents"
+  | "data_source_get_documents";
 
 export type FetchDataSourceOptions = {
   includeEditedBy?: boolean;
