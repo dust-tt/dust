@@ -64,6 +64,16 @@ export const AssistantPreviewExample = () => (
         onClick={() => console.log("AssistantPreview clicked")}
         onActionClick={() => console.log("Action clicked")}
       />
+      <AssistantPreview
+        title={"customActionElement"}
+        pictureUrl={"https://dust.tt/static/droidavatar/Droid_Yellow_4.jpg"}
+        subtitle={"Dust"}
+        description="Showing a custom action element"
+        variant="minimal"
+        onClick={() => console.log("AssistantPreview clicked")}
+        onActionClick={() => console.log("Action clicked")}
+        actionElement={<>more</>}
+      />
     </div>
   </div>
 );
