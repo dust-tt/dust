@@ -44,6 +44,14 @@ const { reportInitialSyncProgress, syncSucceeded, syncStarted } =
     startToCloseTimeout: "10 minutes",
   });
 
+/**
+ * The Google Drive full sync workflow first generates a list of initial folders to explore for synchronization.
+ * This list is set to a queue, which we explore in a breadth-first manner. At each iteration, we add the folders
+ * discovered during the current iteration to the queue. We continue this process until the queue is empty.
+ * If this workflow is called while it's running, the queue is updated using Temporal signals.
+ * At the end, we start the garbage collector workflow to delete files that are still in our database but that we are not supposed
+ * to sync anymore.
+ */
 export async function googleDriveFullSync({
   connectorId,
   garbageCollect = true,
@@ -144,6 +152,12 @@ export function googleDriveFullSyncWorkflowId(connectorId: ModelId) {
   return `googleDrive-fullSync-${connectorId}`;
 }
 
+/**
+ * The Google incremental sync workflow is running at a fixed interval and synchronize the delta changes.
+ * We use the drive.changes API to get the list of files that have been created / deleted / updated since the last sync,
+ * and call the syncOneFile on each one of them if they are in a list of selected folders to synchronize.
+ * This incremental sync isn't webhook based
+ */
 export async function googleDriveIncrementalSync(
   connectorId: ModelId,
   dataSourceConfig: DataSourceConfig
