@@ -2,6 +2,8 @@ import { Button, RocketIcon } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 import React, { useState } from "react";
 
+import { PricePlans } from "@app/components/plans/PlansTables";
+import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import { HeaderContentBlock } from "@app/pages/site/components/ContentBlocks";
 import { Grid } from "@app/pages/site/components/ContentComponents";
 import type { LandingLayoutProps } from "@app/pages/site/components/LandingLayout";
@@ -10,8 +12,6 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/pages/site/components/Particles";
-import { PricePlans } from "@app/components/plans/PlansTables";
-import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 
 export async function getServerSideProps() {
   return {

@@ -1,5 +1,6 @@
 import React from "react";
 
+import { classNames } from "@app/lib/utils";
 import {
   Carousel,
   CarouselContent,
@@ -8,7 +9,6 @@ import {
   CarouselPrevious,
 } from "@app/pages/site/components/Carousel";
 import { Grid, H2 } from "@app/pages/site/components/ContentComponents";
-import { classNames } from "@app/lib/utils";
 import { CustomerCaroussel } from "@app/pages/site/solutions/customer-support";
 import { DataCaroussel } from "@app/pages/site/solutions/data-analytics";
 import { EngineeringCaroussel } from "@app/pages/site/solutions/engineering";

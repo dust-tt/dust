@@ -5,8 +5,8 @@ import { Grid, H2, P } from "@app/pages/site/components/ContentComponents";
 
 const defaultFlexClasses = "flex flex-col gap-8";
 
-import { ImgBlock } from "@app/pages/site/components/ContentBlocks";
 import { classNames } from "@app/lib/utils";
+import { ImgBlock } from "@app/pages/site/components/ContentBlocks";
 
 export function TeamSection() {
   return (

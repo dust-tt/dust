@@ -8,6 +8,7 @@ import type { LinkProps } from "next/link";
 import Link from "next/link";
 import * as React from "react";
 
+import { classNames } from "@app/lib/utils";
 import { menuConfig } from "@app/pages/site/components/menu/config";
 import { ScrollArea } from "@app/pages/site/components/ScrollArea";
 import {
@@ -15,7 +16,6 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@app/pages/site/components/Sheet";
-import { classNames } from "@app/lib/utils";
 
 export function MobileNavigation() {
   const [open, setOpen] = React.useState(false);

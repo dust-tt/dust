@@ -9,6 +9,7 @@ import {
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
+import { classNames } from "@app/lib/utils";
 import {
   Grid,
   H1,
@@ -16,7 +17,6 @@ import {
   P,
   Strong,
 } from "@app/pages/site/components/ContentComponents";
-import { classNames } from "@app/lib/utils";
 
 const ResponsiveIframe = () => {
   return (

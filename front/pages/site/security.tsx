@@ -2,6 +2,7 @@ import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 import React from "react";
 
+import { classNames } from "@app/lib/utils";
 import {
   HeaderContentBlock,
   ImgBlock,
@@ -18,7 +19,6 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/pages/site/components/Particles";
-import { classNames } from "@app/lib/utils";
 
 export async function getServerSideProps() {
   return {
