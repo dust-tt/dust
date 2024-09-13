@@ -55,11 +55,7 @@ export default function VaultFolderModal({
 
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
 
-  const [errors, setErrors] = useState<{
-    name: string | null;
-  }>({
-    name: null,
-  });
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setName(folder ? folder.name : null);
@@ -149,9 +145,7 @@ export default function VaultFolderModal({
     }
 
     if (nameError) {
-      setErrors({
-        name: nameError,
-      });
+      setError(nameError);
       return;
     }
 
@@ -226,11 +220,8 @@ export default function VaultFolderModal({
                 value={name}
                 onChange={(value) => {
                   setName(value);
-                  if (errors.name) {
-                    setErrors({ ...errors, name: null });
-                  }
                 }}
-                error={errors.name}
+                error={error}
                 disabled={folder !== null} // We cannot change the name of a datasource
                 showErrorLabel
               />
@@ -250,11 +241,7 @@ export default function VaultFolderModal({
                 value={description}
                 onChange={(value) => {
                   setDescription(value);
-                  if (errors.description) {
-                    setErrors({ ...errors, description: null });
-                  }
                 }}
-                error={errors.description}
                 showErrorLabel
                 minRows={2}
               />
