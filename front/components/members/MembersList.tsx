@@ -29,7 +29,7 @@ type RowData = {
   onClick: () => void;
 };
 
-type Info = CellContext<RowData, unknown>;
+type Info = CellContext<RowData, string>;
 
 function getTableRows(
   allUsers: UserTypeWithWorkspaces[],
