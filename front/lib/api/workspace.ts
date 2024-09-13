@@ -198,8 +198,10 @@ export async function searchMembers(
     paginationParams
   );
 
-  const userIds = users.map((u) => u.id);
-  const memberships = await MembershipResource.fetchByUserIds(userIds);
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    users,
+    workspace: owner,
+  });
 
   const usersWithWorkspaces = users.map((u) => {
     const membership = memberships.find(

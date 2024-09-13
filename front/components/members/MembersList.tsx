@@ -121,8 +121,6 @@ export function MembersList({
   ];
 
   const rows = useMemo(() => {
-    console.log(">>>>> members", members);
-    console.log(">>>>> allMembers", allMembers);
     return getTableRows(members, (user: UserTypeWithWorkspaces | null) => {
       setSelectedMember(user);
     });
