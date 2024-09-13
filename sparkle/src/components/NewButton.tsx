@@ -6,12 +6,14 @@ import { Icon } from "@sparkle/index_with_tw_base";
 import { classNames } from "@sparkle/lib/utils";
 
 const buttonVariants = cva(
-  "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors s-duration-200 focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 disabled:s-pointer-events-none disabled:s-opacity-50",
+  "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors s-duration-100 focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 disabled:s-pointer-events-none disabled:s-opacity-50",
   {
     variants: {
       variant: {
         primary:
           "s-bg-primary-800 s-text-primary-50 hover:s-bg-primary-600 active:s-bg-primary-900",
+        highlight:
+          "s-bg-action-500 s-text-white hover:s-bg-action-400 active:s-bg-action-600",
         warning:
           "s-bg-warning-500 s-text-white hover:s-bg-warning-400 active:s-bg-warning-600",
         outline:

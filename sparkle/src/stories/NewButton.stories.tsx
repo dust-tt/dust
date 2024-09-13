@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { Icon, NewButton, PlusIcon } from "../index_with_tw_base";
+import { Icon, NewButton, PlusIcon, Spinner } from "../index_with_tw_base";
 
 const meta = {
   title: "Primitives/NewButton",
@@ -15,6 +15,9 @@ export const ButtonExamples = () => (
     XS
     <div className="s-flex s-items-center s-gap-4">
       <NewButton size="xs">Button</NewButton>
+      <NewButton size="xs" variant="highlight">
+        Button
+      </NewButton>
       <NewButton size="xs" variant="secondary">
         Button
       </NewButton>
@@ -29,7 +32,17 @@ export const ButtonExamples = () => (
       </NewButton>
     </div>
     <div className="s-flex s-items-center s-gap-4">
+      <NewButton disabled size="xs">
+        <Spinner size="xs" />
+        Please wait
+      </NewButton>
+    </div>
+    <div className="s-flex s-items-center s-gap-4">
       <NewButton size="xs">
+        <Icon visual={PlusIcon} />
+        Button
+      </NewButton>
+      <NewButton size="xs" variant="highlight">
         <Icon visual={PlusIcon} />
         Button
       </NewButton>
@@ -53,6 +66,9 @@ export const ButtonExamples = () => (
     SM
     <div className="s-flex s-items-center s-gap-4">
       <NewButton size="sm">Button</NewButton>
+      <NewButton size="sm" variant="highlight">
+        Button
+      </NewButton>
       <NewButton size="sm">
         <Icon visual={PlusIcon} />
         Button
@@ -69,6 +85,10 @@ export const ButtonExamples = () => (
     </div>
     <div className="s-flex s-items-center s-gap-4">
       <NewButton size="sm">
+        <Icon visual={PlusIcon} />
+        Button
+      </NewButton>
+      <NewButton size="sm" variant="highlight">
         <Icon visual={PlusIcon} />
         Button
       </NewButton>
@@ -92,6 +112,9 @@ export const ButtonExamples = () => (
     MD
     <div className="s-flex s-items-center s-gap-4">
       <NewButton size="md">Button</NewButton>
+      <NewButton size="md" variant="highlight">
+        Button
+      </NewButton>
       <NewButton size="md">
         <Icon visual={PlusIcon} />
         Button
@@ -108,6 +131,10 @@ export const ButtonExamples = () => (
     </div>
     <div className="s-flex s-items-center s-gap-4">
       <NewButton size="md">
+        <Icon visual={PlusIcon} />
+        Button
+      </NewButton>
+      <NewButton size="md" variant="highlight">
         <Icon visual={PlusIcon} />
         Button
       </NewButton>
