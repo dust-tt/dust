@@ -277,27 +277,29 @@ export const VaultDataSourceViewContentList = ({
         )}
         {isFolder(dataSourceView.dataSource) && (
           <>
-            <DropdownMenu>
-              <DropdownMenu.Button>
-                <Button
-                  size="sm"
-                  label={viewType === "documents" ? "Documents" : "Tables"}
-                  variant="secondary"
-                  type="menu"
-                />
-              </DropdownMenu.Button>
+            {rows.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenu.Button>
+                  <Button
+                    size="sm"
+                    label={viewType === "documents" ? "Documents" : "Tables"}
+                    variant="secondary"
+                    type="menu"
+                  />
+                </DropdownMenu.Button>
 
-              <DropdownMenu.Items>
-                <DropdownMenu.Item
-                  label="Documents"
-                  onClick={() => handleViewTypeChange("documents")}
-                />
-                <DropdownMenu.Item
-                  label="Tables"
-                  onClick={() => handleViewTypeChange("tables")}
-                />
-              </DropdownMenu.Items>
-            </DropdownMenu>
+                <DropdownMenu.Items>
+                  <DropdownMenu.Item
+                    label="Documents"
+                    onClick={() => handleViewTypeChange("documents")}
+                  />
+                  <DropdownMenu.Item
+                    label="Tables"
+                    onClick={() => handleViewTypeChange("tables")}
+                  />
+                </DropdownMenu.Items>
+              </DropdownMenu>
+            )}
             <FoldersHeaderMenu
               owner={owner}
               vault={vault}
