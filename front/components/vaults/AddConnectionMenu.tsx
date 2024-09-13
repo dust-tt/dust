@@ -229,6 +229,7 @@ export const AddConnectionMenu = ({
 
         {showConfirmConnection.connector && (
           <CreateConnectionConfirmationModal
+            owner={owner}
             connectorProviderConfiguration={
               CONNECTOR_CONFIGURATIONS[showConfirmConnection.connector]
             }
