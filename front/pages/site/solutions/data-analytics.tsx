@@ -210,7 +210,7 @@ export function DataCaroussel() {
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"
-      href="/solutions/data-analytics"
+      href="/site/solutions/data-analytics"
     />
   );
 }

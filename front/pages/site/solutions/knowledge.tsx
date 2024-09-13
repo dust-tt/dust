@@ -229,7 +229,7 @@ export function KnowledgeCaroussel() {
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"
-      href="/solutions/knowledge"
+      href="/site/solutions/knowledge"
     />
   );
 }

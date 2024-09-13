@@ -248,7 +248,7 @@ export function CustomerCaroussel() {
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"
-      href="/solutions/customer-support"
+      href="/site/solutions/customer-support"
     />
   );
 }
