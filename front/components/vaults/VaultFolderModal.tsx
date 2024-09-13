@@ -55,13 +55,7 @@ export default function VaultFolderModal({
 
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
 
-  const [errors, setErrors] = useState<{
-    name: string | null;
-    description: string | null;
-  }>({
-    name: null,
-    description: null,
-  });
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setName(folder ? folder.name : null);
@@ -138,7 +132,6 @@ export default function VaultFolderModal({
 
   const onSave = async () => {
     let nameError: string | null = null;
-    let descriptionError: string | null = null;
 
     if (!name) {
       nameError = "Name is required.";
@@ -151,15 +144,8 @@ export default function VaultFolderModal({
       nameError = "A data source with this name already exists.";
     }
 
-    if (!description || description.trim() === "") {
-      descriptionError = "Description is required.";
-    }
-
-    if (nameError || descriptionError) {
-      setErrors({
-        name: nameError,
-        description: descriptionError,
-      });
+    if (nameError) {
+      setError(nameError);
       return;
     }
 
@@ -234,11 +220,8 @@ export default function VaultFolderModal({
                 value={name}
                 onChange={(value) => {
                   setName(value);
-                  if (errors.name) {
-                    setErrors({ ...errors, name: null });
-                  }
                 }}
-                error={errors.name}
+                error={error}
                 disabled={folder !== null} // We cannot change the name of a datasource
                 showErrorLabel
               />
@@ -258,11 +241,7 @@ export default function VaultFolderModal({
                 value={description}
                 onChange={(value) => {
                   setDescription(value);
-                  if (errors.description) {
-                    setErrors({ ...errors, description: null });
-                  }
                 }}
-                error={errors.description}
                 showErrorLabel
                 minRows={2}
               />
