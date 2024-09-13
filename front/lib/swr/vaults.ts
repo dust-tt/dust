@@ -476,20 +476,17 @@ export function useSystemVault({
   const systemVaultFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/vaults?role=admin`,
+    `/api/w/${workspaceId}/vaults?role=admin&kind=system`,
     systemVaultFetcher,
     { disabled }
   );
 
-  const systemVault = useMemo(() => {
-    if (!data) {
-      return null;
-    }
-    return data.vaults.find((v) => v.kind === "system") || null;
-  }, [data]);
+  if (!data) {
+    return null;
+  }
 
   return {
-    systemVault,
+    systemVault: data.vaults[0],
     isSystemVaultLoading: !error && !data && !disabled,
     isSystemVaultError: error,
     mutateSystemVault: mutate,
