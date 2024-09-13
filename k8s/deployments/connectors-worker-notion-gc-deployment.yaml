@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: connectors-worker-notion-deployment
+  name: connectors-worker-notion-gc-deployment
 spec:
   replicas: 3
   selector:
     matchLabels:
       app: connectors-worker
-      worker: notion
+      worker: notion-gc
   template:
     metadata:
       labels:
         app: connectors-worker
         name: connectors-worker-pod
-        worker: notion
+        worker: notion-gc
         admission.datadoghq.com/enabled: "true"
       annotations:
         ad.datadoghq.com/web.logs: '[{"source": "connectors-worker","service": "connectors-worker","tags": ["env:prod"]}]'
@@ -22,7 +22,7 @@ spec:
         - name: web
           image: gcr.io/or1g1n-186209/connectors-image:latest
           command: ["npm", "run", "start:worker"]
-          args: ["--", "--workers", "notion"]
+          args: ["--", "--workers", "notion_garbage_collector"]
           imagePullPolicy: Always
           envFrom:
             - configMapRef:

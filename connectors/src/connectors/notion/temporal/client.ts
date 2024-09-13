@@ -6,7 +6,10 @@ import type {
 } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
-import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
+import {
+  GARBAGE_COLLECT_QUEUE_NAME,
+  QUEUE_NAME,
+} from "@connectors/connectors/notion/temporal/config";
 import { notionSyncWorkflow } from "@connectors/connectors/notion/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { NotionConnectorState } from "@connectors/lib/models/notion";
@@ -109,7 +112,7 @@ export async function launchNotionGarbageCollectorWorkflow(
         garbageCollectionMode: "always",
       },
     ],
-    taskQueue: QUEUE_NAME,
+    taskQueue: GARBAGE_COLLECT_QUEUE_NAME,
     workflowId: getNotionWorkflowId(connectorId, "always"),
     searchAttributes: {
       connectorId: [connectorId],
