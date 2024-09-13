@@ -20,7 +20,7 @@ export async function runNotionWorker() {
     connection,
     reuseV8Context: true,
     namespace,
-    maxConcurrentActivityTaskExecutions: 16,
+    maxConcurrentActivityTaskExecutions: 8,
     maxCachedWorkflows: 200,
     interceptors: {
       activityInbound: [
