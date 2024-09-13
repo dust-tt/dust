@@ -19,8 +19,8 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetDocumentsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const { name } = req.query;
-  if (typeof name !== "string") {
+  const { dsId } = req.query;
+  if (typeof dsId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -32,11 +32,10 @@ async function handler(
 
   const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,
-    name,
+    dsId,
     // TODO(DATASOURCE_SID): Clean-up
     { origin: "data_source_get_documents" }
   );
-
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
