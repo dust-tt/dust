@@ -118,13 +118,17 @@ export function MembersList({
     },
   ];
 
-  const rows = useMemo(
-    () =>
-      getTableRows(members, (user: UserTypeWithWorkspaces | null) => {
+  const rows = useMemo(() => {
+    const filteredMembers = members.filter(
+      (m) => m.workspaces[0].role !== "none"
+    );
+    return getTableRows(
+      filteredMembers,
+      (user: UserTypeWithWorkspaces | null) => {
         setSelectedMember(user);
-      }),
-    [members]
-  );
+      }
+    );
+  }, [members]);
 
   return (
     <div className="flex flex-col gap-2">
