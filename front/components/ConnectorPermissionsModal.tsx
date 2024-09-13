@@ -24,10 +24,7 @@ import * as React from "react";
 import { useContext, useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
-import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
-import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDataSourceName } from "@app/lib/data_sources";
@@ -439,6 +436,9 @@ export function ConnectorPermissionsModal({
     return;
   }
 
+  const OptionsComponent =
+    CONNECTOR_CONFIGURATIONS[connector.type].optionsComponent;
+
   return (
     <>
       {onManageButtonClick && (
@@ -459,7 +459,7 @@ export function ConnectorPermissionsModal({
         />
       )}
       <Modal
-        title="Selected data sources"
+        title={`Manage ${getDataSourceName(dataSource)} connection`}
         isOpen={modalToShow === "selection"}
         onClose={() => closeModal(false)}
         onSave={save}
@@ -467,10 +467,11 @@ export function ConnectorPermissionsModal({
         savingLabel="Saving..."
         isSaving={saving}
         hasChanged={!!Object.keys(updatedPermissionByInternalId).length}
+        className="flex"
         variant="side-md"
       >
-        <div className="mx-auto max-w-4xl">
-          <div className="flex pr-4 pt-4">
+        <div className="mx-auto mt-4 flex max-w-4xl flex-col gap-4">
+          <div className="flex">
             <Button
               className="ml-auto justify-self-end"
               label="Edit permissions"
@@ -481,47 +482,44 @@ export function ConnectorPermissionsModal({
               }}
             />
           </div>
-          {connector.type === "slack" && (
-            <SlackBotEnableView
-              {...{ owner, readOnly, isAdmin, dataSource, plan }}
-            />
-          )}
-          {connector.type === "github" && (
-            <GithubCodeEnableView
-              {...{ owner, readOnly, isAdmin, dataSource }}
-            />
-          )}
-          {connector.type === "intercom" && (
-            <IntercomConfigView {...{ owner, readOnly, isAdmin, dataSource }} />
-          )}
-          <div className="flex flex-col pt-4">
-            <Page.Vertical align="stretch" gap="xl">
-              <Page.Header title="Make available to the workspace:" />
-              <div className="mx-2 mb-16 w-full">
-                <PermissionTree
-                  isSearchEnabled={
-                    CONNECTOR_CONFIGURATIONS[connector.type].isSearchEnabled
-                  }
-                  owner={owner}
-                  dataSource={dataSource}
-                  canUpdatePermissions={canUpdatePermissions}
-                  onPermissionUpdate={(node, { newPermission }) => {
-                    const { internalId } = node;
+          {OptionsComponent && (
+            <>
+              <div className="p-1 text-xl font-bold">Connector options</div>
 
-                    setUpdatedPermissionByInternalId((prev) => ({
-                      ...prev,
-                      [internalId]: newPermission,
-                    }));
-                  }}
-                  showExpand={
-                    CONNECTOR_CONFIGURATIONS[connector.type]?.isNested
-                  }
-                  // List only document-type items when displaying permissions for a data source.
-                  viewType="documents"
-                />
+              <div className="p-1">
+                <div className="border-y">
+                  <OptionsComponent
+                    {...{ owner, readOnly, isAdmin, dataSource, plan }}
+                  />
+                </div>
               </div>
-            </Page.Vertical>
+            </>
+          )}
+
+          <div className="p-1 text-xl font-bold">
+            {CONNECTOR_CONFIGURATIONS[connector.type].selectLabel}
           </div>
+
+          <PermissionTree
+            isSearchEnabled={
+              CONNECTOR_CONFIGURATIONS[connector.type].isSearchEnabled
+            }
+            isRoundedBackground={true}
+            owner={owner}
+            dataSource={dataSource}
+            canUpdatePermissions={canUpdatePermissions}
+            onPermissionUpdate={(node, { newPermission }) => {
+              const { internalId } = node;
+
+              setUpdatedPermissionByInternalId((prev) => ({
+                ...prev,
+                [internalId]: newPermission,
+              }));
+            }}
+            showExpand={CONNECTOR_CONFIGURATIONS[connector.type]?.isNested}
+            // List only document-type items when displaying permissions for a data source.
+            viewType="documents"
+          />
         </div>
       </Modal>
       <DataSourceEditionModal
