@@ -79,7 +79,7 @@ export default function AssistantBuilderDataSourceModal({
       hasChanged={hasChanged}
       variant="side-md"
       title="Manage data sources selection"
-      className="flex flex-col overflow-hidden" // overflow-visible is needed to avoid clipping the select all button
+      className="flex flex-col overflow-hidden"
     >
       <div
         className="flex shrink flex-col overflow-hidden px-2" // Otherwise, padding do not match figma and we can't alter Page's padding
@@ -104,7 +104,7 @@ export default function AssistantBuilderDataSourceModal({
         </div>
         <div
           id="dataSourceViewsSelector"
-          className="overflow-y-auto" // overflow-visible is needed to avoid clipping the select all button
+          className="overflow-y-auto scrollbar-hide"
         >
           <DataSourceViewsSelector
             dataSourceViews={supportedDataSourceViewsForViewType}
