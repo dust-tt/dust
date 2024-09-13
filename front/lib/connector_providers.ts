@@ -93,7 +93,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     selectLabel: "Select folders and files",
     logoComponent: DriveLogo,
     isNested: true,
-    isSearchEnabled: true,
+    isSearchEnabled: false,
   },
   slack: {
     name: "Slack",
