@@ -139,6 +139,7 @@
   "devDependencies": {
     "@google-cloud/storage": "^7.11.2",
     "@qdrant/qdrant-js": "^1.7.0",
+    "@simbathesailor/use-what-changed": "^2.0.0",
     "@swc/cli": "^0.3.12",
     "@swc/core": "^1.4.13",
     "@types/formidable": "^3.4.3",

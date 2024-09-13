@@ -12,7 +12,6 @@ import {
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
 import type {
-  APIError,
   ConnectorProvider,
   DataSourceViewCategory,
   DataSourceViewType,
@@ -25,21 +24,23 @@ import { isWebsiteOrFolderCategory } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import { useContext, useMemo } from "react";
+import { useMemo } from "react";
 import { useRef } from "react";
 import { useState } from "react";
 
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSources } from "@app/lib/swr/data_sources";
-import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
+import {
+  useDeleteFolderOrWebsite,
+  useVaultDataSourceViews,
+} from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
 
 const REDIRECT_TO_EDIT_PERMISSIONS = [
@@ -218,7 +219,6 @@ export const VaultResourcesList = ({
   const [isNewConnectorLoading, setIsNewConnectorLoading] = useState(false);
   const { dataSources, isDataSourcesLoading } = useDataSources(owner);
   const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
@@ -232,6 +232,12 @@ export const VaultResourcesList = ({
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
+  });
+
+  const doDelete = useDeleteFolderOrWebsite({
+    owner,
+    vaultId: vault.sId,
+    category,
   });
 
   // DataSources Views of the current vault.
@@ -314,32 +320,14 @@ export const VaultResourcesList = ({
   }
 
   const onDeleteFolderOrWebsite = async () => {
-    if (!selectedDataSourceView) {
-      return;
+    if (selectedDataSourceView?.dataSource) {
+      const res = await doDelete(selectedDataSourceView.dataSource);
+      if (res) {
+        await router.push(
+          `/w/${owner.sId}/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`
+        );
+      }
     }
-    const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${selectedDataSourceView.dataSource.name}`,
-      { method: "DELETE" }
-    );
-
-    if (res.ok) {
-      await router.push(
-        `/w/${owner.sId}/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`
-      );
-      sendNotification({
-        type: "success",
-        title: `Successfully deleted ${selectedDataSourceView.category}`,
-        description: `${getDataSourceNameFromView(selectedDataSourceView)} was successfully deleted.`,
-      });
-    } else {
-      const err: { error: APIError } = await res.json();
-      sendNotification({
-        type: "error",
-        title: `Error deleting ${selectedDataSourceView.category}`,
-        description: `Error: ${err.error.message}`,
-      });
-    }
-    return res.ok;
   };
 
   return (
