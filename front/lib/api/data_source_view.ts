@@ -76,7 +76,7 @@ const paginate = (
   pagination?: OffsetPaginationParams
 ) =>
   pagination
-    ? nodes.slice(pagination?.offset, pagination?.offset + pagination?.limit)
+    ? nodes.slice(pagination.offset, pagination.offset + pagination.limit)
     : nodes;
 
 export async function getContentNodesForManagedDataSourceView(
