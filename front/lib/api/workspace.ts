@@ -202,7 +202,9 @@ export async function searchMembers(
   const memberships = await MembershipResource.fetchByUserIds(userIds);
 
   const usersWithWorkspaces = users.map((u) => {
-    const membership = memberships.find((m) => m.userId === u.id);
+    const membership = memberships.find(
+      (m) => m.userId === u.id && m.workspaceId === owner.id
+    );
     const role =
       membership && !membership.isRevoked()
         ? ACTIVE_ROLES.includes(membership.role)
