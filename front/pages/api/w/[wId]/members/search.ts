@@ -1,4 +1,7 @@
-import type { UserType, WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  UserTypeWithWorkspaces,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getPaginationParams } from "@app/lib/api/pagination";
@@ -10,7 +13,7 @@ import { apiError } from "@app/logger/withlogging";
 const DEFAULT_PAGE_LIMIT = 25;
 
 export type SearchMembersResponseBody = {
-  members: UserType[];
+  members: UserTypeWithWorkspaces[];
   total: number;
 };
 
@@ -48,7 +51,7 @@ async function handler(
       const paginationRes = getPaginationParams(req, {
         defaultLimit: DEFAULT_PAGE_LIMIT,
         defaultOrderColumn: orderBy || "name",
-        defaultOrderDirection: "desc",
+        defaultOrderDirection: "asc",
         supportedOrderColumn: ["name"],
       });
 

@@ -24,6 +24,7 @@ type ListVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
 type MinimalVariantAssistantPreviewProps = BaseAssistantPreviewProps & {
   variant: "minimal";
   hasAction?: boolean;
+  actionElement?: JSX.Element;
   href?: string;
   onClick?: () => void;
   onActionClick?: () => void;
@@ -138,11 +139,12 @@ const MinimalVariantContent = ({
   pictureUrl,
   subtitle,
   hasAction = true,
+  actionElement,
   description,
   onClick,
   onActionClick,
 }: MinimalVariantAssistantPreviewProps) => {
-  const actionButton = (
+  const actionButton = actionElement ?? (
     <Button
       label=""
       icon={MoreIcon}

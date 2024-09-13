@@ -489,7 +489,6 @@ const VaultDataSourceViewSubMenu = ({
       workspaceId: owner.sId,
       vaultId: vault.sId,
       category,
-      disabled: !isExpanded,
     });
 
   return (
@@ -502,6 +501,11 @@ const VaultDataSourceViewSubMenu = ({
       onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={categoryDetails.icon}
       areActionsFading={false}
+      type={
+        isVaultDataSourceViewsLoading || vaultDataSourceViews.length > 0
+          ? "node"
+          : "leaf"
+      }
     >
       {isExpanded && (
         <Tree isLoading={isVaultDataSourceViewsLoading}>

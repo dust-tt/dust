@@ -1,4 +1,4 @@
-import { Button, ListCheckIcon, Modal, Page } from "@dust-tt/sparkle";
+import { Button, ListCheckIcon, Modal } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
@@ -79,41 +79,43 @@ export default function AssistantBuilderDataSourceModal({
       hasChanged={hasChanged}
       variant="side-md"
       title="Manage data sources selection"
+      className="flex flex-col overflow-hidden"
     >
-      <Page.Vertical gap="none" align="stretch">
-        <div
-          className="px-2" // Otherwise, padding do not match figma and we can't alter Page's padding
-        >
-          <div className="flex w-full justify-end py-4">
-            <Button
-              variant="tertiary"
-              label="Select all visible"
-              icon={ListCheckIcon}
-              onClick={() => {
-                document
-                  .querySelectorAll<HTMLInputElement>(
-                    '#dataSourceViewsSelector div.is-collapsed label > input[type="checkbox"]:first-child'
-                  )
-                  .forEach((el) => {
-                    if (!el.checked) {
-                      el.click();
-                    }
-                  });
-              }}
-            />
-          </div>
-          <div id="dataSourceViewsSelector">
-            <DataSourceViewsSelector
-              dataSourceViews={supportedDataSourceViewsForViewType}
-              allowedVaults={allowedVaults}
-              owner={owner}
-              selectionConfigurations={selectionConfigurations}
-              setSelectionConfigurations={setSelectionConfigurationsCallback}
-              viewType={viewType}
-            />
-          </div>
+      <div
+        className="flex shrink flex-col overflow-hidden px-2" // Otherwise, padding do not match figma and we can't alter Page's padding
+      >
+        <div className="flex w-full justify-end py-4">
+          <Button
+            variant="tertiary"
+            label="Select all visible"
+            icon={ListCheckIcon}
+            onClick={() => {
+              document
+                .querySelectorAll<HTMLInputElement>(
+                  '#dataSourceViewsSelector div.is-collapsed label > input[type="checkbox"]:first-child'
+                )
+                .forEach((el) => {
+                  if (!el.checked) {
+                    el.click();
+                  }
+                });
+            }}
+          />
         </div>
-      </Page.Vertical>
+        <div
+          id="dataSourceViewsSelector"
+          className="overflow-y-auto scrollbar-hide"
+        >
+          <DataSourceViewsSelector
+            dataSourceViews={supportedDataSourceViewsForViewType}
+            allowedVaults={allowedVaults}
+            owner={owner}
+            selectionConfigurations={selectionConfigurations}
+            setSelectionConfigurations={setSelectionConfigurationsCallback}
+            viewType={viewType}
+          />
+        </div>
+      </div>
     </Modal>
   );
 }

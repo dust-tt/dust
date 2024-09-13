@@ -392,7 +392,7 @@ function getTableColumns() {
       accessorFn: (row: RowData) =>
         row.managedDataSource.connector?.lastSyncSuccessfulTime,
       meta: {
-        width: "12rem",
+        width: "14rem",
       },
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.CellContent className="pr-2">

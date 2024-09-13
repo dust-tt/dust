@@ -61,7 +61,7 @@ const MAX_PAGE_IDS_PER_CHILD_WORKFLOW = 100;
 
 const MAX_PENDING_UPSERT_ACTIVITIES = 5;
 
-const MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES = 5;
+const MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES = 3;
 
 // If set to true, the workflow will process all discovered resources until empty.
 const PROCESS_ALL_DISCOVERED_RESOURCES = false;
