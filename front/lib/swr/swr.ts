@@ -57,22 +57,27 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
     [tryMakeUrlWithoutParams, cache, globalMutate]
   );
 
+  const myMutateWhenDisabled = useCallback(() => {
+    mutateKeysWithSameUrl(key);
+    return globalMutate(key);
+  }, [key, mutateKeysWithSameUrl, globalMutate]);
+
+  const myMutate: typeof result.mutate = useCallback(
+    (...args) => {
+      mutateKeysWithSameUrl(key);
+      return result.mutate(...args);
+    },
+    [key, mutateKeysWithSameUrl, result]
+  );
+
   if (disabled) {
     // When disabled, as the key is null, the mutate function is not working
     // so we need to provide a custom mutate function that will work
     return {
       ...result,
-      mutate: () => {
-        mutateKeysWithSameUrl(key);
-        return globalMutate(key);
-      },
+      mutate: myMutateWhenDisabled,
     };
   } else {
-    const myMutate: typeof result.mutate = (...args) => {
-      mutateKeysWithSameUrl(key);
-      return result.mutate(...args);
-    };
-
     return {
       ...result,
       mutate: myMutate,
