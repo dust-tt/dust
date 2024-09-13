@@ -37,7 +37,7 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
 
 type DataSourceWithConnector = DataSourceType & {
-  connector: ConnectorType;
+  connector: ConnectorType | null;
 };
 
 type Info = {
@@ -108,7 +108,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         },
         "Connector not found"
       );
-      throw new Error("Connector not found");
+      // Not super clean but at least we don't crash the page.
+      return {
+        ...ds,
+        connector: null,
+      };
     }
     return {
       ...ds,
