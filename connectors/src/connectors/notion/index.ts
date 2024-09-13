@@ -604,12 +604,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     const memo = memoizationKey || uuidv4();
 
     try {
-      const parents = await getParents(
-        this.connectorId,
-        internalId,
-        new Set<string>(),
-        memo
-      );
+      const parents = await getParents(this.connectorId, internalId, [], memo);
 
       return new Ok(parents);
     } catch (e) {

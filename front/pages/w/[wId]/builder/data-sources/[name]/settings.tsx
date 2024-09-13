@@ -276,6 +276,7 @@ function StandardDataSourceSettings({
               }}
             />
             <DeleteStaticDataSourceDialog
+              dataSource={dataSource}
               handleDelete={handleDelete}
               isOpen={isDeleteModalOpen}
               onClose={() => setIsDeleteModalOpen(false)}

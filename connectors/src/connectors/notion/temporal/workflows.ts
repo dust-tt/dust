@@ -236,36 +236,34 @@ export async function notionSyncWorkflow({
       // Find the resources not seen in the GC run
 
       // Create batches of resources to check, by chunk of 100
-      const batches = await createResourcesNotSeenInGarbageCollectionRunBatches(
-        {
+      const nbOfBatches =
+        await createResourcesNotSeenInGarbageCollectionRunBatches({
           connectorId,
           batchSize: 100,
-        }
-      );
+        });
 
       // For each chunk, run a garbage collection activity
       const queue = new PQueue({
         concurrency: MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES,
       });
       const promises: Promise<void>[] = [];
-      batches.forEach((batch, batchIndex) => {
+      for (let batchIndex = 0; batchIndex < nbOfBatches; batchIndex++) {
         promises.push(
           queue.add(async () =>
             garbageCollectBatch({
               connectorId,
               runTimestamp,
-              batch,
               batchIndex,
               startTs: new Date().getTime(),
             })
           )
         );
-      });
+      }
 
       await Promise.all(promises);
 
       // Once done, clear all the redis keys used for garbage collection
-      await completeGarbageCollectionRun(connectorId);
+      await completeGarbageCollectionRun(connectorId, nbOfBatches);
     }
 
     iterations += 1;

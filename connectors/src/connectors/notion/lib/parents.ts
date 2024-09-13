@@ -27,11 +27,10 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 async function _getParents(
   connectorId: ModelId,
   pageOrDbId: string,
-  seen: Set<string>,
+  seen: string[],
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
   memoizationKey?: string
 ): Promise<string[]> {
-  logger.info({ connectorId, pageOrDbId }, "getParents");
   const parents: string[] = [pageOrDbId];
   const pageOrDb =
     (await getNotionPageFromConnectorsDb(connectorId, pageOrDbId)) ||
@@ -60,7 +59,7 @@ async function _getParents(
       return parents;
     case "page":
     case "database": {
-      if (seen.has(pageOrDbId)) {
+      if (seen.includes(pageOrDbId)) {
         logger.error(
           {
             connectorId,
@@ -70,9 +69,9 @@ async function _getParents(
           },
           "getParents infinite loop"
         );
-        throw new Error("getParent infinite loop detected");
+        return parents.concat(seen);
       }
-      seen.add(pageOrDbId);
+      seen.push(pageOrDbId);
       if (!pageOrDb.parentId) {
         logger.error(
           {
@@ -144,7 +143,7 @@ export async function updateAllParentsFields(
         const parents = await getParents(
           connectorId,
           pageId,
-          new Set(),
+          [],
           memoizationKey
         );
         logger.info(

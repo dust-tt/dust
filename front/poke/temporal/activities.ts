@@ -15,8 +15,6 @@ import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import {
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
-  RetrievalDocument,
-  RetrievalDocumentChunk,
 } from "@app/lib/models/assistant/actions/retrieval";
 import {
   AgentTablesQueryAction,

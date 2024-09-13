@@ -86,7 +86,6 @@ export default function AssistantBuilderDataSourceModal({
         >
           <div className="flex w-full justify-end py-4">
             <Button
-              className="mr-3" // Otherwise, it's clipped by the "Page"
               variant="tertiary"
               label="Select all visible"
               icon={ListCheckIcon}

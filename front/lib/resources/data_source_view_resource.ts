@@ -2,6 +2,7 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 import type {
+  DataSourceViewCategory,
   DataSourceViewKind,
   DataSourceViewType,
   ModelId,
@@ -17,8 +18,8 @@ import type {
 import { Op } from "sequelize";
 
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
-import { getDataSourceCategory } from "@app/lib/api/vaults";
 import type { Authenticator } from "@app/lib/auth";
+import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { User } from "@app/lib/models/user";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
@@ -31,6 +32,20 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
+
+const getDataSourceCategory = (
+  dataSourceResource: DataSourceResource
+): DataSourceViewCategory => {
+  if (isFolder(dataSourceResource)) {
+    return "folder";
+  }
+
+  if (isWebsite(dataSourceResource)) {
+    return "website";
+  }
+
+  return "managed";
+};
 
 export type FetchDataSourceViewOptions = {
   includeEditedBy?: boolean;
@@ -409,6 +424,14 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       usage: 0,
       vaultId: this.vault.sId,
       ...this.makeEditedBy(this.editedByUser, this.editedAt),
+    };
+  }
+
+  toTraceJSON() {
+    return {
+      id: this.id,
+      sId: this.sId,
+      kind: this.kind,
     };
   }
 

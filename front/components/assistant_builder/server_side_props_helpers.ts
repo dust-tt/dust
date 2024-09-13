@@ -34,6 +34,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
+import logger from "@app/logger/logger";
 
 export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
   const accessibleVaults = (
@@ -223,7 +224,27 @@ async function renderDataSourcesConfigurations(
       );
 
       if (contentNodesRes.isErr()) {
-        throw contentNodesRes.error;
+        logger.error(
+          {
+            action: {
+              id: action.id,
+              type: action.type,
+            },
+            dataSourceView: dataSourceView.toTraceJSON(),
+            error: contentNodesRes.error,
+            internalIds: sr.resources,
+            workspace: {
+              id: dataSourceView.workspaceId,
+            },
+          },
+          "Assistant Builder: Error fetching content nodes for documents."
+        );
+
+        return {
+          dataSourceView: serializedDataSourceView,
+          selectedResources: [],
+          isSelectAll: sr.isSelectAll,
+        };
       }
 
       return {
@@ -280,7 +301,27 @@ async function renderTableDataSourcesConfigurations(
         );
 
         if (contentNodesRes.isErr()) {
-          throw contentNodesRes.error;
+          logger.error(
+            {
+              action: {
+                id: action.id,
+                type: action.type,
+              },
+              dataSourceView: dataSourceView.toTraceJSON(),
+              error: contentNodesRes.error,
+              internalIds: sr.resources,
+              workspace: {
+                id: dataSourceView.workspaceId,
+              },
+            },
+            "Assistant Builder: Error fetching content nodes for tables."
+          );
+
+          return {
+            dataSourceView: serializedDataSourceView,
+            selectedResources: [],
+            isSelectAll: sr.isSelectAll,
+          };
         }
 
         return {

@@ -308,7 +308,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     await AgentTablesQueryConfigurationTable.destroy({
       where: {
         dataSourceWorkspaceId: auth.getNonNullableWorkspace().sId,
-        dataSourceId: this.id,
+        dataSourceId: this.name,
       },
     });
 
@@ -317,7 +317,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
     await DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        dataSourceId: this.id.toString(),
+        dataSourceId: this.id,
       },
       transaction,
     });

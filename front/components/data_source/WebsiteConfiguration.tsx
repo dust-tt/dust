@@ -529,12 +529,15 @@ export default function WebsiteConfiguration({
                   setIsDeleteModalOpen(true);
                 }}
               />
-              <DeleteStaticDataSourceDialog
-                handleDelete={handleDelete}
-                isOpen={isDeleteModalOpen}
-                onClose={() => setIsDeleteModalOpen(false)}
-                dataSourceUsage={dataSourceUsage ?? 0}
-              />
+              {dataSource && (
+                <DeleteStaticDataSourceDialog
+                  dataSource={dataSource}
+                  handleDelete={handleDelete}
+                  isOpen={isDeleteModalOpen}
+                  onClose={() => setIsDeleteModalOpen(false)}
+                  dataSourceUsage={dataSourceUsage ?? 0}
+                />
+              )}
             </div>
           )}
         </Page.Layout>

@@ -1,5 +1,6 @@
 import {
   Button,
+  Cog6ToothIcon,
   DataTable,
   DropdownMenu,
   Searchbar,
@@ -18,9 +19,11 @@ import type {
 } from "@dust-tt/types";
 import { isValidContentNodesViewType } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { useRouter } from "next/router";
 import { useMemo, useRef, useState } from "react";
 
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
+import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import type {
   ContentActionKey,
   ContentActionsRef,
@@ -37,7 +40,7 @@ import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
-import { useVaults } from "@app/lib/swr/vaults";
+import { useSystemVault, useVaults } from "@app/lib/swr/vaults";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 type RowData = DataSourceViewContentNode & {
@@ -134,7 +137,7 @@ export const VaultDataSourceViewContentList = ({
     urlPrefix: "table",
   });
   const [viewType, setViewType] = useHashParam("viewType", "documents");
-
+  const router = useRouter();
   const showVaultUsage =
     dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource);
   const { vaults } = useVaults({
@@ -143,6 +146,10 @@ export const VaultDataSourceViewContentList = ({
   });
   const { dataSourceViews } = useDataSourceViews(owner, {
     disabled: !showVaultUsage,
+  });
+
+  const { systemVault } = useSystemVault({
+    workspaceId: owner.sId,
   });
 
   const handleViewTypeChange = (newViewType: ContentNodesViewType) => {
@@ -220,6 +227,30 @@ export const VaultDataSourceViewContentList = ({
     );
   }
 
+  const emptyVaultContent =
+    vault.kind !== "system" ? (
+      isAdmin ? (
+        <Button
+          label="Manage Data"
+          icon={Cog6ToothIcon}
+          onClick={() => {
+            if (systemVault) {
+              void router.push(
+                `/w/${owner.sId}/vaults/${systemVault.sId}/categories/${dataSourceView.category}`
+              );
+            }
+          }}
+        />
+      ) : (
+        <RequestDataSourceModal
+          dataSources={[dataSourceView.dataSource]}
+          owner={owner}
+        />
+      )
+    ) : (
+      <></>
+    );
+
   return (
     <>
       <div
@@ -242,7 +273,7 @@ export const VaultDataSourceViewContentList = ({
             />
           </>
         ) : (
-          <></>
+          emptyVaultContent
         )}
         {isFolder(dataSourceView.dataSource) && (
           <>

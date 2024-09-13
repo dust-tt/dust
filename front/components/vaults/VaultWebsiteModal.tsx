@@ -623,11 +623,14 @@ export default function VaultWebsiteModal({
                         setIsDeleteModalOpen(true);
                       }}
                     />
-                    <DeleteStaticDataSourceDialog
-                      handleDelete={handleDelete}
-                      isOpen={isDeleteModalOpen}
-                      onClose={() => setIsDeleteModalOpen(false)}
-                    />
+                    {dataSourceView && (
+                      <DeleteStaticDataSourceDialog
+                        dataSource={dataSourceView?.dataSource}
+                        handleDelete={handleDelete}
+                        isOpen={isDeleteModalOpen}
+                        onClose={() => setIsDeleteModalOpen(false)}
+                      />
+                    )}
                   </>
                 )}
               </div>
