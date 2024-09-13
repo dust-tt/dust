@@ -49,9 +49,6 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
         for (const k of cache.keys()) {
           const kAsUrl = tryMakeUrlWithoutParams(k as TKey);
           if (kAsUrl === keyAsUrl && k !== key) {
-            console.log(
-              `Mutating sibbling key ${k} because same url base (${kAsUrl}) than ${key} with url base ${keyAsUrl}`
-            );
             void globalMutate<TData>(k);
           }
         }
@@ -67,15 +64,13 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
       ...result,
       mutate: () => {
         mutateKeysWithSameUrl(key);
-        console.log("[Disabled] Finally mutating key", key);
         return globalMutate(key);
       },
     };
   } else {
-    const myMutate: typeof result.mutate = (data, opts) => {
+    const myMutate: typeof result.mutate = (...args) => {
       mutateKeysWithSameUrl(key);
-      console.log("[Enabled] Finally mutating key", key);
-      return result.mutate(data, opts);
+      return result.mutate(...args);
     };
 
     return {
