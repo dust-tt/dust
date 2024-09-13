@@ -79,7 +79,6 @@ export default function AssistantBuilderDataSourceModal({
       hasChanged={hasChanged}
       variant="side-md"
       title="Manage data sources selection"
-      className="overflow-visible" // overflow-visible is needed to avoid clipping the select all button
     >
       <Page.Vertical gap="none" align="stretch">
         <div
