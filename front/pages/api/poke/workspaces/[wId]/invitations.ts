@@ -157,7 +157,7 @@ async function handler(
         });
       }
 
-      await updateInvitationStatusAndRole(auth, {
+      await updateInvitationStatusAndRole(workspaceAdminAuth, {
         invitation,
         status: "revoked",
         role: invitation.initialRole,
