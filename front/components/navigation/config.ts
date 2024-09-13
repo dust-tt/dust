@@ -122,7 +122,7 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
       ].includes(currentRoute),
   });
 
-  if (isBuilder(owner)) {
+  if (isBuilder(owner) && !owner.flags.includes("data_vaults_feature")) {
     nav.push({
       id: "assistants",
       label: "Build",
