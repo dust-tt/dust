@@ -227,7 +227,7 @@ export function CreateOrEditVaultModal({
       onSave={onSave}
     >
       <Page.Vertical gap="md" sizing="grow">
-        <div className="flex w-full flex-col gap-y-4">
+        <div className="flex w-full flex-col gap-y-4 overflow-y-hidden">
           <div className="mb-4 flex w-full flex-col gap-y-2 pt-2">
             <Page.SectionHeader title="Name" />
             <Input
@@ -246,7 +246,7 @@ export function CreateOrEditVaultModal({
               </div>
             )}
           </div>
-          <div className="flex w-full grow flex-col gap-y-2 border-t pt-2">
+          <div className="flex w-full grow flex-col gap-y-2 overflow-y-hidden border-t pt-2">
             <Page.SectionHeader title="Vault members" />
             <div className="flex w-full">
               <Searchbar
@@ -261,7 +261,7 @@ export function CreateOrEditVaultModal({
                 <Spinner size="lg" variant="color" />
               </div>
             ) : (
-              <div className="flex grow flex-col overflow-y-auto">
+              <div className="flex grow flex-col overflow-y-auto scrollbar-hide">
                 <DataTable
                   data={rows}
                   columns={columns}
