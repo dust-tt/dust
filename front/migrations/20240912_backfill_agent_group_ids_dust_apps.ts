@@ -26,7 +26,7 @@ makeScript({}, async ({ execute }, logger) => {
   });
   const groupIdsByVaultId = mapValues(
     groupBy(groupVaults, "vaultId"),
-    (groupVaults) => groupVaults.map((groupVault) => groupVault.groupId).flat()
+    (groupVaults) => groupVaults.map((groupVault) => groupVault.groupId)
   );
   const dustAppIdsByAgentConfigId = mapValues(
     groupBy(allDustAppRunConfigs, "agentConfigurationId"),
@@ -36,7 +36,9 @@ makeScript({}, async ({ execute }, logger) => {
 
   const affectedAgents = await AgentConfiguration.findAll({
     where: {
-      id: allDustAppRunConfigs.map((config) => config.agentConfigurationId),
+      id: uniq(
+        allDustAppRunConfigs.map((config) => config.agentConfigurationId)
+      ),
     },
   });
 
