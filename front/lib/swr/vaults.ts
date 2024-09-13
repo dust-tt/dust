@@ -166,7 +166,7 @@ export function useCreateFolder({
 
   // TODO(GROUPS_INFRA) - Ideally, it should be a DataSourceViewType
   const doCreate = async (name: string | null, description: string | null) => {
-    if (!name || !description) {
+    if (!name) {
       return null;
     }
 
