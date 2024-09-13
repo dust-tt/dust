@@ -470,7 +470,7 @@ export function ConnectorPermissionsModal({
         className="flex"
         variant="side-md"
       >
-        <div className="mx-auto mt-4 flex max-w-4xl flex-col gap-4">
+        <div className="mx-auto mt-4 flex max-w-4xl grow flex-col gap-4">
           <div className="flex">
             <Button
               className="ml-auto justify-self-end"
