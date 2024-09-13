@@ -2,14 +2,14 @@ import { Button, RocketIcon } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 import React, { useState } from "react";
 
-import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
-import { Grid } from "@app/components/home/ContentComponents";
-import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
-import LandingLayout from "@app/components/home/LandingLayout";
+import { HeaderContentBlock } from "@app/pages/site/components/ContentBlocks";
+import { Grid } from "@app/pages/site/components/ContentComponents";
+import type { LandingLayoutProps } from "@app/pages/site/components/LandingLayout";
+import LandingLayout from "@app/pages/site/components/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
-} from "@app/components/home/Particles";
+} from "@app/pages/site/components/Particles";
 import { PricePlans } from "@app/components/plans/PlansTables";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 

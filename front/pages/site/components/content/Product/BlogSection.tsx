@@ -6,9 +6,9 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@app/components/home/Carousel";
-import { BlogBlock } from "@app/components/home/ContentBlocks";
-import { Grid, H2, P } from "@app/components/home/ContentComponents";
+} from "@app/pages/site/components/Carousel";
+import { BlogBlock } from "@app/pages/site/components/ContentBlocks";
+import { Grid, H2, P } from "@app/pages/site/components/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 export function BlogSection() {

@@ -5,14 +5,19 @@ import React from "react";
 import {
   HeaderContentBlock,
   ImgBlock,
-} from "@app/components/home/ContentBlocks";
-import { A, Grid, P, Strong } from "@app/components/home/ContentComponents";
-import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
-import LandingLayout from "@app/components/home/LandingLayout";
+} from "@app/pages/site/components/ContentBlocks";
+import {
+  A,
+  Grid,
+  P,
+  Strong,
+} from "@app/pages/site/components/ContentComponents";
+import type { LandingLayoutProps } from "@app/pages/site/components/LandingLayout";
+import LandingLayout from "@app/pages/site/components/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
-} from "@app/components/home/Particles";
+} from "@app/pages/site/components/Particles";
 import { classNames } from "@app/lib/utils";
 
 export async function getServerSideProps() {

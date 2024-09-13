@@ -6,8 +6,8 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@app/components/home/Carousel";
-import { Grid, H2 } from "@app/components/home/ContentComponents";
+} from "@app/pages/site/components/Carousel";
+import { Grid, H2 } from "@app/pages/site/components/ContentComponents";
 import { classNames } from "@app/lib/utils";
 import { CustomerCaroussel } from "@app/pages/site/solutions/customer-support";
 import { DataCaroussel } from "@app/pages/site/solutions/data-analytics";

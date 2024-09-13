@@ -1,13 +1,13 @@
 import type { ReactElement } from "react";
 import React from "react";
 
-import { BlogSection } from "@app/components/home/content/Product/BlogSection";
-import { FutureSection } from "@app/components/home/content/Product/FutureSection";
-import { IntroSection } from "@app/components/home/content/Product/IntroSection";
-import { TeamSection } from "@app/components/home/content/Product/TeamSection";
-import { VerticalSection } from "@app/components/home/content/Product/VerticalSection";
-import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
-import LandingLayout from "@app/components/home/LandingLayout";
+import { BlogSection } from "@app/pages/site/components/content/Product/BlogSection";
+import { FutureSection } from "@app/pages/site/components/content/Product/FutureSection";
+import { IntroSection } from "@app/pages/site/components/content/Product/IntroSection";
+import { TeamSection } from "@app/pages/site/components/content/Product/TeamSection";
+import { VerticalSection } from "@app/pages/site/components/content/Product/VerticalSection";
+import type { LandingLayoutProps } from "@app/pages/site/components/LandingLayout";
+import LandingLayout from "@app/pages/site/components/LandingLayout";
 
 export async function getServerSideProps() {
   return {

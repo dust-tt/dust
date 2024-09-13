@@ -1,11 +1,11 @@
 import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import React from "react";
 
-import { Grid, H2, P } from "@app/components/home/ContentComponents";
+import { Grid, H2, P } from "@app/pages/site/components/ContentComponents";
 
 const defaultFlexClasses = "flex flex-col gap-8";
 
-import { ImgBlock } from "@app/components/home/ContentBlocks";
+import { ImgBlock } from "@app/pages/site/components/ContentBlocks";
 import { classNames } from "@app/lib/utils";
 
 export function TeamSection() {

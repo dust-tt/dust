@@ -15,7 +15,7 @@ import {
   H4,
   P,
   Strong,
-} from "@app/components/home/ContentComponents";
+} from "@app/pages/site/components/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
 const ResponsiveIframe = () => {

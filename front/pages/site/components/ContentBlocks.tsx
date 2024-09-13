@@ -9,7 +9,7 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@app/components/home/Carousel";
+} from "@app/pages/site/components/Carousel";
 import {
   Grid,
   H1,
@@ -17,9 +17,9 @@ import {
   H3,
   H5,
   P,
-} from "@app/components/home/ContentComponents";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
-import { SolutionSectionAssistantBlock } from "@app/components/home/SolutionSection";
+} from "@app/pages/site/components/ContentComponents";
+import type { SolutionSectionAssistantBlockProps } from "@app/pages/site/components/SolutionSection";
+import { SolutionSectionAssistantBlock } from "@app/pages/site/components/SolutionSection";
 import { classNames } from "@app/lib/utils";
 
 interface ImgBlockProps {
