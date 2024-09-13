@@ -162,13 +162,14 @@ export default function AppLayout({
               {titleChildren && SHOW_INCIDENT_BANNER && <IncidentBanner />}
             </div>
 
-            <div
-              className={classNames(
-                "flex h-[calc(100%-5rem)] w-full flex-col",
-                isWideMode ? "items-center" : "max-w-4xl"
+            <div className="flex h-[calc(100%-5rem)] w-full flex-col items-center px-6">
+              {isWideMode ? (
+                loaded && children
+              ) : (
+                <div className="flex w-full max-w-4xl grow flex-col">
+                  {loaded && children}
+                </div>
               )}
-            >
-              {loaded && children}
             </div>
           </main>
         </div>
