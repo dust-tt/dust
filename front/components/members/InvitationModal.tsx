@@ -88,14 +88,19 @@ export function InviteEmailModal({
 
     const invitesByCase = {
       activeSameRole: existingMembers.filter(
-        (m) => m && m.role === invitationRole
+        (m) => m && m.workspaces[0].role === invitationRole
       ),
       activeDifferentRole: existingMembers.filter(
-        (m) => m && m.role !== invitationRole && m.role !== "none"
+        (m) =>
+          m &&
+          m.workspaces[0].role !== invitationRole &&
+          m.workspaces[0].role !== "none"
       ),
       notInWorkspace: inviteEmailsList.filter(
-        (_, index) =>
-          !existingMembers[index] || existingMembers[index].role === "none"
+        (m) =>
+          existingMembers.find((x) => x.email === m) ||
+          existingMembers.find((x) => x.email === m).workspaces[0].role ===
+            "none"
       ),
     };
 

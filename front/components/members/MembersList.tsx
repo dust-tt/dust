@@ -17,7 +17,6 @@ import React, { useMemo, useState } from "react";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
-import { useMembers } from "@app/lib/swr/memberships";
 import { useSearchMembers } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 
@@ -67,7 +66,6 @@ export function MembersList({
     pagination.pageIndex,
     pagination.pageSize
   );
-  const { members: allMembers } = useMembers(owner);
 
   const columns = [
     {
@@ -121,10 +119,16 @@ export function MembersList({
   ];
 
   const rows = useMemo(() => {
-    return getTableRows(members, (user: UserTypeWithWorkspaces | null) => {
-      setSelectedMember(user);
-    });
-  }, [allMembers, members]);
+    const filteredMembers = members.filter(
+      (m) => m.workspaces[0].role !== "none"
+    );
+    return getTableRows(
+      filteredMembers,
+      (user: UserTypeWithWorkspaces | null) => {
+        setSelectedMember(user);
+      }
+    );
+  }, [members]);
 
   return (
     <div className="flex flex-col gap-2">
