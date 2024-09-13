@@ -364,7 +364,7 @@ export const VaultResourcesList = ({
                   (v) => v.dataSource
                 )}
                 setIsProviderLoading={(provider, isLoading) => {
-                  setIsNewConnectorLoading(true);
+                  setIsNewConnectorLoading(isLoading);
                   setIsLoadingByProvider((prev) => ({
                     ...prev,
                     [provider]: isLoading,
