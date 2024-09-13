@@ -1,4 +1,5 @@
 import { groupBy, keyBy, mapValues, uniq } from "lodash";
+import { Op } from "sequelize";
 
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -39,6 +40,9 @@ makeScript({}, async ({ execute }, logger) => {
       id: uniq(
         allDustAppRunConfigs.map((config) => config.agentConfigurationId)
       ),
+      status: {
+        [Op.not]: "draft",
+      },
     },
   });
 
