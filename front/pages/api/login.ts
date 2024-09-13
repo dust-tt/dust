@@ -31,6 +31,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
+import logger from "@app/logger/logger";
 
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
 // all the checks (decoding the JWT) have been run before. Simply create the membership if
@@ -48,6 +49,15 @@ async function handleMembershipInvite(
   >
 > {
   if (membershipInvite.inviteEmail.toLowerCase() !== user.email.toLowerCase()) {
+    logger.error(
+      {
+        inviteEmail: membershipInvite.inviteEmail,
+        workspaceId: membershipInvite.workspaceId,
+        user: user.toJSON(),
+      },
+      "Invitation token email mismatch"
+    );
+
     return new Err(
       new AuthFlowError(
         "invitation_token_email_mismatch",
