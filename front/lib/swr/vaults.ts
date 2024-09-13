@@ -149,7 +149,6 @@ export function useVaultDataSourceViews<
 }
 
 // Convenient hooks for creating, updating and deleting folders, handle mutations and notifications
-
 export function useCreateFolder({
   owner,
   vaultId,
@@ -465,4 +464,27 @@ export function useDeleteVault({ owner }: { owner: LightWorkspaceType }) {
   };
 
   return doDelete;
+}
+
+export function useSystemVault({
+  workspaceId,
+  disabled = false,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const systemVaultFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/vaults?role=admin&kind=system`,
+    systemVaultFetcher,
+    { disabled }
+  );
+
+  return {
+    systemVault: data ? data.vaults[0] : null,
+    isSystemVaultLoading: !error && !data && !disabled,
+    isSystemVaultError: error,
+    mutateSystemVault: mutate,
+  };
 }
