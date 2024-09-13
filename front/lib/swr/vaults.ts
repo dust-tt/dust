@@ -481,12 +481,8 @@ export function useSystemVault({
     { disabled }
   );
 
-  if (!data) {
-    return null;
-  }
-
   return {
-    systemVault: data.vaults[0],
+    systemVault: data ? data.vaults[0] : null,
     isSystemVaultLoading: !error && !data && !disabled,
     isSystemVaultError: error,
     mutateSystemVault: mutate,
