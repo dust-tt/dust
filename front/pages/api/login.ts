@@ -47,7 +47,7 @@ async function handleMembershipInvite(
     AuthFlowError | SSOEnforcedError
   >
 > {
-  if (membershipInvite.inviteEmail !== user.email) {
+  if (membershipInvite.inviteEmail.toLowerCase() !== user.email.toLowerCase()) {
     return new Err(
       new AuthFlowError(
         "invitation_token_email_mismatch",
