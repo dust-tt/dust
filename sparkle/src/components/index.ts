@@ -31,6 +31,7 @@ export { Input } from "./Input";
 export { Item } from "./Item";
 export { Markdown } from "./Markdown";
 export { Modal } from "./Modal";
+export { NewButton } from "./NewButton";
 export { Notification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
