@@ -120,6 +120,7 @@ apply_deployment front-qa-deployment
 apply_deployment connectors-deployment
 apply_deployment connectors-worker-deployment
 apply_deployment connectors-worker-notion-deployment
+apply_deployment connectors-worker-notion-gc-deployment
 apply_deployment connectors-worker-webcrawler-deployment
 apply_deployment connectors-worker-google-drive-deployment
 apply_deployment metabase-deployment

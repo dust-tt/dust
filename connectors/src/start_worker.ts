@@ -10,20 +10,27 @@ import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/
 import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runGoogleWorkers } from "./connectors/google_drive/temporal/worker";
 import { runIntercomWorker } from "./connectors/intercom/temporal/worker";
-import { runNotionWorker } from "./connectors/notion/temporal/worker";
+import {
+  runNotionGarbageCollectWorker,
+  runNotionWorker,
+} from "./connectors/notion/temporal/worker";
 import { runSlackWorker } from "./connectors/slack/temporal/worker";
 import { errorFromAny } from "./lib/error";
 import logger from "./logger/logger";
 
 setupGlobalErrorHandler(logger);
 
-const workerFunctions: Record<ConnectorProvider, () => Promise<void>> = {
+const workerFunctions: Record<
+  ConnectorProvider | "notion_garbage_collector",
+  () => Promise<void>
+> = {
   confluence: runConfluenceWorker,
   github: runGithubWorker,
   google_drive: runGoogleWorkers,
   intercom: runIntercomWorker,
   microsoft: runMicrosoftWorker,
   notion: runNotionWorker,
+  notion_garbage_collector: runNotionGarbageCollectWorker,
   slack: runSlackWorker,
   webcrawler: runWebCrawlerWorker,
 };
