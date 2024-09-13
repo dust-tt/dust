@@ -51,7 +51,7 @@ async function handler(
       const paginationRes = getPaginationParams(req, {
         defaultLimit: DEFAULT_PAGE_LIMIT,
         defaultOrderColumn: orderBy || "name",
-        defaultOrderDirection: "desc",
+        defaultOrderDirection: "asc",
         supportedOrderColumn: ["name"],
       });
 
