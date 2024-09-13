@@ -140,19 +140,6 @@ export function CreateConnectionConfirmationModal({
                       : "Connect"
                 }
               />
-              {connectorProviderConfiguration.guideLink && (
-                <a
-                  href={connectorProviderConfiguration.guideLink}
-                  target="_blank"
-                >
-                  <Button
-                    label="Read our guide"
-                    size="md"
-                    variant="tertiary"
-                    icon={BookOpenIcon}
-                  />
-                </a>
-              )}
             </Button.List>
           </div>
         </Page.Vertical>
