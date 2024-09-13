@@ -180,7 +180,7 @@ export function EditVaultManagedDataSourcesViews({
       </div>
     );
   }
-  return (
+  return isAdmin ? (
     <>
       <VaultManagedDataSourcesViewsModal
         vault={vault}
@@ -213,26 +213,24 @@ export function EditVaultManagedDataSourcesViews({
       >
         <p>You have no connection set up.</p>
       </Dialog>
-      {isAdmin ? (
-        <Button
-          label="Add data from connections"
-          variant="primary"
-          icon={PlusIcon}
-          size="sm"
-          onClick={() => {
-            if (systemVaultDataSourceViews.length === 0) {
-              setShowNoConnectionDialog(true);
-            } else {
-              setShowDataSourcesModal(true);
-            }
-          }}
-        />
-      ) : (
-        <RequestDataSourceModal
-          dataSources={vaultDataSourceViews.map((view) => view.dataSource)}
-          owner={owner}
-        />
-      )}
+      <Button
+        label="Add data from connections"
+        variant="primary"
+        icon={PlusIcon}
+        size="sm"
+        onClick={() => {
+          if (systemVaultDataSourceViews.length === 0) {
+            setShowNoConnectionDialog(true);
+          } else {
+            setShowDataSourcesModal(true);
+          }
+        }}
+      />
     </>
+  ) : (
+    <RequestDataSourceModal
+      dataSources={vaultDataSourceViews.map((view) => view.dataSource)}
+      owner={owner}
+    />
   );
 }
