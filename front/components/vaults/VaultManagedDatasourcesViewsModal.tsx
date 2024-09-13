@@ -14,7 +14,7 @@ import { useMultipleDataSourceViewsContentNodes } from "@app/lib/swr/data_source
 export default function VaultManagedDataSourcesViewsModal({
   vault,
   isOpen,
-  setOpen,
+  onClose,
   owner,
   systemVaultDataSourceViews,
   onSave,
@@ -22,7 +22,7 @@ export default function VaultManagedDataSourcesViewsModal({
 }: {
   vault: VaultType;
   isOpen: boolean;
-  setOpen: (isOpen: boolean) => void;
+  onClose: () => void;
   owner: WorkspaceType;
   systemVaultDataSourceViews: DataSourceViewType[];
   onSave: (
@@ -94,12 +94,10 @@ export default function VaultManagedDataSourcesViewsModal({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={() => {
-        setOpen(false);
-      }}
+      onClose={onClose}
       onSave={() => {
         onSave(selectionConfigurations);
-        setOpen(false);
+        onClose();
       }}
       hasChanged={hasChanged}
       variant="side-md"
