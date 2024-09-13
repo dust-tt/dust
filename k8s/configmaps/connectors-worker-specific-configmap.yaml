@@ -5,7 +5,7 @@ metadata:
 data:
   DD_ENV: "prod"
   DD_SERVICE: "connectors-worker"
-  NODE_OPTIONS: "-r dd-trace/init --max-old-space-size=3000"
+  NODE_OPTIONS: "-r dd-trace/init --max-old-space-size=3276"
   DD_LOGS_INJECTION: "true"
   DD_RUNTIME_METRICS_ENABLED: "true"
   NODE_ENV: "production"
