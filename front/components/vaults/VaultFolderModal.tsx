@@ -57,10 +57,8 @@ export default function VaultFolderModal({
 
   const [errors, setErrors] = useState<{
     name: string | null;
-    description: string | null;
   }>({
     name: null,
-    description: null,
   });
 
   useEffect(() => {
@@ -138,7 +136,6 @@ export default function VaultFolderModal({
 
   const onSave = async () => {
     let nameError: string | null = null;
-    let descriptionError: string | null = null;
 
     if (!name) {
       nameError = "Name is required.";
@@ -151,14 +148,9 @@ export default function VaultFolderModal({
       nameError = "A data source with this name already exists.";
     }
 
-    if (!description || description.trim() === "") {
-      descriptionError = "Description is required.";
-    }
-
-    if (nameError || descriptionError) {
+    if (nameError) {
       setErrors({
         name: nameError,
-        description: descriptionError,
       });
       return;
     }
