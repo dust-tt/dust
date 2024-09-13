@@ -34,13 +34,28 @@ export function CreateConnectionConfirmationModal({
   return (
     <Modal
       isOpen={isOpen}
-      title={`Connect ${connectorProviderConfiguration.name}`}
+      title="Connection Setup"
       onClose={onClose}
       hasChanged={false}
       variant="side-sm"
     >
       <div className="pt-8">
         <Page.Vertical gap="lg" align="stretch">
+          <Page.Header
+            title={`Connecting ${connectorProviderConfiguration.name}`}
+            icon={connectorProviderConfiguration.logoComponent}
+          />
+          <a
+            href={connectorProviderConfiguration.guideLink ?? ""}
+            target="_blank"
+          >
+            <Button
+              label="Read our guide"
+              size="xs"
+              variant="secondary"
+              icon={BookOpenIcon}
+            />
+          </a>
           <div className="flex flex-col gap-y-2">
             <div className="grow text-sm font-medium text-element-800">
               Important
