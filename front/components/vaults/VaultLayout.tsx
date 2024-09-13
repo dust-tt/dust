@@ -137,6 +137,10 @@ function VaultBreadCrumbs({
     ];
 
     if (vault.kind === "system") {
+      if (!dataSourceView) {
+        return [];
+      }
+
       // For system vault, we don't want the first breadcrumb to show, since
       // it's only used to manage "connected data" already. Otherwise it would
       // expose a useless link, and name would be redundant with the "Connected
