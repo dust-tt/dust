@@ -1,6 +1,7 @@
 import type {
   LightWorkspaceType,
   MembershipRoleType,
+  ModelId,
   RequireAtLeastOne,
   Result,
 } from "@dust-tt/types";
@@ -354,6 +355,19 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
 
     return new MembershipResource(MembershipModel, newMembership.get());
+  }
+
+  static async fetchByUserIds(
+    userIds: ModelId[]
+  ): Promise<MembershipResource[]> {
+    const membershipModels = await MembershipModel.findAll({
+      where: {
+        userId: userIds,
+      },
+    });
+    return membershipModels.map(
+      (m) => new MembershipResource(MembershipModel, m.get())
+    );
   }
 
   /**
