@@ -1,4 +1,4 @@
-import { Button, PlusIcon, Spinner } from "@dust-tt/sparkle";
+import { Button, Dialog, PlusIcon, Spinner } from "@dust-tt/sparkle";
 import type {
   APIError,
   DataSourceViewSelectionConfigurations,
@@ -6,6 +6,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
+import { useRouter } from "next/router";
 import React, { useState } from "react";
 
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -27,6 +28,8 @@ export function EditVaultManagedDataSourcesViews({
   const sendNotification = React.useContext(SendNotificationsContext);
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+  const [showNoConnectionDialog, setShowNoConnectionDialog] = useState(false);
+  const router = useRouter();
 
   // DataSources Views of the current vault.
   const {
@@ -177,14 +180,13 @@ export function EditVaultManagedDataSourcesViews({
       </div>
     );
   }
-
   return (
     <>
       <VaultManagedDataSourcesViewsModal
         vault={vault}
         isOpen={showDataSourcesModal}
-        setOpen={(isOpen) => {
-          setShowDataSourcesModal(isOpen);
+        onClose={() => {
+          setShowDataSourcesModal(false);
         }}
         owner={owner}
         systemVaultDataSourceViews={systemVaultDataSourceViews.filter(
@@ -197,7 +199,20 @@ export function EditVaultManagedDataSourcesViews({
         }}
         initialSelectedDataSources={vaultDataSourceViews}
       />
-
+      <Dialog
+        isOpen={showNoConnectionDialog}
+        onCancel={() => setShowNoConnectionDialog(false)}
+        cancelLabel="Close"
+        validateLabel="Go to connections management"
+        onValidate={() => {
+          void router.push(
+            `/w/${owner.sId}/vaults/${systemVault.sId}/categories/managed`
+          );
+        }}
+        title="No connection set up"
+      >
+        <p>You have no connection set up.</p>
+      </Dialog>
       {isAdmin ? (
         <Button
           label="Add data from connections"
@@ -205,7 +220,11 @@ export function EditVaultManagedDataSourcesViews({
           icon={PlusIcon}
           size="sm"
           onClick={() => {
-            setShowDataSourcesModal(true);
+            if (systemVaultDataSourceViews.length === 0) {
+              setShowNoConnectionDialog(true);
+            } else {
+              setShowDataSourcesModal(true);
+            }
           }}
         />
       ) : (
