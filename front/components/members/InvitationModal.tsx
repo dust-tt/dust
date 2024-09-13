@@ -98,8 +98,8 @@ export function InviteEmailModal({
       ),
       notInWorkspace: inviteEmailsList.filter(
         (m) =>
-          existingMembers.find((x) => x.email === m) ||
-          existingMembers.find((x) => x.email === m).workspaces[0].role ===
+          !existingMembers.find((x) => x.email === m) ||
+          existingMembers.find((x) => x.email === m)?.workspaces[0].role ===
             "none"
       ),
     };
