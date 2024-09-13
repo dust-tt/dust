@@ -7,7 +7,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
-  ActiveRoleType,
+  RoleType,
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -15,7 +15,7 @@ import type { CellContext, PaginationState } from "@tanstack/react-table";
 import _ from "lodash";
 import React, { useMemo, useState } from "react";
 
-import { ROLES_DATA } from "@app/components/members/Roles";
+import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import { useSearchMembers } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
@@ -25,7 +25,7 @@ type RowData = {
   name: string;
   userId: string;
   email: string;
-  role: ActiveRoleType;
+  role: RoleType;
   onClick: () => void;
 };
 
@@ -40,7 +40,7 @@ function getTableRows(
     name: user.fullName,
     userId: user.sId,
     email: user.email ?? "",
-    role: user.workspaces[0].role as ActiveRoleType,
+    role: user.workspaces[0].role,
     onClick: () => onClick(user),
   }));
 }
@@ -89,8 +89,12 @@ export function MembersList({
       cell: (info: Info) => (
         <DataTable.CellContent>
           <Chip
-            label={_.capitalize(info.row.original.role)}
-            color={ROLES_DATA[info.row.original.role]["color"]}
+            label={_.capitalize(displayRole(info.row.original.role))}
+            color={
+              info.row.original.role !== "none"
+                ? ROLES_DATA[info.row.original.role]["color"]
+                : undefined
+            }
           />
         </DataTable.CellContent>
       ),
