@@ -71,11 +71,20 @@ interface GetContentNodesForDataSourceViewResult {
   total: number;
 }
 
+const paginate = (
+  nodes: DataSourceViewContentNode[],
+  pagination?: OffsetPaginationParams
+) =>
+  pagination
+    ? nodes.slice(pagination.offset, pagination.offset + pagination.limit)
+    : nodes;
+
 export async function getContentNodesForManagedDataSourceView(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   {
     includeChildren,
     internalIds,
+    pagination,
     viewType,
   }: GetContentNodesForDataSourceViewParams
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
@@ -118,7 +127,7 @@ export async function getContentNodesForManagedDataSourceView(
     }
 
     return new Ok({
-      nodes: connectorsRes.value.resources,
+      nodes: paginate(connectorsRes.value.resources, pagination),
       // Connectors API does not support pagination yet, so the total is the length of the nodes.
       total: connectorsRes.value.resources.length,
     });
@@ -136,9 +145,8 @@ export async function getContentNodesForManagedDataSourceView(
         )
       );
     }
-
     return new Ok({
-      nodes: connectorsRes.value.nodes,
+      nodes: paginate(connectorsRes.value.nodes, pagination),
       // Connectors API does not support pagination yet, so the total is the length of the nodes.
       total: connectorsRes.value.nodes.length,
     });
