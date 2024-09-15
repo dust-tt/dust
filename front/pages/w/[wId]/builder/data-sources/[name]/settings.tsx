@@ -16,7 +16,6 @@ import { DeleteStaticDataSourceDialog } from "@app/components/data_source/Delete
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
-import config from "@app/lib/api/config";
 import { getDataSource } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { classNames } from "@app/lib/utils";
@@ -26,7 +25,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   dataSource: DataSourceType;
   fetchConnectorError?: boolean;
-  gaTrackingId: string;
   dataSourceUsage: number;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -55,7 +53,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       dataSource: dataSource.toJSON(),
-      gaTrackingId: config.getGaTrackingId(),
       dataSourceUsage: dataSourceUsageRes.isOk() ? dataSourceUsageRes.value : 0,
     },
   };
@@ -65,7 +62,6 @@ export default function DataSourceSettings({
   owner,
   subscription,
   dataSource,
-  gaTrackingId,
   dataSourceUsage,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -108,7 +104,6 @@ export default function DataSourceSettings({
         description: string;
         assistantDefaultSelected: boolean;
       }) => handleUpdate(settings)}
-      gaTrackingId={gaTrackingId}
       dataSourceUsage={dataSourceUsage}
     />
   );
@@ -119,7 +114,6 @@ function StandardDataSourceSettings({
   subscription,
   dataSource,
   handleUpdate,
-  gaTrackingId,
   dataSourceUsage,
 }: {
   owner: WorkspaceType;
@@ -129,7 +123,6 @@ function StandardDataSourceSettings({
     description: string;
     assistantDefaultSelected: boolean;
   }) => Promise<void>;
-  gaTrackingId: string;
   dataSourceUsage: number;
 }) {
   const { mutate } = useSWRConfig();
@@ -180,7 +173,6 @@ function StandardDataSourceSettings({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_static",
@@ -284,6 +276,7 @@ function StandardDataSourceSettings({
               }}
             />
             <DeleteStaticDataSourceDialog
+              dataSource={dataSource}
               handleDelete={handleDelete}
               isOpen={isDeleteModalOpen}
               onClose={() => setIsDeleteModalOpen(false)}

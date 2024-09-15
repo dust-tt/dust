@@ -16,7 +16,7 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { truncate } from "@dust-tt/types";
+import { removeNulls, truncate } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -55,7 +55,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   readOnly: boolean;
   dataSources: DataSourceWithConnector[];
-  gaTrackingId: string;
   dataSourcesUsage: DataSourcesUsageByAgent;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -97,25 +96,29 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     throw new Error("Failed to fetch connectors");
   }
 
-  const dataSources = websiteDataSources.map((ds) => {
+  const dataSourcesWithConnector = websiteDataSources.map((ds) => {
     const connector = connectorsRes.value.find((c) => c.id === ds.connectorId);
     if (!connector) {
       logger.error(
         {
+          panic: true, // This is a panic because we want to fix the data. This should never happen.
           workspaceId: owner.sId,
           connectorId: ds.connectorId,
           dataSourceName: ds.name,
+          dataSourceId: ds.id,
           connectorProvider: ds.connectorProvider,
         },
-        "Connector not found"
+        "Connector not found while we still have a data source."
       );
-      throw new Error("Connector not found");
+      return null;
     }
     return {
       ...ds,
       connector,
     };
   });
+
+  const dataSources = removeNulls(dataSourcesWithConnector);
 
   return {
     props: {
@@ -124,7 +127,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       readOnly,
       dataSources,
-      gaTrackingId: config.getGaTrackingId(),
       dataSourcesUsage,
     },
   };
@@ -136,7 +138,6 @@ export default function DataSourcesView({
   plan,
   readOnly,
   dataSources,
-  gaTrackingId,
   dataSourcesUsage,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -175,7 +176,6 @@ export default function DataSourcesView({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_url",
@@ -273,6 +273,9 @@ function getTableColumns() {
       header: "Used by",
       accessorKey: "usage",
       id: "usage",
+      meta: {
+        width: "6rem",
+      },
       cell: (info: Info) => (
         <DataTable.CellContent icon={RobotIcon}>
           {info.row.original.usage}
@@ -282,6 +285,9 @@ function getTableColumns() {
     {
       header: "Added by",
       id: "addedBy",
+      meta: {
+        width: "6rem",
+      },
       cell: (info: Info) => (
         <DataTable.CellContent
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
@@ -293,6 +299,9 @@ function getTableColumns() {
       header: "Last updated",
       accessorKey: "editedByUser.editedAt",
       id: "editedAt",
+      meta: {
+        width: "10rem",
+      },
       cell: (info: Info) => (
         <DataTable.CellContent>
           {info.row.original.editedByUser?.editedAt

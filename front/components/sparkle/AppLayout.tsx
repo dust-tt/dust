@@ -43,7 +43,6 @@ export default function AppLayout({
   hideSidebar = false,
   subNavigation,
   pageTitle,
-  gaTrackingId,
   navChildren,
   titleChildren,
   children,
@@ -54,7 +53,6 @@ export default function AppLayout({
   hideSidebar?: boolean;
   subNavigation?: SidebarNavigation[] | null;
   pageTitle?: string;
-  gaTrackingId: string;
   navChildren?: React.ReactNode;
   titleChildren?: React.ReactNode;
   children: React.ReactNode;
@@ -164,13 +162,14 @@ export default function AppLayout({
               {titleChildren && SHOW_INCIDENT_BANNER && <IncidentBanner />}
             </div>
 
-            <div
-              className={classNames(
-                "flex h-[calc(100%-5rem)] w-full flex-col",
-                isWideMode ? "items-center" : "max-w-4xl px-6"
+            <div className="flex h-[calc(100%-5rem)] w-full flex-col items-center px-6">
+              {isWideMode ? (
+                loaded && children
+              ) : (
+                <div className="flex w-full max-w-4xl grow flex-col">
+                  {loaded && children}
+                </div>
               )}
-            >
-              {loaded && children}
             </div>
           </main>
         </div>
@@ -182,7 +181,7 @@ export default function AppLayout({
       )}
       <>
         <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${gaTrackingId}`}
+          src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_TRACKING_ID}`}
           strategy="afterInteractive"
         />
         <Script id="google-analytics" strategy="afterInteractive">
@@ -191,7 +190,7 @@ export default function AppLayout({
           function gtag(){window.dataLayer.push(arguments);}
           gtag('js', new Date());
 
-          gtag('config', '${gaTrackingId}');
+          gtag('config', '${process.env.NEXT_PUBLIC_GA_TRACKING_ID}');
           `}
         </Script>
       </>

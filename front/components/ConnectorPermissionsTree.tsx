@@ -3,8 +3,8 @@ import {
   Button,
   ExternalLinkIcon,
   IconButton,
-  Input,
   ListCheckIcon,
+  Searchbar,
   Tooltip,
   Tree,
 } from "@dust-tt/sparkle";
@@ -66,6 +66,7 @@ interface PermissionTreeChildrenBaseProps {
   customIsNodeChecked?: (node: BaseContentNode) => boolean;
   displayDocumentSource?: (documentId: string) => void;
   onPermissionUpdate?: onPermissionUpdateType;
+  isRoundedBackground?: boolean;
   isSearchEnabled: boolean;
   owner: LightWorkspaceType;
   parentId: string | null;
@@ -139,6 +140,7 @@ export function DataSourcePermissionTreeChildren({
           {...props}
           // Disable search for children.
           isSearchEnabled={false}
+          isRoundedBackground={false}
         />
       )}
       {...props}
@@ -197,6 +199,7 @@ export function DataSourceViewPermissionTreeChildren({
           {...props}
           // Disable search for children.
           isSearchEnabled={false}
+          isRoundedBackground={false}
         />
       )}
       {...props}
@@ -222,6 +225,7 @@ function PermissionTreeChildren({
   isLoading,
   isNodeChecked,
   isSearchEnabled,
+  isRoundedBackground,
   nodes,
   onPermissionUpdate,
   parentIsSelected,
@@ -275,28 +279,117 @@ function PermissionTreeChildren({
     [isNodeChecked, parentIsSelected]
   );
 
+  const tree = (
+    <Tree isLoading={isLoading}>
+      {filteredNodes.map((n, i) => {
+        const isChecked = isNodeSelected(n, localStateByInternalId);
+
+        return (
+          <Tree.Item
+            key={n.internalId}
+            type={n.expandable ? "node" : "leaf"}
+            label={n.title}
+            visual={getVisualForContentNode(n)}
+            className="whitespace-nowrap"
+            checkbox={
+              n.preventSelection !== true &&
+              canUpdatePermissions &&
+              onPermissionUpdate
+                ? {
+                    disabled: parentIsSelected,
+                    checked: isChecked ? "checked" : "unchecked",
+                    onChange: (checked) => {
+                      setLocalStateByInternalId((prev) => ({
+                        ...prev,
+                        [n.internalId]: checked,
+                      }));
+                      onPermissionUpdate(n, {
+                        newPermission: checked
+                          ? selectedPermission
+                          : unselectedPermission,
+                      });
+                    },
+                  }
+                : undefined
+            }
+            actions={
+              <div className="mr-8 flex flex-row gap-2">
+                {n.lastUpdatedAt ? (
+                  <Tooltip
+                    contentChildren={
+                      <span>{new Date(n.lastUpdatedAt).toLocaleString()}</span>
+                    }
+                    position={i === 0 ? "below" : "above"}
+                  >
+                    <span className="text-xs text-gray-500">
+                      {timeAgoFrom(n.lastUpdatedAt)} ago
+                    </span>
+                  </Tooltip>
+                ) : null}
+                <IconButton
+                  size="xs"
+                  icon={ExternalLinkIcon}
+                  onClick={() => {
+                    if (n.sourceUrl) {
+                      window.open(n.sourceUrl, "_blank");
+                    }
+                  }}
+                  className={classNames(
+                    n.sourceUrl ? "" : "pointer-events-none opacity-0"
+                  )}
+                  disabled={!n.sourceUrl}
+                  variant="tertiary"
+                />
+                {displayDocumentSource && (
+                  <IconButton
+                    size="xs"
+                    icon={BracesIcon}
+                    onClick={() => {
+                      if (n.dustDocumentId) {
+                        displayDocumentSource(n.dustDocumentId);
+                      }
+                    }}
+                    className={classNames(
+                      n.dustDocumentId ? "" : "pointer-events-none opacity-0"
+                    )}
+                    disabled={!n.dustDocumentId}
+                    variant="tertiary"
+                  />
+                )}
+              </div>
+            }
+            renderTreeItems={() => {
+              const isParentNodeSelected = isNodeSelected(
+                n,
+                localStateByInternalId
+              );
+
+              return renderChildItem(n, { isParentNodeSelected });
+            }}
+          />
+        );
+      })}
+    </Tree>
+  );
+
   return (
     <>
       {isSearchEnabled && (
         <>
-          <div className="flex w-full flex-row">
-            <div className="w-5"></div>
-
-            <div className="mr-8 flex-grow p-1">
-              <Input
+          <div className="flex w-full flex-row items-center">
+            <div className="flex-grow p-1">
+              <Searchbar
                 placeholder="Search..."
                 value={search}
                 onChange={(v) => {
                   setSearch(v);
                   setSelectAllClicked(false);
                 }}
-                size="sm"
                 name="search"
               />
             </div>
-          </div>
-          <div className="flex w-full flex-row justify-end">
-            <div className="mr-8 p-1">
+
+            <div className="p-1">
               <Button
                 variant="tertiary"
                 size="sm"
@@ -327,98 +420,13 @@ function PermissionTreeChildren({
           </div>
         </>
       )}
-      <Tree isLoading={isLoading}>
-        {filteredNodes.map((n, i) => {
-          const isChecked = isNodeSelected(n, localStateByInternalId);
-
-          return (
-            <Tree.Item
-              key={n.internalId}
-              type={n.expandable ? "node" : "leaf"}
-              label={n.title}
-              visual={getVisualForContentNode(n)}
-              className="whitespace-nowrap"
-              checkbox={
-                n.preventSelection !== true &&
-                canUpdatePermissions &&
-                onPermissionUpdate
-                  ? {
-                      disabled: parentIsSelected,
-                      checked: isChecked ? "checked" : "unchecked",
-                      onChange: (checked) => {
-                        setLocalStateByInternalId((prev) => ({
-                          ...prev,
-                          [n.internalId]: checked,
-                        }));
-                        onPermissionUpdate(n, {
-                          newPermission: checked
-                            ? selectedPermission
-                            : unselectedPermission,
-                        });
-                      },
-                    }
-                  : undefined
-              }
-              actions={
-                <div className="mr-8 flex flex-row gap-2">
-                  {n.lastUpdatedAt ? (
-                    <Tooltip
-                      contentChildren={
-                        <span>
-                          {new Date(n.lastUpdatedAt).toLocaleString()}
-                        </span>
-                      }
-                      position={i === 0 ? "below" : "above"}
-                    >
-                      <span className="text-xs text-gray-500">
-                        {timeAgoFrom(n.lastUpdatedAt)} ago
-                      </span>
-                    </Tooltip>
-                  ) : null}
-                  <IconButton
-                    size="xs"
-                    icon={ExternalLinkIcon}
-                    onClick={() => {
-                      if (n.sourceUrl) {
-                        window.open(n.sourceUrl, "_blank");
-                      }
-                    }}
-                    className={classNames(
-                      n.sourceUrl ? "" : "pointer-events-none opacity-0"
-                    )}
-                    disabled={!n.sourceUrl}
-                    variant="tertiary"
-                  />
-                  {displayDocumentSource && (
-                    <IconButton
-                      size="xs"
-                      icon={BracesIcon}
-                      onClick={() => {
-                        if (n.dustDocumentId) {
-                          displayDocumentSource(n.dustDocumentId);
-                        }
-                      }}
-                      className={classNames(
-                        n.dustDocumentId ? "" : "pointer-events-none opacity-0"
-                      )}
-                      disabled={!n.dustDocumentId}
-                      variant="tertiary"
-                    />
-                  )}
-                </div>
-              }
-              renderTreeItems={() => {
-                const isParentNodeSelected = isNodeSelected(
-                  n,
-                  localStateByInternalId
-                );
-
-                return renderChildItem(n, { isParentNodeSelected });
-              }}
-            />
-          );
-        })}
-      </Tree>
+      <div className="overflow-y-auto p-1">
+        {isRoundedBackground ? (
+          <div className="rounded-xl border bg-structure-50 p-4">{tree}</div>
+        ) : (
+          tree
+        )}
+      </div>
     </>
   );
 }
@@ -427,6 +435,7 @@ interface PermissionTreeProps {
   canUpdatePermissions?: boolean;
   dataSource: DataSourceType;
   isSearchEnabled: boolean;
+  isRoundedBackground?: boolean;
   onPermissionUpdate?: onPermissionUpdateType;
   owner: LightWorkspaceType;
   permissionFilter?: ConnectorPermission;
@@ -438,6 +447,7 @@ export function PermissionTree({
   canUpdatePermissions,
   dataSource,
   isSearchEnabled,
+  isRoundedBackground,
   onPermissionUpdate,
   owner,
   permissionFilter,
@@ -462,24 +472,23 @@ export function PermissionTree({
         }}
       />
 
-      <div className="overflow-x-auto">
-        <DataSourcePermissionTreeChildren
-          owner={owner}
-          dataSource={dataSource}
-          parentId={null}
-          permissionFilter={permissionFilter}
-          canUpdatePermissions={canUpdatePermissions}
-          onPermissionUpdate={onPermissionUpdate}
-          showExpand={showExpand}
-          parentIsSelected={false}
-          displayDocumentSource={(documentId: string) => {
-            setDocumentToDisplay(documentId);
-          }}
-          useConnectorPermissionsHook={useConnectorPermissions}
-          isSearchEnabled={isSearchEnabled}
-          viewType={viewType}
-        />
-      </div>
+      <DataSourcePermissionTreeChildren
+        owner={owner}
+        dataSource={dataSource}
+        parentId={null}
+        permissionFilter={permissionFilter}
+        canUpdatePermissions={canUpdatePermissions}
+        onPermissionUpdate={onPermissionUpdate}
+        showExpand={showExpand}
+        parentIsSelected={false}
+        displayDocumentSource={(documentId: string) => {
+          setDocumentToDisplay(documentId);
+        }}
+        useConnectorPermissionsHook={useConnectorPermissions}
+        isSearchEnabled={isSearchEnabled}
+        isRoundedBackground={isRoundedBackground}
+        viewType={viewType}
+      />
     </>
   );
 }

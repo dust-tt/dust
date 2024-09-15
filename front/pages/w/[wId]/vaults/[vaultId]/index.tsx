@@ -8,7 +8,6 @@ import { CreateOrEditVaultModal } from "@app/components/vaults/CreateOrEditVault
 import { VaultCategoriesList } from "@app/components/vaults/VaultCategoriesList";
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
-import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { useVaultInfo } from "@app/lib/swr/vaults";
@@ -49,7 +48,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   return {
     props: {
-      gaTrackingId: config.getGaTrackingId(),
       isAdmin,
       owner,
       subscription,
@@ -80,12 +78,14 @@ export default function Vault({
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header title={getVaultName(vault)} icon={getVaultIcon(vault)} />
       {vaultInfo && !isMember && (
-        <Chip
-          color="warning"
-          label="You are not a member of this vault."
-          size="sm"
-          icon={InformationCircleIcon}
-        />
+        <div>
+          <Chip
+            color="pink"
+            label="You are not a member of this vault."
+            size="sm"
+            icon={InformationCircleIcon}
+          />
+        </div>
       )}
       <VaultCategoriesList
         owner={owner}

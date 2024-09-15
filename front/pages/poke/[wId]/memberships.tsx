@@ -59,7 +59,10 @@ const MembershipsPage = ({
           <MembersDataTable members={members} owner={owner} user={user} />
         </div>
         <div className="flex justify-center">
-          <InvitationsDataTable invitations={pendingInvitations} />
+          <InvitationsDataTable
+            invitations={pendingInvitations}
+            owner={owner}
+          />
         </div>
       </div>
     </div>

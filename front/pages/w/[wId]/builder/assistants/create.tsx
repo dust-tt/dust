@@ -26,13 +26,11 @@ import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
-  gaTrackingId: string;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   templateTagsMapping: TemplateTagsType;
@@ -56,7 +54,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      gaTrackingId: config.getGaTrackingId(),
       flow,
       templateTagsMapping: TEMPLATES_TAGS_CONFIG,
     },
@@ -65,7 +62,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
 export default function CreateAssistant({
   flow,
-  gaTrackingId,
   owner,
   subscription,
   templateTagsMapping,
@@ -194,7 +190,6 @@ export default function CreateAssistant({
       subscription={subscription}
       hideSidebar
       owner={owner}
-      gaTrackingId={gaTrackingId}
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={"Create an Assistant"}

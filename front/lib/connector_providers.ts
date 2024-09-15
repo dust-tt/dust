@@ -11,11 +11,25 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
+  DataSourceType,
   PlanType,
   WhitelistableFeature,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { ComponentType } from "react";
+
+import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
+import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
+import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
+
+interface ConnectorOptionsProps {
+  owner: WorkspaceType;
+  readOnly: boolean;
+  isAdmin: boolean;
+  dataSource: DataSourceType;
+  plan: PlanType;
+}
 
 export type ConnectorProviderConfiguration = {
   name: string;
@@ -24,9 +38,11 @@ export type ConnectorProviderConfiguration = {
   rollingOutFlag?: WhitelistableFeature;
   hide: boolean;
   logoComponent: (props: React.SVGProps<SVGSVGElement>) => React.JSX.Element;
+  optionsComponent?: (props: ConnectorOptionsProps) => React.JSX.Element;
   description: string;
   limitations: string | null;
   guideLink: string | null;
+  selectLabel?: string;
   isNested: boolean;
   isSearchEnabled: boolean;
 };
@@ -45,6 +61,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     limitations:
       "Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won't be indexed.",
     guideLink: "https://docs.dust.tt/docs/confluence-connection",
+    selectLabel: "Select pages",
     logoComponent: ConfluenceLogo,
     isNested: true,
     isSearchEnabled: false,
@@ -58,6 +75,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Authorize granular access to your company's Notion workspace, by top-level pages.",
     limitations: "External files and content behind links are not indexed.",
     guideLink: "https://docs.dust.tt/docs/notion-connection",
+    selectLabel: "Select pages",
     logoComponent: NotionLogo,
     isNested: true,
     isSearchEnabled: false,
@@ -72,6 +90,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     limitations:
       "Files with empty text content or with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at support@dust.tt to enable PDF indexing.",
     guideLink: "https://docs.dust.tt/docs/google-drive-connection",
+    selectLabel: "Select folders and files",
     logoComponent: DriveLogo,
     isNested: true,
     isSearchEnabled: false,
@@ -85,7 +104,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Authorize granular access to your Slack workspace on a channel-by-channel basis.",
     limitations: "External files and content behind links are not indexed.",
     guideLink: "https://docs.dust.tt/docs/slack-connection",
+    selectLabel: "Select channels",
     logoComponent: SlackLogo,
+    optionsComponent: SlackBotEnableView,
     isNested: false,
     isSearchEnabled: true,
   },
@@ -99,7 +120,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     limitations:
       "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled.",
     guideLink: "https://docs.dust.tt/docs/github-connection",
+    selectLabel: "Select pages",
     logoComponent: GithubLogo,
+    optionsComponent: GithubCodeEnableView,
     isNested: true,
     isSearchEnabled: false,
   },
@@ -113,7 +136,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     limitations:
       "Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection.",
     guideLink: "https://docs.dust.tt/docs/intercom-connection",
+    selectLabel: "Select pages",
     logoComponent: IntercomLogo,
+    optionsComponent: IntercomConfigView,
     isNested: true,
     isSearchEnabled: false,
   },
@@ -127,6 +152,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     limitations:
       "Dust will only index documents accessible to the account used when making the connection. Only organizational accounts are supported. At the time, personal OneDrives cannot be synced.",
     guideLink: "https://docs.dust.tt/docs/microsoft-connection",
+    selectLabel: "Select folders and files",
     logoComponent: MicrosoftLogo,
     isNested: true,
     isSearchEnabled: false,

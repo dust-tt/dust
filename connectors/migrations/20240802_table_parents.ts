@@ -170,7 +170,7 @@ export async function notionTables(
     const parents = await getNotionParents(
       connectorId as number,
       notionDatabaseId as string,
-      new Set<string>(),
+      [],
       memo
     );
 

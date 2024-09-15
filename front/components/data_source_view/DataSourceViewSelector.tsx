@@ -1,12 +1,7 @@
 import {
-  Chip,
   CloudArrowLeftRightIcon,
   FolderIcon,
   GlobeAltIcon,
-  Icon,
-  Page,
-  RadioButton,
-  Spinner,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -21,8 +16,9 @@ import type {
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 
+import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
 import DataSourceViewResourceSelectorTree from "@app/components/DataSourceViewResourceSelectorTree";
 import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
 import { orderDatasourceViewByImportance } from "@app/lib/assistant";
@@ -37,9 +33,6 @@ import {
   isManaged,
   isWebsite,
 } from "@app/lib/data_sources";
-import { useVaults } from "@app/lib/swr/vaults";
-import { classNames } from "@app/lib/utils";
-import { getVaultIcon, getVaultName } from "@app/lib/vaults";
 
 const MIN_TOTAL_DATA_SOURCES_TO_GROUP = 12;
 const MIN_DATA_SOURCES_PER_KIND_TO_GROUP = 3;
@@ -56,115 +49,6 @@ interface DataSourceViewsSelectorProps {
   viewType: ContentNodesViewType;
 }
 
-function VaultSelector({
-  owner,
-  dataSourceViews,
-  allowedVaults,
-  selectionConfigurations,
-  setSelectionConfigurations,
-  viewType,
-}: DataSourceViewsSelectorProps) {
-  const dataSourceViewsByVaultId = useMemo(
-    () => _.groupBy(dataSourceViews, (dsv) => dsv.vaultId),
-    [dataSourceViews]
-  );
-
-  const { vaults, isVaultsError, isVaultsLoading } = useVaults({
-    workspaceId: owner.sId,
-  });
-
-  const [selectedVault, setSelectedVault] = useState<string>(() => {
-    const firstKey = Object.keys(selectionConfigurations)[0] ?? null;
-    return firstKey
-      ? selectionConfigurations[firstKey]?.dataSourceView?.vaultId ?? ""
-      : "";
-  });
-
-  if (isVaultsLoading || isVaultsError) {
-    return <Spinner />;
-  }
-
-  if (Object.keys(dataSourceViewsByVaultId).length === 1) {
-    return (
-      <DataSourceViewsSelector
-        owner={owner}
-        dataSourceViews={dataSourceViews}
-        selectionConfigurations={selectionConfigurations}
-        setSelectionConfigurations={setSelectionConfigurations}
-        viewType={viewType}
-      />
-    );
-  } else {
-    return (
-      <div>
-        <Page.Separator />
-        {Object.keys(dataSourceViewsByVaultId).map((vaultId) => {
-          const vault = vaults.find((v) => v.sId === vaultId);
-          if (!vault) {
-            // Should never happen
-            return null;
-          }
-          const disabled = !(allowedVaults
-            ? allowedVaults.find((v) => v.sId === vaultId)
-            : false);
-          return (
-            <div key={vaultId}>
-              <RadioButton
-                name={`Vault ${vaultId}`}
-                choices={[
-                  {
-                    label: (
-                      <>
-                        <Icon
-                          visual={getVaultIcon(vault)}
-                          size="md"
-                          className="ml-3 inline-block flex-shrink-0 align-middle text-brand"
-                        />
-                        <span
-                          className={classNames(
-                            "text-element-900",
-                            "align-middle",
-                            !disabled ? "font-bold" : "italic"
-                          )}
-                        >
-                          {getVaultName(vault)}{" "}
-                          {disabled && (
-                            <Chip
-                              key="xs-warning"
-                              size="xs"
-                              className="ml-2"
-                              label="Disabled: only one vault allowed per assistant"
-                              color="warning"
-                            />
-                          )}
-                        </span>
-                      </>
-                    ),
-                    value: vaultId,
-                    disabled: disabled,
-                  },
-                ]}
-                value={selectedVault}
-                onChange={() => setSelectedVault(vaultId)}
-              />
-              {selectedVault === vaultId && (
-                <DataSourceViewsSelector
-                  owner={owner}
-                  dataSourceViews={dataSourceViewsByVaultId[selectedVault]}
-                  selectionConfigurations={selectionConfigurations}
-                  setSelectionConfigurations={setSelectionConfigurations}
-                  viewType={viewType}
-                />
-              )}
-              <Page.Separator />
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-}
-
 export function DataSourceViewsSelector({
   owner,
   dataSourceViews,
@@ -175,7 +59,6 @@ export function DataSourceViewsSelector({
 }: DataSourceViewsSelectorProps) {
   // Apply grouping if there are many data sources, and there are enough of each kind
   // So we don't show a long list of data sources to the user
-
   const nbOfVaults = _.uniqBy(dataSourceViews, (dsv) => dsv.vaultId).length;
 
   const applyGrouping =
@@ -201,15 +84,38 @@ export function DataSourceViewsSelector({
     [dataSourceViews]
   );
 
+  const defaultVault = useMemo(() => {
+    const firstKey = Object.keys(selectionConfigurations)[0] ?? null;
+    return firstKey
+      ? selectionConfigurations[firstKey]?.dataSourceView?.vaultId ?? ""
+      : "";
+  }, [selectionConfigurations]);
+
   if (nbOfVaults > 1) {
     return (
       <VaultSelector
         owner={owner}
-        dataSourceViews={dataSourceViews}
         allowedVaults={allowedVaults}
-        selectionConfigurations={selectionConfigurations}
-        setSelectionConfigurations={setSelectionConfigurations}
-        viewType={viewType}
+        defaultVault={defaultVault}
+        renderChildren={(vault) => {
+          const dataSourceViewsForVault = vault
+            ? dataSourceViews.filter((dsv) => dsv.vaultId === vault.sId)
+            : dataSourceViews;
+
+          if (dataSourceViewsForVault.length === 0) {
+            return <>No data source in this vault.</>;
+          }
+
+          return (
+            <DataSourceViewsSelector
+              owner={owner}
+              dataSourceViews={dataSourceViewsForVault}
+              selectionConfigurations={selectionConfigurations}
+              setSelectionConfigurations={setSelectionConfigurations}
+              viewType={viewType}
+            />
+          );
+        }}
       />
     );
   } else {

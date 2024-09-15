@@ -8,20 +8,17 @@ import {
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
-import config from "@app/lib/api/config";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
 })<{
   domain: string | null;
-  gaTrackingId: string;
   reason: string | null;
 }>(async (context) => {
   return {
     props: {
       domain: (context.query.domain as string) ?? null,
-      gaTrackingId: config.getGaTrackingId(),
       reason: (context.query.reason as string) ?? null,
     },
   };
@@ -63,6 +60,20 @@ function getErrorMessage(domain: string | null, reason: string | null) {
             To gain access, please ask your workspace administrator to add you
             or, your domain. <br />
             Need more help? Email us at support@dust.tt.
+          </p>
+        </>
+      );
+
+    case "blacklisted_domain":
+      // Deliberately shady message, to avoid frauders to know they are
+      // blacklisted and try another domain
+      return (
+        <>
+          {headerNode}
+          <p className={defaultErrorMessageClassName}>
+            Unfortunately, we cannot provide access to Dust at this time.
+            <br />
+            Have a nice day.
           </p>
         </>
       );

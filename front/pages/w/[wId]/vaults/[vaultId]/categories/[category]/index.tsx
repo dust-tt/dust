@@ -1,4 +1,4 @@
-import { Page } from "@dust-tt/sparkle";
+import { CloudArrowLeftRightIcon, Page } from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
   PlanType,
@@ -55,7 +55,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     props: {
       category: context.query.category as DataSourceViewCategory,
       dustClientFacingUrl: config.getClientFacingUrl(),
-      gaTrackingId: config.getGaTrackingId(),
       isAdmin,
       isBuilder,
       canWriteInVault,
@@ -81,6 +80,12 @@ export default function Vault({
   const router = useRouter();
   return (
     <Page.Vertical gap="xl" align="stretch">
+      {vault.kind === "system" && (
+        <Page.Header
+          title={"Connection Management"}
+          icon={CloudArrowLeftRightIcon}
+        />
+      )}
       {category === "apps" ? (
         <VaultAppsList
           owner={owner}

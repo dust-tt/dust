@@ -6,20 +6,17 @@ import {
   Page,
   TextArea,
 } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  DataSourceType,
-  VaultType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { DataSourceType, VaultType, WorkspaceType } from "@dust-tt/types";
 import { isDataSourceNameValid } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
-import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
+import {
+  useCreateFolder,
+  useDeleteFolderOrWebsite,
+  useUpdateFolder,
+} from "@app/lib/swr/vaults";
 
 export default function VaultFolderModal({
   isOpen,
@@ -36,14 +33,20 @@ export default function VaultFolderModal({
   dataSources: DataSourceType[];
   folder: DataSourceType | null;
 }) {
-  const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
-  const { mutateVaultDataSourceViews: mutate } = useVaultDataSourceViews({
-    workspaceId: owner.sId,
+  const doCreate = useCreateFolder({
+    owner,
+    vaultId: vault.sId,
+  });
+  const doUpdate = useUpdateFolder({
+    owner,
+    vaultId: vault.sId,
+  });
+  const doDelete = useDeleteFolderOrWebsite({
+    owner,
     vaultId: vault.sId,
     category: "folder",
-    disabled: true, // We don't need to fetch the data source views here, we want the mutate function to refresh the data elsewhere.
   });
+  const router = useRouter();
 
   const defaultName = folder?.name ?? null;
   const defaultDescription = folder?.description ?? null;
@@ -55,90 +58,15 @@ export default function VaultFolderModal({
 
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
 
-  const [errors, setErrors] = useState<{
-    name: string | null;
-    description: string | null;
-  }>({
-    name: null,
-    description: null,
-  });
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setName(folder ? folder.name : null);
     setDescription(folder ? folder.description : null);
   }, [folder]);
 
-  const postCreateFolder = async () => {
-    const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          description,
-        }),
-      }
-    );
-    if (res.ok) {
-      await mutate();
-      handleOnClose();
-      const response: PostVaultDataSourceResponseBody = await res.json();
-      const { dataSourceView } = response;
-      await router.push(
-        `/w/${owner.sId}/vaults/${vault.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
-      );
-      sendNotification({
-        type: "success",
-        title: "Successfully created folder",
-        description: "Folder was successfully created.",
-      });
-    } else {
-      const err: { error: APIError } = await res.json();
-      sendNotification({
-        type: "error",
-        title: "Error creating Folder",
-        description: `Error: ${err.error.message}`,
-      });
-    }
-  };
-
-  // TODO(DATASOURCE_SID) - move to sId
-  const patchUpdateFolder = async (folderName: string) => {
-    const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${folderName}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          description,
-        }),
-      }
-    );
-    if (res.ok) {
-      handleOnClose();
-      sendNotification({
-        type: "success",
-        title: "Successfully updated folder",
-        description: "Folder was successfully updated.",
-      });
-    } else {
-      const err: { error: APIError } = await res.json();
-      sendNotification({
-        type: "error",
-        title: "Error updating Folder",
-        description: `Error: ${err.error.message}`,
-      });
-    }
-  };
-
   const onSave = async () => {
     let nameError: string | null = null;
-    let descriptionError: string | null = null;
 
     if (!name) {
       nameError = "Name is required.";
@@ -151,55 +79,34 @@ export default function VaultFolderModal({
       nameError = "A data source with this name already exists.";
     }
 
-    if (!description || description.trim() === "") {
-      descriptionError = "Description is required.";
-    }
-
-    if (nameError || descriptionError) {
-      setErrors({
-        name: nameError,
-        description: descriptionError,
-      });
+    if (nameError) {
+      setError(nameError);
       return;
     }
 
     if (folder === null) {
-      await postCreateFolder();
+      const dataSourceView = await doCreate(name, description);
+      if (dataSourceView) {
+        handleOnClose();
+        await router.push(
+          `/w/${owner.sId}/vaults/${vault.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
+        );
+      }
     } else {
-      // TODO(DATASOURCE_SID) - move to sId
-      await patchUpdateFolder(folder.name);
+      const res = await doUpdate(folder, description);
+      if (res) {
+        handleOnClose();
+      }
     }
   };
 
   const onDeleteFolder = async () => {
-    if (folder === null) {
-      return;
-    }
-    const res = await fetch(
-      // TODO(DATASOURCE_SID) - move to sId
-      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${folder.name}`,
-      {
-        method: "DELETE",
-      }
-    );
-    if (res.ok) {
-      await mutate();
+    const res = await doDelete(folder);
+    if (res) {
       handleOnClose();
       await router.push(
         `/w/${owner.sId}/vaults/${vault.sId}/categories/folder`
       );
-      sendNotification({
-        type: "success",
-        title: "Successfully deleted folder",
-        description: "Folder was successfully deleted.",
-      });
-    } else {
-      const err: { error: APIError } = await res.json();
-      sendNotification({
-        type: "error",
-        title: "Error deleting Folder",
-        description: `Error: ${err.error.message}`,
-      });
     }
   };
 
@@ -234,11 +141,8 @@ export default function VaultFolderModal({
                 value={name}
                 onChange={(value) => {
                   setName(value);
-                  if (errors.name) {
-                    setErrors({ ...errors, name: null });
-                  }
                 }}
-                error={errors.name}
+                error={error}
                 disabled={folder !== null} // We cannot change the name of a datasource
                 showErrorLabel
               />
@@ -258,13 +162,9 @@ export default function VaultFolderModal({
                 value={description}
                 onChange={(value) => {
                   setDescription(value);
-                  if (errors.description) {
-                    setErrors({ ...errors, description: null });
-                  }
                 }}
-                error={errors.description}
                 showErrorLabel
-                rows={2}
+                minRows={2}
               />
             </div>
 
@@ -272,6 +172,7 @@ export default function VaultFolderModal({
               <>
                 <Page.Separator />
                 <DeleteStaticDataSourceDialog
+                  dataSource={folder}
                   handleDelete={onDeleteFolder}
                   isOpen={showDeleteConfirmDialog}
                   onClose={onClose}

@@ -29,6 +29,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
@@ -47,7 +48,16 @@ async function handleMembershipInvite(
     AuthFlowError | SSOEnforcedError
   >
 > {
-  if (membershipInvite.inviteEmail !== user.email) {
+  if (membershipInvite.inviteEmail.toLowerCase() !== user.email.toLowerCase()) {
+    logger.error(
+      {
+        inviteEmail: membershipInvite.inviteEmail,
+        workspaceId: membershipInvite.workspaceId,
+        user: user.toJSON(),
+      },
+      "Invitation token email mismatch"
+    );
+
     return new Err(
       new AuthFlowError(
         "invitation_token_email_mismatch",

@@ -36,6 +36,7 @@ import {
   DustProdActionRegistry,
   PRODUCTION_DUST_WORKSPACE_ID,
 } from "@app/lib/registry";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { RetrievalDocumentBlob } from "@app/lib/resources/retrieval_document_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import logger from "@app/logger/logger";
@@ -482,20 +483,35 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     let blobs: {
       blob: RetrievalDocumentBlob;
       chunks: RetrievalDocumentChunkType[];
+      dataSourceView: DataSourceViewResource;
     }[] = [];
+
+    const uniqueDataSourceViewIds = Array.from(
+      new Set(actionConfiguration.dataSources.map((ds) => ds.dataSourceViewId))
+    );
+
+    const dataSourceViews = await DataSourceViewResource.fetchByIds(
+      auth,
+      uniqueDataSourceViewIds
+    );
+
+    const dataSourceViewsMap = Object.fromEntries(
+      dataSourceViews.map((dsv) => [dsv.sId, dsv])
+    );
 
     // This is not perfect and will be erroneous in case of two data sources with the same id from
     // two different workspaces. We don't support cross workspace data sources right now. But we'll
     // likely want `core` to return the `workspace_id` that was used eventualy.
     // TODO(spolu): make `core` return data source workspace id.
-    const dataSourcesIdToWorkspaceId: {
-      [key: string]: { workspaceId: string };
-    } = {};
-    for (const ds of actionConfiguration.dataSources) {
-      dataSourcesIdToWorkspaceId[ds.dataSourceId] = {
-        workspaceId: ds.workspaceId,
-      };
-    }
+    const dataSourcesIdToWorkspaceId = Object.fromEntries(
+      actionConfiguration.dataSources.map((ds) => [
+        ds.dataSourceId,
+        {
+          dataSourceView: dataSourceViewsMap[ds.dataSourceViewId],
+          workspaceId: ds.workspaceId,
+        },
+      ])
+    );
 
     for await (const event of eventStream) {
       if (event.type === "error") {
@@ -608,6 +624,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
                 retrievalActionId: action.id,
               },
               chunks: d.chunks,
+              dataSourceView: dsDetails.dataSourceView,
             };
           });
         }
@@ -646,7 +663,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         },
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
-        documents: documents.map((d) => d.toJSON()),
+        documents: documents.map((d) => d.toJSON(auth)),
         step: action.step,
       }),
     };
@@ -710,6 +727,7 @@ function retrievalActionSpecification({
 // should not be used outside of api/assistant. We allow a ModelId interface here because for
 // optimization purposes to avoid duplicating DB requests while having clear action specific code.
 export async function retrievalActionTypesFromAgentMessageIds(
+  auth: Authenticator,
   agentMessageIds: ModelId[]
 ): Promise<RetrievalActionType[]> {
   const models = await AgentRetrievalAction.findAll({
@@ -727,8 +745,10 @@ export async function retrievalActionTypesFromAgentMessageIds(
 
   const actionIds = models.map((a) => a.id);
 
-  const documents =
-    await RetrievalDocumentResource.listAllForActions(actionIds);
+  const documents = await RetrievalDocumentResource.listAllForActions(
+    auth,
+    actionIds
+  );
   const documentRowsByActionId = documents.reduce<{
     [id: ModelId]: RetrievalDocumentResource[];
   }>((acc, d) => {
@@ -754,7 +774,7 @@ export async function retrievalActionTypesFromAgentMessageIds(
     }
 
     const documents: RetrievalDocumentType[] = documentRows.map((d) =>
-      d.toJSON()
+      d.toJSON(auth)
     );
 
     documents.sort((a, b) => {

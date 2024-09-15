@@ -88,7 +88,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   integrations: DataSourceIntegration[];
   managedDataSources: DataSourceWithConnectorAndUsageType[];
   plan: PlanType;
-  gaTrackingId: string;
   dustClientFacingUrl: string;
   user: UserType;
 }>(async (context, auth) => {
@@ -169,7 +168,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       managedDataSources,
       integrations,
       plan,
-      gaTrackingId: config.getGaTrackingId(),
       dustClientFacingUrl: config.getClientFacingUrl(),
       user,
     },
@@ -184,7 +182,6 @@ export default function DataSourcesView({
   managedDataSources,
   integrations,
   plan,
-  gaTrackingId,
   dustClientFacingUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isLoadingByProvider, setIsLoadingByProvider] = useState(
@@ -239,7 +236,6 @@ export default function DataSourcesView({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_managed",
@@ -363,6 +359,9 @@ function getTableColumns() {
     {
       header: "Used by",
       accessorKey: "managedDataSource.usage",
+      meta: {
+        width: "6rem",
+      },
       cell: (info: CellContext<RowData, number | null>) => (
         <>
           {info.getValue() ? (
@@ -378,6 +377,9 @@ function getTableColumns() {
       accessorFn: (row: RowData) =>
         row.managedDataSource.editedByUser?.imageUrl ?? "",
       id: "managedBy",
+      meta: {
+        width: "6rem",
+      },
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent
           avatarUrl={info.getValue()}
@@ -389,6 +391,9 @@ function getTableColumns() {
       header: "Last sync",
       accessorFn: (row: RowData) =>
         row.managedDataSource.connector?.lastSyncSuccessfulTime,
+      meta: {
+        width: "14rem",
+      },
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.CellContent className="pr-2">
           {(() => {
@@ -419,6 +424,9 @@ function getTableColumns() {
     },
     {
       id: "action",
+      meta: {
+        width: "10rem",
+      },
       cell: (info: CellContext<RowData, unknown>) => {
         const original = info.row.original;
         const disabled = original.isLoading || !original.isAdmin;

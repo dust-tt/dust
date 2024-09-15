@@ -1,10 +1,12 @@
-import { ClipboardIcon, IconButton } from "@dust-tt/sparkle";
+import { ClipboardIcon, IconButton, TrashIcon } from "@dust-tt/sparkle";
 import type { MembershipInvitationType } from "@dust-tt/types";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
-export function makeColumnsForInvitations(): ColumnDef<MembershipInvitationType>[] {
+export function makeColumnsForInvitations(
+  onRevokeInvitation: (email: string) => Promise<void>
+): ColumnDef<MembershipInvitationType>[] {
   return [
     {
       accessorKey: "sId",
@@ -62,6 +64,23 @@ export function makeColumnsForInvitations(): ColumnDef<MembershipInvitationType>
     {
       accessorKey: "initialRole",
       header: "Role",
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const invitation = row.original;
+
+        return (
+          <IconButton
+            icon={TrashIcon}
+            size="xs"
+            variant="tertiary"
+            onClick={async () => {
+              await onRevokeInvitation(invitation.inviteEmail);
+            }}
+          />
+        );
+      },
     },
   ];
 }

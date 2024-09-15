@@ -42,7 +42,6 @@ export default function WebsiteConfiguration({
   subscription,
   dataSources,
   dataSource,
-  gaTrackingId,
   webCrawlerConfiguration,
   dataSourceUsage,
 }: {
@@ -51,7 +50,6 @@ export default function WebsiteConfiguration({
   dataSources: DataSourceType[];
   webCrawlerConfiguration: WebCrawlerConfigurationType | null;
   dataSource: DataSourceType | null;
-  gaTrackingId: string;
   dataSourceUsage?: number;
 }) {
   const [isSaving, setIsSaving] = useState(false);
@@ -264,7 +262,6 @@ export default function WebsiteConfiguration({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_static",
@@ -532,12 +529,15 @@ export default function WebsiteConfiguration({
                   setIsDeleteModalOpen(true);
                 }}
               />
-              <DeleteStaticDataSourceDialog
-                handleDelete={handleDelete}
-                isOpen={isDeleteModalOpen}
-                onClose={() => setIsDeleteModalOpen(false)}
-                dataSourceUsage={dataSourceUsage ?? 0}
-              />
+              {dataSource && (
+                <DeleteStaticDataSourceDialog
+                  dataSource={dataSource}
+                  handleDelete={handleDelete}
+                  isOpen={isDeleteModalOpen}
+                  onClose={() => setIsDeleteModalOpen(false)}
+                  dataSourceUsage={dataSourceUsage ?? 0}
+                />
+              )}
             </div>
           )}
         </Page.Layout>

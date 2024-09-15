@@ -37,7 +37,6 @@ import SerpAPISetup from "@app/components/providers/SerpAPISetup";
 import SerperSetup from "@app/components/providers/SerperSetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import {
@@ -54,7 +53,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   groups: GroupType[];
   subscription: SubscriptionType;
   apps: AppType[];
-  gaTrackingId: string;
   vaultId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -76,7 +74,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         app.toJSON()
       ),
       vaultId: context.params?.vaultId as string,
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });
@@ -776,7 +773,6 @@ export default function Developers({
   groups,
   subscription,
   apps,
-  gaTrackingId,
   vaultId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [currentTab, setCurrentTab] = useState("apps");
@@ -796,7 +792,6 @@ export default function Developers({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "developers",

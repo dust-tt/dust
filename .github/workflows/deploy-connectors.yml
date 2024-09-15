@@ -52,6 +52,7 @@ jobs:
           ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-deployment
           ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-deployment
           ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-notion-deployment
+          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-notion-gc-deployment
           ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-webcrawler-deployment
           ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/connectors-image:${{ steps.short_sha.outputs.short_sha }} connectors-worker-google-drive-deployment
 
@@ -63,6 +64,8 @@ jobs:
           kubectl rollout status deployment/connectors-worker-deployment --timeout=10m
           echo "Waiting for rollout to complete (notion worker)"
           kubectl rollout status deployment/connectors-worker-notion-deployment --timeout=10m
+          echo "Waiting for rollout to complete (notion GC worker)"
+          kubectl rollout status deployment/connectors-worker-notion-gc-deployment --timeout=10m
           echo "Waiting for rollout to complete (webcrawler worker)"
           kubectl rollout status deployment/connectors-worker-webcrawler-deployment --timeout=10m
           echo "Waiting for rollout to complete (google_drive worker)"

@@ -70,14 +70,17 @@ const getTableColumns = () => {
       accessorKey: "name",
       cell: (info: Info) => (
         <DataTable.CellContent icon={info.row.original.icon}>
-          <span className="font-bold">{info.row.original.name}</span> (
-          {info.row.original.count} items)
+          <span>{info.row.original.name}</span> ({info.row.original.count}{" "}
+          items)
         </DataTable.CellContent>
       ),
     },
     {
       header: "Used by",
       accessorKey: "usage",
+      meta: {
+        width: "6rem",
+      },
       cell: (info: Info) => (
         <>
           {info.row.original.usage ? (
@@ -148,7 +151,7 @@ export const VaultCategoriesList = ({
             }}
           />
         )}
-        {onButtonClick && (
+        {onButtonClick && vault.kind === "regular" && (
           <Button
             label="Settings and Members"
             icon={Cog6ToothIcon}

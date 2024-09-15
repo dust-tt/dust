@@ -9,7 +9,6 @@ import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { useUser } from "@app/lib/swr/user";
@@ -19,7 +18,6 @@ import { ClientSideTracking } from "@app/lib/tracking/client";
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   owner: WorkspaceType;
   isAdmin: boolean;
-  gaTrackingId: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   if (!owner || !auth.isUser()) {
@@ -32,7 +30,6 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     props: {
       owner,
       isAdmin: auth.isAdmin(),
-      gaTrackingId: config.getGaTrackingId(),
     },
   };
 });

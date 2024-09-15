@@ -120,12 +120,12 @@ apply_deployment front-qa-deployment
 apply_deployment connectors-deployment
 apply_deployment connectors-worker-deployment
 apply_deployment connectors-worker-notion-deployment
+apply_deployment connectors-worker-notion-gc-deployment
 apply_deployment connectors-worker-webcrawler-deployment
 apply_deployment connectors-worker-google-drive-deployment
 apply_deployment metabase-deployment
 apply_deployment alerting-temporal-deployment
 apply_deployment core-deployment
-apply_deployment core-secondary-deployment
 apply_deployment core-sqlite-worker-deployment
 apply_deployment oauth-deployment
 apply_deployment prodbox-deployment
@@ -149,7 +149,6 @@ kubectl apply -f "$(dirname "$0")/services/connectors-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/connectors-worker-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/metabase-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/core-service.yaml"
-kubectl apply -f "$(dirname "$0")/services/core-secondary-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/core-sqlite-worker-headless-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/oauth-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/viz-service.yaml"
@@ -166,6 +165,5 @@ echo "Applying network policies"
 echo "-----------------------------------"
 
 kubectl apply -f "$(dirname "$0")/network-policies/core-network-policy.yaml"
-kubectl apply -f "$(dirname "$0")/network-policies/core-secondary-network-policy.yaml"
 kubectl apply -f "$(dirname "$0")/network-policies/oauth-network-policy.yaml"
 kubectl apply -f "$(dirname "$0")/network-policies/core-sqlite-worker-network-policy.yaml"

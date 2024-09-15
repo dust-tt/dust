@@ -727,8 +727,7 @@ export async function createAgentConfiguration(
     model,
     agentConfigurationId,
     templateId,
-    // datasource view ids used by the agent, to be used for permissions check
-    dataSourceViewIds,
+    groupIds,
   }: {
     name: string;
     description: string;
@@ -741,7 +740,7 @@ export async function createAgentConfiguration(
     model: AgentModelConfigurationType;
     agentConfigurationId?: string;
     templateId: string | null;
-    dataSourceViewIds: string[];
+    groupIds: number[];
   }
 ): Promise<Result<LightAgentConfigurationType, Error>> {
   const owner = auth.workspace();
@@ -766,12 +765,6 @@ export async function createAgentConfiguration(
 
   let version = 0;
   let listStatusOverride: AgentUserListStatus | null = null;
-
-  const groupIds = (
-    await DataSourceViewResource.fetchByIds(auth, dataSourceViewIds)
-  )
-    .map((view) => view.acl().aclEntries.map((entry) => entry.groupId))
-    .flat();
 
   try {
     let template: TemplateResource | null = null;

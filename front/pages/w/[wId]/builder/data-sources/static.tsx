@@ -27,7 +27,6 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
 import { getDataSourcesUsageByAgents } from "@app/lib/api/agent_data_sources";
-import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -38,7 +37,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   readOnly: boolean;
   dataSources: DataSourceType[];
-  gaTrackingId: string;
   dataSourcesUsage: DataSourcesUsageByAgent;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -66,7 +64,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       readOnly,
       dataSources: dataSources.map((ds) => ds.toJSON()),
-      gaTrackingId: config.getGaTrackingId(),
       dataSourcesUsage,
     },
   };
@@ -78,7 +75,6 @@ export default function DataSourcesView({
   plan,
   readOnly,
   dataSources,
-  gaTrackingId,
   dataSourcesUsage,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -117,7 +113,6 @@ export default function DataSourcesView({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      gaTrackingId={gaTrackingId}
       subNavigation={subNavigationBuild({
         owner,
         current: "data_sources_static",
@@ -225,6 +220,9 @@ function getTableColumns() {
       header: "Used by",
       accessorKey: "usage",
       id: "usage",
+      meta: {
+        width: "6rem",
+      },
       cell: (info: Info) => (
         <DataTable.CellContent icon={RobotIcon}>
           {info.row.original.usage}
@@ -234,6 +232,9 @@ function getTableColumns() {
     {
       header: "Added by",
       id: "addedBy",
+      meta: {
+        width: "6rem",
+      },
       cell: (info: Info) => (
         <DataTable.CellContent
           avatarUrl={info.row.original.editedByUser?.imageUrl ?? ""}
@@ -245,6 +246,9 @@ function getTableColumns() {
       header: "Last updated",
       accessorKey: "editedByUser.editedAt",
       id: "editedAt",
+      meta: {
+        width: "10rem",
+      },
       cell: (info: Info) => (
         <DataTable.CellContent>
           {info.row.original.editedByUser?.editedAt

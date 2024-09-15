@@ -139,7 +139,6 @@ export async function renderConversationForModelMultiActions({
                 workspaceId: conversation.owner.sId,
                 conversationId: conversation.sId,
                 agentMessageId: m.sId,
-                panic: true,
               },
               "Unexpected state, agent message step with no actions and no contents"
             );

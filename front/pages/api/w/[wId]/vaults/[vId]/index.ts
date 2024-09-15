@@ -7,8 +7,10 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { deleteVault } from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
@@ -50,37 +52,30 @@ async function handler(
   }
 
   switch (req.method) {
-    case "GET":
+    case "GET": {
       const dataSourceViews = await DataSourceViewResource.listByVault(
         auth,
         vault
       );
-
       const serializedDatasourceViews = dataSourceViews.map((view) =>
         view.toJSON()
       );
+      const apps = await AppResource.listByVault(auth, vault);
 
       const categories: { [key: string]: VaultCategoryInfo } = {};
-
-      // TODO(GROUPS_INFRA)[DUST_APPS_MIGRATED_TO_VAULTS]: Remove the filter on categories once apps are moved to vaults.
-      const allCategories = vault.isGlobal()
-        ? DATA_SOURCE_VIEW_CATEGORIES
-        : DATA_SOURCE_VIEW_CATEGORIES.filter((category) => category !== "apps");
-
-      allCategories.forEach((category) => {
+      for (const category of DATA_SOURCE_VIEW_CATEGORIES) {
         categories[category] = {
           count: 0,
           usage: 0,
         };
-      });
+      }
 
-      serializedDatasourceViews.forEach((dataSource) => {
-        const value = categories[dataSource.category];
-        if (value) {
-          value.count += 1;
-          value.usage += dataSource.usage;
-        }
-      });
+      for (const dataSource of serializedDatasourceViews) {
+        categories[dataSource.category].count += 1;
+        categories[dataSource.category].usage += dataSource.usage;
+      }
+
+      categories["apps"].count = apps.length;
 
       const currentMembers = (
         await Promise.all(
@@ -94,10 +89,11 @@ async function handler(
           members: currentMembers.map((member) => member.toJSON()),
         },
       });
+    }
 
-    case "PATCH":
+    case "PATCH": {
       if (!auth.isAdmin() || !auth.isBuilder()) {
-        // Only admins, or builders who have to the vault, can patch
+        // Only admins, or builders who have access to the vault, can patch
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -169,9 +165,26 @@ async function handler(
           }
         }
       }
+      return res.status(200).json({ vault: vault.toJSON() });
+    }
+
+    case "DELETE": {
+      if (!auth.isAdmin()) {
+        // Only admins, who have access to the vault, can delete
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "Only users that are `admins` or `builder` can administrate vaults.",
+          },
+        });
+      }
+
+      await deleteVault(auth, vault);
 
       return res.status(200).json({ vault: vault.toJSON() });
-
+    }
     default:
       return apiError(req, res, {
         status_code: 405,

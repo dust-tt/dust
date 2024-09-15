@@ -67,7 +67,7 @@ export function getConnectorProviderCodec(): t.Mixed {
 
 const PostDataSourceWithoutProviderRequestBodySchema = t.type({
   name: t.string,
-  description: t.string,
+  description: t.union([t.string, t.null]),
 });
 
 const PostDataSourceRequestBodySchema = t.union([

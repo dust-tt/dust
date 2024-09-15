@@ -8,6 +8,7 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { ACTIVE_ROLES } from "@dust-tt/types";
 
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
@@ -167,6 +168,51 @@ export async function getMembers(
           role = "none";
       }
     }
+
+    return {
+      ...u.toJSON(),
+      workspaces: [{ ...owner, role, flags: null }],
+    };
+  });
+
+  return { members: usersWithWorkspaces, total };
+}
+
+export async function searchMembers(
+  auth: Authenticator,
+  options: {
+    email?: string;
+  },
+  paginationParams: PaginationParams
+): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return { members: [], total: 0 };
+  }
+
+  const { users, total } = await UserResource.listUsersWithEmailPredicat(
+    owner.id,
+    {
+      email: options.email,
+    },
+    paginationParams
+  );
+
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    users,
+    workspace: owner,
+  });
+
+  const usersWithWorkspaces = users.map((u) => {
+    const membership = memberships.find(
+      (m) => m.userId === u.id && m.workspaceId === owner.id
+    );
+    const role =
+      membership && !membership.isRevoked()
+        ? ACTIVE_ROLES.includes(membership.role)
+          ? membership.role
+          : ("none" as RoleType)
+        : ("none" as RoleType);
 
     return {
       ...u.toJSON(),

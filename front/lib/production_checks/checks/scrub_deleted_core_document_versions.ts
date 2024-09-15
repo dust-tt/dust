@@ -33,66 +33,77 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
 
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
 
-  const deletedDocumentsData = await coreReplica.query(
-    `SELECT * FROM data_sources_documents WHERE status = 'deleted'`
-  );
+  let lastSeenId = 0;
+  let totalDeletedCount = 0;
 
-  const deletedDocuments = deletedDocumentsData[0] as {
-    id: number;
-    created: number;
-    data_source: number;
-    document_id: string;
-    hash: string;
-    timestamp: number;
-  }[];
-
-  logger.info(
-    {
-      documentCount: deletedDocuments.length,
-    },
-    "Found deleted core documents to scrub"
-  );
-
-  const chunks = [];
-  for (let i = 0; i < deletedDocuments.length; i += 32) {
-    chunks.push(deletedDocuments.slice(i, i + 32));
-  }
-
-  const seen: Set<string> = new Set();
-  let deletedCount = 0;
-
-  for (let i = 0; i < chunks.length; i++) {
-    heartbeat();
-    const chunk = chunks[i];
-    await Promise.all(
-      chunk.map((d) => {
-        return (async () => {
-          const done = await scrubDocument({
-            logger,
-            seen,
-            storage,
-            data_source: d.data_source,
-            document_id: d.document_id,
-            created: d.created,
-            hash: d.hash,
-          });
-          if (done) {
-            deletedCount++;
-          }
-        })();
-      })
+  do {
+    // paginate by id
+    const deletedDocumentsData = await coreReplica.query(
+      `SELECT * FROM data_sources_documents WHERE status = 'deleted' AND id > ${lastSeenId} ORDER BY id LIMIT 100`
     );
-  }
 
-  logger.info(
-    {
-      deletedCount,
-    },
-    "Done scrubbing deleted core document versions"
-  );
+    const deletedDocuments = deletedDocumentsData[0] as {
+      id: number;
+      created: number;
+      data_source: number;
+      document_id: string;
+      hash: string;
+      timestamp: number;
+    }[];
+
+    logger.info(
+      {
+        documentCount: deletedDocuments.length,
+      },
+      "Found a page of deleted core documents to scrub"
+    );
+
+    const chunks = [];
+    for (let i = 0; i < deletedDocuments.length; i += 32) {
+      chunks.push(deletedDocuments.slice(i, i + 32));
+    }
+
+    const seen: Set<string> = new Set();
+    let deletedCount = 0;
+
+    for (let i = 0; i < chunks.length; i++) {
+      heartbeat();
+      const chunk = chunks[i];
+      await Promise.all(
+        chunk.map((d) => {
+          return (async () => {
+            const done = await scrubDocument({
+              logger,
+              seen,
+              storage,
+              data_source: d.data_source,
+              document_id: d.document_id,
+              created: d.created,
+              hash: d.hash,
+            });
+            if (done) {
+              deletedCount++;
+            }
+          })();
+        })
+      );
+    }
+
+    logger.info(
+      {
+        deletedCount,
+      },
+      "Done scrubbing deleted core document versions for this page"
+    );
+    totalDeletedCount += deletedCount;
+    lastSeenId =
+      deletedDocuments.length > 0
+        ? deletedDocuments[deletedDocuments.length - 1].id
+        : -1;
+  } while (lastSeenId !== -1);
 
   reportSuccess({
-    deletedCount,
+    totalDeletedCount,
   });
 };
 

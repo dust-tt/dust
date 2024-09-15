@@ -31,9 +31,12 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const { role } = req.query;
+      const { role, kind } = req.query;
 
-      if (role && typeof role !== "string") {
+      if (
+        (role && typeof role !== "string") ||
+        (kind && typeof kind !== "string")
+      ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -56,7 +59,13 @@ async function handler(
             },
           });
         }
-        vaults = await VaultResource.listWorkspaceVaults(auth);
+        if (kind && kind === "system") {
+          const systemVault =
+            await VaultResource.fetchWorkspaceSystemVault(auth);
+          vaults = systemVault ? [systemVault] : [];
+        } else {
+          vaults = await VaultResource.listWorkspaceVaults(auth);
+        }
       } else {
         vaults = await VaultResource.listWorkspaceVaultsAsMember(auth);
       }
