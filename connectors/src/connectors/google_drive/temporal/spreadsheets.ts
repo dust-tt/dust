@@ -114,7 +114,7 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
   }
 
   try {
-    const validRows: string[][] = filteredRows.map((row, index) => {
+    const validRows: string[][] = filteredRows.map((row) => {
       // If a row has less cells than headers, we fill the gap with empty strings.
       if (row.length < maxCols) {
         const shortfall = maxCols - row.length;

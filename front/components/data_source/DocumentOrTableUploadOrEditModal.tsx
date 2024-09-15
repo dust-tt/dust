@@ -8,6 +8,7 @@ import {
   Modal,
   Page,
   PlusIcon,
+  SparklesIcon,
   Spinner,
   TrashIcon,
 } from "@dust-tt/sparkle";
@@ -17,8 +18,8 @@ import type {
   CoreAPILightDocument,
   DataSourceViewType,
   LightContentNode,
-  LightWorkspaceType,
   PlanType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import {
   BIG_FILE_SIZE,
@@ -42,7 +43,7 @@ interface DocumentOrTableUploadOrEditModalProps {
   dataSourceView: DataSourceViewType;
   isOpen: boolean;
   onClose: (save: boolean) => void;
-  owner: LightWorkspaceType;
+  owner: WorkspaceType;
   plan: PlanType;
   totalNodesCount: number;
   viewType: ContentNodesViewType;
@@ -98,7 +99,8 @@ export function DocumentOrTableUploadOrEditModal({
   const [uploading, setUploading] = useState(false);
   const [isBigFile, setIsBigFile] = useState(false);
   const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
-
+  const [useAppForHeaderDetection, setUseAppForHeaderDetection] =
+    useState(false);
   const isTable = viewType == "tables";
   const initialId = contentNode?.internalId;
 
@@ -202,6 +204,7 @@ export function DocumentOrTableUploadOrEditModal({
         parents: [],
         truncate: false,
         async: false,
+        useAppForHeaderDetection,
       });
 
       const res = await fetch(endpoint, {
@@ -484,6 +487,29 @@ export function DocumentOrTableUploadOrEditModal({
                   />
                 )}
               </div>
+
+              {isTable &&
+                owner.flags.includes("use_app_for_header_detection") && (
+                  <div>
+                    <Page.SectionHeader
+                      title="Enable header detection"
+                      description={
+                        "Use the LLM model to detect headers in the CSV file."
+                      }
+                      action={{
+                        label: useAppForHeaderDetection ? "Disable" : "Enable",
+                        variant: useAppForHeaderDetection
+                          ? "primary"
+                          : "tertiary",
+                        icon: SparklesIcon,
+                        onClick: () =>
+                          setUseAppForHeaderDetection(
+                            !useAppForHeaderDetection
+                          ),
+                      }}
+                    />
+                  </div>
+                )}
 
               {!isTable && (
                 <div>

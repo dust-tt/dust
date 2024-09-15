@@ -521,10 +521,8 @@ async function detectHeaders(
   });
 
   if (res.isErr()) {
-    return new Err({
-      type: "app_error",
-      message: `Cannot detect headers.`,
-    });
+    // Fallback to statuc header detection.
+    return staticHeaderDetection(records[0]);
   }
   const rowIndex = res.value.rowIndex;
   const header = getSanitizedHeaders(res.value.headers);
