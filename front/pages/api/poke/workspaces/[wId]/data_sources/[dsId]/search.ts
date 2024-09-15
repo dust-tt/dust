@@ -3,9 +3,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { DatasourceSearchResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/search";
-import { handleSearchDataSource } from "@app/pages/api/w/[wId]/data_sources/[name]/search";
+import type { DatasourceSearchResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/search";
+import { handleDataSourceSearch } from "@app/pages/api/w/[wId]/data_sources/[dsId]/search";
 
 async function handler(
   req: NextApiRequest,
@@ -28,9 +29,36 @@ async function handler(
     });
   }
 
+  const { dsId } = req.query;
+  if (typeof dsId !== "string") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dsId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "poke_data_sources_search" }
+  );
+  if (!dataSource) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET": {
-      return handleSearchDataSource({ req, res, auth });
+      return handleDataSourceSearch({ req, res, dataSource });
     }
     default:
       return apiError(req, res, {

@@ -3,9 +3,10 @@ import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { deleteDataSource, getDataSource } from "@app/lib/api/data_sources";
+import { deleteDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type DeleteDataSourceResponseBody = DataSourceType;
@@ -30,6 +31,33 @@ async function handler(
     });
   }
 
+  const { dsId } = req.query;
+  if (typeof dsId !== "string") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dsId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "poke_data_sources" }
+  );
+  if (!dataSource) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "DELETE":
       const { wId } = req.query;
@@ -44,34 +72,23 @@ async function handler(
         });
       }
 
-      const dataSource = await getDataSource(auth, req.query.name as string);
-      if (!dataSource) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "data_source_not_found",
-            message: "The data source was not found.",
-          },
-        });
-      }
-
-      const result = await deleteDataSource(auth, dataSource);
-      if (result.isErr()) {
-        switch (result.error.code) {
+      const delRes = await deleteDataSource(auth, dataSource);
+      if (delRes.isErr()) {
+        switch (delRes.error.code) {
           case "unauthorized_deletion":
             return apiError(req, res, {
               status_code: 403,
               api_error: {
                 type: "workspace_auth_error",
-                message: `You are not authorized to delete this data source: ${result.error.message}`,
+                message: `You are not authorized to delete this data source: ${delRes.error.message}`,
               },
             });
           default:
-            assertNever(result.error.code);
+            assertNever(delRes.error.code);
         }
       }
 
-      return res.status(200).json(result.value);
+      return res.status(200).json(delRes.value);
 
     default:
       return apiError(req, res, {

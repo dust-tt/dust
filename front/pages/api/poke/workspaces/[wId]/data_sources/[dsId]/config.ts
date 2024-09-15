@@ -23,14 +23,40 @@ async function handler(
     session,
     req.query.wId as string
   );
-  const owner = auth.workspace();
 
-  if (!owner || !auth.isDustSuperUser()) {
+  if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "user_not_found",
         message: "Could not find the user.",
+      },
+    });
+  }
+
+  const { dsId } = req.query;
+  if (typeof dsId !== "string") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dsId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "poke_data_sources_config" }
+  );
+  if (!dataSource) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
     });
   }
@@ -58,23 +84,6 @@ async function handler(
         });
       }
       const { configKey, configValue } = req.body;
-
-      const dataSource = await DataSourceResource.fetchByNameOrId(
-        auth,
-        req.query.name as string,
-        // TODO(DATASOURCE_SID): Clean-up and rename parameter [dsId]
-        { origin: "poke_data_source_config" }
-      );
-
-      if (!dataSource) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "data_source_not_found",
-            message: "Could not find the data source.",
-          },
-        });
-      }
 
       if (!dataSource.connectorId) {
         return apiError(req, res, {

@@ -1,12 +1,12 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
-import { getManagedDataSourcePermissionsHandler } from "@app/pages/api/w/[wId]/data_sources/[name]/managed/permissions";
+import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
+import { getManagedDataSourcePermissionsHandler } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 
 async function handler(
   req: NextApiRequest,
@@ -20,9 +20,7 @@ async function handler(
     req.query.wId as string
   );
 
-  const owner = auth.workspace();
-
-  if (!owner || !auth.isAdmin()) {
+  if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -32,7 +30,23 @@ async function handler(
     });
   }
 
-  const dataSource = await getDataSource(auth, req.query.name as string);
+  const { dsId } = req.query;
+  if (typeof dsId !== "string") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dsId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "poke_data_sources_permissions" }
+  );
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,

@@ -3,9 +3,9 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -19,22 +19,12 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetDocumentsResponseBody>>
 ): Promise<void> {
   const session = await getSession(req, res);
+  const auth = await Authenticator.fromSuperUserSession(
+    session,
+    req.query.wId as string
+  );
 
-  const { wId, name } = req.query;
-  if (typeof wId !== "string" || typeof name !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The request query parameters are invalid.",
-      },
-    });
-  }
-
-  const auth = await Authenticator.fromSuperUserSession(session, wId);
-  const owner = auth.workspace();
-
-  if (!owner || !auth.isDustSuperUser()) {
+  if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -44,8 +34,23 @@ async function handler(
     });
   }
 
-  const dataSource = await getDataSource(auth, name);
+  const { dsId } = req.query;
+  if (typeof dsId !== "string") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
 
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dsId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "poke_data_sources_documents" }
+  );
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
