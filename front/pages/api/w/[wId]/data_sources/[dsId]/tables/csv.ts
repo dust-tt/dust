@@ -56,8 +56,6 @@ async function handler(
   res: NextApiResponse,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   if (!auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 404,
@@ -97,145 +95,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = UpsertTableFromCsvSchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-        return apiError(req, res, {
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
-          },
-          status_code: 400,
-        });
-      }
-
-      const { name, description, csv, truncate, async } = bodyValidation.right;
-      if (!csv && truncate) {
-        return apiError(req, res, {
-          api_error: {
-            type: "invalid_request_error",
-            message: "Cannot truncate a table without providing a CSV.",
-          },
-          status_code: 400,
-        });
-      }
-
-      const tableId = bodyValidation.right.tableId ?? generateLegacyModelSId();
-      const tableParents: string[] = bodyValidation.right.parents ?? [];
-
-      if (!tableParents.includes(tableId)) {
-        tableParents.push(tableId);
-      }
-
-      if (async) {
-        // Ensure the CSV is valid before enqueuing the upsert.
-        const csvRowsRes = csv ? await rowsFromCsv(csv) : null;
-        if (csvRowsRes?.isErr()) {
-          return apiError(req, res, {
-            api_error: {
-              type: "invalid_rows_request_error",
-              message: `Failed to parse CSV: ${csvRowsRes.error.message}`,
-            },
-            status_code: 400,
-          });
-        }
-
-        const enqueueRes = await enqueueUpsertTable({
-          upsertTable: {
-            workspaceId: owner.sId,
-            dataSourceId: dataSource.sId,
-            tableId,
-            tableName: name,
-            tableDescription: description,
-            tableTimestamp: bodyValidation.right.timestamp ?? null,
-            tableTags: bodyValidation.right.tags ?? [],
-            tableParents,
-            csv: csv ?? null,
-            truncate,
-          },
-        });
-        if (enqueueRes.isErr()) {
-          return apiError(
-            req,
-            res,
-            {
-              status_code: 500,
-              api_error: {
-                type: "data_source_error",
-                message:
-                  "There was an error enqueueing the the document for asynchronous upsert.",
-              },
-            },
-            enqueueRes.error
-          );
-        }
-        return res.status(200).json({
-          table: {
-            table_id: tableId,
-          },
-        });
-      }
-
-      const tableRes = await upsertTableFromCsv({
-        auth,
-        dataSource,
-        tableId,
-        tableName: name,
-        tableDescription: description,
-        tableTimestamp: bodyValidation.right.timestamp ?? null,
-        tableTags: bodyValidation.right.tags || [],
-        tableParents,
-        csv: csv ?? null,
-        truncate,
-      });
-
-      if (tableRes.isErr()) {
-        if (tableRes.error.type === "internal_server_error") {
-          return apiError(req, res, {
-            api_error: {
-              type: "internal_server_error",
-              message: tableRes.error.message,
-            },
-            status_code: 500,
-          });
-        }
-
-        if (tableRes.error.type === "invalid_request_error") {
-          if ("csvParsingError" in tableRes.error) {
-            return apiError(req, res, {
-              api_error: {
-                type: "invalid_request_error",
-                message: `Failed to parse CSV: ${tableRes.error.csvParsingError.message}`,
-              },
-              status_code: 400,
-            });
-          } else if ("inputValidationError" in tableRes.error) {
-            return apiError(req, res, {
-              api_error: {
-                type: "invalid_request_error",
-                message: `Invalid request body: ${tableRes.error.inputValidationError}`,
-              },
-              status_code: 400,
-            });
-          } else {
-            assertNever(tableRes.error);
-          }
-        }
-
-        if (tableRes.error.type === "not_found_error") {
-          return apiError(req, res, {
-            api_error: {
-              type: tableRes.error.notFoundError.type,
-              message: tableRes.error.notFoundError.message,
-            },
-            status_code: 404,
-          });
-        }
-
-        assertNever(tableRes.error);
-      }
-
-      return res.status(200).json(tableRes.value);
+      return handleDataSourceTableCSVUpsert({ auth, req, res, dataSource });
     default:
       return apiError(req, res, {
         status_code: 405,
@@ -248,3 +108,157 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
+
+export async function handleDataSourceTableCSVUpsert({
+  auth,
+  req,
+  res,
+  dataSource,
+}: {
+  auth: Authenticator;
+  req: NextApiRequest;
+  res: NextApiResponse;
+  dataSource: DataSourceResource;
+}) {
+  const owner = auth.getNonNullableWorkspace();
+
+  const bodyValidation = UpsertTableFromCsvSchema.decode(req.body);
+  if (isLeft(bodyValidation)) {
+    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+    return apiError(req, res, {
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid request body: ${pathError}`,
+      },
+      status_code: 400,
+    });
+  }
+
+  const { name, description, csv, truncate, async } = bodyValidation.right;
+  if (!csv && truncate) {
+    return apiError(req, res, {
+      api_error: {
+        type: "invalid_request_error",
+        message: "Cannot truncate a table without providing a CSV.",
+      },
+      status_code: 400,
+    });
+  }
+
+  const tableId = bodyValidation.right.tableId ?? generateLegacyModelSId();
+  const tableParents: string[] = bodyValidation.right.parents ?? [];
+
+  if (!tableParents.includes(tableId)) {
+    tableParents.push(tableId);
+  }
+
+  if (async) {
+    // Ensure the CSV is valid before enqueuing the upsert.
+    const csvRowsRes = csv ? await rowsFromCsv(csv) : null;
+    if (csvRowsRes?.isErr()) {
+      return apiError(req, res, {
+        api_error: {
+          type: "invalid_rows_request_error",
+          message: `Failed to parse CSV: ${csvRowsRes.error.message}`,
+        },
+        status_code: 400,
+      });
+    }
+
+    const enqueueRes = await enqueueUpsertTable({
+      upsertTable: {
+        workspaceId: owner.sId,
+        dataSourceId: dataSource.sId,
+        tableId,
+        tableName: name,
+        tableDescription: description,
+        tableTimestamp: bodyValidation.right.timestamp ?? null,
+        tableTags: bodyValidation.right.tags ?? [],
+        tableParents,
+        csv: csv ?? null,
+        truncate,
+      },
+    });
+    if (enqueueRes.isErr()) {
+      return apiError(
+        req,
+        res,
+        {
+          status_code: 500,
+          api_error: {
+            type: "data_source_error",
+            message:
+              "There was an error enqueueing the the document for asynchronous upsert.",
+          },
+        },
+        enqueueRes.error
+      );
+    }
+    return res.status(200).json({
+      table: {
+        table_id: tableId,
+      },
+    });
+  }
+
+  const tableRes = await upsertTableFromCsv({
+    auth,
+    dataSource,
+    tableId,
+    tableName: name,
+    tableDescription: description,
+    tableTimestamp: bodyValidation.right.timestamp ?? null,
+    tableTags: bodyValidation.right.tags || [],
+    tableParents,
+    csv: csv ?? null,
+    truncate,
+  });
+
+  if (tableRes.isErr()) {
+    if (tableRes.error.type === "internal_server_error") {
+      return apiError(req, res, {
+        api_error: {
+          type: "internal_server_error",
+          message: tableRes.error.message,
+        },
+        status_code: 500,
+      });
+    }
+
+    if (tableRes.error.type === "invalid_request_error") {
+      if ("csvParsingError" in tableRes.error) {
+        return apiError(req, res, {
+          api_error: {
+            type: "invalid_request_error",
+            message: `Failed to parse CSV: ${tableRes.error.csvParsingError.message}`,
+          },
+          status_code: 400,
+        });
+      } else if ("inputValidationError" in tableRes.error) {
+        return apiError(req, res, {
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${tableRes.error.inputValidationError}`,
+          },
+          status_code: 400,
+        });
+      } else {
+        assertNever(tableRes.error);
+      }
+    }
+
+    if (tableRes.error.type === "not_found_error") {
+      return apiError(req, res, {
+        api_error: {
+          type: tableRes.error.notFoundError.type,
+          message: tableRes.error.notFoundError.message,
+        },
+        status_code: 404,
+      });
+    }
+
+    assertNever(tableRes.error);
+  }
+
+  return res.status(200).json(tableRes.value);
+}

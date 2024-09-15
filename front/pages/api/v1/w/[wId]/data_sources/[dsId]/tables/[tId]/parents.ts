@@ -6,9 +6,9 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -40,18 +40,23 @@ async function handler(
     });
   }
 
-  const { name } = req.query;
-  if (typeof name !== "string") {
+  const { dsId, tId } = req.query;
+  if (typeof dsId !== "string" || typeof tId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        type: "invalid_request_error",
+        message: "Invalid path parameters",
       },
     });
   }
 
-  const dataSource = await getDataSource(auth, name);
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dsId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "v1_data_sources_tables_table_parents" }
+  );
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
@@ -81,7 +86,7 @@ async function handler(
       const updateRes = await coreAPI.updateTableParents({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
-        tableId: req.query.tId as string,
+        tableId: tId,
         parents,
       });
 

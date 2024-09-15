@@ -10,9 +10,9 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -195,20 +195,25 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const { name } = req.query;
-  if (typeof name !== "string") {
+  const owner = auth.getNonNullableWorkspace();
+
+  const { dsId, tId } = req.query;
+  if (typeof dsId !== "string" || typeof tId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        type: "invalid_request_error",
+        message: "Invalid path parameters",
       },
     });
   }
 
-  const owner = auth.getNonNullableWorkspace();
-
-  const dataSource = await getDataSource(auth, name);
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dsId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "v1_data_sources_tables_table_rows" }
+  );
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
@@ -219,16 +224,6 @@ async function handler(
     });
   }
 
-  const tableId = req.query.tId;
-  if (!tableId || typeof tableId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The table id is missing.",
-      },
-    });
-  }
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   switch (req.method) {
     case "GET":
@@ -240,7 +235,7 @@ async function handler(
       const listRes = await coreAPI.getTableRows({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
-        tableId,
+        tableId: tId,
         offset,
         limit,
       });
@@ -250,7 +245,7 @@ async function handler(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            tableId: tableId,
+            tableId: tId,
             error: listRes.error,
           },
           "Failed to list database rows."
@@ -308,7 +303,7 @@ async function handler(
       const upsertRes = await coreAPI.upsertTableRows({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
-        tableId: tableId,
+        tableId: tId,
         rows: rowsToUpsert,
         truncate,
       });
@@ -318,7 +313,7 @@ async function handler(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            tableId: tableId,
+            tableId: tId,
             error: upsertRes.error,
           },
           "Failed to upsert database rows."
@@ -337,7 +332,7 @@ async function handler(
       const tableRes = await coreAPI.getTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
-        tableId,
+        tableId: tId,
       });
       if (tableRes.isErr()) {
         logger.error(

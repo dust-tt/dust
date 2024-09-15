@@ -3,9 +3,9 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -74,8 +74,8 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostParentsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const { name } = req.query;
-  if (typeof name !== "string") {
+  const { dsId } = req.query;
+  if (typeof dsId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -85,7 +85,12 @@ async function handler(
     });
   }
 
-  const dataSource = await getDataSource(auth, name);
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dsId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "v1_data_sources_documents_document_parents" }
+  );
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,

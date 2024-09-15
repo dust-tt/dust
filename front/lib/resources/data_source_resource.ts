@@ -62,7 +62,17 @@ export type FetchDataSourceOrigin =
   | "data_source_search"
   | "data_source_tables"
   | "data_source_tables_table"
-  | "data_source_tables_csv";
+  | "data_source_tables_csv"
+  | "v1_data_sources_search"
+  | "v1_data_sources_documents"
+  | "v1_data_sources_documents_document_parents"
+  | "v1_data_sources_tables_csv"
+  | "v1_data_sources_tables"
+  | "v1_data_sources_tables_table"
+  | "v1_data_sources_tables_table_parents"
+  | "v1_data_sources_tables_table_rows"
+  | "v1_data_sources_tables_table_rows_row"
+  | "v1_data_sources_tokenize";
 
 export type FetchDataSourceOptions = {
   includeEditedBy?: boolean;

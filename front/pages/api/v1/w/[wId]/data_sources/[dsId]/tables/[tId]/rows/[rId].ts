@@ -3,9 +3,9 @@ import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -107,48 +107,35 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const { name } = req.query;
-  if (typeof name !== "string") {
+  const owner = auth.getNonNullableWorkspace();
+
+  const { dsId, tId, rId } = req.query;
+  if (
+    typeof dsId !== "string" ||
+    typeof tId !== "string" ||
+    typeof rId !== "string"
+  ) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        type: "invalid_request_error",
+        message: "Invalid path parameters",
       },
     });
   }
 
-  const owner = auth.getNonNullableWorkspace();
-
-  const dataSource = await getDataSource(auth, name);
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dsId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "v1_data_sources_tables_table_rows_row" }
+  );
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
         message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  const tableId = req.query.tId;
-  if (!tableId || typeof tableId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The table id is missing.",
-      },
-    });
-  }
-
-  const rowId = req.query.rId;
-  if (!rowId || typeof rowId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The row id is missing.",
       },
     });
   }
@@ -160,8 +147,8 @@ async function handler(
       const rowRes = await coreAPI.getTableRow({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
-        tableId,
-        rowId,
+        tableId: tId,
+        rowId: rId,
       });
 
       if (rowRes.isErr()) {
@@ -169,8 +156,8 @@ async function handler(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            tableId: tableId,
-            rowId: rowId,
+            tableId: tId,
+            rowId: rId,
             error: rowRes.error,
           },
           "Failed to get row."
@@ -192,8 +179,8 @@ async function handler(
       const deleteRes = await coreAPI.deleteTableRow({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
-        tableId,
-        rowId,
+        tableId: tId,
+        rowId: rId,
       });
 
       if (deleteRes.isErr()) {
@@ -210,8 +197,8 @@ async function handler(
           {
             dataSourceName: dataSource.name,
             workspaceId: owner.id,
-            tableId: tableId,
-            rowId: rowId,
+            tableId: tId,
+            rowId: rId,
             error: deleteRes.error,
           },
           "Failed to delete row."

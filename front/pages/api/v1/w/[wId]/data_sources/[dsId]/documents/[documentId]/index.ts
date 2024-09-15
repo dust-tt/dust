@@ -16,10 +16,10 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import apiConfig from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator } from "@app/lib/auth";
 import { getDocumentsPostDeleteHooksToRun } from "@app/lib/documents_post_process_hooks/hooks";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import {
   enqueueUpsertDocument,
   runPostUpsertHooks,
@@ -212,8 +212,8 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const { name } = req.query;
-  if (typeof name !== "string") {
+  const { dsId } = req.query;
+  if (typeof dsId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -223,7 +223,12 @@ async function handler(
     });
   }
 
-  const dataSource = await getDataSource(auth, name);
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dsId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "v1_data_sources_documents_document_parents" }
+  );
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,

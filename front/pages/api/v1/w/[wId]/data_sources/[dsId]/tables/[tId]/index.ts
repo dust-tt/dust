@@ -1,14 +1,14 @@
 import type { CoreAPITableSchema, WithAPIErrorResponse } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
+import { assertNever, CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
+import {deleteTable} from "@app/lib/api/tables";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import { handleDeleteTableByIdRequest } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/[tId]";
 
 export type GetTableResponseBody = {
   table: {
@@ -104,18 +104,23 @@ async function handler(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  const { name } = req.query;
-  if (typeof name !== "string") {
+  const { dsId, tId } = req.query;
+  if (typeof dsId !== "string" || typeof tId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        type: "invalid_request_error",
+        message: "Invalid path parameters",
       },
     });
   }
 
-  const dataSource = await getDataSource(auth, name);
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dsId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "v1_data_sources_tables" }
+  );
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
@@ -126,24 +131,13 @@ async function handler(
     });
   }
 
-  const tableId = req.query.tId;
-  if (!tableId || typeof tableId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The table id is missing.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET":
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const tableRes = await coreAPI.getTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
-        tableId,
+        tableId: tId,
       });
       if (tableRes.isErr()) {
         if (tableRes.error.code === "table_not_found") {
@@ -187,11 +181,48 @@ async function handler(
       });
 
     case "DELETE":
-      return handleDeleteTableByIdRequest(req, res, {
+      if (!auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_not_found",
+            message: "The data source you requested was not found.",
+          },
+        });
+      }
+
+      const delRes = await deleteTable({
         owner,
         dataSource,
-        tableId,
+        tableId: tId,
       });
+
+      if (delRes.isErr()) {
+        switch (delRes.error.type) {
+          case "not_found_error":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: delRes.error.notFoundError.type,
+                message: delRes.error.notFoundError.message,
+              },
+            });
+          case "invalid_request_error":
+          case "internal_server_error":
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "Failed to delete table.",
+              },
+            });
+          default:
+            assertNever(delRes.error);
+        }
+      }
+
+      res.status(200).end();
+      return;
 
     default:
       return apiError(req, res, {
