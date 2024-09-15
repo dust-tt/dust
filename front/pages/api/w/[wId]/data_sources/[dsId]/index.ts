@@ -21,19 +21,20 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!req.query.name || typeof req.query.name !== "string") {
+  const { dsId } = req.query;
+  if (typeof dsId !== "string") {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 400,
       api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        type: "invalid_request_error",
+        message: "Invalid request query parameters.",
       },
     });
   }
 
   const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,
-    req.query.name,
+    dsId,
     // TODO(DATASOURCE_SID): Clean-up and rename parameter as [dsId]
     { origin: "data_source_get_or_post" }
   );

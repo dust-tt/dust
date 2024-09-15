@@ -43,17 +43,18 @@ async function handler(
     });
   }
 
-  if (typeof req.query.vId !== "string") {
+  const { dsId, vId } = req.query;
+  if (typeof dsId !== "string" || typeof vId !== "string") {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 400,
       api_error: {
-        type: "vault_not_found",
-        message: "The vault you requested was not found.",
+        type: "invalid_request_error",
+        message: "Invalid request query parameters.",
       },
     });
   }
 
-  const vault = await VaultResource.fetchById(auth, req.query.vId);
+  const vault = await VaultResource.fetchById(auth, vId);
   if (!vault) {
     return apiError(req, res, {
       status_code: 404,
@@ -94,16 +95,6 @@ async function handler(
     });
   }
 
-  const { dsId } = req.query;
-  if (typeof dsId !== "string") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
   const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,
     dsId,
