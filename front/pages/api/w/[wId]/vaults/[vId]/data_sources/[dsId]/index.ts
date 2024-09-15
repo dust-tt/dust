@@ -29,20 +29,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.workspace();
-  const plan = auth.plan();
-  const user = auth.user();
-
-  if (!owner || !plan || !user || !auth.isUser()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you requested was not found.",
-      },
-    });
-  }
-
   const { dsId, vId } = req.query;
   if (typeof dsId !== "string" || typeof vId !== "string") {
     return apiError(req, res, {

@@ -3,7 +3,7 @@ import { assertNever, CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import {deleteTable} from "@app/lib/api/tables";
+import { deleteTable } from "@app/lib/api/tables";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -110,7 +110,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid path parameters",
+        message: "Invalid path parameters.",
       },
     });
   }

@@ -46,7 +46,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid path parameters",
+        message: "Invalid path parameters.",
       },
     });
   }

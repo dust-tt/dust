@@ -42,8 +42,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        type: "invalid_request_error",
+        message: "Invalid path parameters.",
       },
     });
   }

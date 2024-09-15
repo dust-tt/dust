@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import {DataSourceResource} from "@app/lib/resources/data_source_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -35,8 +35,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        type: "invalid_request_error",
+        message: "Invalid request query parameters.",
       },
     });
   }

@@ -28,8 +28,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
     });
   }
@@ -40,7 +40,7 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid path parameters",
+        message: "Invalid path parameters.",
       },
     });
   }
