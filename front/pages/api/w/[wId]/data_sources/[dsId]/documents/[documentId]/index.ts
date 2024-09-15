@@ -12,9 +12,10 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import apiConfig from "@app/lib/api/config";
-import { getDataSource, upsertDocument } from "@app/lib/api/data_sources";
+import { upsertDocument } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -35,19 +36,33 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetDocumentResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const { documentId, name } = req.query;
+  const { documentId, dsId } = req.query;
 
-  if (typeof name !== "string" || typeof documentId !== "string") {
+  if (typeof dsId !== "string" || typeof documentId !== "string") {
     return apiError(req, res, {
-      status_code: 400,
+      status_code: 404,
       api_error: {
-        type: "invalid_request_error",
-        message: "Invalid request query parameters.",
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
     });
   }
 
-  const dataSource = await getDataSource(auth, name as string);
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dsId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "data_source_get_document_by_id" }
+  );
+  if (!dataSource) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
 
   if (!dataSource) {
     return apiError(req, res, {

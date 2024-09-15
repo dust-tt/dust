@@ -50,7 +50,15 @@ export type FetchDataSourceOrigin =
   | "vault_patch_or_delete_data_source"
   | "vault_data_source_documents"
   | "data_source_get_documents"
-  | "data_source_configuration";
+  | "data_source_configuration"
+  | "data_source_get_document_by_id"
+  | "data_source_managed_config"
+  | "data_source_managed_permissions"
+  | "data_source_managed_slack"
+  | "data_source_search"
+  | "data_source_tables"
+  | "data_source_tables_table"
+  | "data_source_tables_csv";
 
 export type FetchDataSourceOptions = {
   includeEditedBy?: boolean;

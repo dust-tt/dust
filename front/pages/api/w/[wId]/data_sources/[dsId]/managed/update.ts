@@ -42,10 +42,21 @@ async function handler(
   const owner = auth.getNonNullableWorkspace();
   const user = auth.getNonNullableUser();
 
+  const { dsId } = req.query;
+  if (typeof dsId !== "string") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
   // fetchByName enforces through auth the authorization (workspace here mainly).
   const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,
-    req.query.name as string,
+    dsId,
     // TOOD(DATASOURCE_SID): Clean-up and rename param as [dsId]
     { origin: "data_source_managed_update" }
   );

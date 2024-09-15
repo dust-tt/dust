@@ -5,10 +5,10 @@ import type { JSONSchemaType } from "ajv";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { parse_payload } from "@app/lib/http_utils";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -51,9 +51,102 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<DatasourceSearchResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
+  const { dsId } = req.query;
+  if (typeof dsId !== "string") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dsId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "data_source_search" }
+  );
+  if (!dataSource) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET": {
-      return handleSearchDataSource({ req, res, auth });
+      // I could not find a way to make the query params be an array if there is only one tag.
+      if (req.query.tags_in && typeof req.query.tags_in === "string") {
+        req.query.tags_in = [req.query.tags_in];
+      }
+      if (req.query.tags_not && typeof req.query.tags_not === "string") {
+        req.query.tags_not = [req.query.tags_not];
+      }
+      const requestPayload = req.query;
+
+      // Dust managed credentials: all data sources.
+      const credentials = dustManagedCredentials();
+
+      const searchQueryRes = parse_payload(searchQuerySchema, requestPayload);
+
+      if (searchQueryRes.isErr()) {
+        const err = searchQueryRes.error;
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid body sent: ${err.message}`,
+          },
+        });
+      }
+      const searchQuery = searchQueryRes.value;
+
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+      const data = await coreAPI.searchDataSource(
+        dataSource.dustAPIProjectId,
+        dataSource.dustAPIDataSourceId,
+        {
+          query: searchQuery.query,
+          topK: searchQuery.top_k,
+          fullText: searchQuery.full_text,
+          target_document_tokens: searchQuery.target_document_tokens,
+          filter: {
+            tags: {
+              in: searchQuery.tags_in ?? null,
+              not: searchQuery.tags_not ?? null,
+            },
+            parents: {
+              in: searchQuery.parents_in ?? null,
+              not: searchQuery.parents_not ?? null,
+            },
+            timestamp: {
+              gt: searchQuery.timestamp_gt ?? null,
+              lt: searchQuery.timestamp_lt ?? null,
+            },
+          },
+          credentials: credentials,
+        }
+      );
+
+      if (data.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "data_source_error",
+            message: "There was an error performing the data source search.",
+            data_source_error: data.error,
+          },
+        });
+      }
+
+      return res.status(200).json({
+        documents: data.value.documents,
+      });
     }
 
     default:
@@ -68,94 +161,3 @@ async function handler(
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
-
-export async function handleSearchDataSource({
-  req,
-  res,
-  auth,
-}: {
-  req: NextApiRequest;
-  res: NextApiResponse<WithAPIErrorResponse<DatasourceSearchResponseBody>>;
-  auth: Authenticator;
-}) {
-  const dataSource = await getDataSource(auth, req.query.name as string);
-
-  if (!dataSource) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
-  // I could not find a way to make the query params be an array if there is only one tag.
-  if (req.query.tags_in && typeof req.query.tags_in === "string") {
-    req.query.tags_in = [req.query.tags_in];
-  }
-  if (req.query.tags_not && typeof req.query.tags_not === "string") {
-    req.query.tags_not = [req.query.tags_not];
-  }
-  const requestPayload = req.query;
-
-  // Dust managed credentials: all data sources.
-  const credentials = dustManagedCredentials();
-
-  const searchQueryRes = parse_payload(searchQuerySchema, requestPayload);
-
-  if (searchQueryRes.isErr()) {
-    const err = searchQueryRes.error;
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid body sent: ${err.message}`,
-      },
-    });
-  }
-  const searchQuery = searchQueryRes.value;
-
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const data = await coreAPI.searchDataSource(
-    dataSource.dustAPIProjectId,
-    dataSource.dustAPIDataSourceId,
-    {
-      query: searchQuery.query,
-      topK: searchQuery.top_k,
-      fullText: searchQuery.full_text,
-      target_document_tokens: searchQuery.target_document_tokens,
-      filter: {
-        tags: {
-          in: searchQuery.tags_in ?? null,
-          not: searchQuery.tags_not ?? null,
-        },
-        parents: {
-          in: searchQuery.parents_in ?? null,
-          not: searchQuery.parents_not ?? null,
-        },
-        timestamp: {
-          gt: searchQuery.timestamp_gt ?? null,
-          lt: searchQuery.timestamp_lt ?? null,
-        },
-      },
-      credentials: credentials,
-    }
-  );
-
-  if (data.isErr()) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "data_source_error",
-        message: "There was an error performing the data source search.",
-        data_source_error: data.error,
-      },
-    });
-  }
-
-  res.status(200).json({
-    documents: data.value.documents,
-  });
-  return;
-}

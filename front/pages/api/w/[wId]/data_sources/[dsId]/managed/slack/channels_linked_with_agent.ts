@@ -3,9 +3,9 @@ import { ConnectorsAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import {DataSourceResource} from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -35,7 +35,23 @@ async function handler(
     });
   }
 
-  const dataSource = await getDataSource(auth, req.query.name as string);
+  const { dsId } = req.query;
+  if (typeof dsId !== "string") {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dsId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "data_source_managed_permissions" }
+  );
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
