@@ -15,7 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 
-const DEFAULT_LIMIT = 100;
+const DEFAULT_LIMIT = 500;
 
 const GetContentNodesOrChildrenRequestBody = t.type({
   includeChildren: t.boolean,

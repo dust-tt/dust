@@ -34,7 +34,7 @@ function getOrderColumnCodec(supportedOrderColumns: string[]): t.Mixed {
   ]);
 }
 
-const LimitCodec = createRangeCodec(0, 100);
+const LimitCodec = createRangeCodec(0, 500);
 
 const PaginationParamsCodec = (supportedOrderColumns: string[]) =>
   t.type({
