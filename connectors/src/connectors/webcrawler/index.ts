@@ -391,10 +391,11 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     }
     await connector.markAsUnpaused();
 
-    const startRes = await launchCrawlWebsiteWorkflow(this.connectorId);
-    if (startRes.isErr()) {
-      return startRes;
+    const r = await this.resume();
+    if (r.isErr()) {
+      return r;
     }
+
     return new Ok(undefined);
   }
 
@@ -472,7 +473,16 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      throw new Error("Connector not found.");
+    }
+
+    const startRes = await launchCrawlWebsiteWorkflow(this.connectorId);
+    if (startRes.isErr()) {
+      return startRes;
+    }
+    return new Ok(undefined);
   }
 
   async setPermissions(): Promise<Result<void, Error>> {
