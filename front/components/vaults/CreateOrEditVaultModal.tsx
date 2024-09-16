@@ -95,12 +95,12 @@ export function CreateOrEditVaultModal({
     }
   }, [vault?.name, vaultMembers]);
 
-  const { members, totalMembersCount, isLoading } = useSearchMembers(
-    owner.sId,
+  const { members, totalMembersCount, isLoading } = useSearchMembers({
+    workspaceId: owner.sId,
     searchTerm,
-    pagination.pageIndex,
-    pagination.pageSize
-  );
+    pageIndex: pagination.pageIndex,
+    pageSize: pagination.pageSize,
+  });
 
   const getTableColumns = useCallback(() => {
     const manageMembers = (userId: string, addOrRemove: "add" | "remove") => {
