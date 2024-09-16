@@ -8,7 +8,6 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   PaginationState,
-  SortingFn,
   type SortingState,
   Updater,
   useReactTable,
@@ -57,9 +56,9 @@ interface DataTableProps<TData extends TBaseData> {
   filterColumn?: string;
   pagination?: PaginationState;
   setPagination?: (pagination: PaginationState) => void;
-  initialColumnOrder?: SortingState;
   columnsBreakpoints?: ColumnBreakpoint;
-  sortingFn?: SortingFn<TData>;
+  sorting?: SortingState;
+  setSorting?: (sorting: SortingState) => void;
 }
 
 function shouldRenderColumn(
@@ -80,15 +79,14 @@ export function DataTable<TData extends TBaseData>({
   widthClassName = "s-w-full s-max-w-4xl",
   filter,
   filterColumn,
-  initialColumnOrder,
   columnsBreakpoints = {},
   pagination,
   setPagination,
+  sorting,
+  setSorting,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
-  const [sorting, setSorting] = useState<SortingState>(
-    initialColumnOrder ?? []
-  );
+
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const isServerSidePagination = !!totalRowCount && totalRowCount > data.length;
@@ -101,24 +99,34 @@ export function DataTable<TData extends TBaseData>({
         }
       : undefined;
 
+  const onSortingChange =
+    sorting && setSorting
+      ? (updater: Updater<SortingState>) => {
+          const newValue =
+            typeof updater === "function" ? updater(sorting) : updater;
+          setSorting(newValue);
+        }
+      : undefined;
+
   const table = useReactTable({
     data,
     columns,
     rowCount: totalRowCount,
     manualPagination: isServerSidePagination,
-    onSortingChange: setSorting,
+    onSortingChange: onSortingChange,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    getSortedRowModel: sorting ? getSortedRowModel() : undefined,
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: pagination ? getPaginationRowModel() : undefined,
     onColumnFiltersChange: setColumnFilters,
     state: {
       columnFilters,
-      sorting: isServerSidePagination ? undefined : sorting,
+      sorting,
       pagination,
     },
     initialState: {
       pagination,
+      sorting,
     },
     onPaginationChange: onPaginationChange,
   });
