@@ -6,7 +6,7 @@ import type {
 import { useCallback, useContext } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useMembers } from "@app/lib/swr/memberships";
+import { useMembers, useSearchMembers } from "@app/lib/swr/memberships";
 
 type HandleMembersRoleChangeParams = {
   members: UserTypeWithWorkspaces[];
@@ -21,6 +21,18 @@ export function useChangeMembersRoles({
   const sendNotification = useContext(SendNotificationsContext);
   const { mutateMembers } = useMembers({
     workspaceId: owner.sId,
+    disabled: true,
+  });
+
+  // mock parameters for useSearchMembers
+  const mockParameters = {
+    pageIndex: 0,
+    pageSize: 0,
+    searchTerm: "",
+    workspaceId: owner.sId,
+  };
+  const { mutateMembers: mutateSearchMembers } = useSearchMembers({
+    ...mockParameters,
     disabled: true,
   });
 
@@ -66,6 +78,7 @@ export function useChangeMembersRoles({
           });
 
           await mutateMembers();
+          await mutateSearchMembers();
           return true;
         }
       } catch (error) {
@@ -78,7 +91,7 @@ export function useChangeMembersRoles({
         return false;
       }
     },
-    [owner.sId, sendNotification, mutateMembers]
+    [owner.sId, sendNotification, mutateMembers, mutateSearchMembers]
   );
 
   return handleMembersRoleChange;
