@@ -151,7 +151,7 @@ function StandardDataSourceSettings({
   const handleDelete = async () => {
     setIsSavingOrDeleting(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}`,
       {
         method: "DELETE",
       }

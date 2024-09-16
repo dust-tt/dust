@@ -4,9 +4,9 @@ import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sources";
-import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/documents";
-import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables";
-import type { GetTableResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/[tId]";
+import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/documents";
+import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/tables";
+import type { GetTableResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/tables/[tId]";
 
 export function useDataSources(
   owner: LightWorkspaceType,

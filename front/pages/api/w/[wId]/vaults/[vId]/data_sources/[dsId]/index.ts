@@ -29,31 +29,18 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.workspace();
-  const plan = auth.plan();
-  const user = auth.user();
-
-  if (!owner || !plan || !user || !auth.isUser()) {
+  const { dsId, vId } = req.query;
+  if (typeof dsId !== "string" || typeof vId !== "string") {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 400,
       api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you requested was not found.",
+        type: "invalid_request_error",
+        message: "Invalid path parameters.",
       },
     });
   }
 
-  if (typeof req.query.vId !== "string") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "vault_not_found",
-        message: "The vault you requested was not found.",
-      },
-    });
-  }
-
-  const vault = await VaultResource.fetchById(auth, req.query.vId);
+  const vault = await VaultResource.fetchById(auth, vId);
   if (!vault) {
     return apiError(req, res, {
       status_code: 404,
@@ -94,18 +81,9 @@ async function handler(
     });
   }
 
-  if (!req.query.dsId || typeof req.query.dsId !== "string") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
   const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,
-    req.query.dsId,
+    dsId,
     // TODO(DATASOURCE_SID): Clean-up
     { origin: "vault_patch_or_delete_data_source" }
   );

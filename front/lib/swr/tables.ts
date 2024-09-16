@@ -2,7 +2,7 @@ import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetTableResponseBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/[tId]";
+import type { GetTableResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/tables/[tId]";
 
 export function useTable({
   owner,
