@@ -34,12 +34,19 @@ export function useUserMetadata(key: string) {
   };
 }
 
-export function useSearchMembers(
-  workspaceId: string,
-  searchTerm: string,
-  pageIndex: number,
-  pageSize: number
-) {
+export function useSearchMembers({
+  workspaceId,
+  searchTerm,
+  pageIndex,
+  pageSize,
+  disabled,
+}: {
+  workspaceId: string;
+  searchTerm: string;
+  pageIndex: number;
+  pageSize: number;
+  disabled?: boolean;
+}) {
   const searchMembersFetcher: Fetcher<SearchMembersResponseBody> = fetcher;
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
@@ -64,6 +71,7 @@ export function useSearchMembers(
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
+      disabled,
     }
   );
   return {
