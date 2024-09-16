@@ -121,8 +121,11 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
       disabled = false,
       onClick,
     },
-    ref
+    forwardedRef
   ) {
+    const contextRef = useContext(ButtonRefContext);
+    const internalRef = useRef<HTMLButtonElement | null>(null);
+
     const finalLabelClasses = classNames(
       labelClasses.base,
       labelSizeClasses[size],
@@ -150,14 +153,23 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
       disabled ? chevronClasses.disabled : ""
     );
 
-    const buttonRef = useContext(ButtonRefContext);
+    useEffect(() => {
+      if (contextRef) {
+        contextRef.current = internalRef.current;
+      }
+      if (typeof forwardedRef === "function") {
+        forwardedRef(internalRef.current);
+      } else if (forwardedRef) {
+        forwardedRef.current = internalRef.current;
+      }
+    }, [contextRef, forwardedRef]);
 
     if (children) {
       return (
         <Menu.Button
           as="div"
           disabled={disabled}
-          ref={ref ?? buttonRef}
+          ref={internalRef}
           className={classNames(
             disabled ? "s-cursor-default" : "s-cursor-pointer",
             className,
@@ -190,7 +202,7 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
           <Tooltip label={tooltip} position={tooltipPosition}>
             <Menu.Button
               disabled={disabled}
-              ref={ref ?? buttonRef}
+              ref={internalRef}
               className={classNames(
                 disabled ? "s-cursor-default" : "s-cursor-pointer",
                 className,
@@ -215,7 +227,7 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
         ) : (
           <Menu.Button
             disabled={disabled}
-            ref={ref ?? buttonRef}
+            ref={internalRef}
             className={classNames(
               disabled ? "s-cursor-default" : "s-cursor-pointer",
               className,
