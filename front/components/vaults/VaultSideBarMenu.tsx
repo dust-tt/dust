@@ -579,7 +579,6 @@ const VaultAppSubMenu = ({
 
   const { isAppsLoading, apps } = useApps({
     owner,
-    disabled: !isExpanded,
     vault,
   });
 
@@ -593,6 +592,7 @@ const VaultAppSubMenu = ({
       onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={categoryDetails.icon}
       areActionsFading={false}
+      type={isAppsLoading || apps.length > 0 ? "node" : "leaf"}
     >
       {isExpanded && (
         <Tree isLoading={isAppsLoading}>

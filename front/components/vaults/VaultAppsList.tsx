@@ -9,6 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { ConnectorType, VaultType, WorkspaceType } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
+import { sortBy } from "lodash";
 import type { ComponentType } from "react";
 import { useRef } from "react";
 import { useState } from "react";
@@ -69,7 +70,7 @@ export const VaultAppsList = ({
 
   const rows: RowData[] = React.useMemo(
     () =>
-      apps?.map((app) => ({
+      sortBy(apps, "name").map((app) => ({
         sId: app.sId,
         category: "apps",
         name: app.name,
