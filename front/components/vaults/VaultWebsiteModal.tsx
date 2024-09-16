@@ -263,9 +263,8 @@ export default function VaultWebsiteModal({
         });
       }
     } else if (dataSourceView) {
-      // TODO(DATASOURCE_SID): move to sID
       const res = await fetch(
-        `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSourceView.dataSource.name}/configuration`,
+        `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
         {
           method: "PATCH",
           headers: {
