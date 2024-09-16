@@ -129,11 +129,12 @@ export function useVaultDataSourceViews<
     queryParams.set("includeEditedBy", "true");
   }
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views?${queryParams.toString()}`,
-    vaultsDataSourceViewsFetcher,
-    { disabled }
-  );
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views?${queryParams.toString()}`,
+      vaultsDataSourceViewsFetcher,
+      { disabled }
+    );
 
   const vaultDataSourceViews = useMemo(() => {
     return (data?.dataSourceViews ??
@@ -142,7 +143,8 @@ export function useVaultDataSourceViews<
 
   return {
     vaultDataSourceViews,
-    mutateVaultDataSourceViews: mutate,
+    mutate,
+    mutateRegardlessOfQueryParams,
     isVaultDataSourceViewsLoading: !error && !data,
     isVaultDataSourceViewsError: error,
   };
@@ -157,12 +159,13 @@ export function useCreateFolder({
   vaultId: string;
 }) {
   const sendNotification = useContext(SendNotificationsContext);
-  const { mutateVaultDataSourceViews } = useVaultDataSourceViews({
-    workspaceId: owner.sId,
-    vaultId: vaultId,
-    category: "folder",
-    disabled: true, // Needed just to mutate
-  });
+  const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
+    useVaultDataSourceViews({
+      workspaceId: owner.sId,
+      vaultId: vaultId,
+      category: "folder",
+      disabled: true, // Needed just to mutate
+    });
 
   // TODO(GROUPS_INFRA) - Ideally, it should be a DataSourceViewType
   const doCreate = async (name: string | null, description: string | null) => {
@@ -215,12 +218,13 @@ export function useUpdateFolder({
   vaultId: string;
 }) {
   const sendNotification = useContext(SendNotificationsContext);
-  const { mutateVaultDataSourceViews } = useVaultDataSourceViews({
-    workspaceId: owner.sId,
-    vaultId: vaultId,
-    category: "folder",
-    disabled: true, // Needed just to mutate
-  });
+  const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
+    useVaultDataSourceViews({
+      workspaceId: owner.sId,
+      vaultId: vaultId,
+      category: "folder",
+      disabled: true, // Needed just to mutate
+    });
 
   // TODO(GROUPS_INFRA) - Ideally, it should be a DataSourceViewType
   const doUpdate = async (
@@ -275,12 +279,13 @@ export function useDeleteFolderOrWebsite({
   category: Exclude<DataSourceViewCategory, "apps">;
 }) {
   const sendNotification = useContext(SendNotificationsContext);
-  const { mutateVaultDataSourceViews } = useVaultDataSourceViews({
-    workspaceId: owner.sId,
-    vaultId: vaultId,
-    category: category,
-    disabled: true, // Needed just to mutate
-  });
+  const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
+    useVaultDataSourceViews({
+      workspaceId: owner.sId,
+      vaultId: vaultId,
+      category: category,
+      disabled: true, // Needed just to mutate
+    });
 
   // TODO(GROUPS_INFRA) - Ideally, it should be a DataSourceViewType
   const doDelete = async (dataSource: DataSourceType | null) => {

@@ -26,17 +26,17 @@ export function useMembers({
   appendPaginationParams(params, pagination);
 
   const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/members`,
-    membersFetcher,
-    { disabled }
-  );
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(`/api/w/${workspaceId}/members`, membersFetcher, {
+      disabled,
+    });
 
   return {
     members: useMemo(() => (data ? data.members : []), [data]),
     isMembersLoading: !error && !data,
     isMembersError: error,
-    mutateMembers: mutate,
+    mutate,
+    mutateRegardlessOfQueryParams,
     total: data ? data.total : 0,
   };
 }
@@ -103,20 +103,22 @@ export function useSearchMembers({
     lastValue: (pageIndex * pageSize).toString(),
   });
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/members/search?${searchParams.toString()}`,
-    searchMembersFetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      disabled,
-    }
-  );
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      `/api/w/${workspaceId}/members/search?${searchParams.toString()}`,
+      searchMembersFetcher,
+      {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+        disabled,
+      }
+    );
   return {
     members: useMemo(() => (data ? data.members : []), [data]),
     totalMembersCount: data?.total ?? 0,
     isLoading: !error && !data,
     isError: !!error,
-    mutateMembers: mutate,
+    mutate,
+    mutateRegardlessOfQueryParams,
   };
 }

@@ -60,13 +60,17 @@ export function MembersList({
   });
   const [selectedMember, setSelectedMember] =
     useState<UserTypeWithWorkspaces | null>(null);
-  const { members, totalMembersCount, isLoading, mutateMembers } =
-    useSearchMembers({
-      workspaceId: owner.sId,
-      searchTerm: searchText,
-      pageIndex: pagination.pageIndex,
-      pageSize: pagination.pageSize,
-    });
+  const {
+    members,
+    totalMembersCount,
+    isLoading,
+    mutateRegardlessOfQueryParams: mutateMembers,
+  } = useSearchMembers({
+    workspaceId: owner.sId,
+    searchTerm: searchText,
+    pageIndex: pagination.pageIndex,
+    pageSize: pagination.pageSize,
+  });
   const columns = [
     {
       id: "name",

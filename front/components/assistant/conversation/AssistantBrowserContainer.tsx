@@ -22,10 +22,13 @@ export function AssistantBrowserContainer({
   isBuilder,
   setAssistantToMention,
 }: AssistantBrowserContainerProps) {
-  const { agentConfigurations, isLoading, mutateAgentConfigurations } =
-    useProgressiveAgentConfigurations({
-      workspaceId: owner.sId,
-    });
+  const {
+    agentConfigurations,
+    isLoading,
+    mutateRegardlessOfQueryParams: mutateAgentConfigurations,
+  } = useProgressiveAgentConfigurations({
+    workspaceId: owner.sId,
+  });
 
   const handleAssistantClick = useCallback(
     // On click, scroll to the input bar and set the selected assistant.

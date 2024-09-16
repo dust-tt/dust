@@ -250,7 +250,7 @@ export const VaultResourcesList = ({
   const {
     vaultDataSourceViews,
     isVaultDataSourceViewsLoading,
-    mutateVaultDataSourceViews,
+    mutateRegardlessOfQueryParams: mutateVaultDataSourceViews,
   } = useVaultDataSourceViews({
     workspaceId: owner.sId,
     vaultId: vault.sId,

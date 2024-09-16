@@ -112,13 +112,14 @@ export function useAgentConfigurations({
   }
 
   const queryString = getQueryString();
-  const { data, error, mutate } = useSWRWithDefaults(
-    agentsGetView
-      ? `/api/w/${workspaceId}/assistant/agent_configurations?${queryString}`
-      : null,
-    agentConfigurationsFetcher,
-    { disabled }
-  );
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      agentsGetView
+        ? `/api/w/${workspaceId}/assistant/agent_configurations?${queryString}`
+        : null,
+      agentConfigurationsFetcher,
+      { disabled }
+    );
 
   return {
     agentConfigurations: useMemo(
@@ -127,7 +128,8 @@ export function useAgentConfigurations({
     ),
     isAgentConfigurationsLoading: !error && !data,
     isAgentConfigurationsError: error,
-    mutateAgentConfigurations: mutate,
+    mutate,
+    mutateRegardlessOfQueryParams,
   };
 }
 
@@ -149,7 +151,8 @@ export function useProgressiveAgentConfigurations({
   const {
     agentConfigurations: agentConfigurationsWithAuthors,
     isAgentConfigurationsLoading: isAgentConfigurationsWithAuthorsLoading,
-    mutateAgentConfigurations,
+    mutate,
+    mutateRegardlessOfQueryParams,
   } = useAgentConfigurations({
     workspaceId,
     agentsGetView: "assistants-search",
@@ -166,7 +169,8 @@ export function useProgressiveAgentConfigurations({
   return {
     agentConfigurations,
     isLoading,
-    mutateAgentConfigurations,
+    mutate,
+    mutateRegardlessOfQueryParams,
   };
 }
 
@@ -261,11 +265,12 @@ export function useDeleteAgentConfiguration({
   agentConfiguration: LightAgentConfigurationType;
 }) {
   const sendNotification = useContext(SendNotificationsContext);
-  const { mutateAgentConfigurations } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "list", // Anything would work
-    disabled: true, // We only use the hook to mutate the cache
-  });
+  const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "list", // Anything would work
+      disabled: true, // We only use the hook to mutate the cache
+    });
 
   const { mutateAgentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,

@@ -141,11 +141,12 @@ export default function VaultWebsiteModal({
   const [advancedSettingsOpened, setAdvancedSettingsOpened] = useState(false);
   const [headers, setHeaders] = useState<{ key: string; value: string }[]>([]);
 
-  const { mutateVaultDataSourceViews } = useVaultDataSourceViews({
-    workspaceId: owner.sId,
-    vaultId: vault.sId,
-    category: WEBSITE_CAT,
-  });
+  const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
+    useVaultDataSourceViews({
+      workspaceId: owner.sId,
+      vaultId: vault.sId,
+      category: WEBSITE_CAT,
+    });
 
   const frequencyDisplayText: Record<CrawlingFrequency, string> = {
     never: "Never",
@@ -255,7 +256,7 @@ export default function VaultWebsiteModal({
           type: "success",
           description: "The website has been successfully created.",
         });
-        await mutateVaultDataSourceViews();
+        void mutateVaultDataSourceViews();
         setIsSaving(false);
         const response: PostVaultDataSourceResponseBody = await res.json();
         const { dataSourceView } = response;
@@ -333,7 +334,7 @@ export default function VaultWebsiteModal({
     );
     setIsSaving(false);
     if (res.ok) {
-      await mutateVaultDataSourceViews();
+      void mutateVaultDataSourceViews();
       await router.push(
         `/w/${owner.sId}/vaults/${vault.sId}/categories/${WEBSITE_CAT}`
       );
