@@ -11,7 +11,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { handleMembersRoleChange } from "@app/lib/client/members";
+import { useHandleMembersRoleChange } from "@app/hooks/useHandleMembersRoleChange";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import {
   MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY,
@@ -39,6 +39,7 @@ export function InviteEmailModal({
   const sendNotification = useContext(SendNotificationsContext);
   const confirm = useContext(ConfirmContext);
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
+  const handleMembersRoleChange = useHandleMembersRoleChange({ owner });
 
   function getEmailsList(): string[] | null {
     const inviteEmailsList = inviteEmails
@@ -153,7 +154,6 @@ export function InviteEmailModal({
         await handleMembersRoleChange({
           members: activeDifferentRole,
           role: invitationRole,
-          sendNotification,
         });
         await mutate(`/api/w/${owner.sId}/members`);
       }

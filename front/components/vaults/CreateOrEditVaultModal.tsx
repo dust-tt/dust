@@ -24,7 +24,7 @@ import React, {
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { ConfirmDeleteVaultDialog } from "@app/components/vaults/ConfirmDeleteVaultDialog";
-import { useSearchMembers } from "@app/lib/swr/user";
+import { useSearchMembers } from "@app/lib/swr/memberships";
 import {
   useCreateVault,
   useDeleteVault,
