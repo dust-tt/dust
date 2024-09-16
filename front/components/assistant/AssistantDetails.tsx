@@ -178,10 +178,7 @@ export function AssistantDetails({
               agentConfigurationId={agentConfiguration.sId}
               owner={owner}
               variant="button"
-              onAgentDeletion={() => {
-                void mutateCurrentAgentConfiguration();
-                void mutateAgentConfigurations?.();
-              }}
+              canDelete
             />
           </div>
         )}
