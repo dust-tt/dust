@@ -32,6 +32,7 @@ import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsM
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
+import type { DataSourceIntegration } from "@app/components/vaults/AddConnectionMenu";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
@@ -73,6 +74,7 @@ type VaultResourcesListProps = {
   systemVault: VaultType;
   category: Exclude<DataSourceViewCategory, "apps">;
   onSelect: (sId: string) => void;
+  integrations: DataSourceIntegration[];
 };
 
 const getTableColumns = ({
@@ -210,6 +212,7 @@ export const VaultResourcesList = ({
   systemVault,
   category,
   onSelect,
+  integrations,
 }: VaultResourcesListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
@@ -394,6 +397,7 @@ export const VaultResourcesList = ({
                   }
                   setIsNewConnectorLoading(false);
                 }}
+                integrations={integrations}
               />
             )}
 
