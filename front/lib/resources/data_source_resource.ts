@@ -65,6 +65,7 @@ export type FetchDataSourceOrigin =
   | "data_source_tables_csv"
   | "v1_data_sources_search"
   | "v1_data_sources_documents"
+  | "v1_data_sources_documents_document_document"
   | "v1_data_sources_documents_document_parents"
   | "v1_data_sources_tables_csv"
   | "v1_data_sources_tables"

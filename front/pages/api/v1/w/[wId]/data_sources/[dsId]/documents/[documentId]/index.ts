@@ -227,7 +227,7 @@ async function handler(
     auth,
     dsId,
     // TODO(DATASOURCE_SID): Clean-up
-    { origin: "v1_data_sources_documents_document_parents" }
+    { origin: "v1_data_sources_documents_document_document" }
   );
   if (!dataSource) {
     return apiError(req, res, {
