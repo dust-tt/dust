@@ -101,7 +101,7 @@ export function FutureSection() {
                 Developer friendly&nbsp;platform designed to&nbsp;build custom
                 actions and&nbsp;application orchestration to&nbsp;fit your
                 team’s&nbsp;exact&nbsp;needs.{" "}
-                <Link href="/solutions/dust-platform" shallow={true}>
+                <Link href="/site/solutions/dust-platform" shallow={true}>
                   <A variant="primary">More about Dust's&nbsp;Platform</A>
                 </Link>
                 .

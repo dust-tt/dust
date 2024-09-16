@@ -243,7 +243,7 @@ export function SalesCaroussel() {
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"
-      href="/solutions/sales"
+      href="/site/solutions/sales"
     />
   );
 }

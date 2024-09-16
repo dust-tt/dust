@@ -244,7 +244,7 @@ export function EngineeringCaroussel() {
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"
-      href="/solutions/engineering"
+      href="/site/solutions/engineering"
     />
   );
 }

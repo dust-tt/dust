@@ -114,31 +114,31 @@ const SolutionsMenuConfig: MenuConfig = {
   items: [
     {
       title: "Customer Support",
-      href: "/solutions/customer-support",
+      href: "/site/solutions/customer-support",
     },
     {
       title: "Marketing & Content",
-      href: "/solutions/marketing",
+      href: "/site/solutions/marketing",
     },
     {
       title: "Recruiting & People",
-      href: "/solutions/recruiting-people",
+      href: "/site/solutions/recruiting-people",
     },
     {
       title: "Engineering",
-      href: "/solutions/engineering",
+      href: "/site/solutions/engineering",
     },
     {
       title: "Data & Analytics",
-      href: "/solutions/data-analytics",
+      href: "/site/solutions/data-analytics",
     },
     {
       title: "Sales",
-      href: "/solutions/sales",
+      href: "/site/solutions/sales",
     },
     {
       title: "Knowledge Management",
-      href: "/solutions/knowledge",
+      href: "/site/solutions/knowledge",
     },
   ],
 };
@@ -148,11 +148,11 @@ const DevelopersMenuConfig: MenuConfig = {
   items: [
     {
       title: "Dust Apps & API",
-      href: "/solutions/dust-platform",
+      href: "/site/solutions/dust-platform",
     },
     {
       title: "Dust for engineers",
-      href: "/solutions/engineering",
+      href: "/site/solutions/engineering",
     },
     {
       title: "Platform Documentation",
@@ -193,11 +193,11 @@ export const menuConfig: DocsConfig = {
     },
     {
       title: "Pricing",
-      href: "/pricing",
+      href: "/site/pricing",
     },
     {
       title: "Security",
-      href: "/security",
+      href: "/site/security",
     },
     {
       title: MoreMenuConfig.title,
@@ -213,11 +213,11 @@ export const menuConfig: DocsConfig = {
     },
     {
       title: "Pricing",
-      href: "/pricing",
+      href: "/site/pricing",
     },
     {
       title: "Security",
-      href: "/security",
+      href: "/site/security",
     },
     {
       title: SolutionsMenuConfig.title,
@@ -250,11 +250,11 @@ export const menuConfig: DocsConfig = {
         },
         {
           title: "Pricing",
-          href: "/pricing",
+          href: "/site/pricing",
         },
         {
           title: "Security",
-          href: "/security",
+          href: "/site/security",
         },
       ],
     },
