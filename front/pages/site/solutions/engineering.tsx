@@ -3,16 +3,16 @@ import type { ReactElement } from "react";
 import {
   CarousselContentBlock,
   HeaderContentBlock,
-} from "@app/components/home/ContentBlocks";
-import { Grid } from "@app/components/home/ContentComponents";
-import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
-import LandingLayout from "@app/components/home/LandingLayout";
+} from "@app/pages/site/components/ContentBlocks";
+import { Grid } from "@app/pages/site/components/ContentComponents";
+import type { LandingLayoutProps } from "@app/pages/site/components/LandingLayout";
+import LandingLayout from "@app/pages/site/components/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
-} from "@app/components/home/Particles";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
-import { SolutionSection } from "@app/components/home/SolutionSection";
+} from "@app/pages/site/components/Particles";
+import type { SolutionSectionAssistantBlockProps } from "@app/pages/site/components/SolutionSection";
+import { SolutionSection } from "@app/pages/site/components/SolutionSection";
 
 export async function getServerSideProps() {
   return {
@@ -244,7 +244,7 @@ export function EngineeringCaroussel() {
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"
-      href="/solutions/engineering"
+      href="/site/solutions/engineering"
     />
   );
 }

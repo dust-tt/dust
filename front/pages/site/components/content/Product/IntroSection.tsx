@@ -9,14 +9,14 @@ import {
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
+import { classNames } from "@app/lib/utils";
 import {
   Grid,
   H1,
   H4,
   P,
   Strong,
-} from "@app/components/home/ContentComponents";
-import { classNames } from "@app/lib/utils";
+} from "@app/pages/site/components/ContentComponents";
 
 const ResponsiveIframe = () => {
   return (
