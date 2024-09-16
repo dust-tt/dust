@@ -153,23 +153,23 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
       disabled ? chevronClasses.disabled : ""
     );
 
-    useEffect(() => {
+    const aggregatedRef = (value: HTMLButtonElement) => {
       if (contextRef) {
-        contextRef.current = internalRef.current;
+        contextRef.current = value;
       }
       if (typeof forwardedRef === "function") {
-        forwardedRef(internalRef.current);
+        forwardedRef(value);
       } else if (forwardedRef) {
-        forwardedRef.current = internalRef.current;
+        forwardedRef.current = value;
       }
-    }, [contextRef, forwardedRef]);
+    };
 
     if (children) {
       return (
         <Menu.Button
           as="div"
           disabled={disabled}
-          ref={internalRef}
+          ref={aggregatedRef}
           className={classNames(
             disabled ? "s-cursor-default" : "s-cursor-pointer",
             className,
@@ -202,7 +202,7 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
           <Tooltip label={tooltip} position={tooltipPosition}>
             <Menu.Button
               disabled={disabled}
-              ref={internalRef}
+              ref={aggregatedRef}
               className={classNames(
                 disabled ? "s-cursor-default" : "s-cursor-pointer",
                 className,
@@ -227,7 +227,7 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
         ) : (
           <Menu.Button
             disabled={disabled}
-            ref={internalRef}
+            ref={aggregatedRef}
             className={classNames(
               disabled ? "s-cursor-default" : "s-cursor-pointer",
               className,
