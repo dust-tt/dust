@@ -91,6 +91,8 @@ export function DataTable<TData extends TBaseData>({
 
   const isServerSidePagination = !!totalRowCount && totalRowCount > data.length;
   const isServerSideSorting = !!sorting && !!setSorting;
+  const isClientSideSortingEnabled = !isServerSideSorting && !pagination;
+
   const onPaginationChange =
     pagination && setPagination
       ? (updater: Updater<PaginationState>) => {
@@ -121,6 +123,7 @@ export function DataTable<TData extends TBaseData>({
     getCoreRowModel: getCoreRowModel(),
     ...(!isServerSideSorting && {
       getSortedRowModel: getSortedRowModel(),
+      enableSorting: isClientSideSortingEnabled,
     }),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: pagination ? getPaginationRowModel() : undefined,

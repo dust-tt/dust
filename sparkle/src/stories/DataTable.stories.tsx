@@ -211,7 +211,6 @@ export const DataTablePaginatedExample = () => {
     pageIndex: 0,
     pageSize: 2,
   });
-  const [sorting, setSorting] = React.useState<SortingState>([{ id: "name", desc: true }])
   const [filter, setFilter] = React.useState<string>("");
 
   return (
@@ -230,8 +229,6 @@ export const DataTablePaginatedExample = () => {
         pagination={pagination}
         setPagination={setPagination}
         columns={columns}
-        sorting={sorting}
-        setSorting={setSorting}
         columnsBreakpoints={{ lastUpdated: "sm" }}
       />
     </div>
@@ -262,7 +259,6 @@ export const DataTablePaginatedServerSideExample = () => {
       (pagination.pageIndex + 1) * pagination.pageSize
     );
   }, [data, pagination, sorting]);
-  console.log(sorting)
   return (
     <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
       <Input
