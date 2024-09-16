@@ -124,7 +124,6 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
     forwardedRef
   ) {
     const contextRef = useContext(ButtonRefContext);
-    const internalRef = useRef<HTMLButtonElement | null>(null);
 
     const finalLabelClasses = classNames(
       labelClasses.base,
