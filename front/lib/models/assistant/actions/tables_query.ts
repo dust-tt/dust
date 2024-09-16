@@ -9,7 +9,9 @@ import { DataTypes, Model } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
+import type { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export class AgentTablesQueryConfiguration extends Model<
@@ -91,9 +93,13 @@ export class AgentTablesQueryConfigurationTable extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare dataSourceWorkspaceId: string;
+
   // TODO:(GROUPS_INFRA): `dataSourceId` should be a foreign key to `DataSource` model.
+  // TODO(DATA_SOURCE_ID) Remove once fully migrated over to `dataSourceIdNew`.
   declare dataSourceId: string;
   declare tableId: string;
+
+  declare dataSourceIdNew: ForeignKey<DataSource["id"]>;
 
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
   declare tablesQueryConfigurationId: ForeignKey<
@@ -159,6 +165,17 @@ AgentTablesQueryConfiguration.hasMany(AgentTablesQueryConfigurationTable, {
 AgentTablesQueryConfigurationTable.belongsTo(AgentTablesQueryConfiguration, {
   foreignKey: { name: "tablesQueryConfigurationId", allowNull: false },
   onDelete: "CASCADE",
+});
+
+// TODO(DATA_SOURCE_ID) Enforce once fully migrated.
+// Config <> Data source.
+DataSource.hasMany(AgentTablesQueryConfigurationTable, {
+  foreignKey: { allowNull: true },
+  onDelete: "RESTRICT",
+});
+AgentTablesQueryConfigurationTable.belongsTo(DataSource, {
+  as: "dataSourceView",
+  foreignKey: { allowNull: true },
 });
 
 // Config <> Data source view.
