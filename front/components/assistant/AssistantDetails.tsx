@@ -175,13 +175,10 @@ export function AssistantDetails({
         {agentConfiguration.status === "active" && (
           <div>
             <AssistantDetailsDropdownMenu
-              agentConfigurationId={agentConfiguration.sId}
+              agentConfiguration={agentConfiguration}
               owner={owner}
               variant="button"
-              onAgentDeletion={() => {
-                void mutateCurrentAgentConfiguration();
-                void mutateAgentConfigurations?.();
-              }}
+              canDelete
             />
           </div>
         )}
