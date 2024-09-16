@@ -19,7 +19,7 @@ export function useChangeMembersRoles({
   owner: LightWorkspaceType;
 }) {
   const sendNotification = useContext(SendNotificationsContext);
-  const { mutateMembers } = useMembers({
+  const { mutateRegardlessOfQueryParams: mutateMembers } = useMembers({
     workspaceId: owner.sId,
     disabled: true,
   });
@@ -31,10 +31,11 @@ export function useChangeMembersRoles({
     searchTerm: "",
     workspaceId: owner.sId,
   };
-  const { mutateMembers: mutateSearchMembers } = useSearchMembers({
-    ...mockParameters,
-    disabled: true,
-  });
+  const { mutateRegardlessOfQueryParams: mutateSearchMembers } =
+    useSearchMembers({
+      ...mockParameters,
+      disabled: true,
+    });
 
   const handleMembersRoleChange = useCallback(
     async ({
