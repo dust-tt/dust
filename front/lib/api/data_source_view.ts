@@ -133,7 +133,7 @@ export async function getContentNodesForManagedDataSourceView(
     const connectorsRes = await connectorsAPI.getContentNodes({
       connectorId: dataSource.connectorId,
       includeParents: true,
-      internalIds: internalIds,
+      internalIds,
       viewType,
     });
     if (connectorsRes.isErr()) {
