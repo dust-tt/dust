@@ -228,7 +228,7 @@ export const VaultDataSourceViewContentList = ({
   }
 
   const emptyVaultContent =
-    vault.kind !== "system" ? (
+    isManaged(dataSourceView.dataSource) && vault.kind !== "system" ? (
       isAdmin ? (
         <Button
           label="Manage Data"
