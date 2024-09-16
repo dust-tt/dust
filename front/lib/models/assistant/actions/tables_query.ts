@@ -174,7 +174,7 @@ DataSource.hasMany(AgentTablesQueryConfigurationTable, {
   onDelete: "RESTRICT",
 });
 AgentTablesQueryConfigurationTable.belongsTo(DataSource, {
-  as: "dataSourceView",
+  as: "dataSource",
   foreignKey: { allowNull: true },
 });
 
