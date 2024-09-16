@@ -84,7 +84,7 @@ function DataSourceViewResourceSelectorChildren({
     {
       dataSourceView: dataSourceView,
       owner,
-      parentId: parentId ?? undefined,
+      parentId,
       viewType,
     }
   );

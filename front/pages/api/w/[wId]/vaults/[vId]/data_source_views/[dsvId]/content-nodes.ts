@@ -117,7 +117,7 @@ async function handler(
     dataSourceView,
     {
       internalIds: internalIds ? removeNulls(internalIds) : undefined,
-      parentId: parentId ?? undefined,
+      parentId,
       pagination: paginationRes.value,
       viewType,
     }
