@@ -57,17 +57,20 @@ async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
   }
 
   for (const ds of dataSources) {
-    const dataSourceView = dataSourceViews.find(
+    const dataSourceViewsForDataSource = dataSourceViews.filter(
       (dsv) => dsv.dataSourceId === ds.id
     );
     assert(
-      dataSourceView,
-      `Data source view not found for data source ${ds.id}.`
+      dataSourceViewsForDataSource.length === 1,
+      `Error while fetching data source view for data source ${ds.id} // Found ${dataSourceViewsForDataSource.length} data source views.`
     );
 
     await AgentTablesQueryConfigurationTable.update(
       // Upsert both `dataSourceIdNew` and `dataSourceViewId` to ensure consistency.
-      { dataSourceIdNew: ds.id, dataSourceViewId: dataSourceView.id },
+      {
+        dataSourceIdNew: ds.id,
+        dataSourceViewId: dataSourceViewsForDataSource[0].id,
+      },
       {
         where: {
           // /!\ `dataSourceId` is the data source's name, not the id.

@@ -148,7 +148,7 @@ export async function createTableDataSourceConfiguration(
 
       await AgentTablesQueryConfigurationTable.create(
         {
-          // TODO(DATA_SOURCE_ID) Remove once fully migrated over to `dataSourceIdNew`.
+          // TODO(DATASOURCE_ID) Remove once fully migrated over to `dataSourceIdNew`.
           dataSourceId: dataSource.name,
 
           dataSourceIdNew: dataSource.id,
