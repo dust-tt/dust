@@ -39,7 +39,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId, {
-    includeEditedBy: true,
     // TODO(DATASOURCE_SID): Clean-up
     origin: "data_source_builder_search",
   });
