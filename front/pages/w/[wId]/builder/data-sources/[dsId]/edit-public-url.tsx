@@ -9,8 +9,9 @@ import type { InferGetServerSidePropsType } from "next";
 
 import WebsiteConfiguration from "@app/components/data_source/WebsiteConfiguration";
 import config from "@app/lib/api/config";
-import { getDataSource, getDataSources } from "@app/lib/api/data_sources";
+import { getDataSources } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -21,10 +22,17 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   webCrawlerConfiguration: WebCrawlerConfigurationType;
   dataSourceUsage: number;
 }>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
+  const owner = auth.getNonNullableWorkspace();
+  const subscription = auth.getNonNullableSubscription();
 
-  if (!owner || !subscription || !auth.isBuilder()) {
+  if (!auth.isBuilder()) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const { dsId } = context.params || {};
+  if (typeof dsId !== "string") {
     return {
       notFound: true,
     };
@@ -32,8 +40,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const [dataSources, dataSource] = await Promise.all([
     getDataSources(auth),
-    getDataSource(auth, context.params?.name as string, {
+    DataSourceResource.fetchByNameOrId(auth, dsId, {
       includeEditedBy: true,
+      // TODO(DATASOURCE_SID): Clean-up
+      origin: "data_source_builder_edit_public_url",
     }),
   ]);
 

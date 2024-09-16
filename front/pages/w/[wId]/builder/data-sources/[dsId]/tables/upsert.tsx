@@ -24,9 +24,9 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { useDataSourceTable } from "@app/lib/swr/data_sources";
 import { classNames } from "@app/lib/utils";
 import type { UpsertTableFromCsvRequestBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/tables/csv";
@@ -38,17 +38,26 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   dataSource: DataSourceType;
   loadTableId: string | null;
 }>(async (context, auth) => {
-  const owner = auth.workspace();
-  const plan = auth.plan();
-  const subscription = auth.subscription();
+  const owner = auth.getNonNullableWorkspace();
+  const subscription = auth.getNonNullableSubscription();
 
-  if (!owner || !plan || !subscription || !auth.isUser()) {
+  if (!auth.isUser()) {
     return {
       notFound: true,
     };
   }
 
-  const dataSource = await getDataSource(auth, context.params?.name as string);
+  const { dsId } = context.params || {};
+  if (typeof dsId !== "string") {
+    return {
+      notFound: true,
+    };
+  }
+
+  const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId, {
+    // TODO(DATASOURCE_SID): Clean-up
+    origin: "data_source_builder_tables_upsert",
+  });
   if (!dataSource) {
     return {
       notFound: true,
