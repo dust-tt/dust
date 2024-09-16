@@ -222,7 +222,7 @@ export function AssistantBrowser({
                   <div style={{ width: "56px" }}></div>{" "}
                   <div className="absolute">
                     <AssistantDetailsDropdownMenu
-                      agentConfigurationId={agent.sId}
+                      agentConfiguration={agent}
                       owner={owner}
                       variant="button"
                       showAssistantDetails={() =>

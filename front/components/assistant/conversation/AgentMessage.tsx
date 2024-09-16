@@ -452,7 +452,7 @@ export function AgentMessage({
             </div>
             {!isInModal && (
               <AssistantDetailsDropdownMenu
-                agentConfigurationId={agentConfiguration.sId}
+                agentConfiguration={agentConfiguration}
                 owner={owner}
                 showAddRemoveToList
               />

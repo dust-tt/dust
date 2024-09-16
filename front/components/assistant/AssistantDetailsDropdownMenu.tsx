@@ -26,7 +26,7 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 
 interface AssistantDetailsDropdownMenuProps {
-  agentConfigurationId: string;
+  agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
   variant?: "button" | "plain";
   canDelete?: boolean;
@@ -35,10 +35,7 @@ interface AssistantDetailsDropdownMenuProps {
 }
 
 export function AssistantDetailsDropdownMenu({
-  // The `agentConfiguration` cannot be used directly as it isn't dynamically
-  // updated upon user list mutations. This limitation stems from its
-  // propagation method from <ConversationMessage>.
-  agentConfigurationId,
+  agentConfiguration,
   owner,
   variant = "plain",
   canDelete,
@@ -48,11 +45,11 @@ export function AssistantDetailsDropdownMenu({
   const [isUpdatingList, setIsUpdatingList] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
   const { user } = useUser();
-  const { agentConfiguration, mutateAgentConfiguration } =
-    useAgentConfiguration({
-      workspaceId: owner.sId,
-      agentConfigurationId,
-    });
+  const { mutateAgentConfiguration } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration.sId,
+    disabled: true,
+  });
 
   const [showDeletionModal, setShowDeletionModal] =
     useState<LightAgentConfigurationType | null>(null);
