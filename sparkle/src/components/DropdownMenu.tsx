@@ -1,6 +1,7 @@
 import { Menu, Transition } from "@headlessui/react";
 import React, {
   ComponentType,
+  forwardRef,
   Fragment,
   JSXElementConstructor,
   MouseEvent,
@@ -102,135 +103,153 @@ export interface DropdownButtonProps {
   className?: string;
   disabled?: boolean;
   children?: React.ReactNode;
+  ref?: React.Ref<HTMLButtonElement>;
+  onClick?: () => void;
 }
 
-DropdownMenu.Button = function ({
-  label,
-  type = "menu",
-  size = "sm",
-  tooltip,
-  icon,
-  children,
-  tooltipPosition = "above",
-  className = "",
-  disabled = false,
-}: DropdownButtonProps) {
-  const finalLabelClasses = classNames(
-    labelClasses.base,
-    labelSizeClasses[size],
-    labelClasses.dark.base,
-    !disabled ? labelClasses.active : "",
-    !disabled ? labelClasses.dark.active : "",
-    !disabled ? labelClasses.hover : "",
-    !disabled ? labelClasses.dark.hover : "",
-    disabled ? labelClasses.disabled : ""
-  );
+DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
+  function DropdownMenuButton(
+    {
+      label,
+      type = "menu",
+      size = "sm",
+      tooltip,
+      icon,
+      children,
+      tooltipPosition = "above",
+      className = "",
+      disabled = false,
+      onClick,
+    },
+    ref
+  ) {
+    const finalLabelClasses = classNames(
+      labelClasses.base,
+      labelSizeClasses[size],
+      labelClasses.dark.base,
+      !disabled ? labelClasses.active : "",
+      !disabled ? labelClasses.dark.active : "",
+      !disabled ? labelClasses.hover : "",
+      !disabled ? labelClasses.dark.hover : "",
+      disabled ? labelClasses.disabled : ""
+    );
 
-  const finalIconClasses = classNames(
-    iconClasses.base,
-    iconClasses.dark.base,
-    !disabled ? iconClasses.hover : "",
-    !disabled ? iconClasses.dark.hover : "",
-    disabled ? iconClasses.disabled : ""
-  );
+    const finalIconClasses = classNames(
+      iconClasses.base,
+      iconClasses.dark.base,
+      !disabled ? iconClasses.hover : "",
+      !disabled ? iconClasses.dark.hover : "",
+      disabled ? iconClasses.disabled : ""
+    );
 
-  const finalChevronClasses = classNames(
-    chevronClasses.base,
-    !disabled ? chevronClasses.hover : "",
-    chevronClasses.dark.base,
-    !disabled ? chevronClasses.dark.hover : "",
-    disabled ? chevronClasses.disabled : ""
-  );
+    const finalChevronClasses = classNames(
+      chevronClasses.base,
+      !disabled ? chevronClasses.hover : "",
+      chevronClasses.dark.base,
+      !disabled ? chevronClasses.dark.hover : "",
+      disabled ? chevronClasses.disabled : ""
+    );
 
-  const buttonRef = useContext(ButtonRefContext);
+    const buttonRef = useContext(ButtonRefContext);
 
-  if (children) {
+    if (children) {
+      return (
+        <Menu.Button
+          as="div"
+          disabled={disabled}
+          ref={ref ?? buttonRef}
+          className={classNames(
+            disabled ? "s-cursor-default" : "s-cursor-pointer",
+            className,
+            "s-group/dm s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
+            label ? "s-gap-1.5" : "s-gap-0"
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {tooltip ? (
+            <Tooltip position={tooltipPosition} label={tooltip}>
+              {children}
+            </Tooltip>
+          ) : (
+            children
+          )}
+        </Menu.Button>
+      );
+    }
+
+    const chevronIcon =
+      type === "select"
+        ? ChevronUpDownIcon
+        : type === "submenu"
+          ? ChevronRightIcon
+          : ChevronDownIcon;
+
     return (
-      <Menu.Button
-        as="div"
-        disabled={disabled}
-        ref={buttonRef}
-        className={classNames(
-          disabled ? "s-cursor-default" : "s-cursor-pointer",
-          className,
-          "s-group/dm s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
-          label ? "s-gap-1.5" : "s-gap-0"
-        )}
-        onClick={(e) => e.stopPropagation()}
-      >
+      <>
         {tooltip ? (
-          <Tooltip position={tooltipPosition} label={tooltip}>
-            {children}
+          <Tooltip label={tooltip} position={tooltipPosition}>
+            <Menu.Button
+              disabled={disabled}
+              ref={ref ?? buttonRef}
+              className={classNames(
+                disabled ? "s-cursor-default" : "s-cursor-pointer",
+                className,
+                "s-group/dm s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
+                label ? (size === "md" ? "s-gap-2" : "s-gap-1.5") : "s-gap-0.5"
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onClick) {
+                  onClick();
+                }
+              }}
+            >
+              <Icon visual={icon} size={size} className={finalIconClasses} />
+              <Icon
+                visual={chevronIcon}
+                size={size === "sm" ? "xs" : "sm"}
+                className={finalChevronClasses}
+              />
+            </Menu.Button>
           </Tooltip>
         ) : (
-          children
-        )}
-      </Menu.Button>
-    );
-  }
-
-  const chevronIcon =
-    type === "select"
-      ? ChevronUpDownIcon
-      : type === "submenu"
-        ? ChevronRightIcon
-        : ChevronDownIcon;
-
-  return (
-    <>
-      {tooltip ? (
-        <Tooltip label={tooltip} position={tooltipPosition}>
           <Menu.Button
             disabled={disabled}
-            ref={buttonRef}
+            ref={ref ?? buttonRef}
             className={classNames(
               disabled ? "s-cursor-default" : "s-cursor-pointer",
               className,
               "s-group/dm s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
-              label ? (size === "md" ? "s-gap-2" : "s-gap-1.5") : "s-gap-0.5"
+              label ? (size === "md" ? "s-gap-2" : "s-gap-1.5") : "s-gap-0.5",
+              type === "submenu" ? "s-opacity-50" : ""
             )}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onClick) {
+                onClick();
+              }
+            }}
           >
             <Icon visual={icon} size={size} className={finalIconClasses} />
+            <span
+              className={classNames(
+                finalLabelClasses,
+                type === "submenu" ? "s-w-full" : ""
+              )}
+            >
+              {label}
+            </span>
             <Icon
               visual={chevronIcon}
               size={size === "sm" ? "xs" : "sm"}
               className={finalChevronClasses}
             />
           </Menu.Button>
-        </Tooltip>
-      ) : (
-        <Menu.Button
-          disabled={disabled}
-          ref={buttonRef}
-          className={classNames(
-            disabled ? "s-cursor-default" : "s-cursor-pointer",
-            className,
-            "s-group/dm s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
-            label ? (size === "md" ? "s-gap-2" : "s-gap-1.5") : "s-gap-0.5",
-            type === "submenu" ? "s-opacity-50" : ""
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Icon visual={icon} size={size} className={finalIconClasses} />
-          <span
-            className={classNames(
-              finalLabelClasses,
-              type === "submenu" ? "s-w-full" : ""
-            )}
-          >
-            {label}
-          </span>
-          <Icon
-            visual={chevronIcon}
-            size={size === "sm" ? "xs" : "sm"}
-            className={finalChevronClasses}
-          />
-        </Menu.Button>
-      )}
-    </>
-  );
-};
+        )}
+      </>
+    );
+  }
+);
 
 export interface DropdownItemProps {
   children?: React.ReactNode;
