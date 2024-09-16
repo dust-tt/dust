@@ -4,9 +4,9 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
 import { Authenticator } from "@app/lib/auth";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import {
   EnqueueUpsertDocument,
@@ -57,8 +57,12 @@ export async function upsertDocumentActivity(
     upsertQueueItem.workspaceId
   );
 
-  const dataSource = await getDataSource(auth, upsertQueueItem.dataSourceId);
-
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    upsertQueueItem.dataSourceId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "upsert_queue_activities" }
+  );
   if (!dataSource) {
     // If the data source was not found, we simply give up and remove the item from the queue as it
     // means that the data source was deleted.
@@ -201,8 +205,12 @@ export async function upsertTableActivity(
     return;
   }
 
-  const dataSource = await getDataSource(auth, upsertQueueItem.dataSourceId);
-
+  const dataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    upsertQueueItem.dataSourceId,
+    // TODO(DATASOURCE_SID): Clean-up
+    { origin: "upsert_queue_activities" }
+  );
   if (!dataSource) {
     // If the data source was not found, we simply give up and remove the item from the queue as it
     // means that the data source was deleted.
