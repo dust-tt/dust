@@ -1,7 +1,14 @@
-import type { AgentConfigurationType, AgentsGetViewType } from "@dust-tt/types";
-import { useMemo } from "react";
+import type {
+  AgentConfigurationType,
+  AgentsGetViewType,
+  APIError,
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@dust-tt/types";
+import { useContext, useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
@@ -64,12 +71,14 @@ export function useAgentConfigurations({
   includes = [],
   limit,
   sort,
+  disabled,
 }: {
   workspaceId: string;
   agentsGetView: AgentsGetViewType | null;
   includes?: ("authors" | "usage")[];
   limit?: number;
   sort?: "alphabetical" | "priority";
+  disabled?: boolean;
 }) {
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
@@ -107,7 +116,8 @@ export function useAgentConfigurations({
     agentsGetView
       ? `/api/w/${workspaceId}/assistant/agent_configurations?${queryString}`
       : null,
-    agentConfigurationsFetcher
+    agentConfigurationsFetcher,
+    { disabled }
   );
 
   return {
@@ -163,9 +173,11 @@ export function useProgressiveAgentConfigurations({
 export function useAgentConfiguration({
   workspaceId,
   agentConfigurationId,
+  disabled,
 }: {
   workspaceId: string;
   agentConfigurationId: string | null;
+  disabled?: boolean;
 }) {
   const agentConfigurationFetcher: Fetcher<{
     agentConfiguration: AgentConfigurationType;
@@ -175,7 +187,8 @@ export function useAgentConfiguration({
     agentConfigurationId
       ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}`
       : null,
-    agentConfigurationFetcher
+    agentConfigurationFetcher,
+    { disabled }
   );
 
   return {
@@ -236,4 +249,57 @@ export function useSlackChannelsLinkedWithAgent({
     isSlackChannelsError: error,
     mutateSlackChannels: mutate,
   };
+}
+
+// Convenient hooks to do CRUD operations on agent configurations
+
+export function useDeleteAgentConfiguration({
+  owner,
+  agentConfiguration,
+}: {
+  owner: LightWorkspaceType;
+  agentConfiguration: LightAgentConfigurationType;
+}) {
+  const sendNotification = useContext(SendNotificationsContext);
+  const { mutateAgentConfigurations } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "list", // Anything would work
+    disabled: true, // We only use the hook to mutate the cache
+  });
+
+  const { mutateAgentConfiguration } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration.sId,
+    disabled: true, // We only use the hook to mutate the cache
+  });
+
+  const doDelete = async () => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (res.ok) {
+      void mutateAgentConfiguration();
+      void mutateAgentConfigurations();
+
+      sendNotification({
+        type: "success",
+        title: `Successfully deleted ${agentConfiguration.name}`,
+        description: `${agentConfiguration.name} was successfully deleted.`,
+      });
+    } else {
+      const err: { error: APIError } = await res.json();
+      sendNotification({
+        type: "error",
+        title: `Error deleting ${agentConfiguration.name}`,
+        description: `Error: ${err.error.message}`,
+      });
+    }
+    return res.ok;
+  };
+
+  return doDelete;
 }
