@@ -90,6 +90,7 @@ export function DataTable<TData extends TBaseData>({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const isServerSidePagination = !!totalRowCount && totalRowCount > data.length;
+  const isClientSideSorting = !!sorting && !!setSorting;
   const onPaginationChange =
     pagination && setPagination
       ? (updater: Updater<PaginationState>) => {
@@ -113,22 +114,29 @@ export function DataTable<TData extends TBaseData>({
     columns,
     rowCount: totalRowCount,
     manualPagination: isServerSidePagination,
-    onSortingChange: onSortingChange,
+    manualSorting: isClientSideSorting && !isServerSidePagination,
+    ...(isClientSideSorting && {
+      onSortingChange: onSortingChange,
+    }),
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: sorting ? getSortedRowModel() : undefined,
+    ...(!isClientSideSorting && {
+      getSortedRowModel: getSortedRowModel(),
+    }),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: pagination ? getPaginationRowModel() : undefined,
     onColumnFiltersChange: setColumnFilters,
     state: {
       columnFilters,
-      sorting,
+      ...(isClientSideSorting && {
+        sorting,
+      }),
       pagination,
     },
     initialState: {
       pagination,
       sorting,
     },
-    onPaginationChange: onPaginationChange,
+    onPaginationChange,
   });
 
   useEffect(() => {

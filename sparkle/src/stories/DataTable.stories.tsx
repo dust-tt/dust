@@ -262,7 +262,7 @@ export const DataTablePaginatedServerSideExample = () => {
       (pagination.pageIndex + 1) * pagination.pageSize
     );
   }, [data, pagination, sorting]);
-
+  console.log(sorting)
   return (
     <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
       <Input
