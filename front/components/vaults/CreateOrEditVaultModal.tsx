@@ -14,8 +14,15 @@ import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import type { CellContext, PaginationState, Row } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import { useRouter } from "next/router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { ConfirmDeleteVaultDialog } from "@app/components/vaults/ConfirmDeleteVaultDialog";
 import { useSearchMembers } from "@app/lib/swr/user";
 import {
@@ -68,7 +75,7 @@ export function CreateOrEditVaultModal({
     pageIndex: 0,
     pageSize: 25,
   });
-
+  const sendNotifications = useContext(SendNotificationsContext);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const doCreate = useCreateVault({ owner });
   const doUpdate = useUpdateVault({ owner });
@@ -97,6 +104,21 @@ export function CreateOrEditVaultModal({
   );
 
   const getTableColumns = useCallback(() => {
+    const manageMembers = (userId: string, addOrRemove: "add" | "remove") => {
+      if (addOrRemove === "remove") {
+        if (selectedMembers.length === 1) {
+          sendNotifications({
+            title: "Cannot remove last member.",
+            description: "You cannot remove the last group member.",
+            type: "error",
+          });
+          return;
+        }
+        setSelectedMembers(selectedMembers.filter((m) => m !== userId));
+      } else {
+        setSelectedMembers([...selectedMembers, userId]);
+      }
+    };
     return [
       {
         id: "name",
@@ -140,11 +162,7 @@ export function CreateOrEditVaultModal({
                 <Button
                   label="Remove"
                   onClick={() =>
-                    setSelectedMembers(
-                      selectedMembers.filter(
-                        (m) => m !== info.row.original.userId
-                      )
-                    )
+                    manageMembers(info.row.original.userId, "remove")
                   }
                   variant="tertiary"
                   size="sm"
@@ -157,12 +175,7 @@ export function CreateOrEditVaultModal({
             <div className="ml-4 flex w-full justify-end pr-2">
               <Button
                 label="Add"
-                onClick={() =>
-                  setSelectedMembers([
-                    ...selectedMembers,
-                    info.row.original.userId,
-                  ])
-                }
+                onClick={() => manageMembers(info.row.original.userId, "add")}
                 variant="secondary"
                 size="sm"
                 icon={PlusIcon}
@@ -172,7 +185,7 @@ export function CreateOrEditVaultModal({
         },
       },
     ];
-  }, [selectedMembers]);
+  }, [selectedMembers, sendNotifications]);
 
   const rows = useMemo(() => getTableRows(members), [members]);
 
