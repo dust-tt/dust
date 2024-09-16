@@ -104,6 +104,7 @@ const getTableColumns = ({
       width: "6rem",
     },
     id: "managedBy",
+    accessorKey: "managedBy",
     cell: (info: CellContext<RowData, string>) => {
       const dsv = info.row.original.dataSourceView;
       const editedByUser =
@@ -120,6 +121,7 @@ const getTableColumns = ({
 
   const lastSyncedColumn = {
     header: "Last sync",
+    id: "lastSync",
     accessorFn: (row: RowData) =>
       row.dataSourceView.dataSource.connector?.lastSyncSuccessfulTime,
     meta: {
@@ -450,6 +452,10 @@ export const VaultResourcesList = ({
           initialColumnOrder={[{ desc: false, id: "name" }]}
           pagination={pagination}
           setPagination={setPagination}
+          columnsBreakpoints={{
+            lastSync: "md",
+            managedBy: "sm",
+          }}
         />
       )}
       {selectedDataSourceView &&

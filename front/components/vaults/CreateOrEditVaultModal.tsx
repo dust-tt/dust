@@ -121,17 +121,27 @@ export function CreateOrEditVaultModal({
     return [
       {
         id: "name",
-        accessorKey: "name",
         cell: (info: Info) => (
-          <DataTable.CellContent avatarUrl={info.row.original.icon}>
-            {info.row.original.name}
-          </DataTable.CellContent>
+          <>
+            <DataTable.CellContent
+              avatarUrl={info.row.original.icon}
+              className="hidden md:flex"
+            >
+              {info.row.original.name}
+            </DataTable.CellContent>
+            <DataTable.CellContent
+              avatarUrl={info.row.original.icon}
+              className="flex md:hidden"
+              description={info.row.original.email}
+            >
+              {info.row.original.name}
+            </DataTable.CellContent>
+          </>
         ),
         enableSorting: false,
       },
       {
         id: "email",
-        accessorKey: "email",
         cell: (info: Info) => (
           <DataTable.CellContent>
             <span className="text-element-700">{info.row.original.email}</span>
@@ -271,6 +281,9 @@ export function CreateOrEditVaultModal({
                   pagination={pagination}
                   setPagination={setPagination}
                   totalRowCount={totalMembersCount}
+                  columnsBreakpoints={{
+                    email: "md",
+                  }}
                 />
               </div>
             )}

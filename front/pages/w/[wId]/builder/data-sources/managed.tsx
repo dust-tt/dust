@@ -311,9 +311,9 @@ export default function DataSourcesView({
             filter={dataSourceSearch}
             filterColumn={"name"}
             columnsBreakpoints={{
-              // "managedBy": "sm",
+              managedBy: "sm",
               usedBy: "sm",
-              lastSync: "sm",
+              lastSync: "md",
             }}
           />
         ) : !isAdmin ? (
@@ -358,6 +358,7 @@ function getTableColumns() {
     },
     {
       header: "Used by",
+      id: "usedBy",
       accessorKey: "managedDataSource.usage",
       meta: {
         width: "6rem",
@@ -389,6 +390,7 @@ function getTableColumns() {
     },
     {
       header: "Last sync",
+      id: "lastSync",
       accessorFn: (row: RowData) =>
         row.managedDataSource.connector?.lastSyncSuccessfulTime,
       meta: {
