@@ -43,7 +43,7 @@ async function handler(
   const { dsId, tId } = req.query;
   if (typeof dsId !== "string" || typeof tId !== "string") {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 400,
       api_error: {
         type: "invalid_request_error",
         message: "Invalid path parameters.",
