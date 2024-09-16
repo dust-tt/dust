@@ -267,7 +267,7 @@ export const DataTablePaginatedServerSideExample = () => {
     <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
       <Input
         name="filter"
-        placeholder="Filte r"
+        placeholder="Filter"
         value={filter}
         onChange={(v) => setFilter(v)}
       />
@@ -281,7 +281,7 @@ export const DataTablePaginatedServerSideExample = () => {
         setPagination={setPagination}
         columns={columns}
         sorting={sorting}
-        setSorting={(sorting) => setSorting(sorting)}
+        setSorting={setSorting}
         columnsBreakpoints={{ lastUpdated: "sm" }}
       />
     </div>
