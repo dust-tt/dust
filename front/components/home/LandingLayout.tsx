@@ -16,16 +16,14 @@ import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import RootLayout from "@app/components/app/RootLayout";
+import { A } from "@app/components/home/ContentComponents";
+import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
+import { MainNavigation } from "@app/components/home/menu/MainNavigation";
+import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
+import Particles, { shapeNamesArray } from "@app/components/home/Particles";
+import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
-import { A } from "@app/pages/site/components/ContentComponents";
-import { FooterNavigation } from "@app/pages/site/components/menu/FooterNavigation";
-import { MainNavigation } from "@app/pages/site/components/menu/MainNavigation";
-import { MobileNavigation } from "@app/pages/site/components/menu/MobileNavigation";
-import Particles, {
-  shapeNamesArray,
-} from "@app/pages/site/components/Particles";
-import ScrollingHeader from "@app/pages/site/components/ScrollingHeader";
 
 export interface LandingLayoutProps {
   shape: number;
