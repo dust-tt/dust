@@ -31,6 +31,7 @@ import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import type { DataSourceIntegration } from "@app/components/vaults/AddConnectionMenu";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import config from "@app/lib/api/config";
 import {
@@ -54,11 +55,6 @@ type DataSourceWithConnectorAndUsageType =
   DataSourceWithConnectorDetailsType & {
     usage: number | null;
   };
-
-type DataSourceIntegration = {
-  connectorProvider: ConnectorProvider;
-  setupWithSuffix: string | null;
-};
 
 type RowData = {
   isAdmin: boolean;
@@ -279,6 +275,7 @@ export default function DataSourcesView({
             <AddConnectionMenu
               owner={owner}
               plan={plan}
+              integrations={integrations}
               existingDataSources={managedDataSources}
               dustClientFacingUrl={dustClientFacingUrl}
               setIsProviderLoading={(provider, isLoading) =>

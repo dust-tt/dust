@@ -15,7 +15,6 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  CONNECTOR_PROVIDERS,
   Err,
   isConnectorProviderAllowed,
   isOAuthProvider,
@@ -35,6 +34,11 @@ import {
 } from "@app/lib/connector_providers";
 import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
 
+export type DataSourceIntegration = {
+  connectorProvider: ConnectorProvider;
+  setupWithSuffix: string | null;
+};
+
 type AddConnectionMenuProps = {
   owner: WorkspaceType;
   plan: PlanType;
@@ -42,6 +46,7 @@ type AddConnectionMenuProps = {
   dustClientFacingUrl: string;
   setIsProviderLoading: (provider: ConnectorProvider, value: boolean) => void;
   onCreated(dataSource: DataSourceType): void;
+  integrations: DataSourceIntegration[];
 };
 
 export async function setupConnection({
@@ -81,6 +86,7 @@ export const AddConnectionMenu = ({
   dustClientFacingUrl,
   setIsProviderLoading,
   onCreated,
+  integrations,
 }: AddConnectionMenuProps) => {
   const sendNotification = useContext(SendNotificationsContext);
   const [showUpgradePopup, setShowUpgradePopup] = useState<boolean>(false);
@@ -91,23 +97,18 @@ export const AddConnectionMenu = ({
     });
   const [showConfirmConnection, setShowConfirmConnection] = useState<{
     isOpen: boolean;
-    connector: ConnectorProvider | null;
+    integration: DataSourceIntegration | null;
   }>({
     isOpen: false,
-    connector: null,
+    integration: null,
   });
 
   const router = useRouter();
-  const allConnectors = CONNECTOR_PROVIDERS.filter(
-    (f) =>
-      isConnectorProviderAllowedForPlan(plan, f) &&
-      isConnectionIdRequiredForProvider(f)
-  );
 
-  const nonSetUpConnectors = allConnectors.filter((connectorProvider) =>
-    existingDataSources.every(
-      (view) => view.connectorProvider !== connectorProvider
-    )
+  const availableIntegrations = integrations.filter(
+    (i) =>
+      isConnectorProviderAllowedForPlan(plan, i.connectorProvider) &&
+      isConnectionIdRequiredForProvider(i.connectorProvider)
   );
 
   const handleEnableManagedDataSource = async (
@@ -126,7 +127,7 @@ export const AddConnectionMenu = ({
 
       setShowConfirmConnection((prev) => ({
         isOpen: false,
-        connector: prev.connector,
+        integration: prev.integration,
       }));
       setIsProviderLoading(provider, true);
 
@@ -167,7 +168,7 @@ export const AddConnectionMenu = ({
     } catch (e) {
       setShowConfirmConnection((prev) => ({
         isOpen: false,
-        connector: prev.connector,
+        integration: prev.integration,
       }));
       sendNotification({
         type: "error",
@@ -178,8 +179,9 @@ export const AddConnectionMenu = ({
     }
   };
 
-  const handleConnectionClick = (connectorProvider: ConnectorProvider) => {
-    const configuration = CONNECTOR_CONFIGURATIONS[connectorProvider];
+  const handleConnectionClick = (integration: DataSourceIntegration) => {
+    const configuration =
+      CONNECTOR_CONFIGURATIONS[integration.connectorProvider];
 
     const isBuilt =
       configuration.status === "built" ||
@@ -192,21 +194,25 @@ export const AddConnectionMenu = ({
     );
 
     const existingDataSource = existingDataSources.find(
-      (view) => view.connectorProvider === connectorProvider
+      (view) => view.connectorProvider === integration.connectorProvider
     );
-    if (!existingDataSource || !existingDataSource.connector) {
+    if (
+      !existingDataSource ||
+      !existingDataSource.connector ||
+      integration.setupWithSuffix
+    ) {
       if (!isProviderAllowed) {
         setShowUpgradePopup(true);
       } else {
         if (isBuilt) {
           setShowConfirmConnection({
             isOpen: true,
-            connector: connectorProvider,
+            integration,
           });
         } else {
           setShowPreviewPopupForProvider({
             isOpen: true,
-            connector: connectorProvider,
+            connector: integration.connectorProvider,
           });
         }
       }
@@ -214,7 +220,7 @@ export const AddConnectionMenu = ({
   };
 
   return (
-    nonSetUpConnectors.length > 0 && (
+    availableIntegrations.length > 0 && (
       <>
         <Dialog
           isOpen={showUpgradePopup}
@@ -227,24 +233,26 @@ export const AddConnectionMenu = ({
           <p>Unlock this managed data source by upgrading your plan.</p>
         </Dialog>
 
-        {showConfirmConnection.connector && (
+        {showConfirmConnection.integration && (
           <CreateConnectionConfirmationModal
             owner={owner}
             connectorProviderConfiguration={
-              CONNECTOR_CONFIGURATIONS[showConfirmConnection.connector]
+              CONNECTOR_CONFIGURATIONS[
+                showConfirmConnection.integration.connectorProvider
+              ]
             }
             isOpen={showConfirmConnection.isOpen}
             onClose={() =>
               setShowConfirmConnection((prev) => ({
                 isOpen: false,
-                connector: prev.connector,
+                integration: prev.integration,
               }))
             }
             onConfirm={async () => {
-              if (showConfirmConnection.connector) {
+              if (showConfirmConnection.integration) {
                 await handleEnableManagedDataSource(
-                  showConfirmConnection.connector,
-                  null // suffix
+                  showConfirmConnection.integration.connectorProvider,
+                  showConfirmConnection.integration.setupWithSuffix
                 );
               }
             }}
@@ -278,13 +286,13 @@ export const AddConnectionMenu = ({
             />
           </DropdownMenu.Button>
           <DropdownMenu.Items width={180}>
-            {nonSetUpConnectors.map((connectorProvider) => (
+            {availableIntegrations.map((i) => (
               <DropdownMenu.Item
-                key={connectorProvider}
-                label={CONNECTOR_CONFIGURATIONS[connectorProvider].name}
-                icon={getConnectorProviderLogoWithFallback(connectorProvider)}
+                key={i.connectorProvider}
+                label={CONNECTOR_CONFIGURATIONS[i.connectorProvider].name}
+                icon={getConnectorProviderLogoWithFallback(i.connectorProvider)}
                 onClick={() => {
-                  handleConnectionClick(connectorProvider);
+                  handleConnectionClick(i);
                 }}
               />
             ))}
