@@ -148,8 +148,10 @@ export async function createTableDataSourceConfiguration(
 
       await AgentTablesQueryConfigurationTable.create(
         {
-          // TODO(GROUPS_INFRA) Use ModelId for dataSourceId.
+          // TODO(DATASOURCE_ID) Remove once fully migrated over to `dataSourceIdNew`.
           dataSourceId: dataSource.name,
+
+          dataSourceIdNew: dataSource.id,
           dataSourceViewId: dataSourceView.id,
           dataSourceWorkspaceId: tc.workspaceId,
           tableId: tc.tableId,
