@@ -93,9 +93,6 @@ export class AgentTablesQueryConfigurationTable extends Model<
 
   declare dataSourceWorkspaceId: string;
 
-  // TODO:(GROUPS_INFRA): `dataSourceId` should be a foreign key to `DataSource` model.
-  // TODO(DATA_SOURCE_ID) Remove once fully migrated over to `dataSourceIdNew`.
-  declare dataSourceId: string;
   declare tableId: string;
 
   declare dataSourceIdNew: ForeignKey<DataSource["id"]> | null;
@@ -127,10 +124,6 @@ AgentTablesQueryConfigurationTable.init(
     },
 
     dataSourceWorkspaceId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    dataSourceId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
