@@ -17,7 +17,7 @@ import React, { useMemo, useState } from "react";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
-import { useSearchMembers } from "@app/lib/swr/user";
+import { useSearchMembers } from "@app/lib/swr/memberships";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {
