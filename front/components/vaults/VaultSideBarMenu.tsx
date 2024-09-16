@@ -18,7 +18,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@dust-tt/types";
-import { groupBy, uniqBy } from "lodash";
+import { groupBy, sortBy, uniqBy } from "lodash";
 import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
@@ -596,7 +596,7 @@ const VaultAppSubMenu = ({
     >
       {isExpanded && (
         <Tree isLoading={isAppsLoading}>
-          {apps.map((app) => (
+          {sortBy(apps, "name").map((app) => (
             <VaultAppItem app={app} key={app.sId} owner={owner} />
           ))}
         </Tree>
