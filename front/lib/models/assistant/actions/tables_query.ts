@@ -170,12 +170,12 @@ AgentTablesQueryConfigurationTable.belongsTo(AgentTablesQueryConfiguration, {
 // TODO(DATA_SOURCE_ID) Enforce once fully migrated.
 // Config <> Data source.
 DataSource.hasMany(AgentTablesQueryConfigurationTable, {
-  foreignKey: { allowNull: true },
+  foreignKey: { allowNull: true, name: "dataSourceIdNew" },
   onDelete: "RESTRICT",
 });
 AgentTablesQueryConfigurationTable.belongsTo(DataSource, {
   as: "dataSource",
-  foreignKey: { allowNull: true },
+  foreignKey: { allowNull: true, name: "dataSourceIdNew" },
 });
 
 // Config <> Data source view.
