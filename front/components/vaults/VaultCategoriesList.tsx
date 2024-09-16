@@ -165,6 +165,9 @@ export const VaultCategoriesList = ({
           columns={getTableColumns()}
           filter={dataSourceSearch}
           filterColumn={"name"}
+          columnsBreakpoints={{
+            usage: "md",
+          }}
         />
       )}
     </>

@@ -99,7 +99,6 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
   columns.push({
     header: "Last updated",
     accessorKey: "lastUpdatedAt",
-    id: "lastUpdatedAt",
     meta: {
       width: "12rem",
     },
@@ -358,6 +357,10 @@ export const VaultDataSourceViewContentList = ({
           totalRowCount={totalNodesCount}
           pagination={pagination}
           setPagination={setPagination}
+          columnsBreakpoints={{
+            lastUpdatedAt: "sm",
+            vaults: "md",
+          }}
         />
       )}
       <ContentActions
