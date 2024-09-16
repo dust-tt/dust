@@ -1,5 +1,6 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
 import assert from "assert";
+import type { GroupedCountResultItem } from "sequelize";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
@@ -35,7 +36,7 @@ async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
     );
 
   // Count agent tables query configurations that uses those data sources and have no dataSourceIdNew.
-  const agentTablesQueryConfigurationsCount =
+  const agentTablesQueryConfigurationsCount: GroupedCountResultItem[] =
     await AgentTablesQueryConfigurationTable.count({
       where: {
         // /!\ `dataSourceId` is the data source's name, not the id.
