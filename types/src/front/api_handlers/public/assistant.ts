@@ -27,6 +27,7 @@ export const PublicPostMessagesRequestBodySchema = t.intersection([
         t.literal("gsheet"),
         t.literal("zapier"),
         t.literal("make"),
+        t.literal("zendesk"),
         t.null,
         t.undefined,
       ]),
