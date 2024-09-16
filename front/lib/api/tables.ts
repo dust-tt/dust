@@ -33,8 +33,7 @@ type CsvParsingError = {
     | "duplicate_header"
     | "invalid_record_length"
     | "empty_csv"
-    | "invalid_row_id"
-    | "app_error";
+    | "invalid_row_id";
   message: string;
 };
 
