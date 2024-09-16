@@ -1,9 +1,12 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
+import assert from "assert";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
 
@@ -20,6 +23,16 @@ async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
   logger.info(
     `Found ${dataSources.length} data sources for workspace(${workspace.sId}).`
   );
+
+  const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+
+  // Retrieve data source views for data sources.
+  const dataSourceViews =
+    await DataSourceViewResource.listForDataSourcesInVault(
+      auth,
+      dataSources,
+      globalVault
+    );
 
   // Count agent tables query configurations that uses those data sources and have no dataSourceIdNew.
   const agentTablesQueryConfigurationsCount =
@@ -44,8 +57,17 @@ async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
   }
 
   for (const ds of dataSources) {
+    const dataSourceView = dataSourceViews.find(
+      (dsv) => dsv.dataSourceId === ds.id
+    );
+    assert(
+      dataSourceView,
+      `Data source view not found for data source ${ds.id}.`
+    );
+
     await AgentTablesQueryConfigurationTable.update(
-      { dataSourceIdNew: ds.id },
+      // Upsert both `dataSourceIdNew` and `dataSourceViewId` to ensure consistency.
+      { dataSourceIdNew: ds.id, dataSourceViewId: dataSourceView.id },
       {
         where: {
           // /!\ `dataSourceId` is the data source's name, not the id.
@@ -53,7 +75,7 @@ async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
           dataSourceIdNew: {
             [Op.is]: null,
           },
-          // Given that the name isn't unique we need precise the workspace.
+          // Given that the name isn't unique we need to precise the workspace.
           dataSourceWorkspaceId: workspace.sId,
         },
       }
