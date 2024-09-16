@@ -1,6 +1,7 @@
 import { CommandLineIcon, Item, Modal, Page } from "@dust-tt/sparkle";
 import type { AppType, LightWorkspaceType, VaultType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
+import { sortBy } from "lodash";
 
 import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
 
@@ -70,7 +71,7 @@ function PickDustApp({
 
   return (
     <Transition show={show} className="mx-auto max-w-6xl">
-      <Page>
+      <Page variant="modal">
         <Page.Header title="Select Dust App" icon={CommandLineIcon} />
         {hasSomeUnselectableApps && (
           <Page.P>
@@ -93,17 +94,25 @@ function PickDustApp({
 
             return (
               <>
-                {allowedDustApps.map((app) => (
-                  <Item.Navigation
-                    label={app.name}
-                    icon={CommandLineIcon}
-                    disabled={!app.description || app.description.length === 0}
-                    key={app.sId}
-                    onClick={() => {
-                      onPick(app);
-                    }}
-                  />
-                ))}
+                {sortBy(
+                  allowedDustApps,
+                  (a) => !a.description || a.description.length === 0,
+                  "name"
+                ).map((app) => {
+                  const disabled =
+                    !app.description || app.description.length === 0;
+                  return (
+                    <Item.Navigation
+                      label={app.name + (disabled ? " (No description)" : "")}
+                      icon={CommandLineIcon}
+                      disabled={disabled}
+                      key={app.sId}
+                      onClick={() => {
+                        onPick(app);
+                      }}
+                    />
+                  );
+                })}
               </>
             );
           }}

@@ -143,6 +143,7 @@ export function ActionDustAppRun({
             application's input block dataset schema.
           </div>
           <DustAppSelectionSection
+            owner={owner}
             show={true}
             dustAppConfiguration={
               action.configuration as AssistantBuilderDustAppConfiguration
