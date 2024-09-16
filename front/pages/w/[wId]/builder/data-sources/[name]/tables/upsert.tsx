@@ -29,7 +29,7 @@ import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useDataSourceTable } from "@app/lib/swr/data_sources";
 import { classNames } from "@app/lib/utils";
-import type { UpsertTableFromCsvRequestBody } from "@app/pages/api/w/[wId]/data_sources/[name]/tables/csv";
+import type { UpsertTableFromCsvRequestBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/tables/csv";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
