@@ -486,7 +486,6 @@ function DataSourceViewSelectedNodes({
     dataSourceView,
     internalIds: dataSourceConfiguration.filter.parents?.in ?? undefined,
     viewType,
-    includeChildren: false,
   });
 
   return (

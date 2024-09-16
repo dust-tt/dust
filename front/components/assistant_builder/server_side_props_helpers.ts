@@ -217,7 +217,6 @@ async function renderDataSourcesConfigurations(
       const contentNodesRes = await getContentNodesForDataSourceView(
         dataSourceView,
         {
-          includeChildren: false,
           internalIds: sr.resources,
           viewType: "documents",
         }
@@ -292,7 +291,6 @@ async function renderTableDataSourcesConfigurations(
         const contentNodesRes = await getContentNodesForDataSourceView(
           dataSourceView,
           {
-            includeChildren: false,
             internalIds: sr.resources,
             // We only want to fetch tables from the core API.
             onlyCoreAPI: true,
