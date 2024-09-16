@@ -21,6 +21,8 @@ async function handler(
     req.query.wId as string
   );
 
+  console.log("AUTH", auth.isDustSuperUser());
+
   if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
@@ -30,6 +32,11 @@ async function handler(
       },
     });
   }
+
+  console.log(
+    ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+  );
+  console.log(req.query);
 
   const { dsId } = req.query;
   if (typeof dsId !== "string") {

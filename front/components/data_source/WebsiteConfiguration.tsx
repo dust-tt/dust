@@ -240,7 +240,7 @@ export default function WebsiteConfiguration({
     }
     setIsSaving(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${encodeURIComponent(dataSource.sId)}`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}`,
       {
         method: "DELETE",
       }
