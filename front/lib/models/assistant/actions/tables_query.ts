@@ -102,6 +102,7 @@ export class AgentTablesQueryConfigurationTable extends Model<
     AgentTablesQueryConfiguration["id"]
   >;
 
+  declare dataSource: NonAttribute<DataSource>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
 

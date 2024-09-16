@@ -15,6 +15,7 @@ import {
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export async function fetchTableQueryActionConfigurations({
@@ -46,6 +47,10 @@ export async function fetchTableQueryActionConfigurations({
         },
       },
       include: [
+        {
+          model: DataSource,
+          as: "dataSource",
+        },
         {
           model: DataSourceViewModel,
           as: "dataSourceView",
@@ -83,7 +88,8 @@ export async function fetchTableQueryActionConfigurations({
           });
 
           return {
-            dataSourceId: table.dataSourceId,
+            // TODO(DATASOURCE_SID): use sId instead of name.
+            dataSourceId: table.dataSource.name,
             dataSourceViewId,
             workspaceId: table.dataSourceWorkspaceId,
             tableId: table.tableId,
