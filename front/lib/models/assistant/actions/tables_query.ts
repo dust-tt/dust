@@ -9,7 +9,6 @@ import { DataTypes, Model } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
-import type { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -99,7 +98,7 @@ export class AgentTablesQueryConfigurationTable extends Model<
   declare dataSourceId: string;
   declare tableId: string;
 
-  declare dataSourceIdNew: ForeignKey<DataSource["id"]>;
+  declare dataSourceIdNew: ForeignKey<DataSource["id"]> | null;
 
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
   declare tablesQueryConfigurationId: ForeignKey<
