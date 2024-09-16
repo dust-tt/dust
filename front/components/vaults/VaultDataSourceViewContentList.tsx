@@ -116,7 +116,7 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
   return columns;
 };
 
-function useViewHasContent({
+function useStaticDataSourceViewHasContent({
   owner,
   dataSourceView,
   parentId,
@@ -127,8 +127,11 @@ function useViewHasContent({
   parentId?: string;
   viewType: ContentNodesViewType;
 }) {
+  // We don't do the call if the dataSourceView is managed.
   const { isNodesLoading, nodes } = useDataSourceViewContentNodes({
-    dataSourceView,
+    dataSourceView: isManaged(dataSourceView.dataSource)
+      ? undefined
+      : dataSourceView,
     owner,
     internalIds: parentId ? [parentId] : undefined,
     pagination: {
@@ -139,8 +142,8 @@ function useViewHasContent({
   });
 
   return {
-    hasContent: !!nodes?.length,
-    isLoading: isNodesLoading,
+    hasContent: isManaged(dataSourceView.dataSource) ? true : !!nodes?.length,
+    isLoading: isManaged(dataSourceView.dataSource) ? false : isNodesLoading,
   };
 }
 
@@ -206,13 +209,13 @@ export const VaultDataSourceViewContentList = ({
     viewType: isValidContentNodesViewType(viewType) ? viewType : undefined,
   });
 
-  const { hasContent: hasDocuments } = useViewHasContent({
+  const { hasContent: hasDocuments } = useStaticDataSourceViewHasContent({
     owner,
     dataSourceView,
     parentId,
     viewType: "documents",
   });
-  const { hasContent: hasTables } = useViewHasContent({
+  const { hasContent: hasTables } = useStaticDataSourceViewHasContent({
     owner,
     dataSourceView,
     parentId,
