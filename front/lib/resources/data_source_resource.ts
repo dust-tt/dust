@@ -62,7 +62,7 @@ export type FetchDataSourceOrigin =
   | "data_source_search"
   | "data_source_tables"
   | "data_source_tables_table"
-  | "data_source_tables_csv "
+  | "data_source_tables_csv"
   | "data_source_builder_edit_public_url"
   | "data_source_builder_index"
   | "data_source_builder_search"
