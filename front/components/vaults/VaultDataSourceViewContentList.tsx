@@ -79,6 +79,7 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
   if (showVaultUsage) {
     columns.push({
       header: "Available to",
+      id: "vaults",
       accessorKey: "vaults",
       meta: {
         width: "14rem",
@@ -98,6 +99,7 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
 
   columns.push({
     header: "Last updated",
+    id: "lastUpdatedAt",
     accessorKey: "lastUpdatedAt",
     meta: {
       width: "12rem",

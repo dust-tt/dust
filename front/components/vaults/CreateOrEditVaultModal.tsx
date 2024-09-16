@@ -100,7 +100,6 @@ export function CreateOrEditVaultModal({
     return [
       {
         id: "name",
-        accessorKey: "name",
         cell: (info: Info) => (
           <>
             <DataTable.CellContent
@@ -131,7 +130,6 @@ export function CreateOrEditVaultModal({
       },
       {
         id: "email",
-        accessorKey: "email",
         cell: (info: Info) => (
           <DataTable.CellContent>
             <span className="text-element-700">{info.row.original.email}</span>

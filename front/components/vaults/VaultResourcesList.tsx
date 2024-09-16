@@ -103,6 +103,7 @@ const getTableColumns = ({
     meta: {
       width: "6rem",
     },
+    id: "managedBy",
     accessorKey: "managedBy",
     cell: (info: CellContext<RowData, string>) => {
       const dsv = info.row.original.dataSourceView;
@@ -120,7 +121,7 @@ const getTableColumns = ({
 
   const lastSyncedColumn = {
     header: "Last sync",
-    accessorKey: "lastSync",
+    id: "lastSync",
     accessorFn: (row: RowData) =>
       row.dataSourceView.dataSource.connector?.lastSyncSuccessfulTime,
     meta: {
