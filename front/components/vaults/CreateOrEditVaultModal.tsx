@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, UserType, VaultType } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import type { CellContext, PaginationState, Row } from "@tanstack/react-table";
+import type { CellContext, PaginationState } from "@tanstack/react-table";
 import { MinusIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import React, {
@@ -31,7 +31,6 @@ import {
   useUpdateVault,
   useVaultInfo,
 } from "@app/lib/swr/vaults";
-import { removeDiacritics } from "@app/lib/utils";
 
 type RowData = {
   icon: string;
@@ -129,15 +128,6 @@ export function CreateOrEditVaultModal({
           </DataTable.CellContent>
         ),
         enableSorting: false,
-        filterFn: (row: Row<RowData>, columnId: string, filterValue: any) => {
-          if (!filterValue) {
-            return true;
-          }
-
-          return removeDiacritics(row.getValue(columnId))
-            .toLowerCase()
-            .includes(removeDiacritics(filterValue).toLowerCase());
-        },
       },
       {
         id: "email",
