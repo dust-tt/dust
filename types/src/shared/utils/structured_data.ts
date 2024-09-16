@@ -14,7 +14,7 @@ export function getSanitizedHeaders(rawHeaders: string[]) {
       acc.push(slugifiedName);
     } else {
       let conflictResolved = false;
-      for (let i = 2; i < 1024; i++) {
+      for (let i = 2; i < 64; i++) {
         if (!acc.includes(slugify(`${slugifiedName}_${i}`))) {
           acc.push(slugify(`${slugifiedName}_${i}`));
           conflictResolved = true;

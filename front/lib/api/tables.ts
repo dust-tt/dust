@@ -459,7 +459,7 @@ async function staticHeaderDetection(
   firstRow: string[]
 ): Promise<Result<{ header: string[]; rowIndex: number }, CsvParsingError>> {
   const firstRecordCells = firstRow.map(
-    (h) => h.trim().toLocaleLowerCase() || "unknown"
+    (h, i) => h.trim().toLocaleLowerCase() || `col_${i}`
   );
   const header = getSanitizedHeaders(firstRecordCells);
 
