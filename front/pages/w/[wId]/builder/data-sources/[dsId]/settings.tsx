@@ -16,8 +16,8 @@ import { DeleteStaticDataSourceDialog } from "@app/components/data_source/Delete
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleSaveCancelTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { classNames } from "@app/lib/utils";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -27,16 +27,26 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   fetchConnectorError?: boolean;
   dataSourceUsage: number;
 }>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
+  const owner = auth.getNonNullableWorkspace();
+  const subscription = auth.getNonNullableSubscription();
 
-  if (!owner || !subscription || !auth.isBuilder()) {
+  if (!auth.isBuilder()) {
     return {
       notFound: true,
     };
   }
 
-  const dataSource = await getDataSource(auth, context.params?.name as string);
+  const { dsId } = context.params || {};
+  if (typeof dsId !== "string") {
+    return {
+      notFound: true,
+    };
+  }
+
+  const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId, {
+    // TODO(DATASOURCE_SID): Clean-up
+    origin: "data_source_builder_settings",
+  });
   if (
     !dataSource ||
     (dataSource.connectorProvider &&
@@ -46,6 +56,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       notFound: true,
     };
   }
+
   const dataSourceUsageRes = await dataSource.getUsagesByAgents(auth);
 
   return {

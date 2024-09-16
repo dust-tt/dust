@@ -49,11 +49,11 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDocument, isWebsite } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import {
   useDataSourceDocuments,
@@ -76,21 +76,23 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   dustClientFacingUrl: string;
   user: UserType;
 }>(async (context, auth) => {
-  const owner = auth.workspace();
-  const plan = auth.plan();
-  const subscription = auth.subscription();
-  const user = auth.user();
+  const owner = auth.getNonNullableWorkspace();
+  const plan = auth.getNonNullablePlan();
+  const subscription = auth.getNonNullableSubscription();
+  const user = auth.getNonNullableUser();
 
-  if (!owner || !plan || !subscription || !user) {
+  const { dsId } = context.params || {};
+  if (typeof dsId !== "string") {
     return {
       notFound: true,
     };
   }
 
-  const dataSource = await getDataSource(auth, context.params?.name as string, {
+  const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId, {
     includeEditedBy: true,
+    // TODO(DATASOURCE_SID): Clean-up
+    origin: "data_source_builder_index",
   });
-
   if (!dataSource) {
     return {
       notFound: true,
