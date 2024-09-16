@@ -4,22 +4,25 @@ import type {
   UserTypeWithWorkspaces,
 } from "@dust-tt/types";
 import { useCallback, useContext } from "react";
-import { useSWRConfig } from "swr";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { useMembers } from "@app/lib/swr/memberships";
 
 type HandleMembersRoleChangeParams = {
   members: UserTypeWithWorkspaces[];
   role: RoleType;
 };
 
-export function useHandleMembersRoleChange({
+export function useChangeMembersRoles({
   owner,
 }: {
   owner: LightWorkspaceType;
 }) {
   const sendNotification = useContext(SendNotificationsContext);
-  const { mutate } = useSWRConfig();
+  const { mutateMembers } = useMembers({
+    workspaceId: owner.sId,
+    disabled: true,
+  });
 
   const handleMembersRoleChange = useCallback(
     async ({
@@ -62,12 +65,10 @@ export function useHandleMembersRoleChange({
             description: `Role updated to ${role} for ${members.length} member(s).`,
           });
 
-          // Mutate the members data to trigger a revalidation
-          await mutate(`/api/w/${owner.sId}/members`);
+          await mutateMembers();
           return true;
         }
       } catch (error) {
-        console.error("Error updating member roles:", error);
         sendNotification({
           type: "error",
           title: "Update failed",
@@ -77,7 +78,7 @@ export function useHandleMembersRoleChange({
         return false;
       }
     },
-    [owner.sId, sendNotification, mutate]
+    [owner.sId, sendNotification, mutateMembers]
   );
 
   return handleMembersRoleChange;

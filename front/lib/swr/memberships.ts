@@ -41,6 +41,37 @@ export function useMembers({
   };
 }
 
+export function useAdmins(owner: LightWorkspaceType) {
+  const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/members?role=admin`,
+    membersFetcher
+  );
+
+  return {
+    admins: useMemo(() => (data ? data.members : []), [data]),
+    isAdminsLoading: !error && !data,
+    iAdminsError: error,
+    mutateMembers: mutate,
+  };
+}
+
+export function useWorkspaceInvitations(owner: LightWorkspaceType) {
+  const workspaceInvitationsFetcher: Fetcher<GetWorkspaceInvitationsResponseBody> =
+    fetcher;
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/invitations`,
+    workspaceInvitationsFetcher
+  );
+
+  return {
+    invitations: useMemo(() => (data ? data.invitations : []), [data]),
+    isInvitationsLoading: !error && !data,
+    isInvitationsError: error,
+    mutateInvitations: mutate,
+  };
+}
+
 export function useSearchMembers({
   workspaceId,
   searchTerm,
@@ -87,36 +118,5 @@ export function useSearchMembers({
     isLoading: !error && !data,
     isError: !!error,
     mutateMembers: mutate,
-  };
-}
-
-export function useAdmins(owner: LightWorkspaceType) {
-  const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/members?role=admin`,
-    membersFetcher
-  );
-
-  return {
-    admins: useMemo(() => (data ? data.members : []), [data]),
-    isAdminsLoading: !error && !data,
-    iAdminsError: error,
-    mutateMembers: mutate,
-  };
-}
-
-export function useWorkspaceInvitations(owner: LightWorkspaceType) {
-  const workspaceInvitationsFetcher: Fetcher<GetWorkspaceInvitationsResponseBody> =
-    fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/invitations`,
-    workspaceInvitationsFetcher
-  );
-
-  return {
-    invitations: useMemo(() => (data ? data.invitations : []), [data]),
-    isInvitationsLoading: !error && !data,
-    isInvitationsError: error,
-    mutateInvitations: mutate,
   };
 }
