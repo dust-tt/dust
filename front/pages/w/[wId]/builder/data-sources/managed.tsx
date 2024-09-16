@@ -51,7 +51,7 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
   "intercom",
 ];
 
-type DataSourceWithConnectorAndUsageType =
+export type DataSourceWithConnectorAndUsageType =
   DataSourceWithConnectorDetailsType & {
     usage: number | null;
   };
