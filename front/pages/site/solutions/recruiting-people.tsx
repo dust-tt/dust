@@ -290,7 +290,7 @@ export function RecruitingCaroussel() {
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"
-      href="/solutions/recruiting-people"
+      href="/site/solutions/recruiting-people"
     />
   );
 }
