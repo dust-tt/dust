@@ -1,12 +1,12 @@
 import type { ReactElement } from "react";
 import React from "react";
 
+import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { Landing } from "@app/pages/site";
-import type { LandingLayoutProps } from "@app/pages/site/components/LandingLayout";
-import LandingLayout from "@app/pages/site/components/LandingLayout";
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",

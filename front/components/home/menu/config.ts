@@ -114,31 +114,31 @@ const SolutionsMenuConfig: MenuConfig = {
   items: [
     {
       title: "Customer Support",
-      href: "/site/solutions/customer-support",
+      href: "/solutions/customer-support",
     },
     {
       title: "Marketing & Content",
-      href: "/site/solutions/marketing",
+      href: "/solutions/marketing",
     },
     {
       title: "Recruiting & People",
-      href: "/site/solutions/recruiting-people",
+      href: "/solutions/recruiting-people",
     },
     {
       title: "Engineering",
-      href: "/site/solutions/engineering",
+      href: "/solutions/engineering",
     },
     {
       title: "Data & Analytics",
-      href: "/site/solutions/data-analytics",
+      href: "/solutions/data-analytics",
     },
     {
       title: "Sales",
-      href: "/site/solutions/sales",
+      href: "/solutions/sales",
     },
     {
       title: "Knowledge Management",
-      href: "/site/solutions/knowledge",
+      href: "/solutions/knowledge",
     },
   ],
 };
@@ -148,11 +148,11 @@ const DevelopersMenuConfig: MenuConfig = {
   items: [
     {
       title: "Dust Apps & API",
-      href: "/site/solutions/dust-platform",
+      href: "/solutions/dust-platform",
     },
     {
       title: "Dust for engineers",
-      href: "/site/solutions/engineering",
+      href: "/solutions/engineering",
     },
     {
       title: "Platform Documentation",
@@ -177,7 +177,7 @@ export const menuConfig: DocsConfig = {
   mainNav: [
     {
       title: "Product",
-      href: "/site",
+      href: "/",
     },
     {
       title: SolutionsMenuConfig.title,
@@ -193,11 +193,11 @@ export const menuConfig: DocsConfig = {
     },
     {
       title: "Pricing",
-      href: "/site/pricing",
+      href: "/pricing",
     },
     {
       title: "Security",
-      href: "/site/security",
+      href: "/security",
     },
     {
       title: MoreMenuConfig.title,
@@ -209,15 +209,15 @@ export const menuConfig: DocsConfig = {
   mobileNav: [
     {
       title: "Product",
-      href: "/site",
+      href: "/",
     },
     {
       title: "Pricing",
-      href: "/site/pricing",
+      href: "/pricing",
     },
     {
       title: "Security",
-      href: "/site/security",
+      href: "/security",
     },
     {
       title: SolutionsMenuConfig.title,

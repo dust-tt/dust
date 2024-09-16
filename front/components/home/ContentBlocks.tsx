@@ -3,14 +3,13 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import React from "react";
 
-import { classNames } from "@app/lib/utils";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@app/pages/site/components/Carousel";
+} from "@app/components/home/Carousel";
 import {
   Grid,
   H1,
@@ -18,9 +17,10 @@ import {
   H3,
   H5,
   P,
-} from "@app/pages/site/components/ContentComponents";
-import type { SolutionSectionAssistantBlockProps } from "@app/pages/site/components/SolutionSection";
-import { SolutionSectionAssistantBlock } from "@app/pages/site/components/SolutionSection";
+} from "@app/components/home/ContentComponents";
+import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
+import { SolutionSectionAssistantBlock } from "@app/components/home/SolutionSection";
+import { classNames } from "@app/lib/utils";
 
 interface ImgBlockProps {
   children?: React.ReactNode;

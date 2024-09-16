@@ -2,8 +2,8 @@ import { Avatar } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import React from "react";
 
+import { H2, H5, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
-import { H2, H5, P } from "@app/pages/site/components/ContentComponents";
 
 interface SolutionSectionProps {
   title: ReactNode;

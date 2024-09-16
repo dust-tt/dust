@@ -1,21 +1,21 @@
 import React from "react";
 
-import { classNames } from "@app/lib/utils";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@app/pages/site/components/Carousel";
-import { Grid, H2 } from "@app/pages/site/components/ContentComponents";
-import { CustomerCaroussel } from "@app/pages/site/solutions/customer-support";
-import { DataCaroussel } from "@app/pages/site/solutions/data-analytics";
-import { EngineeringCaroussel } from "@app/pages/site/solutions/engineering";
-import { KnowledgeCaroussel } from "@app/pages/site/solutions/knowledge";
-import { MarketingCaroussel } from "@app/pages/site/solutions/marketing";
-import { RecruitingCaroussel } from "@app/pages/site/solutions/recruiting-people";
-import { SalesCaroussel } from "@app/pages/site/solutions/sales";
+} from "@app/components/home/Carousel";
+import { Grid, H2 } from "@app/components/home/ContentComponents";
+import { classNames } from "@app/lib/utils";
+import { CustomerCaroussel } from "@app/pages/solutions/customer-support";
+import { DataCaroussel } from "@app/pages/solutions/data-analytics";
+import { EngineeringCaroussel } from "@app/pages/solutions/engineering";
+import { KnowledgeCaroussel } from "@app/pages/solutions/knowledge";
+import { MarketingCaroussel } from "@app/pages/solutions/marketing";
+import { RecruitingCaroussel } from "@app/pages/solutions/recruiting-people";
+import { SalesCaroussel } from "@app/pages/solutions/sales";
 
 export function VerticalSection() {
   return (

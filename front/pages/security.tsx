@@ -2,23 +2,18 @@ import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 import React from "react";
 
-import { classNames } from "@app/lib/utils";
 import {
   HeaderContentBlock,
   ImgBlock,
-} from "@app/pages/site/components/ContentBlocks";
-import {
-  A,
-  Grid,
-  P,
-  Strong,
-} from "@app/pages/site/components/ContentComponents";
-import type { LandingLayoutProps } from "@app/pages/site/components/LandingLayout";
-import LandingLayout from "@app/pages/site/components/LandingLayout";
+} from "@app/components/home/ContentBlocks";
+import { A, Grid, P, Strong } from "@app/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
+import LandingLayout from "@app/components/home/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
-} from "@app/pages/site/components/Particles";
+} from "@app/components/home/Particles";
+import { classNames } from "@app/lib/utils";
 
 export async function getServerSideProps() {
   return {
