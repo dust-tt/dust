@@ -57,11 +57,11 @@ export function AssistantDetailsDropdownMenu({
   const [showDeletionModal, setShowDeletionModal] =
     useState<LightAgentConfigurationType | null>(null);
 
-  if (!agentConfiguration || !user) {
-    return <></>;
-  }
-
-  if (agentConfiguration.status === "archived") {
+  if (
+    !agentConfiguration ||
+    agentConfiguration.status === "archived" ||
+    !user
+  ) {
     return <></>;
   }
 
@@ -143,6 +143,7 @@ export function AssistantDetailsDropdownMenu({
         {({ close }) => (
           <>
             <DropdownMenu.Button>{dropdownButton}</DropdownMenu.Button>
+            {/* TODO: get rid of the hardcoded value */}
             <DropdownMenu.Items width={230}>
               <DropdownMenu.Item
                 label="Start new conversation"
