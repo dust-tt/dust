@@ -547,7 +547,7 @@ function TableDataBlock({ children }: { children: React.ReactNode }) {
           return <React.Fragment key={i}>{child}</React.Fragment>;
         })
       ) : (
-        <> {children}</>
+        <>{children}</>
       )}
     </td>
   );
