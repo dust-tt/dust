@@ -173,6 +173,7 @@ const getTableColumns = ({
               icon={CloudArrowLeftRightIcon}
               disabled={disabled}
               onClick={original.buttonOnClick}
+              hasMagnifying={false}
               label={original.isLoading ? "Connecting..." : "Connect"}
             />
           </DataTable.CellContent>
@@ -184,6 +185,7 @@ const getTableColumns = ({
               variant="secondary"
               icon={Cog6ToothIcon}
               disabled={disabled}
+              hasMagnifying={false}
               onClick={original.buttonOnClick}
               label={original.isAdmin ? "Manage" : "View"}
             />
