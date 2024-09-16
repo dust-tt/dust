@@ -58,8 +58,8 @@ export function filterAndCropContentNodesByView(
 
 // If `internalIds` is not provided, it means that the request is for all the content nodes in the view.
 interface GetContentNodesForDataSourceViewParams {
-  includeChildren: boolean;
   internalIds?: string[];
+  parentId?: string;
   pagination?: OffsetPaginationParams;
   viewType: ContentNodesViewType;
   // If onlyCoreAPI is true, the function will only use the Core API to fetch the content nodes.
@@ -82,8 +82,8 @@ const paginate = (
 export async function getContentNodesForManagedDataSourceView(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   {
-    includeChildren,
     internalIds,
+    parentId,
     pagination,
     viewType,
   }: GetContentNodesForDataSourceViewParams
@@ -100,21 +100,19 @@ export async function getContentNodesForManagedDataSourceView(
     "Connector ID is required for managed data sources."
   );
 
-  // Determine if child nodes should be fetched:
-  // - Fetch children if 'includeChildren' is true and 'internalIds' are provided,
-  //   signifying a request for specific node children.
-  // - Fetch children if the 'parentsIn' field is not specified in the current view,
-  //   indicating that the view does not have predefined parent nodes.
-  // In cases where these conditions are not met, the logic defaults to fetching root nodes.
-  if ((includeChildren && internalIds) || !dataSourceView.parentsIn) {
-    const [parentInternalId] = internalIds || [];
+  // If no internalIds nor parentIds are provided, get the root nodes of the data source view.
+  if (!internalIds && !parentId && dataSourceView.parentsIn) {
+    internalIds = dataSourceView.parentsIn;
+  }
 
+  // If no internalIds are provided, fetch the children of the parent node, or root nodes of data source.
+  if (!internalIds) {
     const connectorsRes = await connectorsAPI.getConnectorPermissions({
       connectorId: dataSource.connectorId,
       filterPermission: "read",
       includeParents: true,
       // Passing an undefined parentInternalId will fetch the root nodes.
-      parentId: parentInternalId ?? undefined,
+      parentId,
       viewType,
     });
 
@@ -135,7 +133,7 @@ export async function getContentNodesForManagedDataSourceView(
     const connectorsRes = await connectorsAPI.getContentNodes({
       connectorId: dataSource.connectorId,
       includeParents: true,
-      internalIds: internalIds ?? dataSourceView.parentsIn ?? [],
+      internalIds,
       viewType,
     });
     if (connectorsRes.isErr()) {

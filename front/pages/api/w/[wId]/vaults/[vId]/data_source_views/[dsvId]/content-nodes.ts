@@ -18,8 +18,8 @@ import { apiError } from "@app/logger/withlogging";
 const DEFAULT_LIMIT = 500;
 
 const GetContentNodesOrChildrenRequestBody = t.type({
-  includeChildren: t.boolean,
   internalIds: t.union([t.array(t.union([t.string, t.null])), t.undefined]),
+  parentId: t.union([t.string, t.undefined]),
   viewType: ContentNodesViewTypeCodec,
 });
 
@@ -87,15 +87,14 @@ async function handler(
     });
   }
 
-  const { includeChildren, internalIds, viewType } = bodyValidation.right;
+  const { internalIds, parentId, viewType } = bodyValidation.right;
 
-  if (includeChildren && internalIds && internalIds.length > 1) {
+  if (parentId && internalIds) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message:
-          "When fetching children, only one internal id should be provided.",
+        message: "Cannot fetch with parentId and internalIds at the same time.",
       },
     });
   }
@@ -117,8 +116,8 @@ async function handler(
   const contentNodesRes = await getContentNodesForDataSourceView(
     dataSourceView,
     {
-      includeChildren: includeChildren === true,
       internalIds: internalIds ? removeNulls(internalIds) : undefined,
+      parentId,
       pagination: paginationRes.value,
       viewType,
     }
