@@ -46,6 +46,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   const { cId } = context.params;
 
+  if (cId === "l11ab2waTP") {
+    throw new Error("An error happened in getServerSideProps");
+  }
+
   return {
     props: {
       user,
@@ -116,6 +120,10 @@ export default function AssistantConversation({
       window.removeEventListener("keydown", handleNewConvoShortcut);
     };
   }, [owner.sId, router]);
+
+  if (initialConversationId === "BCWeTgVe7R") {
+    throw new Error("An error happened in AssistantConversation");
+  }
 
   return (
     <ConversationContainer
