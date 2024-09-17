@@ -41,7 +41,7 @@ export default function Pricing() {
         subtitle={
           <>
             Pro: For small teams and startups, from 1 member. <br />
-            Enterprise: From 100 members, multiple workspaces, SSO…
+            Enterprise: From 300 members, multiple workspaces, SSO…
             <br />
             <br />
             <Button

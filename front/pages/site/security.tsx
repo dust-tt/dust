@@ -27,7 +27,7 @@ export default function Security() {
   return (
     <>
       <HeaderContentBlock
-        title={<>Security is&nbsp;non-negotiable</>}
+        title={<>Security is&nbsp;ALWAYS negotiable $$$</>}
         from="from-yellow-200"
         to="to-amber-400"
         uptitle="Designed for enterprises"
