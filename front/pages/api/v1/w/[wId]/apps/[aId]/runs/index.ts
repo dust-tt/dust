@@ -2,7 +2,7 @@ import handler from "@app/pages/api/v1/w/[wId]/vaults/[vId]/apps/[aId]/runs";
 
 /**
  * @swagger
- * /api/v1/w/{wId}/apps/{aId}/run:
+ * /api/v1/w/{wId}/apps/{aId}/runs:
  *   post:
  *     summary: Create an app run
  *     description: Create and execute a run for an app in the specified workspace.
