@@ -252,7 +252,7 @@ export function MarketingCaroussel() {
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"
-      href="/site/solutions/marketing"
+      href="/home/solutions/marketing"
     />
   );
 }

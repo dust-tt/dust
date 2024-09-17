@@ -137,7 +137,7 @@ export function IntroSection() {
             connected to your proprietary knowledge and data.
           </P>
           <div>
-            <Link href="/site/pricing" shallow={true}>
+            <Link href="/home/pricing" shallow={true}>
               <Button
                 variant="primary"
                 size="md"
