@@ -287,12 +287,8 @@ export class VaultResource extends BaseResource<VaultModel> {
       return new Err(new Error("This vault name is already used."));
     }
 
-    try {
-      await this.update({ name: newName });
-      return new Ok(undefined);
-    } catch (error) {
-      return new Err(error as Error);
-    }
+    await this.update({ name: newName });
+    return new Ok(undefined);
   }
 
   acl(): ACLType {
