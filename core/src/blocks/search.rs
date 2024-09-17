@@ -203,7 +203,7 @@ impl Block for Search {
         let query = replace_variables_in_string(&self.query, "query", env)?;
 
         let credential_key = match provider_id {
-            SearchProviderID::SearchApi => "SEARCH_API_KEY",
+            SearchProviderID::SearchApi => "SEARCHAPI_API_KEY",
             SearchProviderID::SerpAPI => "SERP_API_KEY",
             SearchProviderID::Serper => "SERPER_API_KEY",
         };
