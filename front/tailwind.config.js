@@ -8,6 +8,9 @@ module.exports = {
       objektiv: ["'objektiv-mk1'", "sans-serif"],
     },
     extend: {
+      maxWidth: {
+        48: "12rem",
+      },
       scale: {
         99: ".99",
       },
