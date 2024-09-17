@@ -10,6 +10,7 @@ import {
   IconButton,
   Page,
   PlanetIcon,
+  Spinner,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -32,7 +33,8 @@ import {
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@dust-tt/types";
-import { useContext, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
+import { useInView } from "react-intersection-observer";
 import type { KeyedMutator } from "swr";
 
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
@@ -54,7 +56,7 @@ import {
 } from "@app/lib/data_sources";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
 import {
-  useDataSourceViewContentNodes,
+  useDataSourceViewContentNodesWithInfiniteScroll,
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
@@ -481,16 +483,24 @@ function DataSourceViewSelectedNodes({
   setDataSourceViewToDisplay: (dsv: DataSourceViewType) => void;
   setDocumentToDisplay: (documentId: string) => void;
 }) {
-  const dataSourceViewSelectedNodes = useDataSourceViewContentNodes({
-    owner,
-    dataSourceView,
-    internalIds: dataSourceConfiguration.filter.parents?.in ?? undefined,
-    viewType,
-  });
+  const { ref, inView } = useInView();
+  const { nodes, isNodesLoading, nextPage, hasMore, isNodesValidating } =
+    useDataSourceViewContentNodesWithInfiniteScroll({
+      owner,
+      dataSourceView,
+      internalIds: dataSourceConfiguration.filter.parents?.in ?? undefined,
+      viewType,
+    });
+
+  useEffect(() => {
+    if (inView && !isNodesValidating && hasMore) {
+      void nextPage();
+    }
+  }, [inView, isNodesValidating, hasMore, nextPage]);
 
   return (
     <>
-      {dataSourceViewSelectedNodes.nodes.map((node) => (
+      {nodes.map((node) => (
         <Tree.Item
           key={node.internalId}
           label={node.titleWithParentsContext ?? node.title}
@@ -545,6 +555,12 @@ function DataSourceViewSelectedNodes({
           />
         </Tree.Item>
       ))}
+      {hasMore && !isNodesValidating && <div ref={ref} />}
+      {isNodesValidating && !isNodesLoading && (
+        <div className="s-pl-5">
+          <Spinner size="xs" variant="dark" />
+        </div>
+      )}
     </>
   );
 }

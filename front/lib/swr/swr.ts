@@ -2,6 +2,7 @@ import type { PaginationState } from "@tanstack/react-table";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
 import useSWR, { useSWRConfig } from "swr";
+import useSWRInfinite from "swr/infinite";
 
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 

@@ -6,6 +6,7 @@ import type {
 import type { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
+import useSWRInfinite from "swr/infinite";
 
 import {
   appendPaginationParams,
@@ -157,6 +158,100 @@ export function useDataSourceViewContentNodes({
     mutateDataSourceViewContentNodes: mutate,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
     totalNodesCount: data ? data.total : 0,
+  };
+}
+
+export function useDataSourceViewContentNodesWithInfiniteScroll({
+  owner,
+  dataSourceView,
+  internalIds,
+  parentId,
+  pageSize = 50,
+  viewType,
+}: {
+  owner: LightWorkspaceType;
+  dataSourceView?: DataSourceViewType;
+  internalIds?: string[];
+  parentId?: string;
+  pageSize?: number;
+  viewType?: ContentNodesViewType;
+}): {
+  isNodesError: boolean;
+  isNodesLoading: boolean;
+  isNodesValidating: boolean;
+  mutateDataSourceViewContentNodes: KeyedMutator<GetDataSourceViewContentNodes>;
+  nodes: GetDataSourceViewContentNodes["nodes"];
+  totalNodesCount: number;
+  hasMore: boolean;
+  nextPage: () => Promise<void>;
+} {
+  const url =
+    dataSourceView && viewType
+      ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
+      : null;
+
+  const body = {
+    internalIds,
+    parentId,
+    viewType,
+  };
+
+  const fetcher: Fetcher<GetDataSourceViewContentNodes, [string, object]> =
+    postFetcher;
+
+  const { data, error, setSize, size, isValidating, mutate } = useSWRInfinite(
+    (index) => {
+      if (!url) {
+        // No URL, return an empty array to skip the fetch
+        return "[]";
+      }
+
+      // Append the pagination params to the URL
+      const params = new URLSearchParams();
+      appendPaginationParams(params, {
+        pageIndex: index,
+        pageSize,
+      });
+
+      return JSON.stringify([url + "?" + params.toString(), body]);
+    },
+    async (fetchKey) => {
+      // Get the URL and body from the fetchKey
+      const params = JSON.parse(fetchKey);
+      if (!params[0]) {
+        // Empty array, skip the fetch
+        return undefined;
+      }
+
+      return fetcher(params);
+    },
+    {
+      revalidateFirstPage: false,
+    }
+  );
+
+  const mutateDataSourceViewContentNodes = async () => {
+    const newNodes = await mutate();
+    return {
+      nodes: newNodes ? newNodes.flatMap((d) => (d ? d.nodes : [])) : [],
+      total: newNodes?.[0] ? newNodes[0].total : 0,
+    };
+  };
+
+  return {
+    isNodesError: !!error,
+    isNodesLoading: !error && !data,
+    isNodesValidating: isValidating,
+    mutateDataSourceViewContentNodes,
+    nodes: useMemo(
+      () => (data ? data.flatMap((d) => (d ? d.nodes : [])) : []),
+      [data]
+    ),
+    totalNodesCount: data?.[0] ? data[0].total : 0,
+    hasMore: size * pageSize < (data?.[0] ? data[0].total : 0),
+    nextPage: async () => {
+      await setSize((size) => size + 1);
+    },
   };
 }
 

@@ -2,6 +2,7 @@ import {
   BracesIcon,
   ExternalLinkIcon,
   IconButton,
+  Spinner,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -11,10 +12,11 @@ import type {
   LightWorkspaceType,
 } from "@dust-tt/types";
 import { useEffect, useState } from "react";
+import { useInView } from "react-intersection-observer";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 
 interface DataSourceViewResourceSelectorTreeBaseProps {
@@ -80,14 +82,20 @@ function DataSourceViewResourceSelectorChildren({
   showExpand,
   viewType = "documents",
 }: DataSourceResourceSelectorChildrenProps) {
-  const { nodes, isNodesLoading, isNodesError } = useDataSourceViewContentNodes(
-    {
-      dataSourceView: dataSourceView,
-      owner,
-      parentId,
-      viewType,
-    }
-  );
+  const { ref, inView } = useInView();
+  const {
+    nodes,
+    isNodesLoading,
+    isNodesError,
+    nextPage,
+    hasMore,
+    isNodesValidating,
+  } = useDataSourceViewContentNodesWithInfiniteScroll({
+    dataSourceView: dataSourceView,
+    owner,
+    parentId,
+    viewType,
+  });
 
   useEffect(() => {
     if (parentIsSelected) {
@@ -99,6 +107,12 @@ function DataSourceViewResourceSelectorChildren({
         });
     }
   }, [nodes, parentIsSelected, selectedResourceIds, onSelectChange, parents]);
+
+  useEffect(() => {
+    if (inView && !isNodesValidating && hasMore) {
+      void nextPage();
+    }
+  }, [inView, isNodesValidating, hasMore, nextPage]);
 
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
@@ -210,6 +224,12 @@ function DataSourceViewResourceSelectorChildren({
           );
         })}
       </Tree>
+      {hasMore && !isNodesValidating && <div ref={ref} />}
+      {isNodesValidating && !isNodesLoading && (
+        <div className="s-pl-5">
+          <Spinner size="xs" variant="dark" />
+        </div>
+      )}
     </>
   );
 }
