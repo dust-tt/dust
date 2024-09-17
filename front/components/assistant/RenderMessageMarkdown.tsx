@@ -305,14 +305,14 @@ export function RenderMessageMarkdown({
     [textSize, textColor, customRenderer]
   );
 
-  const markdownPlugins = useMemo(
+  const markdownPlugins: PluggableList = useMemo(
     () => [
       remarkDirective,
       mentionDirective,
       visualizationDirective,
       citeDirective(),
       remarkGfm,
-      remarkMath,
+      [remarkMath, { singleDollarTextMath: false }],
     ],
     []
   );
@@ -336,7 +336,9 @@ export function RenderMessageMarkdown({
               linkTarget="_blank"
               components={markdownComponents}
               remarkPlugins={markdownPlugins}
-              rehypePlugins={[rehypeKatex] as PluggableList}
+              rehypePlugins={
+                [[rehypeKatex, { output: "mathml" }]] as PluggableList
+              }
             >
               {processedContent}
             </ReactMarkdown>
