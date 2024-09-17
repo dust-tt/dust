@@ -37,7 +37,7 @@ interface EnterpriseConnectionDetails {
 
 export async function createEnterpriseConnection(
   auth: Authenticator,
-  verifiedDomain: string | null,
+  verifiedDomain: string,
   connectionDetails: EnterpriseConnectionDetails
 ): Promise<Connection> {
   const owner = auth.getNonNullableWorkspace();
@@ -49,7 +49,7 @@ export async function createEnterpriseConnection(
     strategy: connectionDetails.strategy,
     options: {
       ...getCreateConnectionPayloadFromConnectionDetails(connectionDetails),
-      domain_aliases: verifiedDomain ? [verifiedDomain] : [],
+      domain_aliases: [verifiedDomain],
       scope: "email profile openid",
     },
     is_domain_connection: false,
