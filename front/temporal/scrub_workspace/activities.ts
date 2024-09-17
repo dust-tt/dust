@@ -151,10 +151,17 @@ async function archiveAssistants(auth: Authenticator) {
 }
 
 async function deleteDatasources(auth: Authenticator) {
-  const dataSources = await getDataSources(auth);
   // First, we delete all the data source views.
-  await DataSourceViewResource.deleteAllForWorkspace(auth);
+  const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
+  for (const dataSourceView of dataSourceViews) {
+    const r = await dataSourceView.delete(auth);
+    if (r.isErr()) {
+      throw new Error(`Failed to delete data source view: ${r.error.message}`);
+    }
+  }
 
+  // Then, we delete all the data sources.
+  const dataSources = await getDataSources(auth);
   for (const dataSource of dataSources) {
     const r = await deleteDataSource(auth, dataSource);
     if (r.isErr()) {
