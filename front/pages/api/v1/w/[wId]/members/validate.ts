@@ -8,7 +8,6 @@ import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 
 export type ValidateMemberResponseBody = {
@@ -20,7 +19,7 @@ export type ValidateMemberResponseBody = {
  * Validates an email corresponds to an active member in a specific workspace. For Dust managed apps only - undocumented.
  */
 
-export const validateEmailSchema = t.type({
+export const PostValidateMemberRequestBodySchema = t.type({
   email: t.string,
 });
 
@@ -29,7 +28,7 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<ValidateMemberResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const bodyValidation = validateEmailSchema.decode(req.body);
+  const bodyValidation = PostValidateMemberRequestBodySchema.decode(req.body);
 
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -49,9 +48,7 @@ async function handler(
     case "POST":
       const user = await UserResource.fetchByEmail(email);
 
-      const workspace = renderLightWorkspaceType({
-        workspace: auth.getNonNullableWorkspace(),
-      });
+      const workspace = auth.getNonNullableWorkspace();
 
       if (!user) {
         return res.status(200).json({
