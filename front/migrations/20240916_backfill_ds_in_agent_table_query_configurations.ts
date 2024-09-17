@@ -67,7 +67,7 @@ async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
       `Error while fetching data source view for data source ${ds.id} // Found ${dataSourceViewsForDataSource.length} data source views.`
     );
 
-    await AgentTablesQueryConfigurationTable.update(
+    const [, affectedRows] = await AgentTablesQueryConfigurationTable.update(
       // Upsert both `dataSourceIdNew` and `dataSourceViewId` to ensure consistency.
       {
         dataSourceIdNew: ds.id,
@@ -84,8 +84,32 @@ async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
           // Given that the name isn't unique we need to precise the workspace.
           dataSourceWorkspaceId: workspace.sId,
         },
+        returning: true,
       }
     );
+
+    if (affectedRows && affectedRows.length > 0) {
+      const [r] = affectedRows;
+
+      // If the dataSourceViewId is not the one we expect, update it.
+      if (r.dataSourceViewId !== dataSourceViewsForDataSource[0].id) {
+        logger.error(
+          `Error while updating agent tables query configuration for data source ${ds.id}
+          // Expected dataSourceViewId to be ${dataSourceViewsForDataSource[0].id} but got ${r.dataSourceViewId}.`
+        );
+
+        await AgentTablesQueryConfigurationTable.update(
+          {
+            dataSourceViewId: dataSourceViewsForDataSource[0].id,
+          },
+          {
+            where: {
+              id: r.id,
+            },
+          }
+        );
+      }
+    }
 
     logger.info(
       `Updated agent tables query configuration for data source ${ds.id}.`
