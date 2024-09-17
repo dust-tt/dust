@@ -209,7 +209,7 @@ export const DataTableExample = () => {
 export const DataTableClientSideSortingExample = () => {
   const [sorting, setSorting] = React.useState<SortingState>([{ id: "name", desc: true }])
   const [filter, setFilter] = React.useState<string>("");
-  
+
   return (
     <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
       <Input
