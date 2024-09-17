@@ -19,9 +19,14 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { isValidContentNodesViewType } from "@dust-tt/types";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type {
+  CellContext,
+  ColumnDef,
+  SortingState,
+} from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as React from "react";
 
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -164,6 +169,9 @@ export const VaultDataSourceViewContentList = ({
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "name", desc: false },
+  ]);
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
   const { pagination, setPagination } = usePaginationFromUrl({
@@ -427,7 +435,8 @@ export const VaultDataSourceViewContentList = ({
           columns={getTableColumns(showVaultUsage)}
           filter={dataSourceSearch}
           filterColumn="title"
-          initialColumnOrder={[{ desc: false, id: "title" }]}
+          sorting={sorting}
+          setSorting={setSorting}
           totalRowCount={totalNodesCount}
           pagination={pagination}
           setPagination={setPagination}
