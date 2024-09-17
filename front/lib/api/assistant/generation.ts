@@ -475,7 +475,7 @@ export async function constructPromptMultiActions(
   return prompt;
 }
 
-function getTextContentFromMessage(
+export function getTextContentFromMessage(
   message: ModelMessageTypeMultiActions
 ): string {
   const { content } = message;
