@@ -155,7 +155,7 @@ export function EnterpriseConnectionDetails({
             onClick={() => {
               if (!isUpgraded(plan)) {
                 setShowNoInviteLinkPopup(true);
-              } else if (workspaceVerifiedDomain) {
+              } else if (!workspaceVerifiedDomain) {
                 setShowNoVerifiedDomainPopup(true);
               } else {
                 setIsEnterpriseConnectionModalOpened(true);
