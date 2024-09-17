@@ -480,8 +480,15 @@ function TableBlock({ children }: { children: React.ReactNode }) {
       .join("")}</tr></thead>`;
     const headPlain = headCells.join("\t");
 
-    const bodyRows = bodyNode.props.children.map((r: any) =>
-      r.props.children.map((c: any) => getNodeText(c))
+    const bodyRows = bodyNode.props.children.map((row: any) =>
+      row.props.children.map((cell: any) => {
+        const children = cell.props.children;
+        return (Array.isArray(children) ? children : [children])
+          .map((child: any) =>
+            child?.type?.name === "CiteBlock" ? "" : getNodeText(child)
+          )
+          .join("");
+      })
     );
     const bodyHtml = `<tbody>${bodyRows
       .map((row: any) => {
@@ -536,10 +543,10 @@ function TableDataBlock({ children }: { children: React.ReactNode }) {
           if (child === "<br>") {
             return <br key={i} />;
           }
-          return <React.Fragment key={i}>{getNodeText(child)}</React.Fragment>;
+          return <React.Fragment key={i}>{child}</React.Fragment>;
         })
       ) : (
-        <> {getNodeText(children)}</>
+        <>{children}</>
       )}
     </td>
   );
