@@ -371,11 +371,12 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     }
   }
 
+  // This method can only be used once all agent configurations have been deleted. Otherwise use the
+  // delete method on each data source view separately.
   static async deleteAllForWorkspace(
     auth: Authenticator,
     transaction?: Transaction
   ) {
-    // TODO(GROUPS_INFRA) Delete agent_data_source_configuration and agent_tables_query_configuration.
     return this.model.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
