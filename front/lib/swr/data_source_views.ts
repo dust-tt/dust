@@ -69,7 +69,6 @@ export function useMultipleDataSourceViewsContentNodes({
       const body = JSON.stringify({
         internalIds,
         viewType,
-        includeChildren: false,
       });
       const options = {
         method: "POST",
@@ -106,14 +105,14 @@ export function useDataSourceViewContentNodes({
   owner,
   dataSourceView,
   internalIds,
-  includeChildren,
+  parentId,
   pagination,
   viewType = "documents",
 }: {
   owner: LightWorkspaceType;
   dataSourceView?: DataSourceViewType;
   internalIds?: string[];
-  includeChildren: boolean;
+  parentId?: string;
   pagination?: PaginationState;
   viewType?: ContentNodesViewType;
 }): {
@@ -132,7 +131,7 @@ export function useDataSourceViewContentNodes({
 
   const body = JSON.stringify({
     internalIds,
-    includeChildren,
+    parentId,
     viewType,
   });
 
@@ -148,7 +147,7 @@ export function useDataSourceViewContentNodes({
       return undefined;
     }
 
-    return postFetcher([url, { internalIds, includeChildren, viewType }]);
+    return postFetcher([url, { internalIds, parentId, viewType }]);
   });
 
   return {

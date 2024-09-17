@@ -79,6 +79,7 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
   if (showVaultUsage) {
     columns.push({
       header: "Available to",
+      id: "vaults",
       accessorKey: "vaults",
       meta: {
         width: "14rem",
@@ -98,8 +99,8 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
 
   columns.push({
     header: "Last updated",
-    accessorKey: "lastUpdatedAt",
     id: "lastUpdatedAt",
+    accessorKey: "lastUpdatedAt",
     meta: {
       width: "12rem",
     },
@@ -167,8 +168,7 @@ export const VaultDataSourceViewContentList = ({
   } = useDataSourceViewContentNodes({
     dataSourceView,
     owner,
-    internalIds: parentId ? [parentId] : undefined,
-    includeChildren: true,
+    parentId,
     pagination,
     viewType: isValidContentNodesViewType(viewType) ? viewType : "documents",
   });
@@ -228,7 +228,7 @@ export const VaultDataSourceViewContentList = ({
   }
 
   const emptyVaultContent =
-    vault.kind !== "system" ? (
+    isManaged(dataSourceView.dataSource) && vault.kind !== "system" ? (
       isAdmin ? (
         <Button
           label="Manage Data"
@@ -358,6 +358,10 @@ export const VaultDataSourceViewContentList = ({
           totalRowCount={totalNodesCount}
           pagination={pagination}
           setPagination={setPagination}
+          columnsBreakpoints={{
+            lastUpdatedAt: "sm",
+            vaults: "md",
+          }}
         />
       )}
       <ContentActions

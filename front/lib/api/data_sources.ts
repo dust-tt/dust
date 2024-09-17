@@ -36,35 +36,6 @@ export const MANAGED_DS_DELETABLE_AS_BUILDER: ConnectorProvider[] = [
   "webcrawler",
 ];
 
-export async function getDataSource(
-  auth: Authenticator,
-  nameOrId: string,
-  { includeEditedBy }: { includeEditedBy: boolean } = {
-    includeEditedBy: false,
-  }
-): Promise<DataSourceResource | null> {
-  const owner = auth.workspace();
-
-  // This condition is critical it checks that we can identify the workspace and that the current
-  // auth is a user for this workspace. Checking `auth.isUser()` is critical as it would otherwise
-  // be possible to access data sources without being authenticated.
-  if (!owner || !auth.isUser()) {
-    return null;
-  }
-
-  const dataSource = await DataSourceResource.fetchByNameOrId(auth, nameOrId, {
-    includeEditedBy,
-    // TODO(DATASOURCE_SID): clean-up
-    origin: "lib_api_get_data_source",
-  });
-
-  if (!dataSource) {
-    return null;
-  }
-
-  return dataSource;
-}
-
 export async function getDataSources(
   auth: Authenticator,
   { includeEditedBy }: { includeEditedBy: boolean } = {

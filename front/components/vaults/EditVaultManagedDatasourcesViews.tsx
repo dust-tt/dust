@@ -35,7 +35,7 @@ export function EditVaultManagedDataSourcesViews({
   const {
     vaultDataSourceViews,
     isVaultDataSourceViewsLoading,
-    mutateVaultDataSourceViews,
+    mutateRegardlessOfQueryParams: mutateVaultDataSourceViews,
   } = useVaultDataSourceViews({
     workspaceId: owner.sId,
     vaultId: vault.sId,

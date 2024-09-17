@@ -17,7 +17,7 @@ import React, { useMemo, useState } from "react";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
-import { useSearchMembers } from "@app/lib/swr/user";
+import { useSearchMembers } from "@app/lib/swr/memberships";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {
@@ -60,13 +60,17 @@ export function MembersList({
   });
   const [selectedMember, setSelectedMember] =
     useState<UserTypeWithWorkspaces | null>(null);
-  const { members, totalMembersCount, isLoading } = useSearchMembers(
-    owner.sId,
-    searchText,
-    pagination.pageIndex,
-    pagination.pageSize
-  );
-
+  const {
+    members,
+    totalMembersCount,
+    isLoading,
+    mutateRegardlessOfQueryParams: mutateMembers,
+  } = useSearchMembers({
+    workspaceId: owner.sId,
+    searchTerm: searchText,
+    pageIndex: pagination.pageIndex,
+    pageSize: pagination.pageSize,
+  });
   const columns = [
     {
       id: "name",
@@ -149,7 +153,7 @@ export function MembersList({
       <ChangeMemberModal
         onClose={() => setSelectedMember(null)}
         member={selectedMember}
-        owner={owner}
+        mutateMembers={mutateMembers}
       />
     </div>
   );

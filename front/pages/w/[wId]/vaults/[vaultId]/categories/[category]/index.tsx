@@ -1,20 +1,33 @@
 import { CloudArrowLeftRightIcon, Page } from "@dust-tt/sparkle";
 import type {
+  ConnectorProvider,
   DataSourceViewCategory,
   PlanType,
   VaultType,
+} from "@dust-tt/types";
+import {
+  CONNECTOR_PROVIDERS,
+  isConnectorProvider,
+  removeNulls,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
+import type { DataSourceIntegration } from "@app/components/vaults/AddConnectionMenu";
 import { VaultAppsList } from "@app/components/vaults/VaultAppsList";
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
 import { VaultResourcesList } from "@app/components/vaults/VaultResourcesList";
 import config from "@app/lib/api/config";
+import {
+  augmentDataSourceWithConnectorDetails,
+  getDataSources,
+} from "@app/lib/api/data_sources";
+import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { VaultResource } from "@app/lib/resources/vault_resource";
+import type { DataSourceWithConnectorAndUsageType } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
@@ -25,6 +38,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     vault: VaultType;
     systemVault: VaultType;
     plan: PlanType;
+    integrations: DataSourceIntegration[];
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -51,6 +65,67 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const isBuilder = auth.isBuilder();
   const canWriteInVault = vault.canWrite(auth);
 
+  const isSystemVault = vault.kind === "system";
+  const integrations: DataSourceIntegration[] = [];
+
+  if (isSystemVault) {
+    let setupWithSuffix: {
+      connector: ConnectorProvider;
+      suffix: string;
+    } | null = null;
+    if (
+      context.query.setupWithSuffixConnector &&
+      isConnectorProvider(context.query.setupWithSuffixConnector as string) &&
+      context.query.setupWithSuffixSuffix &&
+      typeof context.query.setupWithSuffixSuffix === "string"
+    ) {
+      setupWithSuffix = {
+        connector: context.query.setupWithSuffixConnector as ConnectorProvider,
+        suffix: context.query.setupWithSuffixSuffix,
+      };
+    }
+
+    const allDataSources = await getDataSources(auth, {
+      includeEditedBy: true,
+    });
+
+    const managedDataSources: DataSourceWithConnectorAndUsageType[] =
+      removeNulls(
+        await Promise.all(
+          allDataSources.map(async (managedDataSource) => {
+            const ds = managedDataSource.toJSON();
+            if (!isManaged(ds)) {
+              return null;
+            }
+            const augmentedDataSource =
+              await augmentDataSourceWithConnectorDetails(ds);
+
+            const usageRes = await managedDataSource.getUsagesByAgents(auth);
+            return {
+              ...augmentedDataSource,
+              usage: usageRes.isOk() ? usageRes.value : 0,
+            };
+          })
+        )
+      );
+    for (const connectorProvider of CONNECTOR_PROVIDERS) {
+      if (
+        !managedDataSources.find(
+          (i) => i.connectorProvider === connectorProvider
+        ) ||
+        setupWithSuffix?.connector === connectorProvider
+      ) {
+        integrations.push({
+          connectorProvider: connectorProvider,
+          setupWithSuffix:
+            setupWithSuffix?.connector === connectorProvider
+              ? setupWithSuffix.suffix
+              : null,
+        });
+      }
+    }
+  }
+
   return {
     props: {
       category: context.query.category as DataSourceViewCategory,
@@ -63,6 +138,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       subscription,
       vault: vault.toJSON(),
       systemVault: systemVault.toJSON(),
+      integrations,
     },
   };
 });
@@ -76,6 +152,7 @@ export default function Vault({
   plan,
   vault,
   systemVault,
+  integrations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   return (
@@ -105,6 +182,7 @@ export default function Vault({
           isAdmin={isAdmin}
           canWriteInVault={canWriteInVault}
           category={category}
+          integrations={integrations}
           onSelect={(sId) => {
             void router.push(
               `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}/data_source_views/${sId}`

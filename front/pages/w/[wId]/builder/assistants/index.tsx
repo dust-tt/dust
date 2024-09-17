@@ -95,7 +95,7 @@ export default function WorkspaceAssistants({
   // user searches: search across all agents
   const {
     agentConfigurations,
-    mutateAgentConfigurations,
+    mutateRegardlessOfQueryParams: mutateAgentConfigurations,
     isAgentConfigurationsLoading,
   } = useAgentConfigurations({
     workspaceId: owner.sId,

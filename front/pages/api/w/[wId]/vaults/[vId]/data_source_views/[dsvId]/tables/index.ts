@@ -28,7 +28,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid request query parameters.",
+        message: "Invalid path parameters.",
       },
     });
   }
@@ -70,7 +70,6 @@ async function handler(
       const contentNodes = await getContentNodesForDataSourceView(
         dataSourceView,
         {
-          includeChildren: false,
           viewType: "tables",
           // Use core api as ww want a flat list of all tables, even for managed datasources.
           onlyCoreAPI: true,

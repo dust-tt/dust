@@ -2,26 +2,34 @@ import {
   Button,
   CommandLineIcon,
   ContextItem,
+  PencilSquareIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
+import type { LightWorkspaceType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
+import { useRouter } from "next/router";
 
 import type { AssistantBuilderDustAppConfiguration } from "@app/components/assistant_builder/types";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 
 export default function DustAppSelectionSection({
+  owner,
   show,
   dustAppConfiguration,
   openDustAppModal,
   onDelete,
   canSelectDustApp,
 }: {
+  owner: LightWorkspaceType;
   show: boolean;
   dustAppConfiguration: AssistantBuilderDustAppConfiguration;
   openDustAppModal: () => void;
   onDelete?: (sId: string) => void;
   canSelectDustApp: boolean;
 }) {
+  const router = useRouter();
+
+  const appPath = `/w/${owner.sId}/vaults/${dustAppConfiguration.app?.vault.sId}/apps/${dustAppConfiguration.app?.sId}`;
   return (
     <Transition
       show={show}
@@ -55,6 +63,13 @@ export default function DustAppSelectionSection({
               visual={<ContextItem.Visual visual={CommandLineIcon} />}
               action={
                 <Button.List>
+                  <Button
+                    icon={PencilSquareIcon}
+                    variant="secondary"
+                    label="Edit"
+                    labelVisible={false}
+                    onClick={() => router.push(appPath)}
+                  />
                   <Button
                     icon={TrashIcon}
                     variant="secondaryWarning"

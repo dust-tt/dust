@@ -5,15 +5,26 @@ import type { InferGetServerSidePropsType } from "next";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   document: CoreAPIDocument;
 }>(async (context, auth) => {
-  const dataSource = await getDataSource(auth, context.params?.dsId as string);
+  const { dsId } = context.params || {};
+  if (typeof dsId !== "string") {
+    return {
+      notFound: true,
+    };
+  }
+
+  const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId, {
+    includeEditedBy: true,
+    // TODO(DATASOURCE_SID): Clean-up
+    origin: "poke_data_sources_page_view",
+  });
   if (!dataSource) {
     return {
       notFound: true,
