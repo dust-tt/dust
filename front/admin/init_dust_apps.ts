@@ -78,12 +78,10 @@ async function main() {
   );
 
   console.log(w.id);
-  process.exit(0);
 }
 
 main()
   .then(() => {
-    console.log("Done");
     process.exit(0);
   })
   .catch((err) => {
