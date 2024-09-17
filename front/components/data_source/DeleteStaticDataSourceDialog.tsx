@@ -1,5 +1,6 @@
 import { Dialog } from "@dust-tt/sparkle";
 import type { DataSourceType } from "@dust-tt/types";
+import { useState } from "react";
 
 import { getDataSourceName, isManaged } from "@app/lib/data_sources";
 
@@ -18,8 +19,12 @@ export function DeleteStaticDataSourceDialog({
   isOpen,
   onClose,
 }: DeleteStaticDataSourceDialogProps) {
+  const [isLoading, setIsLoading] = useState(false);
+
   const onDelete = async () => {
+    setIsLoading(true);
     await handleDelete();
+    setIsLoading(false);
     onClose();
   };
   const name = !isManaged(dataSource)
@@ -38,6 +43,7 @@ export function DeleteStaticDataSourceDialog({
       isOpen={isOpen}
       title={`Removing ${name}`}
       onValidate={onDelete}
+      isSaving={isLoading}
       onCancel={onClose}
       validateVariant="primaryWarning"
     >

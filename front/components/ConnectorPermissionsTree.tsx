@@ -165,8 +165,7 @@ export function DataSourceViewPermissionTreeChildren({
   const { nodes, isNodesLoading, isNodesError } = useDataSourceViewContentNodes(
     {
       dataSourceView,
-      includeChildren: true,
-      internalIds: parentId ? [parentId] : undefined,
+      parentId: parentId ?? undefined,
       owner,
       viewType,
     }

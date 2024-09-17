@@ -31,6 +31,7 @@ import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import type { DataSourceIntegration } from "@app/components/vaults/AddConnectionMenu";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import config from "@app/lib/api/config";
 import {
@@ -50,15 +51,10 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
   "intercom",
 ];
 
-type DataSourceWithConnectorAndUsageType =
+export type DataSourceWithConnectorAndUsageType =
   DataSourceWithConnectorDetailsType & {
     usage: number | null;
   };
-
-type DataSourceIntegration = {
-  connectorProvider: ConnectorProvider;
-  setupWithSuffix: string | null;
-};
 
 type RowData = {
   isAdmin: boolean;
@@ -279,6 +275,7 @@ export default function DataSourcesView({
             <AddConnectionMenu
               owner={owner}
               plan={plan}
+              integrations={integrations}
               existingDataSources={managedDataSources}
               dustClientFacingUrl={dustClientFacingUrl}
               setIsProviderLoading={(provider, isLoading) =>
@@ -311,9 +308,9 @@ export default function DataSourcesView({
             filter={dataSourceSearch}
             filterColumn={"name"}
             columnsBreakpoints={{
-              // "managedBy": "sm",
+              managedBy: "sm",
               usedBy: "sm",
-              lastSync: "sm",
+              lastSync: "md",
             }}
           />
         ) : !isAdmin ? (
@@ -358,6 +355,7 @@ function getTableColumns() {
     },
     {
       header: "Used by",
+      id: "usedBy",
       accessorKey: "managedDataSource.usage",
       meta: {
         width: "6rem",
@@ -389,6 +387,7 @@ function getTableColumns() {
     },
     {
       header: "Last sync",
+      id: "lastSync",
       accessorFn: (row: RowData) =>
         row.managedDataSource.connector?.lastSyncSuccessfulTime,
       meta: {

@@ -9,32 +9,32 @@ import { useContext } from "react";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
-import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
+import {
+  useAgentConfiguration,
+  useAgentUsage,
+  useDeleteAgentConfiguration,
+} from "@app/lib/swr/assistants";
 
 export function DeleteAssistantDialog({
   owner,
-  agentConfigurationId,
+  agentConfiguration,
   show,
   onClose,
-  onDelete,
   isPrivateAssistant,
 }: {
   owner: WorkspaceType;
-  agentConfigurationId: string;
+  agentConfiguration: LightAgentConfigurationType;
   show: boolean;
   onClose: () => void;
-  onDelete: () => void;
   isPrivateAssistant?: boolean;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
-  const { agentConfiguration } = useAgentConfiguration({
-    workspaceId: owner.sId,
-    agentConfigurationId,
-  });
+  const doDelete = useDeleteAgentConfiguration({ owner, agentConfiguration });
+
   const agentUsage = useAgentUsage({
     workspaceId: owner.sId,
-    agentConfigurationId,
+    agentConfigurationId: agentConfiguration.sId,
   });
+
   return (
     <Dialog
       isOpen={show}
@@ -45,35 +45,7 @@ export function DeleteAssistantDialog({
       }
       validateVariant="primaryWarning"
       onValidate={async () => {
-        try {
-          const res = await fetch(
-            `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}`,
-            {
-              method: "DELETE",
-            }
-          );
-          if (!res.ok) {
-            const data = await res.json();
-            sendNotification({
-              title: "Error deleting Assistant",
-              description: data.error.message,
-              type: "error",
-            });
-          } else {
-            sendNotification({
-              title: "Assistant deleted",
-              type: "success",
-            });
-            onDelete();
-          }
-        } catch (e) {
-          sendNotification({
-            title: "Error deleting Assistant",
-            description: (e as Error).message,
-            type: "error",
-          });
-        }
-
+        await doDelete();
         onClose();
       }}
     >

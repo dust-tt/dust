@@ -59,7 +59,8 @@ export type UserMessageOrigin =
   | "api"
   | "gsheet"
   | "zapier"
-  | "make";
+  | "make"
+  | "zendesk";
 
 export type UserMessageContext = {
   username: string;

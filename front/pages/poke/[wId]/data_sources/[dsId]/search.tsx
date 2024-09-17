@@ -7,24 +7,29 @@ import type { InferGetServerSidePropsType } from "next";
 import { useEffect, useState } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
   dataSource: DataSourceType;
 }>(async (context, auth) => {
-  const owner = auth.workspace();
+  const owner = auth.getNonNullableWorkspace();
 
-  if (!owner || !auth.isAdmin()) {
+  const { dsId } = context.params || {};
+  if (typeof dsId !== "string") {
     return {
       notFound: true,
     };
   }
 
-  const dataSource = await getDataSource(auth, context.params?.dsId as string);
+  const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId, {
+    includeEditedBy: true,
+    // TODO(DATASOURCE_SID): Clean-up
+    origin: "poke_data_sources_page_search",
+  });
   if (!dataSource) {
     return {
       notFound: true,

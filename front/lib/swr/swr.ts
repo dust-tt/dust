@@ -12,7 +12,9 @@ const DEFAULT_SWR_CONFIG: SWRConfiguration = {
 export function useSWRWithDefaults<TKey extends Key, TData>(
   key: TKey,
   fetcher: Fetcher<TData, TKey> | null,
-  config?: SWRConfiguration & { disabled?: boolean }
+  config?: SWRConfiguration & {
+    disabled?: boolean;
+  }
 ) {
   const { mutate: globalMutate, cache } = useSWRConfig();
 
@@ -58,11 +60,15 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
   );
 
   const myMutateWhenDisabled = useCallback(() => {
+    return globalMutate(key);
+  }, [key, globalMutate]);
+
+  const myMutateWhenDisabledRegardlessOfQueryParams = useCallback(() => {
     mutateKeysWithSameUrl(key);
     return globalMutate(key);
   }, [key, mutateKeysWithSameUrl, globalMutate]);
 
-  const myMutate: typeof result.mutate = useCallback(
+  const myMutateRegardlessOfQueryParams: typeof result.mutate = useCallback(
     (...args) => {
       mutateKeysWithSameUrl(key);
       return result.mutate(...args);
@@ -76,11 +82,13 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
     return {
       ...result,
       mutate: myMutateWhenDisabled,
+      mutateRegardlessOfQueryParams:
+        myMutateWhenDisabledRegardlessOfQueryParams,
     };
   } else {
     return {
       ...result,
-      mutate: myMutate,
+      mutateRegardlessOfQueryParams: myMutateRegardlessOfQueryParams,
     };
   }
 }

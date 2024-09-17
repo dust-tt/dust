@@ -30,11 +30,11 @@ import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermission
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
 import config from "@app/lib/api/config";
-import { getDataSource } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -63,16 +63,19 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   temporalWorkspace: string;
   groupsForSlackBot: GroupType[];
 }>(async (context, auth) => {
-  const owner = auth.workspace();
+  const owner = auth.getNonNullableWorkspace();
 
-  if (!owner) {
+  const { dsId } = context.params || {};
+  if (typeof dsId !== "string") {
     return {
       notFound: true,
     };
   }
 
-  const dataSource = await getDataSource(auth, context.params?.dsId as string, {
+  const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId, {
     includeEditedBy: true,
+    // TODO(DATASOURCE_SID): Clean-up
+    origin: "poke_data_sources_page",
   });
   if (!dataSource) {
     return {

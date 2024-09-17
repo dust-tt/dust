@@ -18,7 +18,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@dust-tt/types";
-import { groupBy, uniqBy } from "lodash";
+import { groupBy, sortBy, uniqBy } from "lodash";
 import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
@@ -579,7 +579,6 @@ const VaultAppSubMenu = ({
 
   const { isAppsLoading, apps } = useApps({
     owner,
-    disabled: !isExpanded,
     vault,
   });
 
@@ -593,10 +592,11 @@ const VaultAppSubMenu = ({
       onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={categoryDetails.icon}
       areActionsFading={false}
+      type={isAppsLoading || apps.length > 0 ? "node" : "leaf"}
     >
       {isExpanded && (
         <Tree isLoading={isAppsLoading}>
-          {apps.map((app) => (
+          {sortBy(apps, "name").map((app) => (
             <VaultAppItem app={app} key={app.sId} owner={owner} />
           ))}
         </Tree>

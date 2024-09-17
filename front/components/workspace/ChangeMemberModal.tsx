@@ -1,30 +1,26 @@
 import { Avatar, Button, Dialog, ElementModal, Page } from "@dust-tt/sparkle";
-import type {
-  ActiveRoleType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { ActiveRoleType, UserTypeWithWorkspaces } from "@dust-tt/types";
 import { isActiveRoleType } from "@dust-tt/types";
 import React, { useContext, useState } from "react";
-import { useSWRConfig } from "swr";
+import type { KeyedMutator } from "swr";
 
 import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleMembersRoleChange } from "@app/lib/client/members";
+import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
 
 export function ChangeMemberModal({
   onClose,
   member,
-  owner,
+  mutateMembers,
 }: {
   onClose: () => void;
   member: UserTypeWithWorkspaces | null;
-  owner: WorkspaceType;
+  mutateMembers: KeyedMutator<SearchMembersResponseBody>;
 }) {
   const { role = null } = member?.workspaces[0] ?? {};
 
-  const { mutate } = useSWRConfig();
   const sendNotification = useContext(SendNotificationsContext);
   const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType | null>(
@@ -58,7 +54,7 @@ export function ChangeMemberModal({
           role: selectedRole,
           sendNotification,
         });
-        await mutate(`/api/w/${owner.sId}/members`);
+        await mutateMembers();
         closeModalFn();
       }}
       saveLabel="Update role"
@@ -112,7 +108,7 @@ export function ChangeMemberModal({
             role: "none",
             sendNotification,
           });
-          await mutate(`/api/w/${owner.sId}/members`);
+          await mutateMembers();
           setRevokeMemberModalOpen(false);
           onClose();
         }}

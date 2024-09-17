@@ -17,10 +17,11 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import Link from "next/link";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import { subFilter } from "@app/lib/utils";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
@@ -93,9 +94,24 @@ export function AssistantBrowser({
   const visibleTabs = useMemo(() => {
     return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
   }, [agentsByTab]);
-  const [selectedTab, setSelectedTab] = useState<TabId | null>(
-    visibleTabs[0]?.id || null
-  );
+
+  // check the query string for the tab to show, the query param to look for is called "defaultTab"
+  // if it's not found, show the first tab with agents
+  const defaultTab = useMemo(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const defaultTab = queryParams.get("defaultTab") as TabId | null;
+    return visibleTabs.find((tab) => tab.id === defaultTab)
+      ? defaultTab
+      : visibleTabs[0]?.id;
+  }, [visibleTabs]);
+
+  const [selectedTab, setSelectedTab] = useState<TabId | null>(defaultTab);
+
+  useEffect(() => {
+    if (!selectedTab && defaultTab) {
+      setSelectedTab(defaultTab);
+    }
+  }, [defaultTab, selectedTab]);
 
   const displayedTab =
     assistantSearch.trim() !== "" // If search is active, show all agents
@@ -189,7 +205,7 @@ export function AssistantBrowser({
       )}
 
       {displayedTab && (
-        <div className="grid w-full grid-cols-1 gap-2 px-4 md:grid-cols-3">
+        <div className="relative grid w-full grid-cols-1 gap-2 px-4 md:grid-cols-3">
           {agentsByTab[displayedTab].map((agent) => (
             <AssistantPreview
               key={agent.sId}
@@ -199,7 +215,24 @@ export function AssistantBrowser({
               description={agent.description}
               variant="minimal"
               onClick={() => handleAssistantClick(agent)}
-              onActionClick={() => setAssistantIdToShow(agent.sId)}
+              actionElement={
+                <>
+                  {/* TODO: get rid of the ugly hack */}
+                  {/* Theses 2 divs are an ugly hack to align the button while making the dropdown menu visible above the container, it has the size of the button hardcoded -- Let's fix it asap */}
+                  <div style={{ width: "56px" }}></div>{" "}
+                  <div className="absolute">
+                    <AssistantDetailsDropdownMenu
+                      agentConfiguration={agent}
+                      owner={owner}
+                      variant="button"
+                      showAssistantDetails={() =>
+                        setAssistantIdToShow(agent.sId)
+                      }
+                      canDelete
+                    />
+                  </div>
+                </>
+              }
             />
           ))}
         </div>

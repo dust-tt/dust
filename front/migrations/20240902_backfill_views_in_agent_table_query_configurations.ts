@@ -38,7 +38,7 @@ async function backfillViewsInAgentTableQueryConfigurationForWorkspace(
   // Count agent tables query configurations that uses those data sources and have no dataSourceViewId.
   const agentTablesQueryConfigurationsCount: GroupedCountResultItem[] =
     await AgentTablesQueryConfigurationTable.count({
-      // @ts-expect-error `dataSourceViewId` was nullable at some point.
+      // @ts-expect-error `dataSourceViewId` is not nullable.
       where: {
         // /!\ `dataSourceId` is the data source's name, not the id.
         dataSourceId: dataSources.map((ds) => ds.name),

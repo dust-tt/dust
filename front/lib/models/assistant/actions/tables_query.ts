@@ -10,6 +10,7 @@ import { DataTypes, Model } from "sequelize";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export class AgentTablesQueryConfiguration extends Model<
@@ -91,15 +92,17 @@ export class AgentTablesQueryConfigurationTable extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare dataSourceWorkspaceId: string;
-  // TODO:(GROUPS_INFRA): `dataSourceId` should be a foreign key to `DataSource` model.
-  declare dataSourceId: string;
+
   declare tableId: string;
+
+  declare dataSourceId: ForeignKey<DataSource["id"]> | null;
 
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
   declare tablesQueryConfigurationId: ForeignKey<
     AgentTablesQueryConfiguration["id"]
   >;
 
+  declare dataSource: NonAttribute<DataSource>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
 
@@ -122,10 +125,6 @@ AgentTablesQueryConfigurationTable.init(
     },
 
     dataSourceWorkspaceId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    dataSourceId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -161,9 +160,19 @@ AgentTablesQueryConfigurationTable.belongsTo(AgentTablesQueryConfiguration, {
   onDelete: "CASCADE",
 });
 
+// Config <> Data source.
+DataSource.hasMany(AgentTablesQueryConfigurationTable, {
+  foreignKey: { allowNull: false, name: "dataSourceId" },
+  onDelete: "RESTRICT",
+});
+AgentTablesQueryConfigurationTable.belongsTo(DataSource, {
+  as: "dataSource",
+  foreignKey: { allowNull: false, name: "dataSourceId" },
+});
+
 // Config <> Data source view.
 DataSourceViewModel.hasMany(AgentTablesQueryConfigurationTable, {
-  foreignKey: { allowNull: true },
+  foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
 AgentTablesQueryConfigurationTable.belongsTo(DataSourceViewModel, {
