@@ -59,6 +59,7 @@ interface DataTableProps<TData extends TBaseData> {
   columnsBreakpoints?: ColumnBreakpoint;
   sorting?: SortingState;
   setSorting?: (sorting: SortingState) => void;
+  isServerSideSorting?: boolean;
 }
 
 function shouldRenderColumn(
@@ -84,13 +85,13 @@ export function DataTable<TData extends TBaseData>({
   setPagination,
   sorting,
   setSorting,
+  isServerSideSorting = false,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const isServerSidePagination = !!totalRowCount && totalRowCount > data.length;
-  const isServerSideSorting = !!sorting && !!setSorting;
   const isClientSideSortingEnabled = !isServerSideSorting && !pagination;
 
   const onPaginationChange =
