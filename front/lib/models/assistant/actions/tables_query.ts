@@ -93,9 +93,6 @@ export class AgentTablesQueryConfigurationTable extends Model<
 
   declare dataSourceWorkspaceId: string;
 
-  // TODO:(GROUPS_INFRA): `dataSourceId` should be a foreign key to `DataSource` model.
-  // TODO(DATA_SOURCE_ID) Remove once fully migrated over to `dataSourceIdNew`.
-  declare dataSourceId: string;
   declare tableId: string;
 
   declare dataSourceIdNew: ForeignKey<DataSource["id"]> | null;
@@ -105,6 +102,7 @@ export class AgentTablesQueryConfigurationTable extends Model<
     AgentTablesQueryConfiguration["id"]
   >;
 
+  declare dataSource: NonAttribute<DataSource>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
 
@@ -127,10 +125,6 @@ AgentTablesQueryConfigurationTable.init(
     },
 
     dataSourceWorkspaceId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    dataSourceId: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -166,20 +160,19 @@ AgentTablesQueryConfigurationTable.belongsTo(AgentTablesQueryConfiguration, {
   onDelete: "CASCADE",
 });
 
-// TODO(DATA_SOURCE_ID) Enforce once fully migrated.
 // Config <> Data source.
 DataSource.hasMany(AgentTablesQueryConfigurationTable, {
-  foreignKey: { allowNull: true, name: "dataSourceIdNew" },
+  foreignKey: { allowNull: false, name: "dataSourceIdNew" },
   onDelete: "RESTRICT",
 });
 AgentTablesQueryConfigurationTable.belongsTo(DataSource, {
   as: "dataSource",
-  foreignKey: { allowNull: true, name: "dataSourceIdNew" },
+  foreignKey: { allowNull: false, name: "dataSourceIdNew" },
 });
 
 // Config <> Data source view.
 DataSourceViewModel.hasMany(AgentTablesQueryConfigurationTable, {
-  foreignKey: { allowNull: true },
+  foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
 AgentTablesQueryConfigurationTable.belongsTo(DataSourceViewModel, {
