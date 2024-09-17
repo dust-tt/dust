@@ -13,7 +13,6 @@ import { deleteConversation } from "@app/components/assistant/conversation/lib";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { isConversationAccessDeniedError } from "@app/lib/conversation";
 import { useConversation, useConversations } from "@app/lib/swr/conversations";
 
 export interface ConversationLayoutProps {
