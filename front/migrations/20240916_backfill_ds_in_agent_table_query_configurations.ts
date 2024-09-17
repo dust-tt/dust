@@ -68,10 +68,8 @@ async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
     );
 
     const [, affectedRows] = await AgentTablesQueryConfigurationTable.update(
-      // Upsert both `dataSourceIdNew` and `dataSourceViewId` to ensure consistency.
       {
         dataSourceIdNew: ds.id,
-        dataSourceViewId: dataSourceViewsForDataSource[0].id,
       },
       {
         where: {
