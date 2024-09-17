@@ -162,6 +162,8 @@ export default function CreateAssistant({
       vaults={vaults}
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}
+      dustClientFacingUrl={baseUrl}
+      plan={plan}
     >
       <AssistantBuilder
         owner={owner}
