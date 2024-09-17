@@ -195,7 +195,7 @@ export function CreateOrEditVaultModal({
     setIsSaving(true);
 
     if (selectedMembers.length > 0 && vault) {
-      await doUpdate(vault, selectedMembers);
+      await doUpdate(vault, selectedMembers, vaultName);
     } else if (!vault) {
       const createdVault = await doCreate(vaultName, selectedMembers);
       if (createdVault) {
@@ -247,10 +247,8 @@ export function CreateOrEditVaultModal({
               placeholder="Vault's name"
               value={vaultName}
               name="vaultName"
-              className={vault ? "text-gray-300 hover:cursor-not-allowed" : ""}
               size="sm"
               onChange={(value) => setVaultName(value)}
-              disabled={!!vault}
             />
             {!vault && (
               <div className="flex gap-1 text-xs text-element-700">
