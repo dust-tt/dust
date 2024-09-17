@@ -28,9 +28,21 @@ async function handler(
         activeOnly: true,
       });
 
-      return res
-        .status(200)
-        .json({ valid: allMembers.some((member) => member.email === email) });
+      if (!email) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Email is required.",
+          },
+        });
+      }
+
+      return res.status(200).json({
+        valid: allMembers.some(
+          (member) => member.email.toLowerCase() === email.toLowerCase()
+        ),
+      });
 
     default:
       return apiError(req, res, {
