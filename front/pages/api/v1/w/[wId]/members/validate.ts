@@ -12,7 +12,6 @@ import { apiError } from "@app/logger/withlogging";
 
 export type ValidateMemberResponseBody = {
   valid: boolean;
-  userId?: number;
 };
 
 /**
@@ -67,7 +66,6 @@ async function handler(
 
       return res.status(200).json({
         valid,
-        userId: user.id,
       });
 
     default:
