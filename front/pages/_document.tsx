@@ -1,5 +1,7 @@
 import Document, { Head, Html, Main, NextScript } from "next/document";
 
+const { ENABLE_BOT_CRAWLING } = process.env;
+
 class MyDocument extends Document {
   render() {
     return (
@@ -11,6 +13,9 @@ class MyDocument extends Document {
             href="https://fonts.gstatic.com"
             crossOrigin="anonymous"
           />
+          {ENABLE_BOT_CRAWLING !== "front" && (
+            <meta name="robots" content="noindex" />
+          )}
           <link href="https://use.typekit.net/jnb2umy.css" rel="stylesheet" />
         </Head>
         <body>
