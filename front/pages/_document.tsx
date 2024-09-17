@@ -13,7 +13,7 @@ class MyDocument extends Document {
             href="https://fonts.gstatic.com"
             crossOrigin="anonymous"
           />
-          {ENABLE_BOT_CRAWLING !== "front" && (
+          {ENABLE_BOT_CRAWLING !== "true" && (
             <meta name="robots" content="noindex" />
           )}
           <link href="https://use.typekit.net/jnb2umy.css" rel="stylesheet" />
