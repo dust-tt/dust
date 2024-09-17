@@ -20,6 +20,8 @@ import { Op } from "sequelize";
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
+import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
@@ -342,6 +344,19 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
     try {
+      // Delete agent configurations elements pointing to this data source view.
+      await AgentDataSourceConfiguration.destroy({
+        where: {
+          dataSourceViewId: this.id,
+        },
+        transaction,
+      });
+      await AgentTablesQueryConfigurationTable.destroy({
+        where: {
+          dataSourceViewId: this.id,
+        },
+      });
+
       await this.model.destroy({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
