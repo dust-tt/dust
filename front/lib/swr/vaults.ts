@@ -383,46 +383,78 @@ export function useUpdateVault({ owner }: { owner: LightWorkspaceType }) {
     disabled: true, // Needed just to mutate
   });
 
-  const doUpdate = async (vault: VaultType, memberIds: string[] | null) => {
-    if (!vault || !memberIds || memberIds?.length < 1) {
+  const doUpdate = async (
+    vault: VaultType,
+    memberIds: string[] | null,
+    newName: string | null
+  ) => {
+    if (!vault) {
       return null;
     }
 
-    // Note: we are directly updating the first group of the vault, maybe we want to hide this via a vault endpoint
-    const url = `/api/w/${owner.sId}/groups/${vault.groupIds[0]}`;
-    const res = await fetch(url, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        memberIds,
-      }),
+    const updatePromises: Promise<Response>[] = [];
+
+    // Prepare vault update request
+    if (newName) {
+      const vaultUrl = `/api/w/${owner.sId}/vaults/${vault.sId}`;
+      updatePromises.push(
+        fetch(vaultUrl, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: newName,
+          }),
+        })
+      );
+    }
+
+    // Prepare group members update request if provided
+    if (memberIds && memberIds.length > 0) {
+      const groupUrl = `/api/w/${owner.sId}/groups/${vault.groupIds[0]}`;
+      updatePromises.push(
+        fetch(groupUrl, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            memberIds,
+          }),
+        })
+      );
+    }
+
+    if (updatePromises.length === 0) {
+      return null;
+    }
+
+    const results = await Promise.all(updatePromises);
+
+    for (const res of results) {
+      if (!res.ok) {
+        const errorData = await res.json();
+        sendNotification({
+          type: "error",
+          title: "Error updating Vault",
+          description: `Error: ${errorData.message}`,
+        });
+        return null;
+      }
+    }
+    void mutateVaults();
+    void mutateVaultsAsAdmin();
+
+    sendNotification({
+      type: "success",
+      title: "Successfully updated Vault",
+      description: "Vault was successfully updated.",
     });
 
-    if (!res.ok) {
-      const errorData = await res.json();
-      sendNotification({
-        type: "error",
-        title: "Error updating Vault",
-        description: `Error: ${errorData.message}`,
-      });
-      return null;
-    } else {
-      void mutateVaults();
-      void mutateVaultsAsAdmin();
-
-      sendNotification({
-        type: "success",
-        title: "Successfully updated Vault",
-        description: "Vault was successfully updated.",
-      });
-
-      const response: PatchVaultResponseBody = await res.json();
-      return response.vault;
-    }
+    const vaultResponse: PatchVaultResponseBody = await results[0].json();
+    return vaultResponse.vault;
   };
-
   return doUpdate;
 }
 
