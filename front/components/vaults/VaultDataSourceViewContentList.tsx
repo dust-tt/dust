@@ -13,6 +13,7 @@ import type {
   ContentNodesViewType,
   DataSourceViewContentNode,
   DataSourceViewType,
+  LightWorkspaceType,
   PlanType,
   VaultType,
   WorkspaceType,
@@ -122,7 +123,7 @@ function useStaticDataSourceViewHasContent({
   parentId,
   viewType,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   dataSourceView: DataSourceViewType;
   parentId?: string;
   viewType: ContentNodesViewType;
