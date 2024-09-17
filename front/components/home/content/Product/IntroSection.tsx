@@ -129,12 +129,12 @@ export function IntroSection() {
           )}
         >
           <H1 from="from-red-200" to="to-red-400">
-            Build custom AI&nbsp;assistants to speed up your work
+            Accelerate Teams Operations
           </H1>
           {<div className="w-full md:hidden">{MainVisualImage()}</div>}
           <P size="lg" className="text-slate-50">
-            Amplify your team's performance with personalized assistants
-            connected to your proprietary knowledge and data.
+            Amplify your team's performance with customized assistants connected
+            to your proprietary knowledge and data.
           </P>
           <div>
             <Link href="/pricing" shallow={true}>
