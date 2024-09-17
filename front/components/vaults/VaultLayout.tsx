@@ -1,4 +1,4 @@
-import { Breadcrumbs, FolderIcon } from "@dust-tt/sparkle";
+import { Breadcrumbs } from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
   DataSourceViewType,
