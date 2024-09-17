@@ -627,11 +627,18 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     }),
   ]);
 
-  // Filter out agents that the user does not have access to
-  // user should be in all groups that are in the agent's groupIds
   const allowedAgentConfigurations = allAgentConfigurations
     .flat()
-    .filter((a) => auth.canRead(Authenticator.aclsFromGroupIds(a.groupIds)));
+    // Filter out agents that the user does not have access to
+    // user should be in all groups that are in the agent's groupIds
+    .filter((a) => auth.canRead(Authenticator.aclsFromGroupIds(a.groupIds)))
+    // do not show personal agents unless the user is the author
+    .filter((a) => {
+      if (a.scope === "private") {
+        return a.versionAuthorId === auth.user()?.id;
+      }
+      return true;
+    });
 
   return applySortAndLimit(allowedAgentConfigurations.flat());
 }
