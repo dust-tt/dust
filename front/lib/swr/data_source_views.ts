@@ -120,8 +120,8 @@ export function useDataSourceViewContentNodes({
 }): {
   isNodesError: boolean;
   isNodesLoading: boolean;
-  mutateDataSourceViewContentNodes: KeyedMutator<GetDataSourceViewContentNodes>;
-  mutateDataSourceViewContentNodesRegardlessOfQueryParams: KeyedMutator<GetDataSourceViewContentNodes>;
+  mutate: KeyedMutator<GetDataSourceViewContentNodes>;
+  mutateRegardlessOfQueryParams: KeyedMutator<GetDataSourceViewContentNodes>;
   nodes: GetDataSourceViewContentNodes["nodes"];
   totalNodesCount: number;
 } {
@@ -163,9 +163,8 @@ export function useDataSourceViewContentNodes({
   return {
     isNodesError: !!error,
     isNodesLoading: !error && !data,
-    mutateDataSourceViewContentNodes: mutate,
-    mutateDataSourceViewContentNodesRegardlessOfQueryParams:
-      mutateRegardlessOfQueryParams,
+    mutate,
+    mutateRegardlessOfQueryParams,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
     totalNodesCount: data ? data.total : 0,
   };

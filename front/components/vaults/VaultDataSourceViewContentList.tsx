@@ -199,7 +199,7 @@ export const VaultDataSourceViewContentList = ({
 
   const {
     isNodesLoading,
-    mutateDataSourceViewContentNodesRegardlessOfQueryParams: mutateContentNodes,
+    mutateRegardlessOfQueryParams: mutateContentNodes,
     nodes,
     totalNodesCount,
   } = useDataSourceViewContentNodes({
