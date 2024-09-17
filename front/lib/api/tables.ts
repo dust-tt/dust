@@ -141,7 +141,7 @@ export async function upsertTableFromCsv({
   useAppForHeaderDetection: boolean;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
   const csvRowsRes = csv
-    ? await rowsFromCsv(auth, csv, useAppForHeaderDetection)
+    ? await rowsFromCsv({ auth, csv, useAppForHeaderDetection })
     : null;
 
   const owner = auth.workspace();
@@ -299,11 +299,15 @@ export async function upsertTableFromCsv({
   return tableRes;
 }
 
-export async function rowsFromCsv(
-  auth: Authenticator,
-  csv: string,
-  useApp: boolean
-): Promise<Result<CoreAPIRow[], CsvParsingError>> {
+export async function rowsFromCsv({
+  auth,
+  csv,
+  useAppForHeaderDetection,
+}: {
+  auth: Authenticator;
+  csv: string;
+  useAppForHeaderDetection: boolean;
+}): Promise<Result<CoreAPIRow[], CsvParsingError>> {
   const delimiter = await guessDelimiter(csv);
   if (!delimiter) {
     return new Err({
@@ -312,9 +316,17 @@ export async function rowsFromCsv(
     });
   }
 
-  const headerRes = await detectHeaders(auth, csv, delimiter, useApp);
+  const headerRes = await detectHeaders(
+    auth,
+    csv,
+    delimiter,
+    useAppForHeaderDetection
+  );
 
-  logger.info({ headerRes, useApp }, "Header detection result");
+  logger.info(
+    { headerRes, useAppForHeaderDetection },
+    "Header detection result"
+  );
 
   if (headerRes.isErr()) {
     return headerRes;
@@ -470,7 +482,7 @@ async function detectHeaders(
   auth: Authenticator,
   csv: string,
   delimiter: string,
-  useApp: boolean
+  useAppForHeaderDetection: boolean
 ): Promise<Result<{ header: string[]; rowIndex: number }, CsvParsingError>> {
   const headParser = parse(csv, { delimiter });
   const records = [];
@@ -486,7 +498,7 @@ async function detectHeaders(
 
     const record = anyRecord as string[];
 
-    if (!useApp) {
+    if (!useAppForHeaderDetection) {
       return staticHeaderDetection(record);
     }
 

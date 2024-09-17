@@ -159,7 +159,9 @@ export async function handleDataSourceTableCSVUpsert({
 
   if (async) {
     // Ensure the CSV is valid before enqueuing the upsert.
-    const csvRowsRes = csv ? await rowsFromCsv(auth, csv, false) : null;
+    const csvRowsRes = csv
+      ? await rowsFromCsv({ auth, csv, useAppForHeaderDetection })
+      : null;
     if (csvRowsRes?.isErr()) {
       return apiError(req, res, {
         api_error: {

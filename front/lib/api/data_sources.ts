@@ -393,9 +393,13 @@ export async function upsertTable({
     .getNonNullableWorkspace()
     .flags.includes("use_app_for_header_detection");
 
+  const useApp = !!useAppForHeaderDetection && useAppForHeaderDetectionFlag;
+
   if (async) {
     // Ensure the CSV is valid before enqueuing the upsert.
-    const csvRowsRes = csv ? await rowsFromCsv(auth, csv, false) : null;
+    const csvRowsRes = csv
+      ? await rowsFromCsv({ auth, csv, useAppForHeaderDetection: useApp })
+      : null;
     if (csvRowsRes?.isErr()) {
       return csvRowsRes;
     }
@@ -412,8 +416,7 @@ export async function upsertTable({
         tableParents,
         csv: csv ?? null,
         truncate,
-        useAppForHeaderDetection:
-          !!useAppForHeaderDetection && useAppForHeaderDetectionFlag,
+        useAppForHeaderDetection: useApp,
       },
     });
     if (enqueueRes.isErr()) {
@@ -434,8 +437,7 @@ export async function upsertTable({
     tableParents,
     csv: csv ?? null,
     truncate,
-    useAppForHeaderDetection:
-      !!useAppForHeaderDetection && useAppForHeaderDetectionFlag,
+    useAppForHeaderDetection: useApp,
   });
 
   return tableRes;
