@@ -154,7 +154,7 @@ export async function createTableDataSourceConfiguration(
 
       await AgentTablesQueryConfigurationTable.create(
         {
-          dataSourceIdNew: dataSource.id,
+          dataSourceId: dataSource.id,
           dataSourceViewId: dataSourceView.id,
           dataSourceWorkspaceId: tc.workspaceId,
           tableId: tc.tableId,
