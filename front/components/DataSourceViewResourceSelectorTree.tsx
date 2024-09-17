@@ -10,13 +10,16 @@ import type {
   ContentNodesViewType,
   DataSourceViewContentNode,
   DataSourceViewType,
-  LightWorkspaceType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
+import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
+import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
+import { useConnector } from "@app/lib/swr/connectors";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 
@@ -27,7 +30,7 @@ interface DataSourceViewResourceSelectorTreeBaseProps {
     parents: string[],
     selected: boolean
   ) => void;
-  owner: LightWorkspaceType;
+  owner: WorkspaceType;
   parentIsSelected?: boolean;
   selectedParents?: string[];
   selectedResourceIds: string[];
@@ -83,6 +86,7 @@ function DataSourceViewResourceSelectorChildren({
   showExpand,
   viewType = "documents",
 }: DataSourceResourceSelectorChildrenProps) {
+  const { plan, dustClientFacingUrl } = useContext(AssistantBuilderContext);
   const { nodes, isNodesLoading, isNodesError } = useDataSourceViewContentNodes(
     {
       dataSourceView: dataSourceView,
@@ -91,6 +95,13 @@ function DataSourceViewResourceSelectorChildren({
       viewType,
     }
   );
+  const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
+    useState(false);
+
+  const { connector } = useConnector({
+    workspaceId: owner.sId,
+    dataSourceId: dataSourceView.dataSource.sId,
+  });
 
   useEffect(() => {
     if (parentIsSelected) {
@@ -214,8 +225,26 @@ function DataSourceViewResourceSelectorChildren({
         {dataSourceView.category === "managed" && nodes.length === 0 && (
           <div className="flex w-full flex-col items-center gap-2 rounded-lg border bg-structure-50 py-2">
             <span className="text-element-700">The Vault is empty!</span>
-            {owner.role !== "admin" ? (
-              <Button label="Add Data" icon={PlusIcon} />
+            {owner.role === "admin" &&
+            connector &&
+            plan &&
+            dustClientFacingUrl ? (
+              <>
+                <Button label="Add Data" icon={PlusIcon} />
+                <ConnectorPermissionsModal
+                  owner={owner}
+                  connector={connector}
+                  dataSource={dataSourceView.dataSource}
+                  isOpen={showConnectorPermissionsModal}
+                  onClose={() => {
+                    setShowConnectorPermissionsModal(false);
+                  }}
+                  plan={plan}
+                  readOnly={false}
+                  isAdmin={owner.role === "admin"}
+                  dustClientFacingUrl={dustClientFacingUrl}
+                />
+              </>
             ) : (
               <RequestDataSourceModal
                 dataSources={[dataSourceView.dataSource]}
