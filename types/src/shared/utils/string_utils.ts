@@ -75,3 +75,11 @@ export function truncate(text: string, length: number, omission = "...") {
     ? `${text.substring(0, length - omission.length)}${omission}`
     : text;
 }
+
+export function safeParseJSON(str: string): object | null {
+  try {
+    return JSON.parse(str);
+  } catch {
+    return null;
+  }
+}

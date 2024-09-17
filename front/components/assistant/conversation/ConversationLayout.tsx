@@ -4,6 +4,7 @@ import React, { useCallback, useContext, useEffect, useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import { ConversationError } from "@app/components/assistant/conversation/ConversationError";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -12,6 +13,7 @@ import { deleteConversation } from "@app/components/assistant/conversation/lib";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { isConversationAccessDeniedError } from "@app/lib/conversation";
 import { useConversation, useConversations } from "@app/lib/swr/conversations";
 
 export interface ConversationLayoutProps {
@@ -94,7 +96,7 @@ export default function ConversationLayout({
       workspaceId: owner.sId,
     });
 
-  const { conversation } = useConversation({
+  const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
   });
@@ -153,14 +155,22 @@ export default function ConversationLayout({
             />
           }
         >
-          <AssistantDetails
-            owner={owner}
-            assistantId={detailViewContent || null}
-            onClose={handleCloseModal}
-          />
-          <FileDropProvider>
-            <GenerationContextProvider>{children}</GenerationContextProvider>
-          </FileDropProvider>
+          {conversationError ? (
+            <ConversationError error={conversationError} />
+          ) : (
+            <>
+              <AssistantDetails
+                owner={owner}
+                assistantId={detailViewContent || null}
+                onClose={handleCloseModal}
+              />
+              <FileDropProvider>
+                <GenerationContextProvider>
+                  {children}
+                </GenerationContextProvider>
+              </FileDropProvider>
+            </>
+          )}
         </AppLayout>
       </InputBarProvider>
     </RootLayout>
