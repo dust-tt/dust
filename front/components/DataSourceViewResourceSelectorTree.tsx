@@ -1,7 +1,9 @@
 import {
   BracesIcon,
+  Button,
   ExternalLinkIcon,
   IconButton,
+  PlusIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -12,6 +14,7 @@ import type {
 } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
+import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
@@ -113,7 +116,6 @@ function DataSourceViewResourceSelectorChildren({
   }
 
   const isTablesView = viewType === "tables";
-
   return (
     <>
       <DataSourceViewDocumentModal
@@ -209,6 +211,19 @@ function DataSourceViewResourceSelectorChildren({
             />
           );
         })}
+        {dataSourceView.category === "managed" && nodes.length === 0 && (
+          <div className="flex w-full flex-col items-center gap-2 rounded-lg border bg-structure-50 py-2">
+            <span className="text-element-700">The Vault is empty!</span>
+            {owner.role !== "admin" ? (
+              <Button label="Add Data" icon={PlusIcon} />
+            ) : (
+              <RequestDataSourceModal
+                dataSources={[dataSourceView.dataSource]}
+                owner={owner}
+              />
+            )}
+          </div>
+        )}
       </Tree>
     </>
   );
