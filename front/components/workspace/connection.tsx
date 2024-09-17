@@ -171,7 +171,7 @@ export function EnterpriseConnectionDetails({
           buttonClick={() => {
             void router.push(`/w/${owner.sId}/subscription`);
           }}
-          className="absolute bottom-8 right-0"
+          className="absolute bottom-8 right-8"
           onClose={() => setShowNoInviteLinkPopup(false)}
         />
         <Popup
@@ -183,7 +183,7 @@ export function EnterpriseConnectionDetails({
             window.location.href =
               "mailto:team@dust.tt?subject=Help with Domain Verification for SSO";
           }}
-          className="absolute bottom-8 right-0"
+          className="absolute bottom-8 right-8"
           onClose={() => setShowNoVerifiedDomainPopup(false)}
         />
       </div>
