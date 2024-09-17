@@ -71,6 +71,7 @@ import {
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
@@ -714,6 +715,23 @@ export async function* postUserMessage(
         })) ?? -1) + 1;
 
       async function createMessageAndUserMessage() {
+        let userId = user ? user.id : null;
+
+        // If we have a context email but no user, we try to find a user with that email in the workspace.
+        if (!userId && context.email) {
+          const matchingUser = await UserResource.fetchByEmail(context.email);
+          if (matchingUser && owner) {
+            const membership =
+              await MembershipResource.getActiveMembershipOfUserInWorkspace({
+                user: matchingUser,
+                workspace: owner,
+              });
+            if (membership) {
+              userId = matchingUser.id;
+            }
+          }
+        }
+
         return Message.create(
           {
             sId: generateLegacyModelSId(),
@@ -730,7 +748,7 @@ export async function* postUserMessage(
                   userContextEmail: context.email,
                   userContextProfilePictureUrl: context.profilePictureUrl,
                   userContextOrigin: context.origin,
-                  userId: user ? user.id : null,
+                  userId,
                 },
                 { transaction: t }
               )
