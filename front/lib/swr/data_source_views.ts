@@ -108,6 +108,7 @@ export function useDataSourceViewContentNodes({
   parentId,
   pagination,
   viewType,
+  disabled = false,
 }: {
   owner: LightWorkspaceType;
   dataSourceView?: DataSourceViewType;
@@ -115,20 +116,21 @@ export function useDataSourceViewContentNodes({
   parentId?: string;
   pagination?: PaginationState;
   viewType?: ContentNodesViewType;
+  disabled?: boolean;
 }): {
   isNodesError: boolean;
   isNodesLoading: boolean;
-  mutateDataSourceViewContentNodes: KeyedMutator<GetDataSourceViewContentNodes>;
+  mutate: KeyedMutator<GetDataSourceViewContentNodes>;
+  mutateRegardlessOfQueryParams: KeyedMutator<GetDataSourceViewContentNodes>;
   nodes: GetDataSourceViewContentNodes["nodes"];
   totalNodesCount: number;
 } {
   const params = new URLSearchParams();
   appendPaginationParams(params, pagination);
 
-  const url =
-    dataSourceView && viewType
-      ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
-      : null;
+  const url = dataSourceView
+    ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
+    : null;
 
   const body = JSON.stringify({
     internalIds,
@@ -143,18 +145,26 @@ export function useDataSourceViewContentNodes({
     }); // Serialize with body to ensure uniqueness.
   }, [url, body]);
 
-  const { data, error, mutate } = useSWRWithDefaults(fetchKey, async () => {
-    if (!url) {
-      return undefined;
-    }
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      fetchKey,
+      async () => {
+        if (!url) {
+          return undefined;
+        }
 
-    return postFetcher([url, { internalIds, parentId, viewType }]);
-  });
+        return postFetcher([url, { internalIds, parentId, viewType }]);
+      },
+      {
+        disabled: disabled || !viewType,
+      }
+    );
 
   return {
     isNodesError: !!error,
     isNodesLoading: !error && !data,
-    mutateDataSourceViewContentNodes: mutate,
+    mutate,
+    mutateRegardlessOfQueryParams,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
     totalNodesCount: data ? data.total : 0,
   };
