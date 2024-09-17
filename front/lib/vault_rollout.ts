@@ -3,7 +3,7 @@ import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export const getDustAppsListUrl = async (
   auth: Authenticator,
-  vaultId?: string
+  vaultId: string
 ): Promise<string> => {
   const owner = auth.getNonNullableWorkspace();
 
