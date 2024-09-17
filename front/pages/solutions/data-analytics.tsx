@@ -1,7 +1,7 @@
 export async function getServerSideProps() {
   return {
     redirect: {
-      destination: "/site/solutions/dust-analytics",
+      destination: "/home/solutions/dust-analytics",
       permanent: true,
     },
   };

@@ -9,13 +9,13 @@ import {
 } from "@app/components/home/Carousel";
 import { Grid, H2 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
-import { CustomerCaroussel } from "@app/pages/site/solutions/customer-support";
-import { DataCaroussel } from "@app/pages/site/solutions/data-analytics";
-import { EngineeringCaroussel } from "@app/pages/site/solutions/engineering";
-import { KnowledgeCaroussel } from "@app/pages/site/solutions/knowledge";
-import { MarketingCaroussel } from "@app/pages/site/solutions/marketing";
-import { RecruitingCaroussel } from "@app/pages/site/solutions/recruiting-people";
-import { SalesCaroussel } from "@app/pages/site/solutions/sales";
+import { CustomerCaroussel } from "@app/pages/home/solutions/customer-support";
+import { DataCaroussel } from "@app/pages/home/solutions/data-analytics";
+import { EngineeringCaroussel } from "@app/pages/home/solutions/engineering";
+import { KnowledgeCaroussel } from "@app/pages/home/solutions/knowledge";
+import { MarketingCaroussel } from "@app/pages/home/solutions/marketing";
+import { RecruitingCaroussel } from "@app/pages/home/solutions/recruiting-people";
+import { SalesCaroussel } from "@app/pages/home/solutions/sales";
 
 export function VerticalSection() {
   return (

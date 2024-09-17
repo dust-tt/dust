@@ -17,7 +17,7 @@ import { SolutionSection } from "@app/components/home/SolutionSection";
 export async function getServerSideProps() {
   return {
     props: {
-      shape: getParticleShapeIndexByName(shapeNames.bigSphere),
+      shape: getParticleShapeIndexByName(shapeNames.cube),
     },
   };
 }
@@ -31,26 +31,25 @@ interface pageSettingsProps {
 }
 
 const pageSettings: pageSettingsProps = {
-  uptitle: "Sales",
+  uptitle: "Engineers and Developers",
   title: (
     <>
-      Less busywork,
+      Code smarter,
       <br />
-      more deals.
+      Resolve faster
     </>
   ),
   from: "from-emerald-200",
   to: "to-emerald-500",
   description: (
     <>
-      Boost qualification, prospecting, and&nbsp;closing.
-      <br />
-      Practice techniques from&nbsp;demos to&nbsp;objection handling.
+      Reduce interruptions, write better code, speed up incident response,
+      and&nbsp;accelerate new engineers' onboarding.
     </>
   ),
 };
 
-export default function Sales() {
+export default function Engineering() {
   return (
     <>
       <HeaderContentBlock
@@ -62,43 +61,34 @@ export default function Sales() {
       />
       <Grid>
         <SolutionSection
-          title={
-            <>
-              Drop the&nbsp;cut-and-paste,
-              <br />
-              Hone your&nbsp;personal touch.
-            </>
-          }
+          title={"Improve Code Quality."}
           blocks={[
             {
               color: "emerald",
               contentBlocks: [
                 {
-                  title: <>Personalized outreach at&nbsp;scale</>,
+                  title: <>Talk to&nbsp;your&nbsp;codebase</>,
                   content: [
                     <>
-                      Craft optimized cold emails or&nbsp;follow-ups
-                      effortlessly.
+                      Get conversational access to&nbsp;your entire code base.
                     </>,
                     <>
-                      Ensure your&nbsp;sales reps connect more effectively with
-                      prospects, with personalized drafts ready for
-                      their&nbsp;email outbox.
+                      Accelerate onboarding for new engineers on&nbsp;the team
+                      and&nbsp;reduce interruptions from&nbsp;other teams.
                     </>,
                   ],
                 },
                 {
-                  title: <>Account snapshots and&nbsp;reports</>,
-                  content: [
+                  title: <>Create your&nbsp;architecture copilot.</>,
+                  content: (
                     <>
-                      Generate account summaries and&nbsp;reports
-                      from&nbsp;across your&nbsp;CRM, Slack, and&nbsp;Notion.
-                    </>,
-                    <>
-                      Keep every pipeline review focused on&nbsp;the strategic
-                      outlook rather than administrative housekeeping.
-                    </>,
-                  ],
+                      Specialize the&nbsp;best models (Gemini, GPT4, Mistral)
+                      to&nbsp;answer general code questions with concise,
+                      straight-to-the-point answers that have context
+                      on&nbsp;the team's stack, runbooks, and&nbsp;architecture
+                      preferences.
+                    </>
+                  ),
                 },
               ],
               assistantBlocks: [
@@ -112,9 +102,9 @@ export default function Sales() {
         <SolutionSection
           title={
             <>
-              Scale Sales Operations team
+              Fight fires,
               <br />
-              for fun and&nbsp;profit.
+              get&nbsp;back to&nbsp;Coding.
             </>
           }
           blocks={[
@@ -122,29 +112,41 @@ export default function Sales() {
               color: "emerald",
               contentBlocks: [
                 {
-                  title: <>Keep everyone on&nbsp;the same page</>,
+                  title: (
+                    <>
+                      Protect your&nbsp;eng team with a&nbsp;help desk for most
+                      situations
+                    </>
+                  ),
                   content: [
                     <>
-                      Ramping up and&nbsp;aligning fast-growing
-                      or&nbsp;distributed teams gets harder.
+                      Provide answers to&nbsp;questions from&nbsp;the rest
+                      of&nbsp;the company automatically to&nbsp;avoid
+                      interruptions.
                     </>,
                     <>
-                      Enshrine templates and&nbsp;playbooks into assistants
-                      to&nbsp;roll out a&nbsp;consistent and&nbsp;efficient
-                      sales motion.
+                      Give developers context on&nbsp;previous incidents
+                      in&nbsp;seconds, without the&nbsp;need to&nbsp;ping last
+                      time's hero.
                     </>,
                   ],
                 },
                 {
-                  title: <>Improve decision-making for sales leadership</>,
+                  title: (
+                    <>
+                      Get the&nbsp;report done for the&nbsp;company to&nbsp;stay
+                      in&nbsp;the know
+                    </>
+                  ),
                   content: [
                     <>
-                      Generate real-time insights on&nbsp;sales metrics
-                      and&nbsp;team trends.
+                      Generate weekly summaries on&nbsp;what shipped, what
+                      broke, and&nbsp;what's in&nbsp;flight.
                     </>,
                     <>
-                      Have your&nbsp;weekly reports and&nbsp;summaries ready
-                      in&nbsp;a few seconds.
+                      Make these available to&nbsp;the team's stakeholders with
+                      explanations on&nbsp;the technical terms they might not
+                      understand.
                     </>,
                   ],
                 },
@@ -162,78 +164,77 @@ export default function Sales() {
   );
 }
 
-Sales.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
+Engineering.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
 const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
-    emoji: "🖋️",
-    name: "@outboundDraft",
+    emoji: "⭐️",
+    name: "@engGeneral",
     backgroundColor: "bg-emerald-300",
     description: (
       <>
-        Generates personalized and&nbsp;effective cold emails or&nbsp;follow-up
-        emails with the&nbsp;context of&nbsp;the relationship
+        Answers general questions about code architecture and&nbsp;engineering
+        team processes
       </>
     ),
   },
   {
-    emoji: "🔎",
-    name: "@accountSummary",
+    emoji: "🏴‍☠️",
+    name: "@codeGenius",
     backgroundColor: "bg-emerald-300",
     description: (
       <>
-        Creates a&nbsp;snapshot by&nbsp;retrieving data from&nbsp;your CRM,
-        Slack, Notion, including health and&nbsp;sentiment to&nbsp;understand
-        where to&nbsp;focus attention
+        Answers general questions about code to&nbsp;avoid a&nbsp;trip
+        to&nbsp;StackOverflow
       </>
     ),
   },
   {
-    emoji: "📞",
-    name: "@callCoach",
+    emoji: "📚",
+    name: "@codebase",
+    backgroundColor: "bg-emerald-300",
+    description: <>Answers questions about the&nbsp;company codebase</>,
+  },
+  {
+    emoji: "👨‍💻",
+    name: "@engHelp",
     backgroundColor: "bg-emerald-300",
     description: (
       <>
-        Points to&nbsp;battle cards, competitive intelligence,
-        and&nbsp;objection handling documentation to&nbsp;increase conversion
+        Answers questions from&nbsp;the rest of&nbsp;the company
+        on&nbsp;engineering definitions, ongoing projects, and&nbsp;who's
+        on&nbsp;run
       </>
     ),
   },
   {
-    emoji: "📊",
-    name: "@salesMetrics",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>Answers any question on&nbsp;revenue metrics directly from&nbsp;Slack</>
-    ),
-  },
-  {
-    emoji: "🔮",
-    name: "@salesWisdom",
+    emoji: "🚨",
+    name: "@engIncidents",
     backgroundColor: "bg-emerald-300",
     description: (
       <>
-        Processes all call transcripts to&nbsp;extract recurring themes
-        or&nbsp;insights
+        Assists in&nbsp;the event of&nbsp;an incident with data on&nbsp;previous
+        similar situation and&nbsp;their remediation
       </>
     ),
   },
   {
-    emoji: "🚀",
-    name: "@salesShoutout",
+    emoji: "📡",
+    name: "@engWeekly",
     backgroundColor: "bg-emerald-300",
     description: (
       <>
-        Highlights performance outliers across the&nbsp;team based on&nbsp;CRM
-        data and&nbsp;growth priorities
+        Writes a&nbsp;table of&nbsp;shipped and&nbsp;unshipped
+        features—Summarizes incidents with impact, current status,
+        and&nbsp;remediation plans
       </>
     ),
   },
 ];
 
-export function SalesCaroussel() {
+export function EngineeringCaroussel() {
   return (
     <CarousselContentBlock
       title={pageSettings.uptitle}
@@ -243,7 +244,7 @@ export function SalesCaroussel() {
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"
-      href="/site/solutions/sales"
+      href="/home/solutions/engineering"
     />
   );
 }
