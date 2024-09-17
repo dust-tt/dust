@@ -2,6 +2,10 @@ import type { PaginationState } from "@tanstack/react-table";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
 import useSWR, { useSWRConfig } from "swr";
+import type {
+  SWRInfiniteConfiguration,
+  SWRInfiniteKeyLoader,
+} from "swr/infinite";
 import useSWRInfinite from "swr/infinite";
 
 import { COMMIT_HASH } from "@app/lib/commit-hash";
@@ -92,6 +96,15 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
       mutateRegardlessOfQueryParams: myMutateRegardlessOfQueryParams,
     };
   }
+}
+
+export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(
+  getKey: SWRInfiniteKeyLoader<TData, TKey>,
+  fetcher: Fetcher<TData, TKey> | null,
+  config?: SWRInfiniteConfiguration
+) {
+  const mergedConfig = { ...DEFAULT_SWR_CONFIG, ...config };
+  return useSWRInfinite(getKey, fetcher, mergedConfig);
 }
 
 const addCommitHashToHeaders = (headers: HeadersInit = {}): HeadersInit => ({

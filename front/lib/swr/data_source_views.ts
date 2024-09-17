@@ -6,13 +6,13 @@ import type {
 import type { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
-import useSWRInfinite from "swr/infinite";
 
 import {
   appendPaginationParams,
   fetcher,
   fetcherMultiple,
   postFetcher,
+  useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
@@ -199,36 +199,37 @@ export function useDataSourceViewContentNodesWithInfiniteScroll({
   const fetcher: Fetcher<GetDataSourceViewContentNodes, [string, object]> =
     postFetcher;
 
-  const { data, error, setSize, size, isValidating, mutate } = useSWRInfinite(
-    (index) => {
-      if (!url) {
-        // No URL, return an empty array to skip the fetch
-        return "[]";
+  const { data, error, setSize, size, isValidating, mutate } =
+    useSWRInfiniteWithDefaults(
+      (index) => {
+        if (!url) {
+          // No URL, return an empty array to skip the fetch
+          return "[]";
+        }
+
+        // Append the pagination params to the URL
+        const params = new URLSearchParams();
+        appendPaginationParams(params, {
+          pageIndex: index,
+          pageSize,
+        });
+
+        return JSON.stringify([url + "?" + params.toString(), body]);
+      },
+      async (fetchKey) => {
+        // Get the URL and body from the fetchKey
+        const params = JSON.parse(fetchKey);
+        if (!params[0]) {
+          // Empty array, skip the fetch
+          return undefined;
+        }
+
+        return fetcher(params);
+      },
+      {
+        revalidateFirstPage: false,
       }
-
-      // Append the pagination params to the URL
-      const params = new URLSearchParams();
-      appendPaginationParams(params, {
-        pageIndex: index,
-        pageSize,
-      });
-
-      return JSON.stringify([url + "?" + params.toString(), body]);
-    },
-    async (fetchKey) => {
-      // Get the URL and body from the fetchKey
-      const params = JSON.parse(fetchKey);
-      if (!params[0]) {
-        // Empty array, skip the fetch
-        return undefined;
-      }
-
-      return fetcher(params);
-    },
-    {
-      revalidateFirstPage: false,
-    }
-  );
+    );
 
   const mutateDataSourceViewContentNodes = async () => {
     const newNodes = await mutate();
