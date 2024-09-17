@@ -95,7 +95,7 @@ export class AgentTablesQueryConfigurationTable extends Model<
 
   declare tableId: string;
 
-  declare dataSourceIdNew: ForeignKey<DataSource["id"]> | null;
+  declare dataSourceId: ForeignKey<DataSource["id"]> | null;
 
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
   declare tablesQueryConfigurationId: ForeignKey<
@@ -162,12 +162,12 @@ AgentTablesQueryConfigurationTable.belongsTo(AgentTablesQueryConfiguration, {
 
 // Config <> Data source.
 DataSource.hasMany(AgentTablesQueryConfigurationTable, {
-  foreignKey: { allowNull: false, name: "dataSourceIdNew" },
+  foreignKey: { allowNull: false, name: "dataSourceId" },
   onDelete: "RESTRICT",
 });
 AgentTablesQueryConfigurationTable.belongsTo(DataSource, {
   as: "dataSource",
-  foreignKey: { allowNull: false, name: "dataSourceIdNew" },
+  foreignKey: { allowNull: false, name: "dataSourceId" },
 });
 
 // Config <> Data source view.
