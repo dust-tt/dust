@@ -1,9 +1,14 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getMembers } from "@app/lib/api/workspace";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 
 export type ValidateMemberResponseBody = {
@@ -15,33 +20,55 @@ export type ValidateMemberResponseBody = {
  * Validates an email corresponds to an active member in a specific workspace. For Dust managed apps only - undocumented.
  */
 
+export const validateEmailSchema = t.type({
+  email: t.string,
+});
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<ValidateMemberResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const { email } = req.body;
+  const bodyValidation = validateEmailSchema.decode(req.body);
+
+  if (isLeft(bodyValidation)) {
+    const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid request body: ${pathError}`,
+      },
+    });
+  }
+
+  const { email } = bodyValidation.right;
 
   switch (req.method) {
     case "POST":
-      const { members: allMembers } = await getMembers(auth, {
-        activeOnly: true,
+      const user = await UserResource.fetchByEmail(email);
+
+      const workspace = renderLightWorkspaceType({
+        workspace: auth.getNonNullableWorkspace(),
       });
 
-      if (!email) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Email is required.",
-          },
+      if (!user) {
+        return res.status(200).json({
+          valid: false,
         });
       }
 
+      const workspaceMembership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace,
+        });
+
+      const valid = !!workspaceMembership;
+
       return res.status(200).json({
-        valid: allMembers.some(
-          (member) => member.email.toLowerCase() === email.toLowerCase()
-        ),
+        valid,
       });
 
     default:
