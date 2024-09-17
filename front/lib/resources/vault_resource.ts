@@ -1,4 +1,5 @@
 import type { ACLType, ModelId, Result, VaultType } from "@dust-tt/types";
+import { Err } from "@dust-tt/types";
 import { assertNever, Ok } from "@dust-tt/types";
 import assert from "assert";
 import type {
@@ -271,6 +272,27 @@ export class VaultResource extends BaseResource<VaultModel> {
         },
       },
     });
+  }
+
+  async updateName(
+    auth: Authenticator,
+    newName: string
+  ): Promise<Result<undefined, Error>> {
+    if (!auth.isAdmin()) {
+      return new Err(new Error("Only admins can update vault names."));
+    }
+
+    const nameAvailable = await VaultResource.isNameAvailable(auth, newName);
+    if (!nameAvailable) {
+      return new Err(new Error("This vault name is already used."));
+    }
+
+    try {
+      await this.update({ name: newName });
+      return new Ok(undefined);
+    } catch (error) {
+      return new Err(error as Error);
+    }
   }
 
   acl(): ACLType {
