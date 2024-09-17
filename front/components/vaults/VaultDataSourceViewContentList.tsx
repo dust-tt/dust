@@ -185,7 +185,7 @@ export const VaultDataSourceViewContentList = ({
   });
 
   const handleViewTypeChange = useCallback(
-    (newViewType: ContentNodesViewType) => {
+    (newViewType?: ContentNodesViewType) => {
       if (newViewType !== viewType) {
         setPagination(
           { pageIndex: 0, pageSize: pagination.pageSize },
@@ -199,7 +199,7 @@ export const VaultDataSourceViewContentList = ({
 
   const {
     isNodesLoading,
-    mutateDataSourceViewContentNodes,
+    mutateDataSourceViewContentNodesRegardlessOfQueryParams: mutateContentNodes,
     nodes,
     totalNodesCount,
   } = useDataSourceViewContentNodes({
@@ -226,14 +226,14 @@ export const VaultDataSourceViewContentList = ({
     });
 
   useEffect(() => {
+    if (viewType !== undefined) {
+      return;
+    }
     // If the view only has content in one of the two views, we switch to that view.
     // if both view have content, or neither views have content, we default to documents.
     if (hasTables === true && hasDocuments === false) {
       handleViewTypeChange("tables");
-    } else if (
-      (hasTables === false && hasDocuments === true) ||
-      (viewType === undefined && !(isDocumentsLoading || isTablesLoading))
-    ) {
+    } else if (hasTables === false && hasDocuments === true) {
       handleViewTypeChange("documents");
     }
   }, [
@@ -407,7 +407,7 @@ export const VaultDataSourceViewContentList = ({
                 onClose={(save) => {
                   setShowConnectorPermissionsModal(false);
                   if (save) {
-                    void mutateDataSourceViewContentNodes();
+                    void mutateContentNodes();
                   }
                 }}
                 plan={plan}
@@ -444,12 +444,15 @@ export const VaultDataSourceViewContentList = ({
         owner={owner}
         plan={plan}
         onSave={async (action?: ContentActionKey) => {
-          if (action === "DocumentUploadOrEdit") {
+          await mutateContentNodes();
+          if (
+            action === "DocumentUploadOrEdit" ||
+            action === "MultipleDocumentsUpload"
+          ) {
             handleViewTypeChange("documents");
           } else if (action === "TableUploadOrEdit") {
             handleViewTypeChange("tables");
           }
-          await mutateDataSourceViewContentNodes();
         }}
       />
     </>
