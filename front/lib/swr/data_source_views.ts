@@ -107,7 +107,7 @@ export function useDataSourceViewContentNodes({
   internalIds,
   parentId,
   pagination,
-  viewType = "documents",
+  viewType,
 }: {
   owner: LightWorkspaceType;
   dataSourceView?: DataSourceViewType;
@@ -125,9 +125,10 @@ export function useDataSourceViewContentNodes({
   const params = new URLSearchParams();
   appendPaginationParams(params, pagination);
 
-  const url = dataSourceView
-    ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
-    : null;
+  const url =
+    dataSourceView && viewType
+      ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
+      : null;
 
   const body = JSON.stringify({
     internalIds,

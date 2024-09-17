@@ -13,6 +13,7 @@ import type {
   ContentNodesViewType,
   DataSourceViewContentNode,
   DataSourceViewType,
+  LightWorkspaceType,
   PlanType,
   VaultType,
   WorkspaceType,
@@ -20,7 +21,7 @@ import type {
 import { isValidContentNodesViewType } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -116,6 +117,37 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
   return columns;
 };
 
+function useStaticDataSourceViewHasContent({
+  owner,
+  dataSourceView,
+  parentId,
+  viewType,
+}: {
+  owner: LightWorkspaceType;
+  dataSourceView: DataSourceViewType;
+  parentId?: string;
+  viewType: ContentNodesViewType;
+}) {
+  // We don't do the call if the dataSourceView is managed.
+  const { isNodesLoading, nodes } = useDataSourceViewContentNodes({
+    dataSourceView: isManaged(dataSourceView.dataSource)
+      ? undefined
+      : dataSourceView,
+    owner,
+    internalIds: parentId ? [parentId] : undefined,
+    pagination: {
+      pageIndex: 0,
+      pageSize: 1,
+    },
+    viewType,
+  });
+
+  return {
+    hasContent: isManaged(dataSourceView.dataSource) ? true : !!nodes?.length,
+    isLoading: isManaged(dataSourceView.dataSource) ? false : isNodesLoading,
+  };
+}
+
 export const VaultDataSourceViewContentList = ({
   owner,
   vault,
@@ -137,7 +169,7 @@ export const VaultDataSourceViewContentList = ({
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
   });
-  const [viewType, setViewType] = useHashParam("viewType", "documents");
+  const [viewType, setViewType] = useHashParam("viewType");
   const router = useRouter();
   const showVaultUsage =
     dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource);
@@ -148,17 +180,22 @@ export const VaultDataSourceViewContentList = ({
   const { dataSourceViews } = useDataSourceViews(owner, {
     disabled: !showVaultUsage,
   });
-
   const { systemVault } = useSystemVault({
     workspaceId: owner.sId,
   });
 
-  const handleViewTypeChange = (newViewType: ContentNodesViewType) => {
-    if (newViewType !== viewType) {
-      setPagination({ pageIndex: 0, pageSize: pagination.pageSize }, "replace");
-      setViewType(newViewType);
-    }
-  };
+  const handleViewTypeChange = useCallback(
+    (newViewType: ContentNodesViewType) => {
+      if (newViewType !== viewType) {
+        setPagination(
+          { pageIndex: 0, pageSize: pagination.pageSize },
+          "replace"
+        );
+        setViewType(newViewType);
+      }
+    },
+    [setPagination, setViewType, viewType, pagination.pageSize]
+  );
 
   const {
     isNodesLoading,
@@ -170,8 +207,31 @@ export const VaultDataSourceViewContentList = ({
     owner,
     parentId,
     pagination,
-    viewType: isValidContentNodesViewType(viewType) ? viewType : "documents",
+    viewType: isValidContentNodesViewType(viewType) ? viewType : undefined,
   });
+
+  const { hasContent: hasDocuments } = useStaticDataSourceViewHasContent({
+    owner,
+    dataSourceView,
+    parentId,
+    viewType: "documents",
+  });
+  const { hasContent: hasTables } = useStaticDataSourceViewHasContent({
+    owner,
+    dataSourceView,
+    parentId,
+    viewType: "tables",
+  });
+
+  useEffect(() => {
+    if (viewType === undefined) {
+      if (hasTables === true && hasDocuments === false) {
+        handleViewTypeChange("tables");
+      } else if (hasDocuments !== undefined) {
+        handleViewTypeChange("documents");
+      }
+    }
+  }, [hasDocuments, hasTables, handleViewTypeChange, viewType]);
 
   const rows: RowData[] = useMemo(
     () =>
@@ -277,7 +337,8 @@ export const VaultDataSourceViewContentList = ({
         )}
         {isFolder(dataSourceView.dataSource) && (
           <>
-            {rows.length > 0 && (
+            {((viewType === "tables" && hasDocuments) ||
+              (viewType === "documents" && hasTables)) && (
               <DropdownMenu>
                 <DropdownMenu.Button>
                   <Button
