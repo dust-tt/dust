@@ -12,7 +12,7 @@ import {
   Updater,
   useReactTable,
 } from "@tanstack/react-table";
-import React, { ReactNode, useEffect, useState } from "react";
+import React, {ReactNode, useEffect, useRef, useState} from "react";
 
 import { Avatar } from "@sparkle/components/Avatar";
 import {
@@ -333,6 +333,17 @@ DataTable.Row = function Row({
   widthClassName,
   ...props
 }: RowProps) {
+  const dropDownMenuButtonRef = useRef<HTMLDivElement>(null);
+  const [rightClickX, setRightClickX] = useState<number | undefined>();
+  const [rightClickY, setRightClickY] = useState<number | undefined>();
+
+  const handleContextMenu = (event: React.MouseEvent<HTMLTableRowElement>) => {
+    event.preventDefault();
+    setRightClickX(event.clientX);
+    setRightClickY(event.clientY);
+    dropDownMenuButtonRef?.current?.click();
+  }
+
   return (
     <tr
       className={classNames(
@@ -341,6 +352,7 @@ DataTable.Row = function Row({
         widthClassName,
         className || ""
       )}
+      onContextMenu={handleContextMenu}
       onClick={onClick ? onClick : undefined}
       {...props}
     >
@@ -349,14 +361,25 @@ DataTable.Row = function Row({
         {moreMenuItems && moreMenuItems.length > 0 && (
           <DropdownMenu className="s-mr-1.5 s-flex">
             <DropdownMenu.Button>
-              <IconButton
-                icon={MoreIcon}
-                size="sm"
-                variant="tertiary"
-                className="s-m-1"
-              />
+              <div ref={dropDownMenuButtonRef}>
+                <IconButton
+                  icon={MoreIcon}
+                  size="sm"
+                  variant="tertiary"
+                  className="s-m-1"
+                />
+              </div>
             </DropdownMenu.Button>
-            <DropdownMenu.Items origin="topRight" width={220}>
+            <DropdownMenu.Items
+                origin={rightClickX && rightClickX < 300 ? "topLeft" : "topRight"}
+                width={220}
+                rightClickX={rightClickX}
+                rightClickY={rightClickY}
+                cleanupCoordinates={() => {
+                    setRightClickX(undefined);
+                    setRightClickY(undefined);
+                }}
+            >
               {moreMenuItems?.map((item, index) => (
                 <DropdownMenu.Item key={index} {...item} />
               ))}

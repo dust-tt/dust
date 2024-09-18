@@ -366,6 +366,9 @@ interface DropdownItemsProps {
   onKeyDown?: (e: React.KeyboardEvent) => void;
   overflow?: "visible" | "auto";
   variant?: ItemsVariantType;
+  rightClickX?: number;
+  rightClickY?: number;
+  cleanupCoordinates?: () => void;
 }
 
 DropdownMenu.Items = function ({
@@ -378,6 +381,9 @@ DropdownMenu.Items = function ({
   onKeyDown,
   overflow = "auto",
   variant = "default",
+  rightClickX,
+  rightClickY,
+  cleanupCoordinates,
 }: DropdownItemsProps) {
   const buttonRef = useContext(ButtonRefContext);
   const [buttonHeight, setButtonHeight] = useState(0);
@@ -439,10 +445,34 @@ DropdownMenu.Items = function ({
     }
   };
 
-  const styleInsert = (origin: string, marginLeft?: number) => {
-    const style: { width: string; top?: string; left?: string } = {
+  const styleInsert = (
+    origin: string,
+    marginLeft?: number,
+    rightClickX?: number,
+    rightClickY?: number
+  ) => {
+    const style: {
+      width: string;
+      top?: string;
+      left?: string;
+      right?: string;
+      bottom?: string;
+    } = {
       width: `${width}px`,
     };
+
+    if (rightClickX && rightClickY) {
+      const buttonRect = buttonRef?.current?.getBoundingClientRect();
+      if (buttonRect && origin === "topRight") {
+        style["top"] = `${Math.abs(buttonRect.top - rightClickY)}px`;
+        style["right"] = `${Math.abs(buttonRect.right - rightClickX)}px`;
+      }
+      if (buttonRect && origin === "topLeft") {
+        style["top"] = `${Math.abs(buttonRect.top - rightClickY)}px`;
+        style["left"] = `${rightClickX - buttonRect.left}px`;
+      }
+      return style;
+    }
 
     if (marginLeft) {
       style["left"] = `${marginLeft}px`;
@@ -464,6 +494,7 @@ DropdownMenu.Items = function ({
       leave="s-transition s-ease-in s-duration-75"
       leaveFrom="s-transform s-opacity-100 s-scale-100 s-translate-y-0"
       leaveTo={getOriginTransClass(origin)}
+      afterLeave={cleanupCoordinates}
     >
       <Menu.Items
         onKeyDown={onKeyDown}
@@ -473,7 +504,7 @@ DropdownMenu.Items = function ({
           "s-rounded-xl s-border s-border-structure-100 s-bg-structure-0 s-shadow-lg focus:s-outline-none dark:s-border-structure-100-dark dark:s-bg-structure-0-dark"
         )}
         onClick={(e) => e.stopPropagation()}
-        style={styleInsert(origin, marginLeft)}
+        style={styleInsert(origin, marginLeft, rightClickX, rightClickY)}
       >
         {topBar}
         <div
