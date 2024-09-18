@@ -442,6 +442,7 @@ const VaultDataSourceViewItem = ({
   node?: DataSourceViewContentNode;
 }): ReactElement => {
   const router = useRouter();
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const { isNodesLoading, nodes } = useDataSourceViewContentNodes({
     dataSourceView: item,
@@ -450,6 +451,7 @@ const VaultDataSourceViewItem = ({
     viewType: "documents",
   });
 
+  // Load the currently selected node from router.query.parentId
   const {
     nodes: [selected],
   } = useDataSourceViewContentNodes({
@@ -468,8 +470,7 @@ const VaultDataSourceViewItem = ({
     router.asPath.startsWith(basePath) &&
     (!node || (node && selected?.parentInternalIds?.includes(node.internalId)));
 
-  // Unfold the vault's category if it's an ancestor of the current page.
-  const [isExpanded, setIsExpanded] = useState(false);
+  // Unfold the folder if it's an ancestor of the current page.
   useEffect(() => {
     if (isAncestorToCurrentPage) {
       setIsExpanded(isAncestorToCurrentPage);
