@@ -32,6 +32,14 @@ export { Item } from "./Item";
 export { Markdown } from "./Markdown";
 export { Modal } from "./Modal";
 export { NewButton } from "./NewButton";
+export {
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuLabel,
+  NewDropdownMenuSeparator,
+  NewDropdownMenuTrigger,
+} from "./NewDropdown";
 export { Notification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";

@@ -2,7 +2,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import { Icon } from "@sparkle/index_with_tw_base";
+import { Icon, Spinner } from "@sparkle/index_with_tw_base";
 import { classNames } from "@sparkle/lib/utils";
 
 const buttonVariants = cva(
@@ -17,9 +17,9 @@ const buttonVariants = cva(
         warning:
           "s-bg-warning-500 s-text-white hover:s-bg-warning-400 active:s-bg-warning-600",
         outline:
-          "s-border s-border-primary-300 s-bg-background hover:s-bg-primary-100 active:s-bg-primary-300",
+          "s-border s-text-primary-950 s-border-primary-300 s-bg-background hover:s-bg-primary-100 active:s-bg-primary-300",
         secondary:
-          "s-bg-primary-200 s-text-primary-800 hover:s-bg-primary-100 active:s-bg-primary-200",
+          "s-bg-primary-200 s-text-primary-950 hover:s-bg-primary-100 active:s-bg-primary-200",
         ghost: "hover:s-bg-primary-100 active:s-bg-primary-200",
       },
       size: {
@@ -36,29 +36,98 @@ const buttonVariants = cva(
   }
 );
 
-export interface ButtonProps
+interface ButtonProps extends MetaButtonProps {
+  label?: string;
+  icon?: React.ComponentType;
+  isLoading?: boolean;
+}
+
+// Map button variants to spinner variants
+const spinnerVariantsMap = {
+  primary: "light",
+  highlight: "light",
+  warning: "light",
+  outline: "dark",
+  secondary: "dark",
+  ghost: "dark",
+};
+
+interface ButtonProps extends MetaButtonProps {
+  label?: string;
+  icon?: React.ComponentType;
+  isLoading?: boolean;
+}
+
+export const NewButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ label, icon, isLoading = false, variant = "primary", ...props }, ref) => {
+    const hasIcon = Boolean(icon);
+
+    const spinnerVariant =
+      spinnerVariantsMap[variant as keyof typeof spinnerVariantsMap] || "color";
+
+    const content = isLoading ? (
+      <>
+        <Spinner
+          size={props.size as "xs" | "sm" | "md"}
+          variant={spinnerVariant}
+        />
+        {label}
+      </>
+    ) : (
+      <>
+        {hasIcon && (
+          <Icon visual={icon} size={props.size as "xs" | "sm" | "md"} />
+        )}
+        {label}
+      </>
+    );
+
+    return (
+      <MetaButton
+        ref={ref}
+        variant={variant}
+        disabled={isLoading || props.disabled}
+        hasVisual={hasIcon || isLoading ? true : false}
+        {...props}
+      >
+        {content}
+      </MetaButton>
+    );
+  }
+);
+
+NewButton.displayName = "NewButton";
+
+export interface MetaButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
+  hasVisual?: boolean;
 }
 
 const isIcon = (child: React.ReactNode): boolean => {
   return React.isValidElement(child) && child.type === Icon;
 };
 
-const NewButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
+const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
   (
-    { className, variant, size = "sm", asChild = false, children, ...props },
+    {
+      className,
+      variant,
+      size = "sm",
+      asChild = false,
+      hasVisual = false,
+      children,
+      ...props
+    },
     ref
   ) => {
     const Comp = asChild ? Slot : "button";
 
-    const hasIcon = React.Children.toArray(children).some(isIcon);
-
     const paddingClasses: Record<"xs" | "sm" | "md", string> = {
-      xs: hasIcon ? "s-pl-1.5" : "s-pl-2.5",
-      sm: hasIcon ? "s-pl-2" : "s-pl-3",
-      md: hasIcon ? "s-pl-3" : "s-pl-4",
+      xs: hasVisual ? "s-pl-1.5" : "s-pl-2.5",
+      sm: hasVisual ? "s-pl-2" : "s-pl-3",
+      md: hasVisual ? "s-pl-3" : "s-pl-4",
     };
 
     const paddingClass = paddingClasses[size as "xs" | "sm" | "md"];
@@ -87,6 +156,6 @@ const NewButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
     );
   }
 );
-NewButton.displayName = "Button";
+MetaButton.displayName = "Button";
 
-export { buttonVariants, NewButton };
+export { buttonVariants, MetaButton };
