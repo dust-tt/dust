@@ -4,7 +4,6 @@ import type {
 } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
-import useSWRInfinite from "swr/infinite";
 
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import {

@@ -11,17 +11,17 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   BaseContentNode,
+  ConnectorPermission,
   ConnectorProvider,
   ContentNodesViewType,
   DataSourceType,
   DataSourceViewType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import type { ConnectorPermission } from "@dust-tt/types";
-import { useCallback, useEffect, useState } from "react";
-import { useInView } from "react-intersection-observer";
+import { useCallback, useState } from "react";
 
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
+import { useInfinitePager } from "@app/hooks/useInfinitePager";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
@@ -164,7 +164,6 @@ export function DataSourceViewPermissionTreeChildren({
   viewType,
   ...props
 }: DataSourceViewPermissionTreeChildrenProps) {
-  const { ref, inView } = useInView();
   const {
     nodes,
     isNodesLoading,
@@ -178,12 +177,12 @@ export function DataSourceViewPermissionTreeChildren({
     parentId: parentId ?? undefined,
     viewType,
   });
-
-  useEffect(() => {
-    if (inView && !isNodesValidating && hasMore) {
-      void nextPage();
-    }
-  }, [inView, isNodesValidating, hasMore, nextPage]);
+  const InfinitePager = useInfinitePager({
+    nextPage,
+    hasMore,
+    isValidating: isNodesValidating,
+    isLoading: isNodesLoading,
+  });
 
   if (isNodesError) {
     return (
@@ -218,12 +217,11 @@ export function DataSourceViewPermissionTreeChildren({
         )}
         {...props}
       />
-      {hasMore && !isNodesValidating && <div ref={ref} />}
-      {isNodesValidating && !isNodesLoading && (
+      <InfinitePager>
         <div className="pl-[20px] pt-1">
           <Spinner size="xs" variant="dark" />
         </div>
-      )}
+      </InfinitePager>
     </>
   );
 }

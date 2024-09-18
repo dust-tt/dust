@@ -14,12 +14,12 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { useContext, useEffect, useState } from "react";
-import { useInView } from "react-intersection-observer";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
+import { useInfinitePager } from "@app/hooks/useInfinitePager";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useConnector } from "@app/lib/swr/connectors";
 import { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
@@ -89,7 +89,6 @@ function DataSourceViewResourceSelectorChildren({
   viewType = "documents",
 }: DataSourceResourceSelectorChildrenProps) {
   const { plan, dustClientFacingUrl } = useContext(AssistantBuilderContext);
-  const { ref, inView } = useInView();
   const {
     nodes,
     isNodesLoading,
@@ -103,6 +102,14 @@ function DataSourceViewResourceSelectorChildren({
     parentId,
     viewType,
   });
+
+  const InfinitePager = useInfinitePager({
+    nextPage,
+    hasMore,
+    isValidating: isNodesValidating,
+    isLoading: isNodesLoading,
+  });
+
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
 
@@ -121,12 +128,6 @@ function DataSourceViewResourceSelectorChildren({
         });
     }
   }, [nodes, parentIsSelected, selectedResourceIds, onSelectChange, parents]);
-
-  useEffect(() => {
-    if (inView && !isNodesValidating && hasMore) {
-      void nextPage();
-    }
-  }, [inView, isNodesValidating, hasMore, nextPage]);
 
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
@@ -268,12 +269,11 @@ function DataSourceViewResourceSelectorChildren({
           </div>
         )}
       </Tree>
-      {hasMore && !isNodesValidating && <div ref={ref} />}
-      {isNodesValidating && !isNodesLoading && (
+      <InfinitePager>
         <div className="pl-[20px] pt-1">
           <Spinner size="xs" variant="dark" />
         </div>
-      )}
+      </InfinitePager>
     </>
   );
 }

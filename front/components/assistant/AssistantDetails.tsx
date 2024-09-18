@@ -33,8 +33,7 @@ import {
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@dust-tt/types";
-import { useContext, useEffect, useMemo, useState } from "react";
-import { useInView } from "react-intersection-observer";
+import { useContext, useMemo, useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
@@ -45,6 +44,7 @@ import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import { DataSourceViewPermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { useInfinitePager } from "@app/hooks/useInfinitePager";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -483,7 +483,6 @@ function DataSourceViewSelectedNodes({
   setDataSourceViewToDisplay: (dsv: DataSourceViewType) => void;
   setDocumentToDisplay: (documentId: string) => void;
 }) {
-  const { ref, inView } = useInView();
   const { nodes, isNodesLoading, nextPage, hasMore, isNodesValidating } =
     useDataSourceViewContentNodesWithInfiniteScroll({
       owner,
@@ -492,11 +491,12 @@ function DataSourceViewSelectedNodes({
       viewType,
     });
 
-  useEffect(() => {
-    if (inView && !isNodesValidating && hasMore) {
-      void nextPage();
-    }
-  }, [inView, isNodesValidating, hasMore, nextPage]);
+  const InfinitePager = useInfinitePager({
+    nextPage,
+    hasMore,
+    isValidating: isNodesValidating,
+    isLoading: isNodesLoading,
+  });
 
   return (
     <>
@@ -555,12 +555,11 @@ function DataSourceViewSelectedNodes({
           />
         </Tree.Item>
       ))}
-      {hasMore && !isNodesValidating && <div ref={ref} />}
-      {isNodesValidating && !isNodesLoading && (
+      <InfinitePager>
         <div className="pl-[22px] pt-1">
           <Spinner size="xs" variant="dark" />
         </div>
-      )}
+      </InfinitePager>
     </>
   );
 }
