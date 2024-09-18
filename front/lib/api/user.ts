@@ -6,11 +6,10 @@ import type {
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { UserMetadata } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
 import { MembershipResource } from "../resources/membership_resource";
@@ -137,27 +136,4 @@ export async function fetchRevokedWorkspace(
   }
 
   return new Ok(workspace);
-}
-
-export async function getUserAuthenticatorFromEmail(
-  auth: Authenticator,
-  { email }: { email: string | null }
-): Promise<Authenticator | null> {
-  const workspace = auth.getNonNullableWorkspace();
-  if (email && isEmailValid(email)) {
-    const matchingUser = await UserResource.fetchByEmail(email);
-    if (matchingUser) {
-      const workspaceUser = await getUserForWorkspace(auth, {
-        userId: matchingUser.sId,
-      });
-      if (!workspaceUser) {
-        return null;
-      }
-      return Authenticator.fromUserIdAndWorkspaceId(
-        workspaceUser.sId,
-        workspace.sId
-      );
-    }
-  }
-  return null;
 }
