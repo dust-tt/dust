@@ -42,9 +42,7 @@ export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
   ).filter((vault) => !vault.isSystem() && vault.canRead(auth));
 
   const [dsViews, allDustApps] = await Promise.all([
-    DataSourceViewResource.listByVaults(auth, accessibleVaults, {
-      includeEditedBy: true,
-    }),
+    DataSourceViewResource.listByVaults(auth, accessibleVaults),
     AppResource.listByWorkspace(auth),
   ]);
 
