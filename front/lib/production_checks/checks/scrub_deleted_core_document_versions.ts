@@ -39,7 +39,7 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
   do {
     // paginate by id
     const deletedDocumentsData = await coreReplica.query(
-      `SELECT * FROM data_sources_documents WHERE status = 'deleted' AND id > ${lastSeenId} ORDER BY id LIMIT 100`
+      `SELECT * FROM data_sources_documents WHERE status = 'deleted' AND id > ${lastSeenId} ORDER BY id LIMIT 1000`
     );
 
     const deletedDocuments = deletedDocumentsData[0] as {
@@ -80,6 +80,7 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
               document_id: d.document_id,
               created: d.created,
               hash: d.hash,
+              id: d.id,
             });
             if (done) {
               deletedCount++;
@@ -177,6 +178,7 @@ async function scrubDocument({
   document_id,
   created,
   hash,
+  id,
 }: {
   logger: pino.Logger<LoggerOptions>;
   storage: Storage;
@@ -185,6 +187,7 @@ async function scrubDocument({
   document_id: string;
   created: number;
   hash: string;
+  id: number;
 }) {
   if (!DUST_DATA_SOURCES_BUCKET) {
     throw new Error("Env var DUST_DATA_SOURCES_BUCKET is not defined");
@@ -210,6 +213,16 @@ async function scrubDocument({
   );
 
   if (moreRecentSameHash[0].length > 0) {
+    // mark the row as 'soft-hard-deleted'
+    await corePrimary.query(
+      `UPDATE data_sources_documents SET status = 'soft-hard-deleted' WHERE id = :id`,
+      {
+        replacements: {
+          id: id,
+        },
+      }
+    );
+
     // Skipping as there is a more recent version with the same hash
     return false;
   }
