@@ -91,7 +91,7 @@ export default function LandingLayout({
       <ScrollingHeader>
         <div className="flex h-full w-full items-center gap-4 px-6 lg:gap-10">
           <div className="hidden h-[24px] w-[96px] lg:block">
-            <Link href="/">
+            <Link href="/home">
               <Hover3D className="relative h-[24px] w-[96px]">
                 <Div3D depth={0} className="h-[24px] w-[96px]">
                   <LogoHorizontalColorLayer1Logo className="h-[24px] w-[96px]" />

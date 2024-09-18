@@ -6,7 +6,7 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
-import { Landing } from "@app/pages/site";
+import { Landing } from "@app/pages/home";
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",

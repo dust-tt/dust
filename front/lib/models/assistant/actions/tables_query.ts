@@ -96,7 +96,6 @@ export class AgentTablesQueryConfigurationTable extends Model<
   declare tableId: string;
 
   declare dataSourceId: ForeignKey<DataSource["id"]> | null;
-
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
   declare tablesQueryConfigurationId: ForeignKey<
     AgentTablesQueryConfiguration["id"]

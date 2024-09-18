@@ -185,7 +185,7 @@ export const VaultDataSourceViewContentList = ({
   });
 
   const handleViewTypeChange = useCallback(
-    (newViewType: ContentNodesViewType) => {
+    (newViewType?: ContentNodesViewType) => {
       if (newViewType !== viewType) {
         setPagination(
           { pageIndex: 0, pageSize: pagination.pageSize },
@@ -199,7 +199,7 @@ export const VaultDataSourceViewContentList = ({
 
   const {
     isNodesLoading,
-    mutateDataSourceViewContentNodes,
+    mutateRegardlessOfQueryParams: mutateContentNodes,
     nodes,
     totalNodesCount,
   } = useDataSourceViewContentNodes({
@@ -210,28 +210,40 @@ export const VaultDataSourceViewContentList = ({
     viewType: isValidContentNodesViewType(viewType) ? viewType : undefined,
   });
 
-  const { hasContent: hasDocuments } = useStaticDataSourceViewHasContent({
-    owner,
-    dataSourceView,
-    parentId,
-    viewType: "documents",
-  });
-  const { hasContent: hasTables } = useStaticDataSourceViewHasContent({
-    owner,
-    dataSourceView,
-    parentId,
-    viewType: "tables",
-  });
+  const { hasContent: hasDocuments, isLoading: isDocumentsLoading } =
+    useStaticDataSourceViewHasContent({
+      owner,
+      dataSourceView,
+      parentId,
+      viewType: "documents",
+    });
+  const { hasContent: hasTables, isLoading: isTablesLoading } =
+    useStaticDataSourceViewHasContent({
+      owner,
+      dataSourceView,
+      parentId,
+      viewType: "tables",
+    });
 
   useEffect(() => {
-    if (viewType === undefined) {
-      if (hasTables === true && hasDocuments === false) {
-        handleViewTypeChange("tables");
-      } else if (hasDocuments !== undefined) {
-        handleViewTypeChange("documents");
-      }
+    if (viewType !== undefined) {
+      return;
     }
-  }, [hasDocuments, hasTables, handleViewTypeChange, viewType]);
+    // If the view only has content in one of the two views, we switch to that view.
+    // if both view have content, or neither views have content, we default to documents.
+    if (hasTables === true && hasDocuments === false) {
+      handleViewTypeChange("tables");
+    } else if (hasTables === false && hasDocuments === true) {
+      handleViewTypeChange("documents");
+    }
+  }, [
+    hasDocuments,
+    hasTables,
+    handleViewTypeChange,
+    viewType,
+    isDocumentsLoading,
+    isTablesLoading,
+  ]);
 
   const rows: RowData[] = useMemo(
     () =>
@@ -395,7 +407,7 @@ export const VaultDataSourceViewContentList = ({
                 onClose={(save) => {
                   setShowConnectorPermissionsModal(false);
                   if (save) {
-                    void mutateDataSourceViewContentNodes();
+                    void mutateContentNodes();
                   }
                 }}
                 plan={plan}
@@ -432,12 +444,15 @@ export const VaultDataSourceViewContentList = ({
         owner={owner}
         plan={plan}
         onSave={async (action?: ContentActionKey) => {
-          if (action === "DocumentUploadOrEdit") {
+          await mutateContentNodes();
+          if (
+            action === "DocumentUploadOrEdit" ||
+            action === "MultipleDocumentsUpload"
+          ) {
             handleViewTypeChange("documents");
           } else if (action === "TableUploadOrEdit") {
             handleViewTypeChange("tables");
           }
-          await mutateDataSourceViewContentNodes();
         }}
       />
     </>

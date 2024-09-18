@@ -15,6 +15,7 @@ import {
 import type {
   PlanType,
   SupportedEnterpriseConnectionStrategies,
+  WorkspaceDomain,
   WorkspaceEnterpriseConnection,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -31,6 +32,7 @@ interface EnterpriseConnectionDetailsProps {
   owner: WorkspaceType;
   plan: PlanType;
   strategyDetails: EnterpriseConnectionStrategyDetails;
+  workspaceVerifiedDomain: WorkspaceDomain | null;
 }
 
 export interface EnterpriseConnectionStrategyDetails {
@@ -42,8 +44,11 @@ export function EnterpriseConnectionDetails({
   owner,
   plan,
   strategyDetails,
+  workspaceVerifiedDomain,
 }: EnterpriseConnectionDetailsProps) {
   const [showNoInviteLinkPopup, setShowNoInviteLinkPopup] = useState(false);
+  const [showNoVerifiedDomainPopup, setShowNoVerifiedDomainPopup] =
+    useState(false);
   const [
     isEnterpriseConnectionModalOpened,
     setIsEnterpriseConnectionModalOpened,
@@ -150,6 +155,8 @@ export function EnterpriseConnectionDetails({
             onClick={() => {
               if (!isUpgraded(plan)) {
                 setShowNoInviteLinkPopup(true);
+              } else if (!workspaceVerifiedDomain) {
+                setShowNoVerifiedDomainPopup(true);
               } else {
                 setIsEnterpriseConnectionModalOpened(true);
               }
@@ -164,8 +171,20 @@ export function EnterpriseConnectionDetails({
           buttonClick={() => {
             void router.push(`/w/${owner.sId}/subscription`);
           }}
-          className="absolute bottom-8 right-0"
+          className="absolute bottom-8 right-8"
           onClose={() => setShowNoInviteLinkPopup(false)}
+        />
+        <Popup
+          show={showNoVerifiedDomainPopup}
+          chipLabel="Domain Verification Required"
+          description="Single Sign-On (SSO) is not available because your domain isn't verified yet. Contact us at team@dust.tt for assistance."
+          buttonLabel="Get Help"
+          buttonClick={() => {
+            window.location.href =
+              "mailto:team@dust.tt?subject=Help with Domain Verification for SSO";
+          }}
+          className="absolute bottom-8 right-8"
+          onClose={() => setShowNoVerifiedDomainPopup(false)}
         />
       </div>
     </Page.Vertical>

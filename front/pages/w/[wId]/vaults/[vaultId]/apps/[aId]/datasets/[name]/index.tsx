@@ -42,7 +42,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const readOnly = !auth.isBuilder();
 
-  const { aId } = context.params;
+  const { aId, vaultId } = context.params;
   if (typeof aId !== "string") {
     return {
       notFound: true,
@@ -70,7 +70,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const schema = await getDatasetSchema(auth, app, dataset.name);
-  const dustAppsListUrl = await getDustAppsListUrl(auth);
+  const dustAppsListUrl = await getDustAppsListUrl(auth, vaultId);
 
   return {
     props: {

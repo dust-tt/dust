@@ -50,7 +50,7 @@ export function RequestDataSourceModal({
   return (
     <>
       <Button
-        label="Request"
+        label="Request Data"
         icon={PlusIcon}
         onClick={() => setShowRequestDataSourceModal(true)}
       />

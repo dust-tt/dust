@@ -1,5 +1,5 @@
 import type { Meta } from "@storybook/react";
-import { ColumnDef, PaginationState } from "@tanstack/react-table";
+import { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
 import React, { useMemo } from "react";
 
 import { DropdownItemProps } from "@sparkle/components/DropdownMenu";
@@ -206,6 +206,32 @@ export const DataTableExample = () => {
   );
 };
 
+export const DataTableClientSideSortingExample = () => {
+  const [sorting, setSorting] = React.useState<SortingState>([{ id: "name", desc: true }])
+  const [filter, setFilter] = React.useState<string>("");
+
+  return (
+    <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
+      <Input
+        name="filter"
+        placeholder="Filter"
+        value={filter}
+        onChange={(v) => setFilter(v)}
+      />
+      <DataTable
+        className="s-w-full s-max-w-4xl s-overflow-x-auto"
+        data={data}
+        filter={filter}
+        filterColumn="name"
+        columns={columns}
+        columnsBreakpoints={{ lastUpdated: "sm" }}
+        sorting={sorting}
+        setSorting={setSorting}
+      />
+    </div>
+  );
+};
+
 export const DataTablePaginatedExample = () => {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -229,7 +255,6 @@ export const DataTablePaginatedExample = () => {
         pagination={pagination}
         setPagination={setPagination}
         columns={columns}
-        initialColumnOrder={[{ id: "name", desc: false }]}
         columnsBreakpoints={{ lastUpdated: "sm" }}
       />
     </div>
@@ -241,14 +266,25 @@ export const DataTablePaginatedServerSideExample = () => {
     pageIndex: 0,
     pageSize: 2,
   });
+  const [sorting, setSorting] = React.useState<SortingState>([{ id: "name", desc: true }])
   const [filter, setFilter] = React.useState<string>("");
   const rows = useMemo(() => {
+    if (sorting.length > 0) {
+      const order = sorting[0].desc ? -1: 1;
+      return data.sort(
+        (a: Data, b: Data) => {
+          return a.name.toLowerCase().localeCompare(b.name.toLowerCase()) * order
+        }
+      ).slice(
+        pagination.pageIndex * pagination.pageSize,
+        (pagination.pageIndex + 1) * pagination.pageSize
+      );
+    }
     return data.slice(
       pagination.pageIndex * pagination.pageSize,
       (pagination.pageIndex + 1) * pagination.pageSize
     );
-  }, [data, pagination]);
-
+  }, [data, pagination, sorting]);
   return (
     <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
       <Input
@@ -266,8 +302,10 @@ export const DataTablePaginatedServerSideExample = () => {
         pagination={pagination}
         setPagination={setPagination}
         columns={columns}
-        initialColumnOrder={[{ id: "name", desc: false }]}
+        sorting={sorting}
+        setSorting={setSorting}
         columnsBreakpoints={{ lastUpdated: "sm" }}
+        isServerSideSorting={true}
       />
     </div>
   );
