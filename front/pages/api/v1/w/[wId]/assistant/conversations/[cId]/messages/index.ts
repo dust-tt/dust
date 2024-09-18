@@ -14,11 +14,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
-import type { Authenticator as AuthenticatorType } from "@app/lib/auth";
-import { Authenticator } from "@app/lib/auth";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
-import { isEmailValid } from "@app/lib/utils";
+import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
 export type PostMessagesResponseBody = {
@@ -73,7 +69,7 @@ export type PostMessagesResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostMessagesResponseBody>>,
-  auth: AuthenticatorType
+  auth: Authenticator
 ): Promise<void> {
   const { cId } = req.query;
   if (typeof cId !== "string") {
@@ -125,28 +121,8 @@ async function handler(
         });
       }
 
-      // If we have an email, try to link the message to that user
-      let userAuth = null;
-      if (context.email && isEmailValid(context.email)) {
-        const workspace = auth.getNonNullableWorkspace();
-        const matchingUser = await UserResource.fetchByEmail(context.email);
-        if (matchingUser) {
-          const membership =
-            await MembershipResource.getActiveMembershipOfUserInWorkspace({
-              user: matchingUser,
-              workspace,
-            });
-          if (membership) {
-            userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-              matchingUser.sId,
-              workspace.sId
-            );
-          }
-        }
-      }
-
       const messageRes = await postUserMessageWithPubSub(
-        userAuth ?? auth,
+        auth,
         {
           conversation,
           content,
