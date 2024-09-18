@@ -6,13 +6,13 @@ interface ConversationError {
 }
 
 export function ConversationError({ error }: ConversationError) {
-  const errorMessage = safeParseJSON(error.message);
+  const errorMessageRes = safeParseJSON(error.message);
 
-  if (!isAPIErrorResponse(errorMessage)) {
+  if (errorMessageRes.isErr() || !isAPIErrorResponse(errorMessageRes.value)) {
     return <ConversationGenericError />;
   }
 
-  switch (errorMessage.error.type) {
+  switch (errorMessageRes.value.error.type) {
     case "conversation_access_denied":
       return <ConversationAccessDenied />;
 

@@ -1,3 +1,5 @@
+import { Err, Ok, Result } from "../result";
+
 /**
  * Substring that ensures we don't cut a string in the middle of a unicode
  * character.
@@ -76,10 +78,16 @@ export function truncate(text: string, length: number, omission = "...") {
     : text;
 }
 
-export function safeParseJSON(str: string): object | null {
+export function safeParseJSON(str: string): Result<object | null, Error> {
   try {
-    return JSON.parse(str);
-  } catch {
-    return null;
+    const res = JSON.parse(str);
+
+    return new Ok(res);
+  } catch (err) {
+    if (err instanceof Error) {
+      return new Err(err);
+    }
+
+    return new Err(new Error("Unexpected error: JSON parsing failed."));
   }
 }
