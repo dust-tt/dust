@@ -44,6 +44,14 @@ export function AssistantPicker({
     setSearchedAssistants(filterAndSortAgents(assistants, searchText));
   }, [searchText, assistants]);
 
+  const searchbarRef = (element: HTMLInputElement) => {
+    if (element) {
+      setTimeout(() => {
+        element.focus();
+      }, 200);
+    }
+  };
+
   return (
     <DropdownMenu>
       {({ close }) => (
@@ -65,12 +73,16 @@ export function AssistantPicker({
               <DropdownMenu.Button
                 icon={RobotIcon}
                 size={size}
+                onClick={() => {
+                  setSearchText("");
+                }}
                 tooltip="Pick an assistant"
                 tooltipPosition="above"
               />
             )}
           </div>
           <DropdownMenu.Items
+            variant="no-padding"
             origin="auto"
             width={280}
             topBar={
@@ -78,6 +90,7 @@ export function AssistantPicker({
                 {assistants.length > 7 && (
                   <div className="flex flex-grow flex-row border-b border-structure-50 p-2">
                     <Searchbar
+                      ref={searchbarRef}
                       placeholder="Search"
                       name="input"
                       size="xs"
@@ -90,6 +103,7 @@ export function AssistantPicker({
                         ) {
                           onItemClick(searchedAssistants[0]);
                           setSearchText("");
+                          close();
                         }
                       }}
                     />
@@ -99,7 +113,7 @@ export function AssistantPicker({
             }
             bottomBar={
               showFooterButtons && (
-                <div className="flex justify-center border-t border-structure-50 p-2">
+                <div className="flex justify-end border-t border-structure-50 p-2">
                   <Link
                     href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
                   >
@@ -118,7 +132,7 @@ export function AssistantPicker({
             {searchedAssistants.map((c) => (
               <div
                 key={`assistant-picker-container-${c.sId}`}
-                className="flex flex-row items-center justify-between pr-2"
+                className="flex flex-row items-center justify-between px-4"
               >
                 <Item.Avatar
                   key={`assistant-picker-${c.sId}`}
