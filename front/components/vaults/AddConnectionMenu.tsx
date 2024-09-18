@@ -60,7 +60,7 @@ export async function setupConnection({
   if (isOAuthProvider(provider)) {
     // OAuth flow
     const cRes = await setupOAuthConnection({
-      dustClientFacingUrl: `${process.env.DUST_CLIENT_FACING_URL}`,
+      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
       provider,
       useCase: "connection",

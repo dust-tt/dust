@@ -333,7 +333,7 @@ export default function LabsTranscriptsIndex({
     }
 
     const cRes = await setupOAuthConnection({
-      dustClientFacingUrl: `${process.env.DUST_CLIENT_FACING_URL}`,
+      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
       provider: "google_drive",
       useCase: "labs_transcripts",
@@ -387,7 +387,7 @@ export default function LabsTranscriptsIndex({
         return;
       } else {
         const cRes = await setupOAuthConnection({
-          dustClientFacingUrl: `${process.env.DUST_CLIENT_FACING_URL}`,
+          dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
           owner,
           provider: "gong",
           useCase: "connection",
