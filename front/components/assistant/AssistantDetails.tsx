@@ -43,8 +43,8 @@ import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import { DataSourceViewPermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useInfinitePager } from "@app/hooks/useInfinitePager";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -491,13 +491,6 @@ function DataSourceViewSelectedNodes({
       viewType,
     });
 
-  const InfinitePager = useInfinitePager({
-    nextPage,
-    hasMore,
-    isValidating: isNodesValidating,
-    isLoading: isNodesLoading,
-  });
-
   return (
     <>
       {nodes.map((node) => (
@@ -555,11 +548,16 @@ function DataSourceViewSelectedNodes({
           />
         </Tree.Item>
       ))}
-      <InfinitePager>
+      <InfiniteScroll
+        nextPage={nextPage}
+        hasMore={hasMore}
+        isValidating={isNodesValidating}
+        isLoading={isNodesLoading}
+      >
         <div className="pl-[22px] pt-1">
           <Spinner size="xs" variant="dark" />
         </div>
-      </InfinitePager>
+      </InfiniteScroll>
     </>
   );
 }

@@ -19,7 +19,7 @@ import { AssistantBuilderContext } from "@app/components/assistant_builder/Assis
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
-import { useInfinitePager } from "@app/hooks/useInfinitePager";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useConnector } from "@app/lib/swr/connectors";
 import { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
@@ -101,13 +101,6 @@ function DataSourceViewResourceSelectorChildren({
     owner,
     parentId,
     viewType,
-  });
-
-  const InfinitePager = useInfinitePager({
-    nextPage,
-    hasMore,
-    isValidating: isNodesValidating,
-    isLoading: isNodesLoading,
   });
 
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
@@ -269,11 +262,16 @@ function DataSourceViewResourceSelectorChildren({
           </div>
         )}
       </Tree>
-      <InfinitePager>
+      <InfiniteScroll
+        nextPage={nextPage}
+        hasMore={hasMore}
+        isValidating={isNodesValidating}
+        isLoading={isNodesLoading}
+      >
         <div className="pl-[20px] pt-1">
           <Spinner size="xs" variant="dark" />
         </div>
-      </InfinitePager>
+      </InfiniteScroll>
     </>
   );
 }

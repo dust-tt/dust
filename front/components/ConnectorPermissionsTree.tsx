@@ -20,8 +20,8 @@ import type {
 } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
-import { useInfinitePager } from "@app/hooks/useInfinitePager";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
@@ -177,12 +177,6 @@ export function DataSourceViewPermissionTreeChildren({
     parentId: parentId ?? undefined,
     viewType,
   });
-  const InfinitePager = useInfinitePager({
-    nextPage,
-    hasMore,
-    isValidating: isNodesValidating,
-    isLoading: isNodesLoading,
-  });
 
   if (isNodesError) {
     return (
@@ -217,11 +211,16 @@ export function DataSourceViewPermissionTreeChildren({
         )}
         {...props}
       />
-      <InfinitePager>
+      <InfiniteScroll
+        nextPage={nextPage}
+        hasMore={hasMore}
+        isValidating={isNodesValidating}
+        isLoading={isNodesLoading}
+      >
         <div className="pl-[20px] pt-1">
           <Spinner size="xs" variant="dark" />
         </div>
-      </InfinitePager>
+      </InfiniteScroll>
     </>
   );
 }
