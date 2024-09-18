@@ -17,7 +17,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { truncate } from "@dust-tt/types";
-import type { Row, SortingState } from "@tanstack/react-table";
+import type { SortingState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
@@ -231,11 +231,6 @@ function getTableColumns() {
       id: "usage",
       meta: {
         width: "6rem",
-      },
-      sortingFn: (rowA: Row<RowData>, rowB: Row<RowData>) => {
-        return (
-          (rowA.original.usage.count ?? 0) - (rowB.original.usage.count ?? 0)
-        );
       },
       cell: (info: Info) => (
         <DataTable.CellContent

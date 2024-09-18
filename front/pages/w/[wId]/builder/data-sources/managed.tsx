@@ -22,7 +22,7 @@ import {
   isConnectorProvider,
   removeNulls,
 } from "@dust-tt/types";
-import type { CellContext, Row } from "@tanstack/react-table";
+import type { CellContext } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -358,24 +358,19 @@ function getTableColumns() {
     {
       header: "Used by",
       id: "usedBy",
-      accessorKey: "managedDataSource.usage",
+      accessorFn: (row: RowData) => row.managedDataSource.usage?.count ?? 0,
       meta: {
         width: "6rem",
       },
-      sortingFn: (rowA: Row<RowData>, rowB: Row<RowData>) => {
-        return (
-          (rowA.original.managedDataSource.usage?.count ?? 0) -
-          (rowB.original.managedDataSource.usage?.count ?? 0)
-        );
-      },
+
       cell: (info: CellContext<RowData, DataSourceWithAgentsUsageType>) => (
         <>
           {info.getValue() ? (
             <DataTable.CellContent
               icon={RobotIcon}
-              title={`Used by ${info.getValue().agentNames.join(", ")}`}
+              title={`Used by ${info.row.original.managedDataSource.usage?.agentNames.join(", ")}`}
             >
-              {info.getValue().count}
+              {info.row.original.managedDataSource.usage?.count}
             </DataTable.CellContent>
           ) : null}
         </>

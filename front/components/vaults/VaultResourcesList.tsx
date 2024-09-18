@@ -27,7 +27,6 @@ import { isWebsiteOrFolderCategory } from "@dust-tt/types";
 import type {
   CellContext,
   ColumnDef,
-  Row,
   SortingState,
 } from "@tanstack/react-table";
 import { useRouter } from "next/router";
@@ -133,12 +132,6 @@ const getTableColumns = ({
     header: "Used by",
     accessorFn: (row: RowData) => row.dataSourceView.usage?.count ?? 0,
     id: "usedBy",
-    sortingFn: (rowA: Row<RowData>, rowB: Row<RowData>) => {
-      return (
-        (rowA.original.dataSourceView.usage?.count ?? 0) -
-        (rowB.original.dataSourceView.usage?.count ?? 0)
-      );
-    },
     meta: {
       width: "6rem",
     },
