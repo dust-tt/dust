@@ -2,7 +2,7 @@ import { Button, TrashIcon } from "@dust-tt/sparkle";
 import type {
   APIError,
   DataSourceType,
-  DataSourceUsageType,
+  DataSourceWithAgentsUsageType,
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -26,7 +26,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   dataSource: DataSourceType;
   fetchConnectorError?: boolean;
-  dataSourceUsage: DataSourceUsageType;
+  dataSourceUsage: DataSourceWithAgentsUsageType;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -137,7 +137,7 @@ function StandardDataSourceSettings({
     description: string;
     assistantDefaultSelected: boolean;
   }) => Promise<void>;
-  dataSourceUsage: DataSourceUsageType;
+  dataSourceUsage: DataSourceWithAgentsUsageType;
 }) {
   const { mutate } = useSWRConfig();
 

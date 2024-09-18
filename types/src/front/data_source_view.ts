@@ -1,11 +1,12 @@
 import { ModelId } from "../shared/model_id";
 import { DataSourceViewCategory } from "./api_handlers/public/vaults";
 import {
+  ConnectorStatusDetails,
   DataSourceType,
-  DataSourceUsageType,
+  DataSourceWithAgentsUsageType,
   EditedByUser,
 } from "./data_source";
-import { BaseContentNode, ConnectorType } from "./lib/connectors_api";
+import { BaseContentNode } from "./lib/connectors_api";
 
 export interface DataSourceViewType {
   category: DataSourceViewCategory;
@@ -21,12 +22,8 @@ export interface DataSourceViewType {
 }
 
 export type DataSourceViewsWithDetails = DataSourceViewType & {
-  dataSource: DataSourceType & {
-    connector: ConnectorType | null;
-    fetchConnectorError: boolean;
-    fetchConnectorErrorMessage: string | null;
-  };
-  usage: DataSourceUsageType;
+  dataSource: DataSourceType & ConnectorStatusDetails;
+  usage: DataSourceWithAgentsUsageType;
 };
 
 export type DataSourceViewContentNode = BaseContentNode & {

@@ -1,7 +1,7 @@
 import type {
   ConnectorProvider,
-  DataSourceUsageType,
   DataSourceViewCategory,
+  DataSourceWithAgentsUsageType,
   ModelId,
   Result,
 } from "@dust-tt/types";
@@ -26,7 +26,7 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 
 export type DataSourcesUsageByAgent = Record<
   ModelId,
-  DataSourceUsageType | null
+  DataSourceWithAgentsUsageType | null
 >;
 
 export async function getDataSourceViewsUsageByCategory({
@@ -466,7 +466,7 @@ export async function getDataSourceUsage({
 }: {
   auth: Authenticator;
   dataSource: DataSourceResource;
-}): Promise<Result<DataSourceUsageType, Error>> {
+}): Promise<Result<DataSourceWithAgentsUsageType, Error>> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current
@@ -611,7 +611,7 @@ export async function getDataSourceViewUsage({
 }: {
   auth: Authenticator;
   dataSourceView: DataSourceViewResource;
-}): Promise<Result<DataSourceUsageType, Error>> {
+}): Promise<Result<DataSourceWithAgentsUsageType, Error>> {
   const owner = auth.workspace();
 
   // This condition is critical it checks that we can identify the workspace and that the current

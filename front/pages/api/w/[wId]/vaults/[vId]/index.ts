@@ -1,5 +1,5 @@
 import type {
-  DataSourceUsageType,
+  DataSourceWithAgentsUsageType,
   UserType,
   VaultType,
   WithAPIErrorResponse,
@@ -24,7 +24,7 @@ import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type VaultCategoryInfo = {
-  usage: DataSourceUsageType;
+  usage: DataSourceWithAgentsUsageType;
   count: number;
 };
 

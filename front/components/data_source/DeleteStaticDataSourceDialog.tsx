@@ -1,5 +1,8 @@
 import { Dialog } from "@dust-tt/sparkle";
-import type { DataSourceType, DataSourceUsageType } from "@dust-tt/types";
+import type {
+  DataSourceType,
+  DataSourceWithAgentsUsageType,
+} from "@dust-tt/types";
 import { useState } from "react";
 
 import { getDataSourceName, isManaged } from "@app/lib/data_sources";
@@ -7,7 +10,7 @@ import { getDataSourceName, isManaged } from "@app/lib/data_sources";
 interface DeleteStaticDataSourceDialogProps {
   dataSource: DataSourceType;
   handleDelete: () => void;
-  dataSourceUsage?: DataSourceUsageType;
+  dataSourceUsage?: DataSourceWithAgentsUsageType;
   isOpen: boolean;
   onClose: () => void;
 }

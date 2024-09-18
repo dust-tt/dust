@@ -12,7 +12,7 @@ import {
 import type {
   CrawlingFrequency,
   DataSourceType,
-  DataSourceUsageType,
+  DataSourceWithAgentsUsageType,
   DepthOption,
   SubscriptionType,
   UpdateConnectorConfigurationType,
@@ -51,7 +51,7 @@ export default function WebsiteConfiguration({
   dataSources: DataSourceType[];
   webCrawlerConfiguration: WebCrawlerConfigurationType | null;
   dataSource: DataSourceType | null;
-  dataSourceUsage?: DataSourceUsageType;
+  dataSourceUsage?: DataSourceWithAgentsUsageType;
 }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);

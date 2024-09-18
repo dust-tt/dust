@@ -1,4 +1,4 @@
-import type { DataSourceUsageType } from "@dust-tt/types";
+import type { DataSourceWithAgentsUsageType } from "@dust-tt/types";
 import { uniq } from "lodash";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -19,7 +19,7 @@ export const deleteVault = async (
 
   const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
 
-  const usages: DataSourceUsageType[] = [];
+  const usages: DataSourceWithAgentsUsageType[] = [];
   for (const view of dataSourceViews) {
     const usage = await view.getUsagesByAgents(auth);
     if (usage.isErr()) {

@@ -12,7 +12,7 @@ import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type {
   ConnectorType,
   DataSourceType,
-  DataSourceUsageType,
+  DataSourceWithAgentsUsageType,
   PlanType,
   SubscriptionType,
   WorkspaceType,
@@ -44,7 +44,7 @@ type DataSourceWithConnector = DataSourceType & {
 
 type RowData = DataSourceType & {
   icon: ComponentType;
-  usage: DataSourceUsageType;
+  usage: DataSourceWithAgentsUsageType;
 };
 
 type Info = {
@@ -281,7 +281,6 @@ function getTableColumns() {
     {
       header: "Used by",
       id: "usedBy",
-      accessorKey: "managedDataSource.usage",
       meta: {
         width: "6rem",
       },

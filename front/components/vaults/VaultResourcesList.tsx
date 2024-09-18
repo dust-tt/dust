@@ -14,10 +14,10 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
-  DataSourceUsageType,
   DataSourceViewCategory,
   DataSourceViewsWithDetails,
   DataSourceViewType,
+  DataSourceWithAgentsUsageType,
   DataSourceWithConnectorDetailsType,
   PlanType,
   VaultType,
@@ -132,7 +132,6 @@ const getTableColumns = ({
   const usedByColumn = {
     header: "Used by",
     id: "usedBy",
-    accessorFn: (row: RowData) => row.dataSourceView.usage,
     sortingFn: (rowA: Row<RowData>, rowB: Row<RowData>) => {
       return (
         (rowA.original.dataSourceView.usage?.count ?? 0) -
@@ -142,7 +141,7 @@ const getTableColumns = ({
     meta: {
       width: "6rem",
     },
-    cell: (info: CellContext<RowData, DataSourceUsageType>) => (
+    cell: (info: CellContext<RowData, DataSourceWithAgentsUsageType>) => (
       <>
         {info.row.original.dataSourceView.usage ? (
           <DataTable.CellContent

@@ -10,7 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
-  DataSourceUsageType,
+  DataSourceWithAgentsUsageType,
   DataSourceWithConnectorDetailsType,
   PlanType,
   SubscriptionType,
@@ -54,7 +54,7 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
 
 export type DataSourceWithConnectorAndUsageType =
   DataSourceWithConnectorDetailsType & {
-    usage: DataSourceUsageType | null;
+    usage: DataSourceWithAgentsUsageType | null;
   };
 
 type RowData = {
@@ -368,7 +368,7 @@ function getTableColumns() {
           (rowB.original.managedDataSource.usage?.count ?? 0)
         );
       },
-      cell: (info: CellContext<RowData, DataSourceUsageType>) => (
+      cell: (info: CellContext<RowData, DataSourceWithAgentsUsageType>) => (
         <>
           {info.getValue() ? (
             <DataTable.CellContent

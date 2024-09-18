@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   DataSourceType,
-  DataSourceUsageType,
+  DataSourceWithAgentsUsageType,
   PlanType,
   SubscriptionType,
   WorkspaceType,
@@ -201,7 +201,7 @@ export default function DataSourcesView({
 
 type RowData = DataSourceType & {
   icon: ComponentType;
-  usage: DataSourceUsageType;
+  usage: DataSourceWithAgentsUsageType;
 };
 
 function getTableColumns() {
@@ -227,7 +227,6 @@ function getTableColumns() {
     },
     {
       header: "Used by",
-      accessorKey: "usage",
       id: "usage",
       meta: {
         width: "6rem",

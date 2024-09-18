@@ -1,6 +1,6 @@
 import type {
   DataSourceType,
-  DataSourceUsageType,
+  DataSourceWithAgentsUsageType,
   SubscriptionType,
   WebCrawlerConfigurationType,
   WorkspaceType,
@@ -21,7 +21,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   dataSources: DataSourceType[];
   dataSource: DataSourceType;
   webCrawlerConfiguration: WebCrawlerConfigurationType;
-  dataSourceUsage: DataSourceUsageType;
+  dataSourceUsage: DataSourceWithAgentsUsageType;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();

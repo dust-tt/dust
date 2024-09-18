@@ -89,14 +89,17 @@ export type WithConnector = {
   connectorId: string;
 };
 
-export type DataSourceWithConnectorDetailsType = DataSourceType &
-  WithConnector & {
-    connector: ConnectorType | null;
-    fetchConnectorError: boolean;
-    fetchConnectorErrorMessage: string | null;
-  };
+export type ConnectorStatusDetails = {
+  connector: ConnectorType | null;
+  fetchConnectorError: boolean;
+  fetchConnectorErrorMessage: string | null;
+};
 
-export type DataSourceUsageType = {
+export type DataSourceWithConnectorDetailsType = DataSourceType &
+  WithConnector &
+  ConnectorStatusDetails;
+
+export type DataSourceWithAgentsUsageType = {
   count: number;
   agentNames: string[];
 };

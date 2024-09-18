@@ -11,7 +11,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
-  DataSourceUsageType,
+  DataSourceWithAgentsUsageType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -27,7 +27,7 @@ type RowData = {
   category: string;
   name: string;
   icon: ComponentType;
-  usage: DataSourceUsageType;
+  usage: DataSourceWithAgentsUsageType;
   count: number;
   onClick?: () => void;
 };
@@ -81,7 +81,6 @@ const getTableColumns = () => {
     },
     {
       header: "Used by",
-      accessorKey: "usage",
       meta: {
         width: "6rem",
       },
