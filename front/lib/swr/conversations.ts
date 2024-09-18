@@ -107,7 +107,7 @@ export function useConversationMessages({
           return null;
         }
 
-        if (pageIndex === 0) {
+        if (previousPageData === null) {
           return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}`;
         }
 

@@ -104,7 +104,7 @@ export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(
   config?: SWRInfiniteConfiguration
 ) {
   const mergedConfig = { ...DEFAULT_SWR_CONFIG, ...config };
-  return useSWRInfinite(getKey, fetcher, mergedConfig);
+  return useSWRInfinite<TData>(getKey, fetcher, mergedConfig);
 }
 
 const addCommitHashToHeaders = (headers: HeadersInit = {}): HeadersInit => ({
