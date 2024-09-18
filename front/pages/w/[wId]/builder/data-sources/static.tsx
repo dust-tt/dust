@@ -16,6 +16,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { truncate } from "@dust-tt/types";
+import type { SortingState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
@@ -81,6 +82,9 @@ export default function DataSourcesView({
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "name", desc: false },
+  ]);
   const { submit: handleCreateDataSource } = useSubmitFunction(async () => {
     // Enforce plan limits: DataSources count.
     if (
@@ -180,7 +184,9 @@ export default function DataSourcesView({
             columns={columns}
             filter={dataSourceSearch}
             filterColumn={"name"}
-            initialColumnOrder={[{ id: "name", desc: false }]}
+            sorting={sorting}
+            setSorting={setSorting}
+            isServerSideSorting={false}
             columnsBreakpoints={{
               usage: "sm",
               editedAt: "sm",

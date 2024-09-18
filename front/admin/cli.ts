@@ -132,7 +132,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
           throw new Error(`Workspace not found: wId='${args.wId}'`);
         }
 
-        const auth = await Authenticator.internalBuilderForWorkspace(w.sId);
+        const auth = await Authenticator.internalAdminForWorkspace(w.sId);
         const dataSources = await getDataSources(auth);
         const connectorIds = removeNulls(dataSources.map((d) => d.connectorId));
         const connectorsAPI = new ConnectorsAPI(
@@ -172,7 +172,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         }
         console.log(`Unpausing connectors for workspace: wId=${w.sId}`);
 
-        const auth = await Authenticator.internalBuilderForWorkspace(w.sId);
+        const auth = await Authenticator.internalAdminForWorkspace(w.sId);
         const dataSources = await getDataSources(auth);
         const connectorIds = removeNulls(dataSources.map((d) => d.connectorId));
         const connectorsAPI = new ConnectorsAPI(

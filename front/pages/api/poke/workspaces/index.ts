@@ -291,9 +291,7 @@ async function handler(
               defaultEmbeddingProvider: ws.defaultEmbeddingProvider,
             };
 
-            const auth = await Authenticator.internalBuilderForWorkspace(
-              ws.sId
-            );
+            const auth = await Authenticator.internalAdminForWorkspace(ws.sId);
             const dataSources = await DataSourceResource.listByWorkspace(auth);
             const dataSourcesCount = dataSources.length;
 

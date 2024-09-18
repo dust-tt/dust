@@ -121,6 +121,7 @@ export function useDataSourceViewContentNodes({
 }): {
   isNodesError: boolean;
   isNodesLoading: boolean;
+  isNodesValidating: boolean;
   mutate: KeyedMutator<GetDataSourceViewContentNodes>;
   mutateRegardlessOfQueryParams: KeyedMutator<GetDataSourceViewContentNodes>;
   nodes: GetDataSourceViewContentNodes["nodes"];
@@ -146,7 +147,7 @@ export function useDataSourceViewContentNodes({
     }); // Serialize with body to ensure uniqueness.
   }, [url, body]);
 
-  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+  const { data, error, mutate, isValidating, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
       fetchKey,
       async () => {
@@ -164,6 +165,7 @@ export function useDataSourceViewContentNodes({
   return {
     isNodesError: !!error,
     isNodesLoading: !error && !data,
+    isNodesValidating: isValidating,
     mutate,
     mutateRegardlessOfQueryParams,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),

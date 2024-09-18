@@ -1,10 +1,13 @@
 import type {
   ConversationMessageReactions,
   ConversationType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
-import { useMemo } from "react";
+import { useContext, useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import { deleteConversation } from "@app/components/assistant/conversation/lib";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import {
   fetcher,
@@ -158,3 +161,35 @@ export function useConversationParticipants({
     mutateConversationParticipants: mutate,
   };
 }
+
+export const useDeleteConversation = (owner: LightWorkspaceType) => {
+  const sendNotification = useContext(SendNotificationsContext);
+  const { mutateConversations } = useConversations({
+    workspaceId: owner.sId,
+  });
+
+  const doDelete = async (conversation: ConversationType | null) => {
+    if (!conversation) {
+      return false;
+    }
+    const res = await deleteConversation({
+      workspaceId: owner.sId,
+      conversationId: conversation.sId,
+      sendNotification,
+    });
+    if (res) {
+      void mutateConversations((prevState) => {
+        return {
+          ...prevState,
+          conversations:
+            prevState?.conversations.filter(
+              (c) => c.sId !== conversation.sId
+            ) ?? [],
+        };
+      });
+    }
+    return res;
+  };
+
+  return doDelete;
+};
