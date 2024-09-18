@@ -81,6 +81,7 @@ const getTableColumns = () => {
     },
     {
       header: "Used by",
+      accessorFn: (row: RowData) => row.usage.count,
       meta: {
         width: "6rem",
       },

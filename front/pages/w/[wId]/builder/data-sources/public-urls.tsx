@@ -281,6 +281,7 @@ function getTableColumns() {
     {
       header: "Used by",
       id: "usedBy",
+      accessorFn: (row: RowData) => row.usage.count,
       meta: {
         width: "6rem",
       },

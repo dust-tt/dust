@@ -131,6 +131,7 @@ const getTableColumns = ({
 
   const usedByColumn = {
     header: "Used by",
+    accessorFn: (row: RowData) => row.dataSourceView.usage?.count ?? 0,
     id: "usedBy",
     sortingFn: (rowA: Row<RowData>, rowB: Row<RowData>) => {
       return (

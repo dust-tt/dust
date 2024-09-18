@@ -24,6 +24,10 @@ import type { DataSourceViewResource } from "@app/lib/resources/data_source_view
 import { DataSource } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
+// To use in case of heavy db load emergency with theses usages queries
+// If it is a problem, let's add caching
+const DISABLE_QUERIES = false;
+
 export type DataSourcesUsageByAgent = Record<
   ModelId,
   DataSourceWithAgentsUsageType | null
@@ -44,6 +48,11 @@ export async function getDataSourceViewsUsageByCategory({
   if (!owner || !auth.isUser()) {
     return {};
   }
+
+  if (DISABLE_QUERIES) {
+    return {};
+  }
+
   let connectorProvider: WhereAttributeHashValue<ConnectorProvider | null> =
     null;
 
@@ -277,6 +286,11 @@ export async function getDataSourcesUsageByCategory({
   if (!owner || !auth.isUser()) {
     return {};
   }
+
+  if (DISABLE_QUERIES) {
+    return {};
+  }
+
   let connectorProvider: WhereAttributeHashValue<ConnectorProvider | null> =
     null;
   if (category === "folder") {
@@ -476,6 +490,10 @@ export async function getDataSourceUsage({
     return new Err(new Error("Unexpected `auth` without `workspace`."));
   }
 
+  if (DISABLE_QUERIES) {
+    new Ok({ count: 0, agentNames: [] });
+  }
+
   const res = (await Promise.all([
     AgentDataSourceConfiguration.findOne({
       raw: true,
@@ -619,6 +637,10 @@ export async function getDataSourceViewUsage({
   // be possible to access data sources without being authenticated.
   if (!owner || !auth.isUser()) {
     return new Err(new Error("Unexpected `auth` without `workspace`."));
+  }
+
+  if (DISABLE_QUERIES) {
+    new Ok({ count: 0, agentNames: [] });
   }
 
   const res = (await Promise.all([

@@ -38,8 +38,8 @@ export function DeleteStaticDataSourceDialog({
     dataSourceUsage === undefined
       ? `Are you sure you want to permanently delete ${name}?`
       : dataSourceUsage.count > 0
-        ? `${dataSourceUsage} assistants currently use ${name}: ${dataSourceUsage.agentNames.join(", ")}. Are you sure you want to remove?`
-        : `No assistants are using ${name}. Confirm permanent deletion?`;
+        ? `${dataSourceUsage.count} assistants currently use "${name}": ${dataSourceUsage.agentNames.join(", ")}.`
+        : `No assistants are using "${name}".`;
 
   return (
     <Dialog
@@ -50,7 +50,12 @@ export function DeleteStaticDataSourceDialog({
       onCancel={onClose}
       validateVariant="primaryWarning"
     >
-      <div>{message}</div>
+      <div>
+        {message}
+        <br />
+        <br />
+        <b>Are you sure you want to remove&nbsp;?</b>
+      </div>
     </Dialog>
   );
 }
