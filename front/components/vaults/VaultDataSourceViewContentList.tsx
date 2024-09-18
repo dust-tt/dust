@@ -225,15 +225,22 @@ export const VaultDataSourceViewContentList = ({
       viewType: "tables",
     });
 
+  console.log("VaultDataSourceViewContentList.tsx", {
+    hasDocuments,
+    hasTables,
+    viewType,
+    isDocumentsLoading,
+    isTablesLoading,
+  });
+
   useEffect(() => {
-    if (viewType !== undefined) {
-      return;
-    }
     // If the view only has content in one of the two views, we switch to that view.
     // if both view have content, or neither views have content, we default to documents.
     if (hasTables === true && hasDocuments === false) {
       handleViewTypeChange("tables");
     } else if (hasTables === false && hasDocuments === true) {
+      handleViewTypeChange("documents");
+    } else if (!viewType) {
       handleViewTypeChange("documents");
     }
   }, [
