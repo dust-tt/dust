@@ -2566,7 +2566,7 @@ export async function upsertDatabaseStructuredDataFromCache({
     );
   } else {
     localLogger.info("Upserting Notion Database as Document.");
-    const prefix = `${databaseName}\n${csvHeader}`;
+    const prefix = `${databaseName}\n${csvHeader}\n`;
     const prefixSection = await renderPrefixSection({
       dataSourceConfig,
       prefix,
