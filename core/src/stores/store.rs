@@ -466,7 +466,7 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
     );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 26] = [
+pub const SQL_INDEXES: [&'static str; 27] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -525,6 +525,8 @@ pub const SQL_INDEXES: [&'static str; 26] = [
        idx_tables_parents_array ON tables USING GIN (parents);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
         idx_sqlite_workers_url ON sqlite_workers (url);",
+    "CREATE INDEX IF NOT EXISTS
+        idx_status_deleted ON data_sources_documents (id) WHERE status = 'deleted';",
 ];
 
 pub const SQL_FUNCTIONS: [&'static str; 2] = [
