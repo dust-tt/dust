@@ -59,7 +59,6 @@ type VaultDataSourceViewContentListProps = {
   owner: WorkspaceType;
   parentId?: string;
   isAdmin: boolean;
-  dustClientFacingUrl: string;
   connector: ConnectorType | null;
 };
 
@@ -158,7 +157,6 @@ export const VaultDataSourceViewContentList = ({
   onSelect,
   parentId,
   isAdmin,
-  dustClientFacingUrl,
   connector,
 }: VaultDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
@@ -413,7 +411,6 @@ export const VaultDataSourceViewContentList = ({
                 plan={plan}
                 readOnly={false}
                 isAdmin={isAdmin}
-                dustClientFacingUrl={dustClientFacingUrl}
                 onManageButtonClick={() => {
                   setShowConnectorPermissionsModal(true);
                 }}

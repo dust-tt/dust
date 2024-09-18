@@ -33,7 +33,6 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { DataSourceIntegration } from "@app/components/vaults/AddConnectionMenu";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
-import config from "@app/lib/api/config";
 import {
   augmentDataSourceWithConnectorDetails,
   getDataSources,
@@ -84,7 +83,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   integrations: DataSourceIntegration[];
   managedDataSources: DataSourceWithConnectorAndUsageType[];
   plan: PlanType;
-  dustClientFacingUrl: string;
   user: UserType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -164,7 +162,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       managedDataSources,
       integrations,
       plan,
-      dustClientFacingUrl: config.getClientFacingUrl(),
       user,
     },
   };
@@ -178,7 +175,6 @@ export default function DataSourcesView({
   managedDataSources,
   integrations,
   plan,
-  dustClientFacingUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [isLoadingByProvider, setIsLoadingByProvider] = useState(
     {} as Record<ConnectorProvider, boolean>
@@ -277,7 +273,6 @@ export default function DataSourcesView({
               plan={plan}
               integrations={integrations}
               existingDataSources={managedDataSources}
-              dustClientFacingUrl={dustClientFacingUrl}
               setIsProviderLoading={(provider, isLoading) =>
                 setIsLoadingByProvider((prev) => ({
                   ...prev,
@@ -332,7 +327,6 @@ export default function DataSourcesView({
             isAdmin={isAdmin}
             readOnly={readOnly}
             plan={plan}
-            dustClientFacingUrl={dustClientFacingUrl}
           />
         )}
       </Page.Vertical>

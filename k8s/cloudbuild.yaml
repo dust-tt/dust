@@ -17,6 +17,8 @@ steps:
       - NEXT_PUBLIC_VIZ_URL=https://viz.dust.tt
       - --build-arg
       - NEXT_PUBLIC_GA_TRACKING_ID=G-K9HQ2LE04G
+      - --build-arg
+      - NEXT_PUBLIC_DUST_CLIENT_FACING_URL=https://dust.tt
       - .
     secretEnv:
       - "DEPOT_TOKEN"

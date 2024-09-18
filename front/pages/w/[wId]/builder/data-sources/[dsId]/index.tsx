@@ -73,7 +73,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   dataSource: DataSourceType;
   connector: ConnectorType | null;
   standardView: boolean;
-  dustClientFacingUrl: string;
   user: UserType;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -132,7 +131,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       dataSource: dataSource.toJSON(),
       connector,
       standardView,
-      dustClientFacingUrl: config.getClientFacingUrl(),
       user,
     },
   };
@@ -980,7 +978,6 @@ function ManagedDataSourceView({
   isBuilder,
   dataSource,
   connector,
-  dustClientFacingUrl,
   plan,
 }: {
   owner: WorkspaceType;
@@ -989,7 +986,6 @@ function ManagedDataSourceView({
   isBuilder: boolean;
   dataSource: DataSourceType;
   connector: ConnectorType;
-  dustClientFacingUrl: string;
   plan: PlanType;
 }) {
   const router = useRouter();
@@ -1077,7 +1073,6 @@ function ManagedDataSourceView({
     const provider = connector.type;
 
     const connectionIdRes = await setupConnection({
-      dustClientFacingUrl,
       owner,
       provider,
     });
@@ -1270,7 +1265,6 @@ function ManagedDataSourceView({
           plan={plan}
           readOnly={false}
           isAdmin={isAdmin}
-          dustClientFacingUrl={dustClientFacingUrl}
         />
       </div>
     </>
@@ -1287,7 +1281,6 @@ export default function DataSourceView({
   dataSource,
   connector,
   standardView,
-  dustClientFacingUrl,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -1333,7 +1326,6 @@ export default function DataSourceView({
             isBuilder,
             dataSource,
             connector,
-            dustClientFacingUrl,
             plan,
             user,
           }}
