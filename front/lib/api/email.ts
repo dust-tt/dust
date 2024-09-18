@@ -9,9 +9,7 @@ import sgMail from "@sendgrid/mail";
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 
-const { SENDGRID_API_KEY = "" } = process.env;
-
-sgMail.setApiKey(SENDGRID_API_KEY);
+sgMail.setApiKey(config.getSendgridApiKey());
 
 export async function sendGithubDeletionEmail(email: string): Promise<void> {
   await sendEmailWithTemplate({
