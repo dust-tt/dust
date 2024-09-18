@@ -176,7 +176,7 @@ export function useDataSourceViewContentNodesWithInfiniteScroll({
   dataSourceView,
   internalIds,
   parentId,
-  pageSize = 5,
+  pageSize = 50,
   viewType,
 }: {
   owner: LightWorkspaceType;
