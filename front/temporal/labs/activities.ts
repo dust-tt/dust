@@ -61,7 +61,7 @@ export async function retrieveNewTranscriptsActivity(
     );
   }
 
-  const auth = await Authenticator.internalBuilderForWorkspace(workspace.sId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   if (!auth.workspace()) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);

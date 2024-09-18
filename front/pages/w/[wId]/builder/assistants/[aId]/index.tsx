@@ -128,8 +128,6 @@ export default function EditAssistant({
       vaults={vaults}
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}
-      plan={plan}
-      dustClientFacingUrl={baseUrl}
     >
       <AssistantBuilder
         owner={owner}
