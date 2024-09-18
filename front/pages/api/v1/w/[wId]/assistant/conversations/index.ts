@@ -19,11 +19,9 @@ import {
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { getUserAuthenticatorFromEmail } from "@app/lib/api/user";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator } from "@app/lib/auth";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
-import { isEmailValid } from "@app/lib/utils";
+import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
 export type PostConversationsResponseBody = {
@@ -202,27 +200,10 @@ async function handler(
         // PostUserMessageWithPubSub returns swiftly since it only waits for the
         // initial message creation event (or error)
 
-        // If we have an email, try to link the message to that user
-        let userAuth = null;
-        if (message.context.email && isEmailValid(message.context.email)) {
-          const workspace = auth.getNonNullableWorkspace();
-          const matchingUser = await UserResource.fetchByEmail(
-            message.context.email
-          );
-          if (matchingUser) {
-            const membership =
-              await MembershipResource.getActiveMembershipOfUserInWorkspace({
-                user: matchingUser,
-                workspace,
-              });
-            if (membership) {
-              userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-                matchingUser.sId,
-                workspace.sId
-              );
-            }
-          }
-        }
+        // If we have an email in the context, try to link the message to that user
+        const userAuth = await getUserAuthenticatorFromEmail(auth, {
+          email: message.context.email,
+        });
 
         const messageRes = await postUserMessageWithPubSub(
           userAuth ?? auth,
