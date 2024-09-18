@@ -6,7 +6,7 @@ import type {
   Result,
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
-import { uniq } from "lodash";
+import { sortBy, uniq } from "lodash";
 import type { WhereAttributeHashValue } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
@@ -90,7 +90,6 @@ export async function getDataSourceViewsUsageByCategory({
           ),
           "names",
         ],
-        [Sequelize.fn("count", Sequelize.col("*")), "count"],
       ],
       include: [
         {
@@ -144,7 +143,6 @@ export async function getDataSourceViewsUsageByCategory({
           ),
           "names",
         ],
-        [Sequelize.fn("count", Sequelize.col("*")), "count"],
       ],
       include: [
         {
@@ -198,7 +196,6 @@ export async function getDataSourceViewsUsageByCategory({
           ),
           "names",
         ],
-        [Sequelize.fn("count", Sequelize.col("*")), "count"],
       ],
       include: [
         {
@@ -241,7 +238,6 @@ export async function getDataSourceViewsUsageByCategory({
   ])) as unknown as {
     dataSourceViewId: ModelId;
     names: string[];
-    count: string;
   }[][];
 
   return res.flat().reduce<DataSourcesUsageByAgent>((acc, dsViewConfig) => {
@@ -254,11 +250,11 @@ export async function getDataSourceViewsUsageByCategory({
       };
     }
 
-    usage.count += parseInt(dsViewConfig.count);
     usage.agentNames = usage.agentNames
       .concat(dsViewConfig.names)
       .filter((t) => t && t.length > 0);
-    usage.agentNames = uniq(usage.agentNames);
+    usage.agentNames = uniq(sortBy(usage.agentNames));
+    usage.count = usage.agentNames.length;
 
     acc[dsViewConfig.dataSourceViewId] = usage;
 
@@ -318,7 +314,6 @@ export async function getDataSourcesUsageByCategory({
           ),
           "names",
         ],
-        [Sequelize.fn("count", Sequelize.col("*")), "count"],
       ],
       include: [
         {
@@ -364,7 +359,6 @@ export async function getDataSourcesUsageByCategory({
           ),
           "names",
         ],
-        [Sequelize.fn("count", Sequelize.col("*")), "count"],
       ],
       include: [
         {
@@ -410,7 +404,6 @@ export async function getDataSourcesUsageByCategory({
           ),
           "names",
         ],
-        [Sequelize.fn("count", Sequelize.col("*")), "count"],
       ],
       include: [
         {
@@ -445,7 +438,6 @@ export async function getDataSourcesUsageByCategory({
   ])) as unknown as {
     dataSourceId: ModelId;
     names: string[];
-    count: string;
   }[][];
 
   return res.flat().reduce<DataSourcesUsageByAgent>((acc, dsConfig) => {
@@ -457,11 +449,11 @@ export async function getDataSourcesUsageByCategory({
       };
     }
 
-    usage.count += parseInt(dsConfig.count);
     usage.agentNames = usage.agentNames
       .concat(dsConfig.names)
       .filter((t) => t && t.length > 0);
-    usage.agentNames = uniq(usage.agentNames);
+    usage.agentNames = uniq(sortBy(usage.agentNames));
+    usage.count = usage.agentNames.length;
 
     acc[dsConfig.dataSourceId] = usage;
     return acc;
@@ -497,7 +489,6 @@ export async function getDataSourceUsage({
           ),
           "names",
         ],
-        [Sequelize.fn("count", Sequelize.col("*")), "count"],
       ],
       where: {
         dataSourceId: dataSource.id,
@@ -535,7 +526,6 @@ export async function getDataSourceUsage({
           ),
           "names",
         ],
-        [Sequelize.fn("count", Sequelize.col("*")), "count"],
       ],
       where: {
         dataSourceId: dataSource.id,
@@ -573,7 +563,6 @@ export async function getDataSourceUsage({
           ),
           "names",
         ],
-        [Sequelize.fn("count", Sequelize.col("*")), "count"],
       ],
       where: {
         dataSourceId: dataSource.id,
@@ -599,16 +588,20 @@ export async function getDataSourceUsage({
         },
       ],
     }),
-  ])) as unknown as { names: string[]; count: string }[] | null;
+  ])) as unknown as { names: string[] }[] | null;
 
   if (!res) {
     return new Ok({ count: 0, agentNames: [] });
   } else {
-    const count = res.reduce((acc, r) => acc + parseInt(r.count), 0);
-    const agentNames = res
-      .reduce<string[]>((acc, r) => acc.concat(r.names), [])
-      .filter((t) => t && t.length > 0);
-    return new Ok({ count, agentNames });
+    const agentNames = uniq(
+      sortBy(
+        res
+          .reduce<string[]>((acc, r) => acc.concat(r.names), [])
+          .filter((t) => t && t.length > 0)
+      )
+    );
+
+    return new Ok({ count: agentNames.length, agentNames });
   }
 }
 
@@ -641,7 +634,6 @@ export async function getDataSourceViewUsage({
           ),
           "names",
         ],
-        [Sequelize.fn("count", Sequelize.col("*")), "count"],
       ],
       where: {
         dataSourceViewId: dataSourceView.id,
@@ -679,7 +671,6 @@ export async function getDataSourceViewUsage({
           ),
           "names",
         ],
-        [Sequelize.fn("count", Sequelize.col("*")), "count"],
       ],
       where: {
         dataSourceViewId: dataSourceView.id,
@@ -717,7 +708,6 @@ export async function getDataSourceViewUsage({
           ),
           "names",
         ],
-        [Sequelize.fn("count", Sequelize.col("*")), "count"],
       ],
       where: {
         dataSourceViewId: dataSourceView.id,
@@ -743,15 +733,18 @@ export async function getDataSourceViewUsage({
         },
       ],
     }),
-  ])) as unknown as { names: string[]; count: string }[] | null;
+  ])) as unknown as { names: string[] }[] | null;
 
   if (!res) {
     return new Ok({ count: 0, agentNames: [] });
   } else {
-    const count = res.reduce((acc, r) => acc + parseInt(r.count), 0);
-    const agentNames = res
-      .reduce<string[]>((acc, r) => acc.concat(r.names), [])
-      .filter((t) => t && t.length > 0);
-    return new Ok({ count, agentNames });
+    const agentNames = uniq(
+      sortBy(
+        res
+          .reduce<string[]>((acc, r) => acc.concat(r.names), [])
+          .filter((t) => t && t.length > 0)
+      )
+    );
+    return new Ok({ count: agentNames.length, agentNames });
   }
 }
