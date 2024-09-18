@@ -2,10 +2,13 @@ import type { ModelId } from "@dust-tt/types";
 import {
   continueAsNew,
   proxyActivities,
+  setHandler,
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
 
+import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
+import { folderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
 
@@ -37,7 +40,7 @@ const { reportInitialSyncProgress, syncSucceeded, syncStarted } =
 export async function fullSyncWorkflow({
   connectorId,
   startSyncTs,
-  nodeIdsToSync,
+  nodeIdsToSync = [],
   totalCount = 0,
 }: {
   connectorId: ModelId;
@@ -47,9 +50,21 @@ export async function fullSyncWorkflow({
 }) {
   await syncStarted(connectorId);
 
-  if (nodeIdsToSync === undefined) {
-    nodeIdsToSync = await getRootNodesToSync(connectorId);
-  }
+  setHandler(folderUpdatesSignal, (folderUpdates: FolderUpdatesSignal[]) => {
+    // If we get a signal, update the workflow state by adding/removing folder ids.
+    for (const { action, folderId } of folderUpdates) {
+      switch (action) {
+        case "added":
+          nodeIdsToSync.push(folderId);
+          break;
+        case "removed":
+          nodeIdsToSync.splice(nodeIdsToSync.indexOf(folderId), 1);
+          break;
+        default:
+        //
+      }
+    }
+  });
 
   if (startSyncTs === undefined) {
     startSyncTs = new Date().getTime();

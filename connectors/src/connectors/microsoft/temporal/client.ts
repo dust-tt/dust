@@ -3,7 +3,10 @@ import { Err, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/common";
 
+import { getRootNodesToSync } from "@connectors/connectors/microsoft/temporal/activities";
 import { QUEUE_NAME } from "@connectors/connectors/microsoft/temporal/config";
+import type { FolderUpdatesSignal } from "@connectors/connectors/microsoft/temporal/signal";
+import { folderUpdatesSignal } from "@connectors/connectors/microsoft/temporal/signal";
 import { microsoftGarbageCollectionWorkflow } from "@connectors/connectors/microsoft/temporal/workflows";
 import {
   fullSyncWorkflow,
@@ -27,16 +30,24 @@ export async function launchMicrosoftFullSyncWorkflow(
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
-
   const client = await getTemporalClient();
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const workflowId = microsoftFullSyncWorkflowId(connectorId);
 
+  if (!nodeIdsToSync) {
+    nodeIdsToSync = await getRootNodesToSync(connectorId);
+  }
+
+  const signalArgs: FolderUpdatesSignal[] =
+    nodeIdsToSync.map((sId) => ({
+      action: "added",
+      folderId: sId,
+    })) ?? [];
+
   try {
-    await terminateWorkflow(workflowId);
-    await client.workflow.start(fullSyncWorkflow, {
+    await client.workflow.signalWithStart(fullSyncWorkflow, {
       args: [{ connectorId, nodeIdsToSync }],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
@@ -46,6 +57,8 @@ export async function launchMicrosoftFullSyncWorkflow(
       memo: {
         connectorId: connectorId,
       },
+      signal: folderUpdatesSignal,
+      signalArgs: [signalArgs],
     });
     logger.info(
       {

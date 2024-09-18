@@ -32,7 +32,7 @@ import {
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
 import {
-  getRootNodesToSync,
+  getRootNodesToSyncFromResources,
   populateDeltas,
 } from "@connectors/connectors/microsoft/temporal/activities";
 import {
@@ -363,9 +363,13 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         internalId: id,
       }));
 
-    await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
+    const addedResources =
+      await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
 
-    const nodesToSync = await getRootNodesToSync(this.connectorId);
+    const nodesToSync = await getRootNodesToSyncFromResources(
+      this.connectorId,
+      addedResources
+    );
 
     // poupulates deltas for the nodes so that if incremental sync starts before
     // fullsync populated, there's no error

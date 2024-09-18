@@ -42,10 +42,10 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { MicrosoftRootResource } from "@connectors/resources/microsoft_resource";
 import {
   MicrosoftConfigurationResource,
   MicrosoftNodeResource,
-  MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -55,6 +55,16 @@ const DELETE_CONCURRENCY = 5;
 export async function getRootNodesToSync(
   connectorId: ModelId
 ): Promise<string[]> {
+  const rootResources =
+    await MicrosoftRootResource.listRootsByConnectorId(connectorId);
+
+  return getRootNodesToSyncFromResources(connectorId, rootResources);
+}
+
+export async function getRootNodesToSyncFromResources(
+  connectorId: ModelId,
+  rootResources: MicrosoftRootResource[]
+): Promise<string[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
@@ -62,9 +72,6 @@ export async function getRootNodesToSync(
   }
 
   const client = await getClient(connector.connectionId);
-
-  const rootResources =
-    await MicrosoftRootResource.listRootsByConnectorId(connectorId);
 
   // get root folders and drives and drill down site-root and sites to their
   // child drives (converted to MicrosoftNode types)
@@ -276,7 +283,8 @@ export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
   );
 
   if (!node) {
-    throw new Error(`Node ${internalId} not found`);
+    logger.warn(`Node ${internalId} not found`);
+    return;
   }
 
   // if node was updated more recently than this sync, we don't need to mark it
@@ -310,7 +318,11 @@ export async function syncFiles({
   );
 
   if (!parent) {
-    throw new Error(`Unexpected: parent node not found: ${parentInternalId}`);
+    logger.warn(`Unexpected: parent node not found: ${parentInternalId}`);
+    return {
+      count: 0,
+      childNodes: [],
+    };
   }
 
   if (parent.nodeType !== "folder" && parent.nodeType !== "drive") {
