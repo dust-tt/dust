@@ -96,6 +96,11 @@ export type DataSourceWithConnectorDetailsType = DataSourceType &
     fetchConnectorErrorMessage: string | null;
   };
 
+export type DataSourceUsageType = {
+  count: number;
+  agentNames: string[];
+};
+
 export function isDataSourceNameValid(name: string): Result<void, string> {
   const trimmed = name.trim();
   if (trimmed.length === 0) {

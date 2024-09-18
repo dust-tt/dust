@@ -10,6 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
+  DataSourceUsageType,
   DataSourceWithConnectorDetailsType,
   PlanType,
   SubscriptionType,
@@ -21,7 +22,7 @@ import {
   isConnectorProvider,
   removeNulls,
 } from "@dust-tt/types";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, Row } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -33,6 +34,7 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { DataSourceIntegration } from "@app/components/vaults/AddConnectionMenu";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
+import { getDataSourcesUsageByCategory } from "@app/lib/api/agent_data_sources";
 import {
   augmentDataSourceWithConnectorDetails,
   getDataSources,
@@ -52,7 +54,7 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
 
 export type DataSourceWithConnectorAndUsageType =
   DataSourceWithConnectorDetailsType & {
-    usage: number | null;
+    usage: DataSourceUsageType | null;
   };
 
 type RowData = {
@@ -99,6 +101,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const readOnly = !auth.isBuilder();
   const isAdmin = auth.isAdmin();
   const allDataSources = await getDataSources(auth, { includeEditedBy: true });
+  const dataSourcesUsage = await getDataSourcesUsageByCategory({
+    auth,
+    category: "managed",
+  });
 
   const managedDataSources: DataSourceWithConnectorAndUsageType[] = removeNulls(
     await Promise.all(
@@ -110,10 +116,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         const augmentedDataSource =
           await augmentDataSourceWithConnectorDetails(ds);
 
-        const usageRes = await managedDataSource.getUsagesByAgents(auth);
         return {
           ...augmentedDataSource,
-          usage: usageRes.isOk() ? usageRes.value : 0,
+          usage: dataSourcesUsage[ds.id] || {
+            count: 0,
+            agentNames: [],
+          },
         };
       })
     )
@@ -354,11 +362,20 @@ function getTableColumns() {
       meta: {
         width: "6rem",
       },
-      cell: (info: CellContext<RowData, number | null>) => (
+      sortingFn: (rowA: Row<RowData>, rowB: Row<RowData>) => {
+        return (
+          (rowA.original.managedDataSource.usage?.count ?? 0) -
+          (rowB.original.managedDataSource.usage?.count ?? 0)
+        );
+      },
+      cell: (info: CellContext<RowData, DataSourceUsageType>) => (
         <>
           {info.getValue() ? (
-            <DataTable.CellContent icon={RobotIcon}>
-              {info.getValue()}
+            <DataTable.CellContent
+              icon={RobotIcon}
+              title={`Used by ${info.getValue().agentNames.join(", ")}`}
+            >
+              {info.getValue().count}
             </DataTable.CellContent>
           ) : null}
         </>

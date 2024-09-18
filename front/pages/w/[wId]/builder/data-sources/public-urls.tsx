@@ -12,13 +12,14 @@ import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type {
   ConnectorType,
   DataSourceType,
+  DataSourceUsageType,
   PlanType,
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { removeNulls, truncate } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
-import type { SortingState } from "@tanstack/react-table";
+import type { Row, SortingState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
@@ -29,7 +30,7 @@ import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
-import { getDataSourcesUsageByAgents } from "@app/lib/api/agent_data_sources";
+import { getDataSourcesUsageByCategory } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -41,12 +42,14 @@ type DataSourceWithConnector = DataSourceType & {
   connector: ConnectorType;
 };
 
+type RowData = DataSourceType & {
+  icon: ComponentType;
+  usage: DataSourceUsageType;
+};
+
 type Info = {
   row: {
-    original: DataSourceType & {
-      icon: ComponentType;
-      usage: number;
-    };
+    original: RowData;
   };
 };
 
@@ -71,9 +74,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const readOnly = !auth.isBuilder();
 
   const allDataSources = await getDataSources(auth, { includeEditedBy: true });
-  const dataSourcesUsage = await getDataSourcesUsageByAgents({
+  const dataSourcesUsage = await getDataSourcesUsageByCategory({
     auth,
-    providerFilter: "webcrawler",
+    category: "website",
   });
 
   const websiteDataSources = allDataSources
@@ -172,7 +175,7 @@ export default function DataSourcesView({
         );
       },
       icon: LinkIcon,
-      usage: dataSourcesUsage[dataSource.id] || 0,
+      usage: dataSourcesUsage[dataSource.id] || { count: 0, agentNames: [] },
     }));
   }, [dataSources, dataSourcesUsage, owner.sId, router]);
 
@@ -277,15 +280,27 @@ function getTableColumns() {
     },
     {
       header: "Used by",
-      accessorKey: "usage",
-      id: "usage",
+      id: "usedBy",
+      accessorKey: "managedDataSource.usage",
       meta: {
         width: "6rem",
       },
+      sortingFn: (rowA: Row<RowData>, rowB: Row<RowData>) => {
+        return (
+          (rowA.original.usage.count ?? 0) - (rowB.original.usage.count ?? 0)
+        );
+      },
       cell: (info: Info) => (
-        <DataTable.CellContent icon={RobotIcon}>
-          {info.row.original.usage}
-        </DataTable.CellContent>
+        <>
+          {info.row.original.usage ? (
+            <DataTable.CellContent
+              icon={RobotIcon}
+              title={`Used by ${info.row.original.usage.agentNames.join(", ")}`}
+            >
+              {info.row.original.usage.count}
+            </DataTable.CellContent>
+          ) : null}
+        </>
       ),
     },
     {

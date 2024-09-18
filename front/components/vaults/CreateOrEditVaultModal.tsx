@@ -300,6 +300,7 @@ export function CreateOrEditVaultModal({
                   size="sm"
                   label="Delete Vault"
                   variant="primaryWarning"
+                  className="mr-2"
                   onClick={() => setShowDeleteConfirmDialog(true)}
                 />
               </div>

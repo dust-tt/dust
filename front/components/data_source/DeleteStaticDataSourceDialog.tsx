@@ -1,5 +1,5 @@
 import { Dialog } from "@dust-tt/sparkle";
-import type { DataSourceType } from "@dust-tt/types";
+import type { DataSourceType, DataSourceUsageType } from "@dust-tt/types";
 import { useState } from "react";
 
 import { getDataSourceName, isManaged } from "@app/lib/data_sources";
@@ -7,7 +7,7 @@ import { getDataSourceName, isManaged } from "@app/lib/data_sources";
 interface DeleteStaticDataSourceDialogProps {
   dataSource: DataSourceType;
   handleDelete: () => void;
-  dataSourceUsage?: number;
+  dataSourceUsage?: DataSourceUsageType;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -34,8 +34,8 @@ export function DeleteStaticDataSourceDialog({
   const message =
     dataSourceUsage === undefined
       ? `Are you sure you want to permanently delete ${name}?`
-      : dataSourceUsage > 0
-        ? `${dataSourceUsage} assistants currently use ${name}. Are you sure you want to remove?`
+      : dataSourceUsage.count > 0
+        ? `${dataSourceUsage} assistants currently use ${name}: ${dataSourceUsage.agentNames.join(", ")}. Are you sure you want to remove?`
         : `No assistants are using ${name}. Confirm permanent deletion?`;
 
   return (

@@ -2,10 +2,10 @@ import { ModelId } from "../shared/model_id";
 import { DataSourceViewCategory } from "./api_handlers/public/vaults";
 import {
   DataSourceType,
-  DataSourceWithConnectorDetailsType,
+  DataSourceUsageType,
   EditedByUser,
 } from "./data_source";
-import { BaseContentNode } from "./lib/connectors_api";
+import { BaseContentNode, ConnectorType } from "./lib/connectors_api";
 
 export interface DataSourceViewType {
   category: DataSourceViewCategory;
@@ -17,13 +17,16 @@ export interface DataSourceViewType {
   parentsIn: string[] | null;
   sId: string;
   updatedAt: number;
-  // TODO(GROUPS_INFRA) Add support for usage.
-  usage: number;
   vaultId: string;
 }
 
-export type DataSourceViewWithConnectorType = DataSourceViewType & {
-  dataSource: DataSourceWithConnectorDetailsType;
+export type DataSourceViewsWithDetails = DataSourceViewType & {
+  dataSource: DataSourceType & {
+    connector: ConnectorType | null;
+    fetchConnectorError: boolean;
+    fetchConnectorErrorMessage: string | null;
+  };
+  usage: DataSourceUsageType;
 };
 
 export type DataSourceViewContentNode = BaseContentNode & {

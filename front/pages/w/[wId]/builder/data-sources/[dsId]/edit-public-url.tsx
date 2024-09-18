@@ -1,5 +1,6 @@
 import type {
   DataSourceType,
+  DataSourceUsageType,
   SubscriptionType,
   WebCrawlerConfigurationType,
   WorkspaceType,
@@ -20,7 +21,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   dataSources: DataSourceType[];
   dataSource: DataSourceType;
   webCrawlerConfiguration: WebCrawlerConfigurationType;
-  dataSourceUsage: number;
+  dataSourceUsage: DataSourceUsageType;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -80,7 +81,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       dataSource: dataSource.toJSON(),
       webCrawlerConfiguration: connectorRes.value
         .configuration as WebCrawlerConfigurationType,
-      dataSourceUsage: dataSourceUsageRes.isOk() ? dataSourceUsageRes.value : 0,
+      dataSourceUsage: dataSourceUsageRes.isOk()
+        ? dataSourceUsageRes.value
+        : { count: 0, agentNames: [] },
     },
   };
 });

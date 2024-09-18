@@ -1,3 +1,6 @@
+import type { DataSourceUsageType } from "@dust-tt/types";
+import { uniq } from "lodash";
+
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -15,7 +18,22 @@ export const deleteVault = async (
   }
 
   const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
-  // TODO(VAULTS_INFRA check if datasource is used in any agent configuration)
+
+  const usages: DataSourceUsageType[] = [];
+  for (const view of dataSourceViews) {
+    const usage = await view.getUsagesByAgents(auth);
+    if (usage.isErr()) {
+      throw usage.error;
+    } else if (usage.value.count > 0) {
+      usages.push(usage.value);
+    }
+  }
+  if (usages.length > 0) {
+    const agentNames = uniq(usages.map((u) => u.agentNames).flat());
+    throw new Error(
+      `Cannot delete vault with data source views in use by assistant(s): ${agentNames.join(", ")}.`
+    );
+  }
 
   await frontSequelize.transaction(async (t) => {
     // delete all data source views
