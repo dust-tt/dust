@@ -270,7 +270,7 @@ function DataSourceViewResourceSelectorChildren({
       </Tree>
       {hasMore && !isNodesValidating && <div ref={ref} />}
       {isNodesValidating && !isNodesLoading && (
-        <div className="s-pl-5">
+        <div className="pl-[20px] pt-1">
           <Spinner size="xs" variant="dark" />
         </div>
       )}
