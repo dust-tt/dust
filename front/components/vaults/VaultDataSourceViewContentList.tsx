@@ -215,7 +215,7 @@ export const VaultDataSourceViewContentList = ({
     owner,
     parentId,
     pagination,
-    viewType: isValidContentNodesViewType(viewType) ? viewType : undefined,
+    viewType: isValidContentNodesViewType(viewType) ? viewType : "documents",
   });
 
   const { hasContent: hasDocuments, isLoading: isDocumentsLoading } =
