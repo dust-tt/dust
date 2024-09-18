@@ -80,12 +80,11 @@ export default function WorkspaceAssistants({
   const includes: ("authors" | "usage")[] = (() => {
     switch (tabScope) {
       case "published":
-        return ["authors"];
+        return ["authors", "usage"];
       case "private":
+      case "global":
       case "workspace":
         return ["usage"];
-      case "global":
-        return [];
       default:
         assertNever(tabScope);
     }
