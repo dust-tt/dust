@@ -561,7 +561,7 @@ function DatasourceTablesTabView({
 }) {
   const { tables } = useDataSourceTables({
     workspaceId: owner.sId,
-    dataSourceName: dataSource.name,
+    dataSource,
   });
 
   return (
