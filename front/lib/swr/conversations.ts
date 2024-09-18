@@ -7,7 +7,11 @@ import type { Fetcher } from "swr";
 import useSWRInfinite from "swr/infinite";
 
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  fetcher,
+  useSWRInfiniteWithDefaults,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 
 export function useConversation({
@@ -88,7 +92,7 @@ export function useConversationMessages({
   const messagesFetcher: Fetcher<FetchConversationMessagesResponse> = fetcher;
 
   const { data, error, mutate, size, setSize, isLoading, isValidating } =
-    useSWRInfinite(
+    useSWRInfiniteWithDefaults(
       (pageIndex: number, previousPageData) => {
         if (!conversationId) {
           return null;

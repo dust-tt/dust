@@ -220,7 +220,7 @@ export function DataSourceViewPermissionTreeChildren({
       />
       {hasMore && !isNodesValidating && <div ref={ref} />}
       {isNodesValidating && !isNodesLoading && (
-        <div className="s-pl-5">
+        <div className="pl-[26px] pt-1">
           <Spinner size="xs" variant="dark" />
         </div>
       )}

@@ -214,7 +214,7 @@ export function useDataSourceViewContentNodesWithInfiniteScroll({
       (index) => {
         if (!url) {
           // No URL, return an empty array to skip the fetch
-          return "[]";
+          return null;
         }
 
         // Append the pagination params to the URL
@@ -227,12 +227,12 @@ export function useDataSourceViewContentNodesWithInfiniteScroll({
         return JSON.stringify([url + "?" + params.toString(), body]);
       },
       async (fetchKey) => {
-        // Get the URL and body from the fetchKey
-        const params = JSON.parse(fetchKey);
-        if (!params[0]) {
-          // Empty array, skip the fetch
+        if (!fetchKey) {
           return undefined;
         }
+
+        // Get the URL and body from the fetchKey
+        const params = JSON.parse(fetchKey);
 
         return fetcher(params);
       },
