@@ -439,6 +439,7 @@ function getTableColumns() {
                 disabled={disabled}
                 onClick={original.buttonOnClick}
                 label={original.isLoading ? "Connecting..." : "Connect"}
+                hasMagnifying={false}
               />
             </DataTable.CellContent>
           );
@@ -451,6 +452,7 @@ function getTableColumns() {
                 disabled={disabled}
                 onClick={original.buttonOnClick}
                 label={original.isAdmin ? "Manage" : "View"}
+                hasMagnifying={false}
               />
             </DataTable.CellContent>
           );

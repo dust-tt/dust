@@ -604,6 +604,7 @@ export default function VaultWebsiteModal({
                   onClick={() => {
                     setAdvancedSettingsOpened(true);
                   }}
+                  hasMagnifying={false}
                 ></Button>
                 {webCrawlerConfiguration && dataSourceView && (
                   <>
@@ -614,6 +615,7 @@ export default function VaultWebsiteModal({
                       onClick={() => {
                         setIsDeleteModalOpen(true);
                       }}
+                      hasMagnifying={false}
                     />
                     {dataSourceView && (
                       <DeleteStaticDataSourceDialog
