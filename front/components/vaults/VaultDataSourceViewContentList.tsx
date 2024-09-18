@@ -225,7 +225,14 @@ export const VaultDataSourceViewContentList = ({
       viewType: "tables",
     });
 
+  const isDataSourceManaged = isManaged(dataSourceView.dataSource);
+
   useEffect(() => {
+    if (isDataSourceManaged) {
+      handleViewTypeChange("documents");
+      return;
+    }
+
     if (viewType !== undefined) {
       return;
     }
@@ -243,6 +250,7 @@ export const VaultDataSourceViewContentList = ({
     viewType,
     isDocumentsLoading,
     isTablesLoading,
+    isDataSourceManaged,
   ]);
 
   const rows: RowData[] = useMemo(
