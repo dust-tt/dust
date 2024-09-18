@@ -98,7 +98,7 @@ export async function fetchTableQueryActionConfigurations({
             // TODO(DATASOURCE_SID): use sId instead of name.
             dataSourceId: table.dataSource.name,
             dataSourceViewId,
-            workspaceId: table.dataSource.workspace.sId,
+            workspaceId: table.dataSourceView.workspace.sId,
             tableId: table.tableId,
           };
         });
