@@ -34,7 +34,6 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useConversations } from "@app/lib/swr/conversations";
 import { classNames, subFilter } from "@app/lib/utils";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -218,9 +217,7 @@ export default function WorkspaceAssistants({
 
   // toto[GROUPS_INFRA]: this is a Hack to display this page either from Builder or Chat Menu
   // Once the Build menu is gone, we should edit this one to use ConversationLayout instead of AppLayout.
-  const { conversations, isConversationsError } = useConversations({
-    workspaceId: owner.sId,
-  });
+
   const subNavigation = !loadFromChatMenu
     ? subNavigationBuild({
         owner,
@@ -228,11 +225,7 @@ export default function WorkspaceAssistants({
       })
     : null;
   const navChildren = loadFromChatMenu ? (
-    <AssistantSidebarMenu
-      owner={owner}
-      conversations={conversations}
-      isConversationsError={isConversationsError}
-    />
+    <AssistantSidebarMenu owner={owner} />
   ) : null;
   return (
     <AppLayout

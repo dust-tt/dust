@@ -30,7 +30,6 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useConversations } from "@app/lib/swr/conversations";
 import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
@@ -106,10 +105,6 @@ export default function LabsTranscriptsIndex({
     isTranscriptsConfigurationLoading,
     mutateTranscriptsConfiguration,
   } = useLabsTranscriptsConfiguration({ workspaceId: owner.sId });
-
-  const { conversations, isConversationsError } = useConversations({
-    workspaceId: owner.sId,
-  });
 
   const [transcriptsConfigurationState, setTranscriptsConfigurationState] =
     useState<{
@@ -453,13 +448,7 @@ export default function LabsTranscriptsIndex({
       subscription={subscription}
       owner={owner}
       pageTitle="Dust - Transcripts processing"
-      navChildren={
-        <AssistantSidebarMenu
-          owner={owner}
-          conversations={conversations}
-          isConversationsError={isConversationsError}
-        />
-      }
+      navChildren={<AssistantSidebarMenu owner={owner} />}
     >
       <Dialog
         isOpen={isDeleteProviderDialogOpened}
