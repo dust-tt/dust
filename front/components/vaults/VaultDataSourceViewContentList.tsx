@@ -19,9 +19,14 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { isValidContentNodesViewType } from "@dust-tt/types";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type {
+  CellContext,
+  ColumnDef,
+  SortingState,
+} from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as React from "react";
 
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -166,6 +171,9 @@ export const VaultDataSourceViewContentList = ({
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "name", desc: false },
+  ]);
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
   const { pagination, setPagination } = usePaginationFromUrl({
@@ -227,8 +235,14 @@ export const VaultDataSourceViewContentList = ({
       viewType: "tables",
     });
 
+  const isDataSourceManaged = isManaged(dataSourceView.dataSource);
+
   useEffect(() => {
     if (!isTablesValidating && !isDocumentsValidating) {
+      if (isDataSourceManaged) {
+        handleViewTypeChange("documents");
+        return;
+      }
       // If the view only has content in one of the two views, we switch to that view.
       // if both view have content, or neither views have content, we default to documents.
       if (hasTables === true && hasDocuments === false) {
@@ -246,6 +260,7 @@ export const VaultDataSourceViewContentList = ({
     viewType,
     isTablesValidating,
     isDocumentsValidating,
+    isDataSourceManaged,
   ]);
 
   const rows: RowData[] = useMemo(
@@ -430,7 +445,8 @@ export const VaultDataSourceViewContentList = ({
           columns={getTableColumns(showVaultUsage)}
           filter={dataSourceSearch}
           filterColumn="title"
-          initialColumnOrder={[{ desc: false, id: "title" }]}
+          sorting={sorting}
+          setSorting={setSorting}
           totalRowCount={totalNodesCount}
           pagination={pagination}
           setPagination={setPagination}

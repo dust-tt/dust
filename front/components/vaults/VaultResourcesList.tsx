@@ -21,12 +21,17 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { isWebsiteOrFolderCategory } from "@dust-tt/types";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type {
+  CellContext,
+  ColumnDef,
+  SortingState,
+} from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useMemo } from "react";
 import { useRef } from "react";
 import { useState } from "react";
+import * as React from "react";
 
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
@@ -225,6 +230,9 @@ export const VaultResourcesList = ({
   const [showFolderOrWebsiteModal, setShowFolderOrWebsiteModal] =
     useState(false);
   const [isNewConnectorLoading, setIsNewConnectorLoading] = useState(false);
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "name", desc: false },
+  ]);
   const { dataSources, isDataSourcesLoading } = useDataSources(owner);
   const router = useRouter();
 
@@ -455,7 +463,8 @@ export const VaultResourcesList = ({
           columns={getTableColumns({ isManaged, isSystemVault })}
           filter={dataSourceSearch}
           filterColumn="name"
-          initialColumnOrder={[{ desc: false, id: "name" }]}
+          sorting={sorting}
+          setSorting={setSorting}
           pagination={pagination}
           setPagination={setPagination}
           columnsBreakpoints={{

@@ -524,7 +524,7 @@ async function handler(
       });
 
       const postDeleteHooksToRun = await getDocumentsPostDeleteHooksToRun({
-        auth: await Authenticator.internalBuilderForWorkspace(owner.sId),
+        auth: await Authenticator.internalAdminForWorkspace(owner.sId),
         dataSourceId: dataSource.sId,
         documentId: req.query.documentId as string,
         dataSourceConnectorProvider: dataSource.connectorProvider || null,

@@ -1,5 +1,8 @@
 import type { ConnectorProvider } from "@dust-tt/types";
-import { microsoftIncrementalSyncWorkflowId } from "@dust-tt/types";
+import {
+  microsoftGarbageCollectionWorkflowId,
+  microsoftIncrementalSyncWorkflowId,
+} from "@dust-tt/types";
 import {
   getIntercomSyncWorkflowId,
   googleDriveIncrementalSyncWorkflowId,
@@ -20,27 +23,32 @@ interface ConnectorBlob {
 }
 
 interface ProviderCheck {
-  makeIdFn: (connector: ConnectorBlob) => string;
+  makeIdsFn: (connector: ConnectorBlob) => string[];
 }
 
 const connectorsReplica = getConnectorReplicaDbConnection();
 
 const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
   confluence: {
-    makeIdFn: (connector: ConnectorBlob) =>
+    makeIdsFn: (connector: ConnectorBlob) => [
       makeConfluenceSyncWorkflowId(connector.id),
+    ],
   },
   intercom: {
-    makeIdFn: (connector: ConnectorBlob) =>
+    makeIdsFn: (connector: ConnectorBlob) => [
       getIntercomSyncWorkflowId(connector.id),
+    ],
   },
   google_drive: {
-    makeIdFn: (connector: ConnectorBlob) =>
+    makeIdsFn: (connector: ConnectorBlob) => [
       googleDriveIncrementalSyncWorkflowId(connector.id),
+    ],
   },
   microsoft: {
-    makeIdFn: (connector: ConnectorBlob) =>
+    makeIdsFn: (connector: ConnectorBlob) => [
       microsoftIncrementalSyncWorkflowId(connector.id),
+      microsoftGarbageCollectionWorkflowId(connector.id),
+    ],
   },
 };
 
@@ -63,16 +71,17 @@ async function areTemporalWorkflowsRunning(
   connector: ConnectorBlob,
   info: ProviderCheck
 ) {
-  try {
-    const workflowHandle: WorkflowHandle = client.workflow.getHandle(
-      info.makeIdFn(connector)
-    );
+  for (const workflowId of info.makeIdsFn(connector)) {
+    try {
+      const workflowHandle: WorkflowHandle =
+        client.workflow.getHandle(workflowId);
 
-    const descriptions = await Promise.all([workflowHandle.describe()]);
+      const descriptions = await Promise.all([workflowHandle.describe()]);
 
-    return descriptions.every(({ status: { name } }) => name === "RUNNING");
-  } catch (err) {
-    return false;
+      return descriptions.every(({ status: { name } }) => name === "RUNNING");
+    } catch (err) {
+      return false;
+    }
   }
 }
 

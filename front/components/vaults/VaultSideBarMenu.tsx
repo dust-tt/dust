@@ -492,6 +492,11 @@ const VaultDataSourceViewSubMenu = ({
       vaultId: vault.sId,
       category,
     });
+  const sortedViews = useMemo(() => {
+    return vaultDataSourceViews.sort((a, b) =>
+      getDataSourceNameFromView(a).localeCompare(getDataSourceNameFromView(b))
+    );
+  }, [vaultDataSourceViews]);
 
   return (
     <Tree.Item
@@ -511,7 +516,7 @@ const VaultDataSourceViewSubMenu = ({
     >
       {isExpanded && (
         <Tree isLoading={isVaultDataSourceViewsLoading}>
-          {vaultDataSourceViews.map((ds) => (
+          {sortedViews.map((ds) => (
             <VaultDataSourceViewItem
               item={ds}
               key={ds.sId}
