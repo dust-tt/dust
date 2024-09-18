@@ -129,22 +129,24 @@ function useStaticDataSourceViewHasContent({
   viewType: ContentNodesViewType;
 }) {
   // We don't do the call if the dataSourceView is managed.
-  const { isNodesLoading, nodes } = useDataSourceViewContentNodes({
-    dataSourceView: isManaged(dataSourceView.dataSource)
-      ? undefined
-      : dataSourceView,
-    owner,
-    internalIds: parentId ? [parentId] : undefined,
-    pagination: {
-      pageIndex: 0,
-      pageSize: 1,
-    },
-    viewType,
-  });
+  const { isNodesLoading, nodes, isNodesValidating } =
+    useDataSourceViewContentNodes({
+      dataSourceView: isManaged(dataSourceView.dataSource)
+        ? undefined
+        : dataSourceView,
+      owner,
+      internalIds: parentId ? [parentId] : undefined,
+      pagination: {
+        pageIndex: 0,
+        pageSize: 1,
+      },
+      viewType,
+    });
 
   return {
     hasContent: isManaged(dataSourceView.dataSource) ? true : !!nodes?.length,
     isLoading: isManaged(dataSourceView.dataSource) ? false : isNodesLoading,
+    isNodesValidating,
   };
 }
 
@@ -210,14 +212,14 @@ export const VaultDataSourceViewContentList = ({
     viewType: isValidContentNodesViewType(viewType) ? viewType : undefined,
   });
 
-  const { hasContent: hasDocuments, isLoading: isDocumentsLoading } =
+  const { hasContent: hasDocuments, isNodesValidating: isDocumentsValidating } =
     useStaticDataSourceViewHasContent({
       owner,
       dataSourceView,
       parentId,
       viewType: "documents",
     });
-  const { hasContent: hasTables, isLoading: isTablesLoading } =
+  const { hasContent: hasTables, isNodesValidating: isTablesValidating } =
     useStaticDataSourceViewHasContent({
       owner,
       dataSourceView,
@@ -226,22 +228,24 @@ export const VaultDataSourceViewContentList = ({
     });
 
   useEffect(() => {
-    // If the view only has content in one of the two views, we switch to that view.
-    // if both view have content, or neither views have content, we default to documents.
-    if (hasTables === true && hasDocuments === false) {
-      handleViewTypeChange("tables");
-    } else if (hasTables === false && hasDocuments === true) {
-      handleViewTypeChange("documents");
-    } else if (!viewType) {
-      handleViewTypeChange("documents");
+    if (!isTablesValidating && !isDocumentsValidating) {
+      // If the view only has content in one of the two views, we switch to that view.
+      // if both view have content, or neither views have content, we default to documents.
+      if (hasTables === true && hasDocuments === false) {
+        handleViewTypeChange("tables");
+      } else if (hasTables === false && hasDocuments === true) {
+        handleViewTypeChange("documents");
+      } else if (!viewType) {
+        handleViewTypeChange("documents");
+      }
     }
   }, [
     hasDocuments,
     hasTables,
     handleViewTypeChange,
     viewType,
-    isDocumentsLoading,
-    isTablesLoading,
+    isTablesValidating,
+    isDocumentsValidating,
   ]);
 
   const rows: RowData[] = useMemo(
