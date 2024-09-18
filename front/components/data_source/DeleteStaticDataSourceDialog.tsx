@@ -54,7 +54,7 @@ export function DeleteStaticDataSourceDialog({
         {message}
         <br />
         <br />
-        <b>Are you sure you want to remove&nbsp;?</b>
+        <b>Are you sure you want to remove ?</b>
       </div>
     </Dialog>
   );

@@ -45,7 +45,7 @@ import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
 import { useDataSources } from "@app/lib/swr/data_sources";
 import {
   useDeleteFolderOrWebsite,
@@ -268,7 +268,7 @@ export const VaultResourcesList = ({
   const searchBarRef = useRef<HTMLInputElement>(null);
 
   const isSystemVault = systemVault.sId === vault.sId;
-  const isManaged = category === "managed";
+  const isManagedCategory = category === "managed";
   const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
@@ -403,9 +403,7 @@ export const VaultResourcesList = ({
                 plan={plan}
                 existingDataSources={
                   vaultDataSourceViews
-                    .filter(
-                      (dsView) => dsView.dataSource.connectorProvider !== null
-                    )
+                    .filter((dsView) => isManaged(dsView.dataSource))
                     .map(
                       (v) => v.dataSource
                     ) as DataSourceWithConnectorDetailsType[]
@@ -454,7 +452,7 @@ export const VaultResourcesList = ({
             )}
           </div>
         )}
-        {!connectionManagementVisible && isManaged && (
+        {!connectionManagementVisible && isManagedCategory && (
           <EditVaultManagedDataSourcesViews
             owner={owner}
             vault={vault}
@@ -493,7 +491,10 @@ export const VaultResourcesList = ({
       {rows.length > 0 && (
         <DataTable
           data={rows}
-          columns={getTableColumns({ isManaged, isSystemVault })}
+          columns={getTableColumns({
+            isManaged: isManagedCategory,
+            isSystemVault,
+          })}
           filter={dataSourceSearch}
           filterColumn="name"
           sorting={sorting}
