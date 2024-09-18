@@ -1,4 +1,5 @@
-import { ReactNode, useEffect } from "react";
+import type { ReactNode } from "react";
+import { useEffect } from "react";
 import { useInView } from "react-intersection-observer";
 
 export type InfiniteScrollProps = {
