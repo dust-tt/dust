@@ -2554,7 +2554,7 @@ export async function upsertDatabaseStructuredDataFromCache({
       cellSeparator: ",",
       rowBoundary: "",
     });
-  //const csvHeader = csvForDocument.split("\n")[0];
+  const csvHeader = headerForDocument.join(",");
   const csvRows = csvForDocument.split("\n").slice(1).join("\n");
   if (csvForDocument.length > MAX_DOCUMENT_TXT_LEN) {
     localLogger.info(
@@ -2567,7 +2567,7 @@ export async function upsertDatabaseStructuredDataFromCache({
     );
   } else {
     localLogger.info("Upserting Notion Database as Document.");
-    const prefix = `${databaseName}\n${headerForDocument}\n`;
+    const prefix = `${databaseName}\n${csvHeader}\n`;
     const prefixSection = await renderPrefixSection({
       dataSourceConfig,
       prefix,
