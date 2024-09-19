@@ -154,7 +154,7 @@ async function handler(
       if (rowRes.isErr()) {
         logger.error(
           {
-            dataSourceName: dataSource.name,
+            dataSourceId: dataSource.sId,
             workspaceId: owner.id,
             tableId: tId,
             rowId: rId,
@@ -195,7 +195,7 @@ async function handler(
         }
         logger.error(
           {
-            dataSourceName: dataSource.name,
+            dataSourceId: dataSource.sId,
             workspaceId: owner.id,
             tableId: tId,
             rowId: rId,

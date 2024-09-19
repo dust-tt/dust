@@ -104,7 +104,7 @@ export default function TableUpsert({
 
   const { table } = useDataSourceTable({
     workspaceId: owner.sId,
-    dataSourceName: dataSource.name,
+    dataSource,
     tableId: loadTableId,
   });
 

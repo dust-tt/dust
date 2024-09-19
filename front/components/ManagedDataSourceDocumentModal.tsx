@@ -23,9 +23,7 @@ export default function ManagedDataSourceDocumentModal({
     if (documentId && dataSource) {
       setDownloading(true);
       fetch(
-        `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-          dataSource.name
-        )}/documents/${encodeURIComponent(documentId)}`
+        `/api/w/${owner.sId}/data_sources/${dataSource.sId}/documents/${encodeURIComponent(documentId)}`
       )
         .then(async (res) => {
           if (res.ok) {

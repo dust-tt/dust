@@ -243,7 +243,7 @@ async function handler(
       if (listRes.isErr()) {
         logger.error(
           {
-            dataSourceName: dataSource.name,
+            dataSourceId: dataSource.sId,
             workspaceId: owner.id,
             tableId: tId,
             error: listRes.error,
@@ -311,7 +311,7 @@ async function handler(
       if (upsertRes.isErr()) {
         logger.error(
           {
-            dataSourceName: dataSource.name,
+            dataSourceId: dataSource.sId,
             workspaceId: owner.id,
             tableId: tId,
             error: upsertRes.error,
@@ -337,7 +337,7 @@ async function handler(
       if (tableRes.isErr()) {
         logger.error(
           {
-            dataSourcename: dataSource.name,
+            dataSourceId: dataSource.sId,
             workspaceId: owner.id,
             error: tableRes.error,
           },
