@@ -17,6 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useInView } from "react-intersection-observer";
 
+import { ConversationError } from "@app/components/assistant/conversation/ConversationError";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import MessageGroup from "@app/components/assistant/conversation/messages/MessageGroup";
 import { useEventSource } from "@app/hooks/useEventSource";
@@ -75,7 +76,7 @@ const ConversationViewer = React.forwardRef<
 ) {
   const {
     conversation,
-    isConversationError,
+    conversationError,
     isConversationLoading,
     mutateConversation,
   } = useConversation({
@@ -331,11 +332,7 @@ const ConversationViewer = React.forwardRef<
       )}
       ref={ref}
     >
-      {isConversationError && (
-        <div className="flex flex-1" ref={ref}>
-          Error loading conversation
-        </div>
-      )}
+      {conversationError && <ConversationError error={conversationError} />}
       {/* Invisible span to detect when the user has scrolled to the top of the list. */}
       {hasMore && !isMessagesLoading && !prevFirstMessageId && (
         <span ref={viewRef} className="py-4" />

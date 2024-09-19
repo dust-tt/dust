@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import { ConversationError } from "@app/components/assistant/conversation/ConversationError";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -89,7 +90,7 @@ export default function ConversationLayout({
     activeConversationId,
   ]);
 
-  const { conversation } = useConversation({
+  const { conversation, conversationError } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
   });
@@ -128,14 +129,22 @@ export default function ConversationLayout({
           }
           navChildren={<AssistantSidebarMenu owner={owner} />}
         >
-          <AssistantDetails
-            owner={owner}
-            assistantId={detailViewContent || null}
-            onClose={handleCloseModal}
-          />
-          <FileDropProvider>
-            <GenerationContextProvider>{children}</GenerationContextProvider>
-          </FileDropProvider>
+          {conversationError ? (
+            <ConversationError error={conversationError} />
+          ) : (
+            <>
+              <AssistantDetails
+                owner={owner}
+                assistantId={detailViewContent || null}
+                onClose={handleCloseModal}
+              />
+              <FileDropProvider>
+                <GenerationContextProvider>
+                  {children}
+                </GenerationContextProvider>
+              </FileDropProvider>
+            </>
+          )}
         </AppLayout>
       </InputBarProvider>
     </RootLayout>
