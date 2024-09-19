@@ -1,4 +1,4 @@
-import { Icon, XCircleIcon } from "@dust-tt/sparkle";
+import { Icon, StopSignIcon } from "@dust-tt/sparkle";
 import { isAPIErrorResponse, safeParseJSON } from "@dust-tt/types";
 import type { ComponentType } from "react";
 
@@ -28,6 +28,7 @@ export function ConversationError({ error }: ConversationError) {
 function ConversationAccessDenied() {
   return (
     <ErrorDisplay
+      icon={StopSignIcon}
       title="Permission Required"
       message={[
         "This conversation contains protected information.",
@@ -70,9 +71,7 @@ interface ErrorDisplayProps {
 function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
   return (
     <div className="flex h-screen flex-col items-center justify-center gap-1">
-      {icon && (
-        <Icon visual={XCircleIcon} className="text-warning-400" size="lg" />
-      )}
+      {icon && <Icon visual={icon} className="text-warning-400" size="lg" />}
       <p className="text-center text-xl font-bold leading-7 text-slate-900">
         {title}
       </p>
