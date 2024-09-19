@@ -204,7 +204,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
 
       logger.info(
         {
-          workspaceId: auth.getNonNullableWorkspace().sId,
+          workspaceId: auth.workspace()?.sId,
           nameOrId: nameOrId,
           type: "sid",
           sId: nameOrId,
