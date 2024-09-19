@@ -46,6 +46,9 @@ export function AssistantPicker({
 
   const searchbarRef = (element: HTMLInputElement) => {
     if (element) {
+      // it turned out that the events are not properly propagated, leading
+      // to a conflict with the InputBarContainer a hack around it is
+      // adding a small timeout
       setTimeout(() => {
         element.focus();
       }, 200);
