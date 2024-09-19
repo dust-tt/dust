@@ -251,7 +251,7 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
 export const O1_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: O1_PREVIEW_MODEL_ID,
-  displayName: "Open AI O1 Preview",
+  displayName: "O1 Preview",
   contextSize: 128_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
@@ -266,7 +266,7 @@ export const O1_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
 export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: O1_MINI_MODEL_ID,
-  displayName: "Open AI O1 Mini",
+  displayName: "O1 Mini",
   contextSize: 128_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
