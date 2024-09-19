@@ -82,8 +82,7 @@ const config = {
       url:
         EnvironmentConfig.getOptionalEnvVariable("DUST_PROD_API") ??
         PRODUCTION_DUST_API,
-      nodeEnv:
-        EnvironmentConfig.getOptionalEnvVariable("NODE_ENV") || "development",
+      nodeEnv: EnvironmentConfig.getEnvVariable("NODE_ENV"),
     };
   },
   getOAuthAPIConfig: (): { url: string; apiKey: string | null } => {

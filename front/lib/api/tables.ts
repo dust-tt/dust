@@ -6,22 +6,13 @@ import type {
   Result,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  CoreAPI,
-  Err,
-  getSanitizedHeaders,
-  getSmallWhitelistedModel,
-  guessDelimiter,
-  Ok,
-} from "@dust-tt/types";
+import { CoreAPI, Err, isSlugified, Ok } from "@dust-tt/types";
+import { guessDelimiter } from "@dust-tt/types";
 import { parse } from "csv-parse";
-import * as t from "io-ts";
 import { DateTime } from "luxon";
 
-import { callAction } from "@app/lib/actions/helpers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
 import type { DataSourceResource } from "../resources/data_source_resource";
@@ -126,7 +117,6 @@ export async function upsertTableFromCsv({
   tableParents,
   csv,
   truncate,
-  useAppForHeaderDetection,
 }: {
   auth: Authenticator;
   dataSource: DataSourceResource;
@@ -138,11 +128,8 @@ export async function upsertTableFromCsv({
   tableParents: string[];
   csv: string | null;
   truncate: boolean;
-  useAppForHeaderDetection: boolean;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
-  const csvRowsRes = csv
-    ? await rowsFromCsv({ auth, csv, useAppForHeaderDetection })
-    : null;
+  const csvRowsRes = csv ? await rowsFromCsv(csv) : null;
 
   const owner = auth.workspace();
 
@@ -299,15 +286,9 @@ export async function upsertTableFromCsv({
   return tableRes;
 }
 
-export async function rowsFromCsv({
-  auth,
-  csv,
-  useAppForHeaderDetection,
-}: {
-  auth: Authenticator;
-  csv: string;
-  useAppForHeaderDetection: boolean;
-}): Promise<Result<CoreAPIRow[], CsvParsingError>> {
+export async function rowsFromCsv(
+  csv: string
+): Promise<Result<CoreAPIRow[], CsvParsingError>> {
   const delimiter = await guessDelimiter(csv);
   if (!delimiter) {
     return new Err({
@@ -316,50 +297,75 @@ export async function rowsFromCsv({
     });
   }
 
-  const headerRes = await detectHeaders(
-    auth,
-    csv,
-    delimiter,
-    useAppForHeaderDetection
-  );
-
-  if (useAppForHeaderDetection) {
-    // Enable static header detection for debugging
-    const headerResStatic = await detectHeaders(auth, csv, delimiter, false);
-    logger.info(
-      { headerRes, headerResStatic, useAppForHeaderDetection },
-      "Header detection result"
-    );
-  } else {
-    logger.info(
-      { headerRes, useAppForHeaderDetection },
-      "Header detection result"
-    );
-  }
-
-  if (headerRes.isErr()) {
-    return headerRes;
-  }
-  const { header, rowIndex } = headerRes.value;
-
-  let i = 0;
   const parser = parse(csv, { delimiter });
+  let header: string[] | undefined = undefined;
   const valuesByCol: Record<string, string[]> = {};
+
   for await (const anyRecord of parser) {
-    if (i++ >= rowIndex) {
-      const record = anyRecord as string[];
-      for (const [i, h] of header.entries()) {
-        const col = record[i] || "";
-        if (!valuesByCol[h]) {
-          valuesByCol[h] = [col];
-        } else {
-          (valuesByCol[h] as string[]).push(col);
+    // Assert that record is string[].
+    if (!Array.isArray(anyRecord)) {
+      throw new Error("Record is not an array");
+    }
+    if (anyRecord.some((r) => typeof r !== "string")) {
+      throw new Error("Record contains non-string values");
+    }
+
+    const record = anyRecord as string[];
+
+    if (!header) {
+      header = [];
+      const firstRecordCells = record.map((h) => h.trim().toLocaleLowerCase());
+      const firstEmptyCellIndex = firstRecordCells.indexOf("");
+      if (firstEmptyCellIndex !== -1) {
+        // Ensure there are no non-empty cells after the first empty cell.
+        if (firstRecordCells.slice(firstEmptyCellIndex).some((c) => c !== "")) {
+          return new Err({
+            type: "invalid_header",
+            message: `Invalid header: found non-empty cell after empty cell.`,
+          });
         }
+      }
+      header = firstRecordCells.slice(
+        0,
+        firstEmptyCellIndex === -1 ? undefined : firstEmptyCellIndex
+      );
+      const headerSet = new Set<string>();
+      for (const h of header) {
+        if (!isSlugified(h)) {
+          return new Err({
+            type: "invalid_header",
+            message: `Header '${h}' is not a valid slug. A header should only contain lowercase letters, numbers, or underscores.`,
+          });
+        }
+
+        if (headerSet.has(h)) {
+          return new Err({
+            type: "duplicate_header",
+            message: `Duplicate header: ${h}.`,
+          });
+        }
+        headerSet.add(h);
+      }
+      continue;
+    }
+
+    for (const [i, h] of header.entries()) {
+      const col = record[i];
+      if (col === undefined) {
+        return new Err({
+          type: "invalid_record_length",
+          message: `Invalid record length at row ${i} (expected ${header.length} columns, got ${record.length})).`,
+        });
+      }
+      if (!valuesByCol[h]) {
+        valuesByCol[h] = [col];
+      } else {
+        (valuesByCol[h] as string[]).push(col);
       }
     }
   }
 
-  if (!Object.values(valuesByCol).some((vs) => vs.length > 0)) {
+  if (!header || !Object.values(valuesByCol).some((vs) => vs.length > 0)) {
     return new Err({
       type: "empty_csv",
       message: `CSV is empty.`,
@@ -446,6 +452,7 @@ export async function rowsFromCsv({
       );
     })();
   }
+
   const nbRows = (Object.values(parsedValuesByCol)[0] || []).length;
   const rows: CoreAPIRow[] = [];
   for (let i = 0; i < nbRows; i++) {
@@ -474,78 +481,4 @@ export async function rowsFromCsv({
   }
 
   return new Ok(rows);
-}
-
-async function staticHeaderDetection(
-  firstRow: string[]
-): Promise<Result<{ header: string[]; rowIndex: number }, CsvParsingError>> {
-  const firstRecordCells = firstRow.map(
-    (h, i) => h.trim().toLocaleLowerCase() || `col_${i}`
-  );
-  const header = getSanitizedHeaders(firstRecordCells);
-
-  return new Ok({ header, rowIndex: 1 });
-}
-
-async function detectHeaders(
-  auth: Authenticator,
-  csv: string,
-  delimiter: string,
-  useAppForHeaderDetection: boolean
-): Promise<Result<{ header: string[]; rowIndex: number }, CsvParsingError>> {
-  const headParser = parse(csv, { delimiter });
-  const records = [];
-  for await (const anyRecord of headParser) {
-    // Assert that record is string[].
-    if (!Array.isArray(anyRecord)) {
-      throw new Error("Record is not an array.");
-    }
-
-    if (anyRecord.some((r) => typeof r !== "string")) {
-      throw new Error("Record contains non-string values.");
-    }
-
-    const record = anyRecord as string[];
-
-    if (!useAppForHeaderDetection) {
-      return staticHeaderDetection(record);
-    }
-
-    records.push(record);
-
-    if (records.length === 10) {
-      break;
-    }
-  }
-  headParser.destroy();
-
-  const action = DustProdActionRegistry["table-header-detection"];
-
-  const model = getSmallWhitelistedModel(auth.getNonNullableWorkspace());
-  if (!model) {
-    throw new Error("Could not find a whitelisted model for the workspace.");
-  }
-
-  const config = cloneBaseConfig(action.config);
-  config.MODEL.provider_id = model.providerId;
-  config.MODEL.model_id = model.modelId;
-
-  const res = await callAction(auth, {
-    action,
-    config,
-    input: { tableData: records },
-    responseValueSchema: t.type({
-      headers: t.array(t.string),
-      rowIndex: t.Integer,
-    }),
-  });
-
-  if (res.isErr()) {
-    logger.warn("Error when running app for detecting header", res.error);
-    // Fallback to statuc header detection.
-    return staticHeaderDetection(records[0]);
-  }
-  const rowIndex = res.value.rowIndex;
-  const header = getSanitizedHeaders(res.value.headers);
-  return new Ok({ header, rowIndex });
 }

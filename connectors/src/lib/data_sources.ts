@@ -563,7 +563,6 @@ export async function upsertTableFromCsv({
   loggerArgs,
   truncate,
   parents,
-  useAppForHeaderDetection,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
@@ -573,7 +572,6 @@ export async function upsertTableFromCsv({
   loggerArgs?: Record<string, string | number>;
   truncate: boolean;
   parents: string[];
-  useAppForHeaderDetection?: boolean;
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
@@ -601,7 +599,6 @@ export async function upsertTableFromCsv({
     tableId,
     truncate,
     async: true,
-    useAppForHeaderDetection,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
