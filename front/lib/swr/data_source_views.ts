@@ -191,7 +191,6 @@ export function useDataSourceViewContentNodesWithInfiniteScroll({
   isNodesError: boolean;
   isNodesLoading: boolean;
   isNodesValidating: boolean;
-  mutateDataSourceViewContentNodes: KeyedMutator<GetDataSourceViewContentNodes>;
   nodes: GetDataSourceViewContentNodes["nodes"];
   totalNodesCount: number;
   hasMore: boolean;
@@ -211,7 +210,7 @@ export function useDataSourceViewContentNodesWithInfiniteScroll({
   const fetcher: Fetcher<GetDataSourceViewContentNodes, [string, object]> =
     postFetcher;
 
-  const { data, error, setSize, size, isValidating, mutate } =
+  const { data, error, setSize, size, isValidating } =
     useSWRInfiniteWithDefaults(
       (index) => {
         if (!url) {
@@ -243,19 +242,10 @@ export function useDataSourceViewContentNodesWithInfiniteScroll({
       }
     );
 
-  const mutateDataSourceViewContentNodes = async () => {
-    const newNodes = await mutate();
-    return {
-      nodes: newNodes ? newNodes.flatMap((d) => (d ? d.nodes : [])) : [],
-      total: newNodes?.[0] ? newNodes[0].total : 0,
-    };
-  };
-
   return {
     isNodesError: !!error,
     isNodesLoading: !error && !data,
     isNodesValidating: isValidating,
-    mutateDataSourceViewContentNodes,
     nodes: useMemo(
       () => (data ? data.flatMap((d) => (d ? d.nodes : [])) : []),
       [data]
