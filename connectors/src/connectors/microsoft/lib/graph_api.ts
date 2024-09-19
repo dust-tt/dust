@@ -1,8 +1,8 @@
+import logger from "@connectors/logger/logger";
 import type { Result } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import { GraphError, type Client } from "@microsoft/microsoft-graph-client";
 import type * as MicrosoftGraph from "@microsoft/microsoft-graph-types";
-import logger from "@connectors/logger/logger";
 
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import {
