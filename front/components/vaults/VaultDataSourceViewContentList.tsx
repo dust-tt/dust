@@ -44,10 +44,12 @@ import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import {
   useDataSourceViewContentNodes,
+  useDataSourceViewContentNodesWithInfiniteScroll,
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
 import { useSystemVault, useVaults } from "@app/lib/swr/vaults";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
@@ -207,14 +209,15 @@ export const VaultDataSourceViewContentList = ({
 
   const {
     isNodesLoading,
-    mutateRegardlessOfQueryParams: mutateContentNodes,
+    isNodesValidating,
+    hasMore,
+    nextPage,
     nodes,
     totalNodesCount,
-  } = useDataSourceViewContentNodes({
+  } = useDataSourceViewContentNodesWithInfiniteScroll({
     dataSourceView,
     owner,
     parentId,
-    pagination,
     viewType: isValidContentNodesViewType(viewType) ? viewType : undefined,
   });
 
@@ -423,7 +426,7 @@ export const VaultDataSourceViewContentList = ({
                 onClose={(save) => {
                   setShowConnectorPermissionsModal(false);
                   if (save) {
-                    void mutateContentNodes();
+                    // void mutateContentNodes();
                   }
                 }}
                 readOnly={false}
@@ -445,14 +448,20 @@ export const VaultDataSourceViewContentList = ({
           sorting={sorting}
           setSorting={setSorting}
           totalRowCount={totalNodesCount}
-          pagination={pagination}
-          setPagination={setPagination}
           columnsBreakpoints={{
             lastUpdatedAt: "sm",
             vaults: "md",
           }}
         />
       )}
+      <InfiniteScroll
+        isLoading={isNodesLoading}
+        isValidating={isNodesValidating}
+        hasMore={hasMore}
+        nextPage={nextPage}
+      >
+        <Spinner />
+      </InfiniteScroll>
       <ContentActions
         ref={contentActionsRef}
         dataSourceView={dataSourceView}
@@ -460,7 +469,7 @@ export const VaultDataSourceViewContentList = ({
         owner={owner}
         plan={plan}
         onSave={async (action?: ContentActionKey) => {
-          await mutateContentNodes();
+          // await mutateContentNodes();
           if (
             action === "DocumentUploadOrEdit" ||
             action === "MultipleDocumentsUpload"
