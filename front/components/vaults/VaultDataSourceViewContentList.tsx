@@ -25,11 +25,12 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import type {
   ContentActionKey,
   ContentActionsRef,
@@ -49,7 +50,6 @@ import {
 } from "@app/lib/swr/data_source_views";
 import { useSystemVault, useVaults } from "@app/lib/swr/vaults";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
 
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
