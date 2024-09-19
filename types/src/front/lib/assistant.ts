@@ -257,9 +257,8 @@ export const O1_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description:
-    "OpenAI's O1 series, trained with reinforcement learning to perform complex reasoning.",
-  shortDescription:
     "OpenAI's reasoning model designed to solve hard problems across domains.",
+  shortDescription: "OpenAI's reasoning model.",
   isLegacy: false,
   supportsVision: false,
 };
@@ -272,9 +271,8 @@ export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description:
-    "OpenAI's O1 series, trained with reinforcement learning to perform complex reasoning.",
-  shortDescription:
     "OpenAI's fast reasoning model particularly good at coding, math, and science.",
+  shortDescription: "OpenAI's fast reasoning model.",
   isLegacy: false,
   supportsVision: false,
 };
