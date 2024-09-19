@@ -5,24 +5,26 @@ import {
   IconButton,
   ListCheckIcon,
   Searchbar,
+  Spinner,
   Tooltip,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
   BaseContentNode,
+  ConnectorPermission,
   ConnectorProvider,
   ContentNodesViewType,
   DataSourceType,
   DataSourceViewType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import type { ConnectorPermission } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
@@ -162,14 +164,19 @@ export function DataSourceViewPermissionTreeChildren({
   viewType,
   ...props
 }: DataSourceViewPermissionTreeChildrenProps) {
-  const { nodes, isNodesLoading, isNodesError } = useDataSourceViewContentNodes(
-    {
-      dataSourceView,
-      parentId: parentId ?? undefined,
-      owner,
-      viewType,
-    }
-  );
+  const {
+    nodes,
+    isNodesLoading,
+    isNodesError,
+    nextPage,
+    hasMore,
+    isNodesValidating,
+  } = useDataSourceViewContentNodesWithInfiniteScroll({
+    dataSourceView: dataSourceView,
+    owner,
+    parentId: parentId ?? undefined,
+    viewType,
+  });
 
   if (isNodesError) {
     return (
@@ -182,27 +189,39 @@ export function DataSourceViewPermissionTreeChildren({
   const { dataSource } = dataSourceView;
 
   return (
-    <PermissionTreeChildren
-      dataSource={dataSource}
-      isLoading={isNodesLoading}
-      nodes={nodes}
-      owner={owner}
-      parentId={parentId}
-      renderChildItem={(node: BaseContentNode, { isParentNodeSelected }) => (
-        <DataSourceViewPermissionTreeChildren
-          dataSourceView={dataSourceView}
-          owner={owner}
-          parentId={node.internalId}
-          parentIsSelected={isParentNodeSelected}
-          viewType={viewType}
-          {...props}
-          // Disable search for children.
-          isSearchEnabled={false}
-          isRoundedBackground={false}
-        />
-      )}
-      {...props}
-    />
+    <>
+      <PermissionTreeChildren
+        dataSource={dataSource}
+        isLoading={isNodesLoading}
+        nodes={nodes}
+        owner={owner}
+        parentId={parentId}
+        renderChildItem={(node: BaseContentNode, { isParentNodeSelected }) => (
+          <DataSourceViewPermissionTreeChildren
+            dataSourceView={dataSourceView}
+            owner={owner}
+            parentId={node.internalId}
+            parentIsSelected={isParentNodeSelected}
+            viewType={viewType}
+            {...props}
+            // Disable search for children.
+            isSearchEnabled={false}
+            isRoundedBackground={false}
+          />
+        )}
+        {...props}
+      />
+      <InfiniteScroll
+        nextPage={nextPage}
+        hasMore={hasMore}
+        isValidating={isNodesValidating}
+        isLoading={isNodesLoading}
+      >
+        <div className="pl-5 pt-1">
+          <Spinner size="xs" variant="dark" />
+        </div>
+      </InfiniteScroll>
+    </>
   );
 }
 
