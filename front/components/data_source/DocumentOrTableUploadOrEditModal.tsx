@@ -146,14 +146,7 @@ export function DocumentOrTableUploadOrEditModal({
         sourceUrl: document.source_url ?? "",
       }));
     }
-  }, [
-    isTable,
-    initialId,
-    table,
-    owner.sId,
-    dataSourceView.dataSource.name,
-    document,
-  ]);
+  }, [isTable, initialId, table, owner.sId, document]);
 
   const isLoading = isTableLoading || isDocumentLoading;
   const isError = isDocumentError || isTableError;
@@ -191,7 +184,7 @@ export function DocumentOrTableUploadOrEditModal({
         throw new Error("File too large");
       }
 
-      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.name}/tables`;
+      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/tables`;
       const endpoint = initialId ? `${base}/${initialId}` : base;
 
       const body = JSON.stringify({
@@ -236,7 +229,7 @@ export function DocumentOrTableUploadOrEditModal({
   const handleDocumentUpload = async (document: TableOrDocument) => {
     setUploading(true);
     try {
-      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.name}/documents`;
+      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
       const endpoint = initialId
         ? `${base}/${encodeURIComponent(document.name)}`
         : base;

@@ -70,7 +70,7 @@ export const MultipleDocumentsUpload = ({
     try {
       const res = await fetch(
         `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${
-          dataSourceView.dataSource.name
+          dataSourceView.dataSource.sId
         }/documents`,
         {
           method: "POST",

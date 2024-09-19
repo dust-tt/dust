@@ -9,20 +9,17 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 
 export async function getPreviousDocumentVersion({
-  auth,
-  dataSourceName,
+  dataSource,
   documentId,
   documentHash,
 }: {
-  auth: Authenticator;
-  dataSourceName: string;
+  dataSource: DataSourceResource;
   documentId: string;
   documentHash?: string | null; // if null, will get the penultimate version
 }): Promise<{
   hash: string;
   created: number;
 } | null> {
-  const dataSource = await getDatasource(auth, dataSourceName);
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const versions = await coreAPI.getDataSourceDocumentVersions({
     projectId: dataSource.dustAPIProjectId,
@@ -42,22 +39,18 @@ export async function getPreviousDocumentVersion({
 }
 
 export async function getDiffBetweenDocumentVersions({
-  auth,
-  dataSourceName,
+  dataSource,
   documentId,
   hash1,
   hash2,
 }: {
-  auth: Authenticator;
-  dataSourceName: string;
+  dataSource: DataSourceResource;
   documentId: string;
   // if null, will diff from an empty string
   hash1?: string | null;
   // if null, will get the latest version
   hash2?: string | null;
 }): Promise<Diff[]> {
-  const dataSource = await getDatasource(auth, dataSourceName);
-
   async function getDocumentText(hash?: string | null): Promise<string> {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const res = await coreAPI.getDataSourceDocument({
@@ -81,21 +74,18 @@ export async function getDiffBetweenDocumentVersions({
 }
 
 // returns the diff between tthe version right before the provided hash
-// and the current version of the document
+// and the current version of he document
 export async function getDocumentDiff({
-  auth,
-  dataSourceName,
+  dataSource,
   documentId,
   hash,
 }: {
-  auth: Authenticator;
-  dataSourceName: string;
+  dataSource: DataSourceResource;
   documentId: string;
   hash: string;
 }): Promise<Diff[]> {
   const previousVersion = await getPreviousDocumentVersion({
-    auth,
-    dataSourceName,
+    dataSource,
     documentId,
     documentHash: hash,
   });
@@ -104,8 +94,7 @@ export async function getDocumentDiff({
   const hash1 = previousVersion ? previousVersion.hash : null;
 
   return getDiffBetweenDocumentVersions({
-    auth,
-    dataSourceName,
+    dataSource,
     documentId,
     hash1,
     hash2: null, // compare against the latest version
