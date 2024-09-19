@@ -2,6 +2,7 @@ import {
   BracesIcon,
   ExternalLinkIcon,
   IconButton,
+  Spinner,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -13,8 +14,9 @@ import type {
 import { useEffect, useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 
 interface DataSourceViewResourceSelectorTreeBaseProps {
@@ -80,14 +82,19 @@ function DataSourceViewResourceSelectorChildren({
   showExpand,
   viewType = "documents",
 }: DataSourceResourceSelectorChildrenProps) {
-  const { nodes, isNodesLoading, isNodesError } = useDataSourceViewContentNodes(
-    {
-      dataSourceView: dataSourceView,
-      owner,
-      parentId,
-      viewType,
-    }
-  );
+  const {
+    nodes,
+    isNodesLoading,
+    isNodesError,
+    nextPage,
+    hasMore,
+    isNodesValidating,
+  } = useDataSourceViewContentNodesWithInfiniteScroll({
+    dataSourceView: dataSourceView,
+    owner,
+    parentId,
+    viewType,
+  });
 
   useEffect(() => {
     if (parentIsSelected) {
@@ -210,6 +217,16 @@ function DataSourceViewResourceSelectorChildren({
           );
         })}
       </Tree>
+      <InfiniteScroll
+        nextPage={nextPage}
+        hasMore={hasMore}
+        isValidating={isNodesValidating}
+        isLoading={isNodesLoading}
+      >
+        <div className="pl-5 pt-1">
+          <Spinner size="xs" variant="dark" />
+        </div>
+      </InfiniteScroll>
     </>
   );
 }

@@ -8,6 +8,7 @@ interface ConfirmDeleteVaultDialogProps {
   handleDelete: () => void;
   dataSourceUsage?: number;
   isOpen: boolean;
+  isDeleting: boolean;
   onClose: () => void;
 }
 
@@ -16,13 +17,9 @@ export function ConfirmDeleteVaultDialog({
   handleDelete,
   dataSourceUsage,
   isOpen,
+  isDeleting,
   onClose,
 }: ConfirmDeleteVaultDialogProps) {
-  const onDelete = async () => {
-    void handleDelete();
-    onClose();
-  };
-
   const message =
     dataSourceUsage === undefined
       ? `Are you sure you want to permanently delete vault ${getVaultName(vault)}?`
@@ -34,9 +31,10 @@ export function ConfirmDeleteVaultDialog({
     <Dialog
       isOpen={isOpen}
       title={`Deleting ${getVaultName(vault)}`}
-      onValidate={onDelete}
+      onValidate={handleDelete}
       onCancel={onClose}
       validateVariant="primaryWarning"
+      isSaving={isDeleting}
     >
       <div>{message}</div>
     </Dialog>

@@ -67,7 +67,7 @@ async function handler(
       if (tablesRes.isErr()) {
         logger.error(
           {
-            dataSourcename: dataSource.name,
+            dataSourceId: dataSource.sId,
             workspaceId: owner.id,
             error: tablesRes.error,
           },

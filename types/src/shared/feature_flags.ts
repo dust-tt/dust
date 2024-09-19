@@ -7,6 +7,8 @@ export const WHITELISTABLE_FEATURES = [
   "data_vaults_feature",
   "private_data_vaults_feature",
   "use_app_for_header_detection",
+  "openai_o1_feature",
+  "openai_o1_mini_feature",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

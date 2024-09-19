@@ -151,7 +151,7 @@ async function handler(
         }
         logger.error(
           {
-            dataSourcename: dataSource.name,
+            dataSourceId: dataSource.sId,
             workspaceId: owner.id,
             error: tableRes.error,
           },

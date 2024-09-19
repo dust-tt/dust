@@ -1,12 +1,19 @@
-import type { UserType, VaultType, WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  DataSourceWithAgentsUsageType,
+  UserType,
+  VaultType,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import {
   DATA_SOURCE_VIEW_CATEGORIES,
   PatchVaultRequestBodySchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
+import { uniq } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
 import { deleteVault } from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -17,7 +24,7 @@ import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type VaultCategoryInfo = {
-  usage: number;
+  usage: DataSourceWithAgentsUsageType;
   count: number;
 };
 
@@ -57,22 +64,45 @@ async function handler(
         auth,
         vault
       );
-      const serializedDatasourceViews = dataSourceViews.map((view) =>
-        view.toJSON()
-      );
       const apps = await AppResource.listByVault(auth, vault);
 
       const categories: { [key: string]: VaultCategoryInfo } = {};
       for (const category of DATA_SOURCE_VIEW_CATEGORIES) {
         categories[category] = {
           count: 0,
-          usage: 0,
+          usage: {
+            count: 0,
+            agentNames: [],
+          },
         };
-      }
 
-      for (const dataSource of serializedDatasourceViews) {
-        categories[dataSource.category].count += 1;
-        categories[dataSource.category].usage += dataSource.usage;
+        const dataSourceViewsInCategory = dataSourceViews.filter(
+          (view) => view.toJSON().category === category
+        );
+
+        // As the usage call is expensive, we only call it if there are views in the category
+        if (dataSourceViewsInCategory.length > 0) {
+          const usages = await getDataSourceViewsUsageByCategory({
+            auth,
+            category,
+          });
+
+          for (const dsView of dataSourceViewsInCategory) {
+            categories[category].count += 1;
+
+            const usage = usages[dsView.id];
+
+            if (usage) {
+              categories[category].usage.agentNames = categories[
+                category
+              ].usage.agentNames.concat(usage.agentNames);
+              categories[category].usage.agentNames = uniq(
+                categories[category].usage.agentNames
+              );
+              categories[category].usage.count += usage.count;
+            }
+          }
+        }
       }
 
       categories["apps"].count = apps.length;
@@ -184,7 +214,17 @@ async function handler(
         });
       }
 
-      await deleteVault(auth, vault);
+      try {
+        await deleteVault(auth, vault);
+      } catch (e: any) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: e.message ?? "The vault cannot be deleted.",
+          },
+        });
+      }
 
       return res.status(200).json({ vault: vault.toJSON() });
     }

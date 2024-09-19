@@ -64,7 +64,6 @@ type VaultDataSourceViewContentListProps = {
   owner: WorkspaceType;
   parentId?: string;
   isAdmin: boolean;
-  dustClientFacingUrl: string;
   connector: ConnectorType | null;
 };
 
@@ -96,7 +95,7 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
             ? info
                 .getValue()
                 .map((v) => v.name)
-                .join(",")
+                .join(", ")
             : "-"}
         </DataTable.CellContent>
       ),
@@ -165,7 +164,6 @@ export const VaultDataSourceViewContentList = ({
   onSelect,
   parentId,
   isAdmin,
-  dustClientFacingUrl,
   connector,
 }: VaultDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
@@ -431,7 +429,6 @@ export const VaultDataSourceViewContentList = ({
                 plan={plan}
                 readOnly={false}
                 isAdmin={isAdmin}
-                dustClientFacingUrl={dustClientFacingUrl}
                 onManageButtonClick={() => {
                   setShowConnectorPermissionsModal(true);
                 }}

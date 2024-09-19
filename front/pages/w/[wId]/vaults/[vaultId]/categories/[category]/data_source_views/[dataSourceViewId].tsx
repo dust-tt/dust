@@ -16,7 +16,6 @@ import { VaultDataSourceViewContentList } from "@app/components/vaults/VaultData
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
 import config from "@app/lib/api/config";
-import apiConfig from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
@@ -30,7 +29,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     canReadInVault: boolean;
     parentId?: string;
     plan: PlanType;
-    dustClientFacingUrl: string;
     connector: ConnectorType | null;
   }
 >(async (context, auth) => {
@@ -108,7 +106,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       plan,
       subscription,
       vault: vault.toJSON(),
-      dustClientFacingUrl: apiConfig.getClientFacingUrl(),
       connector,
     },
   };
@@ -124,7 +121,6 @@ export default function Vault({
   parentId,
   plan,
   isAdmin,
-  dustClientFacingUrl,
   connector,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -144,7 +140,6 @@ export default function Vault({
           );
         }}
         isAdmin={isAdmin}
-        dustClientFacingUrl={dustClientFacingUrl}
         connector={connector}
       />
     </Page.Vertical>

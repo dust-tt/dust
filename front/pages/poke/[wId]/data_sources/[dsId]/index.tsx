@@ -350,7 +350,7 @@ const DataSourcePage = ({
                 title="Slackbot enabled?"
                 owner={owner}
                 features={features}
-                dataSource={dataSource.name}
+                dataSource={dataSource}
                 configKey="botEnabled"
                 featureKey="slackBotEnabled"
               />
@@ -376,7 +376,7 @@ const DataSourcePage = ({
                 title="PDF syncing enabled?"
                 owner={owner}
                 features={features}
-                dataSource={dataSource.name}
+                dataSource={dataSource}
                 configKey="pdfEnabled"
                 featureKey="googleDrivePdfEnabled"
               />
@@ -384,7 +384,7 @@ const DataSourcePage = ({
                 title="CSV syncing enabled?"
                 owner={owner}
                 features={features}
-                dataSource={dataSource.name}
+                dataSource={dataSource}
                 configKey="csvEnabled"
                 featureKey="googleDriveCsvEnabled"
               />
@@ -393,7 +393,7 @@ const DataSourcePage = ({
                 title="Large Files enabled?"
                 owner={owner}
                 features={features}
-                dataSource={dataSource.name}
+                dataSource={dataSource}
                 configKey="largeFilesEnabled"
                 featureKey="googleDriveLargeFilesEnabled"
               />
@@ -405,7 +405,7 @@ const DataSourcePage = ({
                 title="Pdf syncing enabled?"
                 owner={owner}
                 features={features}
-                dataSource={dataSource.name}
+                dataSource={dataSource}
                 configKey="pdfEnabled"
                 featureKey="microsoftPdfEnabled"
               />
@@ -413,7 +413,7 @@ const DataSourcePage = ({
                 title="CSV syncing enabled?"
                 owner={owner}
                 features={features}
-                dataSource={dataSource.name}
+                dataSource={dataSource}
                 configKey="csvEnabled"
                 featureKey="microsoftCsvEnabled"
               />
@@ -421,7 +421,7 @@ const DataSourcePage = ({
                 title="Large Files enabled?"
                 owner={owner}
                 features={features}
-                dataSource={dataSource.name}
+                dataSource={dataSource}
                 configKey="largeFilesEnabled"
                 featureKey="microsoftLargeFilesEnabled"
               />
@@ -432,7 +432,7 @@ const DataSourcePage = ({
               title="Code sync enabled?"
               owner={owner}
               features={features}
-              dataSource={dataSource.name}
+              dataSource={dataSource}
               configKey="codeSyncEnabled"
               featureKey="githubCodeSyncEnabled"
             />
@@ -781,14 +781,14 @@ const ConfigToggle = ({
   features: FeaturesType;
   featureKey: keyof FeaturesType;
   configKey: string;
-  dataSource: string;
+  dataSource: DataSourceType;
 }) => {
   const router = useRouter();
 
   const { isSubmitting, submit: onToggle } = useSubmitFunction(async () => {
     try {
       const r = await fetch(
-        `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource}/config`,
+        `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/config`,
         {
           method: "POST",
           headers: {

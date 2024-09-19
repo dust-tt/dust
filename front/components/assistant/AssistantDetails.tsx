@@ -10,6 +10,7 @@ import {
   IconButton,
   Page,
   PlanetIcon,
+  Spinner,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -42,6 +43,7 @@ import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import { DataSourceViewPermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { updateAgentScope } from "@app/lib/client/dust_api";
@@ -54,7 +56,7 @@ import {
 } from "@app/lib/data_sources";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
 import {
-  useDataSourceViewContentNodes,
+  useDataSourceViewContentNodesWithInfiniteScroll,
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
@@ -481,16 +483,17 @@ function DataSourceViewSelectedNodes({
   setDataSourceViewToDisplay: (dsv: DataSourceViewType) => void;
   setDocumentToDisplay: (documentId: string) => void;
 }) {
-  const dataSourceViewSelectedNodes = useDataSourceViewContentNodes({
-    owner,
-    dataSourceView,
-    internalIds: dataSourceConfiguration.filter.parents?.in ?? undefined,
-    viewType,
-  });
+  const { nodes, isNodesLoading, nextPage, hasMore, isNodesValidating } =
+    useDataSourceViewContentNodesWithInfiniteScroll({
+      owner,
+      dataSourceView,
+      internalIds: dataSourceConfiguration.filter.parents?.in ?? undefined,
+      viewType,
+    });
 
   return (
     <>
-      {dataSourceViewSelectedNodes.nodes.map((node) => (
+      {nodes.map((node) => (
         <Tree.Item
           key={node.internalId}
           label={node.titleWithParentsContext ?? node.title}
@@ -545,6 +548,16 @@ function DataSourceViewSelectedNodes({
           />
         </Tree.Item>
       ))}
+      <InfiniteScroll
+        nextPage={nextPage}
+        hasMore={hasMore}
+        isValidating={isNodesValidating}
+        isLoading={isNodesLoading}
+      >
+        <div className="pl-5 pt-1">
+          <Spinner size="xs" variant="dark" />
+        </div>
+      </InfiniteScroll>
     </>
   );
 }

@@ -938,12 +938,13 @@ export async function retrieveDatabaseChildrenResultPage({
   }
 }
 
-// This function is used to create a text representation of a notion database properties.
-// We use it to render databases inline (in the Notion Page document on Dust), and to create
-// structured Tables on Dust (we use the CSV format).
-// The function accepts a `dustIdColumn` array which must have the same length as the `pagesProperties`. This
-// array is used to add a column to the CSV that contains the Dust ID of the page (__dust_id). This is useful
-// to uniquely identify the notion page in the CSV.
+// This function is used to create a text representation of a notion database properties.  We use it
+// to render databases inline (in the Notion Page document on Dust), and to create structured Tables
+// on Dust (we use the CSV format).
+// The function accepts a `dustIdColumn` array which must have the same length as the
+// `pagesProperties`. This array is used to add a column to the CSV that contains the Dust ID of the
+// page (__dust_id). This is useful to uniquely identify the notion page in the CSV.
+// The function returns the CSV as well as the original (non sanitized, non slugified) headers.
 export async function renderDatabaseFromPages({
   databaseTitle,
   pagesProperties,
@@ -956,9 +957,12 @@ export async function renderDatabaseFromPages({
   dustIdColumn?: string[];
   rowBoundary?: string;
   cellSeparator?: string;
-}) {
+}): Promise<{
+  originalHeader: string[];
+  csv: string;
+}> {
   if (!pagesProperties.length || !pagesProperties[0]) {
-    return "";
+    return { csv: "", originalHeader: [] };
   }
 
   if (dustIdColumn && dustIdColumn.length !== pagesProperties.length) {
@@ -1036,7 +1040,7 @@ export async function renderDatabaseFromPages({
     csv = `${databaseTitle}\n${csv}`;
   }
 
-  return csv;
+  return { csv, originalHeader: header };
 }
 
 export async function getUserName(

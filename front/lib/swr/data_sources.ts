@@ -1,4 +1,4 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
+import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -30,15 +30,13 @@ export function useDataSources(
 
 export function useDataSourceDocuments(
   owner: LightWorkspaceType,
-  dataSource: { name: string },
+  dataSource: DataSourceType,
   limit: number,
   offset: number
 ) {
   const documentsFetcher: Fetcher<GetDocumentsResponseBody> = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/data_sources/${
-      dataSource.name
-    }/documents?limit=${limit}&offset=${offset}`,
+    `/api/w/${owner.sId}/data_sources/${dataSource.sId}/documents?limit=${limit}&offset=${offset}`,
     documentsFetcher
   );
 
@@ -54,18 +52,18 @@ export function useDataSourceDocuments(
 //TODO(GROUPS_INFRA) Deprecated, remove once all usages are removed.
 export function useDataSourceTable({
   workspaceId,
-  dataSourceName,
+  dataSource,
   tableId,
 }: {
   workspaceId: string;
-  dataSourceName: string;
+  dataSource: DataSourceType;
   tableId: string | null;
 }) {
   const tableFetcher: Fetcher<GetTableResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     tableId
-      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/tables/${tableId}`
+      ? `/api/w/${workspaceId}/data_sources/${dataSource.sId}/tables/${tableId}`
       : null,
     tableFetcher
   );
@@ -81,16 +79,16 @@ export function useDataSourceTable({
 //TODO(GROUPS_INFRA) Deprecated, remove once all usages are removed.
 export function useDataSourceTables({
   workspaceId,
-  dataSourceName,
+  dataSource,
 }: {
   workspaceId: string;
-  dataSourceName: string | undefined;
+  dataSource: DataSourceType | undefined;
 }) {
   const tablesFetcher: Fetcher<ListTablesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    dataSourceName
-      ? `/api/w/${workspaceId}/data_sources/${dataSourceName}/tables`
+    dataSource
+      ? `/api/w/${workspaceId}/data_sources/${dataSource.sId}/tables`
       : null,
     tablesFetcher
   );
