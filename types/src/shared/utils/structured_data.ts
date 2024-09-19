@@ -6,31 +6,6 @@ import { slugify } from "./string_utils";
 export class InvalidStructuredDataHeaderError extends Error {}
 class ParsingCsvError extends Error {}
 
-export function getSanitizedHeaders(rawHeaders: string[]) {
-  return rawHeaders.reduce<string[]>((acc, curr) => {
-    const slugifiedName = slugify(curr);
-
-    if (!acc.includes(slugifiedName) || !slugifiedName.length) {
-      acc.push(slugifiedName);
-    } else {
-      let conflictResolved = false;
-      for (let i = 2; i < 64; i++) {
-        if (!acc.includes(slugify(`${slugifiedName}_${i}`))) {
-          acc.push(slugify(`${slugifiedName}_${i}`));
-          conflictResolved = true;
-          break;
-        }
-      }
-
-      if (!conflictResolved) {
-        // Ignore this header, push empty value
-        acc.push("");
-      }
-    }
-    return acc;
-  }, []);
-}
-
 export async function guessDelimiter(csv: string): Promise<string | undefined> {
   // Detect the delimiter: try to parse the first 2 lines with different delimiters,
   // keep the one that works for both lines and has the most columns.
