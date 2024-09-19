@@ -350,7 +350,7 @@ const DataSourcePage = ({
                 title="Slackbot enabled?"
                 owner={owner}
                 features={features}
-                dataSource={dataSource.name}
+                dataSource={dataSource}
                 configKey="botEnabled"
                 featureKey="slackBotEnabled"
               />
