@@ -471,7 +471,7 @@ impl LLM for AzureOpenAILLM {
             .map(OpenAITool::try_from)
             .collect::<Result<Vec<OpenAITool>, _>>()?;
 
-        let openai_messages = to_openai_messages(messages)?;
+        let openai_messages = to_openai_messages(messages, &self.model_id.clone().unwrap())?;
 
         let (c, request_id) = match event_sender {
             Some(_) => {

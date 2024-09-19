@@ -1,5 +1,9 @@
 import type { Meta } from "@storybook/react";
-import { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
+import {
+  ColumnDef,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 import React, { useMemo } from "react";
 
 import { DropdownItemProps } from "@sparkle/components/DropdownMenu";
@@ -207,7 +211,9 @@ export const DataTableExample = () => {
 };
 
 export const DataTableClientSideSortingExample = () => {
-  const [sorting, setSorting] = React.useState<SortingState>([{ id: "name", desc: true }])
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "name", desc: true },
+  ]);
   const [filter, setFilter] = React.useState<string>("");
 
   return (
@@ -266,19 +272,23 @@ export const DataTablePaginatedServerSideExample = () => {
     pageIndex: 0,
     pageSize: 2,
   });
-  const [sorting, setSorting] = React.useState<SortingState>([{ id: "name", desc: true }])
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "name", desc: true },
+  ]);
   const [filter, setFilter] = React.useState<string>("");
   const rows = useMemo(() => {
     if (sorting.length > 0) {
-      const order = sorting[0].desc ? -1: 1;
-      return data.sort(
-        (a: Data, b: Data) => {
-          return a.name.toLowerCase().localeCompare(b.name.toLowerCase()) * order
-        }
-      ).slice(
-        pagination.pageIndex * pagination.pageSize,
-        (pagination.pageIndex + 1) * pagination.pageSize
-      );
+      const order = sorting[0].desc ? -1 : 1;
+      return data
+        .sort((a: Data, b: Data) => {
+          return (
+            a.name.toLowerCase().localeCompare(b.name.toLowerCase()) * order
+          );
+        })
+        .slice(
+          pagination.pageIndex * pagination.pageSize,
+          (pagination.pageIndex + 1) * pagination.pageSize
+        );
     }
     return data.slice(
       pagination.pageIndex * pagination.pageSize,

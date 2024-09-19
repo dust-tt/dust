@@ -96,37 +96,24 @@ export function useVaultInfo({
   };
 }
 
-export function useVaultDataSourceViews<
-  IncludeConnectorDetails extends boolean,
->({
+export function useVaultDataSourceViews({
   category,
   disabled,
-  includeConnectorDetails,
-  includeEditedBy,
   vaultId,
   workspaceId,
 }: {
   category?: Exclude<DataSourceViewCategory, "apps">;
   disabled?: boolean;
-  includeConnectorDetails?: IncludeConnectorDetails;
-  includeEditedBy?: boolean;
   vaultId: string;
   workspaceId: string;
 }) {
   const vaultsDataSourceViewsFetcher: Fetcher<
-    GetVaultDataSourceViewsResponseBody<IncludeConnectorDetails>
+    GetVaultDataSourceViewsResponseBody<false>
   > = fetcher;
 
   const queryParams = new URLSearchParams();
   if (category) {
     queryParams.set("category", category);
-  }
-
-  if (includeConnectorDetails) {
-    queryParams.set("includeConnectorDetails", "true");
-  }
-  if (includeEditedBy) {
-    queryParams.set("includeEditedBy", "true");
   }
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
@@ -138,7 +125,49 @@ export function useVaultDataSourceViews<
 
   const vaultDataSourceViews = useMemo(() => {
     return (data?.dataSourceViews ??
-      []) as GetVaultDataSourceViewsResponseBody<IncludeConnectorDetails>["dataSourceViews"];
+      []) as GetVaultDataSourceViewsResponseBody<false>["dataSourceViews"];
+  }, [data]);
+
+  return {
+    vaultDataSourceViews,
+    mutate,
+    mutateRegardlessOfQueryParams,
+    isVaultDataSourceViewsLoading: !error && !data,
+    isVaultDataSourceViewsError: error,
+  };
+}
+
+export function useVaultDataSourceViewsWithDetails({
+  category,
+  disabled,
+  vaultId,
+  workspaceId,
+}: {
+  category: Exclude<DataSourceViewCategory, "apps">;
+  disabled?: boolean;
+  vaultId: string;
+  workspaceId: string;
+}) {
+  const vaultsDataSourceViewsFetcher: Fetcher<
+    GetVaultDataSourceViewsResponseBody<true>
+  > = fetcher;
+
+  const queryParams = new URLSearchParams();
+
+  queryParams.set("category", category);
+  queryParams.set("includeEditedBy", "true");
+  queryParams.set("withDetails", "true");
+
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views?${queryParams.toString()}`,
+      vaultsDataSourceViewsFetcher,
+      { disabled }
+    );
+
+  const vaultDataSourceViews = useMemo(() => {
+    return (data?.dataSourceViews ??
+      []) as GetVaultDataSourceViewsResponseBody<true>["dataSourceViews"];
   }, [data]);
 
   return {

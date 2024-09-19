@@ -73,7 +73,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   dataSource: DataSourceType;
   connector: ConnectorType | null;
   standardView: boolean;
-  dustClientFacingUrl: string;
   user: UserType;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -132,7 +131,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       dataSource: dataSource.toJSON(),
       connector,
       standardView,
-      dustClientFacingUrl: config.getClientFacingUrl(),
       user,
     },
   };
@@ -198,7 +196,7 @@ function StandardDataSourceView({
                   icon: Cog6ToothIcon,
                   onClick: () => {
                     void router.push(
-                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/settings`
+                      `/w/${owner.sId}/builder/data-sources/${dataSource.sId}/settings`
                     );
                   },
                 }
@@ -284,7 +282,7 @@ function DatasourceDocumentsTabView({
     try {
       const res = await fetch(
         `/api/w/${owner.sId}/data_sources/${
-          dataSource.name
+          dataSource.sId
         }/documents/${encodeURIComponent(documentId)}`,
         {
           method: "POST",
@@ -485,7 +483,7 @@ function DatasourceDocumentsTabView({
                     setShowDocumentsLimitPopup(true);
                   } else {
                     void router.push(
-                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/upsert`
+                      `/w/${owner.sId}/builder/data-sources/${dataSource.sId}/upsert`
                     );
                   }
                 }}
@@ -518,7 +516,7 @@ function DatasourceDocumentsTabView({
                     onClick={() => {
                       void router.push(
                         `/w/${owner.sId}/builder/data-sources/${
-                          dataSource.name
+                          dataSource.sId
                         }/upsert?documentId=${encodeURIComponent(
                           d.document_id
                         )}`
@@ -563,7 +561,7 @@ function DatasourceTablesTabView({
 }) {
   const { tables } = useDataSourceTables({
     workspaceId: owner.sId,
-    dataSourceName: dataSource.name,
+    dataSource,
   });
 
   return (
@@ -589,7 +587,7 @@ function DatasourceTablesTabView({
                   label="Add table"
                   onClick={() => {
                     void router.push(
-                      `/w/${owner.sId}/builder/data-sources/${dataSource.name}/tables/upsert`
+                      `/w/${owner.sId}/builder/data-sources/${dataSource.sId}/tables/upsert`
                     );
                   }}
                 />
@@ -621,7 +619,7 @@ function DatasourceTablesTabView({
                       onClick={() => {
                         void router.push(
                           `/w/${owner.sId}/builder/data-sources/${
-                            dataSource.name
+                            dataSource.sId
                           }/tables/upsert?tableId=${encodeURIComponent(
                             t.table_id
                           )}`
@@ -679,7 +677,7 @@ function SlackBotEnableView({
   const handleSetBotEnabled = async (botEnabled: boolean) => {
     setLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/config/botEnabled`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/botEnabled`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -773,7 +771,7 @@ function GithubCodeEnableView({
   const handleSetCodeSyncEnabled = async (codeSyncEnabled: boolean) => {
     setLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/config/codeSyncEnabled`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/codeSyncEnabled`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -851,7 +849,7 @@ function IntercomConfigView({
   const handleSetNewConfig = async (configValue: boolean) => {
     setLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/config/${configKey}`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
       {
         headers: {
           "Content-Type": "application/json",
@@ -980,7 +978,6 @@ function ManagedDataSourceView({
   isBuilder,
   dataSource,
   connector,
-  dustClientFacingUrl,
   plan,
 }: {
   owner: WorkspaceType;
@@ -989,7 +986,6 @@ function ManagedDataSourceView({
   isBuilder: boolean;
   dataSource: DataSourceType;
   connector: ConnectorType;
-  dustClientFacingUrl: string;
   plan: PlanType;
 }) {
   const router = useRouter();
@@ -1012,20 +1008,20 @@ function ManagedDataSourceView({
       // To prevent it from reopening on page refresh,
       // we remove the flag from the URL and then display the modal.
       router
-        .push(`/w/${owner.sId}/builder/data-sources/${dataSource.name}`)
+        .push(`/w/${owner.sId}/builder/data-sources/${dataSource.sId}`)
         .then(() => {
           setShowPermissionModal(true);
         })
         .catch(console.error);
     }
-  }, [dataSource.name, owner.sId, router]);
+  }, [dataSource.sId, owner.sId, router]);
 
   const updateConnectorConnectionId = async (
     newConnectionId: string,
     provider: string
   ) => {
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/update`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/update`,
       {
         method: "POST",
         headers: {
@@ -1077,7 +1073,6 @@ function ManagedDataSourceView({
     const provider = connector.type;
 
     const connectionIdRes = await setupConnection({
-      dustClientFacingUrl,
       owner,
       provider,
     });
@@ -1145,9 +1140,7 @@ function ManagedDataSourceView({
           {isBuilder && displayWebcrawlerSettingsButton ? (
             <Link
               className="ml-auto"
-              href={`/w/${owner.sId}/builder/data-sources/${encodeURIComponent(
-                dataSource.name
-              )}/edit-public-url`}
+              href={`/w/${owner.sId}/builder/data-sources/${dataSource.sId}/edit-public-url`}
             >
               <Button
                 label="Settings"
@@ -1267,10 +1260,8 @@ function ManagedDataSourceView({
           dataSource={dataSource}
           isOpen={showPermissionModal}
           onClose={() => setShowPermissionModal(false)}
-          plan={plan}
           readOnly={false}
           isAdmin={isAdmin}
-          dustClientFacingUrl={dustClientFacingUrl}
         />
       </div>
     </>
@@ -1287,7 +1278,6 @@ export default function DataSourceView({
   dataSource,
   connector,
   standardView,
-  dustClientFacingUrl,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -1333,7 +1323,6 @@ export default function DataSourceView({
             isBuilder,
             dataSource,
             connector,
-            dustClientFacingUrl,
             plan,
             user,
           }}

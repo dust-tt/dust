@@ -52,6 +52,7 @@ export const EnqueueUpsertTable = t.type({
   tableParents: t.union([t.array(t.string), t.undefined, t.null]),
   csv: t.union([t.string, t.null]),
   truncate: t.boolean,
+  useAppForHeaderDetection: t.union([t.boolean, t.undefined, t.null]),
 });
 
 type EnqueueUpsertDocumentType = t.TypeOf<typeof EnqueueUpsertDocument>;

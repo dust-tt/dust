@@ -20,7 +20,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   dataSources: DataSourceType[];
   dataSource: DataSourceType;
   webCrawlerConfiguration: WebCrawlerConfigurationType;
-  dataSourceUsage: number;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -61,12 +60,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const [connectorRes, dataSourceUsageRes] = await Promise.all([
-    new ConnectorsAPI(config.getConnectorsAPIConfig(), logger).getConnector(
-      dataSource.connectorId
-    ),
-    dataSource.getUsagesByAgents(auth),
-  ]);
+  const connectorRes = await new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  ).getConnector(dataSource.connectorId);
 
   if (connectorRes.isErr()) {
     throw new Error(connectorRes.error.message);
@@ -80,7 +77,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       dataSource: dataSource.toJSON(),
       webCrawlerConfiguration: connectorRes.value
         .configuration as WebCrawlerConfigurationType,
-      dataSourceUsage: dataSourceUsageRes.isOk() ? dataSourceUsageRes.value : 0,
     },
   };
 });
@@ -91,7 +87,6 @@ export default function DataSourceNew({
   dataSources,
   dataSource,
   webCrawlerConfiguration,
-  dataSourceUsage,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <WebsiteConfiguration
@@ -100,7 +95,6 @@ export default function DataSourceNew({
       dataSources={dataSources}
       webCrawlerConfiguration={webCrawlerConfiguration}
       dataSource={dataSource}
-      dataSourceUsage={dataSourceUsage}
     />
   );
 }

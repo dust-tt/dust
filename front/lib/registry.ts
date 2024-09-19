@@ -290,6 +290,22 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
+  "table-header-detection": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "Hllp6rDlNo",
+      appHash:
+        "99f72c76477abd761f33d693b13c8d98750b2e80a68d24eb8963de777a77ebdc",
+      appVaultId: PRODUCTION_DUST_APPS_VAULT_ID,
+    },
+    config: {
+      MODEL: {
+        // `provider_id` and `model_id` must be set by caller.
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
 });
 
 export type DustRegistryActionName = keyof typeof DustProdActionRegistry;

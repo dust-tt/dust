@@ -28,6 +28,7 @@ export const UpsertTableFromCsvSchema = t.intersection([
     tags: t.union([t.array(t.string), t.undefined, t.null]),
     parents: t.union([t.array(t.string), t.undefined, t.null]),
     truncate: t.boolean,
+    useAppForHeaderDetection: t.union([t.boolean, t.undefined, t.null]),
     async: t.union([t.boolean, t.undefined]),
   }),
   // csv is optional when editing an existing table.
@@ -152,9 +153,15 @@ export async function handleDataSourceTableCSVUpsert({
     tableParents.push(tableId);
   }
 
+  const useAppForHeaderDetection =
+    !!bodyValidation.right.useAppForHeaderDetection &&
+    owner.flags.includes("use_app_for_header_detection");
+
   if (async) {
     // Ensure the CSV is valid before enqueuing the upsert.
-    const csvRowsRes = csv ? await rowsFromCsv(csv) : null;
+    const csvRowsRes = csv
+      ? await rowsFromCsv({ auth, csv, useAppForHeaderDetection })
+      : null;
     if (csvRowsRes?.isErr()) {
       return apiError(req, res, {
         api_error: {
@@ -177,6 +184,7 @@ export async function handleDataSourceTableCSVUpsert({
         tableParents,
         csv: csv ?? null,
         truncate,
+        useAppForHeaderDetection,
       },
     });
     if (enqueueRes.isErr()) {
@@ -212,6 +220,7 @@ export async function handleDataSourceTableCSVUpsert({
     tableParents,
     csv: csv ?? null,
     truncate,
+    useAppForHeaderDetection,
   });
 
   if (tableRes.isErr()) {

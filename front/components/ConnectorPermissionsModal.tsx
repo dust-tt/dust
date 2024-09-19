@@ -14,7 +14,6 @@ import type {
   ConnectorType,
   DataSourceType,
   LightWorkspaceType,
-  PlanType,
   UpdateConnectorRequestBody,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -29,6 +28,7 @@ import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDataSourceName } from "@app/lib/data_sources";
 import { useUser } from "@app/lib/swr/user";
+import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 import { PermissionTree } from "./ConnectorPermissionsTree";
@@ -51,7 +51,6 @@ interface DataSourceManagementModalProps {
 
 interface DataSourceEditionModalProps {
   dataSource: DataSourceType;
-  dustClientFacingUrl: string;
   isOpen: boolean;
   onClose: () => void;
   onEditPermissionsClick: () => void;
@@ -62,13 +61,11 @@ export async function handleUpdatePermissions(
   connector: ConnectorType,
   dataSource: DataSourceType,
   owner: LightWorkspaceType,
-  dustClientFacingUrl: string,
   sendNotification: (notification: NotificationType) => void
 ) {
   const provider = connector.type;
 
   const connectionIdRes = await setupConnection({
-    dustClientFacingUrl,
     owner,
     provider,
   });
@@ -330,10 +327,8 @@ export function ConnectorPermissionsModal({
   dataSource,
   isOpen,
   onClose,
-  plan,
   readOnly,
   isAdmin,
-  dustClientFacingUrl,
   onManageButtonClick,
 }: {
   owner: WorkspaceType;
@@ -341,8 +336,6 @@ export function ConnectorPermissionsModal({
   dataSource: DataSourceType;
   isOpen: boolean;
   onClose: (save: boolean) => void;
-  plan: PlanType;
-  dustClientFacingUrl: string;
   readOnly: boolean;
   isAdmin: boolean;
   onManageButtonClick?: () => void;
@@ -354,6 +347,10 @@ export function ConnectorPermissionsModal({
   const [modalToShow, setModalToShow] = useState<
     "edition" | "selection" | null
   >(null);
+  const { activeSubscription } = useWorkspaceActiveSubscription({
+    workspaceId: owner.sId,
+  });
+  const plan = activeSubscription ? activeSubscription.plan : null;
 
   const [saving, setSaving] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
@@ -482,7 +479,7 @@ export function ConnectorPermissionsModal({
               }}
             />
           </div>
-          {OptionsComponent && (
+          {OptionsComponent && plan && (
             <>
               <div className="p-1 text-xl font-bold">Connector options</div>
 
@@ -532,11 +529,9 @@ export function ConnectorPermissionsModal({
             connector,
             dataSource,
             owner,
-            dustClientFacingUrl,
             sendNotification
           );
         }}
-        dustClientFacingUrl={dustClientFacingUrl}
       />
     </>
   );

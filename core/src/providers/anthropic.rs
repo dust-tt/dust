@@ -699,11 +699,16 @@ struct StreamMessageDelta {
 pub struct AnthropicLLM {
     id: String,
     api_key: Option<String>,
+    user_id: Option<String>,
 }
 
 impl AnthropicLLM {
     pub fn new(id: String) -> Self {
-        Self { id, api_key: None }
+        Self {
+            id,
+            api_key: None,
+            user_id: None,
+        }
     }
 
     fn messages_uri(&self) -> Result<Uri> {
@@ -755,6 +760,12 @@ impl AnthropicLLM {
                 _ => Some(stop_sequences),
             },
         });
+
+        if let Some(user_id) = self.user_id.as_ref() {
+            body["metadata"] = json!({
+                "user_id": user_id,
+            });
+        }
 
         if system.is_some() {
             body["system"] = json!(system);
@@ -857,6 +868,12 @@ impl AnthropicLLM {
             },
             "stream": true,
         });
+
+        if let Some(user_id) = self.user_id.as_ref() {
+            body["metadata"] = json!({
+                "user_id": user_id,
+            });
+        }
 
         if system.is_some() {
             body["system"] = json!(system);
@@ -1488,6 +1505,12 @@ impl LLM for AnthropicLLM {
                     "Credentials or environment variable `ANTHROPIC_API_KEY` is not set."
                 ))?,
             },
+        }
+        match credentials.get("DUST_WORKSPACE_ID") {
+            Some(workspace_id) => {
+                self.user_id = Some(workspace_id.clone());
+            }
+            None => (),
         }
         Ok(())
     }

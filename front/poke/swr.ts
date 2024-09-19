@@ -1,4 +1,8 @@
-import type { ConversationType, LightWorkspaceType } from "@dust-tt/types";
+import type {
+  ConversationType,
+  DataSourceType,
+  LightWorkspaceType,
+} from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
@@ -75,15 +79,13 @@ export function useConversation({
 
 export function useDocuments(
   owner: LightWorkspaceType,
-  dataSource: { name: string },
+  dataSource: DataSourceType,
   limit: number,
   offset: number
 ) {
   const documentsFetcher: Fetcher<GetDocumentsResponseBody> = fetcher;
   const { data, error, mutate } = useSWR(
-    `/api/poke/workspaces/${owner.sId}/data_sources/${encodeURIComponent(
-      dataSource.name
-    )}/documents?limit=${limit}&offset=${offset}`,
+    `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/documents?limit=${limit}&offset=${offset}`,
     documentsFetcher
   );
 

@@ -84,9 +84,11 @@ async function handler(
                   ) &&
                   (m.id.startsWith("text-") ||
                     m.id.startsWith("code-") ||
+                    m.id.startsWith("o1-") ||
                     m.id.startsWith("gpt-3.5-turbo") ||
                     m.id.startsWith("gpt-4")) &&
                   (!chat ||
+                    m.id.startsWith("o1-") ||
                     m.id.startsWith("gpt-3.5-turbo") ||
                     m.id.startsWith("gpt-4"))
                 );

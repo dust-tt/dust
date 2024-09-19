@@ -10,7 +10,11 @@ import {
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { VaultType, WorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceWithAgentsUsageType,
+  VaultType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
@@ -23,7 +27,7 @@ type RowData = {
   category: string;
   name: string;
   icon: ComponentType;
-  usage: number;
+  usage: DataSourceWithAgentsUsageType;
   count: number;
   onClick?: () => void;
 };
@@ -77,15 +81,18 @@ const getTableColumns = () => {
     },
     {
       header: "Used by",
-      accessorKey: "usage",
+      accessorFn: (row: RowData) => row.usage.count,
       meta: {
         width: "6rem",
       },
       cell: (info: Info) => (
         <>
           {info.row.original.usage ? (
-            <DataTable.CellContent icon={RobotIcon}>
-              {info.row.original.usage}
+            <DataTable.CellContent
+              icon={RobotIcon}
+              title={`Used by ${info.row.original.usage.agentNames.join(", ")}`}
+            >
+              {info.row.original.usage.count}
             </DataTable.CellContent>
           ) : null}
         </>
@@ -163,6 +170,7 @@ export const VaultCategoriesList = ({
         <DataTable
           data={rows}
           columns={getTableColumns()}
+          className="pb-4"
           filter={dataSourceSearch}
           filterColumn={"name"}
           columnsBreakpoints={{

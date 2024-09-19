@@ -12,6 +12,7 @@ import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type {
   ConnectorType,
   DataSourceType,
+  DataSourceWithAgentsUsageType,
   PlanType,
   SubscriptionType,
   WorkspaceType,
@@ -29,7 +30,7 @@ import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
-import { getDataSourcesUsageByAgents } from "@app/lib/api/agent_data_sources";
+import { getDataSourcesUsageByCategory } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -41,12 +42,14 @@ type DataSourceWithConnector = DataSourceType & {
   connector: ConnectorType;
 };
 
+type RowData = DataSourceType & {
+  icon: ComponentType;
+  usage: DataSourceWithAgentsUsageType;
+};
+
 type Info = {
   row: {
-    original: DataSourceType & {
-      icon: ComponentType;
-      usage: number;
-    };
+    original: RowData;
   };
 };
 
@@ -71,9 +74,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const readOnly = !auth.isBuilder();
 
   const allDataSources = await getDataSources(auth, { includeEditedBy: true });
-  const dataSourcesUsage = await getDataSourcesUsageByAgents({
+  const dataSourcesUsage = await getDataSourcesUsageByCategory({
     auth,
-    providerFilter: "webcrawler",
+    category: "website",
   });
 
   const websiteDataSources = allDataSources
@@ -105,8 +108,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
           panic: true, // This is a panic because we want to fix the data. This should never happen.
           workspaceId: owner.sId,
           connectorId: ds.connectorId,
-          dataSourceName: ds.name,
-          dataSourceId: ds.id,
+          dataSourceId: ds.sId,
           connectorProvider: ds.connectorProvider,
         },
         "Connector not found while we still have a data source."
@@ -172,7 +174,7 @@ export default function DataSourcesView({
         );
       },
       icon: LinkIcon,
-      usage: dataSourcesUsage[dataSource.id] || 0,
+      usage: dataSourcesUsage[dataSource.id] || { count: 0, agentNames: [] },
     }));
   }, [dataSources, dataSourcesUsage, owner.sId, router]);
 
@@ -277,15 +279,22 @@ function getTableColumns() {
     },
     {
       header: "Used by",
-      accessorKey: "usage",
-      id: "usage",
+      id: "usedBy",
+      accessorFn: (row: RowData) => row.usage.count,
       meta: {
         width: "6rem",
       },
       cell: (info: Info) => (
-        <DataTable.CellContent icon={RobotIcon}>
-          {info.row.original.usage}
-        </DataTable.CellContent>
+        <>
+          {info.row.original.usage ? (
+            <DataTable.CellContent
+              icon={RobotIcon}
+              title={`Used by ${info.row.original.usage.agentNames.join(", ")}`}
+            >
+              {info.row.original.usage.count}
+            </DataTable.CellContent>
+          ) : null}
+        </>
       ),
     },
     {

@@ -5,6 +5,7 @@ import {
   archiveAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
+import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import config from "@app/lib/api/config";
 import { deleteDataSource, getDataSources } from "@app/lib/api/data_sources";
@@ -15,7 +16,6 @@ import {
   unsafeGetWorkspacesByModelId,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { destroyConversation } from "@app/lib/conversation";
 import { Conversation } from "@app/lib/models/assistant/conversation";
 import {
   FREE_NO_PLAN_CODE,
