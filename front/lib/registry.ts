@@ -290,7 +290,7 @@ export const DustProdActionRegistry = createActionRegistry({
       },
     },
   },
-  "table-header-parser": {
+  "table-header-detection": {
     app: {
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "OJSd3KpoDU",

@@ -323,10 +323,19 @@ export async function rowsFromCsv({
     useAppForHeaderDetection
   );
 
-  logger.info(
-    { headerRes, useAppForHeaderDetection },
-    "Header detection result"
-  );
+  if (useAppForHeaderDetection) {
+    // Enable static header detection for debugging
+    const headerResStatic = await detectHeaders(auth, csv, delimiter, false);
+    logger.info(
+      { headerRes, headerResStatic, useAppForHeaderDetection },
+      "Header detection result"
+    );
+  } else {
+    logger.info(
+      { headerRes, useAppForHeaderDetection },
+      "Header detection result"
+    );
+  }
 
   if (headerRes.isErr()) {
     return headerRes;
@@ -510,7 +519,7 @@ async function detectHeaders(
   }
   headParser.destroy();
 
-  const action = DustProdActionRegistry["table-header-parser"];
+  const action = DustProdActionRegistry["table-header-detection"];
 
   const model = getSmallWhitelistedModel(auth.getNonNullableWorkspace());
   if (!model) {
@@ -532,6 +541,7 @@ async function detectHeaders(
   });
 
   if (res.isErr()) {
+    logger.warn("Error when running app for detecting header", res.error);
     // Fallback to statuc header detection.
     return staticHeaderDetection(records[0]);
   }
