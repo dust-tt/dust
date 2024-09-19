@@ -2098,7 +2098,7 @@ impl LLM for OpenAILLM {
                             },
                         }));
                         // Add a small delay to simulate real-time streaming.
-                        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                        tokio::time::sleep(std::time::Duration::from_millis(30)).await;
                     }
                 }
             }
