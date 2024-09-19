@@ -66,7 +66,10 @@ export function AssistantBrowser({
           a.status === "active" &&
           // Filters on search query
           (assistantSearch.trim() === "" ||
-            subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase()))
+            subFilter(
+              assistantSearch.toLowerCase().trim().replace(/^@/, ""),
+              a.name.toLowerCase()
+            ))
       )
       .sort((a, b) => {
         return a.name

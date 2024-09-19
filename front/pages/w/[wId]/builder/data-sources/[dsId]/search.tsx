@@ -103,7 +103,7 @@ export default function DataSourceView({
       searchParams.append("full_text", "false");
 
       const searchRes = await fetch(
-        `/api/w/${owner.sId}/data_sources/${dataSource.name}/search?` +
+        `/api/w/${owner.sId}/data_sources/${dataSource.sId}/search?` +
           searchParams.toString(),
         {
           method: "GET",
@@ -130,7 +130,7 @@ export default function DataSourceView({
     return () => {
       isCancelled = true;
     };
-  }, [dataSource.name, owner.sId, searchQuery]);
+  }, [dataSource.sId, owner.sId, searchQuery]);
 
   return (
     <AppLayout
@@ -147,7 +147,7 @@ export default function DataSourceView({
           title="Search Data Source"
           onClose={() => {
             void router.push(
-              `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+              `/w/${owner.sId}/builder/data-sources/${dataSource.sId}`
             );
           }}
         />
@@ -187,7 +187,7 @@ export default function DataSourceView({
                           <div className="flex">
                             <Link
                               href={`/w/${owner.sId}/builder/data-sources/${
-                                dataSource.name
+                                dataSource.sId
                               }/upsert?documentId=${encodeURIComponent(
                                 d.document_id
                               )}`}

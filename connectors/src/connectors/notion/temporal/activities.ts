@@ -1817,7 +1817,7 @@ export async function renderAndUpsertPageFromCache({
         const { tableId, tableName, tableDescription } =
           getTableInfoFromDatabase(parentDb);
         const rowId = `notion-${pageId}`;
-        const csv = await renderDatabaseFromPages({
+        const { csv } = await renderDatabaseFromPages({
           databaseTitle: null,
           pagesProperties: [
             JSON.parse(
@@ -2512,7 +2512,7 @@ export async function upsertDatabaseStructuredDataFromCache({
     );
   }
 
-  const csv = await renderDatabaseFromPages({
+  const { csv } = await renderDatabaseFromPages({
     databaseTitle: null,
     pagesProperties,
     dustIdColumn,
@@ -2547,13 +2547,14 @@ export async function upsertDatabaseStructuredDataFromCache({
     parents,
   });
   // Same as above, but without the `dustId` column
-  const csvForDocument = await renderDatabaseFromPages({
-    databaseTitle: null,
-    pagesProperties,
-    cellSeparator: ",",
-    rowBoundary: "",
-  });
-  const csvHeader = csvForDocument.split("\n")[0];
+  const { csv: csvForDocument, originalHeader: headerForDocument } =
+    await renderDatabaseFromPages({
+      databaseTitle: null,
+      pagesProperties,
+      cellSeparator: ",",
+      rowBoundary: "",
+    });
+  const csvHeader = headerForDocument.join(",");
   const csvRows = csvForDocument.split("\n").slice(1).join("\n");
   if (csvForDocument.length > MAX_DOCUMENT_TXT_LEN) {
     localLogger.info(
@@ -2566,7 +2567,7 @@ export async function upsertDatabaseStructuredDataFromCache({
     );
   } else {
     localLogger.info("Upserting Notion Database as Document.");
-    const prefix = `${databaseName}\n${csvHeader}`;
+    const prefix = `${databaseName}\n${csvHeader}\n`;
     const prefixSection = await renderPrefixSection({
       dataSourceConfig,
       prefix,

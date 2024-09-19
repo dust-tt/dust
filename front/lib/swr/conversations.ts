@@ -5,12 +5,15 @@ import type {
 } from "@dust-tt/types";
 import { useContext, useMemo } from "react";
 import type { Fetcher } from "swr";
-import useSWRInfinite from "swr/infinite";
 
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  fetcher,
+  useSWRInfiniteWithDefaults,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 
 export function useConversation({
@@ -91,7 +94,7 @@ export function useConversationMessages({
   const messagesFetcher: Fetcher<FetchConversationMessagesResponse> = fetcher;
 
   const { data, error, mutate, size, setSize, isLoading, isValidating } =
-    useSWRInfinite(
+    useSWRInfiniteWithDefaults(
       (pageIndex: number, previousPageData) => {
         if (!conversationId) {
           return null;
@@ -106,7 +109,7 @@ export function useConversationMessages({
           return null;
         }
 
-        if (pageIndex === 0) {
+        if (previousPageData === null) {
           return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}`;
         }
 

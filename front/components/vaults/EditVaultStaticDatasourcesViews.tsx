@@ -1,7 +1,7 @@
 import { Button, PlusIcon, Popup, Tooltip } from "@dust-tt/sparkle";
 import type {
   DataSourceType,
-  DataSourceViewWithConnectorType,
+  DataSourceViewType,
   PlanType,
   VaultType,
   WorkspaceType,
@@ -22,7 +22,7 @@ interface EditVaultStaticDatasourcesViewsProps {
   plan: PlanType;
   vault: VaultType;
   dataSources: DataSourceType[];
-  dataSourceView: DataSourceViewWithConnectorType | null;
+  dataSourceView: DataSourceViewType | null;
   category: "folder" | "website";
   onClose: () => void;
 }

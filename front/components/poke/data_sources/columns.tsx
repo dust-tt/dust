@@ -107,7 +107,7 @@ export function makeColumnsForDataSources(
               await deleteDataSource(
                 owner,
                 agentConfigurations,
-                dataSource.name,
+                dataSource.sId,
                 reload
               );
             }}
@@ -121,16 +121,16 @@ export function makeColumnsForDataSources(
 async function deleteDataSource(
   owner: WorkspaceType,
   agentConfigurations: AgentConfigurationType[],
-  dataSourceName: string,
+  dataSourceId: string,
   reload: () => void
 ) {
   const agents = agentConfigurations.filter((agt) =>
     agt.actions.some(
       (a) =>
         ((isRetrievalConfiguration(a) || isProcessConfiguration(a)) &&
-          a.dataSources.some((ds) => ds.dataSourceId === dataSourceName)) ||
+          a.dataSources.some((ds) => ds.dataSourceId === dataSourceId)) ||
         (isTablesQueryConfiguration(a) &&
-          a.tables.some((t) => t.dataSourceId === dataSourceName))
+          a.tables.some((t) => t.dataSourceId === dataSourceId))
     )
   );
 
@@ -143,7 +143,7 @@ async function deleteDataSource(
   }
   if (
     !window.confirm(
-      `Are you sure you want to delete the ${dataSourceName} data source? There is no going back.`
+      `Are you sure you want to delete the ${dataSourceId} data source? There is no going back.`
     )
   ) {
     return;
@@ -155,9 +155,7 @@ async function deleteDataSource(
 
   try {
     const r = await fetch(
-      `/api/poke/workspaces/${owner.sId}/data_sources/${encodeURIComponent(
-        dataSourceName
-      )}`,
+      `/api/poke/workspaces/${owner.sId}/data_sources/${dataSourceId}`,
       {
         method: "DELETE",
         headers: {

@@ -1,13 +1,8 @@
-import { WhitelistableFeature } from "@dust-tt/types";
-
 import { Authenticator } from "@app/lib/auth";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
-import {
-  internalSubscribeWorkspaceToFreePlan,
-  pokeUpgradeWorkspaceToPlan,
-} from "@app/lib/plans/subscription";
+import { internalSubscribeWorkspaceToFreePlan } from "@app/lib/plans/subscription";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";

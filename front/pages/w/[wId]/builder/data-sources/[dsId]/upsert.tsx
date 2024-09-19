@@ -107,7 +107,7 @@ export default function DatasourceUpsert({
       setDisabled(true);
       fetch(
         `/api/w/${owner.sId}/data_sources/${
-          dataSource.name
+          dataSource.sId
         }/documents/${encodeURIComponent(loadDocumentId)}`
       )
         .then(async (res) => {
@@ -122,7 +122,7 @@ export default function DatasourceUpsert({
         })
         .catch((e) => console.error(e));
     }
-  }, [dataSource.name, loadDocumentId, owner.sId]);
+  }, [dataSource.sId, loadDocumentId, owner.sId]);
 
   const router = useRouter();
 
@@ -146,9 +146,7 @@ export default function DatasourceUpsert({
     };
 
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${
-        dataSource.name
-      }/documents/${encodeURIComponent(documentId)}`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/documents/${encodeURIComponent(documentId)}`,
       {
         method: "POST",
         headers: {
@@ -160,7 +158,7 @@ export default function DatasourceUpsert({
 
     if (res.ok) {
       await router.push(
-        `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+        `/w/${owner.sId}/builder/data-sources/${dataSource.sId}`
       );
     } else {
       let errMsg = "";
@@ -199,7 +197,7 @@ export default function DatasourceUpsert({
   const handleDelete = async () => {
     const res = await fetch(
       `/api/w/${owner.sId}/data_sources/${
-        dataSource.name
+        dataSource.sId
       }/documents/${encodeURIComponent(documentId)}`,
       {
         method: "DELETE",
@@ -210,9 +208,7 @@ export default function DatasourceUpsert({
       alert("There was an error deleting the document.");
       return;
     }
-    await router.push(
-      `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
-    );
+    await router.push(`/w/${owner.sId}/builder/data-sources/${dataSource.sId}`);
   };
 
   return (
@@ -228,7 +224,7 @@ export default function DatasourceUpsert({
           title={loadDocumentId ? "Edit document" : "Add a new document"}
           onCancel={() => {
             void router.push(
-              `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+              `/w/${owner.sId}/builder/data-sources/${dataSource.sId}`
             );
           }}
           onSave={

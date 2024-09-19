@@ -418,7 +418,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
   }
 
   getUsagesByAgents(auth: Authenticator) {
-    return getDataSourceUsage({ auth, dataSource: this.toJSON() });
+    return getDataSourceUsage({ auth, dataSource: this });
   }
 
   // Permissions.

@@ -30,9 +30,7 @@ export function useConnectorPermissions({
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
     fetcher;
 
-  let url = `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-    dataSource.name
-  )}/managed/permissions?viewType=${viewType}`;
+  let url = `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions?viewType=${viewType}`;
   if (parentId) {
     url += `&parentId=${parentId}`;
   }
@@ -63,9 +61,7 @@ export function useConnectorConfig({
   const configFetcher: Fetcher<GetOrPostManagedDataSourceConfigResponseBody> =
     fetcher;
 
-  const url = `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-    dataSource.name
-  )}/managed/config/${configKey}`;
+  const url = `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher);
 

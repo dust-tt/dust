@@ -51,7 +51,6 @@ interface DataSourceManagementModalProps {
 
 interface DataSourceEditionModalProps {
   dataSource: DataSourceType;
-  dustClientFacingUrl: string;
   isOpen: boolean;
   onClose: () => void;
   onEditPermissionsClick: () => void;
@@ -62,13 +61,11 @@ export async function handleUpdatePermissions(
   connector: ConnectorType,
   dataSource: DataSourceType,
   owner: LightWorkspaceType,
-  dustClientFacingUrl: string,
   sendNotification: (notification: NotificationType) => void
 ) {
   const provider = connector.type;
 
   const connectionIdRes = await setupConnection({
-    dustClientFacingUrl,
     owner,
     provider,
   });
@@ -333,7 +330,6 @@ export function ConnectorPermissionsModal({
   plan,
   readOnly,
   isAdmin,
-  dustClientFacingUrl,
   onManageButtonClick,
 }: {
   owner: WorkspaceType;
@@ -342,7 +338,6 @@ export function ConnectorPermissionsModal({
   isOpen: boolean;
   onClose: (save: boolean) => void;
   plan: PlanType;
-  dustClientFacingUrl: string;
   readOnly: boolean;
   isAdmin: boolean;
   onManageButtonClick?: () => void;
@@ -532,11 +527,9 @@ export function ConnectorPermissionsModal({
             connector,
             dataSource,
             owner,
-            dustClientFacingUrl,
             sendNotification
           );
         }}
-        dustClientFacingUrl={dustClientFacingUrl}
       />
     </>
   );
