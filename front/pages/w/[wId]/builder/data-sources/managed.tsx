@@ -334,7 +334,6 @@ export default function DataSourcesView({
             }}
             isAdmin={isAdmin}
             readOnly={readOnly}
-            plan={plan}
           />
         )}
       </Page.Vertical>

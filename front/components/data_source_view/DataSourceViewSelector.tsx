@@ -10,8 +10,8 @@ import type {
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-  LightWorkspaceType,
   VaultType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
@@ -39,7 +39,7 @@ const MIN_DATA_SOURCES_PER_KIND_TO_GROUP = 3;
 const ONLY_ONE_VAULT_PER_SELECTION = true;
 
 interface DataSourceViewsSelectorProps {
-  owner: LightWorkspaceType;
+  owner: WorkspaceType;
   dataSourceViews: DataSourceViewType[];
   allowedVaults?: VaultType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
@@ -218,7 +218,7 @@ export function DataSourceViewsSelector({
 }
 
 interface DataSourceViewSelectorProps {
-  owner: LightWorkspaceType;
+  owner: WorkspaceType;
   selectionConfiguration: DataSourceViewSelectionConfiguration;
   setSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>

@@ -1,7 +1,9 @@
 import {
   BracesIcon,
+  Button,
   ExternalLinkIcon,
   IconButton,
+  PlusIcon,
   Spinner,
   Tree,
 } from "@dust-tt/sparkle";
@@ -9,13 +11,16 @@ import type {
   ContentNodesViewType,
   DataSourceViewContentNode,
   DataSourceViewType,
-  LightWorkspaceType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
+import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
+import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
+import { useConnector } from "@app/lib/swr/connectors";
 import { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 
@@ -26,7 +31,7 @@ interface DataSourceViewResourceSelectorTreeBaseProps {
     parents: string[],
     selected: boolean
   ) => void;
-  owner: LightWorkspaceType;
+  owner: WorkspaceType;
   parentIsSelected?: boolean;
   selectedParents?: string[];
   selectedResourceIds: string[];
@@ -94,6 +99,13 @@ function DataSourceViewResourceSelectorChildren({
     owner,
     parentId,
     viewType,
+  });
+  const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
+    useState(false);
+
+  const { connector } = useConnector({
+    workspaceId: owner.sId,
+    dataSourceId: dataSourceView.dataSource.sId,
   });
 
   useEffect(() => {
@@ -216,6 +228,38 @@ function DataSourceViewResourceSelectorChildren({
             />
           );
         })}
+        {dataSourceView.category === "managed" && nodes.length === 0 && (
+          <div className="flex w-full flex-col items-center gap-2 rounded-lg border bg-structure-50 py-2">
+            <span className="text-element-700">The Vault is empty!</span>
+            {owner.role === "admin" && connector ? (
+              <>
+                <Button
+                  label="Add Data"
+                  icon={PlusIcon}
+                  onClick={() => {
+                    setShowConnectorPermissionsModal(true);
+                  }}
+                />
+                <ConnectorPermissionsModal
+                  owner={owner}
+                  connector={connector}
+                  dataSource={dataSourceView.dataSource}
+                  isOpen={showConnectorPermissionsModal}
+                  onClose={() => {
+                    setShowConnectorPermissionsModal(false);
+                  }}
+                  readOnly={false}
+                  isAdmin={owner.role === "admin"}
+                />
+              </>
+            ) : (
+              <RequestDataSourceModal
+                dataSources={[dataSourceView.dataSource]}
+                owner={owner}
+              />
+            )}
+          </div>
+        )}
       </Tree>
       <InfiniteScroll
         nextPage={nextPage}
