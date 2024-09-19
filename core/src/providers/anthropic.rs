@@ -761,6 +761,12 @@ impl AnthropicLLM {
             },
         });
 
+        if let Some(user_id) = self.user_id.as_ref() {
+            body["metadata"] = json!({
+                "user_id": user_id,
+            });
+        }
+
         if system.is_some() {
             body["system"] = json!(system);
         }
@@ -862,6 +868,12 @@ impl AnthropicLLM {
             },
             "stream": true,
         });
+
+        if let Some(user_id) = self.user_id.as_ref() {
+            body["metadata"] = json!({
+                "user_id": user_id,
+            });
+        }
 
         if system.is_some() {
             body["system"] = json!(system);
