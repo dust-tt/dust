@@ -17,7 +17,7 @@ import {
 import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { isManaged } from "@app/lib/data_sources";
+import { isManaged, isWebsite } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
@@ -112,7 +112,7 @@ async function handler(
             dataSourceViews.map(async (dataSourceView) => {
               const dataSource = dataSourceView.dataSource;
 
-              if (!isManaged(dataSource)) {
+              if (!isManaged(dataSource) && !isWebsite(dataSource)) {
                 return {
                   ...dataSourceView,
                   dataSource: {

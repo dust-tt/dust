@@ -86,9 +86,11 @@ type VaultResourcesListProps = {
 
 const getTableColumns = ({
   isManaged,
+  isWebsite,
   isSystemVault,
 }: {
   isManaged: boolean;
+  isWebsite: boolean;
   isSystemVault: boolean;
 }) => {
   const nameColumn: ColumnDef<RowData, string> = {
@@ -234,7 +236,7 @@ const getTableColumns = ({
       actionColumn,
     ];
   }
-  return isManaged
+  return isManaged || isWebsite
     ? [nameColumn, usedByColumn, managedByColumn, lastSyncedColumn]
     : [nameColumn, usedByColumn, managedByColumn];
 };
@@ -269,6 +271,7 @@ export const VaultResourcesList = ({
 
   const isSystemVault = systemVault.sId === vault.sId;
   const isManagedCategory = category === "managed";
+  const isWebsite = category === "website";
   const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
@@ -494,6 +497,7 @@ export const VaultResourcesList = ({
           data={rows}
           columns={getTableColumns({
             isManaged: isManagedCategory,
+            isWebsite: isWebsite,
             isSystemVault,
           })}
           filter={dataSourceSearch}
