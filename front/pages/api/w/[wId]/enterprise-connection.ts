@@ -128,10 +128,21 @@ async function handler(
         },
       });
 
+      if (!workspaceWithVerifiedDomain) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Cannot create connection: workspace domain not verified. Verify domain and retry.",
+          },
+        });
+      }
+
       try {
         await createEnterpriseConnection(
           auth,
-          workspaceWithVerifiedDomain?.domain ?? null,
+          workspaceWithVerifiedDomain.domain,
           body
         );
       } catch (err) {

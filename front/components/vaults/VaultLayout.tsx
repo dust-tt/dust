@@ -1,4 +1,4 @@
-import { Breadcrumbs, FolderIcon } from "@dust-tt/sparkle";
+import { Breadcrumbs } from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
   DataSourceViewType,
@@ -14,7 +14,6 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { CreateOrEditVaultModal } from "@app/components/vaults/CreateOrEditVaultModal";
 import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
 import VaultSideBarMenu from "@app/components/vaults/VaultSideBarMenu";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { getVaultIcon } from "@app/lib/vaults";
@@ -104,31 +103,32 @@ function VaultBreadCrumbs({
     owner,
     dataSourceView: parentId ? dataSourceView : undefined,
     internalIds: parentId ? [parentId] : [],
+    viewType: "documents",
   });
 
   const { nodes: folders } = useDataSourceViewContentNodes({
     dataSourceView: currentFolder ? dataSourceView : undefined,
     internalIds: currentFolder?.parentInternalIds ?? [],
     owner,
+    viewType: "documents",
   });
 
-  const items: {
-    label: string;
-    icon?: ComponentType;
-    href?: string;
-  }[] = useMemo(() => {
+  const items = useMemo(() => {
     if (!category) {
       return [];
     }
 
-    const items = [
+    const items: {
+      label: string;
+      icon?: ComponentType;
+      href?: string;
+    }[] = [
       {
         icon: getVaultIcon(vault),
         label: vault.kind === "global" ? "Company Data" : vault.name,
         href: `/w/${owner.sId}/vaults/${vault.sId}`,
       },
       {
-        icon: CATEGORY_DETAILS[category].icon,
         label: CATEGORY_DETAILS[category].label,
         href: `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`,
       },
@@ -158,10 +158,6 @@ function VaultBreadCrumbs({
       }
 
       items.push({
-        icon: getConnectorProviderLogoWithFallback(
-          dataSourceView.dataSource.connectorProvider,
-          FolderIcon
-        ),
         label: getDataSourceNameFromView(dataSourceView),
         href: `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
       });
@@ -170,7 +166,6 @@ function VaultBreadCrumbs({
         items.push({
           label: node.title,
           href: `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${node.internalId}`,
-          icon: FolderIcon,
         });
       }
     }

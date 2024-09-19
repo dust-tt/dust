@@ -259,7 +259,8 @@ const SystemVaultItem = ({
   const router = useRouter();
 
   const itemPath = `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`;
-  const isAncestorToCurrentPage = router.asPath.startsWith(itemPath + "/");
+  const isAncestorToCurrentPage =
+    router.asPath.startsWith(itemPath + "/") || router.asPath === itemPath;
 
   // Unfold the item if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);
@@ -336,7 +337,8 @@ const VaultMenuItem = ({
   const router = useRouter();
 
   const vaultPath = `/w/${owner.sId}/vaults/${vault.sId}`;
-  const isAncestorToCurrentPage = router.asPath.startsWith(vaultPath + "/");
+  const isAncestorToCurrentPage =
+    router.asPath.startsWith(vaultPath + "/") || router.asPath === vaultPath;
 
   // Unfold the vault if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);
@@ -471,9 +473,9 @@ const VaultDataSourceViewSubMenu = ({
   const router = useRouter();
 
   const vaultCategoryPath = `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`;
-  const isAncestorToCurrentPage = router.asPath.includes(
-    vaultCategoryPath + "/"
-  );
+  const isAncestorToCurrentPage =
+    router.asPath.startsWith(vaultCategoryPath + "/") ||
+    router.asPath === vaultCategoryPath;
 
   // Unfold the vault's category if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);
@@ -490,6 +492,11 @@ const VaultDataSourceViewSubMenu = ({
       vaultId: vault.sId,
       category,
     });
+  const sortedViews = useMemo(() => {
+    return vaultDataSourceViews.sort((a, b) =>
+      getDataSourceNameFromView(a).localeCompare(getDataSourceNameFromView(b))
+    );
+  }, [vaultDataSourceViews]);
 
   return (
     <Tree.Item
@@ -509,7 +516,7 @@ const VaultDataSourceViewSubMenu = ({
     >
       {isExpanded && (
         <Tree isLoading={isVaultDataSourceViewsLoading}>
-          {vaultDataSourceViews.map((ds) => (
+          {sortedViews.map((ds) => (
             <VaultDataSourceViewItem
               item={ds}
               key={ds.sId}
@@ -563,9 +570,9 @@ const VaultAppSubMenu = ({
   const router = useRouter();
 
   const vaultCategoryPath = `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`;
-  const isAncestorToCurrentPage = router.asPath.includes(
-    vaultCategoryPath + "/"
-  );
+  const isAncestorToCurrentPage =
+    router.asPath.startsWith(vaultCategoryPath + "/") ||
+    router.asPath === vaultCategoryPath;
 
   // Unfold the vault's category if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);

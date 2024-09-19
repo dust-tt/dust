@@ -50,19 +50,8 @@ function import {
     psql ${uri} -c "drop table if exists __copy;"
 }
 
-if [ -z "$DEVELOPMENT_DUST_APPS_WORKSPACE_ID" ] 
-then
-    echo "Please set DEVELOPMENT_DUST_APPS_WORKSPACE_ID with your local workspace sId if you want to synchronize there dust-apps from production."
-    exit 0
-fi
-
-DUST_APPS_WORKSPACE_NUMERIC_ID=$(psql ${FRONT_DATABASE_URI} -c "COPY (select id from workspaces where \"sId\"='${DEVELOPMENT_DUST_APPS_WORKSPACE_ID}') TO STDOUT")
-if [ -z "$DUST_APPS_WORKSPACE_NUMERIC_ID" ] 
-then
-    echo "Cannot find workspace ${DEVELOPMENT_DUST_APPS_WORKSPACE_ID} on your local instance."
-    exit 0
-fi
-
+DEVELOPMENT_DUST_APPS_WORKSPACE_ID='78bda07b39'
+DUST_APPS_WORKSPACE_NUMERIC_ID=$(npx tsx ${DIR}/init_dust_apps.ts)
 
 mkdir -p /tmp/dust-apps
 
@@ -115,10 +104,10 @@ echo
 echo "Will copy apps into workspace ${DEVELOPMENT_DUST_APPS_WORKSPACE_ID}..."
 
 echo "Fetching prodbox pod..."
-PRODBOX_POD_NAME=$(kubectl get pods |grep prodbox |cut -d \  -f1)
+PRODBOX_POD_NAME=$(kubectl get pods |grep prodbox|grep Running |cut -d \  -f1)
 
 # ---- front
-VAULT_ID=$(psql ${FRONT_DATABASE_URI} -c "COPY (SELECT id from vaults where \"workspaceId\"=${DUST_APPS_WORKSPACE_NUMERIC_ID} and kind='global') TO STDOUT")
+VAULT_ID=$(psql ${FRONT_DATABASE_URI} -c "COPY (SELECT id from vaults where \"workspaceId\"=${DUST_APPS_WORKSPACE_NUMERIC_ID} and name='Public Dust Apps') TO STDOUT")
 fetch FRONT apps "id createdAt updatedAt sId name description visibility savedSpecification savedConfig savedRun dustAPIProjectId ${DUST_APPS_WORKSPACE_NUMERIC_ID} ${VAULT_ID}" "\\\"workspaceId\\\"=5069"
 PROJECT_IDS=$(cut -f 11 /tmp/dust-apps/FRONT_apps.csv |paste -sd "," -)
 
@@ -153,5 +142,5 @@ import CORE datasets_joins "id dataset point point_idx" "point point_idx" "" "an
 rm -R /tmp/dust-apps
 
 echo
-echo "You can now start front server with DEVELOPMENT_DUST_APPS_WORKSPACE_ID=\"${DEVELOPMENT_DUST_APPS_WORKSPACE_ID}\" and DUST_PROD_API=\"http://localhost:3000\" to run apps locally."
+echo "You can now start front server with DUST_PROD_API=\"http://localhost:3000\" to run apps locally."
 echo "Ensure you have valid env variables for DUST_MANAGED_ANTHROPIC_API_KEY, DUST_MANAGED_SERP_API_KEY and DUST_MANAGED_BROWSERLESS_API_KEY."

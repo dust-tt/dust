@@ -56,7 +56,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
   const { run, spec } = r;
 
-  const dustAppsListUrl = await getDustAppsListUrl(auth);
+  const dustAppsListUrl = await getDustAppsListUrl(
+    auth,
+    context.params.vaultId
+  );
 
   return {
     props: {

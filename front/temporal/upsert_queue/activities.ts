@@ -53,7 +53,7 @@ export async function upsertDocumentActivity(
     documentId: upsertQueueItem.documentId,
   });
 
-  const auth = await Authenticator.internalBuilderForWorkspace(
+  const auth = await Authenticator.internalAdminForWorkspace(
     upsertQueueItem.workspaceId
   );
 
@@ -190,7 +190,7 @@ export async function upsertTableActivity(
     tableId: upsertQueueItem.tableId,
   });
 
-  const auth = await Authenticator.internalBuilderForWorkspace(
+  const auth = await Authenticator.internalAdminForWorkspace(
     upsertQueueItem.workspaceId
   );
 

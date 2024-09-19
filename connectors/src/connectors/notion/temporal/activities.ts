@@ -78,6 +78,7 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 const logger = mainLogger.child({ provider: "notion" });
 
 const GARBAGE_COLLECTION_INTERVAL_HOURS = 12;
+const DATABASE_TO_CSV_MAX_SIZE = 256 * 1024 * 1024; // 256MB
 
 export async function fetchDatabaseChildPages({
   connectorId,
@@ -2453,7 +2454,7 @@ export async function upsertDatabaseStructuredDataFromCache({
     return;
   }
 
-  const pageCacheEntries = await NotionConnectorPageCacheEntry.findAll({
+  const pageCacheEntriesCount = await NotionConnectorPageCacheEntry.count({
     where: {
       parentId: databaseId,
       connectorId,
@@ -2461,19 +2462,60 @@ export async function upsertDatabaseStructuredDataFromCache({
     },
   });
 
-  if (!pageCacheEntries.length) {
+  if (!pageCacheEntriesCount) {
     localLogger.info("No pages found in cache (skipping).");
     return;
   }
 
-  const pagesProperties = pageCacheEntries.map(
-    (p) => JSON.parse(p.pagePropertiesText) as PageObjectProperties
-  );
+  let pagesProperties: PageObjectProperties[] = [];
+  let dustIdColumn: string[] = [];
+
+  // Loop by chunks of 250 and use raw data to avoid memory issues
+  const chunkSize = 250;
+  let currentSizeInBytes = 0;
+  for (let i = 0; i < pageCacheEntriesCount; i += chunkSize) {
+    const pageCacheEntries: {
+      notionPageId: string;
+      pagePropertiesText: string;
+    }[] = await NotionConnectorPageCacheEntry.findAll({
+      attributes: ["notionPageId", "pagePropertiesText"],
+      raw: true,
+      where: {
+        parentId: databaseId,
+        connectorId,
+        workflowId: topLevelWorkflowId,
+      },
+      limit: chunkSize,
+      offset: i,
+    });
+
+    currentSizeInBytes += pageCacheEntries.reduce(
+      (acc, p) => acc + p.pagePropertiesText.length,
+      0
+    );
+
+    if (currentSizeInBytes > DATABASE_TO_CSV_MAX_SIZE) {
+      localLogger.info(
+        "Database size is too large to upsert, skipping. Action: maybe add a skipReason to avoid even trying."
+      );
+      return;
+    }
+
+    pagesProperties = pagesProperties.concat(
+      pageCacheEntries.map(
+        (p) => JSON.parse(p.pagePropertiesText) as PageObjectProperties
+      )
+    );
+
+    dustIdColumn = dustIdColumn.concat(
+      pageCacheEntries.map((p) => p.notionPageId)
+    );
+  }
 
   const csv = await renderDatabaseFromPages({
     databaseTitle: null,
     pagesProperties,
-    dustIdColumn: pageCacheEntries.map((p) => `notion-${p.notionPageId}`),
+    dustIdColumn,
     cellSeparator: ",",
     rowBoundary: "",
   });

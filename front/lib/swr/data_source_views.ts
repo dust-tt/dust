@@ -107,7 +107,8 @@ export function useDataSourceViewContentNodes({
   internalIds,
   parentId,
   pagination,
-  viewType = "documents",
+  viewType,
+  disabled = false,
 }: {
   owner: LightWorkspaceType;
   dataSourceView?: DataSourceViewType;
@@ -115,10 +116,13 @@ export function useDataSourceViewContentNodes({
   parentId?: string;
   pagination?: PaginationState;
   viewType?: ContentNodesViewType;
+  disabled?: boolean;
 }): {
   isNodesError: boolean;
   isNodesLoading: boolean;
-  mutateDataSourceViewContentNodes: KeyedMutator<GetDataSourceViewContentNodes>;
+  isNodesValidating: boolean;
+  mutate: KeyedMutator<GetDataSourceViewContentNodes>;
+  mutateRegardlessOfQueryParams: KeyedMutator<GetDataSourceViewContentNodes>;
   nodes: GetDataSourceViewContentNodes["nodes"];
   totalNodesCount: number;
 } {
@@ -142,18 +146,27 @@ export function useDataSourceViewContentNodes({
     }); // Serialize with body to ensure uniqueness.
   }, [url, body]);
 
-  const { data, error, mutate } = useSWRWithDefaults(fetchKey, async () => {
-    if (!url) {
-      return undefined;
-    }
+  const { data, error, mutate, isValidating, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      fetchKey,
+      async () => {
+        if (!url) {
+          return undefined;
+        }
 
-    return postFetcher([url, { internalIds, parentId, viewType }]);
-  });
+        return postFetcher([url, { internalIds, parentId, viewType }]);
+      },
+      {
+        disabled: disabled || !viewType,
+      }
+    );
 
   return {
     isNodesError: !!error,
     isNodesLoading: !error && !data,
-    mutateDataSourceViewContentNodes: mutate,
+    isNodesValidating: isValidating,
+    mutate,
+    mutateRegardlessOfQueryParams,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
     totalNodesCount: data ? data.total : 0,
   };

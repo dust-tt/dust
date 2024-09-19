@@ -114,31 +114,31 @@ const SolutionsMenuConfig: MenuConfig = {
   items: [
     {
       title: "Customer Support",
-      href: "/site/solutions/customer-support",
+      href: "/home/solutions/customer-support",
     },
     {
       title: "Marketing & Content",
-      href: "/site/solutions/marketing",
+      href: "/home/solutions/marketing",
     },
     {
       title: "Recruiting & People",
-      href: "/site/solutions/recruiting-people",
+      href: "/home/solutions/recruiting-people",
     },
     {
       title: "Engineering",
-      href: "/site/solutions/engineering",
+      href: "/home/solutions/engineering",
     },
     {
       title: "Data & Analytics",
-      href: "/site/solutions/data-analytics",
+      href: "/home/solutions/data-analytics",
     },
     {
       title: "Sales",
-      href: "/site/solutions/sales",
+      href: "/home/solutions/sales",
     },
     {
       title: "Knowledge Management",
-      href: "/site/solutions/knowledge",
+      href: "/home/solutions/knowledge",
     },
   ],
 };
@@ -148,11 +148,11 @@ const DevelopersMenuConfig: MenuConfig = {
   items: [
     {
       title: "Dust Apps & API",
-      href: "/site/solutions/dust-platform",
+      href: "/home/solutions/dust-platform",
     },
     {
       title: "Dust for engineers",
-      href: "/site/solutions/engineering",
+      href: "/home/solutions/engineering",
     },
     {
       title: "Platform Documentation",
@@ -177,7 +177,7 @@ export const menuConfig: DocsConfig = {
   mainNav: [
     {
       title: "Product",
-      href: "/",
+      href: "/home",
     },
     {
       title: SolutionsMenuConfig.title,
@@ -193,11 +193,11 @@ export const menuConfig: DocsConfig = {
     },
     {
       title: "Pricing",
-      href: "/site/pricing",
+      href: "/home/pricing",
     },
     {
       title: "Security",
-      href: "/site/security",
+      href: "/home/security",
     },
     {
       title: MoreMenuConfig.title,
@@ -209,15 +209,15 @@ export const menuConfig: DocsConfig = {
   mobileNav: [
     {
       title: "Product",
-      href: "/",
+      href: "/home",
     },
     {
       title: "Pricing",
-      href: "/site/pricing",
+      href: "/home/pricing",
     },
     {
       title: "Security",
-      href: "/site/security",
+      href: "/home/security",
     },
     {
       title: SolutionsMenuConfig.title,
@@ -246,15 +246,15 @@ export const menuConfig: DocsConfig = {
       items: [
         {
           title: "Product",
-          href: "/",
+          href: "/home",
         },
         {
           title: "Pricing",
-          href: "/site/pricing",
+          href: "/home/pricing",
         },
         {
           title: "Security",
-          href: "/site/security",
+          href: "/home/security",
         },
       ],
     },

@@ -168,10 +168,6 @@ export function microsoftIncrementalSyncWorkflowId(connectorId: ModelId) {
   return `microsoft-incrementalSync-${connectorId}`;
 }
 
-export function microsoftGarbageCollectionWorkflowId(connectorId: ModelId) {
-  return `microsoft-garbageCollection-${connectorId}`;
-}
-
 export function microsoftDeletionWorkflowId(
   connectorId: ModelId,
   nodeIdsToDelete: string[]

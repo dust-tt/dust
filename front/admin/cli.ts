@@ -1,5 +1,4 @@
 import {
-  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   ConnectorsAPI,
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
@@ -10,7 +9,10 @@ import parseArgs from "minimist";
 import readline from "readline";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
-import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
+import {
+  getTextContentFromMessage,
+  renderConversationForModelMultiActions,
+} from "@app/lib/api/assistant/generation";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
@@ -28,6 +30,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
+import { tokenCountForTexts } from "@app/lib/tokenization";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import {
@@ -129,7 +132,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
           throw new Error(`Workspace not found: wId='${args.wId}'`);
         }
 
-        const auth = await Authenticator.internalBuilderForWorkspace(w.sId);
+        const auth = await Authenticator.internalAdminForWorkspace(w.sId);
         const dataSources = await getDataSources(auth);
         const connectorIds = removeNulls(dataSources.map((d) => d.connectorId));
         const connectorsAPI = new ConnectorsAPI(
@@ -169,7 +172,7 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         }
         console.log(`Unpausing connectors for workspace: wId=${w.sId}`);
 
-        const auth = await Authenticator.internalBuilderForWorkspace(w.sId);
+        const auth = await Authenticator.internalAdminForWorkspace(w.sId);
         const dataSources = await getDataSources(auth);
         const connectorIds = removeNulls(dataSources.map((d) => d.connectorId));
         const connectorsAPI = new ConnectorsAPI(
@@ -441,14 +444,16 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.cId) {
         throw new Error("Missing --cId argument");
       }
-      const verbose = args.verbose === "true";
-
-      const modelId =
-        args.modelId ?? CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId;
-      const model = SUPPORTED_MODEL_CONFIGS.find((m) => m.modelId === modelId);
-      if (!model) {
-        throw new Error(`Model not found: modelId='${modelId}'`);
+      if (!args.modelId) {
+        throw new Error("Missing --modelId argument");
       }
+      const model = SUPPORTED_MODEL_CONFIGS.find(
+        (m) => m.modelId === args.modelId
+      );
+      if (!model) {
+        throw new Error(`Model not found: '${args.modelId}'`);
+      }
+      const verbose = args.verbose === "true";
 
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
       const conversation = await getConversation(auth, args.cId as string);
@@ -461,41 +466,68 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
       const prompt = "";
 
-      const response = await renderConversationForModelMultiActions({
+      const convoRes = await renderConversationForModelMultiActions({
         conversation,
         model,
         prompt,
         allowedTokenCount,
       });
 
-      if (response.isErr()) {
-        logger.error(response.error.message);
-      } else {
-        logger.info(
-          {
-            model,
-            prompt,
-          },
-          "Called renderConversationForModel with params:"
-        );
-        const result = response.value;
-
-        if (!verbose) {
-          // For convenience we shorten the content when role = "tool"
-          result.modelConversation.messages =
-            result.modelConversation.messages.map((m) => {
-              if (m.role === "function") {
-                return {
-                  ...m,
-                  content: m.content.slice(0, 200) + "...",
-                };
-              }
-              return m;
-            });
-        }
-
-        logger.info(result, "Result from renderConversationForModel:");
+      if (convoRes.isErr()) {
+        throw new Error(convoRes.error.message);
       }
+      const renderedConvo = convoRes.value;
+      const messages = renderedConvo.modelConversation.messages;
+
+      const tokenCountRes = await tokenCountForTexts(
+        [
+          ...messages.map((m) => {
+            let text = `${m.role} ${"name" in m ? m.name : ""} ${getTextContentFromMessage(m)}`;
+            if ("function_calls" in m) {
+              text += m.function_calls
+                .map((f) => `${f.name} ${f.arguments}`)
+                .join(" ");
+            }
+            return text;
+          }),
+        ],
+        model
+      );
+      if (tokenCountRes.isErr()) {
+        throw new Error(tokenCountRes.error.message);
+      }
+      const tokenCount = tokenCountRes.value;
+
+      console.log(
+        `Token used: ${renderedConvo.tokensUsed} (this includes a margin of 64 tokens).`
+      );
+      console.log(
+        `Number of messages: ${renderedConvo.modelConversation.messages.length}`
+      );
+      console.log(`Tokens per message: ${tokenCount}.`);
+
+      if (verbose) {
+        // For convenience we shorten the content when role = "tool"
+        renderedConvo.modelConversation.messages =
+          renderedConvo.modelConversation.messages.map((m) => {
+            if (m.role === "function") {
+              return {
+                ...m,
+                content: m.content.slice(0, 200) + "...",
+              };
+            }
+            return m;
+          });
+
+        renderedConvo.modelConversation.messages.forEach((m) => {
+          console.log(m);
+        });
+      } else {
+        console.log(
+          "Add option --verbose=true to print also the content of the messages."
+        );
+      }
+
       return;
     }
   }

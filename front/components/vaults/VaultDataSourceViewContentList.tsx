@@ -13,14 +13,20 @@ import type {
   ContentNodesViewType,
   DataSourceViewContentNode,
   DataSourceViewType,
+  LightWorkspaceType,
   PlanType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { isValidContentNodesViewType } from "@dust-tt/types";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type {
+  CellContext,
+  ColumnDef,
+  SortingState,
+} from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as React from "react";
 
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -116,6 +122,39 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
   return columns;
 };
 
+function useStaticDataSourceViewHasContent({
+  owner,
+  dataSourceView,
+  parentId,
+  viewType,
+}: {
+  owner: LightWorkspaceType;
+  dataSourceView: DataSourceViewType;
+  parentId?: string;
+  viewType: ContentNodesViewType;
+}) {
+  // We don't do the call if the dataSourceView is managed.
+  const { isNodesLoading, nodes, isNodesValidating } =
+    useDataSourceViewContentNodes({
+      dataSourceView: isManaged(dataSourceView.dataSource)
+        ? undefined
+        : dataSourceView,
+      owner,
+      internalIds: parentId ? [parentId] : undefined,
+      pagination: {
+        pageIndex: 0,
+        pageSize: 1,
+      },
+      viewType,
+    });
+
+  return {
+    hasContent: isManaged(dataSourceView.dataSource) ? true : !!nodes?.length,
+    isLoading: isManaged(dataSourceView.dataSource) ? false : isNodesLoading,
+    isNodesValidating,
+  };
+}
+
 export const VaultDataSourceViewContentList = ({
   owner,
   vault,
@@ -132,12 +171,15 @@ export const VaultDataSourceViewContentList = ({
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "name", desc: false },
+  ]);
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
   });
-  const [viewType, setViewType] = useHashParam("viewType", "documents");
+  const [viewType, setViewType] = useHashParam("viewType");
   const router = useRouter();
   const showVaultUsage =
     dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource);
@@ -148,21 +190,26 @@ export const VaultDataSourceViewContentList = ({
   const { dataSourceViews } = useDataSourceViews(owner, {
     disabled: !showVaultUsage,
   });
-
   const { systemVault } = useSystemVault({
     workspaceId: owner.sId,
   });
 
-  const handleViewTypeChange = (newViewType: ContentNodesViewType) => {
-    if (newViewType !== viewType) {
-      setPagination({ pageIndex: 0, pageSize: pagination.pageSize }, "replace");
-      setViewType(newViewType);
-    }
-  };
+  const handleViewTypeChange = useCallback(
+    (newViewType?: ContentNodesViewType) => {
+      if (newViewType !== viewType) {
+        setPagination(
+          { pageIndex: 0, pageSize: pagination.pageSize },
+          "replace"
+        );
+        setViewType(newViewType);
+      }
+    },
+    [setPagination, setViewType, viewType, pagination.pageSize]
+  );
 
   const {
     isNodesLoading,
-    mutateDataSourceViewContentNodes,
+    mutateRegardlessOfQueryParams: mutateContentNodes,
     nodes,
     totalNodesCount,
   } = useDataSourceViewContentNodes({
@@ -170,8 +217,51 @@ export const VaultDataSourceViewContentList = ({
     owner,
     parentId,
     pagination,
-    viewType: isValidContentNodesViewType(viewType) ? viewType : "documents",
+    viewType: isValidContentNodesViewType(viewType) ? viewType : undefined,
   });
+
+  const { hasContent: hasDocuments, isNodesValidating: isDocumentsValidating } =
+    useStaticDataSourceViewHasContent({
+      owner,
+      dataSourceView,
+      parentId,
+      viewType: "documents",
+    });
+  const { hasContent: hasTables, isNodesValidating: isTablesValidating } =
+    useStaticDataSourceViewHasContent({
+      owner,
+      dataSourceView,
+      parentId,
+      viewType: "tables",
+    });
+
+  const isDataSourceManaged = isManaged(dataSourceView.dataSource);
+
+  useEffect(() => {
+    if (!isTablesValidating && !isDocumentsValidating) {
+      if (isDataSourceManaged) {
+        handleViewTypeChange("documents");
+        return;
+      }
+      // If the view only has content in one of the two views, we switch to that view.
+      // if both view have content, or neither views have content, we default to documents.
+      if (hasTables === true && hasDocuments === false) {
+        handleViewTypeChange("tables");
+      } else if (hasTables === false && hasDocuments === true) {
+        handleViewTypeChange("documents");
+      } else if (!viewType) {
+        handleViewTypeChange("documents");
+      }
+    }
+  }, [
+    hasDocuments,
+    hasTables,
+    handleViewTypeChange,
+    viewType,
+    isTablesValidating,
+    isDocumentsValidating,
+    isDataSourceManaged,
+  ]);
 
   const rows: RowData[] = useMemo(
     () =>
@@ -277,7 +367,8 @@ export const VaultDataSourceViewContentList = ({
         )}
         {isFolder(dataSourceView.dataSource) && (
           <>
-            {rows.length > 0 && (
+            {((viewType === "tables" && hasDocuments) ||
+              (viewType === "documents" && hasTables)) && (
               <DropdownMenu>
                 <DropdownMenu.Button>
                   <Button
@@ -334,7 +425,7 @@ export const VaultDataSourceViewContentList = ({
                 onClose={(save) => {
                   setShowConnectorPermissionsModal(false);
                   if (save) {
-                    void mutateDataSourceViewContentNodes();
+                    void mutateContentNodes();
                   }
                 }}
                 plan={plan}
@@ -354,7 +445,8 @@ export const VaultDataSourceViewContentList = ({
           columns={getTableColumns(showVaultUsage)}
           filter={dataSourceSearch}
           filterColumn="title"
-          initialColumnOrder={[{ desc: false, id: "title" }]}
+          sorting={sorting}
+          setSorting={setSorting}
           totalRowCount={totalNodesCount}
           pagination={pagination}
           setPagination={setPagination}
@@ -371,12 +463,15 @@ export const VaultDataSourceViewContentList = ({
         owner={owner}
         plan={plan}
         onSave={async (action?: ContentActionKey) => {
-          if (action === "DocumentUploadOrEdit") {
+          await mutateContentNodes();
+          if (
+            action === "DocumentUploadOrEdit" ||
+            action === "MultipleDocumentsUpload"
+          ) {
             handleViewTypeChange("documents");
           } else if (action === "TableUploadOrEdit") {
             handleViewTypeChange("tables");
           }
-          await mutateDataSourceViewContentNodes();
         }}
       />
     </>

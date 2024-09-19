@@ -2,7 +2,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export const getDustAppsListUrl = async (
-  auth: Authenticator
+  auth: Authenticator,
+  vaultId: string
 ): Promise<string> => {
   const owner = auth.getNonNullableWorkspace();
 
@@ -12,9 +13,14 @@ export const getDustAppsListUrl = async (
     return defaultUrl;
   }
 
-  const vault = await VaultResource.fetchWorkspaceGlobalVault(auth);
-  if (!vault) {
-    return defaultUrl;
+  let vaultIdForUrl = vaultId;
+  if (!vaultIdForUrl) {
+    const vault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+    if (!vault) {
+      return defaultUrl;
+    }
+    vaultIdForUrl = vault.sId;
   }
-  return `/w/${owner.sId}/vaults/${vault.sId}/categories/apps`;
+
+  return `/w/${owner.sId}/vaults/${vaultIdForUrl}/categories/apps`;
 };

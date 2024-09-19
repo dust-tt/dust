@@ -211,6 +211,7 @@ export default function WorkspaceAdmin({
           owner={owner}
           plan={plan}
           strategyDetails={enterpriseConnectionStrategyDetails}
+          workspaceVerifiedDomain={workspaceVerifiedDomain}
         />
         <div className="flex flex-row gap-2">
           <Searchbar

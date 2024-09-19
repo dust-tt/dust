@@ -102,7 +102,7 @@ export async function isWorkflowDeletableActivity({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.workspace();
   if (!workspace) {
     return false;
@@ -132,7 +132,7 @@ export async function deleteConversationsActivity({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.workspace();
 
   if (!workspace) {
@@ -268,7 +268,7 @@ export async function deleteAgentsActivity({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.workspace();
 
   if (!workspace) {
@@ -379,7 +379,7 @@ export async function deleteAppsActivity({
   workspaceId: string;
 }) {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.workspace();
 
   if (!workspace) {
@@ -420,7 +420,7 @@ export async function deleteRunOnDustAppsActivity({
   workspaceId: string;
 }) {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.workspace();
 
   if (!workspace) {
@@ -463,7 +463,7 @@ export async function deleteMembersActivity({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.workspace();
 
   if (!workspace) {
@@ -521,7 +521,7 @@ export async function deleteWorkspaceActivity({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.workspace();
 
   if (!workspace) {

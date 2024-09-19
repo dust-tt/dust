@@ -241,7 +241,7 @@ async function handler(
               });
             }
             await unpauseAllConnectorsAndCancelScrub(
-              await Authenticator.internalBuilderForWorkspace(workspace.sId)
+              await Authenticator.internalAdminForWorkspace(workspace.sId)
             );
             return res.status(200).json({ success: true });
           } catch (error) {
@@ -448,7 +448,7 @@ async function handler(
               // If the subscription is reactivated, we unset the requestCancelAt date.
               requestCancelAt: endDate ? now : null,
             });
-            const auth = await Authenticator.internalBuilderForWorkspace(
+            const auth = await Authenticator.internalAdminForWorkspace(
               subscription.workspace.sId
             );
             if (!endDate) {

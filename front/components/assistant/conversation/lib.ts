@@ -196,8 +196,9 @@ export async function deleteConversation({
       description: data.error.message || "Please try again or contact us.",
       type: "error",
     });
-    return;
+    return false;
   }
+  return true;
 }
 
 export async function createConversationWithMessage({

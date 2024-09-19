@@ -183,7 +183,7 @@ export async function runPostUpsertHooks({
   upsertContext?: UpsertContext;
 }) {
   const fullText = sectionFullText(section);
-  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
   const postUpsertHooksToRun = await getDocumentsPostUpsertHooksToRun({
     auth,

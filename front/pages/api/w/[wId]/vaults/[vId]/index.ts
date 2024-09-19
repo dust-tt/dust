@@ -117,7 +117,7 @@ async function handler(
         });
       }
 
-      const { content } = bodyValidation.right;
+      const { content, name } = bodyValidation.right;
 
       if (content) {
         const currentViews = await DataSourceViewResource.listByVault(
@@ -164,6 +164,9 @@ async function handler(
             await view.delete(auth);
           }
         }
+      }
+      if (name) {
+        await vault.updateName(auth, name);
       }
       return res.status(200).json({ vault: vault.toJSON() });
     }
