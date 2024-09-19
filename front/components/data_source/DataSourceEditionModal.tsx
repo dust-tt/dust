@@ -45,7 +45,6 @@ function DataSourceManagementModal({
 
 interface DataSourceEditionModalProps {
   dataSource: DataSourceType;
-  dustClientFacingUrl: string;
   isOpen: boolean;
   onClose: () => void;
   onEditPermissionsClick: () => void;

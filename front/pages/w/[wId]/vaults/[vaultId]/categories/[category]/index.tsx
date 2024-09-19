@@ -19,7 +19,6 @@ import { VaultAppsList } from "@app/components/vaults/VaultAppsList";
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
 import { VaultResourcesList } from "@app/components/vaults/VaultResourcesList";
-import config from "@app/lib/api/config";
 import {
   augmentDataSourceWithConnectorDetails,
   getDataSources,
@@ -32,7 +31,6 @@ import type { DataSourceWithConnectorAndUsageType } from "@app/pages/w/[wId]/bui
 export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
     category: DataSourceViewCategory;
-    dustClientFacingUrl: string;
     isAdmin: boolean;
     canWriteInVault: boolean;
     vault: VaultType;
@@ -129,7 +127,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   return {
     props: {
       category: context.query.category as DataSourceViewCategory,
-      dustClientFacingUrl: config.getClientFacingUrl(),
       isAdmin,
       isBuilder,
       canWriteInVault,
@@ -145,7 +142,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
 export default function Vault({
   category,
-  dustClientFacingUrl,
   isAdmin,
   canWriteInVault,
   owner,
@@ -174,7 +170,6 @@ export default function Vault({
         />
       ) : (
         <VaultResourcesList
-          dustClientFacingUrl={dustClientFacingUrl}
           owner={owner}
           plan={plan}
           vault={vault}

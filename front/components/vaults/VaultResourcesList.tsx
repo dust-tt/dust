@@ -70,7 +70,6 @@ type RowData = {
 };
 
 type VaultResourcesListProps = {
-  dustClientFacingUrl: string;
   owner: WorkspaceType;
   plan: PlanType;
   isAdmin: boolean;
@@ -214,7 +213,6 @@ export const VaultResourcesList = ({
   plan,
   isAdmin,
   canWriteInVault,
-  dustClientFacingUrl,
   vault,
   systemVault,
   category,
@@ -373,7 +371,6 @@ export const VaultResourcesList = ({
             {isAdmin && (
               <AddConnectionMenu
                 owner={owner}
-                dustClientFacingUrl={dustClientFacingUrl}
                 plan={plan}
                 existingDataSources={vaultDataSourceViews.map(
                   (v) => v.dataSource
@@ -486,7 +483,6 @@ export const VaultResourcesList = ({
             plan={plan}
             readOnly={false}
             isAdmin={isAdmin}
-            dustClientFacingUrl={dustClientFacingUrl}
           />
         )}
     </>

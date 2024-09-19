@@ -24,7 +24,6 @@ import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import apiConfig from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -45,7 +44,6 @@ const defaultTranscriptConfigurationState = {
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  dustClientFacingUrl: string;
   dataSourcesViews: DataSourceViewType[];
 }>(async (_context, auth) => {
   const owner = auth.workspace();
@@ -78,7 +76,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
-      dustClientFacingUrl: apiConfig.getClientFacingUrl(),
       dataSourcesViews,
     },
   };
@@ -87,7 +84,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function LabsTranscriptsIndex({
   owner,
   subscription,
-  dustClientFacingUrl,
   dataSourcesViews,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useContext(SendNotificationsContext);
@@ -332,7 +328,7 @@ export default function LabsTranscriptsIndex({
     }
 
     const cRes = await setupOAuthConnection({
-      dustClientFacingUrl,
+      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
       provider: "google_drive",
       useCase: "labs_transcripts",
@@ -386,7 +382,7 @@ export default function LabsTranscriptsIndex({
         return;
       } else {
         const cRes = await setupOAuthConnection({
-          dustClientFacingUrl,
+          dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
           owner,
           provider: "gong",
           useCase: "connection",
