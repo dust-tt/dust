@@ -28,7 +28,7 @@ export const UpsertTableFromCsvSchema = t.intersection([
     tags: t.union([t.array(t.string), t.undefined, t.null]),
     parents: t.union([t.array(t.string), t.undefined, t.null]),
     truncate: t.boolean,
-    useAppForHeaderDetection: t.union([t.boolean, t.undefined]),
+    useAppForHeaderDetection: t.union([t.boolean, t.undefined, t.null]),
     async: t.union([t.boolean, t.undefined]),
   }),
   // csv is optional when editing an existing table.
