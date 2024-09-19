@@ -18,6 +18,7 @@ import type { AgentActionSpecification } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import { BaseAction, isDevelopment } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
+import assert from "assert";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
@@ -393,6 +394,19 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       DustProdActionRegistry["assistant-v2-retrieval"].config
     );
 
+    const uniqueDataSourceViewIds = Array.from(
+      new Set(actionConfiguration.dataSources.map((ds) => ds.dataSourceViewId))
+    );
+
+    const dataSourceViews = await DataSourceViewResource.fetchByIds(
+      auth,
+      uniqueDataSourceViewIds
+    );
+
+    const dataSourceViewsMap = Object.fromEntries(
+      dataSourceViews.map((dsv) => [dsv.sId, dsv])
+    );
+
     // Handle data sources list and parents/tags filtering.
     config.DATASOURCE.data_sources = actionConfiguration.dataSources.map(
       (d) => ({
@@ -400,9 +414,8 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           isDevelopment() && !apiConfig.getDevelopmentDustAppsWorkspaceId()
             ? PRODUCTION_DUST_WORKSPACE_ID
             : d.workspaceId,
-        // Use dataSourceViewId if it exists; otherwise, use dataSourceId.
         // Note: This value is passed to the registry for lookup.
-        data_source_id: d.dataSourceViewId ?? d.dataSourceId,
+        data_source_id: d.dataSourceViewId,
       })
     );
 
@@ -417,10 +430,16 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           config.DATASOURCE.filter.parents.in_map = {};
         }
 
-        // Note: We use dataSourceId here because after the registry lookup, it returns either the
-        // data source itself or the data source associated with the data source view.
-        config.DATASOURCE.filter.parents.in_map[ds.dataSourceId] =
-          ds.filter.parents.in;
+        const dsView = dataSourceViewsMap[ds.dataSourceViewId];
+        // This should never happen since dataSourceViews are stored by id in the
+        // agent_data_source_configurations table.
+        assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
+
+        // Note we use the dustAPIDataSourceId here since this is what is returned from the registry
+        // lookup.
+        config.DATASOURCE.filter.parents.in_map[
+          dsView.dataSource.dustAPIDataSourceId
+        ] = ds.filter.parents.in;
       }
       if (ds.filter.parents?.not) {
         if (!config.DATASOURCE.filter.parents.not) {
@@ -486,26 +505,13 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       dataSourceView: DataSourceViewResource;
     }[] = [];
 
-    const uniqueDataSourceViewIds = Array.from(
-      new Set(actionConfiguration.dataSources.map((ds) => ds.dataSourceViewId))
-    );
-
-    const dataSourceViews = await DataSourceViewResource.fetchByIds(
-      auth,
-      uniqueDataSourceViewIds
-    );
-
-    const dataSourceViewsMap = Object.fromEntries(
-      dataSourceViews.map((dsv) => [dsv.sId, dsv])
-    );
-
     // This is not perfect and will be erroneous in case of two data sources with the same id from
     // two different workspaces. We don't support cross workspace data sources right now. But we'll
     // likely want `core` to return the `workspace_id` that was used eventualy.
     // TODO(spolu): make `core` return data source workspace id.
-    const dataSourcesIdToWorkspaceId = Object.fromEntries(
+    const dustAPIDataSourcesIdToDetails = Object.fromEntries(
       actionConfiguration.dataSources.map((ds) => [
-        ds.dataSourceId,
+        dataSourceViewsMap[ds.dataSourceViewId].dataSource.dustAPIDataSourceId,
         {
           dataSourceView: dataSourceViewsMap[ds.dataSourceViewId],
           workspaceId: ds.workspaceId,
@@ -609,12 +615,19 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           // Prepare an array of document blobs and chunks to be passed to makeNewBatch.
           blobs = v.map((d, i) => {
             const reference = refs[i % refs.length];
-            const dsDetails = dataSourcesIdToWorkspaceId[d.data_source_id];
+
+            const details = dustAPIDataSourcesIdToDetails[d.data_source_id];
+            assert(details, `Data source view ${d.data_source_id} not found`);
+
+            console.log(
+              ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+            );
+            console.log(details);
 
             return {
               blob: {
-                dataSourceWorkspaceId: dsDetails.workspaceId,
-                dataSourceId: d.data_source_id,
+                dataSourceWorkspaceId: details.workspaceId,
+                dataSourceId: details.dataSourceView.sId,
                 sourceUrl: d.source_url,
                 documentId: d.document_id,
                 reference,
@@ -624,7 +637,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
                 retrievalActionId: action.id,
               },
               chunks: d.chunks,
-              dataSourceView: dsDetails.dataSourceView,
+              dataSourceView: details.dataSourceView,
             };
           });
         }

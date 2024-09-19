@@ -34,7 +34,6 @@ export type DataSourceFilter = {
 
 export type DataSourceConfiguration = {
   workspaceId: string;
-  dataSourceId: string;
   dataSourceViewId: string;
   filter: DataSourceFilter;
 };
