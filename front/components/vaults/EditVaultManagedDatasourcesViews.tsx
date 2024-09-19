@@ -50,6 +50,7 @@ export function EditVaultManagedDataSourcesViews({
     workspaceId: owner.sId,
     vaultId: systemVault.sId,
     category: "managed",
+    disabled: !isAdmin,
   });
 
   const updateVaultDataSourceViews = async (
