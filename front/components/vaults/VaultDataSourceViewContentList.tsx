@@ -339,7 +339,7 @@ export const VaultDataSourceViewContentList = ({
       <></>
     );
 
-  const emptyFolderContent = <div>No content</div>;
+  const emptyContent = parentId ? <div>No content</div> : emptyVaultContent;
 
   return (
     <>
@@ -362,10 +362,8 @@ export const VaultDataSourceViewContentList = ({
               }}
             />
           </>
-        ) : parentId ? (
-          emptyFolderContent
         ) : (
-          emptyVaultContent
+          emptyContent
         )}
         {isFolder(dataSourceView.dataSource) && (
           <>

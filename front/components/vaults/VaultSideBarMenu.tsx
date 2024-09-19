@@ -23,7 +23,6 @@ import { groupBy, sortBy, uniqBy } from "lodash";
 import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { current } from "tailwindcss/colors";
 
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
@@ -447,7 +446,7 @@ const VaultDataSourceViewItem = ({
   const { isNodesLoading, nodes } = useDataSourceViewContentNodes({
     dataSourceView: item,
     owner,
-    parentId: node ? node?.internalId : undefined,
+    parentId: node?.internalId,
     viewType: "documents",
   });
 
