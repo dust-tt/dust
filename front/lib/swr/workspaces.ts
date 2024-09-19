@@ -71,3 +71,33 @@ export function useWorkspaceEnterpriseConnection({
     mutateEnterpriseConnection: mutate,
   };
 }
+
+export function useWorkspaceActiveSubscription({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const workspaceSubscriptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/subscriptions`,
+    workspaceSubscriptionsFetcher
+  );
+
+  const activeSubscription = useMemo(() => {
+    if (!data) {
+      return null;
+    }
+    const activeSubscriptions = data.subscriptions.filter(
+      (sub) => sub.status === "active"
+    );
+    return activeSubscriptions[0] || null;
+  }, [data]);
+
+  return {
+    activeSubscription,
+    isActiveSubscriptionLoading: !error && !data,
+    isActiveSubscriptionError: error,
+  };
+}
