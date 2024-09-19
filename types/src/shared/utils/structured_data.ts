@@ -23,9 +23,8 @@ export function getSanitizedHeaders(rawHeaders: string[]) {
       }
 
       if (!conflictResolved) {
-        throw new InvalidStructuredDataHeaderError(
-          `Failed to generate unique slugified name for header "${curr}" after multiple attempts.`
-        );
+        // Ignore this header, push empty value
+        acc.push("");
       }
     }
     return acc;

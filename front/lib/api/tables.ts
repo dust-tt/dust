@@ -13,6 +13,7 @@ import {
   getSmallWhitelistedModel,
   guessDelimiter,
   Ok,
+  slugify,
 } from "@dust-tt/types";
 import { parse } from "csv-parse";
 import * as t from "io-ts";
@@ -299,6 +300,31 @@ export async function upsertTableFromCsv({
   return tableRes;
 }
 
+function getSanitizedHeaders(rawHeaders: string[]) {
+  return rawHeaders.reduce<string[]>((acc, curr) => {
+    const slugifiedName = slugify(curr);
+
+    if (!acc.includes(slugifiedName) || !slugifiedName.length) {
+      acc.push(slugifiedName);
+    } else {
+      let conflictResolved = false;
+      for (let i = 2; i < 64; i++) {
+        if (!acc.includes(slugify(`${slugifiedName}_${i}`))) {
+          acc.push(slugify(`${slugifiedName}_${i}`));
+          conflictResolved = true;
+          break;
+        }
+      }
+
+      if (!conflictResolved) {
+        // Ignore this header, push empty value
+        acc.push("");
+      }
+    }
+    return acc;
+  }, []);
+}
+
 export async function rowsFromCsv({
   auth,
   csv,
@@ -349,11 +375,13 @@ export async function rowsFromCsv({
     if (i++ >= rowIndex) {
       const record = anyRecord as string[];
       for (const [i, h] of header.entries()) {
-        const col = record[i] || "";
-        if (!valuesByCol[h]) {
-          valuesByCol[h] = [col];
-        } else {
-          (valuesByCol[h] as string[]).push(col);
+        if (h) {
+          const col = record[i] || "";
+          if (!valuesByCol[h]) {
+            valuesByCol[h] = [col];
+          } else {
+            (valuesByCol[h] as string[]).push(col);
+          }
         }
       }
     }
@@ -451,9 +479,13 @@ export async function rowsFromCsv({
   for (let i = 0; i < nbRows; i++) {
     const record = header.reduce(
       (acc, h) => {
-        const parsedValues = parsedValuesByCol[h];
-        acc[h] =
-          parsedValues && parsedValues[i] !== undefined ? parsedValues[i] : "";
+        if (h) {
+          const parsedValues = parsedValuesByCol[h];
+          acc[h] =
+            parsedValues && parsedValues[i] !== undefined
+              ? parsedValues[i]
+              : "";
+        }
         return acc;
       },
       {} as Record<string, CoreAPIRowValue>
