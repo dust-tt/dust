@@ -12,8 +12,8 @@ import {
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
-import { sendEmail } from "@app/lib/email";
 import { Workspace } from "@app/lib/models/workspace";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -240,13 +240,15 @@ export async function processTranscriptActivity(
       fileName: transcriptTitle,
       conversationId: null,
     });
-    const msg = {
+
+    await sendEmailWithTemplate({
+      to: user.email,
       from: {
         name: "Dust team",
         email: "team@dust.help",
       },
-      subject: `[DUST] - Unable to Generate Your Meeting Transcript Summary`,
-      html: `<p>Dear ${user.fullName()},</p>
+      subject: "[DUST] - Unable to Generate Your Meeting Transcript Summary",
+      body: `
         <p>We encountered an issue while trying to generate a summary for your recent Google Meet session. Unfortunately, the transcript provided by Google was either too short or empty, which prevented us from creating a meaningful summary.</p>
         <p>What you can do:</p>
         <ul>
@@ -254,11 +256,9 @@ export async function processTranscriptActivity(
         <li>If this issue persists, you may want to contact Google Meet support for assistance with their transcription service.</li>
         </ul>
         <p>We apologize for any inconvenience this may have caused. If you have any questions or need further assistance, please don't hesitate to reach out to our support team at <a href="mailto:support@dust.tt">support@dust.tt</a>.</p>
-        <p>Thank you for your understanding,</p>
-        <p>Best regards,</p>
-        <p>The Team at Dust</p>`,
-    };
-    await sendEmail(user.email, msg);
+        <p>Thank you for your understanding,</p>`,
+    });
+
     return;
   }
 
@@ -418,14 +418,13 @@ export async function processTranscriptActivity(
     conversation.sId
   );
 
-  const msg = {
+  await sendEmailWithTemplate({
+    to: user.email,
     from: {
       name: "Dust team",
       email: "team@dust.help",
     },
     subject: `[DUST] Meeting summary - ${transcriptTitle}`,
-    html: `<a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br />The team at <a href="https://dust.tt">Dust.tt</a>`,
-  };
-
-  await sendEmail(user.email, msg);
+    body: `<a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br />The team at <a href="https://dust.tt">Dust.tt</a>`,
+  });
 }

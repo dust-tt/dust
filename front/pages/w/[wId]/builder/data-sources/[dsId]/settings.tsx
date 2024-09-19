@@ -2,7 +2,6 @@ import { Button, TrashIcon } from "@dust-tt/sparkle";
 import type {
   APIError,
   DataSourceType,
-  DataSourceWithAgentsUsageType,
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -26,7 +25,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   dataSource: DataSourceType;
   fetchConnectorError?: boolean;
-  dataSourceUsage: DataSourceWithAgentsUsageType;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -58,16 +56,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const dataSourceUsageRes = await dataSource.getUsagesByAgents(auth);
-
   return {
     props: {
       owner,
       subscription,
       dataSource: dataSource.toJSON(),
-      dataSourceUsage: dataSourceUsageRes.isOk()
-        ? dataSourceUsageRes.value
-        : { count: 0, agentNames: [] },
     },
   };
 });
@@ -76,7 +69,6 @@ export default function DataSourceSettings({
   owner,
   subscription,
   dataSource,
-  dataSourceUsage,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
@@ -118,7 +110,6 @@ export default function DataSourceSettings({
         description: string;
         assistantDefaultSelected: boolean;
       }) => handleUpdate(settings)}
-      dataSourceUsage={dataSourceUsage}
     />
   );
 }
@@ -128,7 +119,6 @@ function StandardDataSourceSettings({
   subscription,
   dataSource,
   handleUpdate,
-  dataSourceUsage,
 }: {
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -137,7 +127,6 @@ function StandardDataSourceSettings({
     description: string;
     assistantDefaultSelected: boolean;
   }) => Promise<void>;
-  dataSourceUsage: DataSourceWithAgentsUsageType;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -290,11 +279,11 @@ function StandardDataSourceSettings({
               }}
             />
             <DeleteStaticDataSourceDialog
+              owner={owner}
               dataSource={dataSource}
               handleDelete={handleDelete}
               isOpen={isDeleteModalOpen}
               onClose={() => setIsDeleteModalOpen(false)}
-              dataSourceUsage={dataSourceUsage}
             />
           </div>
         </div>

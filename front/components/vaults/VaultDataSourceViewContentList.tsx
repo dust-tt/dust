@@ -426,7 +426,6 @@ export const VaultDataSourceViewContentList = ({
                     void mutateContentNodes();
                   }
                 }}
-                plan={plan}
                 readOnly={false}
                 isAdmin={isAdmin}
                 onManageButtonClick={() => {
@@ -442,6 +441,7 @@ export const VaultDataSourceViewContentList = ({
           columns={getTableColumns(showVaultUsage)}
           filter={dataSourceSearch}
           filterColumn="title"
+          className="pb-4"
           sorting={sorting}
           setSorting={setSorting}
           totalRowCount={totalNodesCount}

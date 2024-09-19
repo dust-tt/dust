@@ -170,6 +170,7 @@ export const VaultCategoriesList = ({
         <DataTable
           data={rows}
           columns={getTableColumns()}
+          className="pb-4"
           filter={dataSourceSearch}
           filterColumn={"name"}
           columnsBreakpoints={{

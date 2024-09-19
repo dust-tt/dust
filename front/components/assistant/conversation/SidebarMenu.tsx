@@ -7,6 +7,7 @@ import {
   Item,
   ListCheckIcon,
   MoreIcon,
+  PlusIcon,
   RobotIcon,
   TrashIcon,
   XMarkIcon,
@@ -134,7 +135,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   return (
     <>
       <Dialog
-        title="Clear conversations history"
+        title="Clear conversation history"
         isOpen={showDeleteDialog === "all"}
         onCancel={() => setShowDeleteDialog(null)}
         onValidate={deleteAll}
@@ -217,14 +218,24 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                       labelVisible={false}
                     />
                   </DropdownMenu.Button>
-                  <DropdownMenu.Items width={260}>
+                  <DropdownMenu.Items width={250}>
                     {isBuilder(owner) && (
-                      <DropdownMenu.Item
-                        label="Manage assistants"
-                        link={{ href: `/w/${owner.sId}/builder/assistants` }}
-                        icon={RobotIcon}
-                      />
+                      <>
+                        <DropdownMenu.Item
+                          label="Create new assistant"
+                          link={{
+                            href: `/w/${owner.sId}/builder/assistants/create`,
+                          }}
+                          icon={PlusIcon}
+                        />
+                        <DropdownMenu.Item
+                          label="Manage assistants"
+                          link={{ href: `/w/${owner.sId}/builder/assistants` }}
+                          icon={RobotIcon}
+                        />
+                      </>
                     )}
+
                     <DropdownMenu.Item
                       label="Edit conversations"
                       onClick={toggleMutliSelect}
@@ -232,7 +243,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                       disabled={conversations.length === 0}
                     />
                     <DropdownMenu.Item
-                      label="Clear conversations history"
+                      label="Clear conversation history"
                       onClick={() => setShowDeleteDialog("all")}
                       icon={TrashIcon}
                       disabled={conversations.length === 0}

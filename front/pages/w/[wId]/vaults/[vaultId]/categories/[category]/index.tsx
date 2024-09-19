@@ -63,10 +63,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const isBuilder = auth.isBuilder();
   const canWriteInVault = vault.canWrite(auth);
 
-  const isSystemVault = vault.kind === "system";
   const integrations: DataSourceIntegration[] = [];
 
-  if (isSystemVault) {
+  if (["system", "global"].includes(vault.kind)) {
     let setupWithSuffix: {
       connector: ConnectorProvider;
       suffix: string;

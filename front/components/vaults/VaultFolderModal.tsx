@@ -172,6 +172,7 @@ export default function VaultFolderModal({
               <>
                 <Page.Separator />
                 <DeleteStaticDataSourceDialog
+                  owner={owner}
                   dataSource={folder}
                   handleDelete={onDeleteFolder}
                   isOpen={showDeleteConfirmDialog}

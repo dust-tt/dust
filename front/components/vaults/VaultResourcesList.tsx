@@ -479,6 +479,7 @@ export const VaultResourcesList = ({
             />
             {selectedDataSourceView && (
               <DeleteStaticDataSourceDialog
+                owner={owner}
                 dataSource={selectedDataSourceView.dataSource}
                 handleDelete={onDeleteFolderOrWebsite}
                 isOpen={showDeleteConfirmDialog}
@@ -517,7 +518,6 @@ export const VaultResourcesList = ({
             onClose={() => {
               setShowConnectorPermissionsModal(false);
             }}
-            plan={plan}
             readOnly={false}
             isAdmin={isAdmin}
           />
