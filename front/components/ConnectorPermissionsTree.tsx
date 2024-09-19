@@ -217,7 +217,7 @@ export function DataSourceViewPermissionTreeChildren({
         isValidating={isNodesValidating}
         isLoading={isNodesLoading}
       >
-        <div className="pl-[20px] pt-1">
+        <div className="pl-5 pt-1">
           <Spinner size="xs" variant="dark" />
         </div>
       </InfiniteScroll>
