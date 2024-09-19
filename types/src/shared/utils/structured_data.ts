@@ -1,8 +1,6 @@
 import { parse } from "csv-parse";
 import { stringify } from "csv-stringify";
 
-import { slugify } from "./string_utils";
-
 export class InvalidStructuredDataHeaderError extends Error {}
 class ParsingCsvError extends Error {}
 

@@ -9,7 +9,6 @@ import type {
 import {
   CoreAPI,
   Err,
-  getSanitizedHeaders,
   getSmallWhitelistedModel,
   guessDelimiter,
   Ok,
