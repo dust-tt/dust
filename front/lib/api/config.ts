@@ -4,7 +4,9 @@ export const PRODUCTION_DUST_API = "https://dust.tt";
 
 const config = {
   getClientFacingUrl: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_CLIENT_FACING_URL");
+    return EnvironmentConfig.getEnvVariable(
+      "NEXT_PUBLIC_DUST_CLIENT_FACING_URL"
+    );
   },
   getAuth0TenantUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_TENANT_DOMAIN_URL");
