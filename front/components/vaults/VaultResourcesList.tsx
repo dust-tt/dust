@@ -372,8 +372,7 @@ export const VaultResourcesList = ({
       }
     }
   };
-  const connectionManagementVisible =
-    isSystemVault || !owner.flags.includes("private_data_vaults_feature");
+
   return (
     <>
       <div
@@ -395,64 +394,53 @@ export const VaultResourcesList = ({
             }}
           />
         )}
-        {connectionManagementVisible && category === "managed" && (
+        {isSystemVault && category === "managed" && (
           <div className="flex items-center justify-center text-sm font-normal text-element-700">
-            {isAdmin && (
-              <AddConnectionMenu
-                owner={owner}
-                plan={plan}
-                existingDataSources={
-                  vaultDataSourceViews
-                    .filter((dsView) => isManaged(dsView.dataSource))
-                    .map(
-                      (v) => v.dataSource
-                    ) as DataSourceWithConnectorDetailsType[]
-                  // We need to filter and then cast because useVaultDataSourceViewsWithDetails can return dataSources with connectorProvider as null
-                }
-                setIsProviderLoading={(provider, isLoading) => {
-                  setIsNewConnectorLoading(isLoading);
-                  setIsLoadingByProvider((prev) => ({
-                    ...prev,
-                    [provider]: isLoading,
-                  }));
-                }}
-                onCreated={async (dataSource) => {
-                  const updateDataSourceViews =
-                    await mutateVaultDataSourceViews();
-                  if (
-                    dataSource.connectorProvider &&
-                    REDIRECT_TO_EDIT_PERMISSIONS.includes(
-                      dataSource.connectorProvider
-                    )
-                  ) {
-                    if (updateDataSourceViews) {
-                      const view = updateDataSourceViews.dataSourceViews.find(
-                        (v: DataSourceViewType) =>
-                          v.dataSource.sId === dataSource.sId
-                      );
-                      if (view) {
-                        setSelectedDataSourceView(view);
-                        setShowConnectorPermissionsModal(true);
-                      }
+            <AddConnectionMenu
+              owner={owner}
+              plan={plan}
+              existingDataSources={
+                vaultDataSourceViews
+                  .filter((dsView) => isManaged(dsView.dataSource))
+                  .map(
+                    (v) => v.dataSource
+                  ) as DataSourceWithConnectorDetailsType[]
+                // We need to filter and then cast because useVaultDataSourceViewsWithDetails can return dataSources with connectorProvider as null
+              }
+              setIsProviderLoading={(provider, isLoading) => {
+                setIsNewConnectorLoading(isLoading);
+                setIsLoadingByProvider((prev) => ({
+                  ...prev,
+                  [provider]: isLoading,
+                }));
+              }}
+              onCreated={async (dataSource) => {
+                const updateDataSourceViews =
+                  await mutateVaultDataSourceViews();
+                if (
+                  dataSource.connectorProvider &&
+                  REDIRECT_TO_EDIT_PERMISSIONS.includes(
+                    dataSource.connectorProvider
+                  )
+                ) {
+                  if (updateDataSourceViews) {
+                    const view = updateDataSourceViews.dataSourceViews.find(
+                      (v: DataSourceViewType) =>
+                        v.dataSource.sId === dataSource.sId
+                    );
+                    if (view) {
+                      setSelectedDataSourceView(view);
+                      setShowConnectorPermissionsModal(true);
                     }
                   }
-                  setIsNewConnectorLoading(false);
-                }}
-                integrations={integrations}
-              />
-            )}
-
-            {!isAdmin && (
-              <RequestDataSourceModal
-                dataSources={vaultDataSourceViews.map(
-                  (view) => view.dataSource
-                )}
-                owner={owner}
-              />
-            )}
+                }
+                setIsNewConnectorLoading(false);
+              }}
+              integrations={integrations}
+            />
           </div>
         )}
-        {!connectionManagementVisible && isManagedCategory && (
+        {!isSystemVault && isManagedCategory && (
           <EditVaultManagedDataSourcesViews
             owner={owner}
             vault={vault}

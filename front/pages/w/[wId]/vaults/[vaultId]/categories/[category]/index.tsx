@@ -65,7 +65,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   const integrations: DataSourceIntegration[] = [];
 
-  if (["system", "global"].includes(vault.kind)) {
+  if (vault.kind === "system") {
     let setupWithSuffix: {
       connector: ConnectorProvider;
       suffix: string;
