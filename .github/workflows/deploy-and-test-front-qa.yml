@@ -15,6 +15,7 @@ concurrency:
 
 env:
   GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
+  IMAGE_NAME: front-qa
 
 jobs:
   build-and-deploy:
@@ -50,12 +51,12 @@ jobs:
       - name: Build the image on Cloud Build
         run: |
           chmod +x ./k8s/cloud-build.sh
-          ./k8s/cloud-build.sh --image-name=front --dockerfile-path=./front/Dockerfile --working-dir=./
+          ./k8s/cloud-build.sh --image-name=$IMAGE_NAME --dockerfile-path=./front/Dockerfile --working-dir=./
 
       - name: Deploy the image on Kubernetes
         run: |
           chmod +x ./k8s/deploy-image.sh
-          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.short_sha.outputs.short_sha }} front-qa-deployment
+          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/$IMAGE_NAME:${{ steps.short_sha.outputs.short_sha }} front-qa-deployment
 
       - name: Wait for rollout to complete
         run: kubectl rollout status deployment/front-qa-deployment --timeout=10m
