@@ -77,7 +77,7 @@ export async function parseAndStringifyCsv(tableCsv: string): Promise<string> {
   try {
     const parser = parse(tableCsv, {
       delimiter,
-      columns: (c) => c,
+      columns: (c) => getSanitizedHeaders(c),
     });
 
     for await (const record of parser) {

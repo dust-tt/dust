@@ -241,7 +241,6 @@ export async function upsertTableActivity(
     tableParents: upsertQueueItem.tableParents || [],
     csv: upsertQueueItem.csv,
     truncate: upsertQueueItem.truncate,
-    useAppForHeaderDetection: upsertQueueItem.useAppForHeaderDetection ?? false,
   });
 
   if (tableRes.isErr()) {
