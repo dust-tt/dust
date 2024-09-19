@@ -113,6 +113,7 @@ export { default as SquareStrokeIcon } from "./Square";
 export { default as Square3Stack3DStrokeIcon } from "./Square3Stack3D";
 export { default as StarStrokeIcon } from "./Star";
 export { default as StopStrokeIcon } from "./Stop";
+export { default as StopSignStrokeIcon } from "./StopSign";
 export { default as TableStrokeIcon } from "./Table";
 export { default as TagStrokeIcon } from "./Tag";
 export { default as TemplateStrokeIcon } from "./Template";
