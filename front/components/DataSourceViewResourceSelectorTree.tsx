@@ -22,7 +22,6 @@ import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useConnector } from "@app/lib/swr/connectors";
 import { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
-import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 
 interface DataSourceViewResourceSelectorTreeBaseProps {
@@ -107,9 +106,6 @@ function DataSourceViewResourceSelectorChildren({
   const { connector } = useConnector({
     workspaceId: owner.sId,
     dataSourceId: dataSourceView.dataSource.sId,
-  });
-  const { activeSubscription } = useWorkspaceActiveSubscription({
-    workspaceId: owner.sId,
   });
 
   useEffect(() => {
@@ -235,7 +231,7 @@ function DataSourceViewResourceSelectorChildren({
         {dataSourceView.category === "managed" && nodes.length === 0 && (
           <div className="flex w-full flex-col items-center gap-2 rounded-lg border bg-structure-50 py-2">
             <span className="text-element-700">The Vault is empty!</span>
-            {owner.role === "admin" && connector && activeSubscription ? (
+            {owner.role === "admin" && connector ? (
               <>
                 <Button
                   label="Add Data"
@@ -252,7 +248,6 @@ function DataSourceViewResourceSelectorChildren({
                   onClose={() => {
                     setShowConnectorPermissionsModal(false);
                   }}
-                  plan={activeSubscription.plan}
                   readOnly={false}
                   isAdmin={owner.role === "admin"}
                 />

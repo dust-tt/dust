@@ -426,7 +426,6 @@ export const VaultDataSourceViewContentList = ({
                     void mutateContentNodes();
                   }
                 }}
-                plan={plan}
                 readOnly={false}
                 isAdmin={isAdmin}
                 onManageButtonClick={() => {

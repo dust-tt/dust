@@ -518,7 +518,6 @@ export const VaultResourcesList = ({
             onClose={() => {
               setShowConnectorPermissionsModal(false);
             }}
-            plan={plan}
             readOnly={false}
             isAdmin={isAdmin}
           />

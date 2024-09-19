@@ -1260,7 +1260,6 @@ function ManagedDataSourceView({
           dataSource={dataSource}
           isOpen={showPermissionModal}
           onClose={() => setShowPermissionModal(false)}
-          plan={plan}
           readOnly={false}
           isAdmin={isAdmin}
         />

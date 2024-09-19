@@ -92,7 +92,7 @@ export function useWorkspaceActiveSubscription({
     const activeSubscriptions = data.subscriptions.filter(
       (sub) => sub.status === "active"
     );
-    return activeSubscriptions[0] || null;
+    return activeSubscriptions.length ? activeSubscriptions[0] : null;
   }, [data]);
 
   return {
