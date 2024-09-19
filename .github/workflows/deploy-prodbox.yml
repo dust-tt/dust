@@ -44,7 +44,7 @@ jobs:
       - name: Build the image on Cloud Build
         run: |
           chmod +x ./k8s/cloud-build.sh
-          ./k8s/cloud-build.sh --image-name=prodbox --dockerfile-path=./prodbox.Dockerfile --working-dir=./ --gcloud-ignore-file=.gcloudignore-prodbox --dust-client-facing-url=https://dust.tt
+          ./k8s/cloud-build.sh --image-name=prodbox --dockerfile-path=./prodbox.Dockerfile --working-dir=./ --gcloud-ignore-file=.gcloudignore-prodbox
 
       - name: Deploy the image on Kubernetes
         run: |

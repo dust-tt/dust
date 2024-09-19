@@ -41,7 +41,7 @@ jobs:
       - name: Build the image on Cloud Build
         run: |
           chmod +x ./k8s/cloud-build.sh
-          ./k8s/cloud-build.sh --image-name=front --dockerfile-path=./front/Dockerfile --working-dir=./ --dust-client-facing-url=https://front-edge.dust.tt
+          ./k8s/cloud-build.sh --image-name=front --dockerfile-path=./front/Dockerfile --working-dir=./
 
       - name: Deploy the image on Kubernetes
         run: |
