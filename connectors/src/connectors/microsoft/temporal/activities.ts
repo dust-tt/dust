@@ -8,6 +8,7 @@ import * as _ from "lodash";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
+  clientApiPost,
   extractPath,
   getAllPaginatedEntities,
   getDeltaResults,

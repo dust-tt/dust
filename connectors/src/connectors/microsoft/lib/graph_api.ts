@@ -2,6 +2,7 @@ import type { Result } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import { GraphError, type Client } from "@microsoft/microsoft-graph-client";
 import type * as MicrosoftGraph from "@microsoft/microsoft-graph-types";
+import logger from "@connectors/logger/logger";
 
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
 import {
@@ -14,7 +15,11 @@ export async function clientApiGet(client: Client, endpoint: string) {
   try {
     return await client.api(endpoint).get();
   } catch (error) {
-    if (error instanceof GraphError && error.code === "AccessDenied") {
+    logger.error({ error, endpoint }, `Graph API call threw an error`);
+    if (
+      error instanceof GraphError &&
+      error.message.includes("Access denied")
+    ) {
       throw new ExternalOAuthTokenError(error);
     }
     throw error;
@@ -29,7 +34,11 @@ export async function clientApiPost(
   try {
     return await client.api(endpoint).post(content);
   } catch (error) {
-    if (error instanceof GraphError && error.code === "AccessDenied") {
+    logger.error({ error, endpoint }, `Graph API call threw an error`);
+    if (
+      error instanceof GraphError &&
+      error.message.includes("Access denied")
+    ) {
       throw new ExternalOAuthTokenError(error);
     }
     throw error;
