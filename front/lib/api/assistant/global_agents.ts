@@ -275,7 +275,7 @@ function _getO1PreviewGlobalAgent({
     name: "openai-o1",
     description: O1_PREVIEW_MODEL_CONFIG.description,
     instructions: null,
-    pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png", // @todo: change to O1 avatar
+    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
@@ -312,7 +312,7 @@ function _getO1MiniGlobalAgent({
     name: "openai-o1-mini",
     description: O1_MINI_MODEL_CONFIG.description,
     instructions: null,
-    pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png", // @todo: change to O1 avatar
+    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
