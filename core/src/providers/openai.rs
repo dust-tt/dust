@@ -2097,19 +2097,8 @@ impl LLM for OpenAILLM {
                                 "text": chunk,
                             },
                         }));
-                        // Add a small delay to simulate real-time streaming
+                        // Add a small delay to simulate real-time streaming.
                         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-                    }
-                }
-                if let Some(tool_calls) = &choice.message.tool_calls {
-                    for tool_call in tool_calls {
-                        let _ = sender.send(json!({
-                            "type": "function_call",
-                            "content": {
-                                "name": tool_call.function.name,
-                                // Include other necessary function call details
-                            },
-                        }));
                     }
                 }
             }
