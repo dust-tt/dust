@@ -52,6 +52,7 @@ import {
   useVaultDataSourceViewsWithDetails,
 } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
+import { showConnexionsManagement } from "@app/lib/vaults";
 
 const REDIRECT_TO_EDIT_PERMISSIONS = [
   "confluence",
@@ -85,11 +86,11 @@ type VaultResourcesListProps = {
 };
 
 const getTableColumns = ({
-  isManaged,
-  isSystemVault,
+  allowActionColumn,
+  category,
 }: {
-  isManaged: boolean;
-  isSystemVault: boolean;
+  allowActionColumn: boolean;
+  category: DataSourceViewCategory;
 }) => {
   const nameColumn: ColumnDef<RowData, string> = {
     header: "Name",
@@ -225,7 +226,7 @@ const getTableColumns = ({
     },
   };
 
-  if (isSystemVault && isManaged) {
+  if (allowActionColumn && category === "managed") {
     return [
       nameColumn,
       usedByColumn,
@@ -234,7 +235,7 @@ const getTableColumns = ({
       actionColumn,
     ];
   }
-  return isManaged
+  return category === "managed" || category === "website"
     ? [nameColumn, usedByColumn, managedByColumn, lastSyncedColumn]
     : [nameColumn, usedByColumn, managedByColumn];
 };
@@ -267,8 +268,6 @@ export const VaultResourcesList = ({
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
-  const isSystemVault = systemVault.sId === vault.sId;
-  const isManagedCategory = category === "managed";
   const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
@@ -372,8 +371,7 @@ export const VaultResourcesList = ({
       }
     }
   };
-  const connectionManagementVisible =
-    isSystemVault || !owner.flags.includes("private_data_vaults_feature");
+
   return (
     <>
       <div
@@ -395,7 +393,7 @@ export const VaultResourcesList = ({
             }}
           />
         )}
-        {connectionManagementVisible && category === "managed" && (
+        {showConnexionsManagement(owner, vault) && category === "managed" && (
           <div className="flex items-center justify-center text-sm font-normal text-element-700">
             {isAdmin && (
               <AddConnectionMenu
@@ -452,7 +450,7 @@ export const VaultResourcesList = ({
             )}
           </div>
         )}
-        {!connectionManagementVisible && isManagedCategory && (
+        {!showConnexionsManagement(owner, vault) && category === "managed" && (
           <EditVaultManagedDataSourcesViews
             owner={owner}
             vault={vault}
@@ -493,8 +491,8 @@ export const VaultResourcesList = ({
         <DataTable
           data={rows}
           columns={getTableColumns({
-            isManaged: isManagedCategory,
-            isSystemVault,
+            category,
+            allowActionColumn: showConnexionsManagement(owner, vault),
           })}
           filter={dataSourceSearch}
           filterColumn="name"

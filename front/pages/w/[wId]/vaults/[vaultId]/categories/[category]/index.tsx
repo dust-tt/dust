@@ -27,6 +27,7 @@ import {
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { VaultResource } from "@app/lib/resources/vault_resource";
+import { showConnexionsManagement } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
@@ -65,7 +66,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   const integrations: DataSourceIntegration[] = [];
 
-  if (["system", "global"].includes(vault.kind)) {
+  // We need to fetch the integrations if we are showing the connection management
+  if (showConnexionsManagement(owner, vault.toJSON())) {
     let setupWithSuffix: {
       connector: ConnectorProvider;
       suffix: string;
