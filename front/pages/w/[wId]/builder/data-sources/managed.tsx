@@ -275,7 +275,7 @@ export default function DataSourcesView({
             </div>
           )}
 
-          {isAdmin && integrations.length > 0 && (
+          {isAdmin && integrations.length && (
             <AddConnectionMenu
               owner={owner}
               plan={plan}
