@@ -9,7 +9,16 @@ import sgMail from "@sendgrid/mail";
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 
-sgMail.setApiKey(config.getSendgridApiKey());
+let sgMailClient: sgMail.MailService | null = null;
+
+export function getSgMailClient(): any {
+  if (!sgMailClient) {
+    sgMail.setApiKey(config.getSendgridApiKey());
+    sgMailClient = sgMail;
+  }
+
+  return sgMail;
+}
 
 export async function sendGithubDeletionEmail(email: string): Promise<void> {
   await sendEmailWithTemplate({
@@ -152,7 +161,7 @@ export async function sendProactiveTrialCancelledEmail(
 export async function sendEmail(email: string, message: any) {
   const msg = { ...message, to: email };
   try {
-    await sgMail.send(msg);
+    await getSgMailClient().send(msg);
     logger.info({ email, subject: message.subject }, "Sending email");
   } catch (error) {
     logger.error(
