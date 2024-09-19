@@ -131,6 +131,7 @@ export const VaultAppsList = ({
           <DataTable
             data={rows}
             columns={getTableColumns()}
+            className="pb-4"
             filter={appSearch}
             filterColumn="name"
             pagination={pagination}
