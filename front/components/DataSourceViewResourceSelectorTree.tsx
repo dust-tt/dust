@@ -241,7 +241,7 @@ function DataSourceViewResourceSelectorChildren({
                   label="Add Data"
                   icon={PlusIcon}
                   onClick={() => {
-                    setShowConnectorPermissionsModal(true)
+                    setShowConnectorPermissionsModal(true);
                   }}
                 />
                 <ConnectorPermissionsModal
