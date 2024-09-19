@@ -20,6 +20,10 @@ pub mod data_sources {
 pub mod databases {
     pub mod database;
     pub mod table_schema;
+    pub mod remote_databases {
+        pub mod remote_database;
+        pub mod snowflake;
+    }
 }
 pub mod project;
 pub mod run;
