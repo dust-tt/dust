@@ -60,7 +60,7 @@ echo "current working directory is $(pwd)"
 # prepare substitutions
 SUBSTITUTIONS="SHORT_SHA=$(git rev-parse --short HEAD),_IMAGE_NAME=$IMAGE_NAME,_DOCKERFILE_PATH=$DOCKERFILE_PATH"
 if [ -n "$DUST_CLIENT_FACING_URL" ]; then
-    SUBSTITUTIONS="$SUBSTITUTIONS,DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL"
+    SUBSTITUTIONS="$SUBSTITUTIONS,_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL"
 fi
 
 # start the build and get its id
