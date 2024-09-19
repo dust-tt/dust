@@ -619,6 +619,7 @@ export default function VaultWebsiteModal({
                     />
                     {dataSourceView && (
                       <DeleteStaticDataSourceDialog
+                        owner={owner}
                         dataSource={dataSourceView.dataSource}
                         handleDelete={handleDelete}
                         isOpen={isDeleteModalOpen}

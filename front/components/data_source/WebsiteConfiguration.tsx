@@ -12,7 +12,6 @@ import {
 import type {
   CrawlingFrequency,
   DataSourceType,
-  DataSourceWithAgentsUsageType,
   DepthOption,
   SubscriptionType,
   UpdateConnectorConfigurationType,
@@ -44,14 +43,12 @@ export default function WebsiteConfiguration({
   dataSources,
   dataSource,
   webCrawlerConfiguration,
-  dataSourceUsage,
 }: {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dataSources: DataSourceType[];
   webCrawlerConfiguration: WebCrawlerConfigurationType | null;
   dataSource: DataSourceType | null;
-  dataSourceUsage?: DataSourceWithAgentsUsageType;
 }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -530,11 +527,11 @@ export default function WebsiteConfiguration({
               />
               {dataSource && (
                 <DeleteStaticDataSourceDialog
+                  owner={owner}
                   dataSource={dataSource}
                   handleDelete={handleDelete}
                   isOpen={isDeleteModalOpen}
                   onClose={() => setIsDeleteModalOpen(false)}
-                  dataSourceUsage={dataSourceUsage}
                 />
               )}
             </div>
