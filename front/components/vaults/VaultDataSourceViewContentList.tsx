@@ -95,7 +95,7 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
             ? info
                 .getValue()
                 .map((v) => v.name)
-                .join(",")
+                .join(", ")
             : "-"}
         </DataTable.CellContent>
       ),

@@ -2,6 +2,7 @@ import { CloudArrowLeftRightIcon, Page } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
   DataSourceViewCategory,
+  DataSourceWithConnectorDetailsType,
   PlanType,
   VaultType,
 } from "@dust-tt/types";
@@ -26,7 +27,6 @@ import {
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { VaultResource } from "@app/lib/resources/vault_resource";
-import type { DataSourceWithConnectorAndUsageType } from "@app/pages/w/[wId]/builder/data-sources/managed";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
@@ -87,7 +87,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       includeEditedBy: true,
     });
 
-    const managedDataSources: DataSourceWithConnectorAndUsageType[] =
+    const managedDataSources: DataSourceWithConnectorDetailsType[] =
       removeNulls(
         await Promise.all(
           allDataSources.map(async (managedDataSource) => {
@@ -98,11 +98,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
             const augmentedDataSource =
               await augmentDataSourceWithConnectorDetails(ds);
 
-            const usageRes = await managedDataSource.getUsagesByAgents(auth);
-            return {
-              ...augmentedDataSource,
-              usage: usageRes.isOk() ? usageRes.value : 0,
-            };
+            return augmentedDataSource;
           })
         )
       );

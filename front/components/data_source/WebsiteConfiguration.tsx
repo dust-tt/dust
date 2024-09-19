@@ -12,6 +12,7 @@ import {
 import type {
   CrawlingFrequency,
   DataSourceType,
+  DataSourceWithAgentsUsageType,
   DepthOption,
   SubscriptionType,
   UpdateConnectorConfigurationType,
@@ -50,7 +51,7 @@ export default function WebsiteConfiguration({
   dataSources: DataSourceType[];
   webCrawlerConfiguration: WebCrawlerConfigurationType | null;
   dataSource: DataSourceType | null;
-  dataSourceUsage?: number;
+  dataSourceUsage?: DataSourceWithAgentsUsageType;
 }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -535,7 +536,7 @@ export default function WebsiteConfiguration({
                   handleDelete={handleDelete}
                   isOpen={isDeleteModalOpen}
                   onClose={() => setIsDeleteModalOpen(false)}
-                  dataSourceUsage={dataSourceUsage ?? 0}
+                  dataSourceUsage={dataSourceUsage}
                 />
               )}
             </div>

@@ -6,6 +6,7 @@ import {
   DataTable,
   FolderIcon,
   PencilSquareIcon,
+  RobotIcon,
   Searchbar,
   Spinner,
   TrashIcon,
@@ -14,8 +15,10 @@ import {
 import type {
   ConnectorProvider,
   DataSourceViewCategory,
+  DataSourceViewsWithDetails,
   DataSourceViewType,
-  DataSourceViewWithConnectorType,
+  DataSourceWithAgentsUsageType,
+  DataSourceWithConnectorDetailsType,
   PlanType,
   VaultType,
   WorkspaceType,
@@ -42,11 +45,11 @@ import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
 import { useDataSources } from "@app/lib/swr/data_sources";
 import {
   useDeleteFolderOrWebsite,
-  useVaultDataSourceViews,
+  useVaultDataSourceViewsWithDetails,
 } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
 
@@ -59,7 +62,7 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
 ];
 
 type RowData = {
-  dataSourceView: DataSourceViewWithConnectorType;
+  dataSourceView: DataSourceViewsWithDetails;
   label: string;
   icon: ComponentType;
   workspaceId: string;
@@ -123,6 +126,29 @@ const getTableColumns = ({
         />
       );
     },
+  };
+
+  const usedByColumn = {
+    header: "Used by",
+    accessorFn: (row: RowData) => row.dataSourceView.usage?.count ?? 0,
+    id: "usedBy",
+    meta: {
+      width: "6rem",
+    },
+    cell: (info: CellContext<RowData, DataSourceWithAgentsUsageType>) => (
+      <>
+        {info.row.original.dataSourceView.usage ? (
+          <DataTable.CellContent
+            icon={RobotIcon}
+            title={`Used by ${info.row.original.dataSourceView.usage.agentNames.join(
+              ", "
+            )}`}
+          >
+            {info.row.original.dataSourceView.usage.count}
+          </DataTable.CellContent>
+        ) : null}
+      </>
+    ),
   };
 
   const lastSyncedColumn = {
@@ -199,13 +225,18 @@ const getTableColumns = ({
     },
   };
 
-  // TODO(GROUPS_UI) Add usage column.
   if (isSystemVault && isManaged) {
-    return [nameColumn, managedByColumn, lastSyncedColumn, actionColumn];
+    return [
+      nameColumn,
+      usedByColumn,
+      managedByColumn,
+      lastSyncedColumn,
+      actionColumn,
+    ];
   }
   return isManaged
-    ? [nameColumn, managedByColumn, lastSyncedColumn]
-    : [nameColumn, managedByColumn];
+    ? [nameColumn, usedByColumn, managedByColumn, lastSyncedColumn]
+    : [nameColumn, usedByColumn, managedByColumn];
 };
 
 export const VaultResourcesList = ({
@@ -223,7 +254,7 @@ export const VaultResourcesList = ({
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
-    useState<DataSourceViewWithConnectorType | null>(null);
+    useState<DataSourceViewsWithDetails | null>(null);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [showFolderOrWebsiteModal, setShowFolderOrWebsiteModal] =
     useState(false);
@@ -237,7 +268,7 @@ export const VaultResourcesList = ({
   const searchBarRef = useRef<HTMLInputElement>(null);
 
   const isSystemVault = systemVault.sId === vault.sId;
-  const isManaged = category === "managed";
+  const isManagedCategory = category === "managed";
   const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
@@ -259,12 +290,10 @@ export const VaultResourcesList = ({
     vaultDataSourceViews,
     isVaultDataSourceViewsLoading,
     mutateRegardlessOfQueryParams: mutateVaultDataSourceViews,
-  } = useVaultDataSourceViews({
+  } = useVaultDataSourceViewsWithDetails({
     workspaceId: owner.sId,
     vaultId: vault.sId,
     category: category,
-    includeEditedBy: true,
-    includeConnectorDetails: true,
   });
 
   const rows: RowData[] = useMemo(
@@ -300,7 +329,7 @@ export const VaultResourcesList = ({
           icon: getConnectorProviderLogoWithFallback(provider, FolderIcon),
           workspaceId: owner.sId,
           isAdmin,
-          isLoading: isLoadingByProvider[provider],
+          isLoading: provider ? isLoadingByProvider[provider] : false,
           moreMenuItems,
           buttonOnClick: (e) => {
             e.stopPropagation();
@@ -372,9 +401,14 @@ export const VaultResourcesList = ({
               <AddConnectionMenu
                 owner={owner}
                 plan={plan}
-                existingDataSources={vaultDataSourceViews.map(
-                  (v) => v.dataSource
-                )}
+                existingDataSources={
+                  vaultDataSourceViews
+                    .filter((dsView) => isManaged(dsView.dataSource))
+                    .map(
+                      (v) => v.dataSource
+                    ) as DataSourceWithConnectorDetailsType[]
+                  // We need to filter and then cast because useVaultDataSourceViewsWithDetails can return dataSources with connectorProvider as null
+                }
                 setIsProviderLoading={(provider, isLoading) => {
                   setIsNewConnectorLoading(isLoading);
                   setIsLoadingByProvider((prev) => ({
@@ -418,7 +452,7 @@ export const VaultResourcesList = ({
             )}
           </div>
         )}
-        {!connectionManagementVisible && isManaged && (
+        {!connectionManagementVisible && isManagedCategory && (
           <EditVaultManagedDataSourcesViews
             owner={owner}
             vault={vault}
@@ -457,7 +491,10 @@ export const VaultResourcesList = ({
       {rows.length > 0 && (
         <DataTable
           data={rows}
-          columns={getTableColumns({ isManaged, isSystemVault })}
+          columns={getTableColumns({
+            isManaged: isManagedCategory,
+            isSystemVault,
+          })}
           filter={dataSourceSearch}
           filterColumn="name"
           sorting={sorting}
