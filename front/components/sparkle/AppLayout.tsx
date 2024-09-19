@@ -15,11 +15,6 @@ import { useUser } from "@app/lib/swr/user";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
-/* Set to true when there is an incident, to show the banner (customize
- * IncidentBanner component at bottom of the page)
- */
-const SHOW_INCIDENT_BANNER = false;
-
 // This function is used to navigate back to the previous page (eg modal like page close) and
 // fallback to the landing if we linked directly to that modal.
 export const appLayoutBack = async (
@@ -136,9 +131,6 @@ export default function AppLayout({
           subNavigation={subNavigation}
         />
         <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden">
-          {!titleChildren && SHOW_INCIDENT_BANNER && (
-            <IncidentBanner className="relative" />
-          )}
           <main
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
@@ -159,7 +151,6 @@ export default function AppLayout({
               <div className="h-16 grow px-6">
                 {loaded && titleChildren && titleChildren}
               </div>
-              {titleChildren && SHOW_INCIDENT_BANNER && <IncidentBanner />}
             </div>
 
             <div className="flex h-[calc(100%-5rem)] w-full flex-col items-center px-6">
@@ -195,36 +186,5 @@ export default function AppLayout({
         </Script>
       </>
     </>
-  );
-}
-
-function IncidentBanner({ className = "" }: { className?: string }) {
-  return (
-    <Banner className={className} variant="incident">
-      <div>
-        <span className="font-bold">
-          OpenAI APIs are encountering a{" "}
-          <a
-            href="https://status.openai.com/"
-            target="_blank"
-            className="underline"
-          >
-            partial outage.
-          </a>
-        </span>
-        <span>
-          It may cause slowness and errors from assistants using GPT or data
-          retrieval. We are monitoring the situation{" "}
-          <a
-            href="http://status.dust.tt/"
-            target="_blank"
-            className="underline"
-          >
-            here
-          </a>
-          .
-        </span>
-      </div>
-    </Banner>
   );
 }
