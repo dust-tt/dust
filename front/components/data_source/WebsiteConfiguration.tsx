@@ -196,9 +196,7 @@ export default function WebsiteConfiguration({
       }
     } else if (dataSource) {
       const res = await fetch(
-        `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-          dataSource.name
-        )}/configuration`,
+        `/api/w/${owner.sId}/data_sources/${dataSource.sId}/configuration`,
         {
           method: "PATCH",
           headers: {
