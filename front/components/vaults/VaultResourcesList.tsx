@@ -479,6 +479,7 @@ export const VaultResourcesList = ({
             />
             {selectedDataSourceView && (
               <DeleteStaticDataSourceDialog
+                owner={owner}
                 dataSource={selectedDataSourceView.dataSource}
                 handleDelete={onDeleteFolderOrWebsite}
                 isOpen={showDeleteConfirmDialog}

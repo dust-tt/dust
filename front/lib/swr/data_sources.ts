@@ -7,6 +7,7 @@ import type { GetDataSourcesResponseBody } from "@app/pages/api/w/[wId]/data_sou
 import type { GetDocumentsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/documents";
 import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/tables";
 import type { GetTableResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/tables/[tId]";
+import type { GetDataSourceUsageResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/usage";
 
 export function useDataSources(
   owner: LightWorkspaceType,
@@ -98,5 +99,26 @@ export function useDataSourceTables({
     isTablesLoading: !error && !data,
     isTablesError: error,
     mutateTables: mutate,
+  };
+}
+
+export function useDataSourceUsage({
+  owner,
+  dataSource,
+}: {
+  owner: LightWorkspaceType;
+  dataSource: DataSourceType;
+}) {
+  const usageFetcher: Fetcher<GetDataSourceUsageResponseBody> = fetcher;
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/data_sources/${dataSource.sId}/usage`,
+    usageFetcher
+  );
+
+  return {
+    usage: useMemo(() => (data ? data.usage : null), [data]),
+    isUsageLoading: !error && !data,
+    isUsageError: error,
+    mutate,
   };
 }
