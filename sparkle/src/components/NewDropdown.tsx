@@ -140,7 +140,8 @@ const NewDropdownMenuCheckboxItem = React.forwardRef<
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={classNames(
-      "focus:s-text-primary-900-foreground s-relative s-flex s-cursor-default s-select-none s-items-center s-rounded-md s-py-2 s-pl-8 s-pr-2 s-text-sm s-outline-none s-transition-colors focus:s-bg-primary-200 data-[disabled]:s-pointer-events-none data-[disabled]:s-opacity-50",
+      itemClasses,
+      "s-pl-8 s-pr-2",
       className ? className : ""
     )}
     checked={checked}

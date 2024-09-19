@@ -1,7 +1,9 @@
+import { DropdownMenuCheckboxItemProps } from "@radix-ui/react-dropdown-menu";
 import type { Meta } from "@storybook/react";
 import React from "react";
 
 import {
+  NewDropdownMenuCheckboxItem,
   NewDropdownMenuGroup,
   NewDropdownMenuPortal,
   NewDropdownMenuShortcut,
@@ -54,7 +56,9 @@ export const ButtonExamples = () => (
     </div>
     <div>
       <NewDropdownMenu>
-        <NewDropdownMenuTrigger variant="primary">Open</NewDropdownMenuTrigger>
+        <NewDropdownMenuTrigger variant="primary">
+          Open Complex
+        </NewDropdownMenuTrigger>
         <NewDropdownMenuContent className="w-56">
           <NewDropdownMenuLabel>My Account</NewDropdownMenuLabel>
           <NewDropdownMenuSeparator />
@@ -137,5 +141,43 @@ export const ButtonExamples = () => (
         </NewDropdownMenuContent>
       </NewDropdownMenu>
     </div>
+    <div>{DropdownMenuCheckboxes()}</div>
   </div>
 );
+
+type Checked = DropdownMenuCheckboxItemProps["checked"];
+
+export function DropdownMenuCheckboxes() {
+  const [showStatusBar, setShowStatusBar] = React.useState<Checked>(true);
+  const [showActivityBar, setShowActivityBar] = React.useState<Checked>(false);
+  const [showPanel, setShowPanel] = React.useState<Checked>(false);
+
+  return (
+    <NewDropdownMenu>
+      <NewDropdownMenuTrigger variant="primary">Open</NewDropdownMenuTrigger>
+      <NewDropdownMenuContent className="w-56">
+        <NewDropdownMenuLabel>Appearance</NewDropdownMenuLabel>
+        <NewDropdownMenuSeparator />
+        <NewDropdownMenuCheckboxItem
+          checked={showStatusBar}
+          onCheckedChange={setShowStatusBar}
+        >
+          Status Bar
+        </NewDropdownMenuCheckboxItem>
+        <NewDropdownMenuCheckboxItem
+          checked={showActivityBar}
+          onCheckedChange={setShowActivityBar}
+          disabled
+        >
+          Activity Bar
+        </NewDropdownMenuCheckboxItem>
+        <NewDropdownMenuCheckboxItem
+          checked={showPanel}
+          onCheckedChange={setShowPanel}
+        >
+          Panel
+        </NewDropdownMenuCheckboxItem>
+      </NewDropdownMenuContent>
+    </NewDropdownMenu>
+  );
+}
