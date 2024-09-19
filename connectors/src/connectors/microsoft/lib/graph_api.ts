@@ -1,6 +1,6 @@
 import type { Result } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
-import type { Client } from "@microsoft/microsoft-graph-client";
+import { GraphError, type Client } from "@microsoft/microsoft-graph-client";
 import type * as MicrosoftGraph from "@microsoft/microsoft-graph-types";
 
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
@@ -8,14 +8,41 @@ import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
+
+export async function clientApiGet(client: Client, endpoint: string) {
+  try {
+    return await client.api(endpoint).get();
+  } catch (error) {
+    if (error instanceof GraphError && error.code === "AccessDenied") {
+      throw new ExternalOAuthTokenError(error);
+    }
+    throw error;
+  }
+}
+
+export async function clientApiPost(
+  client: Client,
+  endpoint: string,
+  content: any
+) {
+  try {
+    return await client.api(endpoint).post(content);
+  } catch (error) {
+    if (error instanceof GraphError && error.code === "AccessDenied") {
+      throw new ExternalOAuthTokenError(error);
+    }
+    throw error;
+  }
+}
 
 export async function getSites(
   client: Client,
   nextLink?: string
 ): Promise<{ results: MicrosoftGraph.Site[]; nextLink?: string }> {
   const res = nextLink
-    ? await client.api(nextLink).get()
-    : await client.api("/sites?search=*").get();
+    ? await clientApiGet(client, nextLink)
+    : await clientApiGet(client, "/sites?search=*");
 
   const results = res.value.filter((site: MicrosoftGraph.Site) => site.root);
   if ("@odata.nextLink" in res) {
@@ -42,8 +69,8 @@ export async function getSubSites(
   }
 
   const res = nextLink
-    ? await client.api(nextLink).get()
-    : await client.api(`${parentResourcePath}/sites`).get();
+    ? await clientApiGet(client, nextLink)
+    : await clientApiGet(client, `${parentResourcePath}/sites`);
   if ("@odata.nextLink" in res) {
     return {
       results: res.value,
@@ -68,8 +95,8 @@ export async function getDrives(
   }
 
   const res = nextLink
-    ? await client.api(nextLink).get()
-    : await client.api(`${parentResourcePath}/drives`).get();
+    ? await clientApiGet(client, nextLink)
+    : await clientApiGet(client, `${parentResourcePath}/drives`);
 
   if ("@odata.nextLink" in res) {
     return {
@@ -101,8 +128,8 @@ export async function getFilesAndFolders(
       : `${parentResourcePath}/children`;
 
   const res = nextLink
-    ? await client.api(nextLink).get()
-    : await client.api(endpoint).get();
+    ? await clientApiGet(client, nextLink)
+    : await clientApiGet(client, endpoint);
 
   if ("@odata.nextLink" in res) {
     return {
@@ -148,8 +175,8 @@ export async function getDeltaResults({
       : itemAPIPath + "/root/delta") + (token ? `?token=${token}` : "");
 
   const res = nextLink
-    ? await client.api(nextLink).get()
-    : await client.api(deltaPath).get();
+    ? await clientApiGet(client, nextLink)
+    : await clientApiGet(client, deltaPath);
 
   if ("@odata.nextLink" in res) {
     return {
@@ -217,8 +244,8 @@ export async function getWorksheets(
   }
 
   const res = nextLink
-    ? await client.api(nextLink).get()
-    : await client.api(`${itemApiPath}/workbook/worksheets`).get();
+    ? await clientApiGet(client, nextLink)
+    : await clientApiGet(client, `${itemApiPath}/workbook/worksheets`);
 
   if ("@odata.nextLink" in res) {
     return {
@@ -242,7 +269,10 @@ export async function getWorksheetContent(
       `Invalid node type: ${nodeType} for getWorksheet content, expected worksheet`
     );
   }
-  const res = await client.api(`${itemApiPath}/usedRange?$select=text`).get();
+  const res = await clientApiGet(
+    client,
+    `${itemApiPath}/usedRange?$select=text`
+  );
   return res;
 }
 
@@ -251,8 +281,8 @@ export async function getTeams(
   nextLink?: string
 ): Promise<{ results: MicrosoftGraph.Team[]; nextLink?: string }> {
   const res = nextLink
-    ? await client.api(nextLink).get()
-    : await client.api("/me/joinedTeams").get();
+    ? await clientApiGet(client, nextLink)
+    : await clientApiGet(client, "/me/joinedTeams");
 
   if ("@odata.nextLink" in res) {
     return {
@@ -279,8 +309,8 @@ export async function getChannels(
   }
 
   const res = nextLink
-    ? await client.api(nextLink).get()
-    : await client.api(`${parentResourcePath}/channels`).get();
+    ? await clientApiGet(client, nextLink)
+    : await clientApiGet(client, `${parentResourcePath}/channels`);
 
   if ("@odata.nextLink" in res) {
     return {
@@ -307,8 +337,8 @@ export async function getMessages(
   }
 
   const res = nextLink
-    ? await client.api(nextLink).get()
-    : await client.api(parentResourcePath).get();
+    ? await clientApiGet(client, nextLink)
+    : await clientApiGet(client, parentResourcePath);
 
   if ("@odata.nextLink" in res) {
     return {
@@ -345,7 +375,8 @@ export async function getItem(
   client: Client,
   itemApiPath: string
 ): Promise<MicrosoftGraph.Entity> {
-  return client.api(itemApiPath).get();
+  GraphError;
+  return clientApiGet(client, itemApiPath);
 }
 
 export async function getFileDownloadURL(client: Client, internalId: string) {
@@ -355,7 +386,7 @@ export async function getFileDownloadURL(client: Client, internalId: string) {
     throw new Error(`Invalid node type: ${nodeType} for getFileDownloadURL`);
   }
 
-  const res = await client.api(`${itemAPIPath}`).get();
+  const res = await clientApiGet(client, `${itemAPIPath}`);
 
   return res["@microsoft.graph.downloadUrl"];
 }
