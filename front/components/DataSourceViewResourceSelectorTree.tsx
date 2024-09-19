@@ -33,6 +33,7 @@ interface DataSourceViewResourceSelectorTreeBaseProps {
   ) => void;
   owner: WorkspaceType;
   parentIsSelected?: boolean;
+  readonly?: boolean;
   selectedParents?: string[];
   selectedResourceIds: string[];
   showExpand: boolean;
@@ -44,6 +45,7 @@ export default function DataSourceViewResourceSelectorTree({
   dataSourceView,
   showExpand, //if not, it's flat
   parentIsSelected,
+  readonly,
   selectedParents = [],
   selectedResourceIds,
   onSelectChange,
@@ -57,6 +59,7 @@ export default function DataSourceViewResourceSelectorTree({
         showExpand={showExpand}
         parents={[]}
         parentIsSelected={parentIsSelected}
+        readonly={readonly}
         selectedResourceIds={selectedResourceIds}
         selectedParents={selectedParents}
         onSelectChange={(resource, parents, selected) => {
@@ -82,6 +85,7 @@ function DataSourceViewResourceSelectorChildren({
   parentId,
   parentIsSelected,
   parents,
+  readonly,
   selectedParents,
   selectedResourceIds,
   showExpand,
@@ -151,7 +155,8 @@ function DataSourceViewResourceSelectorChildren({
 
           const checkable =
             (!isTablesView || r.type === "database") &&
-            r.preventSelection !== true;
+            r.preventSelection !== true &&
+            !readonly;
 
           let checkedStatus: "checked" | "partial" | "unchecked" = "unchecked";
           if (isSelected || parentIsSelected) {
@@ -188,6 +193,7 @@ function DataSourceViewResourceSelectorChildren({
                   selectedParents={selectedParents}
                   selectedResourceIds={selectedResourceIds}
                   onSelectChange={onSelectChange}
+                  readonly={readonly}
                   parents={[...parents, r.internalId]}
                   parentIsSelected={parentIsSelected || isSelected}
                   viewType={viewType}

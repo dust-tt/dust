@@ -1,6 +1,14 @@
+import {
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  ExternalLinkIcon,
+} from "lucide-react";
+import Link from "next/link";
 import * as React from "react";
 
 import { cn } from "@app/components/poke/shadcn/lib/utils";
+import { PokeButton } from "@app/components/poke/shadcn/ui/button";
+import { PokeLabel } from "@app/components/poke/shadcn/ui/label";
 
 const Table = React.forwardRef<
   HTMLTableElement,
@@ -108,11 +116,108 @@ const TableCaption = React.forwardRef<
 ));
 TableCaption.displayName = "TableCaption";
 
+const TableCellWithCopy = React.forwardRef<
+  HTMLTableCellElement,
+  React.TdHTMLAttributes<HTMLTableCellElement> & {
+    label: string;
+    textToCopy?: string;
+  }
+>(({ className, label, textToCopy, ...props }, ref) => {
+  const [isCopied, setIsCopied] = React.useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(textToCopy ?? label);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  return (
+    <TableCell
+      ref={ref}
+      className={cn(
+        "p-2 align-middle [&:has([role=checkbox])]:pr-0",
+        className
+      )}
+      {...props}
+    >
+      <div className="flex items-center space-x-2">
+        <PokeLabel>{label}</PokeLabel>
+        <PokeButton size="sm" variant="outline" onClick={handleCopy}>
+          {isCopied ? (
+            <ClipboardCheckIcon className="h-4 w-4" />
+          ) : (
+            <ClipboardIcon className="h-4 w-4" />
+          )}
+        </PokeButton>
+      </div>
+    </TableCell>
+  );
+});
+TableCellWithCopy.displayName = "TableCellWithCopy";
+
+interface TableCellWithLinkProps
+  extends React.TdHTMLAttributes<HTMLTableCellElement> {
+  href: string;
+  content: string;
+  external?: boolean;
+}
+
+const TableCellWithLink = React.forwardRef<
+  HTMLTableCellElement,
+  TableCellWithLinkProps
+>(({ className, href, content, external = false, ...props }, ref) => {
+  const linkClasses = cn(
+    "relative text-gray-700",
+    "transition-colors duration-200",
+    "after:absolute after:bottom-0 after:left-0 after:right-0",
+    "after:h-[1px] after:bg-gray-300",
+    "after:transition-all after:duration-300 after:ease-in-out",
+    "hover:after:h-full hover:after:opacity-30",
+    "after:opacity-50"
+  );
+
+  const linkContent = (
+    <>
+      <span className="relative z-10">{content}</span>
+      {external && (
+        <ExternalLinkIcon className="relative z-10 ml-1 inline-block h-3 w-3" />
+      )}
+    </>
+  );
+
+  return (
+    <TableCell
+      ref={ref}
+      className={cn("p-2 align-middle", className)}
+      {...props}
+    >
+      {external ? (
+        <a
+          href={href}
+          className={linkClasses}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {linkContent}
+        </a>
+      ) : (
+        <Link href={href} passHref legacyBehavior>
+          <a className={linkClasses}>{linkContent}</a>
+        </Link>
+      )}
+    </TableCell>
+  );
+});
+
+TableCellWithLink.displayName = "TableCellWithLink";
+
 export {
   Table as PokeTable,
   TableBody as PokeTableBody,
   TableCaption as PokeTableCaption,
   TableCell as PokeTableCell,
+  TableCellWithCopy as PokeTableCellWithCopy,
+  TableCellWithLink as PokeTableCellWithLink,
   TableFooter as PokeTableFooter,
   TableHead as PokeTableHead,
   TableHeader as PokeTableHeader,
