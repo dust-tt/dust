@@ -7,13 +7,13 @@ import { promisify } from "util";
 
 import apiConfig from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
-import { getMembers } from "@app/lib/api/workspace";
-import { Authenticator } from "@app/lib/auth";
 import {
   sendAdminSubscriptionPaymentFailedEmail,
   sendCancelSubscriptionEmail,
   sendReactivateSubscriptionEmail,
-} from "@app/lib/email";
+} from "@app/lib/api/email";
+import { getMembers } from "@app/lib/api/workspace";
+import { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import {

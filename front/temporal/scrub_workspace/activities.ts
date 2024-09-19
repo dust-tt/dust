@@ -9,13 +9,13 @@ import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import config from "@app/lib/api/config";
 import { deleteDataSource, getDataSources } from "@app/lib/api/data_sources";
+import { sendAdminDataDeletionEmail } from "@app/lib/api/email";
 import {
   getMembers,
   getWorkspaceInfos,
   unsafeGetWorkspacesByModelId,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { sendAdminDataDeletionEmail } from "@app/lib/email";
 import { Conversation } from "@app/lib/models/assistant/conversation";
 import {
   FREE_NO_PLAN_CODE,
@@ -50,7 +50,6 @@ export async function sendDataDeletionEmail({
     for (const a of admins) {
       await sendAdminDataDeletionEmail({
         email: a.email,
-        firstName: a.firstName,
         workspaceName: ws.name,
         remainingDays,
         isLast,

@@ -20,10 +20,10 @@ import {
 } from "@dust-tt/types";
 
 import { default as apiConfig, default as config } from "@app/lib/api/config";
+import { sendGithubDeletionEmail } from "@app/lib/api/email";
 import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { sendGithubDeletionEmail } from "@app/lib/email";
 import { DustError } from "@app/lib/error";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
