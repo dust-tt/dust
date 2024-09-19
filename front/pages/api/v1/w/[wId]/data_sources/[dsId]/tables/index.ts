@@ -169,8 +169,8 @@ async function handler(
       if (tablesRes.isErr()) {
         logger.error(
           {
-            dataSourcename: dataSource.name,
             workspaceId: owner.id,
+            dataSourceId: dataSource.sId,
             error: tablesRes.error,
           },
           "Failed to get tables."
@@ -231,7 +231,7 @@ async function handler(
       if (tRes.isErr()) {
         logger.error(
           {
-            dataSourcename: dataSource.name,
+            dataSourceId: dataSource.sId,
             workspaceId: owner.id,
             error: tRes.error,
           },
@@ -272,7 +272,7 @@ async function handler(
       if (upsertRes.isErr()) {
         logger.error(
           {
-            dataSourceName: dataSource.name,
+            dataSourceId: dataSource.sId,
             workspaceId: owner.id,
             databaseName: name,
             tableId,

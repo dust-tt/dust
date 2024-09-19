@@ -105,8 +105,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
           panic: true, // This is a panic because we want to fix the data. This should never happen.
           workspaceId: owner.sId,
           connectorId: ds.connectorId,
-          dataSourceName: ds.name,
-          dataSourceId: ds.id,
+          dataSourceId: ds.sId,
           connectorProvider: ds.connectorProvider,
         },
         "Connector not found while we still have a data source."
