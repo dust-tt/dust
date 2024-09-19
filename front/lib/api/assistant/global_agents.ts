@@ -28,7 +28,8 @@ import {
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
-  O1_MODEL_CONFIG,
+  O1_MINI_MODEL_CONFIG,
+  O1_PREVIEW_MODEL_CONFIG,
 } from "@dust-tt/types";
 
 import {
@@ -253,7 +254,7 @@ function _getGPT4GlobalAgent({
     groupIds: [],
   };
 }
-function _getO1GlobalAgent({
+function _getO1PreviewGlobalAgent({
   auth,
   settings,
 }: {
@@ -272,15 +273,52 @@ function _getO1GlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "openai-o1",
-    description: O1_MODEL_CONFIG.description,
+    description: O1_PREVIEW_MODEL_CONFIG.description,
     instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png", // @todo: change to O1 avatar
     status,
     scope: "global",
     userListStatus: status === "active" ? "in-list" : "not-in-list",
     model: {
-      providerId: O1_MODEL_CONFIG.providerId,
-      modelId: O1_MODEL_CONFIG.modelId,
+      providerId: O1_PREVIEW_MODEL_CONFIG.providerId,
+      modelId: O1_PREVIEW_MODEL_CONFIG.modelId,
+      temperature: 1, // 1 is forced for O1
+    },
+    actions: [],
+    maxStepsPerRun: 0,
+    visualizationEnabled: false,
+    templateId: null,
+    groupIds: [],
+  };
+}
+function _getO1MiniGlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.O1_MINI,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "openai-o1-mini",
+    description: O1_MINI_MODEL_CONFIG.description,
+    instructions: null,
+    pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png", // @todo: change to O1 avatar
+    status,
+    scope: "global",
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    model: {
+      providerId: O1_MINI_MODEL_CONFIG.providerId,
+      modelId: O1_MINI_MODEL_CONFIG.modelId,
       temperature: 1, // 1 is forced for O1
     },
     actions: [],
@@ -1084,7 +1122,10 @@ function getGlobalAgent(
       agentConfiguration = _getGPT4GlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.O1:
-      agentConfiguration = _getO1GlobalAgent({ auth, settings });
+      agentConfiguration = _getO1PreviewGlobalAgent({ auth, settings });
+      break;
+    case GLOBAL_AGENTS_SID.O1_MINI:
+      agentConfiguration = _getO1MiniGlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = _getClaudeInstantGlobalAgent({ settings });
@@ -1232,6 +1273,11 @@ export async function getGlobalAgents(
   if (!owner.flags.includes("openai_o1_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1
+    );
+  }
+  if (!owner.flags.includes("openai_o1_mini_feature")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.O1_MINI
     );
   }
 
