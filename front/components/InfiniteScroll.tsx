@@ -26,8 +26,8 @@ export const InfiniteScroll = ({
 
   return (
     <>
-      {hasMore && !isValidating && <div ref={ref}>{children}</div>}
-      {isValidating && !isLoading && <div>load</div>}
+      {hasMore && !isValidating && <div ref={ref} />}
+      {isValidating && !isLoading && children}
     </>
   );
 };
