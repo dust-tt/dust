@@ -10,15 +10,13 @@ import {
 } from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type {
-  ConnectorType,
   DataSourceType,
   DataSourceWithAgentsUsageType,
   PlanType,
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { removeNulls, truncate } from "@dust-tt/types";
-import { ConnectorsAPI } from "@dust-tt/types";
+import { truncate } from "@dust-tt/types";
 import type { SortingState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -31,16 +29,10 @@ import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
 import { getDataSourcesUsageByCategory } from "@app/lib/api/agent_data_sources";
-import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isWebsite } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import logger from "@app/logger/logger";
-
-type DataSourceWithConnector = DataSourceType & {
-  connector: ConnectorType;
-};
 
 type RowData = DataSourceType & {
   icon: ComponentType;
@@ -58,7 +50,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   plan: PlanType;
   readOnly: boolean;
-  dataSources: DataSourceWithConnector[];
+  dataSources: DataSourceType[];
   dataSourcesUsage: DataSourcesUsageByAgent;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -83,53 +75,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     .filter(isWebsite)
     .map((ds) => ds.toJSON());
 
-  const connectorIds = websiteDataSources
-    .filter((ds) => ds.connectorId !== null)
-    .map((ds) => ds.connectorId) as string[];
-
-  const connectorsAPI = new ConnectorsAPI(
-    config.getConnectorsAPIConfig(),
-    logger
-  );
-
-  const connectorsRes = await connectorsAPI.getConnectors(
-    "webcrawler",
-    connectorIds
-  );
-  if (connectorsRes.isErr()) {
-    throw new Error("Failed to fetch connectors");
-  }
-
-  const dataSourcesWithConnector = websiteDataSources.map((ds) => {
-    const connector = connectorsRes.value.find((c) => c.id === ds.connectorId);
-    if (!connector) {
-      logger.error(
-        {
-          panic: true, // This is a panic because we want to fix the data. This should never happen.
-          workspaceId: owner.sId,
-          connectorId: ds.connectorId,
-          dataSourceId: ds.sId,
-          connectorProvider: ds.connectorProvider,
-        },
-        "Connector not found while we still have a data source."
-      );
-      return null;
-    }
-    return {
-      ...ds,
-      connector,
-    };
-  });
-
-  const dataSources = removeNulls(dataSourcesWithConnector);
-
   return {
     props: {
       owner,
       subscription,
       plan,
       readOnly,
-      dataSources,
+      dataSources: websiteDataSources,
       dataSourcesUsage,
     },
   };
