@@ -1,4 +1,4 @@
-import { Icon, StopSignIcon, XCircleIcon } from "@dust-tt/sparkle";
+import { Icon, StopSignIcon } from "@dust-tt/sparkle";
 import { isAPIErrorResponse, safeParseJSON } from "@dust-tt/types";
 import type { ComponentType } from "react";
 

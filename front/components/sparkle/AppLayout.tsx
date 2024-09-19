@@ -1,4 +1,3 @@
-import { Banner } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import Head from "next/head";
 import type { NextRouter } from "next/router";
