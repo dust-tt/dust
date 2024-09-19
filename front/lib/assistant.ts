@@ -47,6 +47,7 @@ export enum GLOBAL_AGENTS_SID {
   INTERCOM = "intercom",
   GPT35_TURBO = "gpt-3.5-turbo",
   GPT4 = "gpt-4",
+  O1 = "o1",
   CLAUDE_3_OPUS = "claude-3-opus",
   CLAUDE_3_SONNET = "claude-3-sonnet",
   CLAUDE_3_HAIKU = "claude-3-haiku",
