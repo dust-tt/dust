@@ -17,14 +17,17 @@ export function RequestOrAddDataFromDataSourceModal({
 }: RequestOrAddDataFromDataSourceModalProps) {
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
+
   const { connector } = useConnector({
     workspaceId: owner.sId,
-    dataSource: dataSource,
+    dataSource,
   });
+
   return (
     <>
       {owner.role === "admin" && connector ? (
         <>
+          {" "}
           <Button
             label="Add Data"
             icon={PlusIcon}

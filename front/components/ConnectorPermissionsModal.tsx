@@ -321,25 +321,27 @@ function DataSourceEditionModal({
   );
 }
 
-export function ConnectorPermissionsModal({
-  owner,
-  connector,
-  dataSource,
-  isOpen,
-  onClose,
-  readOnly,
-  isAdmin,
-  onManageButtonClick,
-}: {
-  owner: WorkspaceType;
+interface ConnectorPermissionsModalProps {
   connector: ConnectorType;
   dataSource: DataSourceType;
+  isAdmin: boolean;
   isOpen: boolean;
   onClose: (save: boolean) => void;
-  readOnly: boolean;
-  isAdmin: boolean;
   onManageButtonClick?: () => void;
-}) {
+  owner: WorkspaceType;
+  readOnly: boolean;
+}
+
+export function ConnectorPermissionsModal({
+  connector,
+  dataSource,
+  isAdmin,
+  isOpen,
+  onClose,
+  onManageButtonClick,
+  owner,
+  readOnly,
+}: ConnectorPermissionsModalProps) {
   const { mutate } = useSWRConfig();
 
   const [updatedPermissionByInternalId, setUpdatedPermissionByInternalId] =
