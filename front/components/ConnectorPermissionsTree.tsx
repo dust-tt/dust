@@ -5,7 +5,6 @@ import {
   IconButton,
   ListCheckIcon,
   Searchbar,
-  Spinner,
   Tooltip,
   Tree,
 } from "@dust-tt/sparkle";
@@ -20,11 +19,10 @@ import type {
 } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
-import { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
+import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
@@ -164,19 +162,14 @@ export function DataSourceViewPermissionTreeChildren({
   viewType,
   ...props
 }: DataSourceViewPermissionTreeChildrenProps) {
-  const {
-    nodes,
-    isNodesLoading,
-    isNodesError,
-    nextPage,
-    hasMore,
-    isNodesValidating,
-  } = useDataSourceViewContentNodesWithInfiniteScroll({
-    dataSourceView: dataSourceView,
-    owner,
-    parentId: parentId ?? undefined,
-    viewType,
-  });
+  const { nodes, isNodesLoading, isNodesError } = useDataSourceViewContentNodes(
+    {
+      dataSourceView: dataSourceView,
+      owner,
+      parentId: parentId ?? undefined,
+      viewType,
+    }
+  );
 
   if (isNodesError) {
     return (
@@ -211,16 +204,6 @@ export function DataSourceViewPermissionTreeChildren({
         )}
         {...props}
       />
-      <InfiniteScroll
-        nextPage={nextPage}
-        hasMore={hasMore}
-        isValidating={isNodesValidating}
-        isLoading={isNodesLoading}
-      >
-        <div className="pl-5 pt-1">
-          <Spinner size="xs" variant="dark" />
-        </div>
-      </InfiniteScroll>
     </>
   );
 }

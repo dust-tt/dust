@@ -25,8 +25,8 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -65,6 +65,11 @@ type VaultDataSourceViewContentListProps = {
   parentId?: string;
   isAdmin: boolean;
   connector: ConnectorType | null;
+};
+
+const columnsBreakpoints = {
+  lastUpdatedAt: "sm" as const,
+  vaults: "md" as const,
 };
 
 const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
@@ -169,15 +174,14 @@ export const VaultDataSourceViewContentList = ({
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
-  const [sorting, setSorting] = React.useState<SortingState>([
-    { id: "name", desc: false },
-  ]);
+  const [sorting, setSorting] = React.useState<SortingState>([]);
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
+    initialPageSize: 25,
   });
-  const [viewType, setViewType] = useHashParam("viewType");
+  const [viewType, setViewType] = useHashParam("viewType", "documents");
   const router = useRouter();
   const showVaultUsage =
     dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource);
@@ -205,6 +209,14 @@ export const VaultDataSourceViewContentList = ({
     [setPagination, setViewType, viewType, pagination.pageSize]
   );
 
+  const isServerPagination =
+    !isManaged(dataSourceView.dataSource) && !dataSourceSearch;
+
+  const columns = useMemo(
+    () => getTableColumns(showVaultUsage),
+    [showVaultUsage]
+  );
+
   const {
     isNodesLoading,
     mutateRegardlessOfQueryParams: mutateContentNodes,
@@ -214,8 +226,8 @@ export const VaultDataSourceViewContentList = ({
     dataSourceView,
     owner,
     parentId,
-    pagination,
-    viewType: isValidContentNodesViewType(viewType) ? viewType : undefined,
+    pagination: isServerPagination ? pagination : undefined,
+    viewType: isValidContentNodesViewType(viewType) ? viewType : "documents",
   });
 
   const { hasContent: hasDocuments, isNodesValidating: isDocumentsValidating } =
@@ -307,14 +319,6 @@ export const VaultDataSourceViewContentList = ({
     ]
   );
 
-  if (isNodesLoading) {
-    return (
-      <div className="mt-8 flex justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-
   const emptyVaultContent =
     isManaged(dataSourceView.dataSource) && vault.kind !== "system" ? (
       isAdmin ? (
@@ -340,31 +344,35 @@ export const VaultDataSourceViewContentList = ({
     );
 
   const emptyContent = parentId ? <div>No content</div> : emptyVaultContent;
+  const isEmpty = rows.length === 0 && !isNodesLoading;
 
   return (
     <>
       <div
         className={classNames(
           "flex gap-2",
-          rows.length === 0
+          isEmpty
             ? "h-36 w-full max-w-4xl items-center justify-center rounded-lg border bg-structure-50"
             : ""
         )}
       >
-        {rows.length > 0 ? (
+        {!isEmpty && (
           <>
             <Searchbar
               name="search"
               placeholder="Search (Name)"
               value={dataSourceSearch}
               onChange={(s) => {
+                setPagination(
+                  { pageIndex: 0, pageSize: pagination.pageSize },
+                  "replace"
+                );
                 setDataSourceSearch(s);
               }}
             />
           </>
-        ) : (
-          emptyContent
         )}
+        {isEmpty && !emptyContent}
         {isFolder(dataSourceView.dataSource) && (
           <>
             {((viewType === "tables" && hasDocuments) ||
@@ -437,22 +445,24 @@ export const VaultDataSourceViewContentList = ({
             </div>
           )}
       </div>
+      {isNodesLoading && (
+        <div className="mt-8 flex justify-center">
+          <Spinner />
+        </div>
+      )}
       {rows.length > 0 && (
         <DataTable
           data={rows}
-          columns={getTableColumns(showVaultUsage)}
+          columns={columns}
           filter={dataSourceSearch}
           filterColumn="title"
           className="pb-4"
           sorting={sorting}
           setSorting={setSorting}
-          totalRowCount={totalNodesCount}
+          totalRowCount={isServerPagination ? totalNodesCount : undefined}
           pagination={pagination}
           setPagination={setPagination}
-          columnsBreakpoints={{
-            lastUpdatedAt: "sm",
-            vaults: "md",
-          }}
+          columnsBreakpoints={columnsBreakpoints}
         />
       )}
       <ContentActions
