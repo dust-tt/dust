@@ -198,6 +198,7 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
       id: this.id,
       dataSourceWorkspaceId: this.dataSourceWorkspaceId,
       dataSourceId: this.dataSourceId,
+      dataSourceView: this.dataSourceView?.toJSON() || null,
       sourceUrl: this.getSourceUrl(auth),
       documentId: this.documentId,
       reference: this.reference,
