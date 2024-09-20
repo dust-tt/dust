@@ -61,6 +61,15 @@ export function Tree({
   );
 }
 
+const treeItemStyleClasses = {
+  base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center",
+  isNavigatableBase:
+    "s-border s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
+  isNavigatableUnselected:
+    "s-border-structure-200/0 s-bg-white/0 hover:s-border-structure-200 hover:s-bg-white",
+  isNavigatableSelected: "s-border-structure-200 s-bg-white",
+};
+
 interface TreeItemProps {
   label?: string;
   type?: "node" | "item" | "leaf";
@@ -128,15 +137,6 @@ Tree.Item = function ({
   };
 
   const childrenToRender = getChildren();
-
-  const treeItemStyleClasses = {
-    base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center",
-    isNavigatableBase:
-      "s-border s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
-    isNavigatableUnselected:
-      "s-border-structure-200/0 s-bg-white/0 hover:s-border-structure-200 hover:s-bg-white",
-    isNavigatableSelected: "s-border-structure-200 s-bg-white",
-  };
 
   const isExpanded = childrenToRender && !effectiveCollapsed;
 
@@ -213,4 +213,12 @@ Tree.Item = function ({
       )}
     </>
   );
+};
+
+interface TreeEmptyProps {
+  label: string;
+}
+
+Tree.Empty = function ({ label }: TreeEmptyProps) {
+  return <div className="s-pl-4 s-text-sm s-text-element-600">{label}</div>;
 };
