@@ -40,6 +40,7 @@ export function DataSourceViewsDataTable({
         <PokeDataTable
           columns={makeColumnsForDataSourceViews()}
           data={prepareDataSourceViewsForDisplay(owner, data)}
+          defaultFilterColumn="dataSourceName"
         />
       )}
     </PokeDataTableConditionalFetch>
