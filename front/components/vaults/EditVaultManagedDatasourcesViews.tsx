@@ -12,19 +12,24 @@ import React, { useState } from "react";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import VaultManagedDataSourcesViewsModal from "@app/components/vaults/VaultManagedDatasourcesViewsModal";
-import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
+import {
+  useVaultDataSourceViews,
+  useVaultDataSourceViewsWithDetails,
+} from "@app/lib/swr/vaults";
+
+interface EditVaultManagedDataSourcesViewsProps {
+  isAdmin: boolean;
+  owner: WorkspaceType;
+  systemVault: VaultType;
+  vault: VaultType;
+}
 
 export function EditVaultManagedDataSourcesViews({
-  owner,
-  vault,
-  systemVault,
   isAdmin,
-}: {
-  owner: WorkspaceType;
-  vault: VaultType;
-  systemVault: VaultType;
-  isAdmin: boolean;
-}) {
+  owner,
+  systemVault,
+  vault,
+}: EditVaultManagedDataSourcesViewsProps) {
   const sendNotification = React.useContext(SendNotificationsContext);
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
@@ -36,7 +41,7 @@ export function EditVaultManagedDataSourcesViews({
     vaultDataSourceViews,
     isVaultDataSourceViewsLoading,
     mutateRegardlessOfQueryParams: mutateVaultDataSourceViews,
-  } = useVaultDataSourceViews({
+  } = useVaultDataSourceViewsWithDetails({
     workspaceId: owner.sId,
     vaultId: vault.sId,
     category: "managed",

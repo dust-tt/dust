@@ -326,7 +326,7 @@ export const VaultResourcesList = ({
         const provider = dataSourceView.dataSource.connectorProvider;
 
         return {
-          dataSourceView: dataSourceView,
+          dataSourceView,
           label: getDataSourceNameFromView(dataSourceView),
           icon: getConnectorProviderLogoWithFallback(provider, FolderIcon),
           workspaceId: owner.sId,
