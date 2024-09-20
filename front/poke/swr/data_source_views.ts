@@ -3,6 +3,7 @@ import type {
   DataSourceViewType,
   LightWorkspaceType,
 } from "@dust-tt/types";
+import type { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
@@ -16,7 +17,6 @@ import {
 import type { PokeListDataSourceViews } from "@app/pages/api/poke/workspaces/[wId]/data_source_views";
 import type { PokeGetDataSourceViewContentNodes } from "@app/pages/api/poke/workspaces/[wId]/vaults/[vId]/data_source_views/[dsvId]/content-nodes";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
-import { PaginationState } from "@tanstack/react-table";
 
 export function usePokeDataSourceViews({
   disabled,
