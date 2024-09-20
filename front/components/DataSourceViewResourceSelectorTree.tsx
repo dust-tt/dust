@@ -21,7 +21,7 @@ import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentM
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useConnector } from "@app/lib/swr/connectors";
-import { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
+import type { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 
 interface DataSourceViewResourceSelectorTreeBaseProps {
@@ -37,6 +37,7 @@ interface DataSourceViewResourceSelectorTreeBaseProps {
   selectedParents?: string[];
   selectedResourceIds: string[];
   showExpand: boolean;
+  useDataSourceViewContentNodes: typeof useDataSourceViewContentNodesWithInfiniteScroll;
   viewType?: ContentNodesViewType;
 }
 
@@ -49,6 +50,7 @@ export default function DataSourceViewResourceSelectorTree({
   selectedParents = [],
   selectedResourceIds,
   onSelectChange,
+  useDataSourceViewContentNodes,
   viewType = "documents",
 }: DataSourceViewResourceSelectorTreeBaseProps) {
   return (
@@ -65,6 +67,7 @@ export default function DataSourceViewResourceSelectorTree({
         onSelectChange={(resource, parents, selected) => {
           onSelectChange(resource, parents, selected);
         }}
+        useDataSourceViewContentNodes={useDataSourceViewContentNodes}
         viewType={viewType}
       />
     </div>
@@ -89,6 +92,7 @@ function DataSourceViewResourceSelectorChildren({
   selectedParents,
   selectedResourceIds,
   showExpand,
+  useDataSourceViewContentNodes,
   viewType = "documents",
 }: DataSourceResourceSelectorChildrenProps) {
   const {
@@ -98,7 +102,7 @@ function DataSourceViewResourceSelectorChildren({
     nextPage,
     hasMore,
     isNodesValidating,
-  } = useDataSourceViewContentNodesWithInfiniteScroll({
+  } = useDataSourceViewContentNodes({
     dataSourceView: dataSourceView,
     owner,
     parentId,
@@ -110,6 +114,7 @@ function DataSourceViewResourceSelectorChildren({
   const { connector } = useConnector({
     workspaceId: owner.sId,
     dataSourceId: dataSourceView.dataSource.sId,
+    disabled: readonly,
   });
 
   useEffect(() => {
@@ -196,6 +201,7 @@ function DataSourceViewResourceSelectorChildren({
                   readonly={readonly}
                   parents={[...parents, r.internalId]}
                   parentIsSelected={parentIsSelected || isSelected}
+                  useDataSourceViewContentNodes={useDataSourceViewContentNodes}
                   viewType={viewType}
                 />
               )}
