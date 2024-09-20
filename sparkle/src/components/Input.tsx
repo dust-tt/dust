@@ -50,8 +50,8 @@ export function Input({
         id={name}
         className={classNames(
           "s-w-full s-border-0 s-outline-none s-ring-1 focus:s-outline-none focus:s-ring-2",
-          "s-bg-structure-50 s-text-element-900 s-placeholder-element-700",
-          "dark:s-bg-structure-50-dark dark:s-text-element-800-dark dark:s-placeholder-element-700-dark",
+          "s-bg-structure-50s-placeholder-element-700",
+          "dark:s-bg-structure-50-dark dark:s-placeholder-element-700-dark",
           sizeInputClasses[size],
           "s-transition-all s-duration-300 s-ease-out",
           className ?? "",
@@ -63,7 +63,10 @@ export function Input({
             : classNames(
                 "s-ring-warning-200 focus:s-ring-warning-300",
                 "dark:s-ring-warning-200-dark dark:focus:s-ring-warning-300-dark"
-              )
+              ),
+          disabled
+            ? "s-text-element-500 hover:s-cursor-not-allowed"
+            : "s-text-element-900 dark:s-text-element-800-dark"
         )}
         placeholder={placeholder}
         value={value ?? ""}
