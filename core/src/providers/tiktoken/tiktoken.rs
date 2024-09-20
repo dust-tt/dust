@@ -107,6 +107,32 @@ pub fn cl100k_base() -> Result<CoreBPE> {
     )
 }
 
+pub fn o200k_base() -> Result<CoreBPE> {
+    let o200k_base = include_str!("o200k_base.tiktoken");
+
+    let mut encoder = HashMap::default();
+    for line in o200k_base.lines() {
+        let mut parts = line.split(' ');
+        let raw = parts.next().unwrap();
+        let token = &general_purpose::STANDARD.decode(raw)?;
+        let rank: usize = parts.next().unwrap().parse().unwrap();
+        encoder.insert(token.clone(), rank);
+    }
+
+    let mut special_tokens = HashMap::default();
+    special_tokens.insert(String::from("<|endoftext|>"), 100257);
+    special_tokens.insert(String::from("<|fim_prefix|>"), 100258);
+    special_tokens.insert(String::from("<|fim_middle|>"), 100259);
+    special_tokens.insert(String::from("<|fim_suffix|>"), 100260);
+    special_tokens.insert(String::from("<|endofprompt|>"), 100276);
+
+    CoreBPE::new(
+        encoder,
+        special_tokens,
+        "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+    )
+}
+
 pub fn anthropic_base_singleton() -> Arc<RwLock<CoreBPE>> {
     lazy_static! {
         static ref ANTHROPIC_BASE: Arc<RwLock<CoreBPE>> =
@@ -135,6 +161,13 @@ pub fn cl100k_base_singleton() -> Arc<RwLock<CoreBPE>> {
             Arc::new(RwLock::new(cl100k_base().unwrap()));
     }
     CL100K_BASE.clone()
+}
+
+pub fn o200k_base_singleton() -> Arc<RwLock<CoreBPE>> {
+    lazy_static! {
+        static ref O200K_BASE: Arc<RwLock<CoreBPE>> = Arc::new(RwLock::new(o200k_base().unwrap()));
+    }
+    O200K_BASE.clone()
 }
 
 pub async fn decode_async(bpe: Arc<RwLock<CoreBPE>>, tokens: Vec<usize>) -> Result<String> {
