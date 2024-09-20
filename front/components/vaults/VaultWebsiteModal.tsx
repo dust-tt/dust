@@ -39,10 +39,7 @@ import { DeleteStaticDataSourceDialog } from "@app/components/data_source/Delete
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
-import type {
-  PostDataSourceWithProviderRequestBodySchema,
-  PostVaultDataSourceResponseBody,
-} from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
+import type { PostDataSourceWithProviderRequestBodySchema } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 const WEBSITE_CAT = "website";
 
@@ -303,13 +300,6 @@ export default function VaultWebsiteModal({
       });
       void mutateVaultDataSourceViews();
       setIsSaving(false);
-      if (action === "created") {
-        const response: PostVaultDataSourceResponseBody = await res.json();
-        const { dataSourceView } = response;
-        await router.push(
-          `/w/${owner.sId}/vaults/${vault.sId}/categories/${WEBSITE_CAT}/data_source_views/${dataSourceView.sId}`
-        );
-      }
     } else {
       const err: { error: APIError } = await res.json();
       setIsSaving(false);
