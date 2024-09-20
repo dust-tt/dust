@@ -15,6 +15,8 @@ export const DialogExample = () => {
   const [isOpen2, setisOpen2] = useState(false);
   const [isOpen3, setisOpen3] = useState(false);
   const [isOpen4, setisOpen4] = useState(false);
+  const [isOpen5, setisOpen5] = useState(false);
+
   return (
     <div className="items-start s-flex s-flex-col s-gap-10">
       <div>
@@ -72,6 +74,18 @@ export const DialogExample = () => {
           <div>I'm the modal content</div>
         </Dialog>
         <Button label="Dialog with disabled" onClick={() => setisOpen4(true)} />
+      </div>
+      <div>
+        <Dialog
+          alertDialog
+          isOpen={isOpen5}
+          title="Alert Dialog title"
+          onValidate={() => setisOpen5(false)}
+          onCancel={() => setisOpen5(false)}
+        >
+          <div>I'm the modal content</div>
+        </Dialog>
+        <Button label="Alert dialog" onClick={() => setisOpen5(true)} />
       </div>
     </div>
   );
