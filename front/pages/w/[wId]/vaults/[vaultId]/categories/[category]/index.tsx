@@ -42,6 +42,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
   const plan = auth.getNonNullablePlan();
+  const isAdmin = auth.isAdmin();
 
   if (!subscription) {
     return {
@@ -54,12 +55,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     auth,
     context.query.vaultId as string
   );
-  if (!vault || !systemVault) {
+  if (!vault || !systemVault || (vault.isSystem() && !isAdmin)) {
     return {
       notFound: true,
     };
   }
-  const isAdmin = auth.isAdmin();
+
   const isBuilder = auth.isBuilder();
   const canWriteInVault = vault.canWrite(auth);
 
