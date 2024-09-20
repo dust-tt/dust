@@ -254,7 +254,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       WebCrawlerFolder.findAll({
         where: {
           connectorId: this.connectorId,
-          internalId,
+          internalId: internalIds,
         },
       }),
       WebCrawlerPage.findAll({
