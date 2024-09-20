@@ -89,9 +89,7 @@ export const TreeExample = () => {
                     visual={FolderIcon}
                     collapsed={false}
                   >
-                    <Tree>
-                      <Tree.Empty label="No documents"/>
-                    </Tree>
+                    <Tree.Empty label="No documents"/>
                   </Tree.Item>
                 </Tree>
               </Tree.Item>
