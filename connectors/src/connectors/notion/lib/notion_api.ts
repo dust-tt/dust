@@ -387,17 +387,12 @@ export async function isAccessibleAndUnarchived(
             // Trying to respect the rate limit sent back by notion api
             // See: https://developers.notion.com/reference/request-limits
             const responseHeaders = e.headers as Record<string, string>;
-            if (responseHeaders["Retry-After"]) {
-              const retryAfter = parseInt(responseHeaders["Retry-After"], 10);
+            if (responseHeaders["retry-after"]) {
+              const retryAfter = parseInt(responseHeaders["retry-after"], 10);
               if (!isNaN(retryAfter) && retryAfter > 0) {
                 waitTime = retryAfter * 1000;
                 usingHeader = true;
               }
-            } else {
-              tryLogger.warn(
-                { reponseHeaders: e.headers },
-                `Retry-After header not found [${e.headers["Retry-After"]}] [${e.headers["retry-after"]}].`
-              );
             }
           } catch (e) {
             // Ignore all errors here as the e.headers type is unknown.
