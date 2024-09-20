@@ -1,12 +1,12 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { NewButton, PlusIcon } from "../index_with_tw_base";
+import { PlusIcon } from "@sparkle/icons";
+import { NewButton } from "@sparkle/index_with_tw_base";
 
 const meta = {
   title: "NewPrimitives/Button",
-  component: NewButton,
-} satisfies Meta<typeof NewButton>;
+} satisfies Meta;
 
 export default meta;
 
@@ -20,6 +20,14 @@ export const ButtonExamples = () => (
       <NewButton size="xs" variant="warning" label="Button" />
       <NewButton size="xs" variant="outline" label="Button" />
       <NewButton size="xs" variant="ghost" label="Button" />
+    </div>
+    <div className="s-flex s-items-center s-gap-4">
+      <NewButton size="xs" label="Button" isLoading />
+      <NewButton size="xs" variant="highlight" label="Button" disabled />
+      <NewButton size="xs" variant="secondary" label="Button" disabled />
+      <NewButton size="xs" variant="warning" label="Button" disabled />
+      <NewButton size="xs" variant="outline" label="Button" disabled />
+      <NewButton size="xs" variant="ghost" label="Button" disabled />
     </div>
     <div className="s-flex s-items-center s-gap-4">
       <NewButton size="xs" label="Button" isLoading />

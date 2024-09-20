@@ -13,12 +13,12 @@ import { classNames } from "@sparkle/lib/utils";
 
 const itemClasses = classNames(
   "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none",
-  "s-rounded-md s-text-sm s-font-medium focus:s-text-primary-900 focus:s-bg-primary-100 s-px-2 s-py-2",
-  "s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none data-[disabled]:s-opacity-50"
+  "s-rounded-md s-text-sm s-font-medium focus:s-text-primary-950 focus:s-bg-primary-100 s-px-2 s-py-2",
+  "s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none data-[disabled]:s-text-primary-400"
 );
 
 const containerClasses = classNames(
-  "s-rounded-lg s-border s-border-structure-100 s-bg-white s-p-1 s-text-primary-900 s-shadow-md",
+  "s-rounded-lg s-border s-border-structure-100 s-bg-white s-p-1 s-text-primary-950 s-shadow-md",
   "s-z-50 s-min-w-[8rem] s-overflow-hidden",
   "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2"
 );
@@ -165,7 +165,8 @@ const NewDropdownMenuRadioItem = React.forwardRef<
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
     className={classNames(
-      "focus:s-text-primary-900-foreground s-relative s-flex s-cursor-default s-select-none s-items-center s-rounded-md s-py-2 s-pl-8 s-pr-2 s-text-sm s-outline-none s-transition-colors focus:s-bg-primary-200 data-[disabled]:s-pointer-events-none data-[disabled]:s-opacity-50",
+      itemClasses,
+      "s-pl-8 s-pr-2",
       className ? className : ""
     )}
     {...props}
@@ -190,7 +191,7 @@ const NewDropdownMenuLabel = React.forwardRef<
   <DropdownMenuPrimitive.Label
     ref={ref}
     className={classNames(
-      "s-px-2 s-py-1.5 s-text-sm s-font-semibold s-text-primary-500",
+      "s-px-2 s-py-2 s-text-sm s-font-bold s-text-primary-950",
       inset ? "s-pl-8" : "",
       className ? className : ""
     )}

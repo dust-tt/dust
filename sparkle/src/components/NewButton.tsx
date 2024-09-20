@@ -2,25 +2,27 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
+import { SpinnerProps } from "@sparkle/components/Spinner";
 import { Icon, Spinner } from "@sparkle/index_with_tw_base";
 import { classNames } from "@sparkle/lib/utils";
 
 const buttonVariants = cva(
-  "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors s-duration-100 focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 disabled:s-pointer-events-none disabled:s-opacity-50",
+  "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors s-duration-100 focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 disabled:s-pointer-events-none",
   {
     variants: {
       variant: {
         primary:
-          "s-bg-primary-800 s-text-primary-50 hover:s-bg-primary-600 active:s-bg-primary-900",
+          "s-bg-primary-800 s-text-primary-50 hover:s-bg-primary-600 active:s-bg-primary-900 disabled:s-bg-primary-400",
         highlight:
-          "s-bg-action-500 s-text-white hover:s-bg-action-400 active:s-bg-action-600",
+          "s-bg-action-500 s-text-white hover:s-bg-action-400 active:s-bg-action-600 disabled:s-bg-action-300",
         warning:
-          "s-bg-warning-500 s-text-white hover:s-bg-warning-400 active:s-bg-warning-600",
+          "s-bg-warning-500 s-text-white hover:s-bg-warning-400 active:s-bg-warning-600  disabled:s-bg-warning-300",
         outline:
-          "s-border s-text-primary-950 s-border-primary-300 s-bg-background hover:s-bg-primary-100 active:s-bg-primary-300",
+          "s-border s-text-primary-950 s-border-primary-300 s-bg-background hover:s-bg-primary-100 active:s-bg-primary-300 disabled:s-text-primary-400 disabled:s-border-structure-100",
         secondary:
-          "s-bg-primary-200 s-text-primary-950 hover:s-bg-primary-100 active:s-bg-primary-200",
-        ghost: "hover:s-bg-primary-100 active:s-bg-primary-200",
+          "s-bg-primary-200 s-text-primary-950 hover:s-bg-primary-100 active:s-bg-primary-200 disabled:s-text-primary-500",
+        ghost:
+          "hover:s-bg-primary-100 active:s-bg-primary-200 disabled:s-text-primary-400",
       },
       size: {
         xs: "s-h-7 s-px-2.5 s-rounded s-text-xs s-gap-1",
@@ -36,14 +38,9 @@ const buttonVariants = cva(
   }
 );
 
-interface ButtonProps extends MetaButtonProps {
-  label?: string;
-  icon?: React.ComponentType;
-  isLoading?: boolean;
-}
+type SpinnerVariant = NonNullable<SpinnerProps["variant"]>;
 
-// Map button variants to spinner variants
-const spinnerVariantsMap = {
+const spinnerVariantsMap: Record<string, SpinnerVariant> = {
   primary: "light",
   highlight: "light",
   warning: "light",
@@ -52,19 +49,37 @@ const spinnerVariantsMap = {
   ghost: "dark",
 };
 
-interface ButtonProps extends MetaButtonProps {
+const spinnerVariantsMapIsLoading: Record<string, SpinnerVariant> = {
+  primary: "light",
+  highlight: "light",
+  warning: "light",
+  outline: "slate400",
+  secondary: "slate400",
+  ghost: "slate400",
+};
+
+interface NewButtonProps extends MetaButtonProps {
   label?: string;
   icon?: React.ComponentType;
   isLoading?: boolean;
 }
 
-export const NewButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
+export const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
   ({ label, icon, isLoading = false, variant = "primary", ...props }, ref) => {
     const hasIcon = Boolean(icon);
 
-    const spinnerVariant =
-      spinnerVariantsMap[variant as keyof typeof spinnerVariantsMap] || "color";
+    let spinnerVariant;
 
+    if (isLoading) {
+      spinnerVariant =
+        spinnerVariantsMapIsLoading[
+          variant as keyof typeof spinnerVariantsMapIsLoading
+        ] || "slate400";
+    } else {
+      spinnerVariant =
+        spinnerVariantsMap[variant as keyof typeof spinnerVariantsMap] ||
+        "slate400";
+    }
     const content = isLoading ? (
       <>
         <Spinner
