@@ -395,8 +395,8 @@ export async function isAccessibleAndUnarchived(
               }
             } else {
               tryLogger.warn(
-                { headers: e.headers },
-                "Retry-After header not found."
+                { reponseHeaders: e.headers },
+                `Retry-After header not found [${e.headers["Retry-After"]}] [${e.headers["retry-after"]}].`
               );
             }
           } catch (e) {
