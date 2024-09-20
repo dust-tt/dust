@@ -1043,9 +1043,8 @@ function _getDustGlobalAgent(
         topK: "auto",
         dataSources: [
           {
-            dataSourceId: dsView.dataSource.name,
-            dataSourceViewId: dsView.sId,
             workspaceId: preFetchedDataSources.workspaceId,
+            dataSourceViewId: dsView.sId,
             filter: { parents: null },
           },
         ],
