@@ -12,9 +12,9 @@ export type TablesQueryConfigurationType = {
 };
 
 export type TableDataSourceConfiguration = {
+  workspaceId: string;
   dataSourceViewId: string;
   tableId: string;
-  workspaceId: string;
 };
 
 export interface TablesQueryActionType extends BaseAction {
