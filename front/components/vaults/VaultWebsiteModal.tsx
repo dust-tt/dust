@@ -632,7 +632,6 @@ export default function VaultWebsiteModal({
                         isOpen={isDeleteModalOpen}
                         onClose={() => {
                           setIsDeleteModalOpen(false);
-                          onClose();
                         }}
                       />
                     )}

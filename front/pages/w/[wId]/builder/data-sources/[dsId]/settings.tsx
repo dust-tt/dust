@@ -273,7 +273,7 @@ function StandardDataSourceSettings({
             <Button
               variant="secondaryWarning"
               icon={TrashIcon}
-              label={"Delete this Folder"}
+              label="Delete this Folder"
               onClick={() => {
                 setIsDeleteModalOpen(true);
               }}
