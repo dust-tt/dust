@@ -60,6 +60,10 @@ const DataSourcePage = ({
                       <div className="font-bold">versionAuthorId:</div>
                       <div>{a.versionAuthorId}</div>
                     </div>
+                    <div className="ml-4 pt-2 text-sm text-element-700">
+                      <div className="font-bold">Description:</div>
+                      <div>{a.description}</div>
+                    </div>
                     <div className="ml-4 text-sm text-element-700">
                       <div className="font-bold">Instructions:</div>
                       <TextArea
