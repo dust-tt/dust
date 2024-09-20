@@ -18,7 +18,6 @@ import type {
   ConversationWithoutContentType,
   GenerationTokensEvent,
   MentionType,
-  ModelId,
   PlanType,
   Result,
   SupportedContentFragmentType,
@@ -27,6 +26,7 @@ import type {
   UserMessageNewEvent,
   UserMessageType,
   UserMessageWithRankType,
+  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
@@ -584,7 +584,7 @@ async function getConversationRankVersionLock(
 async function attributeUserFromWorkspaceAndEmail(
   workspace: WorkspaceType | null,
   email: string | null
-): Promise<ModelId | null> {
+): Promise<UserType | null> {
   if (!workspace || !email || !isEmailValid(email)) {
     return null;
   }
@@ -600,7 +600,7 @@ async function attributeUserFromWorkspaceAndEmail(
       workspace,
     });
 
-  return membership ? matchingUser.id : null;
+  return membership ? matchingUser.toJSON() : null;
 }
 
 // This method is in charge of creating a new user message in database, running the necessary agents
@@ -757,10 +757,12 @@ export async function* postUserMessage(
                   userContextOrigin: context.origin,
                   userId: user
                     ? user.id
-                    : await attributeUserFromWorkspaceAndEmail(
-                        owner,
-                        context.email
-                      ),
+                    : (
+                        await attributeUserFromWorkspaceAndEmail(
+                          owner,
+                          context.email
+                        )
+                      )?.id,
                 },
                 { transaction: t }
               )
@@ -1240,10 +1242,12 @@ export async function* editUserMessage(
                   userContextOrigin: userMessageRow.userContextOrigin,
                   userId: userMessageRow.userId
                     ? userMessageRow.userId
-                    : await attributeUserFromWorkspaceAndEmail(
-                        owner,
-                        userMessageRow.userContextEmail
-                      ),
+                    : (
+                        await attributeUserFromWorkspaceAndEmail(
+                          owner,
+                          userMessageRow.userContextEmail
+                        )
+                      )?.id,
                 },
                 { transaction: t }
               )
