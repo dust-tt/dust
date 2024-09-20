@@ -74,6 +74,7 @@ export function VaultLayout({
         {children}
         {isAdmin && isPrivateVaultsEnabled && (
           <CreateOrEditVaultModal
+            isAdmin={isAdmin}
             owner={owner}
             isOpen={showVaultCreationModal}
             onClose={() => setShowVaultCreationModal(false)}
