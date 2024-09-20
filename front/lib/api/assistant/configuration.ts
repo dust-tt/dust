@@ -112,7 +112,7 @@ export async function getAgentConfiguration(
 ): Promise<AgentConfigurationType | null> {
   const res = await getAgentConfigurations({
     auth,
-    agentsGetView: { agentId },
+    agentsGetView: { agentIds: [agentId] },
     variant: "full",
   });
   return res[0] || null;
@@ -159,7 +159,7 @@ export async function getLightAgentConfiguration(
 ): Promise<LightAgentConfigurationType | null> {
   const res = await getAgentConfigurations({
     auth,
-    agentsGetView: { agentId },
+    agentsGetView: { agentIds: [agentId] },
     variant: "light",
   });
   return res[0] || null;
@@ -189,13 +189,8 @@ function determineGlobalAgentIdsToFetch(
         // All global agents in conversation view.
         return undefined;
       }
-      if (typeof agentsGetView === "object" && "agentId" in agentsGetView) {
-        if (isGlobalAgentId(agentsGetView.agentId)) {
-          // In agentId view, only get the global agent with the provided id if it is a global agent.
-          return [agentsGetView.agentId];
-        }
-        // In agentId view, don't get any global agents if it is not a global agent.
-        return [];
+      if (typeof agentsGetView === "object" && "agentIds" in agentsGetView) {
+        return agentsGetView.agentIds.filter(isGlobalAgentId);
       }
       assertNever(agentsGetView);
   }
@@ -220,7 +215,7 @@ async function fetchGlobalAgentConfigurationForView(
 
   if (
     agentsGetView === "global" ||
-    (typeof agentsGetView === "object" && "agentId" in agentsGetView)
+    (typeof agentsGetView === "object" && "agentIds" in agentsGetView)
   ) {
     // All global agents in global and agent views.
     return matchingGlobalAgents;
@@ -331,15 +326,12 @@ async function fetchAgentConfigurationsForView(
       });
 
     default:
-      if (typeof agentsGetView === "object" && "agentId" in agentsGetView) {
-        if (isGlobalAgentId(agentsGetView.agentId)) {
-          return Promise.resolve([]);
-        }
+      if (typeof agentsGetView === "object" && "agentIds" in agentsGetView) {
         return AgentConfiguration.findAll({
           where: {
             workspaceId: owner.id,
             ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
-            sId: agentsGetView.agentId,
+            sId: agentsGetView.agentIds.filter(isGlobalAgentId),
           },
           order: [["version", "DESC"]],
           ...(agentsGetView.allVersions ? {} : { limit: 1 }),
