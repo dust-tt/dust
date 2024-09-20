@@ -31,7 +31,6 @@ export function getDisplayNameForDataSource(ds: DataSourceType) {
       case "microsoft":
       case "notion":
         return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
-        break;
       case "webcrawler":
         return ds.name;
       default:

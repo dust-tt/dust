@@ -9,6 +9,7 @@ import {
   PokeTableHead,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 interface ViewDataSourceViewTableProps {
@@ -41,7 +42,7 @@ export function ViewDataSourceViewTable({
                 <PokeTableHead>Data source</PokeTableHead>
                 <PokeTableCellWithLink
                   href={`/poke/${owner.sId}/data_sources/${dataSourceView.dataSource.sId}`}
-                  content={`${dataSourceView.dataSource.name} (${dataSourceView.dataSource.sId})`}
+                  content={`${getDisplayNameForDataSource(dataSourceView.dataSource)} (${dataSourceView.dataSource.sId})`}
                 />
               </PokeTableRow>
               <PokeTableRow>

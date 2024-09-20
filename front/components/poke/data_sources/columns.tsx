@@ -11,14 +11,14 @@ import Link from "next/link";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
-export type DataSources = {
+interface DataSources {
   connectorProvider: string | null;
   id: number;
   sId: string;
   name: string;
   editedBy: string | undefined;
   editedAt: number | undefined;
-};
+}
 
 export function makeColumnsForDataSources(
   owner: WorkspaceType,

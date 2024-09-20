@@ -9,6 +9,7 @@ import * as React from "react";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeLabel } from "@app/components/poke/shadcn/ui/label";
+import PokeLink from "@app/components/poke/shadcn/ui/link";
 
 const Table = React.forwardRef<
   HTMLTableElement,
@@ -166,49 +167,18 @@ const TableCellWithLink = React.forwardRef<
   HTMLTableCellElement,
   TableCellWithLinkProps
 >(({ className, href, content, external = false, ...props }, ref) => {
-  const linkClasses = cn(
-    "relative text-gray-700",
-    "transition-colors duration-200",
-    "after:absolute after:bottom-0 after:left-0 after:right-0",
-    "after:h-[1px] after:bg-gray-300",
-    "after:transition-all after:duration-300 after:ease-in-out",
-    "hover:after:h-full hover:after:opacity-30",
-    "after:opacity-50"
-  );
-
-  const linkContent = (
-    <>
-      <span className="relative z-10">{content}</span>
-      {external && (
-        <ExternalLinkIcon className="relative z-10 ml-1 inline-block h-3 w-3" />
-      )}
-    </>
-  );
-
   return (
     <TableCell
       ref={ref}
       className={cn("p-2 align-middle", className)}
       {...props}
     >
-      {external ? (
-        <a
-          href={href}
-          className={linkClasses}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {linkContent}
-        </a>
-      ) : (
-        <Link href={href} passHref legacyBehavior>
-          <a className={linkClasses}>{linkContent}</a>
-        </Link>
-      )}
+      <PokeLink href={href} external={external}>
+        {content}
+      </PokeLink>
     </TableCell>
   );
 });
-
 TableCellWithLink.displayName = "TableCellWithLink";
 
 export {
