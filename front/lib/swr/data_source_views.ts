@@ -5,7 +5,7 @@ import type {
 } from "@dust-tt/types";
 import type { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
-import type { Fetcher, KeyedMutator } from "swr";
+import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
 import {
   appendPaginationParams,
@@ -110,6 +110,7 @@ export function useDataSourceViewContentNodes({
   pagination,
   viewType,
   disabled = false,
+  swrOptions,
 }: {
   owner: LightWorkspaceType;
   dataSourceView?: DataSourceViewType;
@@ -118,6 +119,7 @@ export function useDataSourceViewContentNodes({
   pagination?: PaginationState;
   viewType?: ContentNodesViewType;
   disabled?: boolean;
+  swrOptions?: SWRConfiguration;
 }): {
   isNodesError: boolean;
   isNodesLoading: boolean;
@@ -134,18 +136,13 @@ export function useDataSourceViewContentNodes({
     ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
     : null;
 
-  const body = JSON.stringify({
+  const body = {
     internalIds,
     parentId,
     viewType,
-  });
+  };
 
-  const fetchKey = useMemo(() => {
-    return JSON.stringify({
-      url,
-      body,
-    }); // Serialize with body to ensure uniqueness.
-  }, [url, body]);
+  const fetchKey = JSON.stringify([url + "?" + params.toString(), body]);
 
   const { data, error, mutate, isValidating, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
@@ -158,6 +155,7 @@ export function useDataSourceViewContentNodes({
         return postFetcher([url, { internalIds, parentId, viewType }]);
       },
       {
+        ...swrOptions,
         disabled: disabled || !viewType,
       }
     );

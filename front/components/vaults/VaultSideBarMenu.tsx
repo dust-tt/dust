@@ -429,6 +429,10 @@ const VaultDataSourceViewItem = ({
     owner,
     parentId: node?.internalId,
     viewType: "documents",
+    disabled: !isExpanded,
+    swrOptions: {
+      revalidateOnFocus: false,
+    },
   });
 
   // Load the currently selected node from router.query.parentId
@@ -473,11 +477,11 @@ const VaultDataSourceViewItem = ({
   return (
     <Tree.Item
       isNavigatable
-      type={folders.length === 0 ? "leaf" : "node"}
+      type={isExpanded && folders.length === 0 ? "leaf" : "node"}
       isSelected={router.asPath === dataSourceViewPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
       onItemClick={() => router.push(dataSourceViewPath)}
-      collapsed={!isExpanded}
+      collapsed={!isExpanded || folders.length === 0}
       label={node ? node.title : getDataSourceNameFromView(item)}
       visual={LogoComponent}
       areActionsFading={false}
