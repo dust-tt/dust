@@ -1,5 +1,4 @@
 import type {
-  APIError,
   DataSourceType,
   DataSourceViewCategory,
   LightWorkspaceType,
@@ -10,7 +9,11 @@ import type { Fetcher } from "swr";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSourceName } from "@app/lib/data_sources";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  fetcher,
+  getErrorFromResponse,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import { getVaultName } from "@app/lib/vaults";
 import type {
   GetVaultsResponseBody,
@@ -226,11 +229,12 @@ export function useCreateFolder({
       });
       return dataSourceView;
     } else {
-      const err: { error: APIError } = await res.json();
+      const errorData = await getErrorFromResponse(res);
+
       sendNotification({
         type: "error",
         title: "Error creating Folder",
-        description: `Error: ${err.error.message}`,
+        description: `Error: ${errorData.message}`,
       });
       return null;
     }
@@ -284,11 +288,12 @@ export function useUpdateFolder({
         description: "Folder was successfully updated.",
       });
     } else {
-      const err: { error: APIError } = await res.json();
+      const errorData = await getErrorFromResponse(res);
+
       sendNotification({
         type: "error",
         title: "Error updating Folder",
-        description: `Error: ${err.error.message}`,
+        description: `Error: ${errorData.message}`,
       });
     }
     return res.ok;
@@ -334,11 +339,12 @@ export function useDeleteFolderOrWebsite({
         description: `${getDataSourceName(dataSource)} was successfully deleted.`,
       });
     } else {
-      const err: { error: APIError } = await res.json();
+      const errorData = await getErrorFromResponse(res);
+
       sendNotification({
         type: "error",
         title: `Error deleting ${category}`,
-        description: `Error: ${err.error.message}`,
+        description: `Error: ${errorData.message}`,
       });
     }
     return res.ok;
@@ -376,7 +382,8 @@ export function useCreateVault({ owner }: { owner: LightWorkspaceType }) {
     });
 
     if (!res.ok) {
-      const errorData = await res.json();
+      const errorData = await getErrorFromResponse(res);
+
       sendNotification({
         type: "error",
         title: "Error creating Vault",
@@ -463,7 +470,8 @@ export function useUpdateVault({ owner }: { owner: LightWorkspaceType }) {
 
     for (const res of results) {
       if (!res.ok) {
-        const errorData = await res.json();
+        const errorData = await getErrorFromResponse(res);
+
         sendNotification({
           type: "error",
           title: "Error updating Vault",
@@ -517,11 +525,12 @@ export function useDeleteVault({ owner }: { owner: LightWorkspaceType }) {
         description: `${getVaultName(vault)} was successfully deleted.`,
       });
     } else {
-      const err: { error: APIError } = await res.json();
+      const errorData = await getErrorFromResponse(res);
+
       sendNotification({
         type: "error",
         title: `Error deleting ${getVaultName(vault)}`,
-        description: `Error: ${err.error.message}`,
+        description: `Error: ${errorData.message}`,
       });
     }
     return res.ok;

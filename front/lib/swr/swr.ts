@@ -1,3 +1,4 @@
+import { isAPIErrorResponse } from "@dust-tt/types";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
@@ -171,3 +172,13 @@ export const appendPaginationParams = (
     params.set("limit", pagination.pageSize.toString());
   }
 };
+
+export async function getErrorFromResponse(response: Response) {
+  const errorData = await response.json();
+
+  if (isAPIErrorResponse(errorData)) {
+    return errorData.error;
+  }
+
+  return { message: "An error occurred" };
+}
