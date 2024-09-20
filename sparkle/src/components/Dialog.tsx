@@ -8,37 +8,45 @@ import { classNames } from "@sparkle/lib/utils";
 import { Button } from "./Button";
 
 export type ModalProps = {
-  title: string;
+  alertDialog?: boolean;
+  backgroundType?: "confetti" | "snow" | "none";
+  cancelLabel?: string;
   children: React.ReactNode;
   disabled?: boolean;
   isOpen: boolean;
+  isSaving?: boolean;
   onCancel: () => void;
   onValidate: () => void;
-  cancelLabel?: string;
+  title: string;
   validateLabel?: string;
   validateVariant?: "primary" | "primaryWarning";
-  isSaving?: boolean;
-  backgroundType?: "confetti" | "snow" | "none";
 };
 
 export function Dialog({
-  title,
-  isOpen,
+  alertDialog = false,
+  backgroundType = "none",
+  cancelLabel = "Cancel",
   children,
   disabled,
+  isOpen,
+  isSaving,
   onCancel,
   onValidate,
-  cancelLabel = "Cancel",
+  title,
   validateLabel = "Ok",
   validateVariant = "primary",
-  isSaving,
-  backgroundType = "none",
 }: ModalProps) {
   const referentRef = useRef<HTMLDivElement>(null);
 
   return (
     <Transition show={isOpen} as={Fragment} appear={true}>
-      <HeadlessDialog as="div" className="s-relative s-z-50" onClose={onCancel}>
+      <HeadlessDialog
+        as="div"
+        className="s-relative s-z-50"
+        // If it's an alert dialog, we don't want to close it when clicking outside.
+        onClose={alertDialog ? () => {} : onCancel}
+        role="alertdialog"
+      >
         <Transition.Child
           as={Fragment}
           enter="s-ease-out s-duration-150"
