@@ -257,7 +257,7 @@ export const O1_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description:
-    "OpenAI's reasoning model designed to solve hard problems across domains.",
+    "OpenAI's reasoning model designed to solve hard problems across domains (Limited preview access).",
   shortDescription: "OpenAI's reasoning model.",
   isLegacy: false,
   supportsVision: false,
