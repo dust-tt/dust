@@ -31,6 +31,10 @@ export function ViewDataSourceViewTable({
           <PokeTable>
             <PokeTableBody>
               <PokeTableRow>
+                <PokeTableHead>Id</PokeTableHead>
+                <PokeTableCellWithCopy label={dataSourceView.id.toString()} />
+              </PokeTableRow>
+              <PokeTableRow>
                 <PokeTableHead>sId</PokeTableHead>
                 <PokeTableCellWithCopy label={dataSourceView.sId} />
               </PokeTableRow>
