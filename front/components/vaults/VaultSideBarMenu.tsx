@@ -11,6 +11,7 @@ import {
 import type {
   AppType,
   DataSourceViewCategory,
+  DataSourceViewContentNode,
   DataSourceViewType,
   LightWorkspaceType,
   VaultKind,
@@ -25,6 +26,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useApps } from "@app/lib/swr/apps";
+import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
   useVaultDataSourceViews,
   useVaultInfo,
@@ -412,33 +414,93 @@ const VaultDataSourceViewItem = ({
   item,
   owner,
   vault,
+  node,
 }: {
   item: DataSourceViewType;
   owner: LightWorkspaceType;
   vault: VaultType;
+  node?: DataSourceViewContentNode;
 }): ReactElement => {
   const router = useRouter();
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  const LogoComponent = getConnectorProviderLogoWithFallback(
-    item.dataSource.connectorProvider,
-    FolderIcon
-  );
-  const dataSourceViewPath = `/w/${owner.sId}/vaults/${vault.sId}/categories/${item.category}/data_source_views/${item.sId}`;
+  const { isNodesLoading, nodes } = useDataSourceViewContentNodes({
+    dataSourceView: item,
+    owner,
+    parentId: node?.internalId,
+    viewType: "documents",
+    disabled: !isExpanded,
+    swrOptions: {
+      revalidateOnFocus: false,
+    },
+  });
+
+  const basePath = `/w/${owner.sId}/vaults/${vault.sId}/categories/${item.category}/data_source_views/${item.sId}`;
+
+  // Load the currently selected node from router.query.parentId
+  const {
+    nodes: [selected],
+  } = useDataSourceViewContentNodes({
+    dataSourceView: item,
+    owner,
+    internalIds: [router.query.parentId as string],
+    viewType: "documents",
+    disabled: !router.asPath.startsWith(basePath) || !router.query.parentId,
+  });
+
+  // isAncestorToCurrentPage is true if :
+  // 1. The current path matches the basePath
+  // 2. Either the current node is the root (!node) or the current node is a parent of the selected node
+  const isAncestorToCurrentPage =
+    router.asPath.startsWith(basePath) &&
+    (!node || (node && selected?.parentInternalIds?.includes(node.internalId)));
+
+  // Unfold the folder if it's an ancestor of the current page.
+  useEffect(() => {
+    if (isAncestorToCurrentPage) {
+      setIsExpanded(isAncestorToCurrentPage);
+    }
+  }, [isAncestorToCurrentPage]);
+
+  const LogoComponent = node
+    ? undefined
+    : getConnectorProviderLogoWithFallback(
+        item.dataSource.connectorProvider,
+        FolderIcon
+      );
+
+  const dataSourceViewPath = node
+    ? `${basePath}?parentId=${node?.internalId}`
+    : basePath;
+
+  const folders = nodes.filter((node) => node.expandable);
 
   return (
     <Tree.Item
       isNavigatable
-      type="leaf"
-      isSelected={
-        router.asPath === dataSourceViewPath ||
-        router.asPath.includes(dataSourceViewPath + "/") ||
-        router.asPath.includes(dataSourceViewPath + "?")
-      }
+      type={isExpanded && folders.length === 0 ? "leaf" : "node"}
+      isSelected={router.asPath === dataSourceViewPath}
+      onChevronClick={() => setIsExpanded(!isExpanded)}
       onItemClick={() => router.push(dataSourceViewPath)}
-      label={getDataSourceNameFromView(item)}
+      collapsed={!isExpanded || folders.length === 0}
+      label={node ? node.title : getDataSourceNameFromView(item)}
       visual={LogoComponent}
       areActionsFading={false}
-    />
+    >
+      {isExpanded && (
+        <Tree isLoading={isNodesLoading}>
+          {folders.map((node) => (
+            <VaultDataSourceViewItem
+              item={item}
+              key={node.internalId}
+              owner={owner}
+              vault={vault}
+              node={node}
+            />
+          ))}
+        </Tree>
+      )}
+    </Tree.Item>
   );
 };
 

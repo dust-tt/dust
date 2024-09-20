@@ -344,6 +344,7 @@ export const VaultDataSourceViewContentList = ({
       <></>
     );
 
+  const emptyContent = parentId ? <div>No content</div> : emptyVaultContent;
   const isEmpty = rows.length === 0 && !isNodesLoading;
 
   return (
@@ -372,7 +373,7 @@ export const VaultDataSourceViewContentList = ({
             />
           </>
         )}
-        {isEmpty && !emptyVaultContent}
+        {isEmpty && !emptyContent}
         {isFolder(dataSourceView.dataSource) && (
           <>
             {((viewType === "tables" && hasDocuments) ||
