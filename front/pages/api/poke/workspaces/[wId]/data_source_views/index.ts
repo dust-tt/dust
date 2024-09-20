@@ -16,10 +16,18 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PokeListDataSourceViews>>,
   session: SessionWithUser
 ): Promise<void> {
-  const auth = await Authenticator.fromSuperUserSession(
-    session,
-    req.query.wId as string
-  );
+  const { wId } = req.query;
+  if (typeof wId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace you're trying to modify was not found.",
+      },
+    });
+  }
+
+  const auth = await Authenticator.fromSuperUserSession(session, wId);
 
   const owner = auth.workspace();
 
