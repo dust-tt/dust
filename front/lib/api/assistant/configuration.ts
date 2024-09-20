@@ -1230,11 +1230,6 @@ async function _createAgentDataSourcesConfigData(
           "Can't create AgentDataSourceConfiguration for retrieval: DataSourceView not found."
         );
 
-        console.log(
-          "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
-        );
-        console.log(dataSourceView.toJSON());
-
         return AgentDataSourceConfiguration.create(
           {
             dataSourceId: dataSourceView.dataSource.id,
