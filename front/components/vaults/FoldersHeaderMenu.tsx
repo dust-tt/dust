@@ -144,7 +144,9 @@ const EditFolderButton = ({
   canWriteInVault,
 }: EditFolderButtonProps) => {
   const { dataSources } = useDataSources(owner);
+
   const [showEditFolderModal, setShowEditFolderModal] = useState(false);
+
   return (
     <>
       <VaultFolderModal

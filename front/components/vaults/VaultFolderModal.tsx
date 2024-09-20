@@ -176,7 +176,7 @@ export default function VaultFolderModal({
                   dataSource={folder}
                   handleDelete={onDeleteFolder}
                   isOpen={showDeleteConfirmDialog}
-                  onClose={onClose}
+                  onClose={() => setShowDeleteConfirmDialog(false)}
                 />
                 <Button
                   size="sm"

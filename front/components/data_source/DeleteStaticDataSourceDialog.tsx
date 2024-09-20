@@ -54,6 +54,7 @@ export function DeleteStaticDataSourceDialog({
 
   return (
     <Dialog
+      alertDialog
       isOpen={isOpen}
       title={`Removing ${name}`}
       onValidate={onDelete}
