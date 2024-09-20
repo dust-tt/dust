@@ -407,7 +407,7 @@ function DataSourceViewsSection({
             (dsv) => dsv.sId === dsConfig.dataSourceViewId
           );
 
-          // We won't throw here if dataSourceView is null to avoid carshing the UI but this is not
+          // We won't throw here if dataSourceView is null to avoid crashing the UI but this is not
           // supposed to happen as we delete the configurations when data sources are deleted.
           let dsLogo = null;
           let dataSourceName = "Deleted data source";
