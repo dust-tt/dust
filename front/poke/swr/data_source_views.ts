@@ -33,7 +33,7 @@ export function usePokeDataSourceViews({
     data: useMemo(() => (data ? data.data_source_views : []), [data]),
     isLoading: !error && !data,
     isError: error,
-    mutateDocuments: mutate,
+    mutate,
   };
 }
 

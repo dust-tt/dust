@@ -8,6 +8,7 @@ import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 interface PokeDataTableConditionalFetchProps<T> {
   buttonText?: string;
   children: (data: T) => React.ReactNode;
+  globalActions?: React.ReactNode;
   header: string;
   owner: LightWorkspaceType;
   useSWRHook: (props: PokeConditionalFetchProps) => {
@@ -20,6 +21,7 @@ interface PokeDataTableConditionalFetchProps<T> {
 export function PokeDataTableConditionalFetch<T>({
   buttonText = "Load Data",
   children,
+  globalActions,
   header,
   owner,
   useSWRHook,
@@ -62,7 +64,10 @@ export function PokeDataTableConditionalFetch<T>({
 
   return (
     <div className="border-material-200 my-4 flex min-h-48 flex-col rounded-lg border p-4">
-      <h2 className="text-md mb-4 font-bold">{header} :</h2>
+      <div className="flex justify-between gap-3">
+        <h2 className="text-md mb-4 font-bold">{header} :</h2>
+        {globalActions}
+      </div>
       <div className="flex flex-grow flex-col justify-center">{content}</div>
     </div>
   );

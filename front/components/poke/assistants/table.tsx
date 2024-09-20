@@ -1,21 +1,20 @@
 import { Modal } from "@dust-tt/sparkle";
 import type {
-  AgentConfigurationType,
   LightAgentConfigurationType,
-  WorkspaceType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { makeColumnsForAssistants } from "@app/components/poke/assistants/columns";
+import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
-import { usePokeAgentConfigurations } from "@app/lib/swr/poke";
+import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 
 interface AssistantsDataTableProps {
-  agentConfigurations: AgentConfigurationType[];
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
 }
 
 function prepareAgentConfigurationForDisplay(
@@ -27,13 +26,21 @@ function prepareAgentConfigurationForDisplay(
   );
 }
 
-export function AssistantsDataTable({
-  owner,
-  agentConfigurations,
-}: AssistantsDataTableProps) {
+export function AssistantsDataTable({ owner }: AssistantsDataTableProps) {
   const router = useRouter();
   const [showRestoreAssistantModal, setShowRestoreAssistantModal] =
     useState(false);
+
+  const restoreAssistantButton = (
+    <PokeButton
+      aria-label="Restore an assistant"
+      variant="outline"
+      size="sm"
+      onClick={() => setShowRestoreAssistantModal(true)}
+    >
+      🔥 Restore an assistant
+    </PokeButton>
+  );
 
   return (
     <>
@@ -42,28 +49,19 @@ export function AssistantsDataTable({
         onClose={() => setShowRestoreAssistantModal(false)}
         owner={owner}
       />
-      <div className="border-material-200 my-4 flex flex-col rounded-lg border p-4">
-        <div className="flex justify-between gap-3">
-          <h2 className="text-md mb-4 flex-grow font-bold">Assistants:</h2>
-          <PokeButton
-            aria-label="Restore an assistant"
-            variant="outline"
-            size="sm"
-            onClick={() => setShowRestoreAssistantModal(true)}
-          >
-            🔥 Restore an assistant
-          </PokeButton>
-        </div>
-
-        <PokeDataTable
-          columns={makeColumnsForAssistants(
-            owner,
-            agentConfigurations,
-            router.reload
-          )}
-          data={prepareAgentConfigurationForDisplay(agentConfigurations)}
-        />
-      </div>
+      <PokeDataTableConditionalFetch
+        header="Assistants"
+        globalActions={restoreAssistantButton}
+        owner={owner}
+        useSWRHook={usePokeAgentConfigurations}
+      >
+        {(data) => (
+          <PokeDataTable
+            columns={makeColumnsForAssistants(owner, router.reload)}
+            data={prepareAgentConfigurationForDisplay(data)}
+          />
+        )}
+      </PokeDataTableConditionalFetch>
     </>
   );
 }
@@ -75,14 +73,16 @@ function RestoreAssistantModal({
 }: {
   show: boolean;
   onClose: () => void;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
 }) {
-  const { agentConfigurations: archivedAssistants } =
-    usePokeAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: show ? "archived" : null,
-    });
+  const { data: archivedAssistants } = usePokeAgentConfigurations({
+    owner,
+    disabled: !show,
+    agentsGetView: "archived",
+  });
+
   const router = useRouter();
+
   return (
     <Modal
       isOpen={show}
@@ -94,11 +94,7 @@ function RestoreAssistantModal({
       <div className="mx-auto mt-4 max-w-4xl">
         {!!archivedAssistants?.length && (
           <PokeDataTable
-            columns={makeColumnsForAssistants(
-              owner,
-              archivedAssistants,
-              router.reload
-            )}
+            columns={makeColumnsForAssistants(owner, router.reload)}
             data={prepareAgentConfigurationForDisplay(archivedAssistants)}
           />
         )}

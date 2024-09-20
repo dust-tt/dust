@@ -1,8 +1,5 @@
 import { EmotionLaughIcon, IconButton, TrashIcon } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { LightWorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -20,8 +17,7 @@ type AgentConfigurationDisplayType = {
 };
 
 export function makeColumnsForAssistants(
-  owner: WorkspaceType,
-  agentConfigurations: LightAgentConfigurationType[],
+  owner: LightWorkspaceType,
   reload: () => void
 ): ColumnDef<AgentConfigurationDisplayType>[] {
   return [
@@ -114,7 +110,7 @@ export function makeColumnsForAssistants(
 }
 
 async function archiveAssistant(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   reload: () => void,
   agentConfiguration: AgentConfigurationDisplayType
 ) {
@@ -148,7 +144,7 @@ async function archiveAssistant(
 }
 
 async function restoreAssistant(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   reload: () => void,
   agentConfiguration: AgentConfigurationDisplayType
 ) {
