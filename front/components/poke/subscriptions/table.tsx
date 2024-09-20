@@ -407,10 +407,7 @@ function UpgradeDowngradeModal({
           description="Go to the Enterprise billing form page to upgrade this workspace to a new Enterprise plan ."
         />
         <div>
-          <EnterpriseUpgradeDialog
-            disabled={isEntreprisePlan(subscription.plan.code)}
-            owner={owner}
-          />
+          <EnterpriseUpgradeDialog owner={owner} />
         </div>
         {isProPlan(subscription.plan.code) && (
           <>
