@@ -18,13 +18,12 @@ export function Tooltip({
   const [isHovered, setIsHovered] = useState(false);
   const [timerId, setTimerId] = useState<number | null>(null);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
-  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
   const handleMouseOver = () => {
     const id = window.setTimeout(() => {
       setIsHovered(true);
-      updateTooltipPosition();
     }, 600);
     setTimerId(id);
   };
@@ -34,16 +33,6 @@ export function Tooltip({
       clearTimeout(timerId);
     }
     setIsHovered(false);
-  };
-
-  const updateTooltipPosition = () => {
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      setTooltipPosition({
-        top: position === "above" ? rect.top - 10 : rect.bottom + 10,
-        left: rect.left + rect.width / 2,
-      });
-    }
   };
 
   useEffect(() => {
@@ -56,13 +45,35 @@ export function Tooltip({
   }, [timerId]);
 
   useEffect(() => {
-    window.addEventListener("scroll", updateTooltipPosition);
-    window.addEventListener("resize", updateTooltipPosition);
-    return () => {
-      window.removeEventListener("scroll", updateTooltipPosition);
-      window.removeEventListener("resize", updateTooltipPosition);
-    };
-  }, []);
+    if (isHovered && triggerRef.current && tooltipRef.current) {
+      const triggerRect = triggerRef.current.getBoundingClientRect();
+      const tooltipRect = tooltipRef.current.getBoundingClientRect();
+
+      let top =
+        position === "above"
+          ? triggerRect.top - tooltipRect.height - 10
+          : triggerRect.bottom + 10;
+      let left =
+        triggerRect.left + triggerRect.width / 2 - tooltipRect.width / 2;
+
+      // Adjust if tooltip goes off-screen
+      if (left < 0) {
+        left = 0;
+      }
+      if (left + tooltipRect.width > window.innerWidth) {
+        left = window.innerWidth - tooltipRect.width;
+      }
+      if (top < 0) {
+        top = triggerRect.bottom + 10; // Switch to below if above doesn't fit
+      }
+      if (top + tooltipRect.height > window.innerHeight) {
+        top = triggerRect.top - tooltipRect.height - 10; // Switch to above if below doesn't fit
+      }
+
+      tooltipRef.current.style.top = `${top}px`;
+      tooltipRef.current.style.left = `${left}px`;
+    }
+  }, [isHovered, position]);
 
   if (isTouchDevice) {
     return <>{children}</>;
@@ -75,7 +86,6 @@ export function Tooltip({
   const hiddenClasses = "s-translate-y-2 s-opacity-0 s-pointer-events-none";
   const visibleClasses = "-s-translate-y-0 s-opacity-100";
   const hiddenOnMobileClasses = "s-hidden sm:s-block";
-  const tooltipCenterClasses = "-s-translate-x-1/2";
 
   const labelLength = label?.length || 0;
   const labelClasses = labelLength > 80 ? "s-w-[38em]" : "s-whitespace-nowrap";
@@ -89,17 +99,14 @@ export function Tooltip({
     >
       {children}
       <div
+        ref={tooltipRef}
         className={classNames(
           `${isHovered ? visibleClasses : hiddenClasses}`,
           baseClasses,
           hiddenOnMobileClasses,
-          tooltipCenterClasses,
           contentChildren ? "" : labelClasses
         )}
-        style={{
-          top: `${tooltipPosition.top}px`,
-          left: `${tooltipPosition.left}px`,
-        }}
+        style={{ position: "fixed", top: 0, left: 0 }}
         onAnimationEnd={() => setIsHovered(false)}
       >
         {contentChildren || label}
