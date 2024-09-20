@@ -270,7 +270,7 @@ export class RetrievalDocument extends Model<
   declare tags: string[];
   declare score: number | null;
 
-  // TODO(VAULTS_INFRA) Make not nullable once backfilled.
+  // This is nullable as it has to be set null when data sources are deleted.
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
   declare retrievalActionId: ForeignKey<AgentRetrievalAction["id"]>;
 
@@ -343,7 +343,6 @@ RetrievalDocument.belongsTo(AgentRetrievalAction, {
   foreignKey: { name: "retrievalActionId", allowNull: false },
 });
 
-// TODO(VAULTS_INFRA) Set to not null once backfilled.
 DataSourceViewModel.hasMany(RetrievalDocument, {
   foreignKey: { allowNull: true },
   onDelete: "SET NULL",
