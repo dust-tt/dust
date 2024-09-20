@@ -61,6 +61,7 @@ export default function Vault({
   owner,
   vault,
   userId,
+  isAdmin,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { vaultInfo } = useVaultInfo({
     workspaceId: owner.sId,
@@ -102,6 +103,7 @@ export default function Vault({
         isOpen={showVaultEditionModal}
         onClose={() => setShowVaultEditionModal(false)}
         vault={vault}
+        isAdmin={isAdmin}
       />
     </Page.Vertical>
   );

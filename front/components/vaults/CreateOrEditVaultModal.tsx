@@ -46,6 +46,7 @@ interface CreateOrEditVaultModalProps {
   owner: LightWorkspaceType;
   isOpen: boolean;
   onClose: () => void;
+  isAdmin: boolean;
   vault?: VaultType;
 }
 
@@ -62,6 +63,7 @@ export function CreateOrEditVaultModal({
   owner,
   isOpen,
   onClose,
+  isAdmin,
   vault,
 }: CreateOrEditVaultModalProps) {
   const [vaultName, setVaultName] = useState<string | null>(
@@ -101,6 +103,7 @@ export function CreateOrEditVaultModal({
     searchTerm,
     pageIndex: pagination.pageIndex,
     pageSize: pagination.pageSize,
+    disabled: !isAdmin,
   });
 
   const getTableColumns = useCallback(() => {
