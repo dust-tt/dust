@@ -18,6 +18,7 @@ import type {
   ConversationWithoutContentType,
   GenerationTokensEvent,
   MentionType,
+  ModelId,
   PlanType,
   Result,
   SupportedContentFragmentType,
@@ -583,7 +584,7 @@ async function getConversationRankVersionLock(
 async function attributeUserFromWorkspaceAndEmail(
   workspace: WorkspaceType | null,
   email: string | null
-): Promise<number | null> {
+): Promise<ModelId | null> {
   if (!workspace || !email || !isEmailValid(email)) {
     return null;
   }
