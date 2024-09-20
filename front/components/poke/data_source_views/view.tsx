@@ -43,6 +43,10 @@ export function ViewDataSourceViewTable({
                 <PokeTableCell>{dataSourceView.kind}</PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
+                <PokeTableHead>Vault</PokeTableHead>
+                <PokeTableCell>{dataSourceView.vaultId}</PokeTableCell>
+              </PokeTableRow>
+              <PokeTableRow>
                 <PokeTableHead>Data source</PokeTableHead>
                 <PokeTableCellWithLink
                   href={`/poke/${owner.sId}/data_sources/${dataSourceView.dataSource.sId}`}
