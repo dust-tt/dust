@@ -20,7 +20,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
   const agentConfigurations = await getAgentConfigurations({
     auth,
-    agentsGetView: { agentIds: [aId], allVersions: true },
+    agentsGetView: { agentId: aId, allVersions: true },
     variant: "full",
   });
 
