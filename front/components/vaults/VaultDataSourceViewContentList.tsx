@@ -179,7 +179,7 @@ export const VaultDataSourceViewContentList = ({
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
-    initialPageSize: 5,
+    initialPageSize: 25,
   });
   const [viewType, setViewType] = useHashParam("viewType", "documents");
   const router = useRouter();
