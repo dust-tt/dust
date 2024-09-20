@@ -417,7 +417,7 @@ function getTableColumns() {
                   <ConnectorSyncingChip
                     initialState={managedDataSource.connector}
                     workspaceId={info.row.original.workspaceId}
-                    dataSourceId={managedDataSource.sId}
+                    dataSource={managedDataSource}
                   />
                 )
               );
