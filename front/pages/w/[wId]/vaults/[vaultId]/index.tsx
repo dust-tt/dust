@@ -30,7 +30,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     auth,
     context.query.vaultId as string
   );
-  if (!vault || (!isAdmin && vault.isSystem())) {
+  if (!vault || (vault.canRead(auth))) {
     return {
       notFound: true,
     };
