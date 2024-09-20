@@ -2,11 +2,6 @@ import {
   BracesIcon,
   ExternalLinkIcon,
   IconButton,
-<<<<<<< HEAD
-  PlusIcon,
-=======
-  Spinner,
->>>>>>> main
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -20,12 +15,7 @@ import { useEffect, useState } from "react";
 import { RequestOrAddDataFromDataSourceModal } from "@app/components/data_source/RequestOrAddDataFromDataSourceModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-<<<<<<< HEAD
-import { useConnector } from "@app/lib/swr/connectors";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-=======
-import type { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
->>>>>>> main
 import { classNames } from "@app/lib/utils";
 
 interface DataSourceViewResourceSelectorTreeBaseProps {
