@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: connectors-worker-notion-gc-deployment
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: connectors-worker

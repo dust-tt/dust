@@ -179,7 +179,7 @@ const getTableColumns = ({
                   info.row.original.dataSourceView.dataSource.connector
                 }
                 workspaceId={info.row.original.workspaceId}
-                dataSourceId={info.row.original.dataSourceView.dataSource.sId}
+                dataSource={info.row.original.dataSourceView.dataSource}
               />
             )}
         </>
