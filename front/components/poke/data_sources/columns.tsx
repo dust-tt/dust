@@ -1,5 +1,10 @@
 import { IconButton, TrashIcon } from "@dust-tt/sparkle";
-import type { AgentConfigurationType, WorkspaceType } from "@dust-tt/types";
+import type {
+  AgentConfigurationType,
+  DataSourceType,
+  DataSourceViewType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import {
   isProcessConfiguration,
   isRetrievalConfiguration,
@@ -23,6 +28,10 @@ interface DataSources {
 export function makeColumnsForDataSources(
   owner: WorkspaceType,
   agentConfigurations: AgentConfigurationType[],
+  dataSourcesWithViews: {
+    dataSource: DataSourceType;
+    dataSourceViews: DataSourceViewType[];
+  }[],
   reload: () => void
 ): ColumnDef<DataSources>[] {
   return [
@@ -94,6 +103,12 @@ export function makeColumnsForDataSources(
       id: "actions",
       cell: ({ row }) => {
         const dataSource = row.original;
+        const dataSourceViews = dataSourcesWithViews.find(
+          (v) => v.dataSource.sId === dataSource.sId
+        )?.dataSourceViews;
+        if (!dataSourceViews) {
+          return null;
+        }
 
         return (
           <IconButton
@@ -103,8 +118,9 @@ export function makeColumnsForDataSources(
             onClick={async () => {
               await deleteDataSource(
                 owner,
-                agentConfigurations,
                 dataSource.sId,
+                agentConfigurations,
+                dataSourceViews,
                 reload
               );
             }}
@@ -117,17 +133,22 @@ export function makeColumnsForDataSources(
 
 async function deleteDataSource(
   owner: WorkspaceType,
-  agentConfigurations: AgentConfigurationType[],
   dataSourceId: string,
+  agentConfigurations: AgentConfigurationType[],
+  dataSourceViews: DataSourceViewType[],
   reload: () => void
 ) {
   const agents = agentConfigurations.filter((agt) =>
     agt.actions.some(
       (a) =>
         ((isRetrievalConfiguration(a) || isProcessConfiguration(a)) &&
-          a.dataSources.some((ds) => ds.dataSourceId === dataSourceId)) ||
+          a.dataSources.some((ds) =>
+            dataSourceViews.some((dsv) => dsv.sId === ds.dataSourceViewId)
+          )) ||
         (isTablesQueryConfiguration(a) &&
-          a.tables.some((t) => t.dataSourceId === dataSourceId))
+          a.tables.some((t) =>
+            dataSourceViews.some((dsv) => dsv.sId === t.dataSourceViewId)
+          ))
     )
   );
 
