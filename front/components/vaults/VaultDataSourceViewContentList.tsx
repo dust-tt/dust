@@ -190,6 +190,7 @@ export const VaultDataSourceViewContentList = ({
   });
   const { systemVault } = useSystemVault({
     workspaceId: owner.sId,
+    disabled: !isAdmin,
   });
 
   const handleViewTypeChange = useCallback(

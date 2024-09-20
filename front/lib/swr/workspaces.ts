@@ -52,8 +52,10 @@ export function useWorkspaceAnalytics({
 
 export function useWorkspaceEnterpriseConnection({
   workspaceId,
+  disabled,
 }: {
   workspaceId: string;
+  disabled?: boolean;
 }) {
   const workspaceEnterpriseConnectionFetcher: Fetcher<{
     connection: WorkspaceEnterpriseConnection;
@@ -61,7 +63,10 @@ export function useWorkspaceEnterpriseConnection({
 
   const { data, error, mutate } = useSWRWithDefaults(
     workspaceId ? `/api/w/${workspaceId}/enterprise-connection` : null,
-    workspaceEnterpriseConnectionFetcher
+    workspaceEnterpriseConnectionFetcher,
+    {
+      disabled,
+    }
   );
 
   return {
@@ -74,15 +79,20 @@ export function useWorkspaceEnterpriseConnection({
 
 export function useWorkspaceActiveSubscription({
   workspaceId,
+  disabled,
 }: {
   workspaceId: string;
+  disabled?: boolean;
 }) {
   const workspaceSubscriptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
     fetcher;
 
   const { data, error } = useSWRWithDefaults(
     `/api/w/${workspaceId}/subscriptions`,
-    workspaceSubscriptionsFetcher
+    workspaceSubscriptionsFetcher,
+    {
+      disabled,
+    }
   );
 
   const activeSubscription = useMemo(() => {
