@@ -1,8 +1,9 @@
 import type { DataSourceViewType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
-import type { Authenticator } from "@app/lib/auth";
+import { withSessionAuthentication } from "@app/lib/api/wrappers";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 
@@ -13,9 +14,16 @@ export type PokeListDataSourceViews = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PokeListDataSourceViews>>,
-  auth: Authenticator
+  session: SessionWithUser
 ): Promise<void> {
-  if (!auth.isDustSuperUser()) {
+  const auth = await Authenticator.fromSuperUserSession(
+    session,
+    req.query.wId as string
+  );
+
+  const owner = auth.workspace();
+
+  if (!owner || !auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -47,4 +55,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthentication(handler);
