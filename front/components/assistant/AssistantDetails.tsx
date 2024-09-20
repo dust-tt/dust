@@ -299,16 +299,15 @@ export function AssistantDetails({
                   owner={owner}
                   dataSourceViews={dataSourceViews}
                   dataSourceConfigurations={action.tables.map((t) => {
-                    // We should never have an undefined dataSourceView here as
-                    // if it's undefined, it means the dataSourceView was deleted and the configuration is invalid
-                    // But we need to handle this case to avoid crashing the UI
+                    // We should never have an undefined dataSourceView here as if it's undefined,
+                    // it means the dataSourceView was deleted and the configuration is invalid But
+                    // we need to handle this case to avoid crashing the UI
                     const dataSourceView = dataSourceViews.find(
                       (dsv) => dsv.sId == t.dataSourceViewId
                     );
 
                     return {
                       workspaceId: t.workspaceId,
-                      dataSourceId: t.dataSourceId,
                       dataSourceViewId: t.dataSourceViewId,
                       filter: {
                         parents:
@@ -408,12 +407,14 @@ function DataSourceViewsSection({
             (dsv) => dsv.sId === dsConfig.dataSourceViewId
           );
 
-          let DsLogo = null;
-          let dataSourceName = dsConfig.dataSourceId;
+          // We won't throw here if dataSourceView is null to avoid carshing the UI but this is not
+          // supposed to happen as we delete the configurations when data sources are deleted.
+          let dsLogo = null;
+          let dataSourceName = "Deleted data source";
 
           if (dataSourceView) {
             const { dataSource } = dataSourceView;
-            DsLogo = getConnectorProviderLogoWithFallback(
+            dsLogo = getConnectorProviderLogoWithFallback(
               dataSource.connectorProvider,
               FolderIcon
             );
@@ -431,7 +432,7 @@ function DataSourceViewsSection({
                   : "leaf"
               }
               label={dataSourceName}
-              visual={DsLogo ?? FolderIcon}
+              visual={dsLogo ?? FolderIcon}
               className="whitespace-nowrap"
             >
               {dataSourceView && isAllSelected && (
