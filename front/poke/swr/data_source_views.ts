@@ -14,7 +14,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { PokeListDataSourceViews } from "@app/pages/api/poke/workspaces/[wId]/data_source_views";
-import type { PokeGetDataSourceViewContentNodes } from "@app/pages/api/poke/workspaces/[wId]/data_source_views/[dsvId]/content-nodes";
+import type { PokeGetDataSourceViewContentNodes } from "@app/pages/api/poke/workspaces/[wId]/vaults/[vId]/data_source_views/[dsvId]/content-nodes";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 
 export function usePokeDataSourceViews({
