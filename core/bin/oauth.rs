@@ -10,6 +10,7 @@ use dust::{
     api_keys::validate_api_key,
     oauth::{
         connection::{self, Connection, ConnectionProvider, MigratedCredentials},
+        credential::{Credential, CredentialProvider},
         store,
     },
     utils::{error_response, APIResponse, CoreRequestMakeSpan},
@@ -203,6 +204,74 @@ async fn connections_access_token(
     }
 }
 
+#[derive(Deserialize)]
+struct CredentialPayload {
+    provider: CredentialProvider,
+    raw_json: String,
+}
+
+async fn oauth_service_create_credential(
+    State(state): State<Arc<OAuthState>>,
+    Json(payload): Json<CredentialPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    match Credential::create(
+        state.store.clone(),
+        payload.provider,
+        serde_json::Value::String(payload.raw_json),
+    )
+    .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to create credential",
+            Some(e),
+        ),
+        Ok(c) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "credential": {
+                        "credential_id": c.credential_id(),
+                        "created": c.created(),
+                        "provider": c.provider(),
+                        "raw_json": c.raw_json(),
+                    },
+                })),
+            }),
+        ),
+    }
+}
+
+async fn oauth_service_retrieve_credential(
+    State(state): State<Arc<OAuthState>>,
+    Path(credential_id): Path<String>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state.store.retrieve_credential(&credential_id).await {
+        Err(e) => error_response(
+            StatusCode::NOT_FOUND,
+            "credential_not_found",
+            "Requested credential was not found",
+            Some(e),
+        ),
+        Ok(c) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "credential": {
+                        "credential_id": c.credential_id(),
+                        "created": c.created(),
+                        "provider": c.provider(),
+                        "raw_json": c.raw_json(),
+                    },
+                })),
+            }),
+        ),
+    }
+}
+
 fn main() {
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -242,6 +311,14 @@ fn main() {
             .route(
                 "/connections/:connection_id/access_token",
                 post(connections_access_token),
+            )
+            .route(
+                "/oauth-service/credentials",
+                post(oauth_service_create_credential),
+            )
+            .route(
+                "/oauth-service/credentials/:credential_id",
+                get(oauth_service_retrieve_credential),
             )
             // Extensions
             .layer(

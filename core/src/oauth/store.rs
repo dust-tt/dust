@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
 use crate::oauth::connection::{Connection, ConnectionProvider, ConnectionStatus};
+use crate::oauth::credential::{Credential, CredentialProvider};
+use crate::oauth::encryption::{seal_str, unseal_str};
 use crate::utils;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -22,6 +24,13 @@ pub trait OAuthStore {
     ) -> Result<Connection>;
     async fn update_connection_secrets(&self, connection: &Connection) -> Result<()>;
     async fn update_connection_status(&self, connection: &Connection) -> Result<()>;
+
+    async fn create_credential(
+        &self,
+        provider: CredentialProvider,
+        raw_json: serde_json::Value,
+    ) -> Result<Credential>;
+    async fn retrieve_credential(&self, credential_id: &str) -> Result<Credential>;
 
     fn clone_box(&self) -> Box<dyn OAuthStore + Sync + Send>;
 }
@@ -219,12 +228,80 @@ impl OAuthStore for PostgresOAuthStore {
         Ok(())
     }
 
+    async fn create_credential(
+        &self,
+        provider: CredentialProvider,
+        raw_json: serde_json::Value,
+    ) -> Result<Credential> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let created = utils::now();
+        let secret = utils::new_id();
+
+        // Encrypt in database
+        let encrypted_raw_json = Some(seal_str(&serde_json::to_string(&raw_json)?)?);
+
+        let stmt = c
+            .prepare(
+                "INSERT INTO credentials (id, created, secret, provider, encrypted_raw_json)
+                   VALUES (DEFAULT, $1, $2, $3, $4) RETURNING id",
+            )
+            .await?;
+        let row_id: i64 = c
+            .query_one(
+                &stmt,
+                &[
+                    &(created as i64),
+                    &secret,
+                    &provider.to_string(),
+                    &encrypted_raw_json,
+                ],
+            )
+            .await?
+            .get(0);
+
+        let credential_id = Credential::credential_id_from_row_id_and_secret(row_id, &secret)?;
+
+        Ok(Credential::new(credential_id, created, provider, raw_json))
+    }
+
+    async fn retrieve_credential(&self, credential_id: &str) -> Result<Credential> {
+        let (row_id, secret) = Credential::row_id_and_secret_from_credential_id(credential_id)?;
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let r = c
+            .query_one(
+                "SELECT created, provider, encrypted_raw_json
+                   FROM credentials
+                   WHERE id = $1 AND secret = $2",
+                &[&row_id, &secret],
+            )
+            .await?;
+
+        let created: i64 = r.get(0);
+        let provider: CredentialProvider = CredentialProvider::from_str(r.get(1))?;
+        let encrypted_raw_json: Vec<u8> = r.get(2);
+
+        let raw_json = serde_json::from_str(&unseal_str(&encrypted_raw_json)?)?;
+
+        Ok(Credential::new(
+            credential_id.to_string(),
+            created as u64,
+            provider,
+            raw_json,
+        ))
+    }
+
     fn clone_box(&self) -> Box<dyn OAuthStore + Sync + Send> {
         Box::new(self.clone())
     }
 }
 
-pub const POSTGRES_TABLES: [&'static str; 1] = ["-- connections
+pub const POSTGRES_TABLES: [&'static str; 2] = [
+    "-- connections
     CREATE TABLE IF NOT EXISTS connections (
        id                             BIGSERIAL PRIMARY KEY,
        created                        BIGINT NOT NULL,
@@ -238,6 +315,15 @@ pub const POSTGRES_TABLES: [&'static str; 1] = ["-- connections
        encrypted_access_token         BYTEA,
        encrypted_refresh_token        BYTEA,
        encrypted_raw_json             BYTEA
-    );"];
+    );",
+    "-- secrets
+    CREATE TABLE IF NOT EXISTS credentials (
+       id                             BIGSERIAL PRIMARY KEY,
+       created                        BIGINT NOT NULL,
+       provider                       TEXT NOT NULL,
+       secret                         TEXT NOT NULL,
+       encrypted_raw_json             BYTEA
+    );",
+];
 
 pub const SQL_INDEXES: [&'static str; 0] = [];
