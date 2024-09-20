@@ -31,6 +31,7 @@ import {
 import { getRefs } from "@app/lib/api/assistant/citations";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import {
   cloneBaseConfig,
@@ -182,10 +183,9 @@ export class RetrievalAction extends BaseAction {
           }
         }
 
-        let dataSourceName = d.dataSourceId;
-        if (d.dataSourceId.startsWith("managed-")) {
-          dataSourceName = d.dataSourceId.substring(8);
-        }
+        const dataSourceName = d.dataSourceView
+          ? getDataSourceNameFromView(d.dataSourceView)
+          : "unknown";
 
         content += `TITLE: ${title} (data source: ${dataSourceName})\n`;
         content += `REFERENCE: ${d.reference}\n`;
