@@ -19,6 +19,7 @@ import type { Result } from "@dust-tt/types";
 import { BaseAction, isDevelopment } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import assert from "assert";
+import _ from "lodash";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
@@ -42,7 +43,6 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { RetrievalDocumentBlob } from "@app/lib/resources/retrieval_document_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import logger from "@app/logger/logger";
-import _ from "lodash";
 
 /**
  * TimeFrame parsing
