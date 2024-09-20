@@ -215,12 +215,10 @@ Tree.Item = function ({
   );
 };
 
-Tree.Empty = function ({
-  label,
-}: TreeItemPropsWithChildren | TreeItemPropsWithRender) {
-  return (
-    <>
-      <div className="s-pl-4 s-text-sm s-text-element-600">{label}</div>
-    </>
-  );
+interface TreeEmptyProps {
+  label: string;
+}
+
+Tree.Empty = function ({ label }: TreeEmptyProps) {
+  return <div className="s-pl-4 s-text-sm s-text-element-600">{label}</div>;
 };
