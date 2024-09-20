@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   DataTable,
   LinkIcon,
   Page,
@@ -10,6 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type {
+  ConnectorType,
   DataSourceType,
   DataSourceWithAgentsUsageType,
   PlanType,
@@ -17,6 +19,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { truncate } from "@dust-tt/types";
+import { ConnectorsAPI } from "@dust-tt/types";
 import type { SortingState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -24,19 +27,27 @@ import type { ComponentType } from "react";
 import { useMemo, useRef, useState } from "react";
 import * as React from "react";
 
+import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
 import { getDataSourcesUsageByCategory } from "@app/lib/api/agent_data_sources";
+import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isWebsite } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import logger from "@app/logger/logger";
 
-type RowData = DataSourceType & {
+type DataSourceWithConnector = DataSourceType & {
+  connector: ConnectorType | null;
+};
+
+type RowData = DataSourceWithConnector & {
   icon: ComponentType;
   usage: DataSourceWithAgentsUsageType;
+  workspaceId: string;
 };
 
 type Info = {
@@ -50,7 +61,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   plan: PlanType;
   readOnly: boolean;
-  dataSources: DataSourceType[];
+  dataSources: DataSourceWithConnector[];
   dataSourcesUsage: DataSourcesUsageByAgent;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -75,13 +86,38 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     .filter(isWebsite)
     .map((ds) => ds.toJSON());
 
+  const connectorIds = websiteDataSources
+    .filter((ds) => ds.connectorId !== null)
+    .map((ds) => ds.connectorId) as string[];
+
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+
+  const connectorsRes = await connectorsAPI.getConnectors(
+    "webcrawler",
+    connectorIds
+  );
+  if (connectorsRes.isErr()) {
+    throw new Error("Failed to fetch connectors");
+  }
+
+  const dataSourcesWithConnector = websiteDataSources.map((ds) => {
+    const connector = connectorsRes.value.find((c) => c.id === ds.connectorId);
+    return {
+      ...ds,
+      connector: connector ?? null,
+    };
+  });
+
   return {
     props: {
       owner,
       subscription,
       plan,
       readOnly,
-      dataSources: websiteDataSources,
+      dataSources: dataSourcesWithConnector,
       dataSourcesUsage,
     },
   };
@@ -127,6 +163,7 @@ export default function DataSourcesView({
       },
       icon: LinkIcon,
       usage: dataSourcesUsage[dataSource.id] || { count: 0, agentNames: [] },
+      workspaceId: owner.sId,
     }));
   }, [dataSources, dataSourcesUsage, owner.sId, router]);
 
@@ -263,19 +300,27 @@ function getTableColumns() {
       ),
     },
     {
-      header: "Last updated",
-      accessorKey: "editedByUser.editedAt",
-      id: "editedAt",
+      header: "Last sync",
+      id: "lastSync",
+      accessorFn: (row: RowData) => row.connector?.lastSyncSuccessfulTime ?? 0,
       meta: {
-        width: "10rem",
+        width: "14rem",
       },
       cell: (info: Info) => (
         <DataTable.CellContent>
-          {info.row.original.editedByUser?.editedAt
-            ? new Date(
-                info.row.original.editedByUser.editedAt
-              ).toLocaleDateString()
-            : null}
+          <>
+            {!info.row.original.connector ? (
+              <Chip color="warning">
+                Error loading the connector. Try again in a few minutes.
+              </Chip>
+            ) : (
+              <ConnectorSyncingChip
+                initialState={info.row.original.connector}
+                workspaceId={info.row.original.workspaceId}
+                dataSource={info.row.original}
+              />
+            )}
+          </>
         </DataTable.CellContent>
       ),
     },
