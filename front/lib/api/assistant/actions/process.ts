@@ -22,6 +22,7 @@ import {
   renderSchemaPropertiesAsJSONSchema,
 } from "@dust-tt/types";
 import assert from "assert";
+import _ from "lodash";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
@@ -243,12 +244,9 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       hasAvailableActions: false,
     });
 
-    const uniqueDataSourceViewIds = Array.from(
-      new Set(actionConfiguration.dataSources.map((ds) => ds.dataSourceViewId))
-    );
     const dataSourceViews = await DataSourceViewResource.fetchByIds(
       auth,
-      uniqueDataSourceViewIds
+      _.uniq(actionConfiguration.dataSources.map((ds) => ds.dataSourceViewId))
     );
     const dataSourceViewsMap = Object.fromEntries(
       dataSourceViews.map((dsv) => [dsv.sId, dsv])

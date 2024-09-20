@@ -42,6 +42,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { RetrievalDocumentBlob } from "@app/lib/resources/retrieval_document_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import logger from "@app/logger/logger";
+import _ from "lodash";
 
 /**
  * TimeFrame parsing
@@ -389,12 +390,9 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
     const now = Date.now();
 
-    const uniqueDataSourceViewIds = Array.from(
-      new Set(actionConfiguration.dataSources.map((ds) => ds.dataSourceViewId))
-    );
     const dataSourceViews = await DataSourceViewResource.fetchByIds(
       auth,
-      uniqueDataSourceViewIds
+      _.uniq(actionConfiguration.dataSources.map((ds) => ds.dataSourceViewId))
     );
     const dataSourceViewsMap = Object.fromEntries(
       dataSourceViews.map((dsv) => [dsv.sId, dsv])
