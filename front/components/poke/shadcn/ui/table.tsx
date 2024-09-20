@@ -1,9 +1,4 @@
-import {
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  ExternalLinkIcon,
-} from "lucide-react";
-import Link from "next/link";
+import { ClipboardCheckIcon, ClipboardIcon } from "lucide-react";
 import * as React from "react";
 
 import { cn } from "@app/components/poke/shadcn/lib/utils";

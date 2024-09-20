@@ -1,19 +1,13 @@
-import {
-  DataSourceViewContentNode,
-  defaultSelectionConfiguration,
-  WorkspaceType,
-  type DataSourceViewType,
-  type LightWorkspaceType,
-} from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import type { DataSourceViewType } from "@dust-tt/types";
+import { defaultSelectionConfiguration } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
+import type { ReactElement } from "react";
 
 import { DataSourceViewSelector } from "@app/components/data_source_view/DataSourceViewSelector";
-import PokeNavbar from "@app/components/poke/PokeNavbar";
+import { ViewDataSourceViewTable } from "@app/components/poke/data_source_views/view";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { Page } from "@dust-tt/sparkle";
-import { ViewDataSourceViewTable } from "@app/components/poke/data_source_views/view";
-import { ReactElement } from "react";
 import PokeLayout from "@app/pages/poke/PokeLayout";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
