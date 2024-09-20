@@ -108,6 +108,7 @@ pub fn cl100k_base() -> Result<CoreBPE> {
 }
 
 pub fn o200k_base() -> Result<CoreBPE> {
+    //  From https://openaipublic.blob.core.windows.net/encodings/o200k_base.tiktoken
     let o200k_base = include_str!("o200k_base.tiktoken");
 
     let mut encoder = HashMap::default();
@@ -119,17 +120,21 @@ pub fn o200k_base() -> Result<CoreBPE> {
         encoder.insert(token.clone(), rank);
     }
 
+    // Special tokens from https://github.com/openai/tiktoken/blob/main/tiktoken_ext/openai_public.py
     let mut special_tokens = HashMap::default();
-    special_tokens.insert(String::from("<|endoftext|>"), 100257);
-    special_tokens.insert(String::from("<|fim_prefix|>"), 100258);
-    special_tokens.insert(String::from("<|fim_middle|>"), 100259);
-    special_tokens.insert(String::from("<|fim_suffix|>"), 100260);
-    special_tokens.insert(String::from("<|endofprompt|>"), 100276);
+    special_tokens.insert(String::from("<|endoftext|>"), 199999);
+    special_tokens.insert(String::from("<|endofprompt|>"), 200018);
 
     CoreBPE::new(
         encoder,
         special_tokens,
-        "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+        r"[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]*[\p{Ll}\p{Lm}\p{Lo}\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?|
+        [^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]+[\p{Ll}\p{Lm}\p{Lo}\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?|
+        \p{N}{1,3}|
+        ?[^\s\p{L}\p{N}]+[\r\n/]*|
+        \s*[\r\n]+|
+        \s+(?!\S)|
+        \s+",
     )
 }
 
