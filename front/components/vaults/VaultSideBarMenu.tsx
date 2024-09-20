@@ -435,17 +435,18 @@ const VaultDataSourceViewItem = ({
     },
   });
 
+  const basePath = `/w/${owner.sId}/vaults/${vault.sId}/categories/${item.category}/data_source_views/${item.sId}`;
+
   // Load the currently selected node from router.query.parentId
   const {
     nodes: [selected],
   } = useDataSourceViewContentNodes({
-    dataSourceView: router.query.parentId ? item : undefined,
+    dataSourceView: item,
     owner,
     internalIds: [router.query.parentId as string],
     viewType: "documents",
+    disabled: !router.asPath.startsWith(basePath) || !router.query.parentId,
   });
-
-  const basePath = `/w/${owner.sId}/vaults/${vault.sId}/categories/${item.category}/data_source_views/${item.sId}`;
 
   // isAncestorToCurrentPage is true if :
   // 1. The current path matches the basePath
