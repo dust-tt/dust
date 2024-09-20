@@ -50,6 +50,8 @@ export async function launchConfluenceSyncWorkflow(
 
   const workflowId = makeConfluenceSyncWorkflowId(connector.id);
 
+  const minute = connector.id % 60; // Spread workflows across the hour.
+
   // When the workflow is inactive, we omit passing spaceIds as they are only used to signal modifications within a currently active full sync workflow.
   try {
     await client.workflow.signalWithStart(confluenceSyncWorkflow, {
@@ -68,7 +70,7 @@ export async function launchConfluenceSyncWorkflow(
       memo: {
         connectorId,
       },
-      cronSchedule: "0 * * * *", // Every hour.
+      cronSchedule: `${minute} * * * *`, // Every hour at minute `minute`.
     });
   } catch (err) {
     return new Err(err as Error);
