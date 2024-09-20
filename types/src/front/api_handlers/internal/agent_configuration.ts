@@ -61,7 +61,6 @@ const RetrievalActionConfigurationSchema = t.type({
   topK: t.union([t.number, t.literal("auto")]),
   dataSources: t.array(
     t.type({
-      dataSourceId: t.string,
       dataSourceViewId: t.string,
       workspaceId: t.string,
       filter: t.type({
@@ -87,7 +86,6 @@ const TablesQueryActionConfigurationSchema = t.type({
   type: t.literal("tables_query_configuration"),
   tables: t.array(
     t.type({
-      dataSourceId: t.string,
       dataSourceViewId: t.string,
       tableId: t.string,
       workspaceId: t.string,
@@ -107,7 +105,6 @@ const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
   dataSources: t.array(
     t.type({
-      dataSourceId: t.string,
       dataSourceViewId: t.string,
       workspaceId: t.string,
       filter: t.type({

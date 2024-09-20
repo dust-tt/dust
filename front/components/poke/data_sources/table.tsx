@@ -1,6 +1,7 @@
 import type {
   AgentConfigurationType,
   DataSourceType,
+  DataSourceViewType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
@@ -11,6 +12,7 @@ import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 interface DataSourceDataTableProps {
   owner: WorkspaceType;
   dataSources: DataSourceType[];
+  dataSourceViews: DataSourceViewType[];
   agentConfigurations: AgentConfigurationType[];
 }
 
@@ -27,6 +29,7 @@ function prepareDataSourceForDisplay(dataSources: DataSourceType[]) {
 export function DataSourceDataTable({
   owner,
   dataSources,
+  dataSourceViews,
   agentConfigurations,
 }: DataSourceDataTableProps) {
   const router = useRouter();
@@ -38,6 +41,14 @@ export function DataSourceDataTable({
         columns={makeColumnsForDataSources(
           owner,
           agentConfigurations,
+          dataSources.map((ds) => {
+            return {
+              dataSource: ds,
+              dataSourceViews: dataSourceViews.filter(
+                (view) => view.dataSource.id === ds.id
+              ),
+            };
+          }),
           router.reload
         )}
         data={prepareDataSourceForDisplay(dataSources)}
