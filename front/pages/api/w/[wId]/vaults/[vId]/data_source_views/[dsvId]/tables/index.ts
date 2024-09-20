@@ -15,8 +15,6 @@ export type ListTablesResponseBody = {
   tables: DataSourceViewContentNode[];
 };
 
-const DEFAULT_LIMIT = 100;
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<ListTablesResponseBody>>,
@@ -51,10 +49,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const paginationRes = getOffsetPaginationParams(req, {
-        defaultLimit: DEFAULT_LIMIT,
-        defaultOffset: 0,
-      });
+      const paginationRes = getOffsetPaginationParams(req);
       if (paginationRes.isErr()) {
         return apiError(req, res, {
           status_code: 400,

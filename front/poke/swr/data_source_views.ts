@@ -4,7 +4,7 @@ import type {
   LightWorkspaceType,
 } from "@dust-tt/types";
 import { useMemo } from "react";
-import type { Fetcher } from "swr";
+import type { Fetcher, KeyedMutator } from "swr";
 
 import {
   appendPaginationParams,
@@ -16,6 +16,7 @@ import {
 import type { PokeListDataSourceViews } from "@app/pages/api/poke/workspaces/[wId]/data_source_views";
 import type { PokeGetDataSourceViewContentNodes } from "@app/pages/api/poke/workspaces/[wId]/vaults/[vId]/data_source_views/[dsvId]/content-nodes";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import { PaginationState } from "@tanstack/react-table";
 
 export function usePokeDataSourceViews({
   disabled,
@@ -33,6 +34,80 @@ export function usePokeDataSourceViews({
     isLoading: !error && !data,
     isError: error,
     mutateDocuments: mutate,
+  };
+}
+
+interface DataSourceViewContentNodesProps {
+  dataSourceView?: DataSourceViewType;
+  disabled?: boolean;
+  internalIds?: string[];
+  owner: LightWorkspaceType;
+  pagination?: PaginationState;
+  parentId?: string;
+  viewType?: ContentNodesViewType;
+}
+
+export function usePokeDataSourceViewContentNodes({
+  dataSourceView,
+  disabled = false,
+  internalIds,
+  owner,
+  pagination,
+  parentId,
+  viewType,
+}: DataSourceViewContentNodesProps): {
+  isNodesError: boolean;
+  isNodesLoading: boolean;
+  isNodesValidating: boolean;
+  mutate: KeyedMutator<PokeGetDataSourceViewContentNodes>;
+  mutateRegardlessOfQueryParams: KeyedMutator<PokeGetDataSourceViewContentNodes>;
+  nodes: PokeGetDataSourceViewContentNodes["nodes"];
+  totalNodesCount: number;
+} {
+  const params = new URLSearchParams();
+  appendPaginationParams(params, pagination);
+
+  const url =
+    dataSourceView && viewType
+      ? `/api/poke/workspaces/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
+      : null;
+
+  const body = JSON.stringify({
+    internalIds,
+    parentId,
+    viewType,
+  });
+
+  const fetchKey = useMemo(() => {
+    return JSON.stringify({
+      url,
+      body,
+    }); // Serialize with body to ensure uniqueness.
+  }, [url, body]);
+
+  const { data, error, mutate, isValidating, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      fetchKey,
+      async () => {
+        if (!url) {
+          return undefined;
+        }
+
+        return postFetcher([url, { internalIds, parentId, viewType }]);
+      },
+      {
+        disabled: disabled || !viewType,
+      }
+    );
+
+  return {
+    isNodesError: !!error,
+    isNodesLoading: !error && !data,
+    isNodesValidating: isValidating,
+    mutate,
+    mutateRegardlessOfQueryParams,
+    nodes: useMemo(() => (data ? data.nodes : []), [data]),
+    totalNodesCount: data ? data.total : 0,
   };
 }
 
