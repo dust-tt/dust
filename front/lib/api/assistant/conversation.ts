@@ -77,6 +77,7 @@ import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
@@ -579,6 +580,26 @@ async function getConversationRankVersionLock(
   );
 }
 
+async function attributeUserFromWorkspaceAndEmail(
+  workspace: WorkspaceType | null,
+  email: string | null
+): Promise<number | null> {
+  if (workspace && email && isEmailValid(email)) {
+    const matchingUser = await UserResource.fetchByEmail(email);
+    if (matchingUser && workspace) {
+      const membership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: matchingUser,
+          workspace,
+        });
+      if (membership) {
+        return matchingUser.id;
+      }
+    }
+  }
+  return null;
+}
+
 // This method is in charge of creating a new user message in database, running the necessary agents
 // in response and updating accordingly the conversation. AgentMentions must point to valid agent
 // configurations from the same workspace or whose scope is global.
@@ -715,23 +736,6 @@ export async function* postUserMessage(
         })) ?? -1) + 1;
 
       async function createMessageAndUserMessage() {
-        let userId = user ? user.id : null;
-
-        // If we have a context email but no user, we try to find a user with that email in the workspace.
-        if (!userId && context.email) {
-          const matchingUser = await UserResource.fetchByEmail(context.email);
-          if (matchingUser && owner) {
-            const membership =
-              await MembershipResource.getActiveMembershipOfUserInWorkspace({
-                user: matchingUser,
-                workspace: owner,
-              });
-            if (membership) {
-              userId = matchingUser.id;
-            }
-          }
-        }
-
         return Message.create(
           {
             sId: generateLegacyModelSId(),
@@ -748,7 +752,12 @@ export async function* postUserMessage(
                   userContextEmail: context.email,
                   userContextProfilePictureUrl: context.profilePictureUrl,
                   userContextOrigin: context.origin,
-                  userId,
+                  userId: user
+                    ? user.id
+                    : await attributeUserFromWorkspaceAndEmail(
+                        owner,
+                        context.email
+                      ),
                 },
                 { transaction: t }
               )
@@ -1226,7 +1235,12 @@ export async function* editUserMessage(
                   userContextProfilePictureUrl:
                     userMessageRow.userContextProfilePictureUrl,
                   userContextOrigin: userMessageRow.userContextOrigin,
-                  userId: userMessageRow.userId,
+                  userId: userMessageRow.userId
+                    ? userMessageRow.userId
+                    : await attributeUserFromWorkspaceAndEmail(
+                        owner,
+                        userMessageRow.userContextEmail
+                      ),
                 },
                 { transaction: t }
               )
