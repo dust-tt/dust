@@ -45,7 +45,7 @@ export function Dialog({
         className="s-relative s-z-50"
         // If it's an alert dialog, we don't want to close it when clicking outside.
         onClose={alertDialog ? () => {} : onCancel}
-        role="alertdialog"
+        role={alertDialog ? "alertdialog" : "dialog"}
       >
         <Transition.Child
           as={Fragment}

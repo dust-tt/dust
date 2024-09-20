@@ -1,5 +1,5 @@
 import type { Meta } from "@storybook/react";
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 
 import { Button, Dialog } from "../index_with_tw_base";
 
@@ -23,14 +23,8 @@ export const DialogExample = () => {
         <Dialog
           isOpen={isOpen1}
           title="Dialog title"
-          onValidate={() => {
-            console.log("onValidate");
-            setisOpen1(false);
-          }}
-          onCancel={() => {
-            console.log("cancel");
-            setisOpen1(false);
-          }}
+          onValidate={() => setisOpen1(false)}
+          onCancel={() => setisOpen1(false)}
         >
           <div>I'm the modal content</div>
         </Dialog>
