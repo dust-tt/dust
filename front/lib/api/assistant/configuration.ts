@@ -227,7 +227,7 @@ async function fetchGlobalAgentConfigurationForView(
 
 // Workspace agent configurations.
 
-async function fetchAgentConfigurationsForView(
+async function fetchWorkspaceAgentConfigurationsWithoutActions(
   auth: Authenticator,
   {
     agentPrefix,
@@ -331,7 +331,7 @@ async function fetchAgentConfigurationsForView(
           where: {
             workspaceId: owner.id,
             ...(agentPrefix ? { name: { [Op.iLike]: `${agentPrefix}%` } } : {}),
-            sId: agentsGetView.agentIds.filter(isGlobalAgentId),
+            sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
           },
           order: [["version", "DESC"]],
           ...(agentsGetView.allVersions ? {} : { limit: 1 }),
@@ -399,13 +399,14 @@ async function fetchWorkspaceAgentConfigurationsForView(
 ) {
   const user = auth.user();
 
-  const agentConfigurations = await fetchAgentConfigurationsForView(auth, {
-    agentPrefix,
-    agentsGetView,
-    limit,
-    owner,
-    sort,
-  });
+  const agentConfigurations =
+    await fetchWorkspaceAgentConfigurationsWithoutActions(auth, {
+      agentPrefix,
+      agentsGetView,
+      limit,
+      owner,
+      sort,
+    });
 
   const configurationIds = agentConfigurations.map((a) => a.id);
   const configurationSIds = agentConfigurations.map((a) => a.sId);
