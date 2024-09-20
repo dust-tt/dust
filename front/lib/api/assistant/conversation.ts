@@ -584,20 +584,22 @@ async function attributeUserFromWorkspaceAndEmail(
   workspace: WorkspaceType | null,
   email: string | null
 ): Promise<number | null> {
-  if (workspace && email && isEmailValid(email)) {
-    const matchingUser = await UserResource.fetchByEmail(email);
-    if (matchingUser && workspace) {
-      const membership =
-        await MembershipResource.getActiveMembershipOfUserInWorkspace({
-          user: matchingUser,
-          workspace,
-        });
-      if (membership) {
-        return matchingUser.id;
-      }
-    }
+  if (!workspace || !email || !isEmailValid(email)) {
+    return null;
   }
-  return null;
+
+  const matchingUser = await UserResource.fetchByEmail(email);
+  if (!matchingUser) {
+    return null;
+  }
+
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user: matchingUser,
+      workspace,
+    });
+
+  return membership ? matchingUser.id : null;
 }
 
 // This method is in charge of creating a new user message in database, running the necessary agents
