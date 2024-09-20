@@ -21,6 +21,7 @@ import {
   PROCESS_ACTION_TOP_K,
   renderSchemaPropertiesAsJSONSchema,
 } from "@dust-tt/types";
+import assert from "assert";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
@@ -41,6 +42,7 @@ import {
   DustProdActionRegistry,
   PRODUCTION_DUST_WORKSPACE_ID,
 } from "@app/lib/registry";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
 interface ProcessActionBlob {
@@ -241,6 +243,17 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       hasAvailableActions: false,
     });
 
+    const uniqueDataSourceViewIds = Array.from(
+      new Set(actionConfiguration.dataSources.map((ds) => ds.dataSourceViewId))
+    );
+    const dataSourceViews = await DataSourceViewResource.fetchByIds(
+      auth,
+      uniqueDataSourceViewIds
+    );
+    const dataSourceViewsMap = Object.fromEntries(
+      dataSourceViews.map((dsv) => [dsv.sId, dsv])
+    );
+
     const config = cloneBaseConfig(
       DustProdActionRegistry["assistant-v2-process"].config
     );
@@ -258,9 +271,9 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
             ? PRODUCTION_DUST_WORKSPACE_ID
             : d.workspaceId,
 
-        // Use dataSourceViewId if it exists; otherwise, use dataSourceId.
-        // Note: This value is passed to the registry for lookup.
-        data_source_id: d.dataSourceViewId ?? d.dataSourceId,
+        // Note: This value is passed to the registry for lookup. The registry will return the
+        // associated data source's dustAPIDataSourceId.
+        data_source_id: d.dataSourceViewId,
       })
     );
 
@@ -286,10 +299,16 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
           config.DATASOURCE.filter.parents.in_map = {};
         }
 
+        const dsView = dataSourceViewsMap[ds.dataSourceViewId];
+        // This should never happen since dataSourceViews are stored by id in the
+        // agent_data_source_configurations table.
+        assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
+
         // Note: We use dataSourceId here because after the registry lookup,
         // it returns either the data source itself or the data source associated with the data source view.
-        config.DATASOURCE.filter.parents.in_map[ds.dataSourceId] =
-          ds.filter.parents.in;
+        config.DATASOURCE.filter.parents.in_map[
+          dsView.dataSource.dustAPIDataSourceId
+        ] = ds.filter.parents.in;
       }
       if (ds.filter.parents?.not) {
         if (!config.DATASOURCE.filter.parents.not) {

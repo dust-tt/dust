@@ -389,22 +389,20 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
     const now = Date.now();
 
-    // "assistant-v2-retrieval" has no model interaction.
-    const config = cloneBaseConfig(
-      DustProdActionRegistry["assistant-v2-retrieval"].config
-    );
-
     const uniqueDataSourceViewIds = Array.from(
       new Set(actionConfiguration.dataSources.map((ds) => ds.dataSourceViewId))
     );
-
     const dataSourceViews = await DataSourceViewResource.fetchByIds(
       auth,
       uniqueDataSourceViewIds
     );
-
     const dataSourceViewsMap = Object.fromEntries(
       dataSourceViews.map((dsv) => [dsv.sId, dsv])
+    );
+
+    // "assistant-v2-retrieval" has no model interaction.
+    const config = cloneBaseConfig(
+      DustProdActionRegistry["assistant-v2-retrieval"].config
     );
 
     // Handle data sources list and parents/tags filtering.
@@ -414,7 +412,8 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           isDevelopment() && !apiConfig.getDevelopmentDustAppsWorkspaceId()
             ? PRODUCTION_DUST_WORKSPACE_ID
             : d.workspaceId,
-        // Note: This value is passed to the registry for lookup.
+        // Note: This value is passed to the registry for lookup. The registry will return the
+        // associated data source's dustAPIDataSourceId.
         data_source_id: d.dataSourceViewId,
       })
     );
@@ -508,7 +507,6 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     // This is not perfect and will be erroneous in case of two data sources with the same id from
     // two different workspaces. We don't support cross workspace data sources right now. But we'll
     // likely want `core` to return the `workspace_id` that was used eventualy.
-    // TODO(spolu): make `core` return data source workspace id.
     const dustAPIDataSourcesIdToDetails = Object.fromEntries(
       actionConfiguration.dataSources.map((ds) => [
         dataSourceViewsMap[ds.dataSourceViewId].dataSource.dustAPIDataSourceId,
@@ -618,11 +616,6 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
             const details = dustAPIDataSourcesIdToDetails[d.data_source_id];
             assert(details, `Data source view ${d.data_source_id} not found`);
-
-            console.log(
-              ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
-            );
-            console.log(details);
 
             return {
               blob: {

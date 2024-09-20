@@ -12,7 +12,6 @@ export type TablesQueryConfigurationType = {
 };
 
 export type TableDataSourceConfiguration = {
-  dataSourceId: string;
   dataSourceViewId: string;
   tableId: string;
   workspaceId: string;
