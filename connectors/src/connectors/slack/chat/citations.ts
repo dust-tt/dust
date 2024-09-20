@@ -5,8 +5,6 @@ import {
   isWebsearchActionType,
 } from "@dust-tt/types";
 
-import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
-
 interface SlackMessageFootnote {
   index: number;
   link: string;
@@ -30,17 +28,14 @@ export function annotateCitations(
   for (const action of actions) {
     if (action && isRetrievalActionType(action) && action.documents) {
       action.documents.forEach((d) => {
-        references[d.reference] = {
-          reference: d.reference,
-          link: d.sourceUrl
-            ? d.sourceUrl
-            : makeDustAppUrl(
-                `/w/${d.dataSourceWorkspaceId}/builder/data-sources/${
-                  d.dataSourceId
-                }/upsert?documentId=${encodeURIComponent(d.documentId)}`
-              ),
-          title: getTitleFromRetrievedDocument(d),
-        };
+        // If the document has no sourceUrl we skip the citation.
+        if (d.sourceUrl) {
+          references[d.reference] = {
+            reference: d.reference,
+            link: d.sourceUrl,
+            title: getTitleFromRetrievedDocument(d),
+          };
+        }
       });
     }
     if (action && isWebsearchActionType(action) && action.output) {
