@@ -234,38 +234,40 @@ function DataSourceViewResourceSelectorChildren({
             />
           );
         })}
-        {dataSourceView.category === "managed" && nodes.length === 0 && (
-          <div className="flex w-full flex-col items-center gap-2 rounded-lg border bg-structure-50 py-2">
-            <span className="text-element-700">The Vault is empty!</span>
-            {owner.role === "admin" && connector ? (
-              <>
-                <Button
-                  label="Add Data"
-                  icon={PlusIcon}
-                  onClick={() => {
-                    setShowConnectorPermissionsModal(true);
-                  }}
-                />
-                <ConnectorPermissionsModal
+        {dataSourceView.category === "managed" &&
+          nodes.length === 0 &&
+          !readonly && (
+            <div className="flex w-full flex-col items-center gap-2 rounded-lg border bg-structure-50 py-2">
+              <span className="text-element-700">The Vault is empty!</span>
+              {owner.role === "admin" && connector ? (
+                <>
+                  <Button
+                    label="Add Data"
+                    icon={PlusIcon}
+                    onClick={() => {
+                      setShowConnectorPermissionsModal(true);
+                    }}
+                  />
+                  <ConnectorPermissionsModal
+                    owner={owner}
+                    connector={connector}
+                    dataSource={dataSourceView.dataSource}
+                    isOpen={showConnectorPermissionsModal}
+                    onClose={() => {
+                      setShowConnectorPermissionsModal(false);
+                    }}
+                    readOnly={false}
+                    isAdmin={owner.role === "admin"}
+                  />
+                </>
+              ) : (
+                <RequestDataSourceModal
+                  dataSources={[dataSourceView.dataSource]}
                   owner={owner}
-                  connector={connector}
-                  dataSource={dataSourceView.dataSource}
-                  isOpen={showConnectorPermissionsModal}
-                  onClose={() => {
-                    setShowConnectorPermissionsModal(false);
-                  }}
-                  readOnly={false}
-                  isAdmin={owner.role === "admin"}
                 />
-              </>
-            ) : (
-              <RequestDataSourceModal
-                dataSources={[dataSourceView.dataSource]}
-                owner={owner}
-              />
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
       </Tree>
       <InfiniteScroll
         nextPage={nextPage}
