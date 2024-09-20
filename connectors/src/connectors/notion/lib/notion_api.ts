@@ -393,6 +393,11 @@ export async function isAccessibleAndUnarchived(
                 waitTime = retryAfter * 1000;
                 usingHeader = true;
               }
+            } else {
+              tryLogger.warn(
+                { headers: e.headers },
+                "Retry-After header not found."
+              );
             }
           } catch (e) {
             // Ignore all errors here as the e.headers type is unknown.
