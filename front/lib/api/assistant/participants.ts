@@ -2,7 +2,6 @@ import type {
   AgentParticipantType,
   ConversationParticipantsType,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
   ModelId,
   Result,
   UserParticipantType,
@@ -10,10 +9,7 @@ import type {
 import { Err, formatUserFullName, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
-import {
-  getAgentConfiguration,
-  getAgentConfigurations,
-} from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
