@@ -104,7 +104,7 @@ export type AgentUserListStatus = "in-list" | "not-in-list";
  *   private agents, agents from the workspace and global scope, plus any
  *   published agents they've added to their list (refer to
  *   AgentUserRelationTable).
- * - {agentId: string}: Retrieves a single agent by its ID.
+ * - {agentIds: string}: Retrieves specific agents by their sIds.
  * - {conversationId: string}: all agent from the user's list view, plus the
  *   agents mentioned in the conversation with the provided Id.
  * - 'all': Combines workspace and published agents, excluding private agents.
@@ -120,7 +120,7 @@ export type AgentUserListStatus = "in-list" | "not-in-list";
  *   authorization.
  */
 export type AgentsGetViewType =
-  | { agentId: string; allVersions?: boolean }
+  | { agentIds: string[]; allVersions?: boolean }
   | "list"
   | { conversationId: string }
   | "all"

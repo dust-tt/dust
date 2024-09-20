@@ -10,7 +10,10 @@ import type {
 import { Err, formatUserFullName, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  getAgentConfiguration,
+  getAgentConfigurations,
+} from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
@@ -44,14 +47,11 @@ async function fetchAllAgentsById(
   auth: Authenticator,
   agentConfigurationIds: string[]
 ): Promise<AgentParticipantType[]> {
-  // TODO(2024-3-25 flav) Support fetching many agents by id.
-  const agents = (
-    await Promise.all(
-      agentConfigurationIds.map((agentConfigId) => {
-        return getAgentConfiguration(auth, agentConfigId);
-      })
-    )
-  ).filter((a) => a !== null) as LightAgentConfigurationType[];
+  const agents = await getAgentConfigurations({
+    auth,
+    agentsGetView: { agentIds: agentConfigurationIds },
+    variant: "light",
+  });
 
   return agents.map((a) => ({
     configurationId: a.sId,
