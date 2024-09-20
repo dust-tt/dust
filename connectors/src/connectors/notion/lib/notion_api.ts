@@ -380,12 +380,30 @@ export async function isAccessibleAndUnarchived(
     } catch (e) {
       if (APIResponseError.isAPIResponseError(e)) {
         if (NOTION_RETRIABLE_ERRORS.includes(e.code)) {
-          const waitTime = 500 * 2 ** tries;
+          let waitTime = 500 * 2 ** tries;
+          let usingHeader = false;
+
+          try {
+            // Trying to respect the rate limit sent back by notion api
+            // See: https://developers.notion.com/reference/request-limits
+            const responseHeaders = e.headers as Record<string, string>;
+            if (responseHeaders["Retry-After"]) {
+              const retryAfter = parseInt(responseHeaders["Retry-After"], 10);
+              if (retryAfter > 0) {
+                waitTime = retryAfter * 1000;
+                usingHeader = true;
+              }
+            }
+          } catch (e) {
+            // Ignore all errors here as the e.headers type is unknown.
+            tryLogger.error({ error: e }, "Error parsing Retry-After header.");
+          }
+
           tryLogger.info(
-            { waitTime },
+            { waitTime, usingHeader },
             "Got potentially transient error. Trying again."
           );
-          await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** tries));
+          await new Promise((resolve) => setTimeout(resolve, waitTime));
           tries += 1;
           if (tries >= maxTries) {
             throw e;
