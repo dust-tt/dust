@@ -389,7 +389,7 @@ export async function isAccessibleAndUnarchived(
             const responseHeaders = e.headers as Record<string, string>;
             if (responseHeaders["Retry-After"]) {
               const retryAfter = parseInt(responseHeaders["Retry-After"], 10);
-              if (retryAfter > 0) {
+              if (!isNaN(retryAfter) && retryAfter > 0) {
                 waitTime = retryAfter * 1000;
                 usingHeader = true;
               }
