@@ -31,7 +31,6 @@ import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/Enterpri
 import { useSubmitFunction } from "@app/lib/client/utils";
 import {
   FREE_NO_PLAN_CODE,
-  isEntreprisePlan,
   isFreePlan,
   isProPlan,
 } from "@app/lib/plans/plan_codes";
