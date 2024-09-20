@@ -50,7 +50,7 @@ export function Input({
         id={name}
         className={classNames(
           "s-w-full s-border-0 s-outline-none s-ring-1 focus:s-outline-none focus:s-ring-2",
-          "s-bg-structure-50s-placeholder-element-700",
+          "s-bg-structure-50 s-placeholder-element-700",
           "dark:s-bg-structure-50-dark dark:s-placeholder-element-700-dark",
           sizeInputClasses[size],
           "s-transition-all s-duration-300 s-ease-out",
