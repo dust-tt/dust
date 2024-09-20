@@ -19,7 +19,7 @@ export function RequestOrAddDataFromDataSourceModal({
     useState(false);
   const { connector } = useConnector({
     workspaceId: owner.sId,
-    dataSourceId: dataSource.sId,
+    dataSource: dataSource,
   });
   return (
     <>
