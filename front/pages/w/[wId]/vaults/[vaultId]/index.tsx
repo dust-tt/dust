@@ -18,6 +18,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
+  const isAdmin = auth.isAdmin();
 
   if (!subscription) {
     return {
@@ -29,11 +30,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     auth,
     context.query.vaultId as string
   );
-  if (!vault) {
+  if (!vault || !vault.canList(auth)) {
     return {
       notFound: true,
     };
   }
+
   // No root page for System vaults since it contains only managed data sources.
   if (vault.isSystem()) {
     return {
@@ -43,8 +45,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       },
     };
   }
-
-  const isAdmin = auth.isAdmin();
 
   return {
     props: {

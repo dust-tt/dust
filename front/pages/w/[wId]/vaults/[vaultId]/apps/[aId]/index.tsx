@@ -28,6 +28,7 @@ import config from "@app/lib/api/config";
 import { extractConfig } from "@app/lib/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import {
   addBlock,
   deleteBlock,
@@ -48,7 +49,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const owner = auth.workspace();
   const subscription = auth.subscription();
 
-  if (!owner || !subscription) {
+  const vault = await VaultResource.fetchById(
+    auth,
+    context.query.vaultId as string
+  );
+
+  if (!owner || !subscription || !vault || !vault.canList(auth)) {
     return {
       notFound: true,
     };
