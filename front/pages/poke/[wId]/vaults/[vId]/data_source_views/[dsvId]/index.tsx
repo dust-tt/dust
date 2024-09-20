@@ -9,6 +9,7 @@ import { ViewDataSourceViewTable } from "@app/components/poke/data_source_views/
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import PokeLayout from "@app/pages/poke/PokeLayout";
+import { usePokeDataSourceViewContentNodesWithInfiniteScroll } from "@app/poke/swr/data_source_views";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   dataSourceView: DataSourceViewType;
@@ -53,6 +54,9 @@ export default function DataSourceViewPage({
           readonly
           selectionConfiguration={defaultSelectionConfiguration(dataSourceView)}
           setSelectionConfigurations={() => {}}
+          useDataSourceViewContentNodes={
+            usePokeDataSourceViewContentNodesWithInfiniteScroll
+          }
           viewType="documents"
         />
       </div>

@@ -33,6 +33,7 @@ import {
   isManaged,
   isWebsite,
 } from "@app/lib/data_sources";
+import { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
 
 const MIN_TOTAL_DATA_SOURCES_TO_GROUP = 12;
 const MIN_DATA_SOURCES_PER_KIND_TO_GROUP = 3;
@@ -224,6 +225,7 @@ interface DataSourceViewSelectorProps {
   setSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
+  useDataSourceViewContentNodes?: typeof useDataSourceViewContentNodesWithInfiniteScroll;
   viewType: ContentNodesViewType;
 }
 
@@ -232,6 +234,7 @@ export function DataSourceViewSelector({
   readonly = false,
   selectionConfiguration,
   setSelectionConfigurations,
+  useDataSourceViewContentNodes = useDataSourceViewContentNodesWithInfiniteScroll,
   viewType,
 }: DataSourceViewSelectorProps) {
   const dataSourceView = selectionConfiguration.dataSourceView;
@@ -405,6 +408,7 @@ export function DataSourceViewSelector({
         selectedParents={selectedParents}
         selectedResourceIds={internalIds}
         showExpand={config?.isNested ?? true}
+        useDataSourceViewContentNodes={useDataSourceViewContentNodes}
         viewType={viewType}
       />
     </Tree.Item>
