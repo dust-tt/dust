@@ -16,6 +16,7 @@ import {
 } from "@dust-tt/types";
 
 import {
+  getDisplayNameForFolder,
   getDisplayNameForPage,
   normalizeFolderUrl,
   stableIdForUrl,
@@ -199,11 +200,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
                   ressourceType: "folder",
                 })
               : null,
-            title:
-              new URL(folder.url).pathname
-                .split("/")
-                .filter((x) => x)
-                .pop() || folder.url,
+            title: getDisplayNameForFolder(folder),
             sourceUrl: null,
             expandable: true,
             permission: "read",
@@ -257,7 +254,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       WebCrawlerFolder.findAll({
         where: {
           connectorId: this.connectorId,
-          url: internalIds,
+          internalId,
         },
       }),
       WebCrawlerPage.findAll({
@@ -273,7 +270,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         provider: "webcrawler",
         internalId: folder.internalId,
         parentInternalId: folder.parentUrl,
-        title: folder.url,
+        title: getDisplayNameForFolder(folder),
         sourceUrl: folder.url,
         expandable: true,
         permission: "read",
@@ -332,7 +329,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
 
     // If the Page or Folder has no parentUrl, we return an empty array
     if (!parentUrl) {
-      return new Ok([]);
+      return new Ok(parents);
     }
 
     // Otherwise we loop on the parentUrl to retrieve all the parents
