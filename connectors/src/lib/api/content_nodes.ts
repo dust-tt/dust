@@ -30,7 +30,7 @@ export async function getParentIdsForContentNodes(
   const parentsResults = await concurrentExecutor(
     internalIds,
     (internalId) => connectorManager.retrieveContentNodeParents({ internalId }),
-    { concurrency: 10 }
+    { concurrency: 30 }
   );
 
   const nodes: ContentNodeParentIdsBlob[] = [];

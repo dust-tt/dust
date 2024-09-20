@@ -132,7 +132,7 @@ export function useVaultDataSourceViews({
     vaultDataSourceViews,
     mutate,
     mutateRegardlessOfQueryParams,
-    isVaultDataSourceViewsLoading: !error && !data,
+    isVaultDataSourceViewsLoading: !disabled && !error && !data,
     isVaultDataSourceViewsError: error,
   };
 }

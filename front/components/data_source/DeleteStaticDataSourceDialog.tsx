@@ -1,28 +1,30 @@
 import { Dialog } from "@dust-tt/sparkle";
-import type {
-  DataSourceType,
-  DataSourceWithAgentsUsageType,
-} from "@dust-tt/types";
-import { useState } from "react";
+import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
+import { useMemo, useState } from "react";
 
 import { getDataSourceName, isManaged } from "@app/lib/data_sources";
+import { useDataSourceUsage } from "@app/lib/swr/data_sources";
 
 interface DeleteStaticDataSourceDialogProps {
+  owner: LightWorkspaceType;
   dataSource: DataSourceType;
   handleDelete: () => void;
-  dataSourceUsage?: DataSourceWithAgentsUsageType;
   isOpen: boolean;
   onClose: () => void;
 }
 
 export function DeleteStaticDataSourceDialog({
+  owner,
   dataSource,
   handleDelete,
-  dataSourceUsage,
   isOpen,
   onClose,
 }: DeleteStaticDataSourceDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const { usage, isUsageLoading, isUsageError } = useDataSourceUsage({
+    owner,
+    dataSource,
+  });
 
   const onDelete = async () => {
     setIsLoading(true);
@@ -34,19 +36,28 @@ export function DeleteStaticDataSourceDialog({
     ? dataSource.name
     : getDataSourceName(dataSource);
 
-  const message =
-    dataSourceUsage === undefined
-      ? `Are you sure you want to permanently delete ${name}?`
-      : dataSourceUsage.count > 0
-        ? `${dataSourceUsage.count} assistants currently use "${name}": ${dataSourceUsage.agentNames.join(", ")}.`
-        : `No assistants are using "${name}".`;
+  const message = useMemo(() => {
+    if (isUsageLoading) {
+      return "Checking usage...";
+    }
+    if (isUsageError) {
+      return "Failed to check usage.";
+    }
+    if (!usage) {
+      return "No usage data available.";
+    }
+    if (usage.count > 0) {
+      return `${usage.count} assistants currently use "${name}": ${usage.agentNames.join(", ")}.`;
+    }
+    return `No assistants are using "${name}".`;
+  }, [isUsageLoading, isUsageError, usage, name]);
 
   return (
     <Dialog
       isOpen={isOpen}
       title={`Removing ${name}`}
       onValidate={onDelete}
-      isSaving={isLoading}
+      isSaving={isLoading || isUsageLoading}
       onCancel={onClose}
       validateVariant="primaryWarning"
     >

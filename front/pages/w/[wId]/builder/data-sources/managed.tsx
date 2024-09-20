@@ -275,7 +275,7 @@ export default function DataSourcesView({
             </div>
           )}
 
-          {isAdmin && integrations.length > 0 && (
+          {isAdmin && integrations.length && (
             <AddConnectionMenu
               owner={owner}
               plan={plan}
@@ -334,7 +334,6 @@ export default function DataSourcesView({
             }}
             isAdmin={isAdmin}
             readOnly={readOnly}
-            plan={plan}
           />
         )}
       </Page.Vertical>
@@ -418,7 +417,7 @@ function getTableColumns() {
                   <ConnectorSyncingChip
                     initialState={managedDataSource.connector}
                     workspaceId={info.row.original.workspaceId}
-                    dataSourceId={managedDataSource.sId}
+                    dataSource={managedDataSource}
                   />
                 )
               );

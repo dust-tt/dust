@@ -16,7 +16,6 @@ import type {
   LightWorkspaceType,
   VaultKind,
   VaultType,
-  WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@dust-tt/types";
 import { groupBy, sortBy, uniqBy } from "lodash";
@@ -38,7 +37,7 @@ import { getVaultIcon, getVaultName } from "@app/lib/vaults";
 
 interface VaultSideBarMenuProps {
   isPrivateVaultsEnabled: boolean;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   isAdmin: boolean;
   setShowVaultCreationModal: (show: boolean) => void;
 }
@@ -90,24 +89,6 @@ export default function VaultSideBarMenu({
 
   if (isVaultsAsAdminLoading || isVaultsAsUserLoading || !vaultsAsUser) {
     return <></>;
-  }
-
-  if (!owner.flags.includes("private_data_vaults_feature")) {
-    return (
-      <div className="flex h-0 min-h-full w-full overflow-y-auto">
-        <div className="flex w-full flex-col px-2 pt-4">
-          <Item.List>
-            <div>
-              {renderVaultItems(
-                vaults.filter((v) => v.kind === "global"),
-                vaultsAsUser,
-                owner
-              )}
-            </div>
-          </Item.List>
-        </div>
-      </div>
-    );
   }
 
   // Group by kind and sort.

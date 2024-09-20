@@ -109,6 +109,21 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     );
     if (connectorRes.isOk()) {
       connector = connectorRes.value;
+    } else {
+      const error = connectorRes.error;
+      if (error.type === "connector_not_found") {
+        logger.error(
+          {
+            panic: true, // This is a panic because we want to fix the data. This should never happen.
+            workspaceId: owner.sId,
+            connectorId: dataSource.connectorId,
+            dataSourceId: dataSource.sId,
+            connectorProvider: dataSource.connectorProvider,
+          },
+          "Connector not found while we still have a data source."
+        );
+      }
+      throw error;
     }
   }
 
@@ -1157,7 +1172,7 @@ function ManagedDataSourceView({
           <ConnectorSyncingChip
             initialState={connector}
             workspaceId={connector.workspaceId}
-            dataSourceId={connector.dataSourceId}
+            dataSource={dataSource}
           />
         </div>
 
@@ -1260,7 +1275,6 @@ function ManagedDataSourceView({
           dataSource={dataSource}
           isOpen={showPermissionModal}
           onClose={() => setShowPermissionModal(false)}
-          plan={plan}
           readOnly={false}
           isAdmin={isAdmin}
         />

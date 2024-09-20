@@ -1,4 +1,4 @@
-import { sendEmail } from "@app/lib/email";
+import { sendEmail } from "@app/lib/api/email";
 
 const { LIVE, SENDGRID_API_KEY } = process.env;
 

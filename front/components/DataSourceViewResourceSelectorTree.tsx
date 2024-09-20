@@ -9,14 +9,15 @@ import type {
   ContentNodesViewType,
   DataSourceViewContentNode,
   DataSourceViewType,
-  LightWorkspaceType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
+import { RequestOrAddDataFromDataSourceModal } from "@app/components/data_source/RequestOrAddDataFromDataSourceModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
+import type { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 
 interface DataSourceViewResourceSelectorTreeBaseProps {
@@ -26,11 +27,13 @@ interface DataSourceViewResourceSelectorTreeBaseProps {
     parents: string[],
     selected: boolean
   ) => void;
-  owner: LightWorkspaceType;
+  owner: WorkspaceType;
   parentIsSelected?: boolean;
+  readonly?: boolean;
   selectedParents?: string[];
   selectedResourceIds: string[];
   showExpand: boolean;
+  useDataSourceViewContentNodes: typeof useDataSourceViewContentNodesWithInfiniteScroll;
   viewType?: ContentNodesViewType;
 }
 
@@ -39,9 +42,11 @@ export default function DataSourceViewResourceSelectorTree({
   dataSourceView,
   showExpand, //if not, it's flat
   parentIsSelected,
+  readonly,
   selectedParents = [],
   selectedResourceIds,
   onSelectChange,
+  useDataSourceViewContentNodes,
   viewType = "documents",
 }: DataSourceViewResourceSelectorTreeBaseProps) {
   return (
@@ -52,11 +57,13 @@ export default function DataSourceViewResourceSelectorTree({
         showExpand={showExpand}
         parents={[]}
         parentIsSelected={parentIsSelected}
+        readonly={readonly}
         selectedResourceIds={selectedResourceIds}
         selectedParents={selectedParents}
         onSelectChange={(resource, parents, selected) => {
           onSelectChange(resource, parents, selected);
         }}
+        useDataSourceViewContentNodes={useDataSourceViewContentNodes}
         viewType={viewType}
       />
     </div>
@@ -77,9 +84,11 @@ function DataSourceViewResourceSelectorChildren({
   parentId,
   parentIsSelected,
   parents,
+  readonly,
   selectedParents,
   selectedResourceIds,
   showExpand,
+  useDataSourceViewContentNodes,
   viewType = "documents",
 }: DataSourceResourceSelectorChildrenProps) {
   const {
@@ -89,8 +98,8 @@ function DataSourceViewResourceSelectorChildren({
     nextPage,
     hasMore,
     isNodesValidating,
-  } = useDataSourceViewContentNodesWithInfiniteScroll({
-    dataSourceView: dataSourceView,
+  } = useDataSourceViewContentNodes({
+    dataSourceView,
     owner,
     parentId,
     viewType,
@@ -139,7 +148,8 @@ function DataSourceViewResourceSelectorChildren({
 
           const checkable =
             (!isTablesView || r.type === "database") &&
-            r.preventSelection !== true;
+            r.preventSelection !== true &&
+            !readonly;
 
           let checkedStatus: "checked" | "partial" | "unchecked" = "unchecked";
           if (isSelected || parentIsSelected) {
@@ -176,8 +186,10 @@ function DataSourceViewResourceSelectorChildren({
                   selectedParents={selectedParents}
                   selectedResourceIds={selectedResourceIds}
                   onSelectChange={onSelectChange}
+                  readonly={readonly}
                   parents={[...parents, r.internalId]}
                   parentIsSelected={parentIsSelected || isSelected}
+                  useDataSourceViewContentNodes={useDataSourceViewContentNodes}
                   viewType={viewType}
                 />
               )}
@@ -216,6 +228,17 @@ function DataSourceViewResourceSelectorChildren({
             />
           );
         })}
+        {dataSourceView.category === "managed" &&
+          nodes.length === 0 &&
+          !readonly && (
+            <div className="flex w-full flex-col items-center gap-2 rounded-lg border bg-structure-50 py-2">
+              <span className="text-element-700">The Vault is empty!</span>
+              <RequestOrAddDataFromDataSourceModal
+                owner={owner}
+                dataSource={dataSourceView.dataSource}
+              />
+            </div>
+          )}
       </Tree>
       <InfiniteScroll
         nextPage={nextPage}

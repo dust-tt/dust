@@ -252,11 +252,6 @@ export default function AssistantBuilder({
       builderState.instructions.trim().length / 4 >
         modelConfig.contextSize * 0.9
     ) {
-      console.log(
-        `csize ${builderState.instructions.trim().length / 4} and limit ${
-          modelConfig.contextSize * 0.9
-        }`
-      );
       localInstructionError = `Instructions may exceed context size window.`;
     }
 

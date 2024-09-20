@@ -14,7 +14,6 @@ import type {
   ConnectorType,
   DataSourceType,
   LightWorkspaceType,
-  PlanType,
   UpdateConnectorRequestBody,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -29,6 +28,7 @@ import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDataSourceName } from "@app/lib/data_sources";
 import { useUser } from "@app/lib/swr/user";
+import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 import { PermissionTree } from "./ConnectorPermissionsTree";
@@ -327,7 +327,6 @@ export function ConnectorPermissionsModal({
   dataSource,
   isOpen,
   onClose,
-  plan,
   readOnly,
   isAdmin,
   onManageButtonClick,
@@ -337,7 +336,6 @@ export function ConnectorPermissionsModal({
   dataSource: DataSourceType;
   isOpen: boolean;
   onClose: (save: boolean) => void;
-  plan: PlanType;
   readOnly: boolean;
   isAdmin: boolean;
   onManageButtonClick?: () => void;
@@ -349,6 +347,10 @@ export function ConnectorPermissionsModal({
   const [modalToShow, setModalToShow] = useState<
     "edition" | "selection" | null
   >(null);
+  const { activeSubscription } = useWorkspaceActiveSubscription({
+    workspaceId: owner.sId,
+  });
+  const plan = activeSubscription ? activeSubscription.plan : null;
 
   const [saving, setSaving] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
@@ -477,7 +479,7 @@ export function ConnectorPermissionsModal({
               }}
             />
           </div>
-          {OptionsComponent && (
+          {OptionsComponent && plan && (
             <>
               <div className="p-1 text-xl font-bold">Connector options</div>
 

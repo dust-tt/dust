@@ -167,6 +167,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
       if (!dataSourceModelId) {
         logger.error(
           {
+            workspaceId: auth.workspace()?.sId,
             nameOrId: nameOrId,
             type: "sid",
             sId: nameOrId,
@@ -188,6 +189,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
       if (dataSources.length === 0) {
         logger.error(
           {
+            workspaceId: auth.workspace()?.sId,
             nameOrId: nameOrId,
             type: "sid",
             sId: nameOrId,
@@ -202,6 +204,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
 
       logger.info(
         {
+          workspaceId: auth.workspace()?.sId,
           nameOrId: nameOrId,
           type: "sid",
           sId: nameOrId,
@@ -217,6 +220,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
       if (dataSources.length === 0) {
         logger.error(
           {
+            workspaceId: auth.workspace()?.sId,
             nameOrId: nameOrId,
             type: "name",
             name: nameOrId,
@@ -231,6 +235,7 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
 
       logger.info(
         {
+          workspaceId: auth.workspace()?.sId,
           nameOrId: nameOrId,
           type: "name",
           name: nameOrId,

@@ -17,6 +17,7 @@ import { useRouter } from "next/router";
 import React, { useContext } from "react";
 
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
+import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
@@ -265,6 +266,7 @@ const WorkspacePage = ({
                 dataSources={dataSources}
                 agentConfigurations={agentConfigurations}
               />
+              <DataSourceViewsDataTable owner={owner} />
               <AssistantsDataTable
                 owner={owner}
                 agentConfigurations={agentConfigurations}

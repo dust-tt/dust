@@ -24,6 +24,7 @@ export { default as MicrosoftPowerpointLogo } from "./MicrosoftPowerpoint";
 export { default as MicrosoftWordLogo } from "./MicrosoftWord";
 export { default as MistralLogo } from "./Mistral";
 export { default as NotionLogo } from "./Notion";
+export { default as O1Logo } from "./O1";
 export { default as OfficeLogo } from "./Office";
 export { default as OpenaiLogo } from "./Openai";
 export { default as OpenaiWhiteLogo } from "./OpenaiWhite";

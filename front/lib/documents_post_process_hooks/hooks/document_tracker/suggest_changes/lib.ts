@@ -178,8 +178,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     return;
   }
   const documentDiff = await getDocumentDiff({
-    auth,
-    dataSourceName: dataSource.name,
+    dataSource,
     documentId,
     hash: documentHash,
   });

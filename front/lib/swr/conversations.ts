@@ -22,7 +22,12 @@ export function useConversation({
 }: {
   conversationId: string | null;
   workspaceId: string;
-}) {
+}): {
+  conversation: ConversationType | null;
+  isConversationLoading: boolean;
+  conversationError: Error;
+  mutateConversation: () => void;
+} {
   const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
     fetcher;
 
@@ -36,7 +41,7 @@ export function useConversation({
   return {
     conversation: data ? data.conversation : null,
     isConversationLoading: !error && !data,
-    isConversationError: error,
+    conversationError: error,
     mutateConversation: mutate,
   };
 }
