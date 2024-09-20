@@ -1,7 +1,7 @@
-import logger from "@connectors/logger/logger";
 import type { Result } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
-import { GraphError, type Client } from "@microsoft/microsoft-graph-client";
+import type { Client } from "@microsoft/microsoft-graph-client";
+import { GraphError } from "@microsoft/microsoft-graph-client";
 import type * as MicrosoftGraph from "@microsoft/microsoft-graph-types";
 
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
@@ -10,6 +10,7 @@ import {
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import logger from "@connectors/logger/logger";
 
 export async function clientApiGet(client: Client, endpoint: string) {
   try {
@@ -29,7 +30,7 @@ export async function clientApiGet(client: Client, endpoint: string) {
 export async function clientApiPost(
   client: Client,
   endpoint: string,
-  content: any
+  content: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ) {
   try {
     return await client.api(endpoint).post(content);
