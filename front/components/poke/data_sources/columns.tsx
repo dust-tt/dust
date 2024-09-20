@@ -7,18 +7,18 @@ import {
 } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
-import Link from "next/link";
 
+import PokeLink from "@app/components/poke/shadcn/ui/link";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
-export type DataSources = {
+interface DataSources {
   connectorProvider: string | null;
   id: number;
   sId: string;
   name: string;
   editedBy: string | undefined;
   editedAt: number | undefined;
-};
+}
 
 export function makeColumnsForDataSources(
   owner: WorkspaceType,
@@ -32,12 +32,9 @@ export function makeColumnsForDataSources(
         const sId: string = row.getValue("sId");
 
         return (
-          <Link
-            className="font-bold hover:underline"
-            href={`/poke/${owner.sId}/data_sources/${sId}`}
-          >
+          <PokeLink href={`/poke/${owner.sId}/data_sources/${sId}`}>
             {sId}
-          </Link>
+          </PokeLink>
         );
       },
       header: ({ column }) => {

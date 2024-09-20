@@ -5,8 +5,8 @@ import type {
 } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
-import Link from "next/link";
 
+import PokeLink from "@app/components/poke/shadcn/ui/link";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 type AgentConfigurationDisplayType = {
@@ -31,12 +31,9 @@ export function makeColumnsForAssistants(
         const sId: string = row.getValue("sId");
 
         return (
-          <Link
-            className="font-bold hover:underline"
-            href={`/poke/${owner.sId}/assistants/${sId}`}
-          >
+          <PokeLink href={`/poke/${owner.sId}/assistants/${sId}`}>
             {sId}
-          </Link>
+          </PokeLink>
         );
       },
       header: ({ column }) => {

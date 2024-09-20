@@ -219,6 +219,7 @@ export function DataSourceViewsSelector({
 
 interface DataSourceViewSelectorProps {
   owner: WorkspaceType;
+  readonly?: boolean;
   selectionConfiguration: DataSourceViewSelectionConfiguration;
   setSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
@@ -226,8 +227,9 @@ interface DataSourceViewSelectorProps {
   viewType: ContentNodesViewType;
 }
 
-function DataSourceViewSelector({
+export function DataSourceViewSelector({
   owner,
+  readonly = false,
   selectionConfiguration,
   setSelectionConfigurations,
   viewType,
@@ -375,7 +377,7 @@ function DataSourceViewSelector({
   const isTableView = viewType === "tables";
 
   // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
-  const hideCheckbox = isTableView && !isPartiallyChecked;
+  const hideCheckbox = readonly || (isTableView && !isPartiallyChecked);
 
   return (
     <Tree.Item
@@ -395,13 +397,14 @@ function DataSourceViewSelector({
       }
     >
       <DataSourceViewResourceSelectorTree
-        owner={owner}
         dataSourceView={dataSourceView}
-        showExpand={config?.isNested ?? true}
-        selectedResourceIds={internalIds}
-        selectedParents={selectedParents}
         onSelectChange={onSelectChange}
+        owner={owner}
         parentIsSelected={selectionConfiguration.isSelectAll}
+        readonly={readonly}
+        selectedParents={selectedParents}
+        selectedResourceIds={internalIds}
+        showExpand={config?.isNested ?? true}
         viewType={viewType}
       />
     </Tree.Item>
