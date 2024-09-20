@@ -5,17 +5,19 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { deleteDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
-import { Authenticator, getSession } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type DeleteDataSourceResponseBody = DataSourceType;
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<DeleteDataSourceResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<DeleteDataSourceResponseBody>>,
+  session: SessionWithUser
 ): Promise<void> {
-  const session = await getSession(req, res);
   const auth = await Authenticator.fromSuperUserSession(
     session,
     req.query.wId as string
@@ -68,6 +70,35 @@ async function handler(
             type: "invalid_request_error",
             message:
               "The request query is invalid, expects { workspaceId: string }.",
+          },
+        });
+      }
+
+      const dataSourceViews = await DataSourceViewResource.listForDataSources(
+        auth,
+        [dataSource]
+      );
+      const viewsUsageByAgentsRes = await Promise.all(
+        dataSourceViews.map((view) => view.getUsagesByAgents(auth))
+      );
+
+      const viewsUsedByAgentsName = viewsUsageByAgentsRes.reduce(
+        (acc, usageRes) => {
+          if (usageRes.isOk() && usageRes.value.count > 0) {
+            usageRes.value.agentNames.forEach((name) => acc.add(name));
+          }
+
+          return acc;
+        },
+        new Set<string>()
+      );
+
+      if (viewsUsedByAgentsName.size > 0) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `The data source is in use by ${viewsUsedByAgentsName.size} agent(s) [${Array.from(viewsUsedByAgentsName).join(", ")}].`,
           },
         });
       }

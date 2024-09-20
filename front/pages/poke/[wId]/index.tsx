@@ -2,7 +2,6 @@ import { Button, DropdownMenu, Modal, Spinner } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationType,
   DataSourceType,
-  DataSourceViewType,
   WhitelistableFeature,
   WorkspaceDomain,
   WorkspaceSegmentationType,
@@ -41,14 +40,12 @@ import { Plan, Subscription } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { DustProdActionRegistry } from "@app/lib/registry";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
   activeSubscription: SubscriptionType;
   subscriptions: SubscriptionType[];
   dataSources: DataSourceType[];
-  dataSourceViews: DataSourceViewType[];
   agentConfigurations: AgentConfigurationType[];
   whitelistableFeatures: WhitelistableFeature[];
   registry: typeof DustProdActionRegistry;
@@ -65,30 +62,27 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   }
 
   // TODO(2024-02-28 flav) Stop fetching agent configurations on the server side.
-  const [
-    dataSources,
-    dataSourceViews,
-    agentConfigurations,
-    subscriptionModels,
-  ] = await Promise.all([
-    getDataSources(auth, { includeEditedBy: true }),
-    DataSourceViewResource.listByWorkspace(auth),
-    (async () => {
-      return (
-        await getAgentConfigurations({
-          auth,
-          agentsGetView: "admin_internal",
-          variant: "full",
-        })
-      ).filter(
-        (a) =>
-          !Object.values(GLOBAL_AGENTS_SID).includes(a.sId as GLOBAL_AGENTS_SID)
-      );
-    })(),
-    Subscription.findAll({
-      where: { workspaceId: owner.id },
-    }),
-  ]);
+  const [dataSources, agentConfigurations, subscriptionModels] =
+    await Promise.all([
+      getDataSources(auth, { includeEditedBy: true }),
+      (async () => {
+        return (
+          await getAgentConfigurations({
+            auth,
+            agentsGetView: "admin_internal",
+            variant: "full",
+          })
+        ).filter(
+          (a) =>
+            !Object.values(GLOBAL_AGENTS_SID).includes(
+              a.sId as GLOBAL_AGENTS_SID
+            )
+        );
+      })(),
+      Subscription.findAll({
+        where: { workspaceId: owner.id },
+      }),
+    ]);
 
   const plans = keyBy(
     await Plan.findAll({
@@ -117,7 +111,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       dataSources: orderDatasourceByImportance(
         dataSources.map((ds) => ds.toJSON())
       ),
-      dataSourceViews: dataSourceViews.map((dsv) => dsv.toJSON()),
       agentConfigurations: agentConfigurations,
       whitelistableFeatures:
         WHITELISTABLE_FEATURES as unknown as WhitelistableFeature[],
@@ -133,7 +126,6 @@ const WorkspacePage = ({
   activeSubscription,
   subscriptions,
   dataSources,
-  dataSourceViews,
   agentConfigurations,
   whitelistableFeatures,
   registry,
@@ -269,12 +261,7 @@ const WorkspacePage = ({
                   />
                 </div>
               </div>
-              <DataSourceDataTable
-                owner={owner}
-                dataSources={dataSources}
-                dataSourceViews={dataSourceViews}
-                agentConfigurations={agentConfigurations}
-              />
+              <DataSourceDataTable owner={owner} dataSources={dataSources} />
               <DataSourceViewsDataTable owner={owner} />
               <AssistantsDataTable
                 owner={owner}
