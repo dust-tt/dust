@@ -4,7 +4,6 @@ import {
   ExternalLinkIcon,
   IconButton,
   PlusIcon,
-  Spinner,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -18,10 +17,9 @@ import { useEffect, useState } from "react";
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { useConnector } from "@app/lib/swr/connectors";
-import type { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
+import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 
 interface DataSourceViewResourceSelectorTreeBaseProps {
@@ -37,7 +35,7 @@ interface DataSourceViewResourceSelectorTreeBaseProps {
   selectedParents?: string[];
   selectedResourceIds: string[];
   showExpand: boolean;
-  useDataSourceViewContentNodes: typeof useDataSourceViewContentNodesWithInfiniteScroll;
+  useContentNodes: typeof useDataSourceViewContentNodes;
   viewType?: ContentNodesViewType;
 }
 
@@ -50,7 +48,7 @@ export default function DataSourceViewResourceSelectorTree({
   selectedParents = [],
   selectedResourceIds,
   onSelectChange,
-  useDataSourceViewContentNodes,
+  useContentNodes = useDataSourceViewContentNodes,
   viewType = "documents",
 }: DataSourceViewResourceSelectorTreeBaseProps) {
   return (
@@ -67,7 +65,7 @@ export default function DataSourceViewResourceSelectorTree({
         onSelectChange={(resource, parents, selected) => {
           onSelectChange(resource, parents, selected);
         }}
-        useDataSourceViewContentNodes={useDataSourceViewContentNodes}
+        useContentNodes={useContentNodes}
         viewType={viewType}
       />
     </div>
@@ -92,17 +90,10 @@ function DataSourceViewResourceSelectorChildren({
   selectedParents,
   selectedResourceIds,
   showExpand,
-  useDataSourceViewContentNodes,
+  useContentNodes,
   viewType = "documents",
 }: DataSourceResourceSelectorChildrenProps) {
-  const {
-    nodes,
-    isNodesLoading,
-    isNodesError,
-    nextPage,
-    hasMore,
-    isNodesValidating,
-  } = useDataSourceViewContentNodes({
+  const { nodes, isNodesLoading, isNodesError } = useContentNodes({
     dataSourceView: dataSourceView,
     owner,
     parentId,
@@ -201,7 +192,7 @@ function DataSourceViewResourceSelectorChildren({
                   readonly={readonly}
                   parents={[...parents, r.internalId]}
                   parentIsSelected={parentIsSelected || isSelected}
-                  useDataSourceViewContentNodes={useDataSourceViewContentNodes}
+                  useContentNodes={useContentNodes}
                   viewType={viewType}
                 />
               )}
@@ -275,16 +266,6 @@ function DataSourceViewResourceSelectorChildren({
             </div>
           )}
       </Tree>
-      <InfiniteScroll
-        nextPage={nextPage}
-        hasMore={hasMore}
-        isValidating={isNodesValidating}
-        isLoading={isNodesLoading}
-      >
-        <div className="pl-5 pt-1">
-          <Spinner size="xs" variant="dark" />
-        </div>
-      </InfiniteScroll>
     </>
   );
 }

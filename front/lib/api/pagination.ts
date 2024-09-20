@@ -96,22 +96,26 @@ export interface OffsetPaginationParams {
   offset: number;
 }
 
-interface OffsetPaginationOptions {
-  defaultLimit: number;
-  defaultOffset: 0;
-}
-
 export function getOffsetPaginationParams(
-  req: NextApiRequest,
-  defaults: OffsetPaginationOptions
-): Result<OffsetPaginationParams, InvalidPaginationParamsError> {
+  req: NextApiRequest
+): Result<OffsetPaginationParams | undefined, InvalidPaginationParamsError> {
+  const { limit, offset } = req.query;
+  if (!req.query.limit) {
+    return new Ok(undefined);
+  }
+
+  if (typeof limit !== "string" || (offset && typeof offset !== "string")) {
+    return new Err(
+      new InvalidPaginationParamsError(
+        "Invalid pagination parameters",
+        "limit and offset must be strings"
+      )
+    );
+  }
+
   const rawParams = {
-    limit: req.query.limit
-      ? parseInt(req.query.limit as string)
-      : defaults.defaultLimit,
-    offset: req.query.offset
-      ? parseInt(req.query.offset as string)
-      : defaults.defaultOffset,
+    limit: parseInt(limit),
+    offset: offset ? parseInt(offset) : 0,
   };
 
   const queryValidation = OffsetPaginationParamsCodec.decode(rawParams);

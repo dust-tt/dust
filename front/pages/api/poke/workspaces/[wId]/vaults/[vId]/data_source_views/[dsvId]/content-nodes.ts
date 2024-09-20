@@ -16,8 +16,6 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 
-const DEFAULT_LIMIT = 500;
-
 const GetContentNodesOrChildrenRequestBody = t.type({
   internalIds: t.union([t.array(t.union([t.string, t.null])), t.undefined]),
   parentId: t.union([t.string, t.undefined]),
@@ -124,10 +122,7 @@ async function handler(
     });
   }
 
-  const paginationRes = getOffsetPaginationParams(req, {
-    defaultLimit: DEFAULT_LIMIT,
-    defaultOffset: 0,
-  });
+  const paginationRes = getOffsetPaginationParams(req);
   if (paginationRes.isErr()) {
     return apiError(req, res, {
       status_code: 400,
