@@ -486,7 +486,8 @@ const VaultDataSourceViewItem = ({
   const dataSourceViewPath = node
     ? `${basePath}?parentId=${node?.internalId}`
     : basePath;
-  const folders = nodes.filter((node) => node.type === "folder");
+
+  const folders = nodes.filter((node) => node.expandable);
 
   return (
     <Tree.Item
