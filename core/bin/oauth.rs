@@ -207,20 +207,14 @@ async fn connections_access_token(
 #[derive(Deserialize)]
 struct CredentialPayload {
     provider: CredentialProvider,
-    raw_json: String,
+    credentials: serde_json::Map<String, serde_json::Value>,
 }
 
 async fn oauth_service_create_credential(
     State(state): State<Arc<OAuthState>>,
     Json(payload): Json<CredentialPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    match Credential::create(
-        state.store.clone(),
-        payload.provider,
-        serde_json::Value::String(payload.raw_json),
-    )
-    .await
-    {
+    match Credential::create(state.store.clone(), payload.provider, payload.credentials).await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
@@ -236,7 +230,7 @@ async fn oauth_service_create_credential(
                         "credential_id": c.credential_id(),
                         "created": c.created(),
                         "provider": c.provider(),
-                        "raw_json": c.raw_json(),
+                        "credentials": c.credentials(),
                     },
                 })),
             }),
@@ -264,7 +258,7 @@ async fn oauth_service_retrieve_credential(
                         "credential_id": c.credential_id(),
                         "created": c.created(),
                         "provider": c.provider(),
-                        "raw_json": c.raw_json(),
+                        "credentials": c.credentials(),
                     },
                 })),
             }),

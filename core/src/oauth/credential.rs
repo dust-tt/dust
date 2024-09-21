@@ -38,7 +38,7 @@ pub struct Credential {
     credential_id: String,
     created: u64,
     provider: CredentialProvider,
-    raw_json: serde_json::Value,
+    credentials: serde_json::Map<String, serde_json::Value>,
 }
 
 impl Credential {
@@ -46,13 +46,13 @@ impl Credential {
         credential_id: String,
         created: u64,
         provider: CredentialProvider,
-        raw_json: serde_json::Value,
+        credentials: serde_json::Map<String, serde_json::Value>,
     ) -> Self {
         Self {
             credential_id,
             created,
             provider,
-            raw_json,
+            credentials,
         }
     }
 
@@ -88,9 +88,9 @@ impl Credential {
     pub async fn create(
         store: Box<dyn OAuthStore + Sync + Send>,
         provider: CredentialProvider,
-        raw_json: serde_json::Value,
+        credentials: serde_json::Map<String, serde_json::Value>,
     ) -> Result<Self> {
-        let c = store.create_credential(provider, raw_json).await?;
+        let c = store.create_credential(provider, credentials).await?;
 
         Ok(c)
     }
@@ -107,7 +107,7 @@ impl Credential {
         self.provider
     }
 
-    pub fn raw_json(&self) -> &serde_json::Value {
-        &self.raw_json
+    pub fn credentials(&self) -> &serde_json::Map<String, serde_json::Value> {
+        &self.credentials
     }
 }
