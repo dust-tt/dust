@@ -24,10 +24,10 @@ export type GetTableResponseBody = {
 
 /**
  * @swagger
- * /api/v1/w/{wId}/data_sources/{name}/tables/{tId}:
+ * /api/v1/w/{wId}/data_sources/{dsId}/tables/{tId}:
  *   get:
  *     summary: Get a table
- *     description: Get a table in the data source identified by {name} in the workspace identified by {wId}.
+ *     description: Get a table in the data source identified by {dsId} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
  *     security:
@@ -64,7 +64,7 @@ export type GetTableResponseBody = {
  *         description: Method not supported
  *   delete:
  *     summary: Delete a table
- *     description: Delete a table in the data source identified by {name} in the workspace identified by {wId}.
+ *     description: Delete a table in the data source identified by {dsId} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
  *     security:
