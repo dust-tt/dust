@@ -101,7 +101,7 @@ async function updateConnectorConnectionId(
   owner: LightWorkspaceType
 ) {
   const res = await fetch(
-    `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/update`,
+    `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/update`,
     {
       method: "POST",
       headers: {
@@ -376,7 +376,7 @@ export function ConnectorPermissionsModal({
     try {
       if (Object.keys(updatedPermissionByInternalId).length) {
         const r = await fetch(
-          `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions`,
+          `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`,
           {
             method: "POST",
             headers: {
@@ -401,7 +401,7 @@ export function ConnectorPermissionsModal({
           (key) =>
             typeof key === "string" &&
             key.startsWith(
-              `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions`
+              `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`
             )
         );
 
