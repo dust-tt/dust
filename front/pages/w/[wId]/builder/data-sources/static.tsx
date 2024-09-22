@@ -107,7 +107,7 @@ export default function DataSourcesView({
       ...dataSource,
       onClick: () => {
         void router.push(
-          `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+          `/w/${owner.sId}/builder/data-sources/${dataSource.sId}`
         );
       },
       icon: FolderIcon,
