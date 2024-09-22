@@ -81,7 +81,7 @@ export default function DataSourceSettings({
       | { assistantDefaultSelected: boolean }
   ) => {
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}`,
       {
         method: "POST",
         headers: {
@@ -92,7 +92,7 @@ export default function DataSourceSettings({
     );
     if (res.ok) {
       await router.push(
-        `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+        `/w/${owner.sId}/builder/data-sources/${dataSource.sId}`
       );
     } else {
       const err = (await res.json()) as { error: APIError };
@@ -185,7 +185,7 @@ function StandardDataSourceSettings({
           title="Folder Settings"
           onCancel={() => {
             void router.push(
-              `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+              `/w/${owner.sId}/builder/data-sources/${dataSource.sId}`
             );
           }}
           onSave={
