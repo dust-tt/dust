@@ -340,17 +340,17 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       connector.id
     );
 
-    await MicrosoftRootResource.batchDelete({
-      resourceIds: Object.keys(permissions),
-      connectorId: connector.id,
-    });
-
     const nodeIdsToDelete = Object.keys(permissions).filter(
       (internalId) =>
         permissions[internalId] === "none" &&
         existing.some((e) => e.internalId === internalId)
     );
     if (nodeIdsToDelete.length > 0) {
+      await MicrosoftRootResource.batchDelete({
+        resourceIds: Object.keys(permissions),
+        connectorId: connector.id,
+      });
+
       const gcRes = await launchMicrosoftDeletionWorkflow(
         this.connectorId,
         nodeIdsToDelete
