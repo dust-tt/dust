@@ -42,10 +42,10 @@ type UpsertTableResponseBody = {
 
 /**
  * @swagger
- * /api/v1/w/{wId}/data_sources/{name}/tables:
+ * /api/v1/w/{wId}/data_sources/{dsId}/tables:
  *   get:
  *     summary: Get tables
- *     description: Get tables in the data source identified by {name} in the workspace identified by {wId}.
+ *     description: Get tables in the data source identified by {dsId} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
  *     security:
@@ -74,7 +74,7 @@ type UpsertTableResponseBody = {
  *                 $ref: '#/components/schemas/Datasource'
  *   post:
  *     summary: Upsert a table
- *     description: Upsert a table in the data source identified by {name} in the workspace identified by {wId}.
+ *     description: Upsert a table in the data source identified by {dsId} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
  *     security:

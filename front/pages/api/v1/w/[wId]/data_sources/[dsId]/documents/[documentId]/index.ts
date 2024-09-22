@@ -53,10 +53,10 @@ export type UpsertDocumentResponseBody = {
 
 /**
  * @swagger
- * /api/v1/w/{wId}/data_sources/{name}/documents/{documentId}:
+ * /api/v1/w/{wId}/data_sources/{dsId}/documents/{documentId}:
  *   get:
  *     summary: Retrieve a document from a data source
- *     description: Retrieve a document from a data source in the workspace identified by {wId}.
+ *     description: Retrieve a document from a data source identified by {dsId} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
  *     parameters:

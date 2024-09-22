@@ -15,10 +15,10 @@ export type PostParentsResponseBody = {
 
 /**
  * @swagger
- * /api/v1/w/{wId}/data_sources/{name}/documents/{documentId}/parents:
+ * /api/v1/w/{wId}/data_sources/{dsId}/documents/{documentId}/parents:
  *   post:
  *     summary: Update the parents of a document
- *     description: Update the parents of a document in the data source identified by {name} in the workspace identified by {wId}.
+ *     description: Update the parents of a document in the data source identified by {dsId} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
  *     parameters:
