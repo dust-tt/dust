@@ -336,13 +336,19 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
+    const existing = await MicrosoftRootResource.listRootsByConnectorId(
+      connector.id
+    );
+
     await MicrosoftRootResource.batchDelete({
       resourceIds: Object.keys(permissions),
       connectorId: connector.id,
     });
 
     const nodeIdsToDelete = Object.keys(permissions).filter(
-      (key) => permissions[key] === "none"
+      (internalId) =>
+        permissions[internalId] === "none" &&
+        existing.some((e) => e.internalId === internalId)
     );
     if (nodeIdsToDelete.length > 0) {
       const gcRes = await launchMicrosoftDeletionWorkflow(
@@ -356,11 +362,15 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     }
 
     const newResourcesBlobs = Object.entries(permissions)
-      .filter(([, permission]) => permission === "read")
-      .map(([id]) => ({
+      .filter(
+        ([internalId, permission]) =>
+          permission === "read" &&
+          existing.every((e) => e.internalId !== internalId)
+      )
+      .map(([internalId]) => ({
         connectorId: connector.id,
-        nodeType: typeAndPathFromInternalId(id).nodeType,
-        internalId: id,
+        nodeType: typeAndPathFromInternalId(internalId).nodeType,
+        internalId,
       }));
 
     const addedResources =
@@ -562,7 +572,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }: {
     configKey: string;
   }): Promise<Result<string | null, Error>> {
-    console.log("getMicrosoftConfig", this.connectorId, configKey);
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       return new Err(
