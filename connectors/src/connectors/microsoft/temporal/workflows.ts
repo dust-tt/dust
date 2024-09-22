@@ -58,7 +58,9 @@ export async function fullSyncWorkflow({
           nodeIdsToSync.push(folderId);
           break;
         case "removed":
-          nodeIdsToSync.splice(nodeIdsToSync.indexOf(folderId), 1);
+          if (nodeIdsToSync.includes(folderId)) {
+            nodeIdsToSync.splice(nodeIdsToSync.indexOf(folderId), 1);
+          }
           break;
         default:
         //
@@ -111,6 +113,15 @@ export async function fullSyncWorkflow({
   }
 
   await syncSucceeded(connectorId);
+
+  if (nodeIdsToSync.length > 0) {
+    await continueAsNew<typeof fullSyncWorkflow>({
+      connectorId,
+      nodeIdsToSync,
+      totalCount,
+      startSyncTs,
+    });
+  }
 }
 
 export async function incrementalSyncWorkflow({

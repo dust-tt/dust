@@ -283,7 +283,7 @@ export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
   );
 
   if (!node) {
-    logger.warn(`Node ${internalId} not found`);
+    logger.warn({ internalId }, "Node not found");
     return;
   }
 
@@ -318,7 +318,7 @@ export async function syncFiles({
   );
 
   if (!parent) {
-    logger.warn(`Unexpected: parent node not found: ${parentInternalId}`);
+    logger.warn({ parentInternalId }, "Unexpected: parent node not found");
     return {
       count: 0,
       childNodes: [],
