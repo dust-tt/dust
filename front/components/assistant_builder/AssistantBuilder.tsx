@@ -328,7 +328,7 @@ export default function AssistantBuilder({
         });
       } else {
         await mutate(
-          `/api/w/${owner.sId}/data_sources/${slackDataSourceView?.dataSource.name}/managed/slack/channels_linked_with_agent`
+          `/api/w/${owner.sId}/data_sources/${slackDataSourceView?.dataSource.sId}/managed/slack/channels_linked_with_agent`
         );
 
         // Redirect to the assistant list once saved.
