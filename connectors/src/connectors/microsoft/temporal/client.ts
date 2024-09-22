@@ -11,8 +11,6 @@ import { microsoftGarbageCollectionWorkflow } from "@connectors/connectors/micro
 import {
   fullSyncWorkflow,
   incrementalSyncWorkflow,
-  microsoftDeletionWorkflow,
-  microsoftDeletionWorkflowId,
   microsoftFullSyncWorkflowId,
   microsoftGarbageCollectionWorkflowId,
   microsoftIncrementalSyncWorkflowId,
@@ -24,7 +22,8 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export async function launchMicrosoftFullSyncWorkflow(
   connectorId: ModelId,
-  nodeIdsToSync?: string[]
+  nodeIdsToSync?: string[],
+  nodeIdsToDelete?: string[]
 ): Promise<Result<string, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -40,15 +39,24 @@ export async function launchMicrosoftFullSyncWorkflow(
     nodeIdsToSync = await getRootNodesToSync(connectorId);
   }
 
-  const signalArgs: FolderUpdatesSignal[] =
-    nodeIdsToSync.map((sId) => ({
-      action: "added",
+  if (!nodeIdsToDelete) {
+    nodeIdsToDelete = [];
+  }
+
+  const signalArgs: FolderUpdatesSignal[] = [
+    ...nodeIdsToSync.map((sId) => ({
+      action: "added" as const,
       folderId: sId,
-    })) ?? [];
+    })),
+    ...nodeIdsToDelete.map((sId) => ({
+      action: "removed" as const,
+      folderId: sId,
+    })),
+  ];
 
   try {
     await client.workflow.signalWithStart(fullSyncWorkflow, {
-      args: [{ connectorId, nodeIdsToSync }],
+      args: [{ connectorId }],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
@@ -196,48 +204,5 @@ export async function launchMicrosoftGarbageCollectionWorkflow(
       `Failed starting workflow.`
     );
     return new Err(e as Error);
-  }
-}
-
-export async function launchMicrosoftDeletionWorkflow(
-  connectorId: ModelId,
-  nodeIdsToDelete: string[]
-): Promise<Result<void, Error>> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    return new Err(new Error(`Connector ${connectorId} not found`));
-  }
-  const client = await getTemporalClient();
-
-  const workflowId = microsoftDeletionWorkflowId(connectorId, nodeIdsToDelete);
-
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
-  try {
-    await terminateWorkflow(workflowId);
-
-    await client.workflow.start(microsoftDeletionWorkflow, {
-      args: [{ connectorId, nodeIdsToDelete }],
-      taskQueue: QUEUE_NAME,
-      workflowId: workflowId,
-      searchAttributes: {
-        connectorId: [connectorId],
-      },
-      memo: {
-        connectorId: connectorId,
-      },
-    });
-
-    return new Ok(undefined);
-  } catch (err) {
-    logger.error(
-      {
-        workspaceId: dataSourceConfig.workspaceId,
-        workflowId,
-        error: err,
-      },
-      `Failed starting workflow.`
-    );
-    return new Err(err as Error);
   }
 }

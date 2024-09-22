@@ -36,7 +36,6 @@ import {
   populateDeltas,
 } from "@connectors/connectors/microsoft/temporal/activities";
 import {
-  launchMicrosoftDeletionWorkflow,
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftGarbageCollectionWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
@@ -350,15 +349,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         resourceIds: Object.keys(permissions),
         connectorId: connector.id,
       });
-
-      const gcRes = await launchMicrosoftDeletionWorkflow(
-        this.connectorId,
-        nodeIdsToDelete
-      );
-
-      if (gcRes.isErr()) {
-        return gcRes;
-      }
     }
 
     const newResourcesBlobs = Object.entries(permissions)
@@ -387,7 +377,8 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     const res = await launchMicrosoftFullSyncWorkflow(
       this.connectorId,
-      nodesToSync
+      nodesToSync,
+      nodeIdsToDelete
     );
 
     if (res.isErr()) {
