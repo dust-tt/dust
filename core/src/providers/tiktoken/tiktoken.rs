@@ -125,17 +125,18 @@ pub fn o200k_base() -> Result<CoreBPE> {
     special_tokens.insert(String::from("<|endoftext|>"), 199999);
     special_tokens.insert(String::from("<|endofprompt|>"), 200018);
 
-    CoreBPE::new(
-        encoder,
-        special_tokens,
-        r"[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]*[\p{Ll}\p{Lm}\p{Lo}\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?|
-        [^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]+[\p{Ll}\p{Lm}\p{Lo}\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?|
-        \p{N}{1,3}|
-        ?[^\s\p{L}\p{N}]+[\r\n/]*|
-        \s*[\r\n]+|
-        \s+(?!\S)|
-        \s+",
-    )
+    let pat_str =   [
+            "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]*[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?",
+            "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]+[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?",
+            "\\p{N}{1,3}",
+            " ?[^\\s\\p{L}\\p{N}]+[\\r\\n/]*",
+            "\\s*[\\r\\n]+",
+            "\\s+(?!\\S)",
+            "\\s+",
+        ]
+        .join("|");
+
+    CoreBPE::new(encoder, special_tokens, &pat_str)
 }
 
 pub fn anthropic_base_singleton() -> Arc<RwLock<CoreBPE>> {
