@@ -221,28 +221,19 @@ async fn credentials_create(
             "Failed to create credential",
             Some(e),
         ),
-        Ok(c) => match c.unseal_encrypted_content() {
-            Err(e) => error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to unseal encrypted content",
-                Some(e),
-            ),
-            Ok(content) => (
-                StatusCode::OK,
-                Json(APIResponse {
-                    error: None,
-                    response: Some(json!({
-                        "credential": {
-                            "credential_id": c.credential_id(),
-                            "created": c.created(),
-                            "provider": c.provider(),
-                            "content": content,
-                        },
-                    })),
-                }),
-            ),
-        },
+        Ok(c) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "credential": {
+                        "credential_id": c.credential_id(),
+                        "created": c.created(),
+                        "provider": c.provider(),
+                    },
+                })),
+            }),
+        ),
     }
 }
 
