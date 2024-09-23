@@ -219,3 +219,9 @@ export interface ConversationParticipantsType {
   agents: AgentParticipant[];
   users: UserParticipant[];
 }
+
+export class ConversationPermissionError extends Error {
+  constructor() {
+    super("Cannot access conversation: Some agents are forbidden to the user.");
+  }
+}

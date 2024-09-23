@@ -6,7 +6,12 @@ import type {
   Result,
   UserParticipantType,
 } from "@dust-tt/types";
-import { Err, formatUserFullName, Ok } from "@dust-tt/types";
+import {
+  ConversationPermissionError,
+  Err,
+  formatUserFullName,
+  Ok,
+} from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
@@ -108,6 +113,12 @@ export async function fetchConversationParticipants(
     fetchAllUsersById([...userIds]),
     fetchAllAgentsById(auth, [...agentConfigurationIds]),
   ]);
+
+  // if less agents than agentConfigurationIds, it means some agents are forbidden
+  // to the user
+  if (agents.length < agentConfigurationIds.size) {
+    return new Err(new ConversationPermissionError());
+  }
 
   return new Ok({
     agents,
