@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from "react";
 
-import { AlertDialogProps, Dialog, DialogProps } from "./Dialog";
+import { Dialog, DialogProps } from "./Dialog";
 
 type ElementDialogProps<T> = Omit<
-  AlertDialogProps | DialogProps,
+  DialogProps,
   "isOpen" | "onValidate" | "onCancel"
 > & {
   openOnElement: T | null;
