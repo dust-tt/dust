@@ -60,10 +60,10 @@ type ListTableRowsResponseBody = {
 
 /**
  * @swagger
- * /api/v1/w/{wId}/data_sources/{name}/tables/{tId}/rows:
+ * /api/v1/w/{wId}/data_sources/{dsId}/tables/{tId}/rows:
  *  get:
  *    summary: List rows
- *    description: List rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.
+ *    description: List rows in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.
  *    tags:
  *      - Datasources
  *    security:
@@ -110,7 +110,7 @@ type ListTableRowsResponseBody = {
  *        description: Method not supported
  *  post:
  *    summary: Upsert rows
- *    description: Upsert rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.
+ *    description: Upsert rows in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.
  *    tags:
  *      - Datasources
  *    security:

@@ -328,7 +328,7 @@ const DataSourcePage = ({
                   )
                 ) {
                   void router.push(
-                    `/poke/${owner.sId}/data_sources/${dataSource.name}/search`
+                    `/poke/${owner.sId}/data_sources/${dataSource.sId}/search`
                   );
                 }
               }}

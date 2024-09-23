@@ -33,7 +33,7 @@ export const DocumentOrTableDeleteDialog = ({
   const handleDelete = async () => {
     try {
       setIsLoading(true);
-      const endpoint = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.name}/${itemType}s/${encodeURIComponent(contentNode.internalId)}`;
+      const endpoint = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/${itemType}s/${encodeURIComponent(contentNode.internalId)}`;
 
       const res = await fetch(endpoint, { method: "DELETE" });
       if (!res.ok) {

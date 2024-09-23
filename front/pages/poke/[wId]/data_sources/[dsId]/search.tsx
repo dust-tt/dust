@@ -87,7 +87,7 @@ export default function DataSourceView({
       searchParams.append("full_text", "false");
 
       const searchRes = await fetch(
-        `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.name}/search?` +
+        `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/search?` +
           searchParams.toString(),
         {
           method: "GET",

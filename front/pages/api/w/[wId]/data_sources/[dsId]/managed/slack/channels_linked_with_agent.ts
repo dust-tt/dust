@@ -50,7 +50,7 @@ async function handler(
     auth,
     dsId,
     // TODO(DATASOURCE_SID): Clean-up
-    { origin: "data_source_managed_permissions" }
+    { origin: "data_source_managed_slack" }
   );
   if (!dataSource) {
     return apiError(req, res, {

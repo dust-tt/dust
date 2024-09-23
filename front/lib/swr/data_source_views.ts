@@ -213,7 +213,7 @@ export function useDataSourceViewConnectorConfiguration({
   const { data, error } = useSWRWithDefaults(
     disabled
       ? null
-      : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.name}/configuration`,
+      : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
     dataSourceViewDocumentFetcher
   );
 

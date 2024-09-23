@@ -48,10 +48,10 @@ type DatasourceSearchResponseBody = {
 
 /**
  * @swagger
- * /api/v1/w/{wId}/data_sources/{name}/search:
+ * /api/v1/w/{wId}/data_sources/{dsId}/search:
  *   get:
  *     summary: Search the data source
- *     description: Search the data source identified by {name} in the workspace identified by {wId}.
+ *     description: Search the data source identified by {dsId} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
  *     security:

@@ -232,21 +232,21 @@ export function useAgentUsage({
 
 export function useSlackChannelsLinkedWithAgent({
   workspaceId,
-  dataSourceName,
+  dataSource,
   disabled,
 }: {
   workspaceId: string;
-  dataSourceName?: string;
+  dataSource?: DataSourceType;
   disabled?: boolean;
 }) {
   const slackChannelsLinkedWithAgentFetcher: Fetcher<GetSlackChannelsLinkedWithAgentResponseBody> =
     fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/data_sources/${dataSourceName}/managed/slack/channels_linked_with_agent`,
+    `/api/w/${workspaceId}/data_sources/${dataSource?.sId}/managed/slack/channels_linked_with_agent`,
     slackChannelsLinkedWithAgentFetcher,
     {
-      disabled: !!disabled || !dataSourceName,
+      disabled: !!disabled || !dataSource,
     }
   );
 

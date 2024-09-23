@@ -37,7 +37,7 @@ export function useSlackChannel({
   const { slackChannels: slackChannelsLinkedWithAgent } =
     useSlackChannelsLinkedWithAgent({
       workspaceId,
-      dataSourceName: slackDataSource?.dataSource.name ?? undefined,
+      dataSource: slackDataSource?.dataSource ?? undefined,
       disabled: !isBuilder,
     });
 

@@ -32,7 +32,7 @@ export function IntercomConfigView({
   const handleSetNewConfig = async (configValue: boolean) => {
     setLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/config/${configKey}`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
       {
         headers: {
           "Content-Type": "application/json",

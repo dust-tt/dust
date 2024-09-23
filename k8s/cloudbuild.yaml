@@ -18,7 +18,7 @@ steps:
       - --build-arg
       - NEXT_PUBLIC_GA_TRACKING_ID=G-K9HQ2LE04G
       - --build-arg
-      - NEXT_PUBLIC_DUST_CLIENT_FACING_URL=https://dust.tt
+      - NEXT_PUBLIC_DUST_CLIENT_FACING_URL=${_DUST_CLIENT_FACING_URL}
       - .
     secretEnv:
       - "DEPOT_TOKEN"
