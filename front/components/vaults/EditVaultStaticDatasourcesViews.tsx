@@ -18,12 +18,12 @@ interface EditVaultStaticDatasourcesViewsProps {
   owner: WorkspaceType;
   canWriteInVault: boolean;
   isOpen: boolean;
-  setOpen: (isOpen: boolean) => void;
   plan: PlanType;
   vault: VaultType;
   dataSources: DataSourceType[];
   dataSourceView: DataSourceViewType | null;
   category: "folder" | "website";
+  onOpen: () => void;
   onClose: () => void;
 }
 
@@ -33,20 +33,21 @@ export function EditVaultStaticDatasourcesViews({
   plan,
   vault,
   isOpen,
-  setOpen,
   dataSources,
   dataSourceView,
   category,
+  onOpen,
   onClose,
 }: EditVaultStaticDatasourcesViewsProps) {
   const router = useRouter();
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
 
-  const { configuration } = useDataSourceViewConnectorConfiguration({
-    dataSourceView: category === "website" ? dataSourceView : null,
-    owner,
-  });
+  const { configuration, mutateConfiguration } =
+    useDataSourceViewConnectorConfiguration({
+      dataSourceView: category === "website" ? dataSourceView : null,
+      owner,
+    });
 
   const planDataSourcesLimit = plan.limits.dataSources.count;
 
@@ -57,9 +58,9 @@ export function EditVaultStaticDatasourcesViews({
     ) {
       setShowDatasourceLimitPopup(true);
     } else {
-      setOpen(true);
+      onOpen();
     }
-  }, [dataSources.length, planDataSourcesLimit, setOpen]);
+  }, [dataSources.length, planDataSourcesLimit, onOpen]);
 
   return (
     <>
@@ -98,6 +99,7 @@ export function EditVaultStaticDatasourcesViews({
               ? configuration
               : null
           }
+          mutateConfiguration={mutateConfiguration}
         />
       ) : null}
       {canWriteInVault ? (

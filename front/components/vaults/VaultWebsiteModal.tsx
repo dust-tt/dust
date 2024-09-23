@@ -7,6 +7,7 @@ import {
   Modal,
   Page,
   RadioButton,
+  Spinner,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -53,6 +54,7 @@ export default function VaultWebsiteModal({
   vault,
   dataSourceView,
   webCrawlerConfiguration,
+  mutateConfiguration,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -61,44 +63,8 @@ export default function VaultWebsiteModal({
   dataSources: DataSourceType[];
   dataSourceView: DataSourceViewType | null;
   webCrawlerConfiguration: WebCrawlerConfigurationType | null;
+  mutateConfiguration: () => void;
 }) {
-  useEffect(() => {
-    setDataSourceUrl(
-      webCrawlerConfiguration ? webCrawlerConfiguration.url : ""
-    );
-    setMaxPages(
-      webCrawlerConfiguration
-        ? webCrawlerConfiguration.maxPageToCrawl
-        : WEBCRAWLER_DEFAULT_CONFIGURATION.maxPageToCrawl
-    );
-    setMaxDepth(
-      webCrawlerConfiguration
-        ? webCrawlerConfiguration.depth
-        : WEBCRAWLER_DEFAULT_CONFIGURATION.depth
-    );
-    setCrawlMode(
-      webCrawlerConfiguration
-        ? webCrawlerConfiguration.crawlMode
-        : WEBCRAWLER_DEFAULT_CONFIGURATION.crawlMode
-    );
-    setSelectedCrawlFrequency(
-      webCrawlerConfiguration
-        ? webCrawlerConfiguration.crawlFrequency
-        : WEBCRAWLER_DEFAULT_CONFIGURATION.crawlFrequency
-    );
-    setDataSourceName(dataSourceView ? dataSourceView.dataSource.name : "");
-    setHeaders(
-      webCrawlerConfiguration
-        ? Object.entries(webCrawlerConfiguration.headers).map(
-            ([key, value]) => ({ key, value })
-          )
-        : []
-    );
-    if (!isOpen) {
-      setDataSourceName("");
-    }
-  }, [isOpen, dataSourceView, webCrawlerConfiguration]);
-
   const router = useRouter();
   const sendNotification = React.useContext(SendNotificationsContext);
 
@@ -134,6 +100,48 @@ export default function VaultWebsiteModal({
     );
   const [advancedSettingsOpened, setAdvancedSettingsOpened] = useState(false);
   const [headers, setHeaders] = useState<{ key: string; value: string }[]>([]);
+  const isLoading = dataSourceView && !webCrawlerConfiguration;
+  useEffect(() => {
+    setIsSubmitted(false);
+    setIsSaving(false);
+
+    if (isOpen) {
+      setDataSourceUrl(
+        webCrawlerConfiguration ? webCrawlerConfiguration.url : ""
+      );
+
+      setDataSourceUrlError(null);
+      setMaxPages(
+        webCrawlerConfiguration
+          ? webCrawlerConfiguration.maxPageToCrawl
+          : WEBCRAWLER_DEFAULT_CONFIGURATION.maxPageToCrawl
+      );
+      setMaxDepth(
+        webCrawlerConfiguration
+          ? webCrawlerConfiguration.depth
+          : WEBCRAWLER_DEFAULT_CONFIGURATION.depth
+      );
+      setCrawlMode(
+        webCrawlerConfiguration
+          ? webCrawlerConfiguration.crawlMode
+          : WEBCRAWLER_DEFAULT_CONFIGURATION.crawlMode
+      );
+      setSelectedCrawlFrequency(
+        webCrawlerConfiguration
+          ? webCrawlerConfiguration.crawlFrequency
+          : WEBCRAWLER_DEFAULT_CONFIGURATION.crawlFrequency
+      );
+      setDataSourceName(dataSourceView ? dataSourceView.dataSource.name : "");
+      setDataSourceNameError(null);
+      setHeaders(
+        webCrawlerConfiguration
+          ? Object.entries(webCrawlerConfiguration.headers).map(
+              ([key, value]) => ({ key, value })
+            )
+          : []
+      );
+    }
+  }, [isOpen, dataSourceView, webCrawlerConfiguration]);
 
   const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
     useVaultDataSourceViews({
@@ -158,11 +166,12 @@ export default function VaultWebsiteModal({
     5: "5 levels",
   };
 
-  useEffect(() => {
+  const updateUrl = (url: string) => {
+    setDataSourceUrl(url);
     if (isUrlValid(dataSourceUrl) && !dataSourceView) {
       setDataSourceName(urlToDataSourceName(dataSourceUrl));
     }
-  }, [dataSourceUrl, dataSourceView]);
+  };
 
   const validateForm = useCallback(() => {
     let urlError = null;
@@ -175,17 +184,19 @@ export default function VaultWebsiteModal({
     }
 
     // Validate Name (if it's not edition)
-    const nameExists = dataSources.some(
-      (d) =>
-        d.name === dataSourceName && d.sId !== dataSourceView?.dataSource.sId
-    );
-    const dataSourceNameRes = isDataSourceNameValid(dataSourceName);
-    if (nameExists) {
-      nameError = "A Website with the same name already exists";
-    } else if (!dataSourceName.length) {
-      nameError = "Please provide a name.";
-    } else if (dataSourceNameRes.isErr()) {
-      nameError = dataSourceNameRes.error;
+    if (!webCrawlerConfiguration) {
+      const nameExists = dataSources.some(
+        (d) =>
+          d.name === dataSourceName && d.sId !== dataSourceView?.dataSource.sId
+      );
+      const dataSourceNameRes = isDataSourceNameValid(dataSourceName);
+      if (nameExists) {
+        nameError = "A Website with the same name already exists";
+      } else if (!dataSourceName.length) {
+        nameError = "Please provide a name.";
+      } else if (dataSourceNameRes.isErr()) {
+        nameError = dataSourceNameRes.error;
+      }
     }
 
     setDataSourceUrlError(urlError);
@@ -196,6 +207,7 @@ export default function VaultWebsiteModal({
     dataSources,
     dataSourceName,
     dataSourceView?.dataSource.sId,
+    webCrawlerConfiguration,
   ]);
 
   useEffect(() => {
@@ -283,6 +295,7 @@ export default function VaultWebsiteModal({
         } satisfies UpdateConnectorConfigurationType),
       }
     );
+    void mutateConfiguration();
 
     await handleResponse(res, "updated");
   };
@@ -328,6 +341,7 @@ export default function VaultWebsiteModal({
       await router.push(
         `/w/${owner.sId}/vaults/${vault.sId}/categories/${WEBSITE_CAT}`
       );
+      onClose();
     } else {
       const err = (await res.json()) as { error: APIError };
       sendNotification({
@@ -373,127 +387,135 @@ export default function VaultWebsiteModal({
             isSaving={false}
             variant="side-sm"
           >
-            <Page.Layout direction="vertical" gap="md">
-              <Page.H variant="h3">Custom Headers</Page.H>
-              <Page.P>Add custom request headers for the web crawler.</Page.P>
-              <div className="flex flex-col gap-1 px-1">
-                {headers.map((header, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Input
-                      placeholder="Header Name"
-                      value={header.key}
-                      name="headerName"
-                      onChange={(value) => {
-                        const newHeaders = [...headers];
-                        newHeaders[index].key = value;
-                        setHeaders(newHeaders);
-                      }}
-                      className="flex-1"
-                    />
-                    <Input
-                      name="headerValue"
-                      placeholder="Header Value"
-                      value={header.value}
-                      onChange={(value) => {
-                        const newHeaders = [...headers];
-                        newHeaders[index].value = value;
-                        setHeaders(newHeaders);
-                      }}
-                      className="flex-1"
-                    />
-                    <Button
-                      variant="tertiary"
-                      labelVisible={false}
-                      label=""
-                      icon={XMarkIcon}
-                      disabledTooltip={true}
-                      onClick={() => {
-                        const newHeaders = headers.filter(
-                          (_, i) => i !== index
-                        );
-                        setHeaders(newHeaders);
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="flex">
-                <Button
-                  variant="secondary"
-                  className="shrink"
-                  label="Add Header"
-                  onClick={() => {
-                    setHeaders([...headers, { key: "", value: "" }]);
-                  }}
-                />
-              </div>
-            </Page.Layout>
+            <div className="w-full pt-6">
+              <Page.Layout direction="vertical" gap="xl">
+                <Page.H variant="h3">Custom Headers</Page.H>
+                <Page.P>Add custom request headers for the web crawler.</Page.P>
+                <div className="flex flex-col gap-4 px-1">
+                  {headers.map((header, index) => (
+                    <>
+                      <div key={index} className="flex gap-2">
+                        <div className="flex grow flex-col gap-1 px-1">
+                          <Input
+                            placeholder="Header Name"
+                            value={header.key}
+                            name="headerName"
+                            onChange={(value) => {
+                              const newHeaders = [...headers];
+                              newHeaders[index].key = value;
+                              setHeaders(newHeaders);
+                            }}
+                            className="grow"
+                          />
+                          <Input
+                            name="headerValue"
+                            placeholder="Header Value"
+                            value={header.value}
+                            onChange={(value) => {
+                              const newHeaders = [...headers];
+                              newHeaders[index].value = value;
+                              setHeaders(newHeaders);
+                            }}
+                            className="flex-1"
+                          />
+                        </div>
+                        <Button
+                          variant="tertiary"
+                          labelVisible={false}
+                          label=""
+                          icon={XMarkIcon}
+                          disabledTooltip={true}
+                          onClick={() => {
+                            const newHeaders = headers.filter(
+                              (_, i) => i !== index
+                            );
+                            setHeaders(newHeaders);
+                          }}
+                        />
+                      </div>
+                    </>
+                  ))}
+                </div>
+                <div className="flex px-2">
+                  <Button
+                    variant="secondary"
+                    className="shrink"
+                    label="Add Header"
+                    onClick={() => {
+                      setHeaders([...headers, { key: "", value: "" }]);
+                    }}
+                  />
+                </div>
+              </Page.Layout>
+            </div>
           </Modal>
           <div className="flex flex-col gap-2">
-            <Page.Layout direction="vertical" gap="xl">
-              <Page.Layout direction="vertical" gap="md">
-                <Page.H variant="h3">Website Entry Point</Page.H>
-                <Page.P>
-                  Enter the address of the website you'd like to index.
-                </Page.P>
-                <Input
-                  placeholder="https://example.com/articles"
-                  value={dataSourceUrl}
-                  onChange={(value) => setDataSourceUrl(value)}
-                  error={dataSourceUrlError}
-                  name="dataSourceUrl"
-                  showErrorLabel={true}
-                  className="text-sm"
-                />
-                <ContentMessage
-                  title="Ensure the website is public"
-                  variant="pink"
-                >
-                  Only public websites accessible without authentication will
-                  work.
-                </ContentMessage>
-              </Page.Layout>
-
-              <Page.Layout direction="vertical" gap="md">
-                <Page.H variant="h3">Indexing settings</Page.H>
-                <Page.P>
-                  Adjust the settings in order to only index the data you are
-                  interested in.
-                </Page.P>
-              </Page.Layout>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-8">
-                <Page.Layout direction="vertical" sizing="grow">
-                  <Page.SectionHeader
-                    title="Crawling strategy"
-                    description="Do you want to limit to child pages or not?"
+            {isLoading ? (
+              <Spinner />
+            ) : (
+              <Page.Layout direction="vertical" gap="xl">
+                <Page.Layout direction="vertical" gap="md">
+                  <Page.H variant="h3">Website Entry Point</Page.H>
+                  <Page.P>
+                    Enter the address of the website you'd like to index.
+                  </Page.P>
+                  <Input
+                    placeholder="https://example.com/articles"
+                    value={dataSourceUrl}
+                    onChange={(value) => updateUrl(value)}
+                    error={dataSourceUrlError}
+                    name="dataSourceUrl"
+                    showErrorLabel={true}
+                    className="text-sm"
                   />
-                  <RadioButton
-                    value={crawlMode}
-                    className="flex-col font-medium"
-                    onChange={(value) => {
-                      setCrawlMode(value == "child" ? "child" : "website");
-                    }}
-                    name="crawlMode"
-                    choices={[
-                      {
-                        label: "Only child pages of the provided URL",
-                        value: "child",
-                        disabled: false,
-                      },
-                      {
-                        label: "Follow all the links within the domain",
-                        value: "website",
-                        disabled: false,
-                      },
-                    ]}
-                  />
+                  <ContentMessage
+                    title="Ensure the website is public"
+                    variant="pink"
+                  >
+                    Only public websites accessible without authentication will
+                    work.
+                  </ContentMessage>
                 </Page.Layout>
-                <Page.Layout direction="vertical" sizing="grow">
-                  <Page.SectionHeader
-                    title="Refresh schedule"
-                    description="How often would you like to check for updates?"
-                  />
-                  <div>
+
+                <Page.Layout direction="vertical" gap="md">
+                  <Page.H variant="h3">Indexing settings</Page.H>
+                  <Page.P>
+                    Adjust the settings in order to only index the data you are
+                    interested in.
+                  </Page.P>
+                </Page.Layout>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-8">
+                  <Page.Layout direction="vertical" sizing="grow">
+                    <Page.SectionHeader
+                      title="Crawling strategy"
+                      description="Do you want to limit to child pages or not?"
+                    />
+                    <RadioButton
+                      value={crawlMode}
+                      className="flex-col font-medium"
+                      onChange={(value) => {
+                        setCrawlMode(value == "child" ? "child" : "website");
+                      }}
+                      name="crawlMode"
+                      choices={[
+                        {
+                          label: "Only child pages of the provided URL",
+                          value: "child",
+                          disabled: false,
+                        },
+                        {
+                          label: "Follow all the links within the domain",
+                          value: "website",
+                          disabled: false,
+                        },
+                      ]}
+                    />
+                  </Page.Layout>
+                  <Page.Layout direction="vertical" sizing="grow">
+                    <Page.SectionHeader
+                      title="Refresh schedule"
+                      description="How often would you like to check for updates?"
+                    />
                     {(() => {
                       return (
                         <DropdownMenu>
@@ -517,128 +539,128 @@ export default function VaultWebsiteModal({
                         </DropdownMenu>
                       );
                     })()}
-                  </div>
-                </Page.Layout>
-                <Page.Layout direction="vertical" sizing="grow">
-                  <Page.SectionHeader
-                    title="Depth of Search"
-                    description="How far from the initial page would you like to go?"
-                  />
-                  {(() => {
-                    return (
-                      <DropdownMenu>
-                        <DropdownMenu.Button
-                          label={depthDisplayText[maxDepth]}
-                        />
-                        <DropdownMenu.Items origin="bottomLeft">
-                          {DepthOptions.map((depthOption) => {
-                            return (
-                              <DropdownMenu.Item
-                                selected={depthOption === maxDepth}
-                                key={depthOption}
-                                label={depthDisplayText[depthOption]}
-                                onClick={() => {
-                                  setMaxDepth(depthOption);
-                                }}
-                              />
-                            );
-                          })}
-                        </DropdownMenu.Items>
-                      </DropdownMenu>
-                    );
-                  })()}
-                </Page.Layout>
-                <Page.Layout direction="vertical" sizing="grow">
-                  <Page.SectionHeader
-                    title="Page Limit"
-                    description="What is the maximum number of pages you'd like to index?"
-                  />
-                  <Input
-                    placeholder={WEBCRAWLER_MAX_PAGES.toString()}
-                    value={maxPages?.toString() || ""}
-                    onChange={(value) => {
-                      const parsed = parseInt(value);
-                      if (!isNaN(parsed)) {
-                        setMaxPages(parseInt(value));
-                      } else if (value == "") {
-                        setMaxPages(null);
-                      }
-                    }}
-                    showErrorLabel={
-                      maxPages &&
-                      maxPages > WEBCRAWLER_MAX_PAGES &&
-                      maxPages &&
-                      maxPages < 1
-                        ? false
-                        : true
-                    }
-                    error={
-                      (maxPages && maxPages > WEBCRAWLER_MAX_PAGES) ||
-                      (maxPages && maxPages < 1)
-                        ? `Maximum pages must be between 1 and ${WEBCRAWLER_MAX_PAGES}`
-                        : null
-                    }
-                    name="maxPages"
-                  />
-                </Page.Layout>
-              </div>
-              <Page.Layout direction="vertical" gap="md">
-                <Page.H variant="h3">Name</Page.H>
-                {webCrawlerConfiguration === null ? (
-                  <Page.P>Give a name to this Data Source.</Page.P>
-                ) : (
-                  <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-                    <ExclamationCircleStrokeIcon />
-                    Website name cannot be changed.
-                  </p>
-                )}
-                <Input
-                  placeholder=""
-                  value={dataSourceName}
-                  onChange={(value) => setDataSourceName(value)}
-                  error={dataSourceNameError}
-                  name="dataSourceName"
-                  showErrorLabel={true}
-                  className="text-sm"
-                  disabled={webCrawlerConfiguration !== null}
-                />
-              </Page.Layout>
-
-              <div className="flex gap-6">
-                <Button
-                  label="Advanced settings"
-                  variant="secondary"
-                  onClick={() => {
-                    setAdvancedSettingsOpened(true);
-                  }}
-                  hasMagnifying={false}
-                ></Button>
-                {webCrawlerConfiguration && dataSourceView && (
-                  <>
-                    <Button
-                      variant="secondaryWarning"
-                      icon={TrashIcon}
-                      label={"Delete this website"}
-                      onClick={() => {
-                        setIsDeleteModalOpen(true);
-                      }}
-                      hasMagnifying={false}
+                  </Page.Layout>
+                  <Page.Layout direction="vertical" sizing="grow">
+                    <Page.SectionHeader
+                      title="Depth of Search"
+                      description="How far from the initial page would you like to go?"
                     />
-                    {dataSourceView && (
-                      <DeleteStaticDataSourceDialog
-                        owner={owner}
-                        dataSource={dataSourceView.dataSource}
-                        handleDelete={handleDelete}
-                        isOpen={isDeleteModalOpen}
-                        onClose={() => {
-                          setIsDeleteModalOpen(false);
+                    {(() => {
+                      return (
+                        <DropdownMenu>
+                          <DropdownMenu.Button
+                            label={depthDisplayText[maxDepth]}
+                          />
+                          <DropdownMenu.Items origin="bottomLeft">
+                            {DepthOptions.map((depthOption) => {
+                              return (
+                                <DropdownMenu.Item
+                                  selected={depthOption === maxDepth}
+                                  key={depthOption}
+                                  label={depthDisplayText[depthOption]}
+                                  onClick={() => {
+                                    setMaxDepth(depthOption);
+                                  }}
+                                />
+                              );
+                            })}
+                          </DropdownMenu.Items>
+                        </DropdownMenu>
+                      );
+                    })()}
+                  </Page.Layout>
+                  <Page.Layout direction="vertical" sizing="grow">
+                    <Page.SectionHeader
+                      title="Page Limit"
+                      description="What is the maximum number of pages you'd like to index?"
+                    />
+                    <Input
+                      placeholder={WEBCRAWLER_MAX_PAGES.toString()}
+                      value={maxPages?.toString() || ""}
+                      onChange={(value) => {
+                        const parsed = parseInt(value);
+                        if (!isNaN(parsed)) {
+                          setMaxPages(parseInt(value));
+                        } else if (value == "") {
+                          setMaxPages(null);
+                        }
+                      }}
+                      showErrorLabel={
+                        maxPages &&
+                        maxPages > WEBCRAWLER_MAX_PAGES &&
+                        maxPages &&
+                        maxPages < 1
+                          ? false
+                          : true
+                      }
+                      error={
+                        (maxPages && maxPages > WEBCRAWLER_MAX_PAGES) ||
+                        (maxPages && maxPages < 1)
+                          ? `Maximum pages must be between 1 and ${WEBCRAWLER_MAX_PAGES}`
+                          : null
+                      }
+                      name="maxPages"
+                    />
+                  </Page.Layout>
+                </div>
+                <Page.Layout direction="vertical" gap="md">
+                  <Page.H variant="h3">Name</Page.H>
+                  {webCrawlerConfiguration === null ? (
+                    <Page.P>Give a name to this Data Source.</Page.P>
+                  ) : (
+                    <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+                      <ExclamationCircleStrokeIcon />
+                      Website name cannot be changed.
+                    </p>
+                  )}
+                  <Input
+                    placeholder=""
+                    value={dataSourceName}
+                    onChange={(value) => setDataSourceName(value)}
+                    error={dataSourceNameError}
+                    name="dataSourceName"
+                    showErrorLabel={true}
+                    className="text-sm"
+                    disabled={webCrawlerConfiguration !== null}
+                  />
+                </Page.Layout>
+
+                <div className="flex gap-6">
+                  <Button
+                    label="Advanced settings"
+                    variant="secondary"
+                    onClick={() => {
+                      setAdvancedSettingsOpened(true);
+                    }}
+                    hasMagnifying={false}
+                  ></Button>
+                  {webCrawlerConfiguration && dataSourceView && (
+                    <>
+                      <Button
+                        variant="secondaryWarning"
+                        icon={TrashIcon}
+                        label={"Delete this website"}
+                        onClick={() => {
+                          setIsDeleteModalOpen(true);
                         }}
+                        hasMagnifying={false}
                       />
-                    )}
-                  </>
-                )}
-              </div>
-            </Page.Layout>
+                      {dataSourceView && (
+                        <DeleteStaticDataSourceDialog
+                          owner={owner}
+                          dataSource={dataSourceView.dataSource}
+                          handleDelete={handleDelete}
+                          isOpen={isDeleteModalOpen}
+                          onClose={() => {
+                            setIsDeleteModalOpen(false);
+                          }}
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
+              </Page.Layout>
+            )}
           </div>
         </div>
       </div>

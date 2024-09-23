@@ -454,7 +454,10 @@ export const VaultResourcesList = ({
           <>
             <EditVaultStaticDatasourcesViews
               isOpen={showFolderOrWebsiteModal}
-              setOpen={setShowFolderOrWebsiteModal}
+              onOpen={() => {
+                setSelectedDataSourceView(null);
+                setShowFolderOrWebsiteModal(true);
+              }}
               owner={owner}
               vault={vault}
               canWriteInVault={canWriteInVault}
@@ -464,7 +467,6 @@ export const VaultResourcesList = ({
               category={category}
               onClose={() => {
                 setShowFolderOrWebsiteModal(false);
-                setSelectedDataSourceView(null);
               }}
             />
             {selectedDataSourceView && (
