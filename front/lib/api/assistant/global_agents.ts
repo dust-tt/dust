@@ -189,7 +189,7 @@ function _getHelperGlobalAgent({
         description: `The documentation of the Dust platform.`,
       },
     ],
-    maxStepsPerRun: 0,
+    maxStepsPerRun: 3,
     visualizationEnabled: false,
     templateId: null,
     groupIds: [],
