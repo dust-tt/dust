@@ -17,7 +17,7 @@ import {
 import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type { AppType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
-import { isAdmin, isBuilder, isUser } from "@dust-tt/types";
+import { isAdmin, isBuilder } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 
 /**
@@ -396,7 +396,7 @@ export const subNavigationApp = ({
     },
   ];
 
-  if (isUser(owner)) {
+  if (isAdmin(owner) || isBuilder(owner)) {
     nav = nav.concat([
       {
         id: "runs",

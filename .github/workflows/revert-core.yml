@@ -1,0 +1,38 @@
+name: Revert Core
+
+on:
+  workflow_dispatch:
+
+env:
+  GCLOUD_PROJECT_ID: ${{ secrets.GCLOUD_PROJECT_ID }}
+
+jobs:
+  rollback-deployment:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: "Authenticate with Google Cloud"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GCLOUD_SA_KEY }}"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+
+      - name: Install gke-gcloud-auth-plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin
+
+      - name: Setup kubectl
+        run: |
+          gcloud container clusters get-credentials dust-kube --region us-central1
+
+      - name: Rollback the deployment
+        run: |
+          kubectl rollout undo deployment/core-deployment
+
+      - name: Wait for rollback to complete
+        run: kubectl rollout status deployment/core-deployment --timeout=10m

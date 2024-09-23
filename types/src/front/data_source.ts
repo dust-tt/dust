@@ -89,12 +89,20 @@ export type WithConnector = {
   connectorId: string;
 };
 
+export type ConnectorStatusDetails = {
+  connector: ConnectorType | null;
+  fetchConnectorError: boolean;
+  fetchConnectorErrorMessage: string | null;
+};
+
 export type DataSourceWithConnectorDetailsType = DataSourceType &
-  WithConnector & {
-    connector: ConnectorType | null;
-    fetchConnectorError: boolean;
-    fetchConnectorErrorMessage: string | null;
-  };
+  WithConnector &
+  ConnectorStatusDetails;
+
+export type DataSourceWithAgentsUsageType = {
+  count: number;
+  agentNames: string[];
+};
 
 export function isDataSourceNameValid(name: string): Result<void, string> {
   const trimmed = name.trim();

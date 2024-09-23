@@ -81,7 +81,6 @@ export async function submitAssistantBuilderForm({
             dataSources: Object.values(
               a.configuration.dataSourceConfigurations
             ).map(({ dataSourceView, selectedResources, isSelectAll }) => ({
-              dataSourceId: dataSourceView.dataSource.name,
               dataSourceViewId: dataSourceView.sId,
               workspaceId: owner.sId,
               filter: {
@@ -124,7 +123,6 @@ export async function submitAssistantBuilderForm({
             tables: Object.values(a.configuration).flatMap(
               ({ dataSourceView, selectedResources }) => {
                 return selectedResources.map((resource) => ({
-                  dataSourceId: dataSourceView.dataSource.name,
                   dataSourceViewId: dataSourceView.sId,
                   workspaceId: owner.sId,
                   tableId: getTableIdForContentNode(
@@ -160,7 +158,6 @@ export async function submitAssistantBuilderForm({
             dataSources: Object.values(
               a.configuration.dataSourceConfigurations
             ).map(({ dataSourceView, selectedResources, isSelectAll }) => ({
-              dataSourceId: dataSourceView.dataSource.name,
               dataSourceViewId: dataSourceView.sId,
               workspaceId: owner.sId,
               filter: {

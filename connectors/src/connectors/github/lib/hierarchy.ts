@@ -42,9 +42,9 @@ async function getGithubCodeDirectoryParentIds(
       directory.parentInternalId,
       repoId
     );
-    return [...parents, directory.parentInternalId];
+    return [directory.parentInternalId, ...parents];
   } else if (directory.parentInternalId === `github-code-${repoId}`) {
-    return [`${repoId}`, `github-code-${repoId}`];
+    return [`github-code-${repoId}`, `${repoId}`];
   }
   return [];
 }
@@ -72,7 +72,7 @@ async function getGithubCodeFileParentIds(
       file.parentInternalId,
       repoId
     );
-    return [...parents, file.parentInternalId];
+    return [file.parentInternalId, ...parents];
   } else if (file.parentInternalId === `github-code-${repoId}`) {
     return [`${repoId}`, `github-code-${repoId}`];
   }

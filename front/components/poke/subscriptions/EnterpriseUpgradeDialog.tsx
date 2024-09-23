@@ -25,10 +25,8 @@ import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr/poke";
 
 export default function EnterpriseUpgradeDialog({
-  disabled,
   owner,
 }: {
-  disabled: boolean;
   owner: WorkspaceType;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -99,9 +97,7 @@ export default function EnterpriseUpgradeDialog({
   return (
     <PokeDialog open={open} onOpenChange={setOpen}>
       <PokeDialogTrigger asChild>
-        <PokeButton variant="outline" disabled={disabled}>
-          🏢 Upgrade to Enterprise
-        </PokeButton>
+        <PokeButton variant="outline">🏢 Upgrade to Enterprise</PokeButton>
       </PokeDialogTrigger>
       <PokeDialogContent className="bg-structure-50 sm:max-w-[600px]">
         <PokeDialogHeader>

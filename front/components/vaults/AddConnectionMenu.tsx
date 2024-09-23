@@ -43,18 +43,15 @@ type AddConnectionMenuProps = {
   owner: WorkspaceType;
   plan: PlanType;
   existingDataSources: DataSourceWithConnectorDetailsType[];
-  dustClientFacingUrl: string;
   setIsProviderLoading: (provider: ConnectorProvider, value: boolean) => void;
   onCreated(dataSource: DataSourceType): void;
   integrations: DataSourceIntegration[];
 };
 
 export async function setupConnection({
-  dustClientFacingUrl,
   owner,
   provider,
 }: {
-  dustClientFacingUrl: string;
   owner: LightWorkspaceType;
   provider: ConnectorProvider;
 }): Promise<Result<string, Error>> {
@@ -63,7 +60,7 @@ export async function setupConnection({
   if (isOAuthProvider(provider)) {
     // OAuth flow
     const cRes = await setupOAuthConnection({
-      dustClientFacingUrl,
+      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
       provider,
       useCase: "connection",
@@ -83,7 +80,6 @@ export const AddConnectionMenu = ({
   owner,
   plan,
   existingDataSources,
-  dustClientFacingUrl,
   setIsProviderLoading,
   onCreated,
   integrations,
@@ -117,7 +113,6 @@ export const AddConnectionMenu = ({
   ) => {
     try {
       const connectionIdRes = await setupConnection({
-        dustClientFacingUrl,
         owner,
         provider,
       });

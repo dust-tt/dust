@@ -2,7 +2,10 @@ import type { ContentNodeType } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 import dns from "dns";
 
-import type { WebCrawlerPage } from "@connectors/lib/models/webcrawler";
+import type {
+  WebCrawlerFolder,
+  WebCrawlerPage,
+} from "@connectors/lib/models/webcrawler";
 
 // Generate a stable id for a given url and ressource type
 // That way we don't have to send URL as documentId to the front API.
@@ -103,6 +106,15 @@ export function getDisplayNameForPage(page: WebCrawlerPage): string {
   }
 
   return result;
+}
+
+export function getDisplayNameForFolder(folder: WebCrawlerFolder): string {
+  return (
+    new URL(folder.url).pathname
+      .split("/")
+      .filter((x) => x)
+      .pop() || folder.url
+  );
 }
 
 export async function getIpAddressForUrl(url: string) {

@@ -87,7 +87,7 @@ export default function DataSourceView({
       searchParams.append("full_text", "false");
 
       const searchRes = await fetch(
-        `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.name}/search?` +
+        `/api/poke/workspaces/${owner.sId}/data_sources/${dataSource.sId}/search?` +
           searchParams.toString(),
         {
           method: "GET",
@@ -123,9 +123,7 @@ export default function DataSourceView({
       )
     ) {
       window.open(
-        `/poke/${owner.sId}/data_sources/${
-          dataSource.name
-        }/view?documentId=${encodeURIComponent(documentId)}`
+        `/poke/${owner.sId}/data_sources/${dataSource.sId}/view?documentId=${encodeURIComponent(documentId)}`
       );
     }
   };

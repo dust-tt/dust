@@ -45,7 +45,6 @@ export type APIErrorType =
   | "connector_update_unauthorized"
   | "connector_oauth_target_mismatch"
   | "connector_provider_not_supported"
-  | "conversation_not_found"
   | "agent_configuration_not_found"
   | "agent_message_error"
   | "message_not_found"
@@ -92,7 +91,10 @@ export type APIErrorType =
   | "vault_already_exists"
   | "vault_not_found"
   // Groups:
-  | "group_not_found";
+  | "group_not_found"
+  // Conversations:
+  | "conversation_access_denied"
+  | "conversation_not_found";
 
 export type APIError = {
   type: APIErrorType;

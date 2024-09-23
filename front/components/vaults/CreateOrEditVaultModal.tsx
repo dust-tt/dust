@@ -46,6 +46,7 @@ interface CreateOrEditVaultModalProps {
   owner: LightWorkspaceType;
   isOpen: boolean;
   onClose: () => void;
+  isAdmin: boolean;
   vault?: VaultType;
 }
 
@@ -62,6 +63,7 @@ export function CreateOrEditVaultModal({
   owner,
   isOpen,
   onClose,
+  isAdmin,
   vault,
 }: CreateOrEditVaultModalProps) {
   const [vaultName, setVaultName] = useState<string | null>(
@@ -76,6 +78,7 @@ export function CreateOrEditVaultModal({
   });
   const sendNotifications = useContext(SendNotificationsContext);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const doCreate = useCreateVault({ owner });
   const doUpdate = useUpdateVault({ owner });
   const doDelete = useDeleteVault({ owner });
@@ -100,6 +103,7 @@ export function CreateOrEditVaultModal({
     searchTerm,
     pageIndex: pagination.pageIndex,
     pageSize: pagination.pageSize,
+    disabled: !isAdmin,
   });
 
   const getTableColumns = useCallback(() => {
@@ -217,10 +221,16 @@ export function CreateOrEditVaultModal({
 
   const onDelete = useCallback(async () => {
     if (!vault) {
+      setShowDeleteConfirmDialog(false);
       return;
     }
 
+    setIsDeleting(true);
+
     const res = await doDelete(vault);
+    setIsDeleting(false);
+    setShowDeleteConfirmDialog(false);
+
     if (res) {
       onClose();
       await router.push(`/w/${owner.sId}/vaults`);
@@ -293,6 +303,7 @@ export function CreateOrEditVaultModal({
                 vault={vault}
                 handleDelete={onDelete}
                 isOpen={showDeleteConfirmDialog}
+                isDeleting={isDeleting}
                 onClose={() => setShowDeleteConfirmDialog(false)}
               />
               <div className="flex w-full justify-end">
@@ -300,6 +311,7 @@ export function CreateOrEditVaultModal({
                   size="sm"
                   label="Delete Vault"
                   variant="primaryWarning"
+                  className="mr-2"
                   onClick={() => setShowDeleteConfirmDialog(true)}
                 />
               </div>

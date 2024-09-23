@@ -19,7 +19,7 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: web
-          image: gcr.io/or1g1n-186209/front-image:latest
+          image: gcr.io/or1g1n-186209/front-edge-image:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
@@ -44,8 +44,6 @@ spec:
             - name: NODE_OPTIONS
               value: "-r dd-trace/init"
             - name: AUTH0_BASE_URL
-              value: https://front-edge.dust.tt
-            - name: DUST_CLIENT_FACING_URL
               value: https://front-edge.dust.tt
             # Make public prod API point to front-edge instead of front
             - name: DUST_PROD_API

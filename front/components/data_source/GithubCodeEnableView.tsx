@@ -30,7 +30,7 @@ export function GithubCodeEnableView({
   const handleSetCodeSyncEnabled = async (codeSyncEnabled: boolean) => {
     setLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/config/codeSyncEnabled`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/codeSyncEnabled`,
       {
         headers: {
           "Content-Type": "application/json",

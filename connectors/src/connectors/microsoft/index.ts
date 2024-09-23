@@ -18,6 +18,7 @@ import {
   getTeamAsContentNode,
 } from "@connectors/connectors/microsoft/lib/content_nodes";
 import {
+  clientApiGet,
   getAllPaginatedEntities,
   getChannels,
   getDrives,
@@ -122,10 +123,10 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     if (connectionId) {
       try {
         const client = await getClient(connector.connectionId);
-        const currentOrg = await client.api("/organization").get();
+        const currentOrg = await clientApiGet(client, "/organization");
 
         const newClient = await getClient(connectionId);
-        const newOrg = await newClient.api("/organization").get();
+        const newOrg = await clientApiGet(newClient, "/organization");
 
         if (
           !currentOrg?.value ||

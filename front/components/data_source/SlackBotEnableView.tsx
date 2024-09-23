@@ -40,7 +40,7 @@ export function SlackBotEnableView({
   const handleSetBotEnabled = async (botEnabled: boolean) => {
     setLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/config/botEnabled`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/botEnabled`,
       {
         headers: {
           "Content-Type": "application/json",

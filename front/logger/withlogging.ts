@@ -138,7 +138,7 @@ export function apiError<T>(
   const tags = [
     `method:${req.method}`,
     // `url:${req.url}`,
-    `status_code:${res.statusCode}`,
+    `status_code:${apiError.status_code}`,
     `error_type:${apiError.api_error.type}`,
   ];
 

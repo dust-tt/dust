@@ -67,7 +67,7 @@ rustc-hash = "1.1"
 bstr = "1.9"
 base64 = "0.22"
 cloud-storage = { version = "0.11", features = ["global-client"] }
-qdrant-client = "=1.9.0"
+qdrant-client = "=1.11.2"
 tower-http = {version = "0.5", features = ["full"]}
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
@@ -85,3 +85,4 @@ sqids = "0.4.1"
 ring = "0.17.8"
 jsonwebtoken = "9.3.0"
 rslock = { version = "0.4.0", default-features = false, features = ["tokio-comp"] }
+snowflake-connector-rs = "0.6.1"

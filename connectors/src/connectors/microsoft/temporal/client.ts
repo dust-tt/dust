@@ -1,5 +1,5 @@
 import type { ModelId, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, microsoftGarbageCollectionWorkflowId, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/common";
 
@@ -12,7 +12,6 @@ import {
   fullSyncWorkflow,
   incrementalSyncWorkflow,
   microsoftFullSyncWorkflowId,
-  microsoftGarbageCollectionWorkflowId,
   microsoftIncrementalSyncWorkflowId,
 } from "@connectors/connectors/microsoft/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";

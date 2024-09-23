@@ -11,11 +11,13 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   DataSourceType,
+  DataSourceWithAgentsUsageType,
   PlanType,
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { truncate } from "@dust-tt/types";
+import type { SortingState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
@@ -26,7 +28,7 @@ import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
-import { getDataSourcesUsageByAgents } from "@app/lib/api/agent_data_sources";
+import { getDataSourcesUsageByCategory } from "@app/lib/api/agent_data_sources";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -51,9 +53,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const readOnly = !auth.isBuilder();
 
-  const dataSourcesUsage = await getDataSourcesUsageByAgents({
+  const dataSourcesUsage = await getDataSourcesUsageByCategory({
     auth,
-    providerFilter: null,
+    category: "folder",
   });
   const allDataSources = await getDataSources(auth, { includeEditedBy: true });
   const dataSources = allDataSources.filter((ds) => !ds.connectorId);
@@ -81,6 +83,9 @@ export default function DataSourcesView({
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "name", desc: false },
+  ]);
   const { submit: handleCreateDataSource } = useSubmitFunction(async () => {
     // Enforce plan limits: DataSources count.
     if (
@@ -102,11 +107,11 @@ export default function DataSourcesView({
       ...dataSource,
       onClick: () => {
         void router.push(
-          `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+          `/w/${owner.sId}/builder/data-sources/${dataSource.sId}`
         );
       },
       icon: FolderIcon,
-      usage: dataSourcesUsage[dataSource.id] || 0,
+      usage: dataSourcesUsage[dataSource.id] || { count: 0, agentNames: [] },
     }));
   }, [dataSources, dataSourcesUsage, owner.sId, router]);
   return (
@@ -180,7 +185,9 @@ export default function DataSourcesView({
             columns={columns}
             filter={dataSourceSearch}
             filterColumn={"name"}
-            initialColumnOrder={[{ id: "name", desc: false }]}
+            sorting={sorting}
+            setSorting={setSorting}
+            isServerSideSorting={false}
             columnsBreakpoints={{
               usage: "sm",
               editedAt: "sm",
@@ -192,14 +199,16 @@ export default function DataSourcesView({
   );
 }
 
+type RowData = DataSourceType & {
+  icon: ComponentType;
+  usage: DataSourceWithAgentsUsageType;
+};
+
 function getTableColumns() {
   // to please typescript
   type Info = {
     row: {
-      original: DataSourceType & {
-        icon: ComponentType;
-        usage: number;
-      };
+      original: RowData;
     };
   };
   return [
@@ -218,14 +227,17 @@ function getTableColumns() {
     },
     {
       header: "Used by",
-      accessorKey: "usage",
+      accessorFn: (row: RowData) => row.usage.count,
       id: "usage",
       meta: {
         width: "6rem",
       },
       cell: (info: Info) => (
-        <DataTable.CellContent icon={RobotIcon}>
-          {info.row.original.usage}
+        <DataTable.CellContent
+          icon={RobotIcon}
+          title={`Used by ${info.row.original.usage.agentNames.join(", ")}`}
+        >
+          {info.row.original.usage.count}
         </DataTable.CellContent>
       ),
     },

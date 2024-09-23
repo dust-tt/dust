@@ -66,7 +66,7 @@ export async function runPostUpsertHookActivity(
   }
 
   await hook.onUpsert({
-    auth: await Authenticator.internalBuilderForWorkspace(workspaceId),
+    auth: await Authenticator.internalAdminForWorkspace(workspaceId),
     dataSourceId,
     documentId,
     documentText,
@@ -106,7 +106,7 @@ export async function runPostDeleteHookActivity(
   }
 
   await hook.onDelete({
-    auth: await Authenticator.internalBuilderForWorkspace(workspaceId),
+    auth: await Authenticator.internalAdminForWorkspace(workspaceId),
     dataSourceId,
     documentId,
     dataSourceConnectorProvider,
@@ -134,7 +134,7 @@ async function getDataSourceDocument({
     return new Err(new Error(`Could not find workspace ${workspaceId}`));
   }
 
-  const auth = await Authenticator.internalBuilderForWorkspace(workspaceId);
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,
     dataSourceId,

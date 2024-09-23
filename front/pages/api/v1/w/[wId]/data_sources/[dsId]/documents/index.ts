@@ -16,10 +16,10 @@ export type GetDocumentsResponseBody = {
 
 /**
  * @swagger
- * /api/v1/w/{wId}/data_sources/{name}/documents:
+ * /api/v1/w/{wId}/data_sources/{dsId}/documents:
  *   get:
  *     summary: Get documents
- *     description: Get documents in the data source identified by {name} in the workspace identified by {wId}.
+ *     description: Get documents in the data source identified by {dsId} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
  *     security:

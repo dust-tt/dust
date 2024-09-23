@@ -28,7 +28,7 @@ export class AgentDataSourceConfiguration extends Model<
   declare parentsNotIn: string[] | null;
 
   declare dataSourceId: ForeignKey<DataSource["id"]>;
-  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
+  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
 
   // AgentDataSourceConfiguration can be used by both the retrieval and the process actions'
   // configurations.
@@ -124,8 +124,7 @@ DataSourceViewModel.hasMany(AgentDataSourceConfiguration, {
   foreignKey: { allowNull: true },
   onDelete: "RESTRICT",
 });
-// TODO(GROUPS_INFRA): This should be a required relationship.
 AgentDataSourceConfiguration.belongsTo(DataSourceViewModel, {
   as: "dataSourceView",
-  foreignKey: { allowNull: true },
+  foreignKey: { allowNull: false },
 });

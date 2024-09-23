@@ -25,7 +25,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   dataSource: DataSourceType;
   fetchConnectorError?: boolean;
-  dataSourceUsage: number;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -57,14 +56,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const dataSourceUsageRes = await dataSource.getUsagesByAgents(auth);
-
   return {
     props: {
       owner,
       subscription,
       dataSource: dataSource.toJSON(),
-      dataSourceUsage: dataSourceUsageRes.isOk() ? dataSourceUsageRes.value : 0,
     },
   };
 });
@@ -73,7 +69,6 @@ export default function DataSourceSettings({
   owner,
   subscription,
   dataSource,
-  dataSourceUsage,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
@@ -86,7 +81,7 @@ export default function DataSourceSettings({
       | { assistantDefaultSelected: boolean }
   ) => {
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}`,
       {
         method: "POST",
         headers: {
@@ -97,7 +92,7 @@ export default function DataSourceSettings({
     );
     if (res.ok) {
       await router.push(
-        `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+        `/w/${owner.sId}/builder/data-sources/${dataSource.sId}`
       );
     } else {
       const err = (await res.json()) as { error: APIError };
@@ -115,7 +110,6 @@ export default function DataSourceSettings({
         description: string;
         assistantDefaultSelected: boolean;
       }) => handleUpdate(settings)}
-      dataSourceUsage={dataSourceUsage}
     />
   );
 }
@@ -125,7 +119,6 @@ function StandardDataSourceSettings({
   subscription,
   dataSource,
   handleUpdate,
-  dataSourceUsage,
 }: {
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -134,7 +127,6 @@ function StandardDataSourceSettings({
     description: string;
     assistantDefaultSelected: boolean;
   }) => Promise<void>;
-  dataSourceUsage: number;
 }) {
   const { mutate } = useSWRConfig();
 
@@ -193,7 +185,7 @@ function StandardDataSourceSettings({
           title="Folder Settings"
           onCancel={() => {
             void router.push(
-              `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+              `/w/${owner.sId}/builder/data-sources/${dataSource.sId}`
             );
           }}
           onSave={
@@ -281,17 +273,17 @@ function StandardDataSourceSettings({
             <Button
               variant="secondaryWarning"
               icon={TrashIcon}
-              label={"Delete this Folder"}
+              label="Delete this Folder"
               onClick={() => {
                 setIsDeleteModalOpen(true);
               }}
             />
             <DeleteStaticDataSourceDialog
+              owner={owner}
               dataSource={dataSource}
               handleDelete={handleDelete}
               isOpen={isDeleteModalOpen}
               onClose={() => setIsDeleteModalOpen(false)}
-              dataSourceUsage={dataSourceUsage}
             />
           </div>
         </div>

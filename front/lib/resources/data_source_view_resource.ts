@@ -243,6 +243,18 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     });
   }
 
+  static async listForDataSources(
+    auth: Authenticator,
+    dataSources: DataSourceResource[],
+    fetchDataSourceViewOptions?: FetchDataSourceViewOptions
+  ) {
+    return this.baseFetch(auth, fetchDataSourceViewOptions, {
+      where: {
+        dataSourceId: dataSources.map((ds) => ds.id),
+      },
+    });
+  }
+
   static async fetchById(
     auth: Authenticator,
     id: string,
@@ -422,7 +434,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   }
 
   getUsagesByAgents = async (auth: Authenticator) => {
-    return getDataSourceViewUsage({ auth, dataSourceView: this.toJSON() });
+    return getDataSourceViewUsage({ auth, dataSourceView: this });
   };
 
   // Serialization.
@@ -437,7 +449,6 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       parentsIn: this.parentsIn,
       sId: this.sId,
       updatedAt: this.updatedAt.getTime(),
-      usage: 0,
       vaultId: this.vault.sId,
       ...this.makeEditedBy(this.editedByUser, this.editedAt),
     };

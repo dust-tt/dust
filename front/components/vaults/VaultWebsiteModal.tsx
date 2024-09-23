@@ -39,10 +39,7 @@ import { DeleteStaticDataSourceDialog } from "@app/components/data_source/Delete
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
-import type {
-  PostDataSourceWithProviderRequestBodySchema,
-  PostVaultDataSourceResponseBody,
-} from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
+import type { PostDataSourceWithProviderRequestBodySchema } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 const WEBSITE_CAT = "website";
 
@@ -177,8 +174,11 @@ export default function VaultWebsiteModal({
         "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c)).";
     }
 
-    // Validate Name
-    const nameExists = dataSources.some((d) => d.name === dataSourceName);
+    // Validate Name (if it's not edition)
+    const nameExists = dataSources.some(
+      (d) =>
+        d.name === dataSourceName && d.sId !== dataSourceView?.dataSource.sId
+    );
     const dataSourceNameRes = isDataSourceNameValid(dataSourceName);
     if (nameExists) {
       nameError = "A Website with the same name already exists";
@@ -191,7 +191,12 @@ export default function VaultWebsiteModal({
     setDataSourceUrlError(urlError);
     setDataSourceNameError(nameError);
     return !urlError && !nameError;
-  }, [dataSourceUrl, dataSources, dataSourceName]);
+  }, [
+    dataSourceUrl,
+    dataSources,
+    dataSourceName,
+    dataSourceView?.dataSource.sId,
+  ]);
 
   useEffect(() => {
     if (isSubmitted) {
@@ -207,108 +212,102 @@ export default function VaultWebsiteModal({
     }
 
     setIsSaving(true);
-    if (webCrawlerConfiguration === null) {
-      const sanitizedDataSourceUrl = dataSourceUrl.trim();
-      const res = await fetch(
-        `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            provider: "webcrawler",
-            name: dataSourceName,
-            configuration: {
-              url: sanitizedDataSourceUrl,
-              maxPageToCrawl: maxPages || WEBCRAWLER_MAX_PAGES,
-              depth: maxDepth,
-              crawlMode: crawlMode,
-              crawlFrequency: selectedCrawlFrequency,
-              headers: headers.reduce(
-                (acc, { key, value }) => {
-                  if (key && value) {
-                    acc[key] = value;
-                  }
-                  return acc;
-                },
-                {} as Record<string, string>
-              ),
-            } satisfies WebCrawlerConfigurationType,
-          } satisfies t.TypeOf<
-            typeof PostDataSourceWithProviderRequestBodySchema
-          >),
-        }
-      );
-      if (res.ok) {
-        onClose();
-        sendNotification({
-          title: "Website created",
-          type: "success",
-          description: "The website has been successfully created.",
-        });
-        void mutateVaultDataSourceViews();
-        setIsSaving(false);
-        const response: PostVaultDataSourceResponseBody = await res.json();
-        const { dataSourceView } = response;
-        await router.push(
-          `/w/${owner.sId}/vaults/${vault.sId}/categories/${WEBSITE_CAT}/data_source_views/${dataSourceView.sId}`
-        );
-      } else {
-        const err: { error: APIError } = await res.json();
-        setIsSaving(false);
-        sendNotification({
-          title: "Error creating website",
-          type: "error",
-          description: err.error.message,
-        });
+    const sanitizedDataSourceUrl = dataSourceUrl.trim();
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider: "webcrawler",
+          name: dataSourceName,
+          configuration: {
+            url: sanitizedDataSourceUrl,
+            maxPageToCrawl: maxPages || WEBCRAWLER_MAX_PAGES,
+            depth: maxDepth,
+            crawlMode: crawlMode,
+            crawlFrequency: selectedCrawlFrequency,
+            headers: headers.reduce(
+              (acc, { key, value }) => {
+                if (key && value) {
+                  acc[key] = value;
+                }
+                return acc;
+              },
+              {} as Record<string, string>
+            ),
+          } satisfies WebCrawlerConfigurationType,
+        } satisfies t.TypeOf<
+          typeof PostDataSourceWithProviderRequestBodySchema
+        >),
       }
-    } else if (dataSourceView) {
-      const res = await fetch(
-        `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            configuration: {
-              url: dataSourceUrl,
-              maxPageToCrawl: maxPages || WEBCRAWLER_MAX_PAGES,
-              depth: maxDepth,
-              crawlMode: crawlMode,
-              crawlFrequency: selectedCrawlFrequency,
-              headers: headers.reduce(
-                (acc, { key, value }) => {
-                  if (key && value) {
-                    acc[key] = value;
-                  }
-                  return acc;
-                },
-                {} as Record<string, string>
-              ),
-            } satisfies WebCrawlerConfigurationType,
-          } satisfies UpdateConnectorConfigurationType),
-        }
-      );
-      if (res.ok) {
-        onClose();
-        setIsSaving(false);
-        sendNotification({
-          title: "Website updated",
-          type: "success",
-          description: "The website has been successfully updated.",
-        });
-        await mutateVaultDataSourceViews();
-      } else {
-        const err = (await res.json()) as { error: APIError };
-        setIsSaving(false);
-        sendNotification({
-          title: "Error creating website",
-          type: "error",
-          description: err.error.message,
-        });
+    );
+
+    await handleResponse(res, "created");
+  };
+
+  const handleUpdate = async () => {
+    setIsSubmitted(true);
+
+    if (!validateForm || !dataSourceView) {
+      return;
+    }
+
+    setIsSaving(true);
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          configuration: {
+            url: dataSourceUrl,
+            maxPageToCrawl: maxPages || WEBCRAWLER_MAX_PAGES,
+            depth: maxDepth,
+            crawlMode: crawlMode,
+            crawlFrequency: selectedCrawlFrequency,
+            headers: headers.reduce(
+              (acc, { key, value }) => {
+                if (key && value) {
+                  acc[key] = value;
+                }
+                return acc;
+              },
+              {} as Record<string, string>
+            ),
+          } satisfies WebCrawlerConfigurationType,
+        } satisfies UpdateConnectorConfigurationType),
       }
+    );
+
+    await handleResponse(res, "updated");
+  };
+
+  const handleResponse = async (
+    res: Response,
+    action: "created" | "updated"
+  ) => {
+    if (res.ok) {
+      onClose();
+      sendNotification({
+        title: `Website ${action}`,
+        type: "success",
+        description: `The website has been successfully ${action}.`,
+      });
+      void mutateVaultDataSourceViews();
+      setIsSaving(false);
+    } else {
+      const err: { error: APIError } = await res.json();
+      setIsSaving(false);
+      sendNotification({
+        title: `Error ${action === "created" ? "creating" : "updating"} website`,
+        type: "error",
+        description: err.error.message,
+      });
     }
   };
 
@@ -347,12 +346,20 @@ export default function VaultWebsiteModal({
       onSave={() => {
         setIsSubmitted(true);
         if (!isSaving) {
-          void handleCreate();
+          if (dataSourceView) {
+            void handleUpdate();
+          } else {
+            void handleCreate();
+          }
         }
       }}
       hasChanged={true}
       variant="side-md"
-      title="Create a website"
+      title={
+        dataSourceView
+          ? `Edit ${dataSourceView.dataSource.name}`
+          : "Create a website"
+      }
     >
       <div className="w-full pt-6">
         <div className="overflow-x-auto">
@@ -604,6 +611,7 @@ export default function VaultWebsiteModal({
                   onClick={() => {
                     setAdvancedSettingsOpened(true);
                   }}
+                  hasMagnifying={false}
                 ></Button>
                 {webCrawlerConfiguration && dataSourceView && (
                   <>
@@ -614,13 +622,17 @@ export default function VaultWebsiteModal({
                       onClick={() => {
                         setIsDeleteModalOpen(true);
                       }}
+                      hasMagnifying={false}
                     />
                     {dataSourceView && (
                       <DeleteStaticDataSourceDialog
+                        owner={owner}
                         dataSource={dataSourceView.dataSource}
                         handleDelete={handleDelete}
                         isOpen={isDeleteModalOpen}
-                        onClose={() => setIsDeleteModalOpen(false)}
+                        onClose={() => {
+                          setIsDeleteModalOpen(false);
+                        }}
                       />
                     )}
                   </>

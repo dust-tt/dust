@@ -10,13 +10,13 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   BaseContentNode,
+  ConnectorPermission,
   ConnectorProvider,
   ContentNodesViewType,
   DataSourceType,
   DataSourceViewType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import type { ConnectorPermission } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
@@ -164,9 +164,9 @@ export function DataSourceViewPermissionTreeChildren({
 }: DataSourceViewPermissionTreeChildrenProps) {
   const { nodes, isNodesLoading, isNodesError } = useDataSourceViewContentNodes(
     {
-      dataSourceView,
-      parentId: parentId ?? undefined,
+      dataSourceView: dataSourceView,
       owner,
+      parentId: parentId ?? undefined,
       viewType,
     }
   );
@@ -182,27 +182,29 @@ export function DataSourceViewPermissionTreeChildren({
   const { dataSource } = dataSourceView;
 
   return (
-    <PermissionTreeChildren
-      dataSource={dataSource}
-      isLoading={isNodesLoading}
-      nodes={nodes}
-      owner={owner}
-      parentId={parentId}
-      renderChildItem={(node: BaseContentNode, { isParentNodeSelected }) => (
-        <DataSourceViewPermissionTreeChildren
-          dataSourceView={dataSourceView}
-          owner={owner}
-          parentId={node.internalId}
-          parentIsSelected={isParentNodeSelected}
-          viewType={viewType}
-          {...props}
-          // Disable search for children.
-          isSearchEnabled={false}
-          isRoundedBackground={false}
-        />
-      )}
-      {...props}
-    />
+    <>
+      <PermissionTreeChildren
+        dataSource={dataSource}
+        isLoading={isNodesLoading}
+        nodes={nodes}
+        owner={owner}
+        parentId={parentId}
+        renderChildItem={(node: BaseContentNode, { isParentNodeSelected }) => (
+          <DataSourceViewPermissionTreeChildren
+            dataSourceView={dataSourceView}
+            owner={owner}
+            parentId={node.internalId}
+            parentIsSelected={isParentNodeSelected}
+            viewType={viewType}
+            {...props}
+            // Disable search for children.
+            isSearchEnabled={false}
+            isRoundedBackground={false}
+          />
+        )}
+        {...props}
+      />
+    </>
   );
 }
 

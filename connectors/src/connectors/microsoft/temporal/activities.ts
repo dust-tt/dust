@@ -8,6 +8,7 @@ import * as _ from "lodash";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
+  clientApiPost,
   extractPath,
   getAllPaginatedEntities,
   getDeltaResults,
@@ -930,7 +931,9 @@ export async function microsoftGarbageCollectionActivity({
   const chunkedRequests = _.chunk(requests, 20);
 
   for (const chunk of chunkedRequests) {
-    const batchRes = await client.api("/$batch").post({ requests: chunk });
+    const batchRes = await clientApiPost(client, "/$batch", {
+      requests: chunk,
+    });
     for (const res of batchRes.responses) {
       const node = nodesToCheck[Number(res.id)];
       if (node && (res.status === 200 || res.status === 404)) {

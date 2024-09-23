@@ -1707,10 +1707,15 @@ impl OpenAILLM {
 
 pub fn to_openai_messages(
     messages: &Vec<ChatMessage>,
+    model_id: &str,
 ) -> Result<Vec<OpenAIChatMessage>, anyhow::Error> {
     messages
         .iter()
-        .map(|m| OpenAIChatMessage::try_from(m))
+        .filter_map(|m| match m {
+            // [o1-preview] Hack for OpenAI `o1-*` models to exclude system messages.
+            ChatMessage::System(_) if model_id.starts_with("o1-") => None,
+            _ => Some(OpenAIChatMessage::try_from(m)),
+        })
         .collect::<Result<Vec<_>>>()
 }
 
@@ -1780,101 +1785,100 @@ impl LLM for OpenAILLM {
             }
         }
 
-        let (c, request_id) = match event_sender {
-            Some(_) => {
-                if n > 1 {
-                    return Err(anyhow!(
-                        "Generating multiple variations in streaming mode is not supported."
-                    ))?;
-                }
-                streamed_completion(
-                    self.uri()?,
-                    self.api_key.clone().unwrap(),
-                    match &extras {
-                        Some(ex) => match ex.get("openai_organization_id") {
-                            Some(Value::String(o)) => Some(o.to_string().clone()),
-                            _ => None,
-                        },
-                        None => None,
-                    },
-                    Some(self.id.clone()),
-                    prompt,
-                    max_tokens,
-                    temperature,
-                    n,
-                    match top_logprobs {
-                        Some(l) => Some(l),
-                        None => Some(0),
-                    },
-                    true,
-                    stop,
-                    match frequency_penalty {
-                        Some(f) => f,
-                        None => 0.0,
-                    },
-                    match presence_penalty {
-                        Some(p) => p,
-                        None => 0.0,
-                    },
-                    match top_p {
-                        Some(t) => t,
-                        None => 1.0,
-                    },
-                    match &extras {
-                        Some(e) => match e.get("openai_user") {
-                            Some(Value::String(u)) => Some(u.to_string()),
-                            _ => None,
-                        },
-                        None => None,
-                    },
-                    event_sender,
-                )
-                .await?
+        // [o1-preview] Hack for OpenAI `o1-*` models to not use streaming.
+        let model_is_o1 = self.id.as_str().starts_with("o1-");
+        let (c, request_id) = if !model_is_o1 && event_sender.is_some() {
+            if n > 1 {
+                return Err(anyhow!(
+                    "Generating multiple variations in streaming mode is not supported."
+                ))?;
             }
-            None => {
-                completion(
-                    self.uri()?,
-                    self.api_key.clone().unwrap(),
-                    match &extras {
-                        Some(e) => match e.get("openai_organization_id") {
-                            Some(Value::String(o)) => Some(o.to_string()),
-                            _ => None,
-                        },
-                        None => None,
+            streamed_completion(
+                self.uri()?,
+                self.api_key.clone().unwrap(),
+                match &extras {
+                    Some(ex) => match ex.get("openai_organization_id") {
+                        Some(Value::String(o)) => Some(o.to_string().clone()),
+                        _ => None,
                     },
-                    Some(self.id.clone()),
-                    prompt,
-                    max_tokens,
-                    temperature,
-                    n,
-                    match top_logprobs {
-                        Some(l) => Some(l),
-                        None => Some(0),
+                    None => None,
+                },
+                Some(self.id.clone()),
+                prompt,
+                max_tokens,
+                temperature,
+                n,
+                match top_logprobs {
+                    Some(l) => Some(l),
+                    None => Some(0),
+                },
+                true,
+                stop,
+                match frequency_penalty {
+                    Some(f) => f,
+                    None => 0.0,
+                },
+                match presence_penalty {
+                    Some(p) => p,
+                    None => 0.0,
+                },
+                match top_p {
+                    Some(t) => t,
+                    None => 1.0,
+                },
+                match &extras {
+                    Some(e) => match e.get("openai_user") {
+                        Some(Value::String(u)) => Some(u.to_string()),
+                        _ => None,
                     },
-                    true,
-                    stop,
-                    match frequency_penalty {
-                        Some(f) => f,
-                        None => 0.0,
+                    None => None,
+                },
+                event_sender,
+            )
+            .await?
+        } else {
+            completion(
+                self.uri()?,
+                self.api_key.clone().unwrap(),
+                match &extras {
+                    Some(e) => match e.get("openai_organization_id") {
+                        Some(Value::String(o)) => Some(o.to_string()),
+                        _ => None,
                     },
-                    match presence_penalty {
-                        Some(p) => p,
-                        None => 0.0,
+                    None => None,
+                },
+                Some(self.id.clone()),
+                prompt,
+                max_tokens,
+                temperature,
+                n,
+                match top_logprobs {
+                    Some(l) => Some(l),
+                    None => Some(0),
+                },
+                true,
+                stop,
+                match frequency_penalty {
+                    Some(f) => f,
+                    None => 0.0,
+                },
+                match presence_penalty {
+                    Some(p) => p,
+                    None => 0.0,
+                },
+                match top_p {
+                    Some(t) => t,
+                    None => 1.0,
+                },
+                match &extras {
+                    Some(e) => match e.get("openai_user") {
+                        Some(Value::String(u)) => Some(u.to_string()),
+                        _ => None,
                     },
-                    match top_p {
-                        Some(t) => t,
-                        None => 1.0,
-                    },
-                    match &extras {
-                        Some(e) => match e.get("openai_user") {
-                            Some(Value::String(u)) => Some(u.to_string()),
-                            _ => None,
-                        },
-                        None => None,
-                    },
-                )
-                .await?
-            }
+                    None => None,
+                },
+            )
+            .await?
         };
 
         // println!("COMPLETION: {:?}", c);
@@ -2008,71 +2012,97 @@ impl LLM for OpenAILLM {
             .map(OpenAITool::try_from)
             .collect::<Result<Vec<OpenAITool>, _>>()?;
 
-        let openai_messages = to_openai_messages(messages)?;
+        let openai_messages = to_openai_messages(messages, &self.id)?;
 
-        let (c, request_id) = match event_sender {
-            Some(_) => {
-                streamed_chat_completion(
-                    self.chat_uri()?,
-                    self.api_key.clone().unwrap(),
-                    openai_org_id,
-                    Some(self.id.clone()),
-                    &openai_messages,
-                    tools,
-                    tool_choice,
-                    temperature,
-                    match top_p {
-                        Some(t) => t,
-                        None => 1.0,
-                    },
-                    n,
-                    stop,
-                    max_tokens,
-                    match presence_penalty {
-                        Some(p) => p,
-                        None => 0.0,
-                    },
-                    match frequency_penalty {
-                        Some(f) => f,
-                        None => 0.0,
-                    },
-                    response_format,
-                    openai_user,
-                    event_sender,
-                )
-                .await?
-            }
-            None => {
-                chat_completion(
-                    self.chat_uri()?,
-                    self.api_key.clone().unwrap(),
-                    openai_org_id,
-                    Some(self.id.clone()),
-                    &openai_messages,
-                    tools,
-                    tool_choice,
-                    temperature,
-                    match top_p {
-                        Some(t) => t,
-                        None => 1.0,
-                    },
-                    n,
-                    stop,
-                    max_tokens,
-                    match presence_penalty {
-                        Some(p) => p,
-                        None => 0.0,
-                    },
-                    match frequency_penalty {
-                        Some(f) => f,
-                        None => 0.0,
-                    },
-                    response_format,
-                    openai_user,
-                )
-                .await?
-            }
+        // [o1-preview] Hack for OpenAI `o1-*` models to simulate streaming.
+        let is_streaming = event_sender.is_some();
+        let model_is_o1 = self.id.as_str().starts_with("o1-");
+
+        let (c, request_id) = if !model_is_o1 && is_streaming {
+            streamed_chat_completion(
+                self.chat_uri()?,
+                self.api_key.clone().unwrap(),
+                openai_org_id,
+                Some(self.id.clone()),
+                &openai_messages,
+                tools,
+                tool_choice,
+                temperature,
+                match top_p {
+                    Some(t) => t,
+                    None => 1.0,
+                },
+                n,
+                stop,
+                max_tokens,
+                match presence_penalty {
+                    Some(p) => p,
+                    None => 0.0,
+                },
+                match frequency_penalty {
+                    Some(f) => f,
+                    None => 0.0,
+                },
+                response_format,
+                openai_user,
+                event_sender.clone(),
+            )
+            .await?
+        } else {
+            chat_completion(
+                self.chat_uri()?,
+                self.api_key.clone().unwrap(),
+                openai_org_id,
+                Some(self.id.clone()),
+                &openai_messages,
+                tools,
+                tool_choice,
+                temperature,
+                match top_p {
+                    Some(t) => t,
+                    None => 1.0,
+                },
+                n,
+                stop,
+                max_tokens,
+                match presence_penalty {
+                    Some(p) => p,
+                    None => 0.0,
+                },
+                match frequency_penalty {
+                    Some(f) => f,
+                    None => 0.0,
+                },
+                response_format,
+                openai_user,
+            )
+            .await?
         };
+
+        // [o1-preview] Hack for OpenAI `o1-*` models to simulate streaming.
+        if model_is_o1 && is_streaming {
+            let sender = event_sender.as_ref().unwrap();
+            for choice in &c.choices {
+                if let Some(content) = &choice.message.content {
+                    // Split content into smaller chunks to simulate streaming.
+                    for chunk in content
+                        .chars()
+                        .collect::<Vec<char>>()
+                        .chunks(4)
+                        .map(|c| c.iter().collect::<String>())
+                    {
+                        let _ = sender.send(json!({
+                            "type": "tokens",
+                            "content": {
+                                "text": chunk,
+                            },
+                        }));
+                        // Add a small delay to simulate real-time streaming.
+                        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                    }
+                }
+            }
+        }
 
         assert!(c.choices.len() > 0);
 

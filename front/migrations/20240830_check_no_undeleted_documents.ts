@@ -36,6 +36,7 @@ async function checkCoreDeleted(
 
   const coreDocuments: { id: number; document_id: string }[] =
     await coreReplica.query(
+      // Note this query won't be valid anymore
       "SELECT id, document_id FROM data_sources_documents WHERE data_source = :dataSourceId AND status = 'latest'",
       {
         replacements: {

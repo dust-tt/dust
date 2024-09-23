@@ -43,14 +43,12 @@ export default function WebsiteConfiguration({
   dataSources,
   dataSource,
   webCrawlerConfiguration,
-  dataSourceUsage,
 }: {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dataSources: DataSourceType[];
   webCrawlerConfiguration: WebCrawlerConfigurationType | null;
   dataSource: DataSourceType | null;
-  dataSourceUsage?: number;
 }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -196,9 +194,7 @@ export default function WebsiteConfiguration({
       }
     } else if (dataSource) {
       const res = await fetch(
-        `/api/w/${owner.sId}/data_sources/${encodeURIComponent(
-          dataSource.name
-        )}/configuration`,
+        `/api/w/${owner.sId}/data_sources/${dataSource.sId}/configuration`,
         {
           method: "PATCH",
           headers: {
@@ -531,11 +527,11 @@ export default function WebsiteConfiguration({
               />
               {dataSource && (
                 <DeleteStaticDataSourceDialog
+                  owner={owner}
                   dataSource={dataSource}
                   handleDelete={handleDelete}
                   isOpen={isDeleteModalOpen}
                   onClose={() => setIsDeleteModalOpen(false)}
-                  dataSourceUsage={dataSourceUsage ?? 0}
                 />
               )}
             </div>

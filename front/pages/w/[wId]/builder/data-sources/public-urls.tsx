@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   DataTable,
   LinkIcon,
   Page,
@@ -12,23 +13,26 @@ import { GlobeAltIcon } from "@dust-tt/sparkle";
 import type {
   ConnectorType,
   DataSourceType,
+  DataSourceWithAgentsUsageType,
   PlanType,
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { removeNulls, truncate } from "@dust-tt/types";
+import { truncate } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
+import type { SortingState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useMemo, useRef, useState } from "react";
 import * as React from "react";
 
+import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
-import { getDataSourcesUsageByAgents } from "@app/lib/api/agent_data_sources";
+import { getDataSourcesUsageByCategory } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -37,15 +41,18 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
 
 type DataSourceWithConnector = DataSourceType & {
-  connector: ConnectorType;
+  connector: ConnectorType | null;
+};
+
+type RowData = DataSourceWithConnector & {
+  icon: ComponentType;
+  usage: DataSourceWithAgentsUsageType;
+  workspaceId: string;
 };
 
 type Info = {
   row: {
-    original: DataSourceType & {
-      icon: ComponentType;
-      usage: number;
-    };
+    original: RowData;
   };
 };
 
@@ -70,9 +77,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const readOnly = !auth.isBuilder();
 
   const allDataSources = await getDataSources(auth, { includeEditedBy: true });
-  const dataSourcesUsage = await getDataSourcesUsageByAgents({
+  const dataSourcesUsage = await getDataSourcesUsageByCategory({
     auth,
-    providerFilter: "webcrawler",
+    category: "website",
   });
 
   const websiteDataSources = allDataSources
@@ -98,27 +105,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const dataSourcesWithConnector = websiteDataSources.map((ds) => {
     const connector = connectorsRes.value.find((c) => c.id === ds.connectorId);
-    if (!connector) {
-      logger.error(
-        {
-          panic: true, // This is a panic because we want to fix the data. This should never happen.
-          workspaceId: owner.sId,
-          connectorId: ds.connectorId,
-          dataSourceName: ds.name,
-          dataSourceId: ds.id,
-          connectorProvider: ds.connectorProvider,
-        },
-        "Connector not found while we still have a data source."
-      );
-      return null;
-    }
     return {
       ...ds,
-      connector,
+      connector: connector ?? null,
     };
   });
-
-  const dataSources = removeNulls(dataSourcesWithConnector);
 
   return {
     props: {
@@ -126,7 +117,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       plan,
       readOnly,
-      dataSources,
+      dataSources: dataSourcesWithConnector,
       dataSourcesUsage,
     },
   };
@@ -144,6 +135,9 @@ export default function DataSourcesView({
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "name", desc: false },
+  ]);
   const { submit: handleCreateDataSource } = useSubmitFunction(async () => {
     // Enforce plan limits: DataSources count.
     if (
@@ -164,11 +158,12 @@ export default function DataSourcesView({
       ...dataSource,
       onClick: () => {
         void router.push(
-          `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+          `/w/${owner.sId}/builder/data-sources/${dataSource.sId}`
         );
       },
       icon: LinkIcon,
-      usage: dataSourcesUsage[dataSource.id] || 0,
+      usage: dataSourcesUsage[dataSource.id] || { count: 0, agentNames: [] },
+      workspaceId: owner.sId,
     }));
   }, [dataSources, dataSourcesUsage, owner.sId, router]);
 
@@ -242,7 +237,9 @@ export default function DataSourcesView({
             columns={columns}
             filter={dataSourceSearch}
             filterColumn={"name"}
-            initialColumnOrder={[{ id: "name", desc: false }]}
+            sorting={sorting}
+            setSorting={setSorting}
+            isServerSideSorting={false}
             columnsBreakpoints={{
               usage: "sm",
               editedAt: "sm",
@@ -271,15 +268,22 @@ function getTableColumns() {
     },
     {
       header: "Used by",
-      accessorKey: "usage",
-      id: "usage",
+      id: "usedBy",
+      accessorFn: (row: RowData) => row.usage.count,
       meta: {
         width: "6rem",
       },
       cell: (info: Info) => (
-        <DataTable.CellContent icon={RobotIcon}>
-          {info.row.original.usage}
-        </DataTable.CellContent>
+        <>
+          {info.row.original.usage ? (
+            <DataTable.CellContent
+              icon={RobotIcon}
+              title={`Used by ${info.row.original.usage.agentNames.join(", ")}`}
+            >
+              {info.row.original.usage.count}
+            </DataTable.CellContent>
+          ) : null}
+        </>
       ),
     },
     {
@@ -296,19 +300,27 @@ function getTableColumns() {
       ),
     },
     {
-      header: "Last updated",
-      accessorKey: "editedByUser.editedAt",
-      id: "editedAt",
+      header: "Last sync",
+      id: "lastSync",
+      accessorFn: (row: RowData) => row.connector?.lastSyncSuccessfulTime ?? 0,
       meta: {
-        width: "10rem",
+        width: "14rem",
       },
       cell: (info: Info) => (
         <DataTable.CellContent>
-          {info.row.original.editedByUser?.editedAt
-            ? new Date(
-                info.row.original.editedByUser.editedAt
-              ).toLocaleDateString()
-            : null}
+          <>
+            {!info.row.original.connector ? (
+              <Chip color="warning">
+                Error loading the connector. Try again in a few minutes.
+              </Chip>
+            ) : (
+              <ConnectorSyncingChip
+                initialState={info.row.original.connector}
+                workspaceId={info.row.original.workspaceId}
+                dataSource={info.row.original}
+              />
+            )}
+          </>
         </DataTable.CellContent>
       ),
     },

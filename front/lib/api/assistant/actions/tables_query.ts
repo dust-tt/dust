@@ -263,7 +263,9 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     const tables = actionConfiguration.tables.map((t) => ({
       workspace_id: t.workspaceId,
       table_id: t.tableId,
-      data_source_id: t.dataSourceId,
+      // Note: This value is passed to the registry for lookup. The registry will return the
+      // associated data source's dustAPIDataSourceId.
+      data_source_id: t.dataSourceViewId,
     }));
     if (tables.length === 0) {
       yield {

@@ -28,6 +28,8 @@ import {
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
+  O1_MINI_MODEL_CONFIG,
+  O1_PREVIEW_MODEL_CONFIG,
 } from "@dust-tt/types";
 
 import {
@@ -244,6 +246,80 @@ function _getGPT4GlobalAgent({
       providerId: GPT_4O_MODEL_CONFIG.providerId,
       modelId: GPT_4O_MODEL_CONFIG.modelId,
       temperature: 0.7,
+    },
+    actions: [],
+    maxStepsPerRun: 0,
+    visualizationEnabled: false,
+    templateId: null,
+    groupIds: [],
+  };
+}
+function _getO1PreviewGlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.O1,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "o1-preview",
+    description: O1_PREVIEW_MODEL_CONFIG.description,
+    instructions: null,
+    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    status,
+    scope: "global",
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    model: {
+      providerId: O1_PREVIEW_MODEL_CONFIG.providerId,
+      modelId: O1_PREVIEW_MODEL_CONFIG.modelId,
+      temperature: 1, // 1 is forced for O1
+    },
+    actions: [],
+    maxStepsPerRun: 0,
+    visualizationEnabled: false,
+    templateId: null,
+    groupIds: [],
+  };
+}
+function _getO1MiniGlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.O1_MINI,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "o1-mini",
+    description: O1_MINI_MODEL_CONFIG.description,
+    instructions: null,
+    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    status,
+    scope: "global",
+    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    model: {
+      providerId: O1_MINI_MODEL_CONFIG.providerId,
+      modelId: O1_MINI_MODEL_CONFIG.modelId,
+      temperature: 1, // 1 is forced for O1
     },
     actions: [],
     maxStepsPerRun: 0,
@@ -967,9 +1043,8 @@ function _getDustGlobalAgent(
         topK: "auto",
         dataSources: [
           {
-            dataSourceId: dsView.dataSource.name,
-            dataSourceViewId: dsView.sId,
             workspaceId: preFetchedDataSources.workspaceId,
+            dataSourceViewId: dsView.sId,
             filter: { parents: null },
           },
         ],
@@ -1044,6 +1119,12 @@ function getGlobalAgent(
       break;
     case GLOBAL_AGENTS_SID.GPT4:
       agentConfiguration = _getGPT4GlobalAgent({ auth, settings });
+      break;
+    case GLOBAL_AGENTS_SID.O1:
+      agentConfiguration = _getO1PreviewGlobalAgent({ auth, settings });
+      break;
+    case GLOBAL_AGENTS_SID.O1_MINI:
+      agentConfiguration = _getO1MiniGlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = _getClaudeInstantGlobalAgent({ settings });
@@ -1182,11 +1263,22 @@ export async function getGlobalAgents(
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
   // one (which will remove these models from the list of default agents in the product + list of
   // user assistants).
-  const agentsIdsToFetch =
+  let agentsIdsToFetch =
     agentIds ??
     Object.values(GLOBAL_AGENTS_SID).filter(
       (sId) => !RETIRED_GLOABL_AGENTS_SID.includes(sId)
     );
+
+  if (!owner.flags.includes("openai_o1_feature")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.O1
+    );
+  }
+  if (!owner.flags.includes("openai_o1_mini_feature")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.O1_MINI
+    );
+  }
 
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not

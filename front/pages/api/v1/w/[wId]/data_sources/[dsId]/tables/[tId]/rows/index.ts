@@ -60,10 +60,10 @@ type ListTableRowsResponseBody = {
 
 /**
  * @swagger
- * /api/v1/w/{wId}/data_sources/{name}/tables/{tId}/rows:
+ * /api/v1/w/{wId}/data_sources/{dsId}/tables/{tId}/rows:
  *  get:
  *    summary: List rows
- *    description: List rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.
+ *    description: List rows in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.
  *    tags:
  *      - Datasources
  *    security:
@@ -110,7 +110,7 @@ type ListTableRowsResponseBody = {
  *        description: Method not supported
  *  post:
  *    summary: Upsert rows
- *    description: Upsert rows in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.
+ *    description: Upsert rows in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.
  *    tags:
  *      - Datasources
  *    security:
@@ -243,7 +243,7 @@ async function handler(
       if (listRes.isErr()) {
         logger.error(
           {
-            dataSourceName: dataSource.name,
+            dataSourceId: dataSource.sId,
             workspaceId: owner.id,
             tableId: tId,
             error: listRes.error,
@@ -311,7 +311,7 @@ async function handler(
       if (upsertRes.isErr()) {
         logger.error(
           {
-            dataSourceName: dataSource.name,
+            dataSourceId: dataSource.sId,
             workspaceId: owner.id,
             tableId: tId,
             error: upsertRes.error,
@@ -337,7 +337,7 @@ async function handler(
       if (tableRes.isErr()) {
         logger.error(
           {
-            dataSourcename: dataSource.name,
+            dataSourceId: dataSource.sId,
             workspaceId: owner.id,
             error: tableRes.error,
           },

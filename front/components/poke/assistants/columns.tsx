@@ -1,12 +1,9 @@
 import { EmotionLaughIcon, IconButton, TrashIcon } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { LightWorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
-import Link from "next/link";
 
+import PokeLink from "@app/components/poke/shadcn/ui/link";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 type AgentConfigurationDisplayType = {
@@ -20,8 +17,7 @@ type AgentConfigurationDisplayType = {
 };
 
 export function makeColumnsForAssistants(
-  owner: WorkspaceType,
-  agentConfigurations: LightAgentConfigurationType[],
+  owner: LightWorkspaceType,
   reload: () => void
 ): ColumnDef<AgentConfigurationDisplayType>[] {
   return [
@@ -31,12 +27,9 @@ export function makeColumnsForAssistants(
         const sId: string = row.getValue("sId");
 
         return (
-          <Link
-            className="font-bold hover:underline"
-            href={`/poke/${owner.sId}/assistants/${sId}`}
-          >
+          <PokeLink href={`/poke/${owner.sId}/assistants/${sId}`}>
             {sId}
-          </Link>
+          </PokeLink>
         );
       },
       header: ({ column }) => {
@@ -117,7 +110,7 @@ export function makeColumnsForAssistants(
 }
 
 async function archiveAssistant(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   reload: () => void,
   agentConfiguration: AgentConfigurationDisplayType
 ) {
@@ -151,7 +144,7 @@ async function archiveAssistant(
 }
 
 async function restoreAssistant(
-  owner: WorkspaceType,
+  owner: LightWorkspaceType,
   reload: () => void,
   agentConfiguration: AgentConfigurationDisplayType
 ) {

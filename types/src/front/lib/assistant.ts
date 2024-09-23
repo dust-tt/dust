@@ -87,6 +87,8 @@ export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
 export const GPT_4O_LEGACY_MODEL_ID = "gpt-4o" as const;
 export const GPT_4O_MODEL_ID = "gpt-4o-2024-08-06" as const;
 export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
+export const O1_PREVIEW_MODEL_ID = "o1-preview" as const;
+export const O1_MINI_MODEL_ID = "o1-mini" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
   "claude-3-5-sonnet-20240620" as const;
@@ -108,6 +110,8 @@ export const MODEL_IDS = [
   GPT_4O_MODEL_ID,
   GPT_4O_LEGACY_MODEL_ID,
   GPT_4O_MINI_MODEL_ID,
+  O1_PREVIEW_MODEL_ID,
+  O1_MINI_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
   CLAUDE_3_HAIKU_20240307_MODEL_ID,
@@ -243,6 +247,34 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   supportsVision: true,
+};
+export const O1_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: O1_PREVIEW_MODEL_ID,
+  displayName: "O1 Preview",
+  contextSize: 128_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description:
+    "OpenAI's reasoning model designed to solve hard problems across domains (Limited preview access).",
+  shortDescription: "OpenAI's reasoning model.",
+  isLegacy: false,
+  supportsVision: false,
+};
+export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: O1_MINI_MODEL_ID,
+  displayName: "O1 Mini",
+  contextSize: 128_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description:
+    "OpenAI's fast reasoning model particularly good at coding, math, and science.",
+  shortDescription: "OpenAI's fast reasoning model.",
+  isLegacy: false,
+  supportsVision: false,
 };
 
 const ANTHROPIC_DELIMITERS_CONFIGURATION = {
@@ -458,6 +490,8 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_4O_MODEL_CONFIG,
   GPT_4O_LEGACY_MODEL_CONFIG,
   GPT_4O_MINI_MODEL_CONFIG,
+  O1_PREVIEW_MODEL_CONFIG,
+  O1_MINI_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,

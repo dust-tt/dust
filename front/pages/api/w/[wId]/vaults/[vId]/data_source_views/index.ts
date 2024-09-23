@@ -1,6 +1,7 @@
 import type {
+  DataSourceViewCategory,
+  DataSourceViewsWithDetails,
   DataSourceViewType,
-  DataSourceViewWithConnectorType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { PostDataSourceViewSchema } from "@dust-tt/types";
@@ -8,20 +9,25 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { DataSourcesUsageByAgent } from "@app/lib/api/agent_data_sources";
+import {
+  getDataSourcesUsageByCategory,
+  getDataSourceViewsUsageByCategory,
+} from "@app/lib/api/agent_data_sources";
 import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { isManaged } from "@app/lib/data_sources";
+import { isManaged, isWebsite } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetVaultDataSourceViewsResponseBody<
-  IncludeConnectorDetails extends boolean = boolean,
+  IncludeDetails extends boolean = boolean,
 > = {
-  dataSourceViews: IncludeConnectorDetails extends true
-    ? DataSourceViewWithConnectorType[]
+  dataSourceViews: IncludeDetails extends true
+    ? DataSourceViewsWithDetails[]
     : DataSourceViewType[];
 };
 
@@ -54,7 +60,7 @@ async function handler(
     case "GET": {
       const category =
         req.query.category && typeof req.query.category === "string"
-          ? req.query.category
+          ? (req.query.category as DataSourceViewCategory)
           : null;
 
       const dataSourceViews = (
@@ -65,31 +71,81 @@ async function handler(
         .map((ds) => ds.toJSON())
         .filter((d) => !category || d.category === category);
 
-      if (req.query.includeConnectorDetails) {
-        const enhancedDataSourceViews = await Promise.all(
-          dataSourceViews.map(async (dataSourceView) => {
-            const dataSource = dataSourceView.dataSource;
-            if (!isManaged(dataSource)) {
-              return dataSourceView;
-            }
-            const augmentedDataSource =
-              await augmentDataSourceWithConnectorDetails(dataSource);
-            return {
-              ...dataSourceView,
-              dataSource: augmentedDataSource,
-            };
-          })
-        );
+      if (!req.query.withDetails) {
+        return res.status(200).json({
+          dataSourceViews,
+        });
+      } else {
+        if (!category) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Cannot get details without specifying a category.",
+            },
+          });
+        }
+
+        let usages: DataSourcesUsageByAgent = {};
+
+        if (vault.isSystem()) {
+          // In case of system vault, we want to reflect the usage by datasources themselves so we get usage accross all vaults
+          const usagesByDataSources = await getDataSourcesUsageByCategory({
+            auth,
+            category,
+          });
+
+          // Then we remap to the dataSourceViews of the system vaults
+          dataSourceViews.forEach((dsView) => {
+            usages[dsView.id] = usagesByDataSources[dsView.dataSource.id];
+          });
+        } else {
+          // Directly take the usage by dataSourceViews
+          usages = await getDataSourceViewsUsageByCategory({
+            auth,
+            category,
+          });
+        }
+
+        const enhancedDataSourceViews: GetVaultDataSourceViewsResponseBody<true>["dataSourceViews"] =
+          await Promise.all(
+            dataSourceViews.map(async (dataSourceView) => {
+              const dataSource = dataSourceView.dataSource;
+
+              if (!isManaged(dataSource) && !isWebsite(dataSource)) {
+                return {
+                  ...dataSourceView,
+                  dataSource: {
+                    ...dataSource,
+                    // As it's not managed, we don't have any connector details
+                    connectorDetails: { connector: null, connectorId: null },
+                    connector: null,
+                    fetchConnectorError: false,
+                    fetchConnectorErrorMessage: null,
+                  },
+                  usage: usages[dataSourceView.id] || {
+                    count: 0,
+                    agentNames: [],
+                  },
+                };
+              }
+
+              const augmentedDataSource =
+                await augmentDataSourceWithConnectorDetails(dataSource);
+              return {
+                ...dataSourceView,
+                dataSource: augmentedDataSource,
+                usage: usages[dataSourceView.id] || {
+                  count: 0,
+                  agentNames: [],
+                },
+              };
+            })
+          );
         return res.status(200).json({
           dataSourceViews: enhancedDataSourceViews,
         });
       }
-
-      return res.status(200).json({
-        dataSourceViews: dataSourceViews.filter(
-          (d) => !category || d.category === category
-        ),
-      });
     }
 
     case "POST": {

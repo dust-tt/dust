@@ -31,7 +31,6 @@ export function getDisplayNameForDataSource(ds: DataSourceType) {
       case "microsoft":
       case "notion":
         return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
-        break;
       case "webcrawler":
         return ds.name;
       default:
@@ -53,7 +52,7 @@ export function isFolder(
 
 export function isWebsite(
   ds: DataSource
-): ds is DataSource & { connectorProvider: "webcrawler" } {
+): ds is DataSource & WithConnector & { connectorProvider: "webcrawler" } {
   return ds.connectorProvider === "webcrawler";
 }
 

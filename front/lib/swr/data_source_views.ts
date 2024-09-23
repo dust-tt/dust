@@ -5,13 +5,14 @@ import type {
 } from "@dust-tt/types";
 import type { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
-import type { Fetcher, KeyedMutator } from "swr";
+import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
 import {
   appendPaginationParams,
   fetcher,
   fetcherMultiple,
   postFetcher,
+  useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
@@ -109,6 +110,7 @@ export function useDataSourceViewContentNodes({
   pagination,
   viewType,
   disabled = false,
+  swrOptions,
 }: {
   owner: LightWorkspaceType;
   dataSourceView?: DataSourceViewType;
@@ -117,9 +119,11 @@ export function useDataSourceViewContentNodes({
   pagination?: PaginationState;
   viewType?: ContentNodesViewType;
   disabled?: boolean;
+  swrOptions?: SWRConfiguration;
 }): {
   isNodesError: boolean;
   isNodesLoading: boolean;
+  isNodesValidating: boolean;
   mutate: KeyedMutator<GetDataSourceViewContentNodes>;
   mutateRegardlessOfQueryParams: KeyedMutator<GetDataSourceViewContentNodes>;
   nodes: GetDataSourceViewContentNodes["nodes"];
@@ -132,20 +136,15 @@ export function useDataSourceViewContentNodes({
     ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
     : null;
 
-  const body = JSON.stringify({
+  const body = {
     internalIds,
     parentId,
     viewType,
-  });
+  };
 
-  const fetchKey = useMemo(() => {
-    return JSON.stringify({
-      url,
-      body,
-    }); // Serialize with body to ensure uniqueness.
-  }, [url, body]);
+  const fetchKey = JSON.stringify([url + "?" + params.toString(), body]);
 
-  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+  const { data, error, mutate, isValidating, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
       fetchKey,
       async () => {
@@ -156,6 +155,7 @@ export function useDataSourceViewContentNodes({
         return postFetcher([url, { internalIds, parentId, viewType }]);
       },
       {
+        ...swrOptions,
         disabled: disabled || !viewType,
       }
     );
@@ -163,10 +163,96 @@ export function useDataSourceViewContentNodes({
   return {
     isNodesError: !!error,
     isNodesLoading: !error && !data,
+    isNodesValidating: isValidating,
     mutate,
     mutateRegardlessOfQueryParams,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
     totalNodesCount: data ? data.total : 0,
+  };
+}
+
+export function useDataSourceViewContentNodesWithInfiniteScroll({
+  owner,
+  dataSourceView,
+  internalIds,
+  parentId,
+  pageSize = 500,
+  viewType,
+}: {
+  owner: LightWorkspaceType;
+  dataSourceView?: DataSourceViewType;
+  internalIds?: string[];
+  parentId?: string;
+  pageSize?: number;
+  viewType?: ContentNodesViewType;
+}): {
+  isNodesError: boolean;
+  isNodesLoading: boolean;
+  isNodesValidating: boolean;
+  nodes: GetDataSourceViewContentNodes["nodes"];
+  totalNodesCount: number;
+  hasMore: boolean;
+  nextPage: () => Promise<void>;
+} {
+  const url =
+    dataSourceView && viewType
+      ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
+      : null;
+
+  const body = {
+    internalIds,
+    parentId,
+    viewType,
+  };
+
+  const fetcher: Fetcher<GetDataSourceViewContentNodes, [string, object]> =
+    postFetcher;
+
+  const { data, error, setSize, size, isValidating } =
+    useSWRInfiniteWithDefaults(
+      (index) => {
+        if (!url) {
+          // No URL, return an empty array to skip the fetch
+          return null;
+        }
+
+        // Append the pagination params to the URL
+        const params = new URLSearchParams();
+        appendPaginationParams(params, {
+          pageIndex: index,
+          pageSize,
+        });
+
+        return JSON.stringify([url + "?" + params.toString(), body]);
+      },
+      async (fetchKey) => {
+        if (!fetchKey) {
+          return undefined;
+        }
+
+        // Get the URL and body from the fetchKey
+        const params = JSON.parse(fetchKey);
+
+        return fetcher(params);
+      },
+      {
+        revalidateFirstPage: false,
+      }
+    );
+
+  return {
+    isNodesError: !!error,
+    isNodesLoading: !error && !data,
+    isNodesValidating: isValidating,
+    nodes: useMemo(
+      () => (data ? data.flatMap((d) => (d ? d.nodes : [])) : []),
+      [data]
+    ),
+    totalNodesCount: data?.[0] ? data[0].total : 0,
+    hasMore: size * pageSize < (data?.[0] ? data[0].total : 0),
+    nextPage: async () => {
+      await setSize((size) => size + 1);
+    },
   };
 }
 
@@ -212,7 +298,7 @@ export function useDataSourceViewConnectorConfiguration({
   const { data, error } = useSWRWithDefaults(
     disabled
       ? null
-      : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.name}/configuration`,
+      : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
     dataSourceViewDocumentFetcher
   );
 
