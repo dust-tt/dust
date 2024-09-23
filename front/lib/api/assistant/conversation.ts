@@ -159,6 +159,10 @@ export async function updateConversation(
     throw new Error(`Conversation ${conversationId} not found`);
   }
 
+  if (!(await canAccessConversation(auth, conversation))) {
+    throw new Error("Conversation access denied");
+  }
+
   await conversation.update({
     title: title,
     visibility: visibility,
@@ -202,6 +206,10 @@ export async function deleteConversation(
 
   if (!conversation) {
     throw new Error(`Conversation ${conversationId} not found`);
+  }
+
+  if (!(await canAccessConversation(auth, conversation))) {
+    throw new Error("Conversation access denied");
   }
 
   if (destroy) {
@@ -420,7 +428,7 @@ export async function getConversationWithoutContent(
     return new Err(new ConversationNotFoundError());
   }
 
-  if (!canAccessConversation(auth, conversation)) {
+  if (!(await canAccessConversation(auth, conversation))) {
     return new Err(new ConversationPermissionError());
   }
 

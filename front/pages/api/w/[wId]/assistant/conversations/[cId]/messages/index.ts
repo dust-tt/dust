@@ -67,13 +67,7 @@ async function handler(
       );
 
       if (messagesRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "conversation_not_found",
-            message: "Conversation not found",
-          },
-        });
+        return apiErrorForConversation(req, res, messagesRes.error);
       }
 
       res.status(200).json(messagesRes.value);

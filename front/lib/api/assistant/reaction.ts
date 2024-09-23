@@ -5,12 +5,8 @@ import type {
   MessageReactionType,
   Result,
 } from "@dust-tt/types";
-import type {UserType} from "@dust-tt/types";
-import {
-  ConversationPermissionError,
-  Err,
-  Ok
-} from "@dust-tt/types";
+import type { UserType } from "@dust-tt/types";
+import { ConversationPermissionError, Err, Ok } from "@dust-tt/types";
 
 import { canAccessConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
@@ -31,7 +27,7 @@ export async function getMessageReactions(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  if (!canAccessConversation(auth, conversation)) {
+  if (!(await canAccessConversation(auth, conversation))) {
     return new Err(new ConversationPermissionError());
   }
 

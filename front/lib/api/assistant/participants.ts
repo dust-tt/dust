@@ -16,8 +16,7 @@ import { Op } from "sequelize";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
-import type {
-  Conversation} from "@app/lib/models/assistant/conversation";
+import type { Conversation } from "@app/lib/models/assistant/conversation";
 import {
   AgentMessage,
   Message,
