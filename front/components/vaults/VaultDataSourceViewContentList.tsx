@@ -373,7 +373,7 @@ export const VaultDataSourceViewContentList = ({
             />
           </>
         )}
-        {isEmpty && !emptyContent}
+        {isEmpty && emptyContent}
         {isFolder(dataSourceView.dataSource) && (
           <>
             {((viewType === "tables" && hasDocuments) ||
