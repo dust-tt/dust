@@ -100,7 +100,6 @@ export default function VaultWebsiteModal({
     );
   const [advancedSettingsOpened, setAdvancedSettingsOpened] = useState(false);
   const [headers, setHeaders] = useState<{ key: string; value: string }[]>([]);
-  console.log("--", dataSourceName);
   const isLoading = dataSourceView && !webCrawlerConfiguration;
   useEffect(() => {
     setIsSubmitted(false);
