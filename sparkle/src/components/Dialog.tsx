@@ -7,35 +7,40 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";
 
-export type ModalProps = {
-  alertDialog?: boolean;
+export type BaseDialogProps = {
   backgroundType?: "confetti" | "snow" | "none";
-  cancelLabel?: string;
   children: React.ReactNode;
   disabled?: boolean;
   isOpen: boolean;
   isSaving?: boolean;
-  onCancel: () => void;
   onValidate: () => void;
   title: string;
   validateLabel?: string;
   validateVariant?: "primary" | "primaryWarning";
 };
 
+export type DialogProps = BaseDialogProps & {
+  alertDialog?: false;
+  onCancel: () => void;
+  cancelLabel?: string;
+}
+
+export type AlertDialogProps = BaseDialogProps & {
+  alertDialog: true;
+}
+
 export function Dialog({
-  alertDialog = false,
   backgroundType = "none",
-  cancelLabel,
   children,
   disabled,
   isOpen,
   isSaving,
-  onCancel,
-  onValidate,
   title,
   validateLabel = "Ok",
   validateVariant = "primary",
-}: ModalProps) {
+  onValidate,
+  ...props
+}: AlertDialogProps | DialogProps) {
   const referentRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -44,8 +49,8 @@ export function Dialog({
         as="div"
         className="s-relative s-z-50"
         // If it's an alert dialog, we don't want to close it when clicking outside.
-        onClose={alertDialog ? () => {} : onCancel}
-        role={alertDialog ? "alertdialog" : "dialog"}
+        onClose={props.alertDialog ? () => {} : props.onCancel}
+        role={props.alertDialog ? "alertdialog" : "dialog"}
       >
         <Transition.Child
           as={Fragment}
@@ -86,11 +91,11 @@ export function Dialog({
                   <Button.List>
                     {!isSaving && (
                       <>
-                        {cancelLabel && (
+                        {!props.alertDialog && (
                           <Button
-                            label={cancelLabel}
+                            label={props.cancelLabel ?? "Cancel"}
                             variant="tertiary"
-                            onClick={onCancel}
+                            onClick={props.onCancel}
                           />
                         )}
                         <Button

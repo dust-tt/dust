@@ -81,11 +81,10 @@ export const DialogExample = () => {
       </div>
       <div>
         <Dialog
-          alertDialog
+          alertDialog={true}
           isOpen={isOpen5}
           title="Alert Dialog title"
           onValidate={() => setisOpen5(false)}
-          onCancel={() => setisOpen5(false)}
         >
           <div>I'm the modal content</div>
         </Dialog>
