@@ -18,7 +18,7 @@ export function usePokeDataSources({
 
   return {
     data: useMemo(() => (data ? data.data_sources : []), [data]),
-    isLoading: !error && !data,
+    isLoading: !error && !data && !disabled,
     isError: error,
     mutate,
   };
