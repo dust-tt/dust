@@ -516,35 +516,29 @@ export default function VaultWebsiteModal({
                       title="Refresh schedule"
                       description="How often would you like to check for updates?"
                     />
-                    <div>
-                      {(() => {
-                        return (
-                          <DropdownMenu>
-                            <DropdownMenu.Button
-                              label={
-                                frequencyDisplayText[selectedCrawlFrequency]
-                              }
-                            />
-                            <DropdownMenu.Items origin="topLeft">
-                              {CrawlingFrequencies.map((frequency) => {
-                                return (
-                                  <DropdownMenu.Item
-                                    selected={
-                                      selectedCrawlFrequency == frequency
-                                    }
-                                    key={frequency}
-                                    label={frequencyDisplayText[frequency]}
-                                    onClick={() => {
-                                      setSelectedCrawlFrequency(frequency);
-                                    }}
-                                  />
-                                );
-                              })}
-                            </DropdownMenu.Items>
-                          </DropdownMenu>
-                        );
-                      })()}
-                    </div>
+                    {(() => {
+                      return (
+                        <DropdownMenu>
+                          <DropdownMenu.Button
+                            label={frequencyDisplayText[selectedCrawlFrequency]}
+                          />
+                          <DropdownMenu.Items origin="topLeft">
+                            {CrawlingFrequencies.map((frequency) => {
+                              return (
+                                <DropdownMenu.Item
+                                  selected={selectedCrawlFrequency == frequency}
+                                  key={frequency}
+                                  label={frequencyDisplayText[frequency]}
+                                  onClick={() => {
+                                    setSelectedCrawlFrequency(frequency);
+                                  }}
+                                />
+                              );
+                            })}
+                          </DropdownMenu.Items>
+                        </DropdownMenu>
+                      );
+                    })()}
                   </Page.Layout>
                   <Page.Layout direction="vertical" sizing="grow">
                     <Page.SectionHeader
