@@ -33,6 +33,7 @@ import BrowserlessAPISetup from "@app/components/providers/BrowserlessAPISetup";
 import GoogleAiStudioSetup from "@app/components/providers/GoogleAiStudioSetup";
 import MistralAISetup from "@app/components/providers/MistralAISetup";
 import OpenAISetup from "@app/components/providers/OpenAISetup";
+import SearchApiSetup from "@app/components/providers/SearchApiSetup";
 import SerpAPISetup from "@app/components/providers/SerpAPISetup";
 import SerperSetup from "@app/components/providers/SerperSetup";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -440,6 +441,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
   const [anthropicOpen, setAnthropicOpen] = useState(false);
   const [mistalAIOpen, setMistralAiOpen] = useState(false);
   const [googleAiStudioOpen, setGoogleAiStudioOpen] = useState(false);
+  const [searchapiOpen, setSearchapiOpen] = useState(false);
   const [serpapiOpen, setSerpapiOpen] = useState(false);
   const [serperOpen, setSerperOpen] = useState(false);
   const [browserlessapiOpen, setBrowserlessapiOpen] = useState(false);
@@ -516,6 +518,13 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         setOpen={setGoogleAiStudioOpen}
         enabled={!!configs["google_ai_studio"]}
         config={configs["google_ai_studio"] ?? null}
+      />
+      <SearchApiSetup
+        owner={owner}
+        open={searchapiOpen}
+        setOpen={setSearchapiOpen}
+        enabled={!!configs["searchapi"]}
+        config={configs["searchapi"] ?? null}
       />
       <SerpAPISetup
         owner={owner}
@@ -660,6 +669,9 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                     }
                     onClick={() => {
                       switch (provider.providerId) {
+                        case "searchapi":
+                          setSearchapiOpen(true);
+                          break;
                         case "serpapi":
                           setSerpapiOpen(true);
                           break;

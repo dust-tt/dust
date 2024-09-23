@@ -146,6 +146,26 @@ async function handler(
           }
           return;
 
+        case "searchapi":
+          const testSearch = await fetch(
+            `https://www.searchapi.io/api/v1/search?engine=google&q=dust.tt`,
+            {
+              method: "GET",
+              headers: {
+                "Authorization": `Bearer ${config.api_key}`,
+                "Content-Type": "application/json",
+                "X-SearchApi-Source": "dust"
+              },
+            }
+          );
+          if (!testSearch.ok) {
+            const err = await testSearch.json();
+            res.status(400).json({ ok: false, error: err.error });
+          } else {
+            await testSearch.json();
+            res.status(200).json({ ok: true });
+          }
+          return;
         case "serpapi":
           const testSearch = await fetch(
             `https://serpapi.com/search?engine=google&q=Coffee&api_key=${config.api_key}`,

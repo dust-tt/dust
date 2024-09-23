@@ -50,7 +50,7 @@ export default function Search({
   });
   const serviceProviders = filterServiceProviders(providers);
   const searchProviders = serviceProviders?.filter?.(
-    (p) => p.providerId === "serpapi" || p.providerId === "serper"
+    (p) => p.providerId === "searchapi" || p.providerId === "serpapi" || p.providerId === "serper"
   );
 
   const currentProvider = searchProviders?.find?.(
