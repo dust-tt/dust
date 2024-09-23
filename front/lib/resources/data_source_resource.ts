@@ -19,7 +19,7 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -96,16 +96,16 @@ export type FetchDataSourceOptions = {
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface DataSourceResource
-  extends ReadonlyAttributesType<DataSource> {}
+  extends ReadonlyAttributesType<DataSourceModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class DataSourceResource extends ResourceWithVault<DataSource> {
-  static model: ModelStatic<DataSource> = DataSource;
+export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
+  static model: ModelStatic<DataSourceModel> = DataSourceModel;
 
   readonly editedByUser?: Attributes<User>;
 
   constructor(
-    model: ModelStatic<DataSource>,
-    blob: Attributes<DataSource>,
+    model: ModelStatic<DataSourceModel>,
+    blob: Attributes<DataSourceModel>,
     vault: VaultResource,
     { editedByUser }: { editedByUser?: Attributes<User> } = {}
   ) {
@@ -116,10 +116,10 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<DataSource>, "vaultId">,
+    blob: Omit<CreationAttributes<DataSourceModel>, "vaultId">,
     vault: VaultResource
   ) {
-    const dataSource = await DataSource.create({
+    const dataSource = await DataSourceModel.create({
       ...blob,
       editedByUserId: auth.getNonNullableUser().id,
       editedAt: new Date(),
@@ -133,8 +133,8 @@ export class DataSourceResource extends ResourceWithVault<DataSource> {
 
   private static getOptions(
     options?: FetchDataSourceOptions
-  ): ResourceFindOptions<DataSource> {
-    const result: ResourceFindOptions<DataSource> = {};
+  ): ResourceFindOptions<DataSourceModel> {
+    const result: ResourceFindOptions<DataSourceModel> = {};
 
     if (options?.includeEditedBy) {
       result.includes = [

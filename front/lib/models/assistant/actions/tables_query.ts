@@ -10,7 +10,7 @@ import { DataTypes, Model } from "sequelize";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export class AgentTablesQueryConfiguration extends Model<
@@ -95,13 +95,13 @@ export class AgentTablesQueryConfigurationTable extends Model<
 
   declare tableId: string;
 
-  declare dataSourceId: ForeignKey<DataSource["id"]> | null;
+  declare dataSourceId: ForeignKey<DataSourceModel["id"]> | null;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
   declare tablesQueryConfigurationId: ForeignKey<
     AgentTablesQueryConfiguration["id"]
   >;
 
-  declare dataSource: NonAttribute<DataSource>;
+  declare dataSource: NonAttribute<DataSourceModel>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
 
@@ -160,11 +160,11 @@ AgentTablesQueryConfigurationTable.belongsTo(AgentTablesQueryConfiguration, {
 });
 
 // Config <> Data source.
-DataSource.hasMany(AgentTablesQueryConfigurationTable, {
+DataSourceModel.hasMany(AgentTablesQueryConfigurationTable, {
   foreignKey: { allowNull: false, name: "dataSourceId" },
   onDelete: "RESTRICT",
 });
-AgentTablesQueryConfigurationTable.belongsTo(DataSource, {
+AgentTablesQueryConfigurationTable.belongsTo(DataSourceModel, {
   as: "dataSource",
   foreignKey: { allowNull: false, name: "dataSourceId" },
 });
