@@ -25,7 +25,7 @@ export type ModalProps = {
 export function Dialog({
   alertDialog = false,
   backgroundType = "none",
-  cancelLabel = "Cancel",
+  cancelLabel,
   children,
   disabled,
   isOpen,
@@ -86,11 +86,13 @@ export function Dialog({
                   <Button.List>
                     {!isSaving && (
                       <>
-                        <Button
-                          label={cancelLabel}
-                          variant="tertiary"
-                          onClick={onCancel}
-                        />
+                        {cancelLabel && (
+                          <Button
+                            label={cancelLabel}
+                            variant="tertiary"
+                            onClick={onCancel}
+                          />
+                        )}
                         <Button
                           disabled={disabled}
                           label={validateLabel}

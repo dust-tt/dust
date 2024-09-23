@@ -23,6 +23,7 @@ export const DialogExample = () => {
         <Dialog
           isOpen={isOpen1}
           title="Dialog title"
+          cancelLabel="Cancel"
           onValidate={() => setisOpen1(false)}
           onCancel={() => setisOpen1(false)}
         >
@@ -37,6 +38,7 @@ export const DialogExample = () => {
         <Dialog
           isOpen={isOpen2}
           title="Dialog title"
+          cancelLabel="Cancel"
           onValidate={() => setisOpen2(false)}
           onCancel={() => setisOpen2(false)}
           validateVariant="primaryWarning"
@@ -52,6 +54,7 @@ export const DialogExample = () => {
         <Dialog
           isOpen={isOpen3}
           title="Dialog title"
+          cancelLabel="Cancel"
           onValidate={() => setisOpen3(false)}
           onCancel={() => setisOpen3(false)}
           backgroundType="snow"
@@ -68,6 +71,7 @@ export const DialogExample = () => {
           disabled
           isOpen={isOpen4}
           title="Dialog title"
+          cancelLabel="Cancel"
           onValidate={() => setisOpen4(false)}
           onCancel={() => setisOpen4(false)}
         >
