@@ -94,7 +94,9 @@ impl Credential {
     ) -> Result<Self> {
         // Check format of content based on provider
         let keys_to_check = match provider {
-            CredentialProvider::Snowflake => vec!["warehouse", "user", "password", "role"],
+            CredentialProvider::Snowflake => {
+                vec!["account", "warehouse", "user", "password", "role"]
+            }
         };
 
         for key in keys_to_check {
