@@ -261,8 +261,6 @@ export class RetrievalDocument extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare dataSourceWorkspaceId: string;
-  declare dataSourceId: string;
   declare sourceUrl: string | null;
   declare documentId: string;
   declare reference: string;
@@ -294,14 +292,6 @@ RetrievalDocument.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-    dataSourceWorkspaceId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    dataSourceId: {
-      type: DataTypes.STRING,
-      allowNull: false,
     },
     sourceUrl: {
       type: DataTypes.TEXT,

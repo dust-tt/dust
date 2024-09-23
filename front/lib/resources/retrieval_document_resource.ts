@@ -163,7 +163,7 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
   }
 
   // Helpers.
-  getSourceUrl(): string | null {
+  getSourceUrl(auth: Authenticator): string | null {
     if (this.sourceUrl) {
       return this.sourceUrl;
     }
@@ -175,18 +175,18 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
     const dsv = this.dataSourceView.toJSON();
 
     return `${config.getClientFacingUrl()}/w/${
-      this.dataSourceWorkspaceId
+      auth.getNonNullableWorkspace().sId
     }/vaults/${dsv.vaultId}/categories/${
       dsv.category
     }/data_source_views/${dsv.sId}#?documentId=${encodeURIComponent(this.documentId)}`;
   }
 
   // Serialization.
-  toJSON(): RetrievalDocumentType {
+  toJSON(auth: Authenticator): RetrievalDocumentType {
     return {
       id: this.id,
       dataSourceView: this.dataSourceView?.toJSON() || null,
-      sourceUrl: this.getSourceUrl(),
+      sourceUrl: this.getSourceUrl(auth),
       documentId: this.documentId,
       reference: this.reference,
       timestamp: this.documentTimestamp.getTime(),
