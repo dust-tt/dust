@@ -5,10 +5,10 @@ import type {
   LightAgentConfigurationType,
   MessageWithRankType,
   ModelId,
-  Result,  UserMessageType} from "@dust-tt/types";
-import {
-  ConversationPermissionError
+  Result,
+  UserMessageType,
 } from "@dust-tt/types";
+import { ConversationPermissionError } from "@dust-tt/types";
 import { Err, isAgentMessageType, Ok, removeNulls } from "@dust-tt/types";
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";

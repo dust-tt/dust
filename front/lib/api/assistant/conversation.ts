@@ -32,6 +32,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  ConversationNotFoundError,
   ConversationPermissionError,
   getSmallWhitelistedModel,
   isProviderWhitelisted,
@@ -167,10 +168,6 @@ export async function updateConversation(
 
   if (cRes.isErr()) {
     throw cRes.error;
-  }
-
-  if (!cRes.value) {
-    throw new Error(`Conversation ${conversationId} not found`);
   }
 
   return cRes.value;
@@ -313,7 +310,7 @@ export async function getConversation(
   auth: Authenticator,
   conversationId: string,
   includeDeleted?: boolean
-): Promise<Result<ConversationType | null, ConversationPermissionError>> {
+): Promise<Result<ConversationType, ConversationPermissionError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -328,7 +325,7 @@ export async function getConversation(
   });
 
   if (!conversation) {
-    return new Ok(null);
+    return new Err(new ConversationNotFoundError());
   }
 
   const messages = await Message.findAll({

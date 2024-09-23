@@ -5,6 +5,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
@@ -97,16 +98,13 @@ async function handler(
 
       const { content, context, mentions } = bodyValidation.right;
 
-      const conversation = await getConversation(auth, conversationId);
-      if (!conversation) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "conversation_not_found",
-            message: "Conversation not found.",
-          },
-        });
+      const conversationRes = await getConversation(auth, conversationId);
+
+      if (conversationRes.isErr()) {
+        return apiErrorForConversation(req, res, conversationRes.error);
       }
+
+      const conversation = conversationRes.value;
 
       /* postUserMessageWithPubSub returns swiftly since it only waits for the
         initial message creation event (or error) */
