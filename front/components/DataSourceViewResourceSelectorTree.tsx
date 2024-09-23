@@ -1,10 +1,7 @@
 import {
   BracesIcon,
-  Button,
   ExternalLinkIcon,
   IconButton,
-  PlusIcon,
-  Spinner,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -15,13 +12,10 @@ import type {
 } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
-import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
-import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
+import { RequestOrAddDataFromDataSourceModal } from "@app/components/data_source/RequestOrAddDataFromDataSourceModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { useConnector } from "@app/lib/swr/connectors";
-import { useDataSourceViewContentNodesWithInfiniteScroll } from "@app/lib/swr/data_source_views";
+import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 
 interface DataSourceViewResourceSelectorTreeBaseProps {
@@ -33,9 +27,11 @@ interface DataSourceViewResourceSelectorTreeBaseProps {
   ) => void;
   owner: WorkspaceType;
   parentIsSelected?: boolean;
+  readonly?: boolean;
   selectedParents?: string[];
   selectedResourceIds: string[];
   showExpand: boolean;
+  useContentNodes: typeof useDataSourceViewContentNodes;
   viewType?: ContentNodesViewType;
 }
 
@@ -44,9 +40,11 @@ export default function DataSourceViewResourceSelectorTree({
   dataSourceView,
   showExpand, //if not, it's flat
   parentIsSelected,
+  readonly,
   selectedParents = [],
   selectedResourceIds,
   onSelectChange,
+  useContentNodes = useDataSourceViewContentNodes,
   viewType = "documents",
 }: DataSourceViewResourceSelectorTreeBaseProps) {
   return (
@@ -57,11 +55,13 @@ export default function DataSourceViewResourceSelectorTree({
         showExpand={showExpand}
         parents={[]}
         parentIsSelected={parentIsSelected}
+        readonly={readonly}
         selectedResourceIds={selectedResourceIds}
         selectedParents={selectedParents}
         onSelectChange={(resource, parents, selected) => {
           onSelectChange(resource, parents, selected);
         }}
+        useContentNodes={useContentNodes}
         viewType={viewType}
       />
     </div>
@@ -82,30 +82,18 @@ function DataSourceViewResourceSelectorChildren({
   parentId,
   parentIsSelected,
   parents,
+  readonly,
   selectedParents,
   selectedResourceIds,
   showExpand,
+  useContentNodes,
   viewType = "documents",
 }: DataSourceResourceSelectorChildrenProps) {
-  const {
-    nodes,
-    isNodesLoading,
-    isNodesError,
-    nextPage,
-    hasMore,
-    isNodesValidating,
-  } = useDataSourceViewContentNodesWithInfiniteScroll({
-    dataSourceView: dataSourceView,
+  const { nodes, isNodesLoading, isNodesError } = useContentNodes({
+    dataSourceView,
     owner,
     parentId,
     viewType,
-  });
-  const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
-    useState(false);
-
-  const { connector } = useConnector({
-    workspaceId: owner.sId,
-    dataSourceId: dataSourceView.dataSource.sId,
   });
 
   useEffect(() => {
@@ -151,7 +139,8 @@ function DataSourceViewResourceSelectorChildren({
 
           const checkable =
             (!isTablesView || r.type === "database") &&
-            r.preventSelection !== true;
+            r.preventSelection !== true &&
+            !readonly;
 
           let checkedStatus: "checked" | "partial" | "unchecked" = "unchecked";
           if (isSelected || parentIsSelected) {
@@ -188,8 +177,10 @@ function DataSourceViewResourceSelectorChildren({
                   selectedParents={selectedParents}
                   selectedResourceIds={selectedResourceIds}
                   onSelectChange={onSelectChange}
+                  readonly={readonly}
                   parents={[...parents, r.internalId]}
                   parentIsSelected={parentIsSelected || isSelected}
+                  useContentNodes={useContentNodes}
                   viewType={viewType}
                 />
               )}
@@ -228,49 +219,18 @@ function DataSourceViewResourceSelectorChildren({
             />
           );
         })}
-        {dataSourceView.category === "managed" && nodes.length === 0 && (
-          <div className="flex w-full flex-col items-center gap-2 rounded-lg border bg-structure-50 py-2">
-            <span className="text-element-700">The Vault is empty!</span>
-            {owner.role === "admin" && connector ? (
-              <>
-                <Button
-                  label="Add Data"
-                  icon={PlusIcon}
-                  onClick={() => {
-                    setShowConnectorPermissionsModal(true);
-                  }}
-                />
-                <ConnectorPermissionsModal
-                  owner={owner}
-                  connector={connector}
-                  dataSource={dataSourceView.dataSource}
-                  isOpen={showConnectorPermissionsModal}
-                  onClose={() => {
-                    setShowConnectorPermissionsModal(false);
-                  }}
-                  readOnly={false}
-                  isAdmin={owner.role === "admin"}
-                />
-              </>
-            ) : (
-              <RequestDataSourceModal
-                dataSources={[dataSourceView.dataSource]}
+        {dataSourceView.category === "managed" &&
+          nodes.length === 0 &&
+          !readonly && (
+            <div className="flex w-full flex-col items-center gap-2 rounded-lg border bg-structure-50 py-2">
+              <span className="text-element-700">The Vault is empty!</span>
+              <RequestOrAddDataFromDataSourceModal
                 owner={owner}
+                dataSource={dataSourceView.dataSource}
               />
-            )}
-          </div>
-        )}
+            </div>
+          )}
       </Tree>
-      <InfiniteScroll
-        nextPage={nextPage}
-        hasMore={hasMore}
-        isValidating={isNodesValidating}
-        isLoading={isNodesLoading}
-      >
-        <div className="pl-5 pt-1">
-          <Spinner size="xs" variant="dark" />
-        </div>
-      </InfiniteScroll>
     </>
   );
 }

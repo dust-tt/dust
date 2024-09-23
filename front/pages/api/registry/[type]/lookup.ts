@@ -100,11 +100,11 @@ async function handler(
               },
             });
           };
+
           const {
             data_source_id: dataSourceOrDataSourceViewId,
             workspace_id: workspaceId,
           } = req.query;
-
           if (
             typeof workspaceId !== "string" ||
             typeof dataSourceOrDataSourceViewId !== "string"

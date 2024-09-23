@@ -42,6 +42,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
   const plan = auth.getNonNullablePlan();
+  const isAdmin = auth.isAdmin();
 
   if (!subscription) {
     return {
@@ -54,18 +55,18 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     auth,
     context.query.vaultId as string
   );
-  if (!vault || !systemVault) {
+  if (!vault || !systemVault || !vault.canList(auth)) {
     return {
       notFound: true,
     };
   }
-  const isAdmin = auth.isAdmin();
+
   const isBuilder = auth.isBuilder();
   const canWriteInVault = vault.canWrite(auth);
 
   const integrations: DataSourceIntegration[] = [];
 
-  if (["system", "global"].includes(vault.kind)) {
+  if (vault.kind === "system") {
     let setupWithSuffix: {
       connector: ConnectorProvider;
       suffix: string;

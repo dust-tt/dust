@@ -33,6 +33,7 @@ import {
   isManaged,
   isWebsite,
 } from "@app/lib/data_sources";
+import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 
 const MIN_TOTAL_DATA_SOURCES_TO_GROUP = 12;
 const MIN_DATA_SOURCES_PER_KIND_TO_GROUP = 3;
@@ -219,17 +220,21 @@ export function DataSourceViewsSelector({
 
 interface DataSourceViewSelectorProps {
   owner: WorkspaceType;
+  readonly?: boolean;
   selectionConfiguration: DataSourceViewSelectionConfiguration;
   setSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
+  useContentNodes?: typeof useDataSourceViewContentNodes;
   viewType: ContentNodesViewType;
 }
 
-function DataSourceViewSelector({
+export function DataSourceViewSelector({
   owner,
+  readonly = false,
   selectionConfiguration,
   setSelectionConfigurations,
+  useContentNodes = useDataSourceViewContentNodes,
   viewType,
 }: DataSourceViewSelectorProps) {
   const dataSourceView = selectionConfiguration.dataSourceView;
@@ -375,7 +380,7 @@ function DataSourceViewSelector({
   const isTableView = viewType === "tables";
 
   // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
-  const hideCheckbox = isTableView && !isPartiallyChecked;
+  const hideCheckbox = readonly || (isTableView && !isPartiallyChecked);
 
   return (
     <Tree.Item
@@ -395,13 +400,15 @@ function DataSourceViewSelector({
       }
     >
       <DataSourceViewResourceSelectorTree
-        owner={owner}
         dataSourceView={dataSourceView}
-        showExpand={config?.isNested ?? true}
-        selectedResourceIds={internalIds}
-        selectedParents={selectedParents}
         onSelectChange={onSelectChange}
+        owner={owner}
         parentIsSelected={selectionConfiguration.isSelectAll}
+        readonly={readonly}
+        selectedParents={selectedParents}
+        selectedResourceIds={internalIds}
+        showExpand={config?.isNested ?? true}
+        useContentNodes={useContentNodes}
         viewType={viewType}
       />
     </Tree.Item>

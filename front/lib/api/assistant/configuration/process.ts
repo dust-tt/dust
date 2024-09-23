@@ -121,12 +121,11 @@ function getDataSource(
   const { dataSourceView } = dataSourceConfig;
 
   return {
+    workspaceId: dataSourceView.workspace.sId,
     dataSourceViewId: DataSourceViewResource.modelIdToSId({
       id: dataSourceView.id,
       workspaceId: dataSourceView.workspaceId,
     }),
-    dataSourceId: dataSourceView.dataSourceForView.name,
-    workspaceId: dataSourceView.workspace.sId,
     filter: {
       parents:
         dataSourceConfig.parentsIn && dataSourceConfig.parentsNotIn

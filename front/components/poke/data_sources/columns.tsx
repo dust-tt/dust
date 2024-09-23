@@ -1,28 +1,22 @@
 import { IconButton, TrashIcon } from "@dust-tt/sparkle";
-import type { AgentConfigurationType, WorkspaceType } from "@dust-tt/types";
-import {
-  isProcessConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-} from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
-import Link from "next/link";
 
+import PokeLink from "@app/components/poke/shadcn/ui/link";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
-export type DataSources = {
+interface DataSources {
   connectorProvider: string | null;
   id: number;
   sId: string;
   name: string;
   editedBy: string | undefined;
   editedAt: number | undefined;
-};
+}
 
 export function makeColumnsForDataSources(
   owner: WorkspaceType,
-  agentConfigurations: AgentConfigurationType[],
   reload: () => void
 ): ColumnDef<DataSources>[] {
   return [
@@ -32,12 +26,9 @@ export function makeColumnsForDataSources(
         const sId: string = row.getValue("sId");
 
         return (
-          <Link
-            className="font-bold hover:underline"
-            href={`/poke/${owner.sId}/data_sources/${sId}`}
-          >
+          <PokeLink href={`/poke/${owner.sId}/data_sources/${sId}`}>
             {sId}
-          </Link>
+          </PokeLink>
         );
       },
       header: ({ column }) => {
@@ -104,12 +95,7 @@ export function makeColumnsForDataSources(
             size="xs"
             variant="tertiary"
             onClick={async () => {
-              await deleteDataSource(
-                owner,
-                agentConfigurations,
-                dataSource.sId,
-                reload
-              );
+              await deleteDataSource(owner, dataSource.sId, reload);
             }}
           />
         );
@@ -120,27 +106,9 @@ export function makeColumnsForDataSources(
 
 async function deleteDataSource(
   owner: WorkspaceType,
-  agentConfigurations: AgentConfigurationType[],
   dataSourceId: string,
   reload: () => void
 ) {
-  const agents = agentConfigurations.filter((agt) =>
-    agt.actions.some(
-      (a) =>
-        ((isRetrievalConfiguration(a) || isProcessConfiguration(a)) &&
-          a.dataSources.some((ds) => ds.dataSourceId === dataSourceId)) ||
-        (isTablesQueryConfiguration(a) &&
-          a.tables.some((t) => t.dataSourceId === dataSourceId))
-    )
-  );
-
-  if (agents.length > 0) {
-    window.alert(
-      "Please archive agents using this data source first: " +
-        agents.map((a) => a.name).join(", ")
-    );
-    return;
-  }
   if (
     !window.confirm(
       `Are you sure you want to delete the ${dataSourceId} data source? There is no going back.`
@@ -164,11 +132,13 @@ async function deleteDataSource(
       }
     );
     if (!r.ok) {
-      throw new Error("Failed to delete data source.");
+      const text = await r.text();
+
+      throw new Error(`Failed to delete data source: ${text}`);
     }
     reload();
   } catch (e) {
     console.error(e);
-    window.alert("An error occurred while deleting the data source.");
+    window.alert(e);
   }
 }

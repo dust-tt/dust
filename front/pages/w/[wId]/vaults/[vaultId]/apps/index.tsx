@@ -45,6 +45,7 @@ import {
   serviceProviders,
 } from "@app/lib/providers";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import { useDustAppSecrets, useKeys, useProviders } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
@@ -59,7 +60,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const groups = auth.groups();
   const subscription = auth.subscription();
 
-  if (!owner || !subscription || !auth.isBuilder()) {
+  const vault = await VaultResource.fetchById(
+    auth,
+    context.query.vaultId as string
+  );
+
+  if (!owner || !subscription || !vault || !vault.canList(auth)) {
     return {
       notFound: true,
     };

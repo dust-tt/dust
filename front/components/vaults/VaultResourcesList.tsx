@@ -39,7 +39,6 @@ import * as React from "react";
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
-import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import type { DataSourceIntegration } from "@app/components/vaults/AddConnectionMenu";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
@@ -86,9 +85,11 @@ type VaultResourcesListProps = {
 
 const getTableColumns = ({
   isManaged,
+  isWebsite,
   isSystemVault,
 }: {
   isManaged: boolean;
+  isWebsite: boolean;
   isSystemVault: boolean;
 }) => {
   const nameColumn: ColumnDef<RowData, string> = {
@@ -178,7 +179,7 @@ const getTableColumns = ({
                   info.row.original.dataSourceView.dataSource.connector
                 }
                 workspaceId={info.row.original.workspaceId}
-                dataSourceId={info.row.original.dataSourceView.dataSource.sId}
+                dataSource={info.row.original.dataSourceView.dataSource}
               />
             )}
         </>
@@ -234,7 +235,7 @@ const getTableColumns = ({
       actionColumn,
     ];
   }
-  return isManaged
+  return isManaged || isWebsite
     ? [nameColumn, usedByColumn, managedByColumn, lastSyncedColumn]
     : [nameColumn, usedByColumn, managedByColumn];
 };
@@ -269,6 +270,7 @@ export const VaultResourcesList = ({
 
   const isSystemVault = systemVault.sId === vault.sId;
   const isManagedCategory = category === "managed";
+  const isWebsite = category === "website";
   const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
@@ -324,7 +326,7 @@ export const VaultResourcesList = ({
         const provider = dataSourceView.dataSource.connectorProvider;
 
         return {
-          dataSourceView: dataSourceView,
+          dataSourceView,
           label: getDataSourceNameFromView(dataSourceView),
           icon: getConnectorProviderLogoWithFallback(provider, FolderIcon),
           workspaceId: owner.sId,
@@ -372,8 +374,7 @@ export const VaultResourcesList = ({
       }
     }
   };
-  const connectionManagementVisible =
-    isSystemVault || !owner.flags.includes("private_data_vaults_feature");
+
   return (
     <>
       <div
@@ -395,64 +396,53 @@ export const VaultResourcesList = ({
             }}
           />
         )}
-        {connectionManagementVisible && category === "managed" && (
+        {isSystemVault && category === "managed" && (
           <div className="flex items-center justify-center text-sm font-normal text-element-700">
-            {isAdmin && (
-              <AddConnectionMenu
-                owner={owner}
-                plan={plan}
-                existingDataSources={
-                  vaultDataSourceViews
-                    .filter((dsView) => isManaged(dsView.dataSource))
-                    .map(
-                      (v) => v.dataSource
-                    ) as DataSourceWithConnectorDetailsType[]
-                  // We need to filter and then cast because useVaultDataSourceViewsWithDetails can return dataSources with connectorProvider as null
-                }
-                setIsProviderLoading={(provider, isLoading) => {
-                  setIsNewConnectorLoading(isLoading);
-                  setIsLoadingByProvider((prev) => ({
-                    ...prev,
-                    [provider]: isLoading,
-                  }));
-                }}
-                onCreated={async (dataSource) => {
-                  const updateDataSourceViews =
-                    await mutateVaultDataSourceViews();
-                  if (
-                    dataSource.connectorProvider &&
-                    REDIRECT_TO_EDIT_PERMISSIONS.includes(
-                      dataSource.connectorProvider
-                    )
-                  ) {
-                    if (updateDataSourceViews) {
-                      const view = updateDataSourceViews.dataSourceViews.find(
-                        (v: DataSourceViewType) =>
-                          v.dataSource.sId === dataSource.sId
-                      );
-                      if (view) {
-                        setSelectedDataSourceView(view);
-                        setShowConnectorPermissionsModal(true);
-                      }
+            <AddConnectionMenu
+              owner={owner}
+              plan={plan}
+              existingDataSources={
+                vaultDataSourceViews
+                  .filter((dsView) => isManaged(dsView.dataSource))
+                  .map(
+                    (v) => v.dataSource
+                  ) as DataSourceWithConnectorDetailsType[]
+                // We need to filter and then cast because useVaultDataSourceViewsWithDetails can return dataSources with connectorProvider as null
+              }
+              setIsProviderLoading={(provider, isLoading) => {
+                setIsNewConnectorLoading(isLoading);
+                setIsLoadingByProvider((prev) => ({
+                  ...prev,
+                  [provider]: isLoading,
+                }));
+              }}
+              onCreated={async (dataSource) => {
+                const updateDataSourceViews =
+                  await mutateVaultDataSourceViews();
+                if (
+                  dataSource.connectorProvider &&
+                  REDIRECT_TO_EDIT_PERMISSIONS.includes(
+                    dataSource.connectorProvider
+                  )
+                ) {
+                  if (updateDataSourceViews) {
+                    const view = updateDataSourceViews.dataSourceViews.find(
+                      (v: DataSourceViewType) =>
+                        v.dataSource.sId === dataSource.sId
+                    );
+                    if (view) {
+                      setSelectedDataSourceView(view);
+                      setShowConnectorPermissionsModal(true);
                     }
                   }
-                  setIsNewConnectorLoading(false);
-                }}
-                integrations={integrations}
-              />
-            )}
-
-            {!isAdmin && (
-              <RequestDataSourceModal
-                dataSources={vaultDataSourceViews.map(
-                  (view) => view.dataSource
-                )}
-                owner={owner}
-              />
-            )}
+                }
+                setIsNewConnectorLoading(false);
+              }}
+              integrations={integrations}
+            />
           </div>
         )}
-        {!connectionManagementVisible && isManagedCategory && (
+        {!isSystemVault && isManagedCategory && (
           <EditVaultManagedDataSourcesViews
             owner={owner}
             vault={vault}
@@ -494,6 +484,7 @@ export const VaultResourcesList = ({
           data={rows}
           columns={getTableColumns({
             isManaged: isManagedCategory,
+            isWebsite: isWebsite,
             isSystemVault,
           })}
           filter={dataSourceSearch}

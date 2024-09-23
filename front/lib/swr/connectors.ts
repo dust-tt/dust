@@ -74,15 +74,17 @@ export function useConnectorConfig({
 }
 
 export function useConnector({
+  dataSource,
+  disabled,
   workspaceId,
-  dataSourceId,
 }: {
+  dataSource: DataSourceType;
+  disabled?: boolean;
   workspaceId: string;
-  dataSourceId: string;
 }) {
   const configFetcher: Fetcher<GetConnectorResponseBody> = fetcher;
 
-  const url = `/api/w/${workspaceId}/data_sources/${dataSourceId}/connector`;
+  const url = `/api/w/${workspaceId}/data_sources/${dataSource.sId}/connector`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     refreshInterval: (connectorResBody) => {
@@ -105,6 +107,7 @@ export function useConnector({
 
       return 0;
     },
+    disabled: disabled || !dataSource.connectorId,
   });
 
   return {

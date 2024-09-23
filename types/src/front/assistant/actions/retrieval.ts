@@ -6,6 +6,7 @@ import { BaseAction } from "../../../front/lib/api/assistant/actions/index";
 import { ModelId } from "../../../shared/model_id";
 import { ioTsEnum } from "../../../shared/utils/iots_utils";
 import { ConnectorProvider } from "../../data_source";
+import { DataSourceViewType } from "../../data_source_view";
 
 export const TIME_FRAME_UNITS = [
   "hour",
@@ -34,7 +35,6 @@ export type DataSourceFilter = {
 
 export type DataSourceConfiguration = {
   workspaceId: string;
-  dataSourceId: string;
   dataSourceViewId: string;
   filter: DataSourceFilter;
 };
@@ -80,10 +80,8 @@ export interface RetrievalDocumentChunkType {
 
 export interface RetrievalDocumentType {
   chunks: RetrievalDocumentChunkType[];
-  dataSourceId: string;
-  // TODO(GROUPS_INFRA) Add support for dataSourceViewId.
-  dataSourceWorkspaceId: string;
   documentId: string;
+  dataSourceView: DataSourceViewType | null;
   id: ModelId;
   reference: string; // Short random string so that the model can refer to the document.
   score: number | null;
@@ -96,26 +94,15 @@ type ConnectorProviderDocumentType =
   | Exclude<ConnectorProvider, "webcrawler">
   | "document";
 
-const providerMap: Record<string, ConnectorProviderDocumentType> = {
-  "managed-slack": "slack",
-  "managed-notion": "notion",
-  "managed-google_drive": "google_drive",
-  "managed-github": "github",
-  "managed-confluence": "confluence",
-  "managed-microsoft": "microsoft",
-  "managed-intercom": "intercom",
-};
-
-const providerRegex = new RegExp(`^(${Object.keys(providerMap).join("|")})`);
-
 export function getProviderFromRetrievedDocument(
   document: RetrievalDocumentType
 ): ConnectorProviderDocumentType {
-  const match = document.dataSourceId.match(providerRegex);
-  if (match && match[1]) {
-    return providerMap[match[1]];
+  if (document.dataSourceView) {
+    if (document.dataSourceView.dataSource.connectorProvider === "webcrawler") {
+      return "document";
+    }
+    return document.dataSourceView.dataSource.connectorProvider || "document";
   }
-
   return "document";
 }
 
@@ -136,10 +123,6 @@ export function getTitleFromRetrievedDocument(
     if (t.startsWith("title:")) {
       return t.substring(6);
     }
-  }
-
-  if (provider === "document") {
-    return `[${document.dataSourceId}] ${document.documentId}`;
   }
 
   return document.documentId;

@@ -139,13 +139,13 @@ export default function TableUpsert({
 
   const redirectToDataSourcePage = () => {
     void router.push(
-      `/w/${owner.sId}/builder/data-sources/${dataSource.name}?tab=tables`
+      `/w/${owner.sId}/builder/data-sources/${dataSource.sId}?tab=tables`
     );
   };
 
   const handleDelete = async () => {
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.name}/tables/${tableId}`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/tables/${tableId}`,
       {
         method: "DELETE",
       }
@@ -159,7 +159,7 @@ export default function TableUpsert({
       });
       return;
     }
-    await mutate(`/api/w/${owner.sId}/data_sources/${dataSource.name}/tables`);
+    await mutate(`/api/w/${owner.sId}/data_sources/${dataSource.sId}/tables`);
     redirectToDataSourcePage();
   };
 
@@ -260,7 +260,7 @@ export default function TableUpsert({
       }
 
       const uploadRes = await fetch(
-        `/api/w/${owner.sId}/data_sources/${dataSource.name}/tables/csv`,
+        `/api/w/${owner.sId}/data_sources/${dataSource.sId}/tables/csv`,
         {
           method: "POST",
           body: JSON.stringify(body),
@@ -281,11 +281,11 @@ export default function TableUpsert({
 
       if (loadTableId) {
         await mutate(
-          `/api/w/${owner.sId}/data_sources/${dataSource.name}/tables/${loadTableId}`
+          `/api/w/${owner.sId}/data_sources/${dataSource.sId}/tables/${loadTableId}`
         );
       } else {
         await mutate(
-          `/api/w/${owner.sId}/data_sources/${dataSource.name}/tables`
+          `/api/w/${owner.sId}/data_sources/${dataSource.sId}/tables`
         );
       }
       redirectToDataSourcePage();

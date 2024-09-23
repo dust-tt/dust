@@ -1230,16 +1230,9 @@ async function _createAgentDataSourcesConfigData(
           "Can't create AgentDataSourceConfiguration for retrieval: DataSourceView not found."
         );
 
-        const { dataSource } = dataSourceView;
-
-        assert(
-          dataSourceView.dataSource.name === dsConfig.dataSourceId,
-          "Can't create AgentDataSourceConfiguration for retrieval: data source view does not belong to the data source."
-        );
-
         return AgentDataSourceConfiguration.create(
           {
-            dataSourceId: dataSource.id,
+            dataSourceId: dataSourceView.dataSource.id,
             parentsIn: dsConfig.filter.parents?.in,
             parentsNotIn: dsConfig.filter.parents?.not,
             retrievalConfigurationId: retrievalConfigurationId,

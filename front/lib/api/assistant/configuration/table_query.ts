@@ -147,11 +147,6 @@ export async function createTableDataSourceConfiguration(
 
       const { dataSource } = dataSourceView;
 
-      assert(
-        dataSourceView.dataSource.name === tc.dataSourceId,
-        "Can't create TableDataSourceConfiguration for query tables: data source view does not belong to the data source."
-      );
-
       await AgentTablesQueryConfigurationTable.create(
         {
           dataSourceId: dataSource.id,

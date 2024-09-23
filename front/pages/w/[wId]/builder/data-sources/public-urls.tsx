@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   DataTable,
   LinkIcon,
   Page,
@@ -17,7 +18,7 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { removeNulls, truncate } from "@dust-tt/types";
+import { truncate } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { SortingState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
@@ -26,6 +27,7 @@ import type { ComponentType } from "react";
 import { useMemo, useRef, useState } from "react";
 import * as React from "react";
 
+import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -39,12 +41,13 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
 
 type DataSourceWithConnector = DataSourceType & {
-  connector: ConnectorType;
+  connector: ConnectorType | null;
 };
 
-type RowData = DataSourceType & {
+type RowData = DataSourceWithConnector & {
   icon: ComponentType;
   usage: DataSourceWithAgentsUsageType;
+  workspaceId: string;
 };
 
 type Info = {
@@ -102,26 +105,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const dataSourcesWithConnector = websiteDataSources.map((ds) => {
     const connector = connectorsRes.value.find((c) => c.id === ds.connectorId);
-    if (!connector) {
-      logger.error(
-        {
-          panic: true, // This is a panic because we want to fix the data. This should never happen.
-          workspaceId: owner.sId,
-          connectorId: ds.connectorId,
-          dataSourceId: ds.sId,
-          connectorProvider: ds.connectorProvider,
-        },
-        "Connector not found while we still have a data source."
-      );
-      return null;
-    }
     return {
       ...ds,
-      connector,
+      connector: connector ?? null,
     };
   });
-
-  const dataSources = removeNulls(dataSourcesWithConnector);
 
   return {
     props: {
@@ -129,7 +117,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       plan,
       readOnly,
-      dataSources,
+      dataSources: dataSourcesWithConnector,
       dataSourcesUsage,
     },
   };
@@ -170,11 +158,12 @@ export default function DataSourcesView({
       ...dataSource,
       onClick: () => {
         void router.push(
-          `/w/${owner.sId}/builder/data-sources/${dataSource.name}`
+          `/w/${owner.sId}/builder/data-sources/${dataSource.sId}`
         );
       },
       icon: LinkIcon,
       usage: dataSourcesUsage[dataSource.id] || { count: 0, agentNames: [] },
+      workspaceId: owner.sId,
     }));
   }, [dataSources, dataSourcesUsage, owner.sId, router]);
 
@@ -311,19 +300,27 @@ function getTableColumns() {
       ),
     },
     {
-      header: "Last updated",
-      accessorKey: "editedByUser.editedAt",
-      id: "editedAt",
+      header: "Last sync",
+      id: "lastSync",
+      accessorFn: (row: RowData) => row.connector?.lastSyncSuccessfulTime ?? 0,
       meta: {
-        width: "10rem",
+        width: "14rem",
       },
       cell: (info: Info) => (
         <DataTable.CellContent>
-          {info.row.original.editedByUser?.editedAt
-            ? new Date(
-                info.row.original.editedByUser.editedAt
-              ).toLocaleDateString()
-            : null}
+          <>
+            {!info.row.original.connector ? (
+              <Chip color="warning">
+                Error loading the connector. Try again in a few minutes.
+              </Chip>
+            ) : (
+              <ConnectorSyncingChip
+                initialState={info.row.original.connector}
+                workspaceId={info.row.original.workspaceId}
+                dataSource={info.row.original}
+              />
+            )}
+          </>
         </DataTable.CellContent>
       ),
     },

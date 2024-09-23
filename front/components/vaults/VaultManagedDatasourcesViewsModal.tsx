@@ -11,25 +11,27 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { useMultipleDataSourceViewsContentNodes } from "@app/lib/swr/data_source_views";
 
-export default function VaultManagedDataSourcesViewsModal({
-  vault,
-  isOpen,
-  onClose,
-  owner,
-  systemVaultDataSourceViews,
-  onSave,
-  initialSelectedDataSources,
-}: {
-  vault: VaultType;
+interface VaultManagedDataSourcesViewsModalProps {
+  initialSelectedDataSources: DataSourceViewType[];
   isOpen: boolean;
   onClose: () => void;
-  owner: WorkspaceType;
-  systemVaultDataSourceViews: DataSourceViewType[];
   onSave: (
     selectionConfigurations: DataSourceViewSelectionConfigurations
   ) => void;
-  initialSelectedDataSources: DataSourceViewType[];
-}) {
+  owner: WorkspaceType;
+  systemVaultDataSourceViews: DataSourceViewType[];
+  vault: VaultType;
+}
+
+export default function VaultManagedDataSourcesViewsModal({
+  initialSelectedDataSources,
+  isOpen,
+  onClose,
+  onSave,
+  owner,
+  systemVaultDataSourceViews,
+  vault,
+}: VaultManagedDataSourcesViewsModalProps) {
   const dataSourceViewsAndInternalIds = useMemo(
     () =>
       initialSelectedDataSources.map((dsv) => ({

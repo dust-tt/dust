@@ -10,7 +10,6 @@ import {
   IconButton,
   Page,
   PlanetIcon,
-  Spinner,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -43,7 +42,6 @@ import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import { DataSourceViewPermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { updateAgentScope } from "@app/lib/client/dust_api";
@@ -56,7 +54,7 @@ import {
 } from "@app/lib/data_sources";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
 import {
-  useDataSourceViewContentNodesWithInfiniteScroll,
+  useDataSourceViewContentNodes,
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
@@ -301,16 +299,15 @@ export function AssistantDetails({
                   owner={owner}
                   dataSourceViews={dataSourceViews}
                   dataSourceConfigurations={action.tables.map((t) => {
-                    // We should never have an undefined dataSourceView here as
-                    // if it's undefined, it means the dataSourceView was deleted and the configuration is invalid
-                    // But we need to handle this case to avoid crashing the UI
+                    // We should never have an undefined dataSourceView here as if it's undefined,
+                    // it means the dataSourceView was deleted and the configuration is invalid But
+                    // we need to handle this case to avoid crashing the UI
                     const dataSourceView = dataSourceViews.find(
                       (dsv) => dsv.sId == t.dataSourceViewId
                     );
 
                     return {
                       workspaceId: t.workspaceId,
-                      dataSourceId: t.dataSourceId,
                       dataSourceViewId: t.dataSourceViewId,
                       filter: {
                         parents:
@@ -410,12 +407,14 @@ function DataSourceViewsSection({
             (dsv) => dsv.sId === dsConfig.dataSourceViewId
           );
 
-          let DsLogo = null;
-          let dataSourceName = dsConfig.dataSourceId;
+          // We won't throw here if dataSourceView is null to avoid crashing the UI but this is not
+          // supposed to happen as we delete the configurations when data sources are deleted.
+          let dsLogo = null;
+          let dataSourceName = "Deleted data source";
 
           if (dataSourceView) {
             const { dataSource } = dataSourceView;
-            DsLogo = getConnectorProviderLogoWithFallback(
+            dsLogo = getConnectorProviderLogoWithFallback(
               dataSource.connectorProvider,
               FolderIcon
             );
@@ -433,7 +432,7 @@ function DataSourceViewsSection({
                   : "leaf"
               }
               label={dataSourceName}
-              visual={DsLogo ?? FolderIcon}
+              visual={dsLogo ?? FolderIcon}
               className="whitespace-nowrap"
             >
               {dataSourceView && isAllSelected && (
@@ -483,13 +482,12 @@ function DataSourceViewSelectedNodes({
   setDataSourceViewToDisplay: (dsv: DataSourceViewType) => void;
   setDocumentToDisplay: (documentId: string) => void;
 }) {
-  const { nodes, isNodesLoading, nextPage, hasMore, isNodesValidating } =
-    useDataSourceViewContentNodesWithInfiniteScroll({
-      owner,
-      dataSourceView,
-      internalIds: dataSourceConfiguration.filter.parents?.in ?? undefined,
-      viewType,
-    });
+  const { nodes } = useDataSourceViewContentNodes({
+    owner,
+    dataSourceView,
+    internalIds: dataSourceConfiguration.filter.parents?.in ?? undefined,
+    viewType,
+  });
 
   return (
     <>
@@ -548,16 +546,6 @@ function DataSourceViewSelectedNodes({
           />
         </Tree.Item>
       ))}
-      <InfiniteScroll
-        nextPage={nextPage}
-        hasMore={hasMore}
-        isValidating={isNodesValidating}
-        isLoading={isNodesLoading}
-      >
-        <div className="pl-5 pt-1">
-          <Spinner size="xs" variant="dark" />
-        </div>
-      </InfiniteScroll>
     </>
   );
 }

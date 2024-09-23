@@ -1,6 +1,5 @@
 import { Button, DropdownMenu, Modal, Spinner } from "@dust-tt/sparkle";
 import type {
-  AgentConfigurationType,
   DataSourceType,
   WhitelistableFeature,
   WorkspaceDomain,
@@ -17,22 +16,19 @@ import { useRouter } from "next/router";
 import React, { useContext } from "react";
 
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
+import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { getDataSources } from "@app/lib/api/data_sources";
 import {
   getWorkspaceCreationDate,
   getWorkspaceVerifiedDomain,
 } from "@app/lib/api/workspace";
-import {
-  GLOBAL_AGENTS_SID,
-  orderDatasourceByImportance,
-} from "@app/lib/assistant";
+import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { Plan, Subscription } from "@app/lib/models/plan";
@@ -45,7 +41,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   activeSubscription: SubscriptionType;
   subscriptions: SubscriptionType[];
   dataSources: DataSourceType[];
-  agentConfigurations: AgentConfigurationType[];
   whitelistableFeatures: WhitelistableFeature[];
   registry: typeof DustProdActionRegistry;
   workspaceVerifiedDomain: WorkspaceDomain | null;
@@ -60,28 +55,12 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  // TODO(2024-02-28 flav) Stop fetching agent configurations on the server side.
-  const [dataSources, agentConfigurations, subscriptionModels] =
-    await Promise.all([
-      getDataSources(auth, { includeEditedBy: true }),
-      (async () => {
-        return (
-          await getAgentConfigurations({
-            auth,
-            agentsGetView: "admin_internal",
-            variant: "full",
-          })
-        ).filter(
-          (a) =>
-            !Object.values(GLOBAL_AGENTS_SID).includes(
-              a.sId as GLOBAL_AGENTS_SID
-            )
-        );
-      })(),
-      Subscription.findAll({
-        where: { workspaceId: owner.id },
-      }),
-    ]);
+  const [dataSources, subscriptionModels] = await Promise.all([
+    getDataSources(auth, { includeEditedBy: true }),
+    Subscription.findAll({
+      where: { workspaceId: owner.id },
+    }),
+  ]);
 
   const plans = keyBy(
     await Plan.findAll({
@@ -110,7 +89,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       dataSources: orderDatasourceByImportance(
         dataSources.map((ds) => ds.toJSON())
       ),
-      agentConfigurations: agentConfigurations,
       whitelistableFeatures:
         WHITELISTABLE_FEATURES as unknown as WhitelistableFeature[],
       registry: DustProdActionRegistry,
@@ -125,7 +103,6 @@ const WorkspacePage = ({
   activeSubscription,
   subscriptions,
   dataSources,
-  agentConfigurations,
   whitelistableFeatures,
   registry,
   workspaceVerifiedDomain,
@@ -260,15 +237,9 @@ const WorkspacePage = ({
                   />
                 </div>
               </div>
-              <DataSourceDataTable
-                owner={owner}
-                dataSources={dataSources}
-                agentConfigurations={agentConfigurations}
-              />
-              <AssistantsDataTable
-                owner={owner}
-                agentConfigurations={agentConfigurations}
-              />
+              <DataSourceDataTable owner={owner} dataSources={dataSources} />
+              <DataSourceViewsDataTable owner={owner} />
+              <AssistantsDataTable owner={owner} />
               <FeatureFlagsDataTable
                 owner={owner}
                 whitelistableFeatures={whitelistableFeatures}

@@ -15,10 +15,10 @@ type GetTableRowsResponseBody = {
 
 /**
  * @swagger
- * /api/v1/w/{wId}/data_sources/{name}/tables/{tId}/rows/{rId}:
+ * /api/v1/w/{wId}/data_sources/{dsId}/tables/{tId}/rows/{rId}:
  *   get:
  *     summary: Get a row
- *     description: Get a row in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.
+ *     description: Get a row in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
  *     security:
@@ -61,7 +61,7 @@ type GetTableRowsResponseBody = {
  *         description: Method not supported
  *   delete:
  *     summary: Delete a row
- *     description: Delete a row in the table identified by {tId} in the data source identified by {name} in the workspace identified by {wId}.
+ *     description: Delete a row in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.
  *     tags:
  *       - Datasources
  *     security:

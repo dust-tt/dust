@@ -1,6 +1,10 @@
+import { ClipboardCheckIcon, ClipboardIcon } from "lucide-react";
 import * as React from "react";
 
 import { cn } from "@app/components/poke/shadcn/lib/utils";
+import { PokeButton } from "@app/components/poke/shadcn/ui/button";
+import { PokeLabel } from "@app/components/poke/shadcn/ui/label";
+import PokeLink from "@app/components/poke/shadcn/ui/link";
 
 const Table = React.forwardRef<
   HTMLTableElement,
@@ -108,11 +112,77 @@ const TableCaption = React.forwardRef<
 ));
 TableCaption.displayName = "TableCaption";
 
+const TableCellWithCopy = React.forwardRef<
+  HTMLTableCellElement,
+  React.TdHTMLAttributes<HTMLTableCellElement> & {
+    label: string;
+    textToCopy?: string;
+  }
+>(({ className, label, textToCopy, ...props }, ref) => {
+  const [isCopied, setIsCopied] = React.useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(textToCopy ?? label);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  return (
+    <TableCell
+      ref={ref}
+      className={cn(
+        "p-2 align-middle [&:has([role=checkbox])]:pr-0",
+        className
+      )}
+      {...props}
+    >
+      <div className="flex items-center space-x-2">
+        <PokeLabel>{label}</PokeLabel>
+        <PokeButton size="sm" variant="outline" onClick={handleCopy}>
+          {isCopied ? (
+            <ClipboardCheckIcon className="h-4 w-4" />
+          ) : (
+            <ClipboardIcon className="h-4 w-4" />
+          )}
+        </PokeButton>
+      </div>
+    </TableCell>
+  );
+});
+TableCellWithCopy.displayName = "TableCellWithCopy";
+
+interface TableCellWithLinkProps
+  extends React.TdHTMLAttributes<HTMLTableCellElement> {
+  href: string;
+  content: string;
+  external?: boolean;
+}
+
+const TableCellWithLink = React.forwardRef<
+  HTMLTableCellElement,
+  TableCellWithLinkProps
+>(({ className, href, content, external = false, ...props }, ref) => {
+  return (
+    <TableCell
+      ref={ref}
+      className={cn("p-2 align-middle", className)}
+      {...props}
+    >
+      <PokeLink href={href} external={external}>
+        {content}
+      </PokeLink>
+    </TableCell>
+  );
+});
+TableCellWithLink.displayName = "TableCellWithLink";
+
 export {
   Table as PokeTable,
   TableBody as PokeTableBody,
   TableCaption as PokeTableCaption,
   TableCell as PokeTableCell,
+  TableCellWithCopy as PokeTableCellWithCopy,
+  TableCellWithLink as PokeTableCellWithLink,
   TableFooter as PokeTableFooter,
   TableHead as PokeTableHead,
   TableHeader as PokeTableHeader,

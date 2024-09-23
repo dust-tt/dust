@@ -101,7 +101,7 @@ async function updateConnectorConnectionId(
   owner: LightWorkspaceType
 ) {
   const res = await fetch(
-    `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/update`,
+    `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/update`,
     {
       method: "POST",
       headers: {
@@ -321,25 +321,27 @@ function DataSourceEditionModal({
   );
 }
 
-export function ConnectorPermissionsModal({
-  owner,
-  connector,
-  dataSource,
-  isOpen,
-  onClose,
-  readOnly,
-  isAdmin,
-  onManageButtonClick,
-}: {
-  owner: WorkspaceType;
+interface ConnectorPermissionsModalProps {
   connector: ConnectorType;
   dataSource: DataSourceType;
+  isAdmin: boolean;
   isOpen: boolean;
   onClose: (save: boolean) => void;
-  readOnly: boolean;
-  isAdmin: boolean;
   onManageButtonClick?: () => void;
-}) {
+  owner: WorkspaceType;
+  readOnly: boolean;
+}
+
+export function ConnectorPermissionsModal({
+  connector,
+  dataSource,
+  isAdmin,
+  isOpen,
+  onClose,
+  onManageButtonClick,
+  owner,
+  readOnly,
+}: ConnectorPermissionsModalProps) {
   const { mutate } = useSWRConfig();
 
   const [updatedPermissionByInternalId, setUpdatedPermissionByInternalId] =
@@ -349,6 +351,7 @@ export function ConnectorPermissionsModal({
   >(null);
   const { activeSubscription } = useWorkspaceActiveSubscription({
     workspaceId: owner.sId,
+    disabled: !isAdmin,
   });
   const plan = activeSubscription ? activeSubscription.plan : null;
 
@@ -373,7 +376,7 @@ export function ConnectorPermissionsModal({
     try {
       if (Object.keys(updatedPermissionByInternalId).length) {
         const r = await fetch(
-          `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions`,
+          `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`,
           {
             method: "POST",
             headers: {
@@ -398,7 +401,7 @@ export function ConnectorPermissionsModal({
           (key) =>
             typeof key === "string" &&
             key.startsWith(
-              `/api/w/${owner.sId}/data_sources/${dataSource.name}/managed/permissions`
+              `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`
             )
         );
 

@@ -243,6 +243,18 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     });
   }
 
+  static async listForDataSources(
+    auth: Authenticator,
+    dataSources: DataSourceResource[],
+    fetchDataSourceViewOptions?: FetchDataSourceViewOptions
+  ) {
+    return this.baseFetch(auth, fetchDataSourceViewOptions, {
+      where: {
+        dataSourceId: dataSources.map((ds) => ds.id),
+      },
+    });
+  }
+
   static async fetchById(
     auth: Authenticator,
     id: string,
