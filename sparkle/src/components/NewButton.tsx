@@ -25,9 +25,9 @@ const buttonVariants = cva(
           "hover:s-bg-primary-100 active:s-bg-primary-200 disabled:s-text-primary-400",
       },
       size: {
-        xs: "s-h-7 s-px-2.5 s-rounded s-text-xs s-gap-1",
-        sm: "s-h-9 s-px-3 s-rounded-md s-text-sm s-gap-1.5",
-        md: "s-h-12 s-px-4 s-py-2 s-rounded-lg s-text-base s-gap-2",
+        xs: "s-h-7 s-px-2.5 s-rounded s-text-xs s-gap-1.5",
+        sm: "s-h-9 s-px-3 s-rounded-md s-text-sm s-gap-2",
+        md: "s-h-12 s-px-4 s-py-2 s-rounded-lg s-text-base s-gap-2.5",
         icon: "s-h-10 s-w-10",
       },
     },
@@ -82,16 +82,22 @@ export const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
     }
     const content = isLoading ? (
       <>
-        <Spinner
-          size={props.size as "xs" | "sm" | "md"}
-          variant={spinnerVariant}
-        />
+        <div className="-s-mx-0.5">
+          <Spinner
+            size={props.size as "xs" | "sm" | "md"}
+            variant={spinnerVariant}
+          />
+        </div>
         {label}
       </>
     ) : (
       <>
         {hasIcon && (
-          <Icon visual={icon} size={props.size as "xs" | "sm" | "md"} />
+          <Icon
+            visual={icon}
+            size={props.size as "xs" | "sm" | "md"}
+            className="-s-mx-0.5"
+          />
         )}
         {label}
       </>
@@ -120,53 +126,23 @@ export interface MetaButtonProps
   hasVisual?: boolean;
 }
 
-const isIcon = (child: React.ReactNode): boolean => {
-  return React.isValidElement(child) && child.type === Icon;
-};
-
 const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
   (
-    {
-      className,
-      variant,
-      size = "sm",
-      asChild = false,
-      hasVisual = false,
-      children,
-      ...props
-    },
+    { className, variant, size = "sm", asChild = false, children, ...props },
     ref
   ) => {
     const Comp = asChild ? Slot : "button";
-
-    const paddingClasses: Record<"xs" | "sm" | "md", string> = {
-      xs: hasVisual ? "s-pl-1.5" : "s-pl-2.5",
-      sm: hasVisual ? "s-pl-2" : "s-pl-3",
-      md: hasVisual ? "s-pl-3" : "s-pl-4",
-    };
-
-    const paddingClass = paddingClasses[size as "xs" | "sm" | "md"];
-
-    // Clone children with icon size if the Icon accepts a size prop
-    const modifiedChildren = React.Children.map(children, (child) =>
-      React.isValidElement(child) && isIcon(child)
-        ? React.cloneElement(child, { size } as React.ComponentProps<
-            typeof Icon
-          >)
-        : child
-    );
 
     return (
       <Comp
         className={classNames(
           buttonVariants({ variant, size }),
-          paddingClass,
           className || ""
         )}
         ref={ref}
         {...props}
       >
-        {modifiedChildren}
+        {children}
       </Comp>
     );
   }

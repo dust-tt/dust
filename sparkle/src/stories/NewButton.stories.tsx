@@ -12,6 +12,31 @@ export default meta;
 
 export const ButtonExamples = () => (
   <div className="s-flex s-flex-col s-gap-4">
+    IconButton
+    <div className="s-flex s-items-center s-gap-4">
+      <NewButton size="xs" icon={PlusIcon} />
+      <NewButton size="xs" variant="highlight" icon={PlusIcon} />
+      <NewButton size="xs" variant="secondary" icon={PlusIcon} />
+      <NewButton size="xs" variant="warning" icon={PlusIcon} />
+      <NewButton size="xs" variant="outline" icon={PlusIcon} />
+      <NewButton size="xs" variant="ghost" icon={PlusIcon} />
+    </div>
+    <div className="s-flex s-items-center s-gap-4">
+      <NewButton size="sm" icon={PlusIcon} />
+      <NewButton size="sm" variant="highlight" icon={PlusIcon} />
+      <NewButton size="sm" variant="secondary" icon={PlusIcon} />
+      <NewButton size="sm" variant="warning" icon={PlusIcon} />
+      <NewButton size="sm" variant="outline" icon={PlusIcon} />
+      <NewButton size="sm" variant="ghost" icon={PlusIcon} />
+    </div>
+    <div className="s-flex s-items-center s-gap-4">
+      <NewButton size="md" icon={PlusIcon} />
+      <NewButton size="md" variant="highlight" icon={PlusIcon} />
+      <NewButton size="md" variant="secondary" icon={PlusIcon} />
+      <NewButton size="md" variant="warning" icon={PlusIcon} />
+      <NewButton size="md" variant="outline" icon={PlusIcon} />
+      <NewButton size="md" variant="ghost" icon={PlusIcon} />
+    </div>
     XS
     <div className="s-flex s-items-center s-gap-4">
       <NewButton size="xs" label="Button" />
