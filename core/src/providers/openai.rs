@@ -9,7 +9,8 @@ use crate::providers::llm::{
 };
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{
-    batch_tokenize_async, cl100k_base_singleton, p50k_base_singleton, r50k_base_singleton, CoreBPE,
+    batch_tokenize_async, cl100k_base_singleton, o200k_base_singleton, p50k_base_singleton,
+    r50k_base_singleton, CoreBPE,
 };
 use crate::providers::tiktoken::tiktoken::{decode_async, encode_async};
 use crate::run::Credentials;
@@ -1668,10 +1669,15 @@ impl OpenAILLM {
         match self.id.as_str() {
             "code_davinci-002" | "code-cushman-001" => p50k_base_singleton(),
             "text-davinci-002" | "text-davinci-003" => p50k_base_singleton(),
-            _ => match self.id.starts_with("gpt-3.5-turbo") || self.id.starts_with("gpt-4") {
-                true => cl100k_base_singleton(),
-                false => r50k_base_singleton(),
-            },
+            _ => {
+                if self.id.starts_with("gpt-4o-") {
+                    o200k_base_singleton()
+                } else if self.id.starts_with("gpt-3.5-turbo") || self.id.starts_with("gpt-4") {
+                    cl100k_base_singleton()
+                } else {
+                    r50k_base_singleton()
+                }
+            }
         }
     }
 
