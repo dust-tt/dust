@@ -1,16 +1,15 @@
 import type {
   AgentActionType,
-  MessageWithRankType,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-import type {
   AgentMessageType,
   ContentFragmentType,
   LightAgentConfigurationType,
-  UserMessageType,
+  MessageWithRankType,
+  ModelId,
+  Result,  UserMessageType} from "@dust-tt/types";
+import {
+  ConversationPermissionError
 } from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
+import { Err, isAgentMessageType, Ok, removeNulls } from "@dust-tt/types";
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
@@ -24,7 +23,7 @@ import {
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
@@ -112,7 +111,6 @@ async function batchRenderAgentMessages(
     agentMessages.map((m) => m.agentMessageId || null)
   );
 
-  // TODO(pr) refactor to loop on all actions rather than manually add new actions here
   const [
     agentConfigurations,
     agentRetrievalActions,
@@ -397,6 +395,7 @@ export async function fetchConversationMessages(
       visibility: { [Op.ne]: "deleted" },
     },
   });
+
   if (!conversation) {
     return new Err(new Error("Conversation not found."));
   }
@@ -406,15 +405,35 @@ export async function fetchConversationMessages(
     paginationParams
   );
 
-  const renderedMessages = await batchRenderMessages(
+  const renderedMessagesRes = await batchRenderMessages(
     auth,
     conversationId,
     messages
   );
+
+  if (renderedMessagesRes.isErr()) {
+    return renderedMessagesRes;
+  }
+
+  const renderedMessages = renderedMessagesRes.value;
+
+  if (
+    renderedMessages.some(
+      (m) => isAgentMessageType(m) && !canReadMessage(auth, m)
+    )
+  ) {
+    return new Err(new ConversationPermissionError());
+  }
 
   return new Ok({
     hasMore,
     lastValue: renderedMessages.at(0)?.rank ?? null,
     messages: renderedMessages,
   });
+}
+
+export function canReadMessage(auth: Authenticator, message: AgentMessageType) {
+  return auth.canRead(
+    Authenticator.aclsFromGroupIds(message.configuration.groupIds)
+  );
 }

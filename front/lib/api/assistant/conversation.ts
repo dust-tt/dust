@@ -44,7 +44,6 @@ import {
   isUserMessageType,
   Ok,
   rateLimiter,
-  removeNulls,
 } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -55,7 +54,11 @@ import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
-import { batchRenderMessages } from "@app/lib/api/assistant/messages";
+import {
+  batchRenderMessages,
+  canReadMessage,
+} from "@app/lib/api/assistant/messages";
+import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
@@ -697,19 +700,32 @@ export async function* postUserMessage(
   }
 
   const results = await Promise.all([
-    removeNulls(
-      await Promise.all(
-        mentions.filter(isAgentMention).map((mention) => {
-          return getLightAgentConfiguration(auth, mention.configurationId);
-        })
-      )
+    await Promise.all(
+      mentions.filter(isAgentMention).map((mention) => {
+        return getLightAgentConfiguration(auth, mention.configurationId);
+      })
     ),
     await createOrUpdateParticipation({
       user,
       conversation,
     }),
   ]);
-  const agentConfigurations = results[0];
+
+  // casting non-null is ok here because we check right below that there's no
+  // nulls and err if there is
+  const agentConfigurations = results[0] as LightAgentConfigurationType[];
+
+  if (agentConfigurations.some((a) => a === null)) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "missing_agent_configuration",
+        message: "One or more agent configurations were not found.",
+      },
+    };
+    return;
+  }
 
   for (const agentConfig of agentConfigurations) {
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
@@ -885,6 +901,7 @@ export async function* postUserMessage(
   if (agentMessageRows.length !== agentMessages.length) {
     throw new Error("Unreachable: agentMessageRows and agentMessages mismatch");
   }
+
   if (agentMessages.length > 0) {
     for (const agentMessage of agentMessages) {
       void signalAgentUsage({
@@ -1123,20 +1140,29 @@ export async function* editUserMessage(
   let agentMessageRows: AgentMessage[] = [];
 
   const results = await Promise.all([
-    removeNulls(
-      await Promise.all(
-        mentions.filter(isAgentMention).map((mention) => {
-          return getLightAgentConfiguration(auth, mention.configurationId);
-        })
-      )
+    await Promise.all(
+      mentions.filter(isAgentMention).map((mention) => {
+        return getLightAgentConfiguration(auth, mention.configurationId);
+      })
     ),
-    await createOrUpdateParticipation({
-      user,
-      conversation,
-    }),
+    await createOrUpdateParticipation(),
   ]);
 
-  const agentConfigurations = results[0];
+  // casting non-null is ok here because we check right below that there's no
+  // nulls and err if there is
+  const agentConfigurations = results[0] as LightAgentConfigurationType[];
+
+  if (agentConfigurations.some((a) => a === null)) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "missing_agent_configuration",
+        message: "One or more agent configurations were not found.",
+      },
+    };
+    return;
+  }
 
   for (const agentConfig of agentConfigurations) {
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
@@ -1472,6 +1498,11 @@ export async function* retryAgentMessage(
   void
 > {
   class AgentMessageError extends Error {}
+
+  if (!canReadMessage(auth, message)) {
+    throw new AgentMessageError("Agent cannot be used by this user");
+  }
+
   let agentMessageResult: {
     agentMessage: AgentMessageWithRankType;
     agentMessageRow: AgentMessage;
@@ -1558,6 +1589,7 @@ export async function* retryAgentMessage(
         configuration: message.configuration,
         rank: m.rank,
       };
+
       return {
         agentMessage,
         agentMessageRow,
@@ -1743,6 +1775,20 @@ async function* streamRunAgentEvents(
   | AgentMessageSuccessEvent,
   void
 > {
+  if (!canReadMessage(auth, agentMessage)) {
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentMessage.configuration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "agent_not_allowed",
+        message: "Agent cannot be used by this user",
+      },
+    };
+    return;
+  }
+
   for await (const event of eventStream) {
     switch (event.type) {
       case "agent_error":
@@ -1968,4 +2014,15 @@ function getConversationGroupIdsFromModel(
       workspaceId: owner.id,
     })
   );
+}
+
+export async function canAccessConversation(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<boolean> {
+  const res = await fetchConversationParticipants(auth, conversation);
+  if (res.isErr() && res.error instanceof ConversationPermissionError) {
+    return false;
+  }
+  return true;
 }
