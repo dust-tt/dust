@@ -10,6 +10,10 @@ BEGIN
     END IF;
 
 -- Migration created on Sep 23, 2024
+UPDATE "data_sources"
+SET "editedAt" = "updatedAt"
+WHERE "editedAt" IS NULL;
+
 ALTER TABLE "data_sources"
 ALTER COLUMN "editedAt"
 SET
@@ -23,6 +27,7 @@ ALTER TABLE "data_sources"
 ALTER COLUMN "editedByUserId"
 SET
   NOT NULL;
+
     RETURN 'success';
 END;
 $$ LANGUAGE plpgsql;

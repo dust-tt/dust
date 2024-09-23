@@ -24,7 +24,7 @@ export class DataSourceViewModel extends Model<
 
   // Corresponds to the ID of the last user to configure the connection.
   declare editedByUserId: ForeignKey<User["id"]>;
-  declare editedAt: CreationOptional<Date>;
+  declare editedAt: Date;
 
   declare kind: DataSourceViewKind;
   declare parentsIn: string[] | null;
@@ -52,9 +52,7 @@ DataSourceViewModel.init(
     },
     editedAt: {
       type: DataTypes.DATE,
-      // TODO(2024-08-28 (thomas) Set `allowNull` to `false` once backfilled.
-      allowNull: true,
-      defaultValue: DataTypes.NOW,
+      allowNull: false,
     },
     kind: {
       type: DataTypes.STRING,
@@ -105,6 +103,5 @@ DataSourceViewModel.belongsTo(DataSourceModel, {
 
 DataSourceViewModel.belongsTo(User, {
   as: "editedByUser",
-  // TODO(2024-08-28 (thomas) Set `allowNull` to `false` once backfilled.
-  foreignKey: { name: "editedByUserId", allowNull: true },
+  foreignKey: { name: "editedByUserId", allowNull: false },
 });
