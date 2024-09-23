@@ -83,7 +83,6 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
-import { message } from "danger";
 
 /**
  * Conversation Creation, update and deletion
@@ -363,7 +362,7 @@ export async function getConversationWithoutContent(
   auth: Authenticator,
   conversationId: string,
   includeDeleted?: boolean
-): Promise<ConversationWithoutContentType | null> {
+): Promise<Result<ConversationWithoutContentType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -378,17 +377,21 @@ export async function getConversationWithoutContent(
   });
 
   if (!conversation) {
-    return null;
+    return new Err(new ConversationNotFoundError());
   }
 
-  return {
+  if (!canAccessConversation(auth, conversation)) {
+    return new Err(new ConversationPermissionError());
+  }
+
+  return new Ok({
     id: conversation.id,
     created: conversation.createdAt.getTime(),
     sId: conversation.sId,
     owner,
     title: conversation.title,
     visibility: conversation.visibility,
-  };
+  });
 }
 
 export async function getConversationMessageType(
@@ -1954,7 +1957,7 @@ export function normalizeContentFragmentType({
 
 export async function canAccessConversation(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType | ConversationType
+  conversation: ConversationWithoutContentType | ConversationType | Conversation
 ): Promise<boolean> {
   if ("content" in conversation) {
     // If the conversation has its content already loaded, we can check without an additional query

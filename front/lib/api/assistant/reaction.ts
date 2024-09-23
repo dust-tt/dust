@@ -1,9 +1,3 @@
-import {
-  ConversationPermissionError,
-  Err,
-  Ok,
-  type UserType,
-} from "@dust-tt/types";
 import type {
   ConversationMessageReactions,
   ConversationType,
@@ -11,13 +5,19 @@ import type {
   MessageReactionType,
   Result,
 } from "@dust-tt/types";
+import type {UserType} from "@dust-tt/types";
+import {
+  ConversationPermissionError,
+  Err,
+  Ok
+} from "@dust-tt/types";
 
+import { canAccessConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
 import {
   Message,
   MessageReaction,
 } from "@app/lib/models/assistant/conversation";
-import { canAccessConversation } from "@app/lib/api/assistant/conversation";
 
 /**
  * We retrieve the reactions for a whole conversation, not just a single message.

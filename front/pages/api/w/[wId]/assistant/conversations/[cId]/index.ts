@@ -12,6 +12,7 @@ import {
   getConversationWithoutContent,
   updateConversation,
 } from "@app/lib/api/assistant/conversation";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -47,16 +48,16 @@ async function handler(
     });
   }
 
-  const conversation = await getConversationWithoutContent(auth, req.query.cId);
-  if (!conversation) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "The conversation you're trying to access was not found.",
-      },
-    });
+  const conversationRes = await getConversationWithoutContent(
+    auth,
+    req.query.cId
+  );
+
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
   }
+
+  const conversation = conversationRes.value;
 
   switch (req.method) {
     case "GET":
