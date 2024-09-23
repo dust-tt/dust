@@ -223,7 +223,7 @@ export function CreateOrEditVaultModal({
         return;
       }
     }
-    handleClose;
+    handleClose();
   }, [
     doCreate,
     doUpdate,

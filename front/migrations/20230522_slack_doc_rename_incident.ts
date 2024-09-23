@@ -2,11 +2,11 @@ import { dustManagedCredentials } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import logger from "@app/logger/logger";
 
 async function main() {
-  const dataSources = await DataSource.findAll({
+  const dataSources = await DataSourceModel.findAll({
     where: {
       connectorProvider: "slack",
     },
@@ -76,7 +76,7 @@ async function main() {
         }
 
         // @ts-expect-error missing field that did not exist at the time of the migration
-        let dataSource = await DataSource.create({
+        let dataSource = await DataSourceModel.create({
           name: dataSourceName,
           description: dataSourceDescription,
           dustAPIProjectId: dustProject.value.project.project_id.toString(),

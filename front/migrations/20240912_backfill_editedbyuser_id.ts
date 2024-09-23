@@ -2,18 +2,16 @@ import assert from "assert";
 import { Op } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
-  const dataSources = await DataSource.findAll({
+  const dataSources: DataSourceModel[] = await DataSourceModel.findAll({
+    // @ts-expect-error Model has been updated, editedByUserId is not nullable.
     where: {
       editedByUserId: {
-        [Op.is]: undefined,
-      },
-      connectorProvider: {
-        [Op.not]: undefined,
+        [Op.is]: null,
       },
     },
   });

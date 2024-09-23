@@ -21,7 +21,7 @@ import {
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 // To use in case of heavy db load emergency with theses usages queries
@@ -108,7 +108,7 @@ export async function getDataSourceViewsUsageByCategory({
           required: true,
           include: [
             {
-              model: DataSource,
+              model: DataSourceModel,
               as: "dataSourceForView",
               attributes: [],
               required: true,
@@ -161,7 +161,7 @@ export async function getDataSourceViewsUsageByCategory({
           required: true,
           include: [
             {
-              model: DataSource,
+              model: DataSourceModel,
               as: "dataSourceForView",
               attributes: [],
               required: true,
@@ -214,7 +214,7 @@ export async function getDataSourceViewsUsageByCategory({
           required: true,
           include: [
             {
-              model: DataSource,
+              model: DataSourceModel,
               as: "dataSourceForView",
               attributes: [],
               required: true,
@@ -331,7 +331,7 @@ export async function getDataSourcesUsageByCategory({
       ],
       include: [
         {
-          model: DataSource,
+          model: DataSourceModel,
           as: "dataSource",
           attributes: [],
           required: true,
@@ -376,7 +376,7 @@ export async function getDataSourcesUsageByCategory({
       ],
       include: [
         {
-          model: DataSource,
+          model: DataSourceModel,
           as: "dataSource",
           attributes: [],
           required: true,
@@ -421,7 +421,7 @@ export async function getDataSourcesUsageByCategory({
       ],
       include: [
         {
-          model: DataSource,
+          model: DataSourceModel,
           as: "dataSource",
           attributes: [],
           required: true,

@@ -12,7 +12,7 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export async function fetchAgentProcessActionConfigurations({
@@ -45,7 +45,7 @@ export async function fetchAgentProcessActionConfigurations({
       },
       include: [
         {
-          model: DataSource,
+          model: DataSourceModel,
           as: "dataSource",
           include: [
             {
@@ -63,7 +63,7 @@ export async function fetchAgentProcessActionConfigurations({
               as: "workspace",
             },
             {
-              model: DataSource,
+              model: DataSourceModel,
               as: "dataSourceForView",
             },
           ],

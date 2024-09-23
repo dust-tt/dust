@@ -10,7 +10,7 @@ import { DataTypes, Model } from "sequelize";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 /**
@@ -27,7 +27,7 @@ export class AgentDataSourceConfiguration extends Model<
   declare parentsIn: string[] | null;
   declare parentsNotIn: string[] | null;
 
-  declare dataSourceId: ForeignKey<DataSource["id"]>;
+  declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
 
   // AgentDataSourceConfiguration can be used by both the retrieval and the process actions'
@@ -39,7 +39,7 @@ export class AgentDataSourceConfiguration extends Model<
     AgentRetrievalConfiguration["id"]
   > | null;
 
-  declare dataSource: NonAttribute<DataSource>;
+  declare dataSource: NonAttribute<DataSourceModel>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;
 }
 AgentDataSourceConfiguration.init(
@@ -108,12 +108,12 @@ AgentDataSourceConfiguration.belongsTo(AgentProcessConfiguration, {
 });
 
 // Data source config <> Data source
-DataSource.hasMany(AgentDataSourceConfiguration, {
+DataSourceModel.hasMany(AgentDataSourceConfiguration, {
   as: "dataSource",
   foreignKey: { name: "dataSourceId", allowNull: false },
   onDelete: "RESTRICT",
 });
-AgentDataSourceConfiguration.belongsTo(DataSource, {
+AgentDataSourceConfiguration.belongsTo(DataSourceModel, {
   as: "dataSource",
   foreignKey: { name: "dataSourceId", allowNull: false },
 });

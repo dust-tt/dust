@@ -13,9 +13,9 @@ import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 
-export class DataSource extends Model<
-  InferAttributes<DataSource>,
-  InferCreationAttributes<DataSource>
+export class DataSourceModel extends Model<
+  InferAttributes<DataSourceModel>,
+  InferCreationAttributes<DataSourceModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -23,7 +23,7 @@ export class DataSource extends Model<
 
   // Corresponds to the ID of the last user to configure the connection.
   declare editedByUserId: ForeignKey<User["id"]>;
-  declare editedAt: CreationOptional<Date>;
+  declare editedAt: Date;
 
   declare name: string;
   declare description: string | null;
@@ -40,7 +40,7 @@ export class DataSource extends Model<
   declare workspace: NonAttribute<Workspace>;
 }
 
-DataSource.init(
+DataSourceModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -59,9 +59,7 @@ DataSource.init(
     },
     editedAt: {
       type: DataTypes.DATE,
-      // TODO(2024-01-25 flav) Set `allowNull` to `false` once backfilled.
-      allowNull: true,
-      defaultValue: DataTypes.NOW,
+      allowNull: false,
     },
     name: {
       type: DataTypes.STRING,
@@ -100,23 +98,22 @@ DataSource.init(
     ],
   }
 );
-Workspace.hasMany(DataSource, {
+Workspace.hasMany(DataSourceModel, {
   as: "workspace",
   foreignKey: { name: "workspaceId", allowNull: false },
   onDelete: "CASCADE",
 });
-DataSource.belongsTo(Workspace, {
+DataSourceModel.belongsTo(Workspace, {
   as: "workspace",
   foreignKey: { name: "workspaceId", allowNull: false },
 });
 
-DataSource.belongsTo(User, {
+DataSourceModel.belongsTo(User, {
   as: "editedByUser",
-  // TODO(2024-01-25 flav) Set `allowNull` to `false` once backfilled.
-  foreignKey: { name: "editedByUserId", allowNull: true },
+  foreignKey: { name: "editedByUserId", allowNull: false },
 });
 
-DataSource.belongsTo(VaultModel, {
+DataSourceModel.belongsTo(VaultModel, {
   foreignKey: { name: "vaultId", allowNull: false },
   onDelete: "RESTRICT",
 });
