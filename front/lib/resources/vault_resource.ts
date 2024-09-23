@@ -314,8 +314,10 @@ export class VaultResource extends BaseResource<VaultModel> {
 
       case "regular":
         return isPrivateVaultsEnabled ? auth.canWrite([this.acl()]) : false;
+
       case "public":
         return auth.canWrite([this.acl()]);
+
       default:
         assertNever(this.kind);
     }
@@ -330,8 +332,10 @@ export class VaultResource extends BaseResource<VaultModel> {
       case "global":
       case "system":
         return auth.canRead([this.acl()]);
+
       case "regular":
         return isPrivateVaultsEnabled ? auth.canRead([this.acl()]) : false;
+
       case "public":
         return true;
 
