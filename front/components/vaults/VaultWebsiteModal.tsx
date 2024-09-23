@@ -100,17 +100,17 @@ export default function VaultWebsiteModal({
     );
   const [advancedSettingsOpened, setAdvancedSettingsOpened] = useState(false);
   const [headers, setHeaders] = useState<{ key: string; value: string }[]>([]);
-
+  console.log("--", dataSourceName);
   const isLoading = dataSourceView && !webCrawlerConfiguration;
   useEffect(() => {
     setIsSubmitted(false);
     setIsSaving(false);
 
     if (isOpen) {
-      console.log(dataSourceView);
       setDataSourceUrl(
         webCrawlerConfiguration ? webCrawlerConfiguration.url : ""
       );
+
       setDataSourceUrlError(null);
       setMaxPages(
         webCrawlerConfiguration
@@ -167,11 +167,12 @@ export default function VaultWebsiteModal({
     5: "5 levels",
   };
 
-  useEffect(() => {
+  const updateUrl = (url: string) => {
+    setDataSourceUrl(url);
     if (isUrlValid(dataSourceUrl) && !dataSourceView) {
       setDataSourceName(urlToDataSourceName(dataSourceUrl));
     }
-  }, [dataSourceUrl, dataSourceView]);
+  };
 
   const validateForm = useCallback(() => {
     let urlError = null;
@@ -462,7 +463,7 @@ export default function VaultWebsiteModal({
                   <Input
                     placeholder="https://example.com/articles"
                     value={dataSourceUrl}
-                    onChange={(value) => setDataSourceUrl(value)}
+                    onChange={(value) => updateUrl(value)}
                     error={dataSourceUrlError}
                     name="dataSourceUrl"
                     showErrorLabel={true}
