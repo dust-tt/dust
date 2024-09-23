@@ -25,7 +25,7 @@ struct SnowflakeConnectionDetails {
 }
 
 impl SnowflakeRemoteDatabase {
-    pub async fn new(secret: &str) -> Result<Self> {
+    pub fn new(secret: &str) -> Result<Self> {
         let connection_details: SnowflakeConnectionDetails = serde_json::from_str(secret)?;
 
         let client = SnowflakeClient::new(
@@ -49,10 +49,14 @@ impl TryFrom<SnowflakeRow> for QueryResult {
     type Error = anyhow::Error;
 
     fn try_from(row: SnowflakeRow) -> Result<Self> {
-        fn decode_column<T: SnowflakeDecode>(row: &SnowflakeRow, name: &str) -> Result<T> {
-            match row.get::<T>(name) {
+        fn decode_column<T: SnowflakeDecode>(row: &SnowflakeRow, name: &str) -> Result<Option<T>> {
+            match row.get::<Option<T>>(name) {
                 Ok(value) => Ok(value),
-                Err(_) => Err(anyhow!("Error decoding column")),
+                Err(e) => Err(anyhow!(
+                    "Error decoding column {} (err: {})",
+                    name,
+                    e.to_string()
+                )),
             }
         }
 
@@ -62,17 +66,29 @@ impl TryFrom<SnowflakeRow> for QueryResult {
             let snowflake_type = col.column_type().snowflake_type().to_ascii_uppercase();
             let value = match snowflake_type.as_str() {
                 "NUMBER" | "INT" | "INTEGER" | "BIGINT" | "SMALLINT" | "TINYINT" | "BYTEINT" => {
-                    serde_json::Value::Number(decode_column::<i64>(&row, name)?.into())
+                    match decode_column::<i64>(&row, name)? {
+                        Some(i) => serde_json::Value::Number(i.into()),
+                        None => serde_json::Value::Null,
+                    }
                 }
                 "STRING" | "TEXT" | "VARCHAR" | "CHAR" => {
-                    serde_json::Value::String(decode_column::<String>(&row, name)?.into())
+                    match decode_column::<String>(&row, name)? {
+                        Some(s) => serde_json::Value::String(s.into()),
+                        None => serde_json::Value::Null,
+                    }
                 }
-                "BOOLEAN" => serde_json::Value::Bool(decode_column::<bool>(&row, name)?.into()),
-                "TIMESTAMP" => {
-                    serde_json::Value::String(decode_column::<String>(&row, name)?.into())
-                }
-                // default to string
-                _ => serde_json::Value::String(decode_column::<String>(&row, name)?.into()),
+                "BOOLEAN" => match decode_column::<bool>(&row, name)? {
+                    Some(b) => serde_json::Value::Bool(b),
+                    None => serde_json::Value::Null,
+                },
+                "TIMESTAMP" => match decode_column::<String>(&row, name)? {
+                    Some(s) => serde_json::Value::String(s.into()),
+                    None => serde_json::Value::Null,
+                },
+                _ => match decode_column::<String>(&row, name)? {
+                    Some(s) => serde_json::Value::String(s.into()),
+                    None => serde_json::Value::Null,
+                },
             };
             map.insert(name.to_string(), value);
         }
