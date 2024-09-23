@@ -91,6 +91,7 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
+import { message } from "danger";
 
 /**
  * Conversation Creation, update and deletion
@@ -1703,6 +1704,10 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
+  if (!(await canAccessConversation(auth, conversation))) {
+    return new Err(new ConversationPermissionError());
+  }
+
   const messageId = generateLegacyModelSId();
 
   const cfBlobRes = await getContentFragmentBlob(
@@ -2026,8 +2031,17 @@ function getConversationGroupIdsFromModel(
 
 export async function canAccessConversation(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType | ConversationType
 ): Promise<boolean> {
+  if ("content" in conversation) {
+    // If the conversation has its content already loaded, we can check without an additional query
+    return conversation.content.every(
+      (messages) =>
+        !isAgentMessageType(messages[messages.length - 1]) ||
+        canReadMessage(auth, messages[messages.length - 1] as AgentMessageType)
+    );
+  }
+
   const res = await fetchConversationParticipants(auth, conversation);
   if (res.isErr() && res.error instanceof ConversationPermissionError) {
     return false;
