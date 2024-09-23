@@ -20,14 +20,12 @@ type CreateConnectionConfirmationModalProps = {
 };
 
 export function CreateConnectionConfirmationModal({
-  owner,
   connectorProviderConfiguration,
   isOpen,
   onClose,
   onConfirm,
 }: CreateConnectionConfirmationModalProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const isVaultsFeatureEnabled = owner.flags.includes("data_vaults_feature");
 
   useEffect(() => {
     if (isOpen) {
@@ -60,22 +58,6 @@ export function CreateConnectionConfirmationModal({
               icon={BookOpenIcon}
             />
           </a>
-          {!isVaultsFeatureEnabled && (
-            <div className="flex flex-col gap-y-2">
-              <div className="grow text-sm font-medium text-element-800">
-                Important
-              </div>
-              <div className="text-sm font-normal text-element-700">
-                Resources shared with Dust will be made available to the entire
-                workspace{" "}
-                <span className="font-medium">
-                  irrespective of their granular permissions
-                </span>{" "}
-                on {connectorProviderConfiguration.name}.
-              </div>
-            </div>
-          )}
-
           {connectorProviderConfiguration.limitations && (
             <div className="flex flex-col gap-y-2">
               <div className="grow text-sm font-medium text-element-800">

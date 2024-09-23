@@ -125,11 +125,6 @@ export function AssistantBrowser({
           ? visibleTabs[0].id
           : null;
 
-  const isVaultsEnabled = owner.flags.includes("data_vaults_feature");
-  const builderManageAssistantsRoute = isVaultsEnabled
-    ? `/w/${owner.sId}/assistants/`
-    : `/w/${owner.sId}/builder/assistants/`;
-
   return (
     <>
       <AssistantDetails
@@ -177,7 +172,7 @@ export function AssistantBrowser({
           </Tooltip>
           {isBuilder && (
             <Tooltip label="Manage assistants">
-              <Link href={builderManageAssistantsRoute}>
+              <Link href={`/w/${owner.sId}/assistants/`}>
                 <Button
                   variant="primary"
                   icon={RobotIcon}

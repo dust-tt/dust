@@ -17,22 +17,13 @@ async function handler(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  // With Vaults we're moving API Keys management to the Admin role.
-  const isVaultsFeatureEnabled = owner.flags.includes("data_vaults_feature");
-  const hasValidRole = isVaultsFeatureEnabled
-    ? auth.isAdmin()
-    : auth.isBuilder();
-
-  if (!hasValidRole) {
-    const errorMessage = isVaultsFeatureEnabled
-      ? "Only the users that are `admins` for the current workspace can disable a key."
-      : "Only the users that are `builders` for the current workspace can disable a key.";
-
+  if (!auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
-        message: errorMessage,
+        message:
+          "Only the users that are `admins` for the current workspace can disable a key.",
       },
     });
   }
