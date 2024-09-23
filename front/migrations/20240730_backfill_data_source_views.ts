@@ -64,7 +64,8 @@ async function backfillDataSourceViewsForWorkspace(
   );
 }
 
-makeScript({ wId: { type: "string", requiresArg: true } },
+makeScript(
+  { wId: { type: "string", requiresArg: true } },
   async ({ execute, wId }, logger) => {
     const ws = await Workspace.findOne({ where: { sId: wId } });
     if (ws) {
@@ -72,4 +73,4 @@ makeScript({ wId: { type: "string", requiresArg: true } },
       await backfillDataSourceViewsForWorkspace(workspace, logger, execute);
     }
   }
-});
+);
