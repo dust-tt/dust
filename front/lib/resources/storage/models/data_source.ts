@@ -23,7 +23,7 @@ export class DataSourceModel extends Model<
 
   // Corresponds to the ID of the last user to configure the connection.
   declare editedByUserId: ForeignKey<User["id"]>;
-  declare editedAt: CreationOptional<Date>;
+  declare editedAt: Date;
 
   declare name: string;
   declare description: string | null;
@@ -60,7 +60,6 @@ DataSourceModel.init(
     editedAt: {
       type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: DataTypes.NOW,
     },
     name: {
       type: DataTypes.STRING,
