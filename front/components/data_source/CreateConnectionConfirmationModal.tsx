@@ -5,14 +5,12 @@ import {
   Modal,
   Page,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 
 type CreateConnectionConfirmationModalProps = {
-  owner: WorkspaceType;
   connectorProviderConfiguration: ConnectorProviderConfiguration;
   isOpen: boolean;
   onClose: () => void;
