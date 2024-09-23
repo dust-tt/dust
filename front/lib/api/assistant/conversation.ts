@@ -32,6 +32,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  ConversationPermissionError,
   getSmallWhitelistedModel,
   isProviderWhitelisted,
   md5,
@@ -162,13 +163,17 @@ export async function updateConversation(
     visibility: visibility,
   });
 
-  const c = await getConversation(auth, conversationId);
+  const cRes = await getConversation(auth, conversationId);
 
-  if (!c) {
+  if (cRes.isErr()) {
+    throw cRes.error;
+  }
+
+  if (!cRes.value) {
     throw new Error(`Conversation ${conversationId} not found`);
   }
 
-  return c;
+  return cRes.value;
 }
 
 /**
@@ -308,7 +313,7 @@ export async function getConversation(
   auth: Authenticator,
   conversationId: string,
   includeDeleted?: boolean
-): Promise<ConversationType | null> {
+): Promise<Result<ConversationType | null, ConversationPermissionError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -323,7 +328,7 @@ export async function getConversation(
   });
 
   if (!conversation) {
-    return null;
+    return new Ok(null);
   }
 
   const messages = await Message.findAll({
@@ -363,7 +368,13 @@ export async function getConversation(
     ],
   });
 
-  const render = await batchRenderMessages(auth, conversation.sId, messages);
+  const renderRes = await batchRenderMessages(auth, conversation.sId, messages);
+
+  if (renderRes.isErr()) {
+    return new Err(renderRes.error);
+  }
+
+  const render = renderRes.value;
 
   // We need to escape the type system here to create content. We pre-create an array that will hold
   // the versions of each User/Assistant/ContentFragment message. The lenght of that array is by definition the
@@ -378,7 +389,7 @@ export async function getConversation(
     content[rank] = [...content[rank], m];
   }
 
-  return {
+  return new Ok({
     id: conversation.id,
     created: conversation.createdAt.getTime(),
     sId: conversation.sId,
@@ -387,7 +398,7 @@ export async function getConversation(
     visibility: conversation.visibility,
     content,
     groupIds: getConversationGroupIdsFromModel(owner, conversation),
-  };
+  });
 }
 
 export async function getConversationWithoutContent(
