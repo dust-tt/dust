@@ -22,10 +22,6 @@ async function backfillDataSourceViewsForWorkspace(
     `Found ${dataSources.length} data sources for workspace(${workspace.sId}).`
   );
 
-  if (!execute) {
-    return;
-  }
-
   const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
 
   let updated = 0;
@@ -46,13 +42,15 @@ async function backfillDataSourceViewsForWorkspace(
       continue;
     }
 
-    // Create a view for this data source in the global vault.
-    await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-      auth,
-      globalVault,
-      dataSource,
-      "custom"
-    );
+    if (execute) {
+      // Create a view for this data source in the global vault.
+      await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+        auth,
+        globalVault,
+        dataSource,
+        "custom"
+      );
+    }
 
     updated++;
 
