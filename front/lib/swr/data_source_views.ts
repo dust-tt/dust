@@ -12,7 +12,6 @@ import {
   fetcher,
   fetcherMultiple,
   postFetcher,
-  useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";

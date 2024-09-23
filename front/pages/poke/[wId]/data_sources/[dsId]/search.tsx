@@ -114,7 +114,7 @@ export default function DataSourceView({
     return () => {
       isCancelled = true;
     };
-  }, [dataSource.name, owner.sId, searchQuery]);
+  }, [dataSource.sId, owner.sId, searchQuery]);
 
   const onDisplayDocumentSource = (documentId: string) => {
     if (
