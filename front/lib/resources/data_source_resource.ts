@@ -116,7 +116,10 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
+    blob: Omit<
+      CreationAttributes<DataSourceModel>,
+      "editedAt" | "editedByUserId" | "vaultId"
+    >,
     vault: VaultResource
   ) {
     const dataSource = await DataSourceModel.create({
