@@ -9,6 +9,7 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { Workspace } from "@app/lib/models/workspace";
+import { isManaged } from "@app/lib/data_sources";
 
 async function backfillDataSourceViewsForWorkspace(
   workspace: LightWorkspaceType,
@@ -26,35 +27,38 @@ async function backfillDataSourceViewsForWorkspace(
 
   let updated = 0;
   for (const dataSource of dataSources) {
-    // Check if there is already a view for this data source.
-    const dsv = await DataSourceViewModel.findOne({
-      where: {
-        workspaceId: workspace.id,
-        vaultId: globalVault.id,
-        dataSourceId: dataSource.id,
-      },
-    });
+    if (isManaged(dataSource)) {
+      // Check if there is already a view for this data source.
+      const dsv = await DataSourceViewModel.findOne({
+        where: {
+          workspaceId: workspace.id,
+          vaultId: globalVault.id,
+          dataSourceId: dataSource.id,
+          kind: "custom",
+        },
+      });
 
-    if (dsv) {
-      logger.info(
-        `Data source view already exists for data source ${dataSource.id}.`
-      );
-      continue;
+      if (dsv) {
+        logger.info(
+          `Data source view already exists for data source ${dataSource.id}.`
+        );
+        continue;
+      }
+
+      if (execute) {
+        // Create a view for this data source in the global vault.
+        await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+          auth,
+          globalVault,
+          dataSource,
+          "custom"
+        );
+      }
+
+      updated++;
+
+      logger.info(`View created for data source ${dataSource.id}.`);
     }
-
-    if (execute) {
-      // Create a view for this data source in the global vault.
-      await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-        auth,
-        globalVault,
-        dataSource,
-        "custom"
-      );
-    }
-
-    updated++;
-
-    logger.info(`View created for data source ${dataSource.id}.`);
   }
 
   logger.info(
