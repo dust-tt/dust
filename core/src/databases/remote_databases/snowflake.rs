@@ -119,6 +119,7 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
             .map(|row| row.try_into())
             .collect::<Result<Vec<QueryResult>>>()?;
 
+        // TODO(@fontanierh): decide if we want to infer query result schema for remote DBs.
         let schema = TableSchema::empty();
 
         Ok((rows, schema))
