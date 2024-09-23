@@ -3,7 +3,7 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { Op, Sequelize } from "sequelize";
 
-export const managedDataSourceViewsConsistencyCheck: CheckFunction = async (
+export const checkDataSourcesConsistency: CheckFunction = async (
   _checkName,
   logger,
   reportSuccess,
