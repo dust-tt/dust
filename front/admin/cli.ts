@@ -456,11 +456,12 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       const verbose = args.verbose === "true";
 
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
-      const conversation = await getConversation(auth, args.cId as string);
+      const conversationRes = await getConversation(auth, args.cId as string);
 
-      if (!conversation) {
-        throw new Error(`Conversation not found: cId='${args.cId}'`);
+      if (conversationRes.isErr()) {
+        throw new Error(conversationRes.error.message);
       }
+      const conversation = conversationRes.value;
 
       const MIN_GENERATION_TOKENS = 2048;
       const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;

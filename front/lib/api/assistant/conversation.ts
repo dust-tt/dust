@@ -32,6 +32,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  ConversationNotFoundError,
   ConversationPermissionError,
   getSmallWhitelistedModel,
   isProviderWhitelisted,
@@ -59,6 +60,7 @@ import {
   batchRenderMessages,
   canReadMessage,
 } from "@app/lib/api/assistant/messages";
+import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
@@ -81,9 +83,6 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
-import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 
 /**
  * Conversation Creation, update and deletion
@@ -159,10 +158,6 @@ export async function updateConversation(
 
   if (cRes.isErr()) {
     throw cRes.error;
-  }
-
-  if (!cRes.value) {
-    throw new Error(`Conversation ${conversationId} not found`);
   }
 
   return cRes.value;
@@ -276,7 +271,7 @@ export async function getConversation(
   auth: Authenticator,
   conversationId: string,
   includeDeleted?: boolean
-): Promise<Result<ConversationType | null, ConversationPermissionError>> {
+): Promise<Result<ConversationType, ConversationPermissionError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -291,7 +286,7 @@ export async function getConversation(
   });
 
   if (!conversation) {
-    return new Ok(null);
+    return new Err(new ConversationNotFoundError());
   }
 
   const messages = await Message.findAll({

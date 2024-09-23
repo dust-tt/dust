@@ -5,7 +5,10 @@ import type {
   UserMessageType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { InternalPostConversationsRequestBodySchema } from "@dust-tt/types";
+import {
+  ConversationNotFoundError,
+  InternalPostConversationsRequestBodySchema,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -16,6 +19,7 @@ import {
   getUserConversations,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -107,12 +111,24 @@ async function handler(
           newContentFragments.push(r.value);
         }
 
-        const updatedConversation = await getConversation(
+        const updatedConversationRes = await getConversation(
           auth,
           conversation.sId
         );
-        if (updatedConversation) {
-          conversation = updatedConversation;
+
+        if (updatedConversationRes.isErr()) {
+          // Preserving former code in which if the conversation was not found here, we do not error
+          if (
+            !(updatedConversationRes.error instanceof ConversationNotFoundError)
+          ) {
+            return apiErrorForConversation(
+              req,
+              res,
+              updatedConversationRes.error
+            );
+          }
+        } else {
+          conversation = updatedConversationRes.value;
         }
       }
 
@@ -150,13 +166,13 @@ async function handler(
         // created as well, so pulling the conversation again will allow to have an up to date view
         // of the conversation with agent messages included so that the user of the API can start
         // streaming events from these agent messages directly.
-        const updated = await getConversation(auth, conversation.sId);
+        const updatedRes = await getConversation(auth, conversation.sId);
 
-        if (!updated) {
-          throw `Conversation unexpectedly not found after creation: ${conversation.sId}`;
+        if (updatedRes.isErr()) {
+          return apiErrorForConversation(req, res, updatedRes.error);
         }
 
-        conversation = updated;
+        conversation = updatedRes.value;
       }
 
       res.status(200).json({

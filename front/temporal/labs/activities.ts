@@ -341,19 +341,22 @@ export async function processTranscriptActivity(
   }
 
   // Initial conversation is stale, so we need to reload it.
-  let conversation = await getConversation(auth, initialConversation.sId);
+  const conversationRes = await getConversation(auth, initialConversation.sId);
 
-  if (!conversation) {
+  if (conversationRes.isErr()) {
     localLogger.error(
       {
         agentConfigurationId,
         conversationSid: initialConversation.sId,
         panic: true,
+        error: conversationRes.error,
       },
       "[processTranscriptActivity] Unreachable: Error getting conversation after creation."
     );
     return;
   }
+
+  let conversation = conversationRes.value;
 
   const messageRes = await postUserMessageWithPubSub(
     auth,
@@ -378,20 +381,21 @@ export async function processTranscriptActivity(
     return;
   }
 
-  const updated = await getConversation(auth, conversation.sId);
+  const updatedRes = await getConversation(auth, conversation.sId);
 
-  if (!updated) {
+  if (updatedRes.isErr()) {
     localLogger.error(
       {
         agentConfigurationId,
         conversationSid: conversation.sId,
+        error: updatedRes.error,
       },
       "[processTranscriptActivity] Error getting conversation after creation. Stopping."
     );
     return;
   }
 
-  conversation = updated;
+  conversation = updatedRes.value;
 
   localLogger.info(
     {

@@ -225,3 +225,9 @@ export class ConversationPermissionError extends Error {
     super("Cannot access conversation: Some agents are forbidden to the user.");
   }
 }
+
+export class ConversationNotFoundError extends Error {
+  constructor() {
+    super("Cannot access conversation: Conversation not found.");
+  }
+}

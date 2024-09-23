@@ -1,16 +1,14 @@
-import {
-  AgentActionType,
-  ConversationPermissionError,
-  MessageWithRankType,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
 import type {
+  AgentActionType,
   AgentMessageType,
   ContentFragmentType,
   LightAgentConfigurationType,
+  MessageWithRankType,
+  ModelId,
+  Result,
   UserMessageType,
 } from "@dust-tt/types";
+import { ConversationPermissionError } from "@dust-tt/types";
 import { Err, isAgentMessageType, Ok, removeNulls } from "@dust-tt/types";
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
