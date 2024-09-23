@@ -8,12 +8,10 @@ import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   const dataSources = await DataSourceModel.findAll({
+    // @ts-expect-error Model has been updated, editedByUserId is not nullable.
     where: {
       editedByUserId: {
-        [Op.is]: undefined,
-      },
-      connectorProvider: {
-        [Op.not]: undefined,
+        [Op.is]: null,
       },
     },
   });
