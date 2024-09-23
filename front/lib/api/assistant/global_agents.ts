@@ -40,6 +40,10 @@ import {
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import {
+  PRODUCTION_DUST_APPS_HELPER_DATASOURCE_VIEW_ID,
+  PRODUCTION_DUST_APPS_WORKSPACE_ID,
+} from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
@@ -169,10 +173,20 @@ function _getHelperGlobalAgent({
     actions: [
       {
         id: -1,
-        sId: GLOBAL_AGENTS_SID.HELPER + "-websearch-action",
-        type: "websearch_configuration",
-        name: DEFAULT_WEBSEARCH_ACTION_NAME,
-        description: null,
+        sId: GLOBAL_AGENTS_SID.HELPER + "-datasource-action",
+        type: "retrieval_configuration",
+        query: "auto",
+        relativeTimeFrame: "auto",
+        topK: "auto",
+        dataSources: [
+          {
+            dataSourceViewId: PRODUCTION_DUST_APPS_HELPER_DATASOURCE_VIEW_ID,
+            workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+            filter: { parents: null },
+          },
+        ],
+        name: "search_dust_docs",
+        description: `The documentation of the Dust platform.`,
       },
     ],
     maxStepsPerRun: 0,
