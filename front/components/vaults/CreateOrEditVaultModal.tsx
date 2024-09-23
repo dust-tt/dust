@@ -106,6 +106,20 @@ export function CreateOrEditVaultModal({
     disabled: !isAdmin,
   });
 
+  const handleClose = useCallback(() => {
+    // Reset state.
+    setVaultName(null);
+    setSelectedMembers([]);
+    setSearchTerm("");
+    setIsSaving(false);
+    setPagination({ pageIndex: 0, pageSize: 25 });
+    setShowDeleteConfirmDialog(false);
+    setIsDeleting(false);
+
+    // Call the original onClose function.
+    onClose();
+  }, [onClose]);
+
   const getTableColumns = useCallback(() => {
     const manageMembers = (userId: string, addOrRemove: "add" | "remove") => {
       if (addOrRemove === "remove") {
@@ -204,14 +218,16 @@ export function CreateOrEditVaultModal({
       const createdVault = await doCreate(vaultName, selectedMembers);
       if (createdVault) {
         await router.push(`/w/${owner.sId}/vaults/${createdVault.sId}`);
+      } else {
+        setIsSaving(false);
+        return;
       }
     }
-    setIsSaving(false);
-    onClose();
+    handleClose;
   }, [
     doCreate,
     doUpdate,
-    onClose,
+    handleClose,
     owner.sId,
     router,
     selectedMembers,
@@ -232,15 +248,15 @@ export function CreateOrEditVaultModal({
     setShowDeleteConfirmDialog(false);
 
     if (res) {
-      onClose();
+      handleClose();
       await router.push(`/w/${owner.sId}/vaults`);
     }
-  }, [doDelete, onClose, owner.sId, router, vault]);
+  }, [doDelete, handleClose, owner.sId, router, vault]);
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title={vault ? `Edit ${vault.name}` : "Create a Vault"}
       saveLabel={vault ? "Save" : "Create"}
       variant="side-md"

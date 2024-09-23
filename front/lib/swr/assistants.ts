@@ -1,7 +1,6 @@
 import type {
   AgentConfigurationType,
   AgentsGetViewType,
-  APIError,
   DataSourceType,
   LightAgentConfigurationType,
   LightWorkspaceType,
@@ -10,7 +9,11 @@ import { useContext, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  fetcher,
+  getErrorFromResponse,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates";
@@ -297,11 +300,12 @@ export function useDeleteAgentConfiguration({
         description: `${agentConfiguration.name} was successfully deleted.`,
       });
     } else {
-      const err: { error: APIError } = await res.json();
+      const errorData = await getErrorFromResponse(res);
+
       sendNotification({
         type: "error",
         title: `Error deleting ${agentConfiguration.name}`,
-        description: `Error: ${err.error.message}`,
+        description: `Error: ${errorData.message}`,
       });
     }
     return res.ok;

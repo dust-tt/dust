@@ -27,7 +27,6 @@ export function RequestOrAddDataFromDataSourceModal({
     <>
       {owner.role === "admin" && connector ? (
         <>
-          {" "}
           <Button
             label="Add Data"
             icon={PlusIcon}
