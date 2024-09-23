@@ -484,7 +484,11 @@ async function staticHeaderDetection(
   );
   const header = getSanitizedHeaders(firstRecordCells);
 
-  return new Ok({ header, rowIndex: 1 });
+  if (header.isErr()) {
+    return new Err({ type: "invalid_header", message: header.error.message });
+  }
+
+  return new Ok({ header: header.value, rowIndex: 1 });
 }
 
 async function detectHeaders(
@@ -547,5 +551,10 @@ async function detectHeaders(
   }
   const rowIndex = res.value.rowIndex;
   const header = getSanitizedHeaders(res.value.headers);
-  return new Ok({ header, rowIndex });
+
+  if (header.isErr()) {
+    return new Err({ type: "invalid_header", message: header.error.message });
+  }
+
+  return new Ok({ header: header.value, rowIndex });
 }

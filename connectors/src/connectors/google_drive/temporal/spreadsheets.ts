@@ -14,9 +14,15 @@ import type { OAuth2Client } from "googleapis-common";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/lib/data_sources";
-import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
-import { ProviderWorkflowError } from "@connectors/lib/error";
+import {
+  deleteTable,
+  MAX_FILE_SIZE_TO_DOWNLOAD,
+  upsertTableFromCsv,
+} from "@connectors/lib/data_sources";
+import {
+  InvalidRowsRequestError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
@@ -178,7 +184,23 @@ async function processSheet(
   const rows = await getValidRows(sheet.values, loggerArgs);
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
-    await upsertTable(connector, sheet, parents, rows, loggerArgs);
+    try {
+      await upsertTable(connector, sheet, parents, rows, loggerArgs);
+    } catch (err) {
+      if (err instanceof InvalidRowsRequestError) {
+        logger.warn(
+          { ...loggerArgs, error: err },
+          "[Spreadsheet] Invalid rows detected - skipping (but not failing)."
+        );
+        return false;
+      } else {
+        logger.error(
+          { ...loggerArgs, error: err },
+          "[Spreadsheet] Failed to upsert table."
+        );
+        throw err;
+      }
+    }
 
     await upsertSheetInDb(connector, sheet);
 
