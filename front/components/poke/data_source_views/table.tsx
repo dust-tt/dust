@@ -17,12 +17,12 @@ function prepareDataSourceViewsForDisplay(
   return dataSourceViews.map((dsv) => {
     return {
       ...dsv,
-      name: dsv.sId,
+      dataSourceLink: `/poke/${owner.sId}/data_sources/${dsv.dataSource.sId}`,
       dataSourceName: getDataSourceName(dsv.dataSource),
+      dataSourceViewLink: `/poke/${owner.sId}/vaults/${dsv.vaultId}/data_source_views/${dsv.sId}`,
       editedAt: dsv.editedByUser?.editedAt ?? undefined,
       editedBy: dsv.editedByUser?.fullName ?? undefined,
-      dataSourceLink: `/poke/${owner.sId}/data_sources/${dsv.dataSource.sId}`,
-      dataSourceViewLink: `/poke/${owner.sId}/vaults/${dsv.vaultId}/data_source_views/${dsv.sId}`,
+      name: dsv.sId,
     };
   });
 }
@@ -32,7 +32,7 @@ export function DataSourceViewsDataTable({
 }: DataSourceViewsDataTableProps) {
   return (
     <PokeDataTableConditionalFetch
-      header="Data source views"
+      header="Data Source Views"
       owner={owner}
       useSWRHook={usePokeDataSourceViews}
     >
@@ -40,7 +40,6 @@ export function DataSourceViewsDataTable({
         <PokeDataTable
           columns={makeColumnsForDataSourceViews()}
           data={prepareDataSourceViewsForDisplay(owner, data)}
-          defaultFilterColumn="dataSourceName"
         />
       )}
     </PokeDataTableConditionalFetch>

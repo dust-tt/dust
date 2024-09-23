@@ -237,7 +237,7 @@ const WorkspacePage = ({
                   />
                 </div>
               </div>
-              <DataSourceDataTable owner={owner} dataSources={dataSources} />
+              <DataSourceDataTable owner={owner} />
               <DataSourceViewsDataTable owner={owner} />
               <AssistantsDataTable owner={owner} />
               <FeatureFlagsDataTable
