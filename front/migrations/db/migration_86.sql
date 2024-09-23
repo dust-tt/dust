@@ -16,7 +16,7 @@ WHERE "editedAt" IS NULL;
 
 UPDATE "data_source_views"
 SET
-    "editedByUserId" = "data_sources"."editedByUserId"
+    "editedByUserId" = "data_sources"."editedByUserId",
     "editedAt" = "data_sources"."editedAt"
 FROM "data_sources"
 WHERE
