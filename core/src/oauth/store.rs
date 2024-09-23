@@ -2,7 +2,6 @@ use std::str::FromStr;
 
 use crate::oauth::connection::{Connection, ConnectionProvider, ConnectionStatus};
 use crate::oauth::credential::{Credential, CredentialProvider};
-use crate::oauth::encryption::{seal_str, unseal_str};
 use crate::utils;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -28,7 +27,7 @@ pub trait OAuthStore {
     async fn create_credential(
         &self,
         provider: CredentialProvider,
-        credentials: serde_json::Map<String, serde_json::Value>,
+        encrypted_content: Vec<u8>,
     ) -> Result<Credential>;
     async fn retrieve_credential(&self, credential_id: &str) -> Result<Credential>;
 
@@ -231,7 +230,7 @@ impl OAuthStore for PostgresOAuthStore {
     async fn create_credential(
         &self,
         provider: CredentialProvider,
-        credentials: serde_json::Map<String, serde_json::Value>,
+        encrypted_content: Vec<u8>,
     ) -> Result<Credential> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -239,12 +238,9 @@ impl OAuthStore for PostgresOAuthStore {
         let created = utils::now();
         let secret = utils::new_id();
 
-        // Encrypt in database
-        let encrypted_credentials = Some(seal_str(&serde_json::to_string(&credentials)?)?);
-
         let stmt = c
             .prepare(
-                "INSERT INTO credentials (id, created, secret, provider, encrypted_credentials)
+                "INSERT INTO credentials (id, created, secret, provider, encrypted_content)
                    VALUES (DEFAULT, $1, $2, $3, $4) RETURNING id",
             )
             .await?;
@@ -255,7 +251,7 @@ impl OAuthStore for PostgresOAuthStore {
                     &(created as i64),
                     &secret,
                     &provider.to_string(),
-                    &encrypted_credentials,
+                    &encrypted_content,
                 ],
             )
             .await?
@@ -267,7 +263,7 @@ impl OAuthStore for PostgresOAuthStore {
             credential_id,
             created,
             provider,
-            credentials,
+            encrypted_content,
         ))
     }
 
@@ -279,7 +275,7 @@ impl OAuthStore for PostgresOAuthStore {
 
         let r = c
             .query_one(
-                "SELECT created, provider, encrypted_credentials
+                "SELECT created, provider, encrypted_content
                    FROM credentials
                    WHERE id = $1 AND secret = $2",
                 &[&row_id, &secret],
@@ -288,15 +284,13 @@ impl OAuthStore for PostgresOAuthStore {
 
         let created: i64 = r.get(0);
         let provider: CredentialProvider = CredentialProvider::from_str(r.get(1))?;
-        let encrypted_credentials: Vec<u8> = r.get(2);
-
-        let credentials = serde_json::from_str(&unseal_str(&encrypted_credentials)?)?;
+        let encrypted_content: Vec<u8> = r.get(2);
 
         Ok(Credential::new(
             credential_id.to_string(),
             created as u64,
             provider,
-            credentials,
+            encrypted_content,
         ))
     }
 
@@ -327,7 +321,7 @@ pub const POSTGRES_TABLES: [&'static str; 2] = [
        created                        BIGINT NOT NULL,
        provider                       TEXT NOT NULL,
        secret                         TEXT NOT NULL,
-       encrypted_credentials          BYTEA
+       encrypted_content          BYTEA
     );",
 ];
 

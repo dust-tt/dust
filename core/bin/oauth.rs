@@ -207,38 +207,46 @@ async fn connections_access_token(
 #[derive(Deserialize)]
 struct CredentialPayload {
     provider: CredentialProvider,
-    credentials: serde_json::Map<String, serde_json::Value>,
+    content: serde_json::Map<String, serde_json::Value>,
 }
 
-async fn oauth_service_create_credential(
+async fn credentials_create(
     State(state): State<Arc<OAuthState>>,
     Json(payload): Json<CredentialPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    match Credential::create(state.store.clone(), payload.provider, payload.credentials).await {
+    match Credential::create(state.store.clone(), payload.provider, payload.content).await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
             "Failed to create credential",
             Some(e),
         ),
-        Ok(c) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "credential": {
-                        "credential_id": c.credential_id(),
-                        "created": c.created(),
-                        "provider": c.provider(),
-                        "credentials": c.credentials(),
-                    },
-                })),
-            }),
-        ),
+        Ok(c) => match c.unseal_encrypted_content() {
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to unseal encrypted content",
+                Some(e),
+            ),
+            Ok(content) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "credential": {
+                            "credential_id": c.credential_id(),
+                            "created": c.created(),
+                            "provider": c.provider(),
+                            "content": content,
+                        },
+                    })),
+                }),
+            ),
+        },
     }
 }
 
-async fn oauth_service_retrieve_credential(
+async fn credentials_retrieve(
     State(state): State<Arc<OAuthState>>,
     Path(credential_id): Path<String>,
 ) -> (StatusCode, Json<APIResponse>) {
@@ -249,20 +257,28 @@ async fn oauth_service_retrieve_credential(
             "Requested credential was not found",
             Some(e),
         ),
-        Ok(c) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "credential": {
-                        "credential_id": c.credential_id(),
-                        "created": c.created(),
-                        "provider": c.provider(),
-                        "credentials": c.credentials(),
-                    },
-                })),
-            }),
-        ),
+        Ok(c) => match c.unseal_encrypted_content() {
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to unseal encrypted content",
+                Some(e),
+            ),
+            Ok(content) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "credential": {
+                            "credential_id": c.credential_id(),
+                            "created": c.created(),
+                            "provider": c.provider(),
+                            "content": content,
+                        },
+                    })),
+                }),
+            ),
+        },
     }
 }
 
@@ -306,14 +322,8 @@ fn main() {
                 "/connections/:connection_id/access_token",
                 post(connections_access_token),
             )
-            .route(
-                "/oauth-service/credentials",
-                post(oauth_service_create_credential),
-            )
-            .route(
-                "/oauth-service/credentials/:credential_id",
-                get(oauth_service_retrieve_credential),
-            )
+            .route("/credentials", post(credentials_create))
+            .route("/credentials/:credential_id", get(credentials_retrieve))
             // Extensions
             .layer(
                 TraceLayer::new_for_http()

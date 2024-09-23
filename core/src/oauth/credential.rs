@@ -7,6 +7,8 @@ use crate::oauth::store::OAuthStore;
 use crate::utils::{self, ParseError};
 use anyhow::Result;
 
+use super::encryption::{seal_str, unseal_str};
+
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CredentialProvider {
@@ -38,7 +40,7 @@ pub struct Credential {
     credential_id: String,
     created: u64,
     provider: CredentialProvider,
-    credentials: serde_json::Map<String, serde_json::Value>,
+    encrypted_content: Vec<u8>,
 }
 
 impl Credential {
@@ -46,13 +48,13 @@ impl Credential {
         credential_id: String,
         created: u64,
         provider: CredentialProvider,
-        credentials: serde_json::Map<String, serde_json::Value>,
+        encrypted_content: Vec<u8>,
     ) -> Self {
         Self {
             credential_id,
             created,
             provider,
-            credentials,
+            encrypted_content,
         }
     }
 
@@ -88,9 +90,29 @@ impl Credential {
     pub async fn create(
         store: Box<dyn OAuthStore + Sync + Send>,
         provider: CredentialProvider,
-        credentials: serde_json::Map<String, serde_json::Value>,
+        content: serde_json::Map<String, serde_json::Value>,
     ) -> Result<Self> {
-        let c = store.create_credential(provider, credentials).await?;
+        // Check format of content based on provider
+        let keys_to_check = match provider {
+            CredentialProvider::Snowflake => vec!["warehouse", "user", "password", "role"],
+        };
+
+        for key in keys_to_check {
+            if !content.contains_key(key)
+                || content[key].is_null()
+                || (content[key].is_string() && content[key].as_str().unwrap().is_empty())
+            {
+                return Err(anyhow::anyhow!(
+                    "Missing a value for '{}' key in content",
+                    key
+                ));
+            }
+        }
+
+        // Encrypt for database
+        let encrypted_content = seal_str(&serde_json::to_string(&content)?)?;
+
+        let c = store.create_credential(provider, encrypted_content).await?;
 
         Ok(c)
     }
@@ -107,7 +129,14 @@ impl Credential {
         self.provider
     }
 
-    pub fn credentials(&self) -> &serde_json::Map<String, serde_json::Value> {
-        &self.credentials
+    pub fn encrypted_content(&self) -> &Vec<u8> {
+        self.encrypted_content.as_ref()
+    }
+
+    pub fn unseal_encrypted_content(&self) -> Result<serde_json::Map<String, serde_json::Value>> {
+        let unsealed_str = unseal_str(self.encrypted_content())?;
+        let content: serde_json::Map<String, serde_json::Value> =
+            serde_json::from_str(&unsealed_str)?;
+        Ok(content)
     }
 }
