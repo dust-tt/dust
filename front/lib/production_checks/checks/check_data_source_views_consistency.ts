@@ -54,9 +54,14 @@ export const managedDataSourceViewsConsistencyCheck: CheckFunction = async (
   ) {
     reportFailure(
       {
-        dataSourcesWithoutDefaultViews,
-        defaultViewsWithIncorrectVault,
-        managedDataSourcesWithoutConnector,
+        dataSourcesWithoutDefaultViews: dataSourcesWithoutDefaultViews.map(
+          (ds) => ds.toJSON()
+        ),
+        defaultViewsWithIncorrectVault: defaultViewsWithIncorrectVault.map(
+          (ds) => ds.toJSON()
+        ),
+        managedDataSourcesWithoutConnector:
+          managedDataSourcesWithoutConnector.map((ds) => ds.toJSON()),
       },
       "Inconsistent data sources or data source views"
     );
