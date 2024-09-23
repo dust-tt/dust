@@ -363,15 +363,22 @@ export async function batchRenderMessages(
   auth: Authenticator,
   conversationId: string,
   messages: Message[]
-): Promise<MessageWithRankType[]> {
+): Promise<Result<MessageWithRankType[], ConversationPermissionError>> {
   const [userMessages, agentMessages, contentFragments] = await Promise.all([
     batchRenderUserMessages(messages),
     batchRenderAgentMessages(auth, messages),
     batchRenderContentFragment(auth, conversationId, messages),
   ]);
-  return [...userMessages, ...agentMessages, ...contentFragments]
-    .sort((a, b) => a.rank - b.rank || a.version - b.version)
-    .map(({ m, rank }) => ({ ...m, rank }));
+
+  if (agentMessages.some((m) => !canReadMessage(auth, m.m))) {
+    return new Err(new ConversationPermissionError());
+  }
+
+  return new Ok(
+    [...userMessages, ...agentMessages, ...contentFragments]
+      .sort((a, b) => a.rank - b.rank || a.version - b.version)
+      .map(({ m, rank }) => ({ ...m, rank }))
+  );
 }
 
 export interface FetchConversationMessagesResponse {
