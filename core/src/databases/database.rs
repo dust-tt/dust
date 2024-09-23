@@ -1,13 +1,10 @@
-use std::collections::HashMap;
-
 use super::table_schema::TableSchema;
 use crate::{
     databases_store::store::DatabasesStore,
     project::Project,
     search_filter::{Filterable, SearchFilter},
-    sqlite_workers::client::{SqliteWorker, SqliteWorkerError, HEARTBEAT_INTERVAL_MS},
+    sqlite_workers::client::HEARTBEAT_INTERVAL_MS,
     stores::store::Store,
-    utils,
 };
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
@@ -15,7 +12,6 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
-use tracing::info;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -43,99 +39,6 @@ pub enum QueryDatabaseError {
     ExecutionError(String),
 }
 
-impl From<SqliteWorkerError> for QueryDatabaseError {
-    fn from(e: SqliteWorkerError) -> Self {
-        match &e {
-            SqliteWorkerError::TooManyResultRows => QueryDatabaseError::TooManyResultRows,
-            SqliteWorkerError::QueryExecutionError(msg) => {
-                QueryDatabaseError::ExecutionError(msg.clone())
-            }
-            _ => QueryDatabaseError::GenericError(e.into()),
-        }
-    }
-}
-
-pub async fn query_database(
-    tables: &Vec<Table>,
-    store: Box<dyn Store + Sync + Send>,
-    query: &str,
-) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
-    let table_ids_hash = tables.iter().map(|t| t.unique_id()).sorted().join("/");
-    let database = store
-        .upsert_database(&table_ids_hash, HEARTBEAT_INTERVAL_MS)
-        .await?;
-
-    let time_query_start = utils::now();
-
-    let result_rows = match database.sqlite_worker() {
-        Some(sqlite_worker) => {
-            let result_rows = sqlite_worker
-                .execute_query(&table_ids_hash, tables, query)
-                .await?;
-            result_rows
-        }
-        None => Err(anyhow!(
-            "No live SQLite worker found for database {}",
-            database.table_ids_hash
-        ))?,
-    };
-
-    info!(
-        duration = utils::now() - time_query_start,
-        "DSSTRUCTSTAT Finished executing user query on worker"
-    );
-
-    let infer_result_schema_start = utils::now();
-    let table_schema = TableSchema::from_rows(&result_rows)?;
-
-    info!(
-        duration = utils::now() - infer_result_schema_start,
-        "DSSTRUCTSTAT Finished inferring schema"
-    );
-    info!(
-        duration = utils::now() - time_query_start,
-        "DSSTRUCTSTAT Finished query database"
-    );
-
-    Ok((result_rows, table_schema))
-}
-
-pub async fn invalidate_database(db: Database, store: Box<dyn Store + Sync + Send>) -> Result<()> {
-    if let Some(worker) = db.sqlite_worker() {
-        worker.invalidate_database(db.unique_id()).await?;
-    } else {
-        // If the worker is not alive, we delete the database row in case the worker becomes alive again.
-        store.delete_database(&db.table_ids_hash).await?;
-    }
-
-    Ok(())
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct Database {
-    created: u64,
-    table_ids_hash: String,
-    sqlite_worker: Option<SqliteWorker>,
-}
-
-impl Database {
-    pub fn new(created: u64, table_ids_hash: &str, sqlite_worker: &Option<SqliteWorker>) -> Self {
-        Database {
-            created,
-            table_ids_hash: table_ids_hash.to_string(),
-            sqlite_worker: sqlite_worker.clone(),
-        }
-    }
-
-    pub fn sqlite_worker(&self) -> &Option<SqliteWorker> {
-        &self.sqlite_worker
-    }
-
-    pub fn unique_id(&self) -> &str {
-        &self.table_ids_hash
-    }
-}
-
 #[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct Table {
     project: Project,
@@ -157,6 +60,7 @@ pub fn get_table_unique_id(project: &Project, data_source_id: &str, table_id: &s
     format!("{}__{}__{}", project.project_id(), data_source_id, table_id)
 }
 
+// TODO(@fontanierh): Support for remote DBs.
 impl Table {
     pub fn new(
         project: &Project,
@@ -273,7 +177,13 @@ impl Table {
                 )
                 .await?)
                 .into_iter()
-                .map(|db| invalidate_database(db, store.clone())),
+                .map(|db| {
+                    let store = store.clone();
+                    async move {
+                        db.invalidate(store).await?;
+                        Ok::<_, anyhow::Error>(())
+                    }
+                }),
         )
         .await?;
 
@@ -365,7 +275,13 @@ impl Table {
                 )
                 .await?)
                 .into_iter()
-                .map(|db| invalidate_database(db, store.clone())),
+                .map(|db| {
+                    let store = store.clone();
+                    async move {
+                        db.invalidate(store).await?;
+                        Ok::<_, anyhow::Error>(())
+                    }
+                }),
         )
         .await?;
 
@@ -505,28 +421,6 @@ impl HasValue for QueryResult {
     fn value(&self) -> &Value {
         &self.value
     }
-}
-
-pub fn get_unique_table_names_for_database(tables: &[Table]) -> HashMap<String, String> {
-    let mut name_count: HashMap<&str, usize> = HashMap::new();
-
-    tables
-        .iter()
-        .sorted_by_key(|table| table.unique_id())
-        .map(|table| {
-            let base_name = table.name();
-            let count = name_count.entry(base_name).or_insert(0);
-            *count += 1;
-
-            (
-                table.unique_id(),
-                match *count {
-                    1 => base_name.to_string(),
-                    _ => format!("{}_{}", base_name, *count - 1),
-                },
-            )
-        })
-        .collect()
 }
 
 #[cfg(test)]

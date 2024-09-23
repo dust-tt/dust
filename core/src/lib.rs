@@ -24,6 +24,7 @@ pub mod databases {
         pub mod remote_database;
         pub mod snowflake;
     }
+    pub mod transient_database;
 }
 pub mod project;
 pub mod run;

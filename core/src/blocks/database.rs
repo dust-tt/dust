@@ -1,15 +1,19 @@
-use crate::blocks::block::{parse_pair, Block, BlockResult, BlockType, Env};
-use crate::databases::database::{query_database, QueryDatabaseError};
-use crate::Rule;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-
 use pest::iterators::Pair;
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::block::replace_variables_in_string;
-use super::database_schema::load_tables_from_identifiers;
+use crate::{
+    blocks::{
+        block::{parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env},
+        database_schema::load_tables_from_identifiers,
+    },
+    databases::{
+        database::QueryDatabaseError, transient_database::execute_query_on_transient_database,
+    },
+    Rule,
+};
 
 #[derive(Clone)]
 pub struct Database {
@@ -103,7 +107,7 @@ impl Block for Database {
         let query = replace_variables_in_string(&self.query, "query", env)?;
         let tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
-        match query_database(&tables, env.store.clone(), &query).await {
+        match execute_query_on_transient_database(&tables, env.store.clone(), &query).await {
             Ok((results, schema)) => Ok(BlockResult {
                 value: json!({
                     "results": results,
