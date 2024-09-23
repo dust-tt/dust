@@ -7,6 +7,8 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { Workspace } from "@app/lib/models/workspace";
 
 async function backfillDataSourceViewsForWorkspace(
   workspace: LightWorkspaceType,
@@ -48,7 +50,8 @@ async function backfillDataSourceViewsForWorkspace(
     await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
       auth,
       globalVault,
-      dataSource
+      dataSource,
+      "custom"
     );
 
     updated++;
@@ -61,8 +64,12 @@ async function backfillDataSourceViewsForWorkspace(
   );
 }
 
-makeScript({}, async ({ execute }, logger) => {
-  return runOnAllWorkspaces(async (workspace) => {
-    await backfillDataSourceViewsForWorkspace(workspace, logger, execute);
-  });
+makeScript({ wId: { type: "string", requiresArg: true } },
+  async ({ execute, wId }, logger) => {
+    const ws = await Workspace.findOne({ where: { sId: wId } });
+    if (ws) {
+      const workspace = renderLightWorkspaceType({ workspace: ws });
+      await backfillDataSourceViewsForWorkspace(workspace, logger, execute);
+    }
+  }
 });
