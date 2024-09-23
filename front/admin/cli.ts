@@ -269,21 +269,21 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
-      if (!args.name) {
-        throw new Error("Missing --name argument");
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
       }
 
       const auth = await Authenticator.internalAdminForWorkspace(args.wId);
 
       const dataSource = await DataSourceResource.fetchByNameOrId(
         auth,
-        args.name,
+        args.dsId,
         // TODO(DATASOURCE_SID): Clean-up
         { origin: "cli_delete" }
       );
       if (!dataSource) {
         throw new Error(
-          `DataSource not found: wId='${args.wId}' name='${args.name}'`
+          `DataSource not found: wId='${args.wId}' dsId='${args.dsId}'`
         );
       }
 
@@ -295,7 +295,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
           output: process.stdout,
         });
         rl.question(
-          `Are you sure you want to definitely delete the following data source and all associated data: wId='${args.wId}' name='${args.name}' provider='${dataSource.connectorProvider}'? (y/N) `,
+          `Are you sure you want to definitely delete the following data source and all associated data: wId='${args.wId}' dsId='${args.dsId}' provider='${dataSource.connectorProvider}'? (y/N) `,
           (answer: string) => {
             rl.close();
             if (answer !== "y") {
@@ -382,8 +382,8 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
-      if (!args.name) {
-        throw new Error("Missing --name argument");
+      if (!args.dsId) {
+        throw new Error("Missing --dsId argument");
       }
       if (!args.documentId) {
         throw new Error("Missing --documentId argument");
@@ -393,7 +393,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
 
       const dataSource = await DataSourceResource.fetchByNameOrId(
         auth,
-        args.name,
+        args.dsId,
         {
           // TODO(DATASOURCE_SID): Clean-up
           origin: "cli_delete_document",
@@ -401,7 +401,7 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
       );
       if (!dataSource) {
         throw new Error(
-          `DataSource not found: wId='${args.wId}' name='${args.name}'`
+          `DataSource not found: wId='${args.wId}' dsId='${args.dsId}'`
         );
       }
 
