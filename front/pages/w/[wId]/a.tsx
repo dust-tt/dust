@@ -24,9 +24,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements(
 
     return {
       redirect: {
-        destination: !owner.flags.includes("data_vaults_feature")
-          ? `/w/${owner.sId}/vaults/${vault.sId}/apps`
-          : `/w/${owner.sId}/vaults/${vault.sId}/categories/apps`,
+        destination: `/w/${owner.sId}/vaults/${vault.sId}/categories/apps`,
         permanent: false,
       },
     };

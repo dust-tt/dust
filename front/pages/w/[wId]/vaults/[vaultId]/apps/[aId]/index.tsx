@@ -36,14 +36,13 @@ import {
   moveBlockUp,
 } from "@app/lib/specification";
 import { useSavedRunStatus } from "@app/lib/swr/apps";
-import { getDustAppsListUrl } from "@app/lib/vault_rollout";
+import { dustAppsListUrl } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   readOnly: boolean;
   url: string;
-  dustAppsListUrl: string;
   app: AppType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -70,18 +69,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const dustAppsListUrl = await getDustAppsListUrl(
-    auth,
-    context.params.vaultId
-  );
-
   return {
     props: {
       owner,
       subscription,
       readOnly,
       url: config.getClientFacingUrl(),
-      dustAppsListUrl,
       app: app.toJSON(),
     },
   };
@@ -147,7 +140,6 @@ export default function AppView({
   readOnly,
   app,
   url,
-  dustAppsListUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { mutate } = useSWRConfig();
 
@@ -329,7 +321,7 @@ export default function AppView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl);
+            void router.push(dustAppsListUrl(owner, app.vault));
           }}
         />
       }

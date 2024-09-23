@@ -81,9 +81,7 @@ export default function DataSourcePicker({
   ]);
 
   const getEditLink = (dsv: DataSourceViewType) => {
-    return owner.flags.includes("data_vaults_feature")
-      ? `/w/${owner.sId}/vaults/${dsv.vaultId}/categories/${dsv.category}/data_source_views/${dsv.sId}`
-      : `/w/${owner.sId}/builder/data-sources/${dsv.dataSource.sId}`;
+    return `/w/${owner.sId}/vaults/${dsv.vaultId}/categories/${dsv.category}/data_source_views/${dsv.sId}`;
   };
 
   useEffect(() => {

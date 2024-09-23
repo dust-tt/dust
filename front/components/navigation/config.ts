@@ -8,7 +8,6 @@ import {
   FolderOpenIcon,
   LockIcon,
   PlanetIcon,
-  PuzzleIcon,
   QuestionMarkCircleIcon,
   RobotIcon,
   ShapesIcon,
@@ -122,31 +121,15 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
       ].includes(currentRoute),
   });
 
-  if (isBuilder(owner)) {
-    nav.push({
-      id: "assistants",
-      label: "Build",
-      icon: PuzzleIcon,
-      href: `/w/${owner.sId}/builder/assistants`,
-      isCurrent: (currentRoute: string) =>
-        currentRoute.startsWith("/w/[wId]/builder/") ||
-        (!owner.flags.includes("data_vaults_feature") &&
-          !!currentRoute.match("^/w/.+/vaults/.+/apps$")),
-      sizing: "expand",
-    });
-  }
-
-  if (owner.flags.includes("data_vaults_feature")) {
-    nav.push({
-      id: "data_sources",
-      label: "Data sources",
-      icon: BookOpenIcon,
-      href: `/w/${owner.sId}/vaults`,
-      isCurrent: (currentRoute: string) =>
-        currentRoute.startsWith("/w/[wId]/vaults/"),
-      sizing: "expand",
-    });
-  }
+  nav.push({
+    id: "data_sources",
+    label: "Data sources",
+    icon: BookOpenIcon,
+    href: `/w/${owner.sId}/vaults`,
+    isCurrent: (currentRoute: string) =>
+      currentRoute.startsWith("/w/[wId]/vaults/"),
+    sizing: "expand",
+  });
 
   if (isAdmin(owner)) {
     nav.push({
@@ -336,33 +319,31 @@ export const subNavigationAdmin = ({
       ],
     });
 
-    if (owner.flags.includes("data_vaults_feature")) {
-      nav.push({
-        id: "developers",
-        label: "Developers",
-        variant: "secondary",
-        menus: [
-          {
-            id: "providers",
-            label: "Providers",
-            icon: ShapesIcon,
-            href: `/w/${owner.sId}/developers/providers`,
-            current: current === "providers",
-            subMenuLabel: current === "providers" ? subMenuLabel : undefined,
-            subMenu: current === "providers" ? subMenu : undefined,
-          },
-          {
-            id: "api_keys",
-            label: "API Keys",
-            icon: LockIcon,
-            href: `/w/${owner.sId}/developers/api-keys`,
-            current: current === "api_keys",
-            subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
-            subMenu: current === "api_keys" ? subMenu : undefined,
-          },
-        ],
-      });
-    }
+    nav.push({
+      id: "developers",
+      label: "Developers",
+      variant: "secondary",
+      menus: [
+        {
+          id: "providers",
+          label: "Providers",
+          icon: ShapesIcon,
+          href: `/w/${owner.sId}/developers/providers`,
+          current: current === "providers",
+          subMenuLabel: current === "providers" ? subMenuLabel : undefined,
+          subMenu: current === "providers" ? subMenu : undefined,
+        },
+        {
+          id: "api_keys",
+          label: "API Keys",
+          icon: LockIcon,
+          href: `/w/${owner.sId}/developers/api-keys`,
+          current: current === "api_keys",
+          subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
+          subMenu: current === "api_keys" ? subMenu : undefined,
+        },
+      ],
+    });
   }
 
   return nav;

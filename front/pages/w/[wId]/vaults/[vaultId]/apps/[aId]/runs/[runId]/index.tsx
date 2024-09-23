@@ -19,7 +19,7 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { getRun } from "@app/lib/api/run";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { getDustAppsListUrl } from "@app/lib/vault_rollout";
+import { dustAppsListUrl } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -28,7 +28,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   app: AppType;
   run: RunType;
   spec: SpecificationType;
-  dustAppsListUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -56,11 +55,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
   const { run, spec } = r;
 
-  const dustAppsListUrl = await getDustAppsListUrl(
-    auth,
-    context.params.vaultId
-  );
-
   return {
     props: {
       owner,
@@ -69,7 +63,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       app: app.toJSON(),
       spec,
       run,
-      dustAppsListUrl,
     },
   };
 });
@@ -81,7 +74,6 @@ export default function AppRun({
   app,
   spec,
   run,
-  dustAppsListUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [savedRunId, setSavedRunId] = useState<string | null | undefined>(
     app.savedRun
@@ -157,7 +149,7 @@ export default function AppRun({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl);
+            void router.push(dustAppsListUrl(owner, app.vault));
           }}
         />
       }
