@@ -422,7 +422,7 @@ export const VaultDataSourceViewContentList = ({
           !parentId &&
           vault.kind === "system" && (
             <div className="flex flex-col items-center gap-2 text-sm text-element-700">
-              {rows.length === 0 && (
+              {!isNodesLoading && rows.length === 0 && (
                 <div>Connection ready. Select the data to sync.</div>
               )}
 
