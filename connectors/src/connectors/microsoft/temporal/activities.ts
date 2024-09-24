@@ -1,5 +1,5 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import { cacheWithRedis, Err, Ok } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
+import { cacheWithRedis } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
@@ -43,10 +43,10 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { MicrosoftRootResource } from "@connectors/resources/microsoft_resource";
 import {
   MicrosoftConfigurationResource,
   MicrosoftNodeResource,
+  MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -284,8 +284,7 @@ export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
   );
 
   if (!node) {
-    logger.warn({ internalId }, "Node not found");
-    return;
+    throw new Error(`Node ${internalId} not found`);
   }
 
   // if node was updated more recently than this sync, we don't need to mark it
@@ -319,11 +318,7 @@ export async function syncFiles({
   );
 
   if (!parent) {
-    logger.warn({ parentInternalId }, "Unexpected: parent node not found");
-    return {
-      count: 0,
-      childNodes: [],
-    };
+    throw new Error(`Unexpected: parent node not found: ${parentInternalId}`);
   }
 
   if (parent.nodeType !== "folder" && parent.nodeType !== "drive") {
@@ -844,10 +839,10 @@ export async function microsoftDeletionActivity({
 }: {
   connectorId: ModelId;
   nodeIdsToDelete: string[];
-}): Promise<Result<void, Error>> {
+}): Promise<string[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
-    return new Err(new Error(`Connector ${connectorId} not found`));
+    return [];
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -858,17 +853,7 @@ export async function microsoftDeletionActivity({
     { concurrency: DELETE_CONCURRENCY }
   );
 
-  const errors = results.filter((r): r is Err<Error> => r.isErr());
-  if (errors.length > 0) {
-    logger.error(
-      { connectorId, errors: errors.map((e) => e.error.message) },
-      "Microsoft deletion workflow completed with errors"
-    );
-    return new Err(
-      new Error("Microsoft deletion workflow completed with errors")
-    );
-  }
-  return new Ok(undefined);
+  return results.flat();
 }
 
 export async function microsoftGarbageCollectionActivity({

@@ -85,16 +85,22 @@ export async function fullSyncWorkflow({
   while (nodeIdsToSync.length > 0) {
     // First, delete any nodes that were removed
     if (nodeIdsToDelete.length > 0) {
-      await microsoftDeletionActivity({
+      const res = await microsoftDeletionActivity({
         connectorId,
         nodeIdsToDelete: nodeIdsToDelete.splice(0, nodeIdsToDelete.length),
+      });
+      res.forEach((nodeId) => {
+        if (nodeIdsToSync.includes(nodeId)) {
+          nodeIdsToSync.splice(nodeIdsToSync.indexOf(nodeId), 1);
+        }
       });
     }
 
     const nodeId = nodeIdsToSync.pop();
 
     if (!nodeId) {
-      throw new Error("Unreachable: node is undefined");
+      // All nodes have been removed by previous activity, breaking
+      break;
     }
 
     do {
