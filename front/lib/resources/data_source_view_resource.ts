@@ -25,6 +25,8 @@ import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/ac
 import { User } from "@app/lib/models/user";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
+import { frontSequelize } from "@app/lib/resources/storage";
+import type { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -82,14 +84,18 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     auth: Authenticator,
     blob: Omit<CreationAttributes<DataSourceViewModel>, "vaultId">,
     vault: VaultResource,
-    dataSource: DataSourceResource
+    dataSource: DataSourceResource,
+    transaction?: Transaction
   ) {
-    const dataSourceView = await DataSourceViewResource.model.create({
-      ...blob,
-      editedByUserId: auth.getNonNullableUser().id,
-      editedAt: new Date(),
-      vaultId: vault.id,
-    });
+    const dataSourceView = await DataSourceViewResource.model.create(
+      {
+        ...blob,
+        editedByUserId: auth.getNonNullableUser().id,
+        editedAt: new Date(),
+        vaultId: vault.id,
+      },
+      { transaction }
+    );
 
     const dsv = new this(
       DataSourceViewResource.model,
@@ -98,6 +104,28 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     );
     dsv.ds = dataSource;
     return dsv;
+  }
+
+  static async createDataSourceAndDefaultView(
+    auth: Authenticator,
+    blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
+    vault: VaultResource
+  ) {
+    return frontSequelize.transaction(async (transaction) => {
+      const dataSource = await DataSourceResource.makeNew(
+        auth,
+        blob,
+        vault,
+        transaction
+      );
+      return this.createViewInVaultFromDataSourceIncludingAllDocuments(
+        auth,
+        dataSource.vault,
+        dataSource,
+        "default",
+        transaction
+      );
+    });
   }
 
   static async createViewInVaultFromDataSource(
@@ -124,7 +152,8 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     auth: Authenticator,
     vault: VaultResource,
     dataSource: DataSourceResource,
-    kind: DataSourceViewKind = "default"
+    kind: DataSourceViewKind = "default",
+    transaction?: Transaction
   ) {
     return this.makeNew(
       auth,
@@ -135,7 +164,8 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
         kind,
       },
       vault,
-      dataSource
+      dataSource,
+      transaction
     );
   }
 

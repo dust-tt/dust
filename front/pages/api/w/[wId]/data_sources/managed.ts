@@ -1,19 +1,22 @@
-import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
-import type { ConnectorType } from "@dust-tt/types";
+import type {
+  ConnectorType,
+  DataSourceType,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import {
   assertNever,
   ConnectorConfigurationTypeSchema,
+  ConnectorsAPI,
+  CoreAPI,
   DEFAULT_EMBEDDING_PROVIDER_ID,
   DEFAULT_QDRANT_CLUSTER,
+  dustManagedCredentials,
   EMBEDDING_CONFIGS,
   ioTsParsePayload,
   isConnectorProvider,
   sendUserOperationMessage,
   WebCrawlerConfigurationTypeSchema,
 } from "@dust-tt/types";
-import { dustManagedCredentials } from "@dust-tt/types";
-import { ConnectorsAPI } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -27,7 +30,6 @@ import {
   isConnectorProviderAllowedForPlan,
   isConnectorProviderAssistantDefaultSelected,
 } from "@app/lib/connector_providers";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -295,20 +297,24 @@ async function handler(
       const vault = await (provider === "webcrawler"
         ? VaultResource.fetchWorkspaceGlobalVault(auth)
         : VaultResource.fetchWorkspaceSystemVault(auth));
-      const dataSource = await DataSourceResource.makeNew(
-        auth,
-        {
-          assistantDefaultSelected,
-          connectorProvider: provider,
-          description: dataSourceDescription,
-          dustAPIProjectId: dustProject.value.project.project_id.toString(),
-          dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
-          editedByUserId: user.id,
-          name: dataSourceName,
-          workspaceId: owner.id,
-        },
-        vault
-      );
+      const dataSourceView =
+        await DataSourceViewResource.createDataSourceAndDefaultView(
+          auth,
+          {
+            assistantDefaultSelected,
+            connectorProvider: provider,
+            description: dataSourceDescription,
+            dustAPIProjectId: dustProject.value.project.project_id.toString(),
+            dustAPIDataSourceId:
+              dustDataSource.value.data_source.data_source_id,
+            editedByUserId: user.id,
+            name: dataSourceName,
+            workspaceId: owner.id,
+          },
+          vault
+        );
+
+      const dataSource = dataSourceView.dataSource;
 
       // For each data source, we create two views:
       // - One default view in its associated vault
@@ -324,12 +330,6 @@ async function handler(
           "custom"
         );
       }
-
-      await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-        auth,
-        dataSource.vault,
-        dataSource
-      );
 
       const connectorsAPI = new ConnectorsAPI(
         config.getConnectorsAPIConfig(),
