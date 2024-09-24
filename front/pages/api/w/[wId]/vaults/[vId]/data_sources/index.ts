@@ -594,22 +594,6 @@ const handleDataSourceWithoutProvider = async ({
     });
   }
 
-<<<<<<< HEAD
-=======
-  const dataSource = await DataSourceResource.makeNew(
-    auth,
-    {
-      name,
-      description,
-      dustAPIProjectId: dustProject.value.project.project_id.toString(),
-      dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
-      workspaceId: owner.id,
-      assistantDefaultSelected: false,
-    },
-    vault
-  );
-
->>>>>>> main
   const dataSourceView =
     await DataSourceViewResource.createDataSourceAndDefaultView(
       auth,
@@ -620,7 +604,6 @@ const handleDataSourceWithoutProvider = async ({
         dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
         workspaceId: owner.id,
         assistantDefaultSelected: false,
-        editedByUserId: user.id,
       },
       vault
     );
