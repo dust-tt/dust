@@ -276,9 +276,9 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       where: {
         name: {
           [Op.in]: names,
-          // /!\ Names being generic, we need to filter by workspace.
-          workspaceId: auth.getNonNullableWorkspace().id,
         },
+        // /!\ Names being generic, we need to filter by workspace.
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
 
