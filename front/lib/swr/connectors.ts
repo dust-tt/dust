@@ -143,7 +143,7 @@ export function useToggleSlackChatBot({
     disabled: true, // Needed just to mutate
   });
 
-  const doCreate = async (botEnabled: boolean) => {
+  const doToggle = async (botEnabled: boolean) => {
     const res = await fetch(
       `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/botEnabled`,
       {
@@ -181,5 +181,5 @@ export function useToggleSlackChatBot({
     }
   };
 
-  return doCreate;
+  return doToggle;
 }

@@ -33,7 +33,7 @@ export function SlackBotEnableView({
   const [loading, setLoading] = useState(false);
   const [showNoSlackBotPopup, setShowNoSlackBotPopup] = useState(false);
 
-  const doCreate = useToggleSlackChatBot({
+  const doToggle = useToggleSlackChatBot({
     dataSource,
     owner,
   });
@@ -41,7 +41,7 @@ export function SlackBotEnableView({
   const handleSetBotEnabled = async (botEnabled: boolean) => {
     setLoading(true);
 
-    await doCreate(botEnabled);
+    await doToggle(botEnabled);
 
     setLoading(false);
   };
