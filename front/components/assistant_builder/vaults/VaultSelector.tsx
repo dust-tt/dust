@@ -1,5 +1,5 @@
 import { Checkbox, Dialog, Icon, Page, Spinner } from "@dust-tt/sparkle";
-import type { VaultType } from "@dust-tt/types";
+import type { LightWorkspaceType, VaultType } from "@dust-tt/types";
 import React, { useState } from "react";
 
 import { useVaults } from "@app/lib/swr/vaults";
@@ -7,7 +7,7 @@ import { classNames } from "@app/lib/utils";
 import { getVaultIcon, getVaultName } from "@app/lib/vaults";
 
 interface VaultSelectorProps {
-  owner: { sId: string };
+  owner: LightWorkspaceType;
   allowedVaults?: VaultType[];
   defaultVault: string;
   renderChildren: (vault?: VaultType) => React.ReactNode;
@@ -36,7 +36,7 @@ export function VaultSelector({
   }
 
   return (
-    <div>
+    <>
       {vaults.map((vault) => {
         const isDisabled = !allowedVaults?.some((v) => v.sId === vault.sId);
         const isChecked = selectedVault === vault.sId;
@@ -100,6 +100,6 @@ export function VaultSelector({
         An assistant can access one source of data only. The other tools are
         using a different source.
       </Dialog>
-    </div>
+    </>
   );
 }
