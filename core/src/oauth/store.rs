@@ -1,12 +1,15 @@
 use std::str::FromStr;
 
 use crate::oauth::connection::{Connection, ConnectionProvider, ConnectionStatus};
+use crate::oauth::credential::{Credential, CredentialProvider};
 use crate::utils;
 use anyhow::Result;
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use tokio_postgres::NoTls;
+
+use super::credential::CredentialMetadata;
 
 #[async_trait]
 pub trait OAuthStore {
@@ -22,6 +25,14 @@ pub trait OAuthStore {
     ) -> Result<Connection>;
     async fn update_connection_secrets(&self, connection: &Connection) -> Result<()>;
     async fn update_connection_status(&self, connection: &Connection) -> Result<()>;
+
+    async fn create_credential(
+        &self,
+        provider: CredentialProvider,
+        metadata: CredentialMetadata,
+        encrypted_content: Vec<u8>,
+    ) -> Result<Credential>;
+    async fn retrieve_credential(&self, credential_id: &str) -> Result<Credential>;
 
     fn clone_box(&self) -> Box<dyn OAuthStore + Sync + Send>;
 }
@@ -219,12 +230,85 @@ impl OAuthStore for PostgresOAuthStore {
         Ok(())
     }
 
+    async fn create_credential(
+        &self,
+        provider: CredentialProvider,
+        metadata: CredentialMetadata,
+        encrypted_content: Vec<u8>,
+    ) -> Result<Credential> {
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let created = utils::now();
+        let secret = utils::new_id();
+
+        let stmt = c
+            .prepare(
+                "INSERT INTO credentials (id, created, secret, provider, metadata, encrypted_content)
+                   VALUES (DEFAULT, $1, $2, $3, $4::jsonb, $5) RETURNING id",
+            )
+            .await?;
+        let row_id: i64 = c
+            .query_one(
+                &stmt,
+                &[
+                    &(created as i64),
+                    &secret,
+                    &provider.to_string(),
+                    &(serde_json::to_value(&metadata)?),
+                    &encrypted_content,
+                ],
+            )
+            .await?
+            .get(0);
+
+        let credential_id = Credential::credential_id_from_row_id_and_secret(row_id, &secret)?;
+
+        Ok(Credential::new(
+            credential_id,
+            created,
+            provider,
+            metadata,
+            encrypted_content,
+        ))
+    }
+
+    async fn retrieve_credential(&self, credential_id: &str) -> Result<Credential> {
+        let (row_id, secret) = Credential::row_id_and_secret_from_credential_id(credential_id)?;
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let r = c
+            .query_one(
+                "SELECT created, provider, metadata, encrypted_content
+                   FROM credentials
+                   WHERE id = $1 AND secret = $2",
+                &[&row_id, &secret],
+            )
+            .await?;
+
+        let created: i64 = r.get(0);
+        let provider: CredentialProvider = CredentialProvider::from_str(r.get(1))?;
+        let metadata: CredentialMetadata = serde_json::from_value(r.get(2))?;
+        let encrypted_content: Vec<u8> = r.get(3);
+
+        Ok(Credential::new(
+            credential_id.to_string(),
+            created as u64,
+            provider,
+            metadata,
+            encrypted_content,
+        ))
+    }
+
     fn clone_box(&self) -> Box<dyn OAuthStore + Sync + Send> {
         Box::new(self.clone())
     }
 }
 
-pub const POSTGRES_TABLES: [&'static str; 1] = ["-- connections
+pub const POSTGRES_TABLES: [&'static str; 2] = [
+    "-- connections
     CREATE TABLE IF NOT EXISTS connections (
        id                             BIGSERIAL PRIMARY KEY,
        created                        BIGINT NOT NULL,
@@ -238,6 +322,16 @@ pub const POSTGRES_TABLES: [&'static str; 1] = ["-- connections
        encrypted_access_token         BYTEA,
        encrypted_refresh_token        BYTEA,
        encrypted_raw_json             BYTEA
-    );"];
+    );",
+    "-- secrets
+    CREATE TABLE IF NOT EXISTS credentials (
+       id                             BIGSERIAL PRIMARY KEY,
+       created                        BIGINT NOT NULL,
+       provider                       TEXT NOT NULL,
+       metadata                       JSONB,
+       secret                         TEXT NOT NULL,
+       encrypted_content          BYTEA
+    );",
+];
 
 pub const SQL_INDEXES: [&'static str; 0] = [];
