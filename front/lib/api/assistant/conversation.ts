@@ -701,19 +701,15 @@ export async function* postUserMessage(
   }
 
   const results = await Promise.all([
-    await Promise.all(
+    Promise.all(
       mentions.filter(isAgentMention).map((mention) => {
         return getLightAgentConfiguration(auth, mention.configurationId);
       })
     ),
-    await createOrUpdateParticipation(),
+    createOrUpdateParticipation(),
   ]);
 
-  // casting non-null is ok here because we check right below that there's no
-  // nulls and err if there is
-  const agentConfigurations = results[0] as LightAgentConfigurationType[];
-
-  if (agentConfigurations.some((a) => a === null)) {
+  if (results[0].some((a) => a === null)) {
     yield {
       type: "user_message_error",
       created: Date.now(),
@@ -724,6 +720,10 @@ export async function* postUserMessage(
     };
     return;
   }
+
+  // casting non-null is ok here because we check right above that there's no
+  // nulls and err if there is
+  const agentConfigurations = results[0] as LightAgentConfigurationType[];
 
   for (const agentConfig of agentConfigurations) {
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
@@ -1178,11 +1178,7 @@ export async function* editUserMessage(
     await createOrUpdateParticipation(),
   ]);
 
-  // casting non-null is ok here because we check right below that there's no
-  // nulls and err if there is
-  const agentConfigurations = results[0] as LightAgentConfigurationType[];
-
-  if (agentConfigurations.some((a) => a === null)) {
+  if (results[0].some((a) => a === null)) {
     yield {
       type: "user_message_error",
       created: Date.now(),
@@ -1193,6 +1189,10 @@ export async function* editUserMessage(
     };
     return;
   }
+
+  // casting non-null is ok here because we check right above that there's no
+  // nulls and err if there is
+  const agentConfigurations = results[0] as LightAgentConfigurationType[];
 
   for (const agentConfig of agentConfigurations) {
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
