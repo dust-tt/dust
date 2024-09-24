@@ -17,16 +17,17 @@ export type BaseDialogProps = {
   title: string;
   validateLabel?: string;
   validateVariant?: "primary" | "primaryWarning";
+  cancelLabel?: string;
 };
 
 export type DialogProps = BaseDialogProps & {
   alertDialog?: false;
   onCancel: () => void;
-  cancelLabel?: string;
 }
 
 export type AlertDialogProps = BaseDialogProps & {
   alertDialog: true;
+  onCancel?: () => void;
 }
 
 export function Dialog({
@@ -91,7 +92,7 @@ export function Dialog({
                   <Button.List>
                     {!isSaving && (
                       <>
-                        {!props.alertDialog && (
+                        {props.onCancel && (
                           <Button
                             label={props.cancelLabel ?? "Cancel"}
                             variant="tertiary"
