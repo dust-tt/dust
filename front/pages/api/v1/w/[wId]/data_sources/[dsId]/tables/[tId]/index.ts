@@ -1,4 +1,4 @@
-import type { CoreAPITableSchema, WithAPIErrorResponse } from "@dust-tt/types";
+import type { CoreAPITablePublic, WithAPIErrorResponse } from "@dust-tt/types";
 import { assertNever, CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -11,15 +11,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetTableResponseBody = {
-  table: {
-    name: string;
-    table_id: string;
-    description: string;
-    schema: CoreAPITableSchema | null;
-    timestamp: number;
-    tags: string[];
-    parents: string[];
-  };
+  table: CoreAPITablePublic;
 };
 
 /**

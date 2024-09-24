@@ -2252,6 +2252,8 @@ impl Store for PostgresStore {
         timestamp: u64,
         tags: &Vec<String>,
         parents: &Vec<String>,
+        remote_database_table_id: Option<String>,
+        remote_database_secret_id: Option<String>,
     ) -> Result<Table> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -2263,6 +2265,8 @@ impl Store for PostgresStore {
         let table_timestamp = timestamp;
         let table_tags = tags.clone();
         let table_parents = parents.clone();
+        let table_remote_database_table_id = remote_database_table_id.clone();
+        let table_remote_database_secret_id = remote_database_secret_id.clone();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -2321,6 +2325,8 @@ impl Store for PostgresStore {
             table_parents,
             &None,
             None,
+            table_remote_database_table_id,
+            table_remote_database_secret_id,
         ))
     }
 
@@ -2476,8 +2482,10 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT created, table_id, name, description, timestamp, tags_array, parents, \
-                        schema, schema_stale_at FROM tables \
+                "SELECT created, table_id, name, description, \
+                        timestamp, tags_array, parents, \
+                        schema, schema_stale_at, \
+                        remote_database_table_id, remote_database_secret_id FROM tables \
                 WHERE data_source = $1 AND table_id = $2 LIMIT 1",
             )
             .await?;
@@ -2493,6 +2501,8 @@ impl Store for PostgresStore {
             Vec<String>,
             Option<String>,
             Option<i64>,
+            Option<String>,
+            Option<String>,
         )> = match r.len() {
             0 => None,
             1 => Some((
@@ -2505,6 +2515,8 @@ impl Store for PostgresStore {
                 r[0].get(6),
                 r[0].get(7),
                 r[0].get(8),
+                r[0].get(9),
+                r[0].get(10),
             )),
             _ => unreachable!(),
         };
@@ -2521,6 +2533,8 @@ impl Store for PostgresStore {
                 parents,
                 schema,
                 schema_stale_at,
+                remote_database_table_id,
+                remote_database_secret_id,
             )) => {
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
@@ -2544,6 +2558,8 @@ impl Store for PostgresStore {
                     parents,
                     &parsed_schema,
                     schema_stale_at.map(|t| t as u64),
+                    remote_database_table_id,
+                    remote_database_secret_id,
                 )))
             }
         }
@@ -2606,7 +2622,9 @@ impl Store for PostgresStore {
 
         let sql = format!(
             "SELECT created, table_id, name, description, timestamp, tags_array, \
-                                parents, schema, schema_stale_at FROM tables \
+                                parents, schema, schema_stale_at, \
+                                remote_database_table_id, remote_database_secret_id \
+                                FROM tables \
                WHERE {} ORDER BY timestamp DESC",
             where_clauses.join(" AND "),
         );
@@ -2643,6 +2661,8 @@ impl Store for PostgresStore {
                 let parents: Vec<String> = r.get(6);
                 let schema: Option<String> = r.get(7);
                 let schema_stale_at: Option<i64> = r.get(8);
+                let remote_database_table_id: Option<String> = r.get(9);
+                let remote_database_secret_id: Option<String> = r.get(10);
 
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
@@ -2667,6 +2687,8 @@ impl Store for PostgresStore {
                     parents,
                     &parsed_schema,
                     schema_stale_at.map(|t| t as u64),
+                    remote_database_table_id,
+                    remote_database_secret_id,
                 ))
             })
             .collect::<Result<Vec<_>>>()?;

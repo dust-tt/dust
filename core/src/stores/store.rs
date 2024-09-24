@@ -199,6 +199,8 @@ pub trait Store {
         timestamp: u64,
         tags: &Vec<String>,
         parents: &Vec<String>,
+        remote_database_table_id: Option<String>,
+        remote_database_secret_id: Option<String>,
     ) -> Result<Table>;
     async fn update_table_schema(
         &self,
