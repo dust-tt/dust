@@ -18,6 +18,7 @@ import {
   Ok,
   sectionFullText,
 } from "@dust-tt/types";
+import type { Transaction } from "sequelize";
 
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { sendGithubDeletionEmail } from "@app/lib/api/email";
@@ -58,7 +59,8 @@ export async function getDataSources(
 
 export async function deleteDataSource(
   auth: Authenticator,
-  dataSource: DataSourceResource
+  dataSource: DataSourceResource,
+  transaction?: Transaction
 ): Promise<
   Result<DataSourceType, { code: "unauthorized_deletion"; message: string }>
 > {
@@ -120,7 +122,7 @@ export async function deleteDataSource(
     }
   }
 
-  await dataSource.delete(auth);
+  await dataSource.delete(auth, transaction);
 
   await launchScrubDataSourceWorkflow({
     wId: owner.sId,
