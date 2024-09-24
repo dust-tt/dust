@@ -1521,7 +1521,17 @@ export async function* retryAgentMessage(
   class AgentMessageError extends Error {}
 
   if (!canReadMessage(auth, message)) {
-    throw new AgentMessageError("Agent cannot be used by this user");
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: message.configuration.sId,
+      messageId: message.sId,
+      error: {
+        code: "message_access_denied",
+        message: "The message to retry is not accessible.",
+      },
+    };
+    return;
   }
 
   let agentMessageResult: {
