@@ -31,7 +31,7 @@ interface ModelWithVault extends ResourceWithId {
 export abstract class ResourceWithVault<
   M extends Model & ModelWithVault,
 > extends BaseResource<M> {
-  readonly workspaceId: number;
+  readonly workspaceId: ModelWithVault["workspaceId"];
 
   protected constructor(
     model: ModelStatic<M>,
