@@ -272,6 +272,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       where: {
         name: {
           [Op.in]: names,
+          // /!\ Names being generic, we need to filter by workspace.
           workspaceId: auth.getNonNullableWorkspace().id,
         },
       },
@@ -298,20 +299,6 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
   ): Promise<DataSourceResource[]> {
     return this.baseFetch(auth, options, {
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
-  }
-
-  static async listByWorkspaceIdAndNames(
-    auth: Authenticator,
-    names: string[]
-  ): Promise<DataSourceResource[]> {
-    return this.baseFetch(auth, undefined, {
-      where: {
-        name: {
-          [Op.in]: names,
-        },
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
