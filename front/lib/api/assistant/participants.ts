@@ -75,6 +75,7 @@ export async function fetchConversationParticipants(
     where: {
       conversationId: conversation.id,
     },
+    attributes: [],
     include: [
       {
         model: UserMessage,
