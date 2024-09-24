@@ -272,6 +272,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       where: {
         name: {
           [Op.in]: names,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
       },
     });
