@@ -1,8 +1,11 @@
 import { Button, CheckCircleIcon, ClockIcon, Tab } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { AppType, SpecificationType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
-import type { RunType } from "@dust-tt/types";
+import type {
+  AppType,
+  RunType,
+  SpecificationType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
@@ -25,6 +28,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   isBuilder: boolean;
+  isAdmin: boolean;
   app: AppType;
   run: RunType;
   spec: SpecificationType;
@@ -39,6 +43,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const isBuilder = auth.isBuilder();
+  const isAdmin = auth.isAdmin();
 
   const app = await AppResource.fetchById(auth, context.params?.aId as string);
   if (!app) {
@@ -60,6 +65,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       isBuilder,
+      isAdmin,
       app: app.toJSON(),
       spec,
       run,
@@ -71,6 +77,7 @@ export default function AppRun({
   owner,
   subscription,
   isBuilder,
+  isAdmin,
   app,
   spec,
   run,
@@ -219,6 +226,7 @@ export default function AppRun({
           <SpecRunView
             owner={owner}
             app={app}
+            isAdmin={isAdmin}
             readOnly={true}
             showOutputs={isBuilder}
             spec={spec}

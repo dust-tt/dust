@@ -42,6 +42,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   readOnly: boolean;
+  isAdmin: boolean;
   url: string;
   app: AppType;
 }>(async (context, auth) => {
@@ -52,6 +53,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     auth,
     context.query.vaultId as string
   );
+
+  const isAdmin = auth.isAdmin();
 
   if (!owner || !subscription || !vault || !vault.canList(auth)) {
     return {
@@ -73,6 +76,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
+      isAdmin,
       readOnly,
       url: config.getClientFacingUrl(),
       app: app.toJSON(),
@@ -138,6 +142,7 @@ export default function AppView({
   owner,
   subscription,
   readOnly,
+  isAdmin,
   app,
   url,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -399,6 +404,7 @@ export default function AppView({
             owner={owner}
             app={app}
             readOnly={readOnly}
+            isAdmin={isAdmin}
             showOutputs={!readOnly}
             spec={spec}
             run={run}
