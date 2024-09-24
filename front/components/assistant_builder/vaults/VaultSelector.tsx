@@ -55,7 +55,6 @@ export function VaultSelector({
                 }
               }}
             >
-
               <Checkbox
                 variant="checkable"
                 checked={isChecked ? "checked" : "unchecked"}
