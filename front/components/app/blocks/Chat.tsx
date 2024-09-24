@@ -28,6 +28,7 @@ export default function Chat({
   status,
   running,
   readOnly,
+  isAdmin,
   showOutputs,
   onBlockUpdate,
   onBlockDelete,
@@ -43,6 +44,7 @@ export default function Chat({
   status: any;
   running: boolean;
   readOnly: boolean;
+  isAdmin: boolean;
   showOutputs: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
@@ -173,6 +175,7 @@ export default function Chat({
             <ModelPicker
               owner={owner}
               readOnly={readOnly}
+              isAdmin={isAdmin}
               model={
                 config
                   ? {

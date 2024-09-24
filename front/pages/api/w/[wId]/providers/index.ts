@@ -27,13 +27,13 @@ async function handler(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  if (!auth.isAdmin()) {
+  if (!auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "provider_auth_error",
         message:
-          "Only the users that are `admins` for the current workspace can list providers.",
+          "Only the users that are `builders` for the current workspace can list providers.",
       },
     });
   }
