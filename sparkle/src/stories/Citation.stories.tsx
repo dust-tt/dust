@@ -191,7 +191,7 @@ export const CitationsExample = () => (
       />
       <Citation
         title="Awesome article"
-        type="intercom"
+        type="snowflake"
         index="3"
         href="https://www.google.com"
         description="Write a 120 character description of the citation here to be displayed in the citation list."

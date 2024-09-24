@@ -28,7 +28,8 @@ const example2 = `
 
 Demo of a list, showcasing our pets of the month:
 - Soupinou
-- Shawarma
+- Chawarma
+- Chalom
 - Anakine
 - Goose
 
