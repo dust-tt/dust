@@ -9,6 +9,7 @@ import {
   Page,
   PlusIcon,
   Spinner,
+  TextArea,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -61,6 +62,8 @@ const supportedTableFormats = [".csv", ".tsv"].join(", ");
 
 const supportedDocumentFormats = [".txt", ".pdf", ".md", ".csv"].join(", ");
 
+const MAX_NAME_CHARS = 32;
+
 function isCoreAPIDocumentType(
   doc: CoreAPIDocument | CoreAPILightDocument
 ): doc is CoreAPIDocument {
@@ -97,6 +100,7 @@ export function DocumentOrTableUploadOrEditModal({
 
   const [uploading, setUploading] = useState(false);
   const [isBigFile, setIsBigFile] = useState(false);
+  const [isValidDocOrTable, setIsValidDocOrTable] = useState(false);
   const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
 
   const isTable = viewType == "tables";
@@ -145,6 +149,26 @@ export function DocumentOrTableUploadOrEditModal({
       }));
     }
   }, [isTable, initialId, table, owner.sId, document]);
+
+  useEffect(() => {
+    let isNameValid: boolean;
+    let isContentValid: boolean;
+    if (isTable) {
+      isNameValid = !!tableOrDoc.name && isSlugified(tableOrDoc.name);
+      isContentValid = !!tableOrDoc.description;
+    } else {
+      isNameValid = !!tableOrDoc.name;
+      isContentValid = !!tableOrDoc.text || !!tableOrDoc.file;
+    }
+    setIsValidDocOrTable(isNameValid && isContentValid);
+  }, [
+    isTable,
+    isValidDocOrTable,
+    tableOrDoc.description,
+    tableOrDoc.file,
+    tableOrDoc.name,
+    tableOrDoc.text,
+  ]);
 
   const isLoading = isTableLoading || isDocumentLoading;
   const isError = isDocumentError || isTableError;
@@ -329,7 +353,7 @@ export function DocumentOrTableUploadOrEditModal({
       onClose={() => {
         onClose(false);
       }}
-      hasChanged={!isError && !isLoading}
+      hasChanged={!isError && !isLoading && isValidDocOrTable}
       variant="side-md"
       title={`${initialId ? "Edit" : "Add"} ${isTable ? "table" : "document"}`}
       onSave={handleUpload}
@@ -352,6 +376,7 @@ export function DocumentOrTableUploadOrEditModal({
                 <Input
                   placeholder={isTable ? "table_name" : "Document title"}
                   name="name"
+                  maxLength={MAX_NAME_CHARS}
                   disabled={!!initialId}
                   value={tableOrDoc.name}
                   onChange={(value) =>
@@ -359,9 +384,10 @@ export function DocumentOrTableUploadOrEditModal({
                   }
                   error={
                     isTable &&
-                    (!tableOrDoc.name || !isSlugified(tableOrDoc.name))
-                      ? "Invalid name: Must be alphanumeric, max 32 characters and no space."
-                      : null
+                    !tableOrDoc.name &&
+                    !isSlugified(tableOrDoc.name)
+                      ? `Invalid name: Must be alphanumeric, max ${MAX_NAME_CHARS} characters and no space.`
+                      : !isTable && !tableOrDoc.name ? "You need to provide a name." : null
                   }
                   showErrorLabel={true}
                 />
@@ -373,22 +399,22 @@ export function DocumentOrTableUploadOrEditModal({
                     title="Description"
                     description="Describe the content of your CSV file. It will be used by the LLM model to generate relevant queries."
                   />
-                  <textarea
-                    name="table-description"
+                  <TextArea
                     placeholder="This table contains..."
-                    rows={10}
                     value={tableOrDoc.description}
-                    onChange={(e) =>
+                    onChange={(value) => {
                       setTableOrDoc((prev) => ({
                         ...prev,
-                        description: e.target.value,
-                      }))
+                        description: value,
+                      }));
+                    }}
+                    error={
+                      !tableOrDoc.description
+                        ? "You need to provide a description to your CSV file."
+                        : null
                     }
-                    className={classNames(
-                      "font-mono text-normal block w-full min-w-0 flex-1 rounded-md",
-                      "border-structure-200 bg-structure-50",
-                      "focus:border-action-300 focus:ring-action-300"
-                    )}
+                    showErrorLabel={true}
+                    minRows={10}
                   />
                 </div>
               ) : (
