@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use futures::future::try_join_all;
 use serde::Deserialize;
 use snowflake_connector_rs::{
     SnowflakeAuthMethod, SnowflakeClient, SnowflakeClientConfig, SnowflakeDecode, SnowflakeRow,
@@ -8,11 +9,12 @@ use snowflake_connector_rs::{
 use crate::databases::{
     database::{QueryDatabaseError, QueryResult},
     remote_databases::remote_database::RemoteDatabase,
-    table_schema::TableSchema,
+    table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType},
 };
 
 pub struct SnowflakeRemoteDatabase {
     client: SnowflakeClient,
+    warehouse: String,
 }
 
 #[derive(Deserialize)]
@@ -24,27 +26,37 @@ struct SnowflakeConnectionDetails {
     warehouse: String,
 }
 
-impl SnowflakeRemoteDatabase {
-    pub fn new(secret: &str) -> Result<Self> {
-        let connection_details: SnowflakeConnectionDetails = serde_json::from_str(secret)?;
-
-        let client = SnowflakeClient::new(
-            &connection_details.username,
-            SnowflakeAuthMethod::Password(connection_details.password),
-            SnowflakeClientConfig {
-                warehouse: Some(connection_details.warehouse),
-                account: connection_details.account,
-                role: Some(connection_details.role),
-                database: None,
-                schema: None,
-                timeout: Some(std::time::Duration::from_secs(30)),
-            },
-        )?;
-
-        Ok(Self { client })
-    }
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+struct SnowflakeSchemaColumn {
+    name: String,
+    r#type: String,
 }
 
+impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
+    type Error = anyhow::Error;
+
+    fn try_from(col: SnowflakeSchemaColumn) -> Result<Self> {
+        let col_type = match col.r#type.as_str() {
+            "NUMBER" | "INT" | "INTEGER" | "BIGINT" | "SMALLINT" | "TINYINT" | "BYTEINT" => {
+                TableSchemaFieldType::Int
+            }
+            "STRING" | "TEXT" | "VARCHAR" | "CHAR" => TableSchemaFieldType::Text,
+            "BOOLEAN" => TableSchemaFieldType::Bool,
+            "TIMESTAMP" => TableSchemaFieldType::DateTime,
+            _ => TableSchemaFieldType::Text,
+        };
+
+        Ok(TableSchemaColumn {
+            name: col.name,
+            value_type: col_type,
+            // TODO(@fontanierh): decide if we want possible values for remote DBs.
+            // We could potentially look at rows count and decide based on that.
+            // Or have a cache specifically for this.
+            possible_values: None,
+        })
+    }
+}
 impl TryFrom<SnowflakeRow> for QueryResult {
     type Error = anyhow::Error;
 
@@ -99,6 +111,30 @@ impl TryFrom<SnowflakeRow> for QueryResult {
     }
 }
 
+impl SnowflakeRemoteDatabase {
+    pub fn new(secret: &str) -> Result<Self> {
+        let connection_details: SnowflakeConnectionDetails = serde_json::from_str(secret)?;
+
+        let client = SnowflakeClient::new(
+            &connection_details.username,
+            SnowflakeAuthMethod::Password(connection_details.password),
+            SnowflakeClientConfig {
+                warehouse: Some(connection_details.warehouse.clone()),
+                account: connection_details.account,
+                role: Some(connection_details.role),
+                database: None,
+                schema: None,
+                timeout: Some(std::time::Duration::from_secs(30)),
+            },
+        )?;
+
+        Ok(Self {
+            client,
+            warehouse: connection_details.warehouse,
+        })
+    }
+}
+
 #[async_trait]
 impl RemoteDatabase for SnowflakeRemoteDatabase {
     async fn get_tables_used_by_query(&self, query: &str) -> Result<Vec<String>> {
@@ -126,6 +162,15 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
             QueryDatabaseError::ExecutionError(anyhow!("Error creating session: {}", e).to_string())
         })?;
 
+        session
+            .execute(format!("USE WAREHOUSE {}", self.warehouse))
+            .await
+            .map_err(|e| {
+                QueryDatabaseError::ExecutionError(
+                    anyhow!("Error setting warehouse: {}", e).to_string(),
+                )
+            })?;
+
         let snowflake_rows = session.query(query).await.map_err(|e| {
             QueryDatabaseError::ExecutionError(anyhow!("Error executing query: {}", e).to_string())
         })?;
@@ -139,5 +184,48 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         let schema = TableSchema::empty();
 
         Ok((rows, schema))
+    }
+
+    async fn get_tables_schema(
+        &self,
+        opaque_ids: Vec<String>,
+    ) -> Result<std::collections::HashMap<String, TableSchema>> {
+        // Construct a "DESCRIBE TABLE" query for each opaque table ID.
+        let queries: Vec<String> = opaque_ids
+            .iter()
+            .map(|opaque_id| format!("DESCRIBE TABLE {}", opaque_id))
+            .collect();
+
+        // Execute all queries concurrently.
+        let results = try_join_all(queries.iter().map(|query| self.execute_query(query))).await?;
+
+        // Parse the results and return a map of opaque_id -> TableSchema.
+        results
+            .into_iter()
+            .zip(opaque_ids.into_iter())
+            .map(|((rows, _), opaque_id)| {
+                let raw_columns = match rows.len() {
+                    0 => Err(anyhow!("No rows returned for table {}", opaque_id)),
+                    _ => Ok(rows),
+                }?;
+
+                let columns = raw_columns
+                    .into_iter()
+                    .map(|row| {
+                        serde_json::from_value::<SnowflakeSchemaColumn>(row.value)
+                            .map_err(|e| anyhow!("Error deserializing row: {}", e))?
+                            .try_into()
+                    })
+                    .collect::<Result<Vec<TableSchemaColumn>>>()
+                    .map_err(|e| {
+                        anyhow!(
+                            "Error converting SnowflakeSchemaColumn to TableSchemaColumn: {}",
+                            e
+                        )
+                    })?;
+
+                Ok((opaque_id, TableSchema::from_columns(columns)))
+            })
+            .collect()
     }
 }
