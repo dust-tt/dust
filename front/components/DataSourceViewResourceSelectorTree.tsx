@@ -222,7 +222,7 @@ function DataSourceViewResourceSelectorChildren({
           );
         })}
         {isEmptyManagedDataSource && !readonly && (
-          <div className="flex w-full flex-col items-center gap-2 rounded-lg border bg-structure-50 py-2">
+          <div className="flex w-full flex-col items-center gap-2 rounded-lg border bg-structure-50 py-4">
             <span className="text-element-700">The Vault is empty!</span>
             <RequestOrAddDataFromDataSourceModal
               owner={owner}
