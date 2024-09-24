@@ -120,14 +120,18 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       CreationAttributes<DataSourceModel>,
       "editedAt" | "editedByUserId" | "vaultId"
     >,
-    vault: VaultResource
+    vault: VaultResource,
+    transaction?: Transaction
   ) {
-    const dataSource = await DataSourceModel.create({
-      ...blob,
-      editedByUserId: auth.getNonNullableUser().id,
-      editedAt: new Date(),
-      vaultId: vault.id,
-    });
+    const dataSource = await DataSourceModel.create(
+      {
+        ...blob,
+        editedByUserId: auth.getNonNullableUser().id,
+        editedAt: new Date(),
+        vaultId: vault.id,
+      },
+      { transaction }
+    );
 
     return new this(DataSourceResource.model, dataSource.get(), vault);
   }
