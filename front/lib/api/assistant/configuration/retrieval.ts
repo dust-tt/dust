@@ -12,7 +12,6 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export async function fetchAgentRetrievalActionConfigurations({
@@ -45,26 +44,12 @@ export async function fetchAgentRetrievalActionConfigurations({
       },
       include: [
         {
-          model: DataSourceModel,
-          as: "dataSource",
-          include: [
-            {
-              model: Workspace,
-              as: "workspace",
-            },
-          ],
-        },
-        {
           model: DataSourceViewModel,
           as: "dataSourceView",
           include: [
             {
               model: Workspace,
               as: "workspace",
-            },
-            {
-              model: DataSourceModel,
-              as: "dataSourceForView",
             },
           ],
         },

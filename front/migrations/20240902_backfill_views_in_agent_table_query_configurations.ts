@@ -70,7 +70,7 @@ async function backfillViewsInAgentTableQueryConfigurationForWorkspace(
       {
         where: {
           // /!\ `dataSourceId` is the data source's name, not the id.
-          dataSourceId: ds.name,
+          dataSourceId: ds.id,
         },
       }
     );

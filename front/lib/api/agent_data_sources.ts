@@ -81,7 +81,6 @@ export async function getDataSourceViewsUsageByCategory({
       return {};
     default:
       assertNever(category);
-      break;
   }
 
   const res = (await Promise.all([

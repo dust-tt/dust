@@ -91,8 +91,6 @@ export class AgentTablesQueryConfigurationTable extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare dataSourceWorkspaceId: string;
-
   declare tableId: string;
 
   declare dataSourceId: ForeignKey<DataSourceModel["id"]> | null;
@@ -121,11 +119,6 @@ AgentTablesQueryConfigurationTable.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
-    },
-
-    dataSourceWorkspaceId: {
-      type: DataTypes.STRING,
-      allowNull: false,
     },
     tableId: {
       type: DataTypes.STRING(512),
