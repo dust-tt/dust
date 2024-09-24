@@ -495,6 +495,7 @@ export class ConnectorsAPI {
         connectorId
       )}/content_nodes`,
       {
+        keepalive: false,
         method: "POST",
         headers: this.getDefaultHeaders(),
         body: JSON.stringify({
