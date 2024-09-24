@@ -1083,6 +1083,8 @@ export class CoreAPI {
           timestamp,
           tags,
           parents,
+          remote_database_table_id: remoteDatabaseTableId ?? null,
+          remote_database_secret_id: remoteDatabaseSecretId ?? null,
         }),
       }
     );
