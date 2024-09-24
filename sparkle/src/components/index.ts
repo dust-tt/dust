@@ -14,6 +14,23 @@ export { ColorPicker } from "./ColorPicker";
 export { default as ConfettiBackground } from "./ConfettiBackground";
 export { ContentMessage } from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
+export {
+  ContextMenu,
+  ContextMenuCheckboxItem,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuPortal,
+  ContextMenuRadioGroup,
+  ContextMenuRadioItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "./ContextMenu";
 export { DataTable } from "./DataTable";
 export { Dialog } from "./Dialog";
 export { DropdownMenu } from "./DropdownMenu";
@@ -40,6 +57,12 @@ export {
   NewDropdownMenuSeparator,
   NewDropdownMenuTrigger,
 } from "./NewDropdown";
+export {
+  NewTooltip,
+  NewTooltipContent,
+  NewTooltipProvider,
+  NewTooltipTrigger,
+} from "./NewTooltip";
 export { Notification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";

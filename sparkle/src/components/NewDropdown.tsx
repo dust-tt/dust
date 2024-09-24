@@ -11,35 +11,45 @@ import {
 } from "@sparkle/index_with_tw_base";
 import { classNames } from "@sparkle/lib/utils";
 
-const itemClasses = classNames(
-  "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none",
-  "s-rounded-md s-text-sm s-font-medium focus:s-text-primary-950 focus:s-bg-primary-100 s-px-2 s-py-2",
-  "s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none data-[disabled]:s-text-primary-400"
-);
-
-const containerClasses = classNames(
-  "s-rounded-lg s-border s-border-structure-100 s-bg-white s-p-1 s-text-primary-950 s-shadow-md",
-  "s-z-50 s-min-w-[8rem] s-overflow-hidden",
-  "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2"
-);
+export const menuStyleClasses = {
+  inset: "s-pl-8",
+  container: classNames(
+    "s-rounded-lg s-border s-border-structure-100 s-bg-white s-p-1 s-text-primary-950",
+    "s-z-50 s-min-w-[8rem] s-overflow-hidden",
+    "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2"
+  ),
+  item: classNames(
+    "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none",
+    "s-rounded-md s-text-sm s-font-medium focus:s-text-primary-950 focus:s-bg-primary-100 s-px-2 s-py-2",
+    "s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none data-[disabled]:s-text-primary-400"
+  ),
+  subTrigger: {
+    default: "s-mr-1 s-ml-auto s-tracking-widest s-text-primary-400",
+    span: "s-absolute s-left-2 s-flex s-h-3.5 s-w-3.5 s-items-center s-justify-center",
+  },
+  label: "s-font-regular s-px-2 s-py-2 s-text-sm s-text-primary-500",
+  separator: "-s-mx-1 s-my-1 s-h-px s-bg-structure-100",
+  shortcut: "s-ml-auto s-text-xs s-tracking-widest s-text-primary-400",
+};
 
 const NewDropdownMenu = DropdownMenuPrimitive.Root;
+const NewDropdownMenuGroup = DropdownMenuPrimitive.Group;
+const NewDropdownMenuPortal = DropdownMenuPrimitive.Portal;
+const NewDropdownMenuSub = DropdownMenuPrimitive.Sub;
+const NewDropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
+
 const NewDropdownMenuTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger> & {
-    customClass?: string; // Optional custom class prop
-  } & MetaButtonProps // Extend with MetaButtonProps to pass props like variant and size
+    customClass?: string;
+  } & MetaButtonProps
 >(({ customClass, className, children, variant, size, ...props }, ref) => (
   <DropdownMenuPrimitive.Trigger asChild>
-    {/* Use MetaButton and pass variant and size */}
     <MetaButton
       ref={ref}
-      variant={variant || "primary"} // Default variant
-      size={size || "sm"} // Default size
-      className={classNames(
-        customClass || "", // Allow passing custom classes
-        className || ""
-      )}
+      variant={variant || "primary"}
+      size={size || "sm"}
+      className={classNames(customClass || "", className || "")}
       {...props}
     >
       {children}
@@ -49,12 +59,6 @@ const NewDropdownMenuTrigger = React.forwardRef<
 ));
 NewDropdownMenuTrigger.displayName = "NewDropdownMenuTrigger";
 
-export default NewDropdownMenuTrigger;
-
-const NewDropdownMenuGroup = DropdownMenuPrimitive.Group;
-const NewDropdownMenuPortal = DropdownMenuPrimitive.Portal;
-const NewDropdownMenuSub = DropdownMenuPrimitive.Sub;
-const NewDropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 const NewDropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
@@ -64,14 +68,14 @@ const NewDropdownMenuSubTrigger = React.forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={classNames(
-      itemClasses,
-      inset ? "s-pl-8" : "",
-      className ? className : ""
+      menuStyleClasses.item,
+      inset ? menuStyleClasses.inset : "",
+      className || ""
     )}
     {...props}
   >
     {children}
-    <span className="-s-mr-1 s-ml-auto s-tracking-widest s-text-primary-400">
+    <span className={menuStyleClasses.subTrigger.default}>
       <Icon size="xs" visual={ChevronRightIcon} />
     </span>
   </DropdownMenuPrimitive.SubTrigger>
@@ -86,9 +90,9 @@ const NewDropdownMenuSubContent = React.forwardRef<
   <DropdownMenuPrimitive.SubContent
     ref={ref}
     className={classNames(
-      containerClasses,
+      menuStyleClasses.container,
       "s-shadow-lg",
-      className ? className : ""
+      className || ""
     )}
     {...props}
   />
@@ -105,9 +109,9 @@ const NewDropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={classNames(
-        containerClasses,
+        menuStyleClasses.container,
         "s-shadow-md",
-        className ? className : ""
+        className || ""
       )}
       {...props}
     />
@@ -124,9 +128,9 @@ const NewDropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={classNames(
-      itemClasses,
-      inset ? "s-pl-8" : "",
-      className ? className : ""
+      menuStyleClasses.item,
+      inset ? menuStyleClasses.inset : "",
+      className || ""
     )}
     {...props}
   />
@@ -140,14 +144,14 @@ const NewDropdownMenuCheckboxItem = React.forwardRef<
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={classNames(
-      itemClasses,
-      "s-pl-8 s-pr-2",
-      className ? className : ""
+      menuStyleClasses.item,
+      menuStyleClasses.inset,
+      className || ""
     )}
     checked={checked}
     {...props}
   >
-    <span className="s-absolute s-left-2 s-flex s-h-3.5 s-w-3.5 s-items-center s-justify-center">
+    <span className={menuStyleClasses.subTrigger.span}>
       <DropdownMenuPrimitive.ItemIndicator>
         <Icon size="xs" visual={CheckIcon} />
       </DropdownMenuPrimitive.ItemIndicator>
@@ -165,13 +169,13 @@ const NewDropdownMenuRadioItem = React.forwardRef<
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
     className={classNames(
-      itemClasses,
-      "s-pl-8 s-pr-2",
-      className ? className : ""
+      menuStyleClasses.item,
+      menuStyleClasses.inset,
+      className || ""
     )}
     {...props}
   >
-    <span className="s-absolute s-left-2 s-flex s-h-3.5 s-w-3.5 s-items-center s-justify-center">
+    <span className={menuStyleClasses.subTrigger.span}>
       <DropdownMenuPrimitive.ItemIndicator>
         <Icon size="xs" visual={CircleIcon} />
       </DropdownMenuPrimitive.ItemIndicator>
@@ -191,9 +195,9 @@ const NewDropdownMenuLabel = React.forwardRef<
   <DropdownMenuPrimitive.Label
     ref={ref}
     className={classNames(
-      "s-px-2 s-py-2 s-text-sm s-font-bold s-text-primary-950",
-      inset ? "s-pl-8" : "",
-      className ? className : ""
+      menuStyleClasses.label,
+      inset ? menuStyleClasses.inset : "",
+      className || ""
     )}
     {...props}
   />
@@ -206,10 +210,7 @@ const NewDropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={classNames(
-      "-s-mx-1 s-my-1 s-h-px s-bg-structure-100",
-      className ? className : ""
-    )}
+    className={classNames(menuStyleClasses.separator, className || "")}
     {...props}
   />
 ));
@@ -222,10 +223,7 @@ const NewDropdownMenuShortcut = ({
 }: React.HTMLAttributes<HTMLSpanElement>) => {
   return (
     <span
-      className={classNames(
-        "s-ml-auto s-text-xs s-tracking-widest s-text-primary-400",
-        className ? className : ""
-      )}
+      className={classNames(menuStyleClasses.shortcut, className || "")}
       {...props}
     />
   );
