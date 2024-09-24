@@ -1,3 +1,5 @@
+use std::mem;
+
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use futures::future::try_join_all;
@@ -32,6 +34,8 @@ struct SnowflakeSchemaColumn {
     name: String,
     r#type: String,
 }
+
+pub const MAX_QUERY_RESULT_SIZE_BYTES: usize = 128 * 1024 * 1024; // 128MB
 
 impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
     type Error = anyhow::Error;
@@ -171,19 +175,57 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
                 )
             })?;
 
-        let snowflake_rows = session.query(query).await.map_err(|e| {
-            QueryDatabaseError::ExecutionError(anyhow!("Error executing query: {}", e).to_string())
+        let executor = session.execute(query).await.map_err(|e| {
+            QueryDatabaseError::ExecutionError(
+                anyhow!("Error creating QueryExecutor: {}", e).to_string(),
+            )
         })?;
 
-        let rows = snowflake_rows
-            .into_iter()
-            .map(|row| row.try_into())
-            .collect::<Result<Vec<QueryResult>>>()?;
+        let mut query_result_size: usize = 0;
+        let mut all_rows: Vec<QueryResult> = Vec::new();
+
+        // Fetch results chunk by chunk.
+        // If the result size exceeds the limit, return an error.
+        // Stop fetching when chunk is None.
+        'fetch_rows: loop {
+            match executor.fetch_next_chunk().await.map_err(|e| {
+                QueryDatabaseError::ExecutionError(
+                    anyhow!("Error fetching rows: {}", e).to_string(),
+                )
+            })? {
+                Some(snowflake_rows) => {
+                    // Convert SnowflakeRow to QueryResult.
+                    let rows = snowflake_rows
+                        .into_iter()
+                        .map(|row| row.try_into())
+                        .collect::<Result<Vec<QueryResult>>>()?;
+
+                    // Calculate the size of the chunk in bytes (sum of the size_of for each row).
+                    let chunk_size_in_bytes: usize =
+                        rows.iter().map(|row| mem::size_of_val(row)).sum();
+
+                    // Check that total result size so far does not exceed the limit.
+                    query_result_size += chunk_size_in_bytes;
+                    if query_result_size >= MAX_QUERY_RESULT_SIZE_BYTES {
+                        return Err(QueryDatabaseError::ResultTooLarge(format!(
+                            "Query result size exceeds limit of {} bytes",
+                            MAX_QUERY_RESULT_SIZE_BYTES
+                        )));
+                    }
+
+                    // Append the chunk to the result.
+                    all_rows.extend(rows);
+
+                    Ok::<_, QueryDatabaseError>(())
+                }
+                None => break 'fetch_rows,
+            }?;
+        }
 
         // TODO(@fontanierh): decide if we want to infer query result schema for remote DBs.
         let schema = TableSchema::empty();
 
-        Ok((rows, schema))
+        Ok((all_rows, schema))
     }
 
     async fn get_tables_schema(
