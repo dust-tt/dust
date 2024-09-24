@@ -617,8 +617,6 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
             return {
               blob: {
-                dataSourceWorkspaceId: details.workspaceId,
-                dataSourceId: details.dataSourceView.dataSource.sId,
                 sourceUrl: d.source_url,
                 documentId: d.document_id,
                 reference,
@@ -667,7 +665,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         },
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
-        documents: documents.map((d) => d.toJSON()),
+        documents: documents.map((d) => d.toJSON(auth)),
         step: action.step,
       }),
     };
@@ -778,7 +776,7 @@ export async function retrievalActionTypesFromAgentMessageIds(
     }
 
     const documents: RetrievalDocumentType[] = documentRows.map((d) =>
-      d.toJSON()
+      d.toJSON(auth)
     );
 
     documents.sort((a, b) => {
