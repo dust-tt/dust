@@ -2,10 +2,13 @@ import type { ModelId } from "@dust-tt/types";
 import {
   continueAsNew,
   proxyActivities,
+  setHandler,
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
 
+import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
+import { folderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
 
@@ -37,19 +40,39 @@ const { reportInitialSyncProgress, syncSucceeded, syncStarted } =
 export async function fullSyncWorkflow({
   connectorId,
   startSyncTs,
-  nodeIdsToSync,
+  nodeIdsToSync = [],
+  nodeIdsToDelete = [],
   totalCount = 0,
 }: {
   connectorId: ModelId;
   startSyncTs?: number;
   nodeIdsToSync?: string[];
+  nodeIdsToDelete?: string[];
   totalCount?: number;
 }) {
   await syncStarted(connectorId);
 
-  if (nodeIdsToSync === undefined) {
-    nodeIdsToSync = await getRootNodesToSync(connectorId);
-  }
+  setHandler(folderUpdatesSignal, (folderUpdates: FolderUpdatesSignal[]) => {
+    // If we get a signal, update the workflow state by adding/removing folder ids.
+    for (const { action, folderId } of folderUpdates) {
+      switch (action) {
+        case "added":
+          if (nodeIdsToDelete.includes(folderId)) {
+            nodeIdsToDelete.splice(nodeIdsToDelete.indexOf(folderId), 1);
+          }
+          nodeIdsToSync.push(folderId);
+          break;
+        case "removed":
+          if (nodeIdsToSync.includes(folderId)) {
+            nodeIdsToSync.splice(nodeIdsToSync.indexOf(folderId), 1);
+          }
+          nodeIdsToDelete.push(folderId);
+          break;
+        default:
+        //
+      }
+    }
+  });
 
   if (startSyncTs === undefined) {
     startSyncTs = new Date().getTime();
@@ -60,10 +83,24 @@ export async function fullSyncWorkflow({
   let nextPageLink: string | undefined = undefined;
 
   while (nodeIdsToSync.length > 0) {
+    // First, delete any nodes that were removed
+    if (nodeIdsToDelete.length > 0) {
+      const res = await microsoftDeletionActivity({
+        connectorId,
+        nodeIdsToDelete: nodeIdsToDelete.splice(0, nodeIdsToDelete.length),
+      });
+      res.forEach((nodeId) => {
+        if (nodeIdsToSync.includes(nodeId)) {
+          nodeIdsToSync.splice(nodeIdsToSync.indexOf(nodeId), 1);
+        }
+      });
+    }
+
     const nodeId = nodeIdsToSync.pop();
 
     if (!nodeId) {
-      throw new Error("Unreachable: node is undefined");
+      // All nodes have been removed by previous activity, breaking
+      break;
     }
 
     do {
@@ -88,14 +125,32 @@ export async function fullSyncWorkflow({
     if (workflowInfo().historyLength > 4000) {
       await continueAsNew<typeof fullSyncWorkflow>({
         connectorId,
-        nodeIdsToSync: nodeIdsToSync,
+        nodeIdsToSync,
+        nodeIdsToDelete,
         totalCount,
         startSyncTs,
       });
     }
   }
 
+  if (nodeIdsToDelete.length > 0) {
+    await microsoftDeletionActivity({
+      connectorId,
+      nodeIdsToDelete: nodeIdsToDelete.splice(0, nodeIdsToDelete.length),
+    });
+  }
+
   await syncSucceeded(connectorId);
+
+  if (nodeIdsToSync.length > 0 || nodeIdsToDelete.length > 0) {
+    await continueAsNew<typeof fullSyncWorkflow>({
+      connectorId,
+      nodeIdsToSync,
+      nodeIdsToDelete,
+      totalCount,
+      startSyncTs,
+    });
+  }
 }
 
 export async function incrementalSyncWorkflow({
@@ -125,16 +180,6 @@ export async function incrementalSyncWorkflow({
   await continueAsNew<typeof incrementalSyncWorkflow>({
     connectorId,
   });
-}
-
-export async function microsoftDeletionWorkflow({
-  connectorId,
-  nodeIdsToDelete,
-}: {
-  connectorId: number;
-  nodeIdsToDelete: string[];
-}) {
-  await microsoftDeletionActivity({ connectorId, nodeIdsToDelete });
 }
 
 export async function microsoftGarbageCollectionWorkflow({
@@ -168,21 +213,6 @@ export function microsoftIncrementalSyncWorkflowId(connectorId: ModelId) {
   return `microsoft-incrementalSync-${connectorId}`;
 }
 
-export function microsoftDeletionWorkflowId(
-  connectorId: ModelId,
-  nodeIdsToDelete: string[]
-) {
-  function getLast4Chars(input: string) {
-    return input.slice(-4);
-  }
-
-  // Sort the node IDs and concatenate the last 4 characters of each
-  // up to 256 characters
-  const sortedNodeIds = nodeIdsToDelete.sort();
-  const concatenatedLast4Chars = sortedNodeIds
-    .map(getLast4Chars)
-    .join("")
-    .slice(0, 256);
-
-  return `microsoft-deletion-${connectorId}-${concatenatedLast4Chars}`;
+export function microsoftGarbageCollectionWorkflowId(connectorId: ModelId) {
+  return `microsoft-garbageCollection-${connectorId}`;
 }

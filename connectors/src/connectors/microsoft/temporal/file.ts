@@ -3,7 +3,6 @@ import type {
   ModelId,
   Result,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { cacheWithRedis } from "@dust-tt/types";
 import axios from "axios";
 
@@ -475,15 +474,16 @@ export async function recursiveNodeDeletion(
   nodeId: string,
   connectorId: ModelId,
   dataSourceConfig: DataSourceConfig
-): Promise<Result<void, Error>> {
+): Promise<string[]> {
   const node = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
     nodeId
   );
+  const deletedFiles: string[] = [];
 
   if (!node) {
     logger.warn({ connectorId, nodeId }, "Node not found for deletion");
-    return new Ok(undefined);
+    return deletedFiles;
   }
 
   const { nodeType } = typeAndPathFromInternalId(nodeId);
@@ -495,12 +495,12 @@ export async function recursiveNodeDeletion(
         dataSourceConfig,
         internalId: node.internalId,
       });
+      deletedFiles.push(node.internalId);
     } catch (error) {
       logger.error(
         { connectorId, nodeId, error },
         `Failed to delete document ${node.internalId} from core data source`
       );
-      return new Err(new Error(`Failed to delete document ${node.internalId}`));
     }
   } else if (nodeType === "folder" || nodeType === "drive") {
     const children = await node.fetchChildren();
@@ -510,35 +510,14 @@ export async function recursiveNodeDeletion(
         connectorId,
         dataSourceConfig
       );
-      if (result.isErr()) {
-        logger.error(
-          { connectorId, nodeId: child.internalId, error: result.error },
-          `Failed to delete child node`
-        );
-        return result;
-      }
+      deletedFiles.push(...result);
     }
     await deleteFolder({
       connectorId,
       internalId: node.internalId,
     });
+    deletedFiles.push(node.internalId);
   }
 
-  try {
-    const root = await MicrosoftRootResource.fetchByInternalId(
-      connectorId,
-      nodeId
-    );
-    if (root) {
-      await root.delete();
-    }
-  } catch (error) {
-    logger.error(
-      { connectorId, nodeId, error },
-      `Failed to delete node ${nodeId}`
-    );
-    return new Err(new Error(`Failed to delete node ${nodeId}`));
-  }
-
-  return new Ok(undefined);
+  return deletedFiles;
 }

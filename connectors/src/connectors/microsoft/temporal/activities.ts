@@ -1,5 +1,5 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import { cacheWithRedis, Err, Ok } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
+import { cacheWithRedis } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type { DriveItem } from "@microsoft/microsoft-graph-types";
@@ -56,6 +56,16 @@ const DELETE_CONCURRENCY = 5;
 export async function getRootNodesToSync(
   connectorId: ModelId
 ): Promise<string[]> {
+  const rootResources =
+    await MicrosoftRootResource.listRootsByConnectorId(connectorId);
+
+  return getRootNodesToSyncFromResources(connectorId, rootResources);
+}
+
+export async function getRootNodesToSyncFromResources(
+  connectorId: ModelId,
+  rootResources: MicrosoftRootResource[]
+): Promise<string[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
 
   if (!connector) {
@@ -63,9 +73,6 @@ export async function getRootNodesToSync(
   }
 
   const client = await getClient(connector.connectionId);
-
-  const rootResources =
-    await MicrosoftRootResource.listRootsByConnectorId(connectorId);
 
   // get root folders and drives and drill down site-root and sites to their
   // child drives (converted to MicrosoftNode types)
@@ -832,10 +839,10 @@ export async function microsoftDeletionActivity({
 }: {
   connectorId: ModelId;
   nodeIdsToDelete: string[];
-}): Promise<Result<void, Error>> {
+}): Promise<string[]> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
-    return new Err(new Error(`Connector ${connectorId} not found`));
+    return [];
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -846,17 +853,7 @@ export async function microsoftDeletionActivity({
     { concurrency: DELETE_CONCURRENCY }
   );
 
-  const errors = results.filter((r): r is Err<Error> => r.isErr());
-  if (errors.length > 0) {
-    logger.error(
-      { connectorId, errors: errors.map((e) => e.error.message) },
-      "Microsoft deletion workflow completed with errors"
-    );
-    return new Err(
-      new Error("Microsoft deletion workflow completed with errors")
-    );
-  }
-  return new Ok(undefined);
+  return results.flat();
 }
 
 export async function microsoftGarbageCollectionActivity({
