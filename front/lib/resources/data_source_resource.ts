@@ -333,7 +333,6 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     });
   }
 
-  // TODO(20240801 flav): Refactor this to make auth required on all fetchers.
   static async fetchByModelIdWithAuth(auth: Authenticator, id: ModelId) {
     const [dataSource] = await this.baseFetch(auth, undefined, {
       where: { id },
@@ -353,12 +352,11 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       transaction,
     });
 
-    // TODO(DATASOURCE_SID): state storing the datasource name.
     await AgentTablesQueryConfigurationTable.destroy({
       where: {
-        dataSourceWorkspaceId: auth.getNonNullableWorkspace().sId,
         dataSourceId: this.id,
       },
+      transaction,
     });
 
     // We directly delete the DataSourceViewResource.model here to avoid a circular dependency.
