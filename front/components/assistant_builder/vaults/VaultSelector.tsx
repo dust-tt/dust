@@ -35,6 +35,9 @@ export function VaultSelector({
     return renderChildren(allowedVaults ? allowedVaults[0] : undefined);
   }
 
+  // TODO: we are using Checkboxes here as our RadioButton isn't flexible
+  // enough to allow a onClick callback on a disabled item and to render
+  // elements in between labels. We are aiming to refactor RadioButton
   return (
     <>
       {vaults.map((vault) => {
@@ -52,6 +55,7 @@ export function VaultSelector({
                 }
               }}
             >
+
               <Checkbox
                 variant="checkable"
                 checked={isChecked ? "checked" : "unchecked"}
