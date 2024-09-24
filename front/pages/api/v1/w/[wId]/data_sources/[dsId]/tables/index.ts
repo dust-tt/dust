@@ -104,6 +104,25 @@ type UpsertTableResponseBody = {
  *               description:
  *                 type: string
  *                 description: Description of the table
+ *               timestamp:
+ *                 type: number
+ *                 description: Timestamp of the table
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Tags associated with the table
+ *               parents:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Parent tables of this table
+ *               remote_database_table_id:
+ *                 type: string
+ *                 description: ID of the remote database table (optional)
+ *               remote_database_secret_id:
+ *                 type: string
+ *                 description: ID of the remote database secret (optional)
  *     responses:
  *       200:
  *         description: The table
