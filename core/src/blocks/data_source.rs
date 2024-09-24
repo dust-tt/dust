@@ -86,7 +86,6 @@ impl DataSource {
                 &workspace_id,
                 &data_source_or_data_source_view_id,
                 env,
-                "data_source",
             )
             .await?;
 

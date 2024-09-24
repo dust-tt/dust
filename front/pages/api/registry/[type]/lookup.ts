@@ -3,9 +3,10 @@ import type {
   Result,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { Err, groupHasPermission, Ok } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { isManaged } from "@app/lib/data_sources";
 import { Workspace } from "@app/lib/models/workspace";
@@ -15,8 +16,6 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-
-const { DUST_REGISTRY_SECRET } = process.env;
 
 type LookupDataSourceResponseBody = {
   project_id: number;
@@ -59,7 +58,7 @@ async function handler(
   }
   const secret = parse[1];
 
-  if (secret !== DUST_REGISTRY_SECRET) {
+  if (secret !== config.getDustRegistrySecret()) {
     res.status(401).end();
     return;
   }
@@ -78,12 +77,6 @@ async function handler(
       },
     });
   }
-
-  // Temporary instrumentation to track the origin of the request.
-  const dustOrigin =
-    typeof req.headers["x-dust-origin"] === "string"
-      ? req.headers["x-dust-origin"]
-      : null;
 
   const dustGroupIds = rawDustGroupIds.split(",");
 
@@ -121,9 +114,11 @@ async function handler(
             return notFoundError();
           }
 
-          // Use admin auth to fetch the groups.
-          const auth =
-            await Authenticator.internalAdminForWorkspace(workspaceId);
+          const auth = await Authenticator.fromRegistrySecret({
+            groupIds: dustGroupIds,
+            secret,
+            workspaceId,
+          });
 
           const groups = await GroupResource.fetchByIds(auth, dustGroupIds);
           if (groups.isErr()) {
@@ -138,8 +133,7 @@ async function handler(
             const dataSourceViewRes = await handleDataSourceView(
               auth,
               groups.value,
-              dataSourceOrDataSourceViewId,
-              dustOrigin
+              dataSourceOrDataSourceViewId
             );
             if (dataSourceViewRes.isErr()) {
               logger.info(
@@ -160,8 +154,7 @@ async function handler(
             const dataSourceRes = await handleDataSource(
               auth,
               groups.value,
-              dataSourceOrDataSourceViewId,
-              dustOrigin
+              dataSourceOrDataSourceViewId
             );
             if (dataSourceRes.isErr()) {
               logger.info(
@@ -205,8 +198,7 @@ export default withLogging(handler);
 async function handleDataSourceView(
   auth: Authenticator,
   groups: GroupResource[],
-  dataSourceViewId: string,
-  dustOrigin: string | null
+  dataSourceViewId: string
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
   const dataSourceView = await DataSourceViewResource.fetchById(
     auth,
@@ -216,24 +208,7 @@ async function handleDataSourceView(
     return new Err(new Error("Data source view not found."));
   }
 
-  // Ensure provided groups can access the data source view.
-  const hasAccessToDataSourceView = groups.some((g) =>
-    groupHasPermission(dataSourceView.acl(), "read", g.id)
-  );
-  // TODO(GROUPS_INFRA) Clean up after release.
-  if (!hasAccessToDataSourceView) {
-    logger.info(
-      {
-        acl: dataSourceView.acl(),
-        dataSourceViewId,
-        dustOrigin,
-        groups: groups.map((g) => g.id),
-      },
-      "No access to data source view."
-    );
-  }
-
-  if (hasAccessToDataSourceView) {
+  if (dataSourceView.canRead(auth)) {
     const { dataSource } = dataSourceView;
 
     return new Ok({
@@ -256,8 +231,7 @@ async function handleDataSourceView(
 async function handleDataSource(
   auth: Authenticator,
   groups: GroupResource[],
-  dataSourceId: string,
-  dustOrigin: string | null
+  dataSourceId: string
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
   const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,
@@ -280,31 +254,10 @@ async function handleDataSource(
         globalVault
       );
 
-    return handleDataSourceView(
-      auth,
-      groups,
-      dataSourceView[0].sId,
-      dustOrigin
-    );
+    return handleDataSourceView(auth, groups, dataSourceView[0].sId);
   }
 
-  const hasAccessToDataSource = groups.some((g) =>
-    groupHasPermission(dataSource.acl(), "read", g.id)
-  );
-  // TODO(GROUPS_INFRA) Clean up after release.
-  if (!hasAccessToDataSource) {
-    logger.info(
-      {
-        acl: dataSource.acl(),
-        dataSourceId,
-        dustOrigin,
-        groups: groups.map((g) => g.id),
-      },
-      "No access to data source."
-    );
-  }
-
-  if (hasAccessToDataSource) {
+  if (dataSource.canRead(auth)) {
     return new Ok({
       project_id: parseInt(dataSource.dustAPIProjectId),
       data_source_id: dataSource.dustAPIDataSourceId,

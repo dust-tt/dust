@@ -66,6 +66,9 @@ const config = {
   getDustDevelopmentWorkspaceId: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_DEVELOPMENT_WORKSPACE_ID");
   },
+  getDustRegistrySecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_REGISTRY_SECRET");
+  },
   getCoreAPIConfig: (): { url: string; apiKey: string | null } => {
     return {
       url: EnvironmentConfig.getEnvVariable("CORE_API"),
