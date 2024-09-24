@@ -1971,6 +1971,8 @@ struct DatabasesTablesUpsertPayload {
     timestamp: Option<u64>,
     tags: Vec<String>,
     parents: Vec<String>,
+    remote_database_table_id: Option<String>,
+    remote_database_secret_id: Option<String>,
 }
 
 async fn tables_upsert(
@@ -1994,6 +1996,8 @@ async fn tables_upsert(
             },
             &payload.tags,
             &payload.parents,
+            payload.remote_database_table_id,
+            payload.remote_database_secret_id,
         )
         .await
     {

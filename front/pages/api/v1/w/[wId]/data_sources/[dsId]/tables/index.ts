@@ -1,4 +1,4 @@
-import type { CoreAPITableSchema, WithAPIErrorResponse } from "@dust-tt/types";
+import type { CoreAPITablePublic, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -14,30 +14,26 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export type ListTablesResponseBody = {
-  tables: {
-    name: string;
-    table_id: string;
-    description: string;
-    schema: CoreAPITableSchema | null;
-  }[];
+  tables: CoreAPITablePublic[];
 };
 
-const UpsertDatabaseTableRequestBodySchema = t.type({
-  table_id: t.union([t.string, t.undefined]),
-  name: t.string,
-  description: t.string,
-  timestamp: t.union([t.number, t.undefined, t.null]),
-  tags: t.union([t.array(t.string), t.undefined, t.null]),
-  parents: t.union([t.array(t.string), t.undefined, t.null]),
-});
+const UpsertDatabaseTableRequestBodySchema = t.intersection([
+  t.type({
+    table_id: t.union([t.string, t.undefined]),
+    name: t.string,
+    description: t.string,
+    timestamp: t.union([t.number, t.undefined, t.null]),
+    tags: t.union([t.array(t.string), t.undefined, t.null]),
+    parents: t.union([t.array(t.string), t.undefined, t.null]),
+  }),
+  t.partial({
+    remote_database_table_id: t.union([t.string, t.null]),
+    remote_database_secret_id: t.union([t.string, t.null]),
+  }),
+]);
 
 type UpsertTableResponseBody = {
-  table: {
-    name: string;
-    table_id: string;
-    description: string;
-    schema: CoreAPITableSchema | null;
-  };
+  table: CoreAPITablePublic;
 };
 
 /**
@@ -108,6 +104,25 @@ type UpsertTableResponseBody = {
  *               description:
  *                 type: string
  *                 description: Description of the table
+ *               timestamp:
+ *                 type: number
+ *                 description: Timestamp of the table
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Tags associated with the table
+ *               parents:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Parent tables of this table
+ *               remote_database_table_id:
+ *                 type: string
+ *                 description: ID of the remote database table (optional)
+ *               remote_database_secret_id:
+ *                 type: string
+ *                 description: ID of the remote database secret (optional)
  *     responses:
  *       200:
  *         description: The table
@@ -194,6 +209,9 @@ async function handler(
             table_id: table.table_id,
             description: table.description,
             schema: table.schema,
+            timestamp: table.timestamp,
+            tags: table.tags,
+            parents: table.parents,
           };
         }),
       });
@@ -219,6 +237,8 @@ async function handler(
         timestamp,
         tags,
         parents,
+        remote_database_table_id: remoteDatabaseTableId,
+        remote_database_secret_id: remoteDatabaseSecretId,
       } = bodyValidation.right;
 
       const tableId = maybeTableId || generateLegacyModelSId();
@@ -267,6 +287,8 @@ async function handler(
         timestamp: timestamp ?? null,
         tags: tags || [],
         parents: parents || [],
+        remoteDatabaseTableId: remoteDatabaseTableId ?? null,
+        remoteDatabaseSecretId: remoteDatabaseSecretId ?? null,
       });
 
       if (upsertRes.isErr()) {
@@ -300,6 +322,9 @@ async function handler(
           table_id: table.table_id,
           description: table.description,
           schema: table.schema,
+          timestamp: table.timestamp,
+          tags: table.tags,
+          parents: table.parents,
         },
       });
 

@@ -54,6 +54,9 @@ pub struct Table {
 
     schema: Option<TableSchema>,
     schema_stale_at: Option<u64>,
+
+    remote_database_table_id: Option<String>,
+    remote_database_secret_id: Option<String>,
 }
 
 pub fn get_table_unique_id(project: &Project, data_source_id: &str, table_id: &str) -> String {
@@ -74,6 +77,8 @@ impl Table {
         parents: Vec<String>,
         schema: &Option<TableSchema>,
         schema_stale_at: Option<u64>,
+        remote_database_table_id: Option<String>,
+        remote_database_secret_id: Option<String>,
     ) -> Self {
         Table {
             project: project.clone(),
@@ -87,6 +92,8 @@ impl Table {
             parents,
             schema: schema.clone(),
             schema_stale_at,
+            remote_database_table_id,
+            remote_database_secret_id,
         }
     }
 
@@ -116,6 +123,12 @@ impl Table {
     }
     pub fn unique_id(&self) -> String {
         get_table_unique_id(&self.project, &self.data_source_id, &self.table_id)
+    }
+    pub fn remote_database_table_id(&self) -> Option<&str> {
+        self.remote_database_table_id.as_deref()
+    }
+    pub fn remote_database_secret_id(&self) -> Option<&str> {
+        self.remote_database_secret_id.as_deref()
     }
 
     pub fn render_dbml(&self, name: Option<&str>) -> String {
@@ -461,6 +474,8 @@ mod tests {
             vec![],
             vec![],
             &Some(schema),
+            None,
+            None,
             None,
         );
 
