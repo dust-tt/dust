@@ -20,7 +20,7 @@ import { getDatasetHash, getDatasetSchema } from "@app/lib/api/datasets";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { getDustAppsListUrl } from "@app/lib/vault_rollout";
+import { dustAppsListUrl } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -29,7 +29,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   app: AppType;
   dataset: DatasetType;
   schema: DatasetSchema | null;
-  dustAppsListUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -42,7 +41,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
   const readOnly = !auth.isBuilder();
 
-  const { aId, vaultId } = context.params;
+  const { aId } = context.params;
   if (typeof aId !== "string") {
     return {
       notFound: true,
@@ -70,7 +69,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const schema = await getDatasetSchema(auth, app, dataset.name);
-  const dustAppsListUrl = await getDustAppsListUrl(auth, vaultId);
 
   return {
     props: {
@@ -80,7 +78,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       app: app.toJSON(),
       dataset,
       schema,
-      dustAppsListUrl,
     },
   };
 });
@@ -92,7 +89,6 @@ export default function ViewDatasetView({
   app,
   dataset,
   schema,
-  dustAppsListUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
@@ -180,7 +176,7 @@ export default function ViewDatasetView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl);
+            void router.push(dustAppsListUrl(owner, app.vault));
           }}
         />
       }

@@ -377,24 +377,25 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
-  const dataSource = await DataSourceResource.makeNew(
-    auth,
-    {
-      assistantDefaultSelected:
-        isConnectorProviderAssistantDefaultSelected(provider),
-      connectorProvider: provider,
-      description: dataSourceDescription,
-      dustAPIProjectId: dustProject.value.project.project_id.toString(),
-      dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
-      name: dataSourceName,
-      workspaceId: owner.id,
-    },
-    vault
-  );
+  const dataSourceView =
+    await DataSourceViewResource.createDataSourceAndDefaultView(
+      auth,
+      {
+        assistantDefaultSelected:
+          isConnectorProviderAssistantDefaultSelected(provider),
+        connectorProvider: provider,
+        description: dataSourceDescription,
+        dustAPIProjectId: dustProject.value.project.project_id.toString(),
+        dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
+        name: dataSourceName,
+        workspaceId: owner.id,
+      },
+      vault
+    );
 
-  // For each data source, we create two views:
-  // - One default view in its associated vault
-  // - If the data source resides in the system vault, we also create a custom view in the global vault until vault are released.
+  const dataSource = dataSourceView.dataSource;
+
+  // If the data source resides in the system vault, we also create a custom view in the global vault until vault are released.
   if (dataSource.vault.isSystem()) {
     const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
 
@@ -405,13 +406,6 @@ const handleDataSourceWithProvider = async ({
       "custom"
     );
   }
-
-  const dataSourceView =
-    await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-      auth,
-      dataSource.vault,
-      dataSource
-    );
 
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
@@ -600,25 +594,21 @@ const handleDataSourceWithoutProvider = async ({
     });
   }
 
-  const dataSource = await DataSourceResource.makeNew(
-    auth,
-    {
-      name,
-      description,
-      dustAPIProjectId: dustProject.value.project.project_id.toString(),
-      dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
-      workspaceId: owner.id,
-      assistantDefaultSelected: false,
-    },
-    vault
-  );
-
   const dataSourceView =
-    await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+    await DataSourceViewResource.createDataSourceAndDefaultView(
       auth,
-      dataSource.vault,
-      dataSource
+      {
+        name,
+        description,
+        dustAPIProjectId: dustProject.value.project.project_id.toString(),
+        dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
+        workspaceId: owner.id,
+        assistantDefaultSelected: false,
+      },
+      vault
     );
+
+  const { dataSource } = dataSourceView;
 
   res.status(201).json({
     dataSource: dataSource.toJSON(),

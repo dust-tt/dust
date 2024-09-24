@@ -24,6 +24,7 @@ pub mod databases {
         pub mod remote_database;
         pub mod snowflake;
     }
+    pub mod transient_database;
 }
 pub mod project;
 pub mod run;
@@ -88,6 +89,8 @@ pub mod consts;
 
 pub mod oauth {
     pub mod connection;
+    pub mod credential;
+    pub mod encryption;
     pub mod store;
     pub mod providers {
         pub mod confluence;

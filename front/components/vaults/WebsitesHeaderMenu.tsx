@@ -28,10 +28,11 @@ export const WebsitesHeaderMenu = ({
   const [showEditWebsiteModal, setShowEditWebsiteModal] = useState(false);
 
   const { dataSources } = useDataSources(owner);
-  const { configuration } = useDataSourceViewConnectorConfiguration({
-    dataSourceView,
-    owner,
-  });
+  const { configuration, mutateConfiguration } =
+    useDataSourceViewConnectorConfiguration({
+      dataSourceView,
+      owner,
+    });
 
   let webCrawlerConfiguration: WebCrawlerConfigurationType | null = null;
   if (isWebCrawlerConfiguration(configuration)) {
@@ -50,6 +51,7 @@ export const WebsitesHeaderMenu = ({
         dataSources={dataSources}
         dataSourceView={dataSourceView}
         webCrawlerConfiguration={webCrawlerConfiguration}
+        mutateConfiguration={mutateConfiguration}
       />
       <Button
         size="sm"

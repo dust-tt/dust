@@ -60,7 +60,8 @@ export type UserMessageOrigin =
   | "gsheet"
   | "zapier"
   | "make"
-  | "zendesk";
+  | "zendesk"
+  | "raycast";
 
 export type UserMessageContext = {
   username: string;

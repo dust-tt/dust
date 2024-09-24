@@ -1,18 +1,21 @@
-use std::sync::Arc;
-
-use crate::{
-    databases::database::{get_unique_table_names_for_database, QueryResult, Row, Table},
-    databases_store::store::DatabasesStore,
-    utils,
-};
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
 use parking_lot::Mutex;
 use rayon::prelude::*;
 use rusqlite::{params_from_iter, Connection, InterruptHandle};
+use std::sync::Arc;
 use thiserror::Error;
 use tokio::{task, time::timeout};
 use tracing::info;
+
+use crate::{
+    databases::{
+        database::{QueryResult, Row, Table},
+        transient_database::get_unique_table_names_for_transient_database,
+    },
+    databases_store::store::DatabasesStore,
+    utils,
+};
 
 #[derive(Clone)]
 pub struct SqliteDatabase {
@@ -208,7 +211,7 @@ async fn create_in_memory_sqlite_db(
     // Create the in-memory database in a blocking thread (in-memory rusqlite is CPU).
     task::spawn_blocking(move || {
         let generate_create_table_sql_start = utils::now();
-        let unique_table_names = get_unique_table_names_for_database(&tables);
+        let unique_table_names = get_unique_table_names_for_transient_database(&tables);
         let create_tables_sql: String = tables
             .into_iter()
             .filter_map(|t| match t.schema_cached() {

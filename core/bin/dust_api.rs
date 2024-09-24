@@ -10,27 +10,6 @@ use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
-
-use dust::{
-    api_keys::validate_api_key,
-    app,
-    blocks::block::BlockType,
-    data_sources::{
-        data_source::{self, Section},
-        qdrant::QdrantClients,
-    },
-    databases::database::{query_database, QueryDatabaseError, Row, Table},
-    databases_store::store::{self as databases_store, DatabasesStore},
-    dataset,
-    deno::js_executor::JSExecutor,
-    project,
-    providers::provider::{provider, ProviderID},
-    run,
-    search_filter::{Filterable, SearchFilter},
-    sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
-    stores::{postgres, store},
-    utils::{self, error_response, APIError, APIResponse, CoreRequestMakeSpan},
-};
 use futures::future::try_join_all;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
@@ -48,6 +27,30 @@ use tower_http::trace::{self, TraceLayer};
 use tracing::{error, info, Level};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::prelude::*;
+
+use dust::{
+    api_keys::validate_api_key,
+    app,
+    blocks::block::BlockType,
+    data_sources::{
+        data_source::{self, Section},
+        qdrant::QdrantClients,
+    },
+    databases::{
+        database::{QueryDatabaseError, Row, Table},
+        transient_database::execute_query_on_transient_database,
+    },
+    databases_store::store::{self as databases_store, DatabasesStore},
+    dataset,
+    deno::js_executor::JSExecutor,
+    project,
+    providers::provider::{provider, ProviderID},
+    run,
+    search_filter::{Filterable, SearchFilter},
+    sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
+    stores::{postgres, store},
+    utils::{self, error_response, APIError, APIResponse, CoreRequestMakeSpan},
+};
 
 /// API State
 
@@ -2576,7 +2579,13 @@ async fn databases_query_run(
                     )
                 }
                 Some(tables) => {
-                    match query_database(&tables, state.store.clone(), &payload.query).await {
+                    match execute_query_on_transient_database(
+                        &tables,
+                        state.store.clone(),
+                        &payload.query,
+                    )
+                    .await
+                    {
                         Err(QueryDatabaseError::TooManyResultRows) => error_response(
                             StatusCode::BAD_REQUEST,
                             "too_many_result_rows",

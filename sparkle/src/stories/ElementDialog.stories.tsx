@@ -21,6 +21,7 @@ export const ElementDialogExample = () => {
           console.log("canceled!");
           closeDialogFn();
         }}
+        cancelLabel="Cancel"
         title="Element Modal title"
         onValidate={(closeDialogFn) => {
           console.log("validated!");

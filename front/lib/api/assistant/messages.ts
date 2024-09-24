@@ -40,7 +40,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { processActionTypesFromAgentMessageIds } from "./actions/process";
 import { retrievalActionTypesFromAgentMessageIds } from "./actions/retrieval";
 
-export async function batchRenderUserMessages(
+async function batchRenderUserMessages(
   messages: Message[]
 ): Promise<{ m: UserMessageType; rank: number; version: number }[]> {
   const userMessages = messages.filter(
@@ -103,7 +103,7 @@ export async function batchRenderUserMessages(
   });
 }
 
-export async function batchRenderAgentMessages(
+async function batchRenderAgentMessages(
   auth: Authenticator,
   messages: Message[]
 ): Promise<{ m: AgentMessageType; rank: number; version: number }[]> {
@@ -242,7 +242,7 @@ export async function batchRenderAgentMessages(
   );
 }
 
-export async function batchRenderContentFragment(
+async function batchRenderContentFragment(
   auth: Authenticator,
   conversationId: string,
   messages: Message[]
@@ -359,7 +359,7 @@ async function fetchMessagesForPage(
   };
 }
 
-async function batchRenderMessages(
+export async function batchRenderMessages(
   auth: Authenticator,
   conversationId: string,
   messages: Message[]
@@ -369,11 +369,9 @@ async function batchRenderMessages(
     batchRenderAgentMessages(auth, messages),
     batchRenderContentFragment(auth, conversationId, messages),
   ]);
-  const render = [...userMessages, ...agentMessages, ...contentFragments].sort(
-    (a, b) => a.rank - b.rank
-  );
-
-  return render.map((r) => ({ ...r.m, rank: r.rank }));
+  return [...userMessages, ...agentMessages, ...contentFragments]
+    .sort((a, b) => a.rank - b.rank || a.version - b.version)
+    .map(({ m, rank }) => ({ ...m, rank }));
 }
 
 export interface FetchConversationMessagesResponse {

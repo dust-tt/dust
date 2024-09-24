@@ -10,6 +10,7 @@ use dust::{
     api_keys::validate_api_key,
     oauth::{
         connection::{self, Connection, ConnectionProvider, MigratedCredentials},
+        credential::{Credential, CredentialMetadata, CredentialProvider},
         store,
     },
     utils::{error_response, APIResponse, CoreRequestMakeSpan},
@@ -203,6 +204,84 @@ async fn connections_access_token(
     }
 }
 
+#[derive(Deserialize)]
+struct CredentialPayload {
+    provider: CredentialProvider,
+    metadata: CredentialMetadata,
+    content: serde_json::Map<String, serde_json::Value>,
+}
+
+async fn credentials_create(
+    State(state): State<Arc<OAuthState>>,
+    Json(payload): Json<CredentialPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    match Credential::create(
+        state.store.clone(),
+        payload.provider,
+        payload.metadata,
+        payload.content,
+    )
+    .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to create credential",
+            Some(e),
+        ),
+        Ok(c) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "credential": {
+                        "credential_id": c.credential_id(),
+                        "created": c.created(),
+                        "provider": c.provider(),
+                    },
+                })),
+            }),
+        ),
+    }
+}
+
+async fn credentials_retrieve(
+    State(state): State<Arc<OAuthState>>,
+    Path(credential_id): Path<String>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state.store.retrieve_credential(&credential_id).await {
+        Err(e) => error_response(
+            StatusCode::NOT_FOUND,
+            "credential_not_found",
+            "Requested credential was not found",
+            Some(e),
+        ),
+        Ok(c) => match c.unseal_encrypted_content() {
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to unseal encrypted content",
+                Some(e),
+            ),
+            Ok(content) => (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "credential": {
+                            "credential_id": c.credential_id(),
+                            "created": c.created(),
+                            "provider": c.provider(),
+                            "metadata": c.metadata(),
+                            "content": content,
+                        },
+                    })),
+                }),
+            ),
+        },
+    }
+}
+
 fn main() {
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -243,6 +322,8 @@ fn main() {
                 "/connections/:connection_id/access_token",
                 post(connections_access_token),
             )
+            .route("/credentials", post(credentials_create))
+            .route("/credentials/:credential_id", get(credentials_retrieve))
             // Extensions
             .layer(
                 TraceLayer::new_for_http()

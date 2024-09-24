@@ -33,11 +33,10 @@ import {
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
 import {
-  getRootNodesToSync,
+  getRootNodesToSyncFromResources,
   populateDeltas,
 } from "@connectors/connectors/microsoft/temporal/activities";
 import {
-  launchMicrosoftDeletionWorkflow,
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftGarbageCollectionWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
@@ -337,36 +336,41 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    await MicrosoftRootResource.batchDelete({
-      resourceIds: Object.keys(permissions),
-      connectorId: connector.id,
-    });
+    const existing = await MicrosoftRootResource.listRootsByConnectorId(
+      connector.id
+    );
 
     const nodeIdsToDelete = Object.keys(permissions).filter(
-      (key) => permissions[key] === "none"
+      (internalId) =>
+        permissions[internalId] === "none" &&
+        existing.some((e) => e.internalId === internalId)
     );
     if (nodeIdsToDelete.length > 0) {
-      const gcRes = await launchMicrosoftDeletionWorkflow(
-        this.connectorId,
-        nodeIdsToDelete
-      );
-
-      if (gcRes.isErr()) {
-        return gcRes;
-      }
+      await MicrosoftRootResource.batchDelete({
+        resourceIds: Object.keys(permissions),
+        connectorId: connector.id,
+      });
     }
 
     const newResourcesBlobs = Object.entries(permissions)
-      .filter(([, permission]) => permission === "read")
-      .map(([id]) => ({
+      .filter(
+        ([internalId, permission]) =>
+          permission === "read" &&
+          existing.every((e) => e.internalId !== internalId)
+      )
+      .map(([internalId]) => ({
         connectorId: connector.id,
-        nodeType: typeAndPathFromInternalId(id).nodeType,
-        internalId: id,
+        nodeType: typeAndPathFromInternalId(internalId).nodeType,
+        internalId,
       }));
 
-    await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
+    const addedResources =
+      await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
 
-    const nodesToSync = await getRootNodesToSync(this.connectorId);
+    const nodesToSync = await getRootNodesToSyncFromResources(
+      this.connectorId,
+      addedResources
+    );
 
     // poupulates deltas for the nodes so that if incremental sync starts before
     // fullsync populated, there's no error
@@ -374,7 +378,8 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     const res = await launchMicrosoftFullSyncWorkflow(
       this.connectorId,
-      nodesToSync
+      nodesToSync,
+      nodeIdsToDelete
     );
 
     if (res.isErr()) {
@@ -559,7 +564,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }: {
     configKey: string;
   }): Promise<Result<string | null, Error>> {
-    console.log("getMicrosoftConfig", this.connectorId, configKey);
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       return new Err(

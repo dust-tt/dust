@@ -1,19 +1,18 @@
 import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
 import {
+  CoreAPI,
   DEFAULT_EMBEDDING_PROVIDER_ID,
   DEFAULT_QDRANT_CLUSTER,
   dustManagedCredentials,
   EMBEDDING_CONFIGS,
   isDataSourceNameValid,
 } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -195,33 +194,31 @@ async function handler(
         });
       }
 
-      const ds = await DataSourceResource.makeNew(
-        auth,
-        {
-          name: req.body.name,
-          description: description,
-          dustAPIProjectId: dustProject.value.project.project_id.toString(),
-          dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
-          workspaceId: owner.id,
-          assistantDefaultSelected: req.body.assistantDefaultSelected,
-        },
-        vault
-      );
+      const dataSourceView =
+        await DataSourceViewResource.createDataSourceAndDefaultView(
+          auth,
+          {
+            name: req.body.name,
+            description: description,
+            dustAPIProjectId: dustProject.value.project.project_id.toString(),
+            dustAPIDataSourceId:
+              dustDataSource.value.data_source.data_source_id,
+            workspaceId: owner.id,
+            assistantDefaultSelected: req.body.assistantDefaultSelected,
+          },
+          vault
+        );
 
-      await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-        auth,
-        ds.vault,
-        ds
-      );
+      const { dataSource } = dataSourceView;
 
       res.status(201).json({
-        dataSource: ds.toJSON(),
+        dataSource: dataSource.toJSON(),
       });
 
       void ServerSideTracking.trackDataSourceCreated({
         user,
         workspace: owner,
-        dataSource: ds.toJSON(),
+        dataSource: dataSource.toJSON(),
       });
       return;
 

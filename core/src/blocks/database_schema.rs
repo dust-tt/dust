@@ -1,7 +1,3 @@
-use super::helpers::get_data_source_project_and_view_filter;
-use crate::blocks::block::{Block, BlockResult, BlockType, Env};
-use crate::databases::database::{get_unique_table_names_for_database, Table};
-use crate::Rule;
 use anyhow::{anyhow, Ok, Result};
 use async_trait::async_trait;
 use futures::future::try_join_all;
@@ -9,6 +5,18 @@ use itertools::Itertools;
 use pest::iterators::Pair;
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
+
+use crate::{
+    blocks::{
+        block::{Block, BlockResult, BlockType, Env},
+        helpers::get_data_source_project_and_view_filter,
+    },
+    databases::{
+        database::Table, transient_database::get_unique_table_names_for_transient_database,
+    },
+    Rule,
+};
+
 #[derive(Clone)]
 pub struct DatabaseSchema {}
 
@@ -74,7 +82,7 @@ impl Block for DatabaseSchema {
         let mut tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
         // Compute the unique table names for each table.
-        let unique_table_names = get_unique_table_names_for_database(&tables);
+        let unique_table_names = get_unique_table_names_for_transient_database(&tables);
 
         // Load the schema for each table.
         // If the schema cache is stale, this will update it in place.

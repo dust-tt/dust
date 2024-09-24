@@ -1,4 +1,4 @@
-import { Button, Modal, PencilSquareIcon } from "@dust-tt/sparkle";
+import { Button, EyeIcon, Modal, PencilSquareIcon } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
@@ -130,7 +130,7 @@ export default function Input({
                     <Button
                       variant="secondary"
                       onClick={() => setIsDatasetModalOpen(true)}
-                      icon={PencilSquareIcon}
+                      icon={readOnly ? EyeIcon : PencilSquareIcon}
                       label={readOnly ? "View" : "Edit"}
                       size="xs"
                     />
@@ -161,7 +161,7 @@ export default function Input({
                 />
               )}
               <DatasetView
-                readOnly={false}
+                readOnly={readOnly}
                 datasets={[dataset]}
                 dataset={dataset}
                 schema={dataset.schema}

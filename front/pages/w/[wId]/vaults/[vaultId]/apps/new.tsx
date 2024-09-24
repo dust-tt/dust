@@ -13,12 +13,11 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
-import { getDustAppsListUrl } from "@app/lib/vault_rollout";
+import { dustAppsListUrl } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  dustAppsListUrl: string;
   vault: VaultType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -41,13 +40,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const dustAppsListUrl = await getDustAppsListUrl(auth, vault.sId);
-
   return {
     props: {
       owner,
       subscription,
-      dustAppsListUrl,
       vault: vault.toJSON(),
     },
   };
@@ -56,7 +52,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function NewApp({
   owner,
   subscription,
-  dustAppsListUrl,
   vault,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
@@ -199,7 +194,7 @@ export default function NewApp({
                 variant="tertiary"
                 disabled={creating}
                 onClick={async () => {
-                  void router.push(dustAppsListUrl);
+                  void router.push(dustAppsListUrl(owner, vault));
                 }}
                 label="Cancel"
               />
