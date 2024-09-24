@@ -37,7 +37,7 @@ use dust::{
         qdrant::QdrantClients,
     },
     databases::{
-        database::{QueryDatabaseError, Row, Table},
+        database::{LocalTable, QueryDatabaseError, Row, Table},
         transient_database::execute_query_on_transient_database,
     },
     databases_store::store::{self as databases_store, DatabasesStore},
@@ -2290,35 +2290,47 @@ async fn tables_rows_upsert(
                 None,
             )
         }
-        Ok(Some(table)) => match table
-            .upsert_rows(
-                state.store.clone(),
-                state.databases_store.clone(),
-                &payload.rows,
-                match payload.truncate {
-                    Some(v) => v,
-                    None => false,
-                },
-            )
-            .await
-        {
+        Ok(Some(mut table)) => match LocalTable::from_table(&mut table) {
             Err(e) => {
                 return error_response(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal_server_error",
-                    "Failed to upsert rows",
+                    StatusCode::BAD_REQUEST,
+                    "invalid_table",
+                    "Table is not local",
                     Some(e),
                 )
             }
-            Ok(_) => (
-                StatusCode::OK,
-                Json(APIResponse {
-                    error: None,
-                    response: Some(json!({
-                        "success": true,
-                    })),
-                }),
-            ),
+            Ok(table) => {
+                match table
+                    .upsert_rows(
+                        state.store.clone(),
+                        state.databases_store.clone(),
+                        &payload.rows,
+                        match payload.truncate {
+                            Some(v) => v,
+                            None => false,
+                        },
+                    )
+                    .await
+                {
+                    Err(e) => {
+                        return error_response(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "internal_server_error",
+                            "Failed to upsert rows",
+                            Some(e),
+                        )
+                    }
+                    Ok(_) => (
+                        StatusCode::OK,
+                        Json(APIResponse {
+                            error: None,
+                            response: Some(json!({
+                                "success": true,
+                            })),
+                        }),
+                    ),
+                }
+            }
         },
     }
 }
@@ -2368,31 +2380,49 @@ async fn tables_rows_retrieve(
                     None,
                 )
             }
-            Some(table) => match table
-                .retrieve_row(state.databases_store.clone(), &row_id)
-                .await
-            {
-                Err(e) => error_response(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal_server_error",
-                    "Failed to load row",
-                    Some(e),
-                ),
-                Ok(None) => error_response(
-                    StatusCode::NOT_FOUND,
-                    "table_row_not_found",
-                    &format!("No table row found for id `{}`", row_id),
-                    None,
-                ),
-                Ok(Some(row)) => (
-                    StatusCode::OK,
-                    Json(APIResponse {
-                        error: None,
-                        response: Some(json!({
-                            "row": row,
-                        })),
-                    }),
-                ),
+            Some(mut table) => match LocalTable::from_table(&mut table) {
+                Err(e) => {
+                    return error_response(
+                        StatusCode::BAD_REQUEST,
+                        "invalid_table",
+                        "Table is not local",
+                        Some(e),
+                    )
+                }
+                Ok(table) => {
+                    match table
+                        .retrieve_row(state.databases_store.clone(), &row_id)
+                        .await
+                    {
+                        Err(e) => {
+                            return error_response(
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                "internal_server_error",
+                                "Failed to load row",
+                                Some(e),
+                            )
+                        }
+                        Ok(None) => {
+                            return error_response(
+                                StatusCode::NOT_FOUND,
+                                "table_row_not_found",
+                                &format!("No table row found for id `{}`", row_id),
+                                None,
+                            )
+                        }
+                        Ok(Some(row)) => {
+                            return (
+                                StatusCode::OK,
+                                Json(APIResponse {
+                                    error: None,
+                                    response: Some(json!({
+                                        "row": row,
+                                    })),
+                                }),
+                            )
+                        }
+                    }
+                }
             },
         },
     }
@@ -2429,25 +2459,39 @@ async fn tables_rows_delete(
                 }),
             )
         }
-        Ok(Some(table)) => match table
-            .delete_row(state.databases_store.clone(), &row_id)
-            .await
-        {
-            Err(e) => error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to delete row",
-                Some(e),
-            ),
-            Ok(_) => (
-                StatusCode::OK,
-                Json(APIResponse {
-                    error: None,
-                    response: Some(json!({
-                        "success": true,
-                    })),
-                }),
-            ),
+        Ok(Some(mut table)) => match LocalTable::from_table(&mut table) {
+            Err(e) => {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_table",
+                    "Table is not local",
+                    Some(e),
+                )
+            }
+            Ok(table) => {
+                match table
+                    .delete_row(state.databases_store.clone(), &row_id)
+                    .await
+                {
+                    Err(e) => {
+                        return error_response(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "internal_server_error",
+                            "Failed to delete row",
+                            Some(e),
+                        )
+                    }
+                    Ok(_) => (
+                        StatusCode::OK,
+                        Json(APIResponse {
+                            error: None,
+                            response: Some(json!({
+                                "success": true,
+                            })),
+                        }),
+                    ),
+                }
+            }
         },
     }
 }
@@ -2504,31 +2548,39 @@ async fn tables_rows_list(
                     None,
                 )
             }
-            Some(table) => match table
-                .list_rows(
-                    state.databases_store.clone(),
-                    Some((query.limit, query.offset)),
-                )
-                .await
-            {
+            Some(mut table) => match LocalTable::from_table(&mut table) {
                 Err(e) => error_response(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal_server_error",
-                    "Failed to list rows",
+                    StatusCode::BAD_REQUEST,
+                    "invalid_table",
+                    "Table is not local",
                     Some(e),
                 ),
-                Ok((rows, total)) => (
-                    StatusCode::OK,
-                    Json(APIResponse {
-                        error: None,
-                        response: Some(json!({
-                            "offset": query.offset,
-                            "limit": query.limit,
-                            "total": total,
-                            "rows": rows,
-                        })),
-                    }),
-                ),
+                Ok(table) => match table
+                    .list_rows(
+                        state.databases_store.clone(),
+                        Some((query.limit, query.offset)),
+                    )
+                    .await
+                {
+                    Err(e) => error_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "internal_server_error",
+                        "Failed to list rows",
+                        Some(e),
+                    ),
+                    Ok((rows, total)) => (
+                        StatusCode::OK,
+                        Json(APIResponse {
+                            error: None,
+                            response: Some(json!({
+                                "offset": query.offset,
+                                "limit": query.limit,
+                                "total": total,
+                                "rows": rows,
+                            })),
+                        }),
+                    ),
+                },
             },
         },
     }

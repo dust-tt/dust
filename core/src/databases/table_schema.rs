@@ -375,6 +375,18 @@ impl TableSchema {
         Ok(TableSchema(merged_schema))
     }
 
+    pub fn render_dbml(&self, name: &str, description: &str) -> String {
+        return format!(
+            "Table {} {{\n{}\n\n  Note: '{}'\n}}",
+            name,
+            self.columns()
+                .iter()
+                .map(|c| format!("  {}", c.render_dbml()))
+                .join("\n"),
+            description
+        );
+    }
+
     fn try_parse_date_object(maybe_date_obj: &serde_json::Map<String, Value>) -> Option<String> {
         match (maybe_date_obj.get("type"), maybe_date_obj.get("epoch")) {
             (Some(Value::String(date_type)), Some(Value::Number(epoch))) => {

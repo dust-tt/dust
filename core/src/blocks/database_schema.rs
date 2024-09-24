@@ -12,7 +12,8 @@ use crate::{
         helpers::get_data_source_project_and_view_filter,
     },
     databases::{
-        database::Table, transient_database::get_unique_table_names_for_transient_database,
+        database::{LocalTable, Table},
+        transient_database::get_unique_table_names_for_transient_database,
     },
     Rule,
 };
@@ -84,10 +85,17 @@ impl Block for DatabaseSchema {
         // Compute the unique table names for each table.
         let unique_table_names = get_unique_table_names_for_transient_database(&tables);
 
+        // TODO(SNOWFLAKE): add support for remote databases
+        // Check that all tables are local tables and create a "LocalTable" for each.
+        let mut local_tables = tables
+            .iter_mut()
+            .map(|t| LocalTable::from_table(t))
+            .collect::<Result<Vec<_>>>()?;
+
         // Load the schema for each table.
         // If the schema cache is stale, this will update it in place.
         try_join_all(
-            tables
+            local_tables
                 .iter_mut()
                 .map(|t| t.schema(env.store.clone(), env.databases_store.clone())),
         )
@@ -95,14 +103,14 @@ impl Block for DatabaseSchema {
 
         Ok(BlockResult {
             value: serde_json::to_value(
-                tables
+                local_tables
                     .into_iter()
                     .map(|t| {
                         let unique_table_name = unique_table_names
-                            .get(&t.unique_id())
+                            .get(&t.table.unique_id())
                             .expect("Unreachable: missing unique table name.");
                         json!({
-                            "table_schema": t.schema_cached(),
+                            "table_schema": t.table.schema_cached(),
                             "dbml": t.render_dbml(Some(&unique_table_name)),
                         })
                     })

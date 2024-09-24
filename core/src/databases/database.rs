@@ -8,23 +8,22 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum DatabaseType {
+pub enum TableType {
     LOCAL,
     REMOTE,
 }
 
-impl ToString for DatabaseType {
+impl ToString for TableType {
     fn to_string(&self) -> String {
         match self {
-            DatabaseType::LOCAL => String::from("local"),
-            DatabaseType::REMOTE => String::from("remote"),
+            TableType::LOCAL => String::from("local"),
+            TableType::REMOTE => String::from("remote"),
         }
     }
 }
@@ -65,7 +64,6 @@ pub fn get_table_unique_id(project: &Project, data_source_id: &str, table_id: &s
     format!("{}__{}__{}", project.project_id(), data_source_id, table_id)
 }
 
-// TODO(@fontanierh): Support for remote DBs.
 impl Table {
     pub fn new(
         project: &Project,
@@ -132,48 +130,20 @@ impl Table {
     pub fn remote_database_secret_id(&self) -> Option<&str> {
         self.remote_database_secret_id.as_deref()
     }
-
-    pub fn render_dbml(&self, name: Option<&str>) -> String {
-        let name = match name {
-            Some(name) => name,
-            None => self.name(),
-        };
-        match self.schema {
-            None => format!("Table {} {{\n}}", name),
-            Some(ref schema) => format!(
-                "Table {} {{\n{}\n\n  Note: '{}'\n}}",
-                name,
-                schema
-                    .columns()
-                    .iter()
-                    .map(|c| format!("  {}", c.render_dbml()))
-                    .join("\n"),
-                self.description()
-            ),
+    pub fn table_type(&self) -> Result<TableType> {
+        match (
+            self.remote_database_table_id(),
+            self.remote_database_secret_id(),
+        ) {
+            (Some(_), Some(_)) => Ok(TableType::REMOTE),
+            (None, None) => Ok(TableType::LOCAL),
+            _ => Err(anyhow!(
+                "Inconsistent state: table is neither local nor remote"
+            )),
         }
     }
-
-    pub async fn schema(
-        &mut self,
-        store: Box<dyn Store + Sync + Send>,
-        databases_store: Box<dyn DatabasesStore + Sync + Send>,
-    ) -> Result<Option<TableSchema>> {
-        match &self.schema_stale_at {
-            Some(_) => {
-                let schema = self.compute_schema(databases_store).await?;
-                store
-                    .update_table_schema(
-                        &self.project,
-                        &self.data_source_id,
-                        &self.table_id,
-                        &schema,
-                    )
-                    .await?;
-                self.schema = Some(schema.clone());
-                Ok(Some(schema.clone()))
-            }
-            None => Ok(self.schema.clone()),
-        }
+    pub fn set_schema(&mut self, schema: TableSchema) {
+        self.schema = Some(schema);
     }
 
     pub async fn delete(
@@ -181,35 +151,79 @@ impl Table {
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
     ) -> Result<()> {
-        // Invalidate the databases that use the table.
-        try_join_all(
-            (store
-                .find_databases_using_table(
-                    &self.project,
-                    &self.data_source_id,
-                    &self.table_id,
-                    HEARTBEAT_INTERVAL_MS,
-                )
-                .await?)
-                .into_iter()
-                .map(|db| {
-                    let store = store.clone();
-                    async move {
-                        db.invalidate(store).await?;
-                        Ok::<_, anyhow::Error>(())
-                    }
-                }),
-        )
-        .await?;
+        if self.table_type()? == TableType::LOCAL {
+            // Invalidate the databases that use the table.
+            try_join_all(
+                (store
+                    .find_databases_using_table(
+                        &self.project,
+                        &self.data_source_id,
+                        &self.table_id,
+                        HEARTBEAT_INTERVAL_MS,
+                    )
+                    .await?)
+                    .into_iter()
+                    .map(|db| {
+                        let store = store.clone();
+                        async move {
+                            db.invalidate(store).await?;
+                            Ok::<_, anyhow::Error>(())
+                        }
+                    }),
+            )
+            .await?;
 
-        // Delete the table rows.
-        databases_store.delete_table_rows(&self.unique_id()).await?;
+            // Delete the table rows.
+            databases_store.delete_table_rows(&self.unique_id()).await?;
+        }
 
         store
             .delete_table(&self.project, &self.data_source_id, &self.table_id)
             .await?;
 
         Ok(())
+    }
+
+    pub async fn update_parents(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        parents: Vec<String>,
+    ) -> Result<()> {
+        store
+            .update_table_parents(
+                &self.project,
+                &self.data_source_id,
+                &&self.table_id,
+                &parents,
+            )
+            .await?;
+        Ok(())
+    }
+}
+
+pub struct LocalTable<'a> {
+    pub table: &'a mut Table,
+}
+
+impl LocalTable<'_> {
+    pub fn from_table(table: &mut Table) -> Result<LocalTable> {
+        match table.table_type() {
+            Ok(TableType::LOCAL) => Ok(LocalTable { table }),
+            Ok(TableType::REMOTE) => Err(anyhow!("Table is not local")),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn render_dbml(&self, name: Option<&str>) -> String {
+        let name = match name {
+            Some(name) => name,
+            None => self.table.name(),
+        };
+
+        match self.table.schema {
+            None => format!("Table {} {{\n}}", name),
+            Some(ref schema) => schema.render_dbml(name, self.table.description()),
+        }
     }
 
     pub async fn upsert_rows(
@@ -241,7 +255,7 @@ impl Table {
         let new_table_schema = match truncate {
             // If the new rows replace existing ones, we need to clear the schema cache.
             true => TableSchema::from_rows(&rows)?,
-            false => match self.schema_cached() {
+            false => match self.table.schema_cached() {
                 // If there is no existing schema cache, simply use the new schema.
                 None => TableSchema::from_rows(&rows)?,
                 Some(existing_table_schema) => {
@@ -253,9 +267,9 @@ impl Table {
 
         store
             .update_table_schema(
-                &self.project,
-                &self.data_source_id,
-                &self.table_id,
+                &self.table.project,
+                &self.table.data_source_id,
+                &self.table.table_id,
                 &new_table_schema,
             )
             .await?;
@@ -266,7 +280,11 @@ impl Table {
             // However, if that row is later updated to have an integer, the column should become an integer column again, but we cannot know that without looking at all the rows.
             // This is why we invalidate the schema when doing incremental updates, and next time the schema is requested, it will be recomputed from all the rows.
             store
-                .invalidate_table_schema(&self.project, &self.data_source_id, &self.table_id)
+                .invalidate_table_schema(
+                    &self.table.project,
+                    &self.table.data_source_id,
+                    &self.table.table_id,
+                )
                 .await?;
         }
 
@@ -276,16 +294,16 @@ impl Table {
         // The other way around would not be true -- old schema doesn't necessarily work with the new rows.
         // This is why we cannot `try_join_all`.
         databases_store
-            .batch_upsert_table_rows(&self.unique_id(), rows, truncate)
+            .batch_upsert_table_rows(&self.table.unique_id(), rows, truncate)
             .await?;
 
         // Invalidate the databases that use the table.
         try_join_all(
             (store
                 .find_databases_using_table(
-                    &self.project,
-                    &self.data_source_id,
-                    &self.table_id,
+                    &self.table.project,
+                    &self.table.data_source_id,
+                    &self.table.table_id,
                     HEARTBEAT_INTERVAL_MS,
                 )
                 .await?)
@@ -309,7 +327,7 @@ impl Table {
         row_id: &str,
     ) -> Result<Option<Row>> {
         databases_store
-            .load_table_row(&self.unique_id(), row_id)
+            .load_table_row(&self.table.unique_id(), row_id)
             .await
     }
 
@@ -319,7 +337,7 @@ impl Table {
         row_id: &str,
     ) -> Result<()> {
         databases_store
-            .delete_table_row(&self.unique_id(), row_id)
+            .delete_table_row(&self.table.unique_id(), row_id)
             .await
     }
 
@@ -329,24 +347,33 @@ impl Table {
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<Row>, usize)> {
         databases_store
-            .list_table_rows(&self.unique_id(), limit_offset)
+            .list_table_rows(&self.table.unique_id(), limit_offset)
             .await
     }
 
-    pub async fn update_parents(
-        &self,
+    pub async fn schema(
+        &mut self,
         store: Box<dyn Store + Sync + Send>,
-        parents: Vec<String>,
-    ) -> Result<()> {
-        store
-            .update_table_parents(
-                &self.project,
-                &self.data_source_id,
-                &&self.table_id,
-                &parents,
-            )
-            .await?;
-        Ok(())
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+    ) -> Result<Option<TableSchema>> {
+        match &self.table.schema_stale_at {
+            Some(_) => {
+                let schema = self.compute_schema(databases_store).await?;
+
+                store
+                    .update_table_schema(
+                        &self.table.project,
+                        &self.table.data_source_id,
+                        &self.table.table_id,
+                        &schema,
+                    )
+                    .await?;
+                self.table.set_schema(schema.clone());
+
+                Ok(Some(schema))
+            }
+            None => Ok(self.table.schema.clone()),
+        }
     }
 
     async fn compute_schema(
@@ -445,7 +472,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_database_table_to_dbml() -> anyhow::Result<()> {
+    fn test_local_table_to_dbml() -> anyhow::Result<()> {
         let row_1 = json!({
             "user_id": 1,
             "temperature": 1.2,
@@ -465,7 +492,7 @@ mod tests {
         ];
 
         let schema = TableSchema::from_rows(rows)?;
-        let table = Table::new(
+        let mut table = Table::new(
             &Project::new_from_id(42),
             "data_source_id",
             utils::now(),
@@ -480,6 +507,7 @@ mod tests {
             None,
             None,
         );
+        let local_table = LocalTable::from_table(&mut table)?;
 
         let expected = r#"Table test_dbml {
   user_id integer [note: 'possible values: 1, 2']
@@ -491,7 +519,7 @@ mod tests {
   Note: 'Test records for DBML rendering'
 }"#
         .to_string();
-        assert_eq!(table.render_dbml(None), expected);
+        assert_eq!(local_table.render_dbml(None), expected);
 
         Ok(())
     }
