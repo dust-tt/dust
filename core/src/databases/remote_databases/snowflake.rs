@@ -175,11 +175,15 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
                 )
             })?;
 
-        let executor = session.execute(query).await.map_err(|e| {
-            QueryDatabaseError::ExecutionError(
-                anyhow!("Error creating QueryExecutor: {}", e).to_string(),
-            )
-        })?;
+        let executor = match session.execute(query).await {
+            Ok(executor) => Ok(executor),
+            Err(snowflake_connector_rs::Error::TimedOut) => Err(
+                QueryDatabaseError::ExecutionError("Query execution timed out".to_string()),
+            ),
+            Err(e) => Err(QueryDatabaseError::ExecutionError(
+                anyhow!("Error executing query: {}", e).to_string(),
+            )),
+        }?;
 
         let mut query_result_size: usize = 0;
         let mut all_rows: Vec<QueryResult> = Vec::new();
@@ -200,12 +204,8 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
                         .map(|row| row.try_into())
                         .collect::<Result<Vec<QueryResult>>>()?;
 
-                    // Calculate the size of the chunk in bytes (sum of the size_of for each row).
-                    let chunk_size_in_bytes: usize =
-                        rows.iter().map(|row| mem::size_of_val(row)).sum();
-
                     // Check that total result size so far does not exceed the limit.
-                    query_result_size += chunk_size_in_bytes;
+                    query_result_size += rows.len() * mem::size_of::<QueryResult>();
                     if query_result_size >= MAX_QUERY_RESULT_SIZE_BYTES {
                         return Err(QueryDatabaseError::ResultTooLarge(format!(
                             "Query result size exceeds limit of {} bytes",
