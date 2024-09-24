@@ -1,20 +1,25 @@
-use crate::blocks::block::BlockType;
-use crate::cached_request::CachedRequest;
-use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion};
-use crate::databases::database::{Database, Table};
-use crate::databases::table_schema::TableSchema;
-use crate::dataset::Dataset;
-use crate::http::request::{HttpRequest, HttpResponse};
-use crate::project::Project;
-use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
-use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
-use crate::run::{Run, RunStatus, RunType};
-use crate::search_filter::SearchFilter;
-use crate::sqlite_workers::client::SqliteWorker;
-
 use anyhow::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
+
+use crate::{
+    blocks::block::BlockType,
+    cached_request::CachedRequest,
+    data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
+    databases::{
+        database::Table, table_schema::TableSchema, transient_database::TransientDatabase,
+    },
+    dataset::Dataset,
+    http::request::{HttpRequest, HttpResponse},
+    project::Project,
+    providers::{
+        embedder::{EmbedderRequest, EmbedderVector},
+        llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest},
+    },
+    run::{Run, RunStatus, RunType},
+    search_filter::SearchFilter,
+    sqlite_workers::client::SqliteWorker,
+};
 
 #[async_trait]
 pub trait Store {
@@ -174,19 +179,23 @@ pub trait Store {
     ) -> Result<()>;
     async fn delete_data_source(&self, project: &Project, data_source_id: &str) -> Result<()>;
     // Databases
-    async fn upsert_database(&self, table_ids_hash: &str, worker_ttl: u64) -> Result<Database>;
+    async fn upsert_database(
+        &self,
+        table_ids_hash: &str,
+        worker_ttl: u64,
+    ) -> Result<TransientDatabase>;
     async fn load_database(
         &self,
         table_ids_hash: &str,
         worker_ttl: u64,
-    ) -> Result<Option<Database>>;
+    ) -> Result<Option<TransientDatabase>>;
     async fn find_databases_using_table(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
         worker_ttl: u64,
-    ) -> Result<Vec<Database>>;
+    ) -> Result<Vec<TransientDatabase>>;
     async fn delete_database(&self, table_ids_hash: &str) -> Result<()>;
     // Tables
     async fn upsert_table(

@@ -1,19 +1,3 @@
-use crate::blocks::block::BlockType;
-use crate::cached_request::CachedRequest;
-use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
-use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion};
-use crate::databases::database::{get_table_unique_id, Database, Table};
-use crate::databases::table_schema::TableSchema;
-use crate::dataset::Dataset;
-use crate::http::request::{HttpRequest, HttpResponse};
-use crate::project::Project;
-use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
-use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
-use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
-use crate::search_filter::SearchFilter;
-use crate::sqlite_workers::client::SqliteWorker;
-use crate::stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES};
-use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use bb8::Pool;
@@ -27,6 +11,30 @@ use std::hash::Hasher;
 use std::str::FromStr;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
+
+use crate::{
+    blocks::block::BlockType,
+    cached_request::CachedRequest,
+    consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX,
+    data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
+    databases::{
+        database::{get_table_unique_id, Table},
+        table_schema::TableSchema,
+        transient_database::TransientDatabase,
+    },
+    dataset::Dataset,
+    http::request::{HttpRequest, HttpResponse},
+    project::Project,
+    providers::{
+        embedder::{EmbedderRequest, EmbedderVector},
+        llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest},
+    },
+    run::{BlockExecution, Run, RunConfig, RunStatus, RunType},
+    search_filter::SearchFilter,
+    sqlite_workers::client::SqliteWorker,
+    stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES},
+    utils,
+};
 
 #[derive(Clone)]
 pub struct PostgresStore {
@@ -1954,7 +1962,11 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn upsert_database(&self, table_ids_hash: &str, worker_ttl: u64) -> Result<Database> {
+    async fn upsert_database(
+        &self,
+        table_ids_hash: &str,
+        worker_ttl: u64,
+    ) -> Result<TransientDatabase> {
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
         let mut tx = c.transaction().await?;
@@ -1971,7 +1983,7 @@ impl Store for PostgresStore {
             table_ids_hash: &str,
             worker_ttl: u64,
             existing_database_row_id: &Option<i64>,
-        ) -> Result<Database> {
+        ) -> Result<TransientDatabase> {
             if existing_database_row_id.is_some() {
                 // Delete the database.
                 let stmt = tx.prepare("DELETE FROM databases WHERE id = $1").await?;
@@ -2013,7 +2025,7 @@ impl Store for PostgresStore {
                     )
                     .await?;
 
-                    Ok(Database::new(
+                    Ok(TransientDatabase::new(
                         created as u64,
                         &table_ids_hash,
                         &Some(SqliteWorker::new(url, last_heartbeat as u64)),
@@ -2038,7 +2050,7 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let database_result: Result<Database, anyhow::Error> = match database_row {
+        let database_result: Result<TransientDatabase, anyhow::Error> = match database_row {
             // There is no database with the same table_ids_hash, we can create a new one.
             None => create_database(&mut tx, table_ids_hash, worker_ttl, &None).await,
             // There is a database with the same table_ids_hash.
@@ -2095,7 +2107,7 @@ impl Store for PostgresStore {
                         Some(sqlite_worker) => {
                             // The sqlite_worker is still alive.
                             // We can release the lock and return the database.
-                            Ok(Database::new(
+                            Ok(TransientDatabase::new(
                                 created as u64,
                                 &table_ids_hash,
                                 &Some(sqlite_worker),
@@ -2116,7 +2128,7 @@ impl Store for PostgresStore {
         &self,
         table_ids_hash: &str,
         worker_ttl: u64,
-    ) -> Result<Option<Database>> {
+    ) -> Result<Option<TransientDatabase>> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
@@ -2138,7 +2150,11 @@ impl Store for PostgresStore {
             None => Ok(None),
             Some((_database_row_id, created, table_ids_hash, sqlite_worker_row_id)) => {
                 match sqlite_worker_row_id {
-                    None => Ok(Some(Database::new(created as u64, &table_ids_hash, &None))),
+                    None => Ok(Some(TransientDatabase::new(
+                        created as u64,
+                        &table_ids_hash,
+                        &None,
+                    ))),
                     Some(worker_id) => {
                         let sqlite_worker: Option<SqliteWorker> = {
                             let stmt = c
@@ -2161,7 +2177,7 @@ impl Store for PostgresStore {
                             }
                         };
 
-                        Ok(Some(Database::new(
+                        Ok(Some(TransientDatabase::new(
                             created as u64,
                             &table_ids_hash,
                             &sqlite_worker,
@@ -2201,7 +2217,7 @@ impl Store for PostgresStore {
         data_source_id: &str,
         table_id: &str,
         worker_ttl: u64,
-    ) -> Result<Vec<Database>> {
+    ) -> Result<Vec<TransientDatabase>> {
         let data_source_id = data_source_id.to_string();
         let table_id = table_id.to_string();
 
