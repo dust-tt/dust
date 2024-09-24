@@ -31,12 +31,16 @@ interface ModelWithVault extends ResourceWithId {
 export abstract class ResourceWithVault<
   M extends Model & ModelWithVault,
 > extends BaseResource<M> {
+  readonly workspaceId: number;
+
   protected constructor(
     model: ModelStatic<M>,
     blob: Attributes<M>,
     public readonly vault: VaultResource
   ) {
     super(model, blob);
+
+    this.workspaceId = blob.workspaceId;
   }
 
   protected static async baseFetchWithAuthorization<
@@ -65,47 +69,49 @@ export abstract class ResourceWithVault<
     ];
 
     const blobs = await this.model.findAll({
-      where: {
-        ...where,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      } as WhereOptions<M>,
+      where: where as WhereOptions<M>,
       include: includeClauses,
       limit,
       order,
     });
 
-    return blobs.map((b) => {
-      const vault = new VaultResource(
-        VaultResource.model,
-        b.vault.get(),
-        b.vault.groups.map(
-          (group) => new GroupResource(GroupModel, group.get())
-        )
-      );
+    return (
+      blobs
+        .map((b) => {
+          const vault = new VaultResource(
+            VaultResource.model,
+            b.vault.get(),
+            b.vault.groups.map(
+              (group) => new GroupResource(GroupModel, group.get())
+            )
+          );
 
-      const includedResults = (includes || []).reduce<IncludeType>(
-        (acc, current) => {
-          if (
-            typeof current === "object" &&
-            "as" in current &&
-            typeof current.as === "string"
-          ) {
-            const key = current.as as keyof IncludeType;
-            // Only handle other includes if they are not vault.
-            if (key !== "vault") {
-              const includedModel = b[key as keyof typeof b];
-              if (includedModel instanceof Model) {
-                acc[key] = includedModel.get();
+          const includedResults = (includes || []).reduce<IncludeType>(
+            (acc, current) => {
+              if (
+                typeof current === "object" &&
+                "as" in current &&
+                typeof current.as === "string"
+              ) {
+                const key = current.as as keyof IncludeType;
+                // Only handle other includes if they are not vault.
+                if (key !== "vault") {
+                  const includedModel = b[key as keyof typeof b];
+                  if (includedModel instanceof Model) {
+                    acc[key] = includedModel.get();
+                  }
+                }
               }
-            }
-          }
-          return acc;
-        },
-        {} as IncludeType
-      );
+              return acc;
+            },
+            {} as IncludeType
+          );
 
-      return new this(this.model, b.get(), vault, includedResults);
-    });
+          return new this(this.model, b.get(), vault, includedResults);
+        })
+        // Filter out resources that the user cannot fetch.
+        .filter((cls) => cls.canFetch(auth))
+    );
   }
 
   // Permissions.
@@ -124,5 +130,12 @@ export abstract class ResourceWithVault<
 
   canWrite(auth: Authenticator) {
     return this.vault.canWrite(auth);
+  }
+
+  private canFetch(auth: Authenticator) {
+    return (
+      this.workspaceId === auth.getNonNullableWorkspace().id ||
+      this.vault.isPublic()
+    );
   }
 }

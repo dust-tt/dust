@@ -159,6 +159,17 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     return result;
   }
 
+  private static async baseFetch(
+    auth: Authenticator,
+    fetchDataSourceOptions?: FetchDataSourceOptions,
+    options?: ResourceFindOptions<DataSourceModel>
+  ) {
+    return this.baseFetchWithAuthorization(auth, {
+      ...this.getOptions(fetchDataSourceOptions),
+      ...options,
+    });
+  }
+
   static async fetchByNameOrId(
     auth: Authenticator,
     nameOrId: string,
@@ -257,8 +268,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     names: string[],
     options?: Omit<FetchDataSourceOptions, "limit" | "order">
   ): Promise<DataSourceResource[]> {
-    const dataSources = await this.baseFetchWithAuthorization(auth, {
-      ...this.getOptions(options),
+    const dataSources = await this.baseFetch(auth, options, {
       where: {
         name: {
           [Op.in]: names,
@@ -274,8 +284,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     ids: ModelId[],
     options?: FetchDataSourceOptions
   ) {
-    return this.baseFetchWithAuthorization(auth, {
-      ...this.getOptions(options),
+    return this.baseFetch(auth, options, {
       where: {
         id: ids,
       },
@@ -286,18 +295,23 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     auth: Authenticator,
     options?: FetchDataSourceOptions
   ): Promise<DataSourceResource[]> {
-    return this.baseFetchWithAuthorization(auth, this.getOptions(options));
+    return this.baseFetch(auth, options, {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
   }
 
   static async listByWorkspaceIdAndNames(
     auth: Authenticator,
     names: string[]
   ): Promise<DataSourceResource[]> {
-    return this.baseFetchWithAuthorization(auth, {
+    return this.baseFetch(auth, undefined, {
       where: {
         name: {
           [Op.in]: names,
         },
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
   }
@@ -307,10 +321,10 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     connectorProvider: ConnectorProvider,
     options?: FetchDataSourceOptions
   ): Promise<DataSourceResource[]> {
-    return this.baseFetchWithAuthorization(auth, {
-      ...this.getOptions(options),
+    return this.baseFetch(auth, options, {
       where: {
         connectorProvider,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
   }
@@ -320,7 +334,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
   }
 
   static async listByVaults(auth: Authenticator, vaults: VaultResource[]) {
-    return this.baseFetchWithAuthorization(auth, {
+    return this.baseFetch(auth, undefined, {
       where: {
         vaultId: vaults.map((v) => v.id),
       },
@@ -329,7 +343,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
 
   // TODO(20240801 flav): Refactor this to make auth required on all fetchers.
   static async fetchByModelIdWithAuth(auth: Authenticator, id: ModelId) {
-    const [dataSource] = await this.baseFetchWithAuthorization(auth, {
+    const [dataSource] = await this.baseFetch(auth, undefined, {
       where: { id },
     });
 
