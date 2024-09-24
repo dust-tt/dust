@@ -261,6 +261,34 @@ export async function getUserConversations(
   return conversations;
 }
 
+async function createOrUpdateParticipation({
+  user,
+  conversation,
+}: {
+  user: UserType | null;
+  conversation: ConversationType;
+}) {
+  if (user) {
+    const participant = await ConversationParticipant.findOne({
+      where: {
+        conversationId: conversation.id,
+        userId: user.id,
+      },
+    });
+    if (participant) {
+      return participant.update({
+        action: "posted",
+      });
+    } else {
+      return ConversationParticipant.create({
+        conversationId: conversation.id,
+        action: "posted",
+        userId: user.id,
+      });
+    }
+  }
+}
+
 export async function getConversation(
   auth: Authenticator,
   conversationId: string,
@@ -654,28 +682,6 @@ export async function* postUserMessage(
     return;
   }
 
-  async function createOrUpdateParticipation() {
-    if (user) {
-      const participant = await ConversationParticipant.findOne({
-        where: {
-          conversationId: conversation.id,
-          userId: user.id,
-        },
-      });
-      if (participant) {
-        return participant.update({
-          action: "posted",
-        });
-      } else {
-        return ConversationParticipant.create({
-          conversationId: conversation.id,
-          userId: user.id,
-          action: "posted",
-        });
-      }
-    }
-  }
-
   const results = await Promise.all([
     removeNulls(
       await Promise.all(
@@ -684,7 +690,10 @@ export async function* postUserMessage(
         })
       )
     ),
-    await createOrUpdateParticipation(),
+    await createOrUpdateParticipation({
+      user,
+      conversation,
+    }),
   ]);
   const agentConfigurations = results[0];
 
@@ -1113,24 +1122,6 @@ export async function* editUserMessage(
   let agentMessages: AgentMessageWithRankType[] = [];
   let agentMessageRows: AgentMessage[] = [];
 
-  async function createOrUpdateParticipation() {
-    if (user) {
-      const participant = await ConversationParticipant.findOne({
-        where: {
-          conversationId: conversation.id,
-          userId: user.id,
-        },
-      });
-      if (participant) {
-        return participant.update({
-          action: "posted",
-        });
-      } else {
-        throw new Error("Unreachable: edited message implies participation");
-      }
-    }
-  }
-
   const results = await Promise.all([
     removeNulls(
       await Promise.all(
@@ -1139,8 +1130,10 @@ export async function* editUserMessage(
         })
       )
     ),
-
-    createOrUpdateParticipation(),
+    await createOrUpdateParticipation({
+      user,
+      conversation,
+    }),
   ]);
 
   const agentConfigurations = results[0];
