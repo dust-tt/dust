@@ -1,6 +1,6 @@
 import type {
-  DataSourceType,
   DataSourceViewCategory,
+  DataSourceViewType,
   LightWorkspaceType,
   VaultType,
 } from "@dust-tt/types";
@@ -24,6 +24,7 @@ import type {
   PatchVaultResponseBody,
 } from "@app/pages/api/w/[wId]/vaults/[vId]";
 import type { GetVaultDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
+import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]";
 import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 export function useVaults({
@@ -96,6 +97,36 @@ export function useVaultInfo({
     mutateVaultInfo: mutate,
     isVaultInfoLoading: !error && !data,
     isVaultInfoError: error,
+  };
+}
+
+export function useVaultDataSourceView({
+  owner,
+  vaultId,
+  dataSourceViewId,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  vaultId: string;
+  dataSourceViewId?: string;
+  disabled?: boolean;
+}) {
+  const dataSourceViewsFetcher: Fetcher<GetDataSourceViewResponseBody> =
+    fetcher;
+
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      `/api/w/${owner.sId}/vaults/${vaultId}/data_source_views/${dataSourceViewId}`,
+      dataSourceViewsFetcher,
+      { disabled }
+    );
+
+  return {
+    dataSourceView: data?.dataSourceView,
+    isDataSourceViewLoading: !disabled && !error && !data,
+    isDataSourceViewError: error,
+    mutate,
+    mutateRegardlessOfQueryParams,
   };
 }
 
@@ -251,24 +282,15 @@ export function useUpdateFolder({
   vaultId: string;
 }) {
   const sendNotification = useContext(SendNotificationsContext);
-  const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
-    useVaultDataSourceViews({
-      workspaceId: owner.sId,
-      vaultId: vaultId,
-      category: "folder",
-      disabled: true, // Needed just to mutate
-    });
-
-  // TODO(GROUPS_INFRA) - Ideally, it should be a DataSourceViewType
   const doUpdate = async (
-    dataSource: DataSourceType | null,
+    dataSourceView: DataSourceViewType | null,
     description: string | null
   ) => {
-    if (!dataSource || !description) {
+    if (!dataSourceView || !description) {
       return false;
     }
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSource.sId}`,
+      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSourceView.dataSource.sId}`,
       {
         method: "PATCH",
         headers: {
@@ -280,8 +302,6 @@ export function useUpdateFolder({
       }
     );
     if (res.ok) {
-      void mutateVaultDataSourceViews();
-
       sendNotification({
         type: "success",
         title: "Successfully updated folder",
@@ -320,23 +340,22 @@ export function useDeleteFolderOrWebsite({
       disabled: true, // Needed just to mutate
     });
 
-  // TODO(GROUPS_INFRA) - Ideally, it should be a DataSourceViewType
-  const doDelete = async (dataSource: DataSourceType | null) => {
-    if (!dataSource) {
+  const doDelete = async (dataSourceView: DataSourceViewType | undefined) => {
+    if (!dataSourceView) {
       return false;
     }
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSource.sId}`,
+      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSourceView.dataSource.sId}`,
       { method: "DELETE" }
     );
 
     if (res.ok) {
-      void mutateVaultDataSourceViews();
+      await mutateVaultDataSourceViews();
 
       sendNotification({
         type: "success",
         title: `Successfully deleted ${category}`,
-        description: `${getDataSourceName(dataSource)} was successfully deleted.`,
+        description: `${getDataSourceName(dataSourceView.dataSource)} was successfully deleted.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);

@@ -404,7 +404,7 @@ export const VaultDataSourceViewContentList = ({
               owner={owner}
               vault={vault}
               canWriteInVault={canWriteInVault}
-              folder={dataSourceView.dataSource}
+              folder={dataSourceView}
               contentActionsRef={contentActionsRef}
             />
           </>
