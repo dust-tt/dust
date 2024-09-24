@@ -2305,11 +2305,12 @@ impl Store for PostgresStore {
             .prepare(
                 "INSERT INTO tables \
                    (id, data_source, created, table_id, name, description,
-                    timestamp, tags_array, parents) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8) \
+                    timestamp, tags_array, parents, remote_database_table_id, remote_database_secret_id) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
                    ON CONFLICT (table_id, data_source) DO UPDATE \
                    SET name = EXCLUDED.name, description = EXCLUDED.description, \
-                   timestamp = EXCLUDED.timestamp, tags_array = EXCLUDED.tags_array, parents = EXCLUDED.parents \
+                   timestamp = EXCLUDED.timestamp, tags_array = EXCLUDED.tags_array, parents = EXCLUDED.parents, \
+                     remote_database_table_id = EXCLUDED.remote_database_table_id, remote_database_secret_id = EXCLUDED.remote_database_secret_id \
                    RETURNING id",
             )
             .await?;
@@ -2325,6 +2326,8 @@ impl Store for PostgresStore {
                 &(table_timestamp as i64),
                 &table_tags,
                 &table_parents,
+                &table_remote_database_table_id,
+                &table_remote_database_secret_id,
             ],
         )
         .await?;
