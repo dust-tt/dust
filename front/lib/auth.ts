@@ -405,6 +405,56 @@ export class Authenticator {
     };
   }
 
+  // /!\ This method is intended exclusively for use within the registry lookup context.
+  // It securely authenticates access by verifying a provided secret against the
+  // configured registry secret. If the secret is valid, it retrieves the specified
+  // workspace and its associated group resources using a system API key.
+  // Modifications to this method should be handled with caution, as it involves
+  // sensitive operations related to secret validation and workspace access.
+  static async fromRegistrySecret({
+    groupIds,
+    secret,
+    workspaceId,
+  }: {
+    groupIds: string[];
+    secret: string;
+    workspaceId: string;
+  }) {
+    if (secret !== config.getDustRegistrySecret()) {
+      throw new Error("Invalid secret for registry lookup");
+    }
+
+    const workspace = await Workspace.findOne({
+      where: {
+        sId: workspaceId,
+      },
+    });
+    if (!workspace) {
+      throw new Error(`Could not find workspace with sId ${workspaceId}`);
+    }
+
+    // We use the system key for the workspace to fetch the groups.
+    const systemKeyForWorkspaceRes = await getOrCreateSystemApiKey(
+      renderLightWorkspaceType({ workspace })
+    );
+    if (systemKeyForWorkspaceRes.isErr()) {
+      throw new Error(`Could not get system key for workspace ${workspaceId}`);
+    }
+
+    const groups = await GroupResource.listGroupsWithSystemKey(
+      systemKeyForWorkspaceRes.value,
+      groupIds
+    );
+
+    return new Authenticator({
+      flags: [],
+      groups,
+      role: "builder",
+      subscription: null,
+      workspace,
+    });
+  }
+
   /**
    * Creates an Authenticator for a given workspace (with role `builder`). Used for internal calls
    * to the Dust API or other functions, when the system is calling something for the workspace.

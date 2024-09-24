@@ -323,6 +323,9 @@ export class VaultResource extends BaseResource<VaultModel> {
     }
   }
 
+  // Ensure thorough testing when modifying this method, as it is crucial for
+  // the integrity of the permissions system. It acts as the gatekeeper,
+  // determining who has the right to read resources from a vault.
   canRead(auth: Authenticator) {
     const isPrivateVaultsEnabled = auth
       .getNonNullableWorkspace()
