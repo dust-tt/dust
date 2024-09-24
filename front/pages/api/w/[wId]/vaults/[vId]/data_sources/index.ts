@@ -608,7 +608,7 @@ const handleDataSourceWithoutProvider = async ({
       vault
     );
 
-  const dataSource = dataSourceView.dataSource;
+  const { dataSource }  = dataSourceView;
 
   res.status(201).json({
     dataSource: dataSource.toJSON(),
