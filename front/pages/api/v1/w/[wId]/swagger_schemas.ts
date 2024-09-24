@@ -116,8 +116,15 @@
  *           example: "https://example.com/profiles/johndoe123.jpg"
  *         origin:
  *           type: string
- *           description: Origin of the context
- *           example: "api"
+ *           description: Origin of the context (contact us to add more at support@dust.tt)
+ *           enum:
+ *             - api
+ *             - slack
+ *             - gsheet
+ *             - zapier
+ *             - make
+ *             - zendesk
+ *             - raycast
  *     AgentConfiguration:
  *       type: object
  *       properties:
