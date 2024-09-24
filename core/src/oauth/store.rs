@@ -9,6 +9,8 @@ use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use tokio_postgres::NoTls;
 
+use super::credential::CredentialMetadata;
+
 #[async_trait]
 pub trait OAuthStore {
     async fn create_connection(
@@ -27,6 +29,7 @@ pub trait OAuthStore {
     async fn create_credential(
         &self,
         provider: CredentialProvider,
+        metadata: CredentialMetadata,
         encrypted_content: Vec<u8>,
     ) -> Result<Credential>;
     async fn retrieve_credential(&self, credential_id: &str) -> Result<Credential>;
@@ -230,6 +233,7 @@ impl OAuthStore for PostgresOAuthStore {
     async fn create_credential(
         &self,
         provider: CredentialProvider,
+        metadata: CredentialMetadata,
         encrypted_content: Vec<u8>,
     ) -> Result<Credential> {
         let pool = self.pool.clone();
@@ -240,8 +244,8 @@ impl OAuthStore for PostgresOAuthStore {
 
         let stmt = c
             .prepare(
-                "INSERT INTO credentials (id, created, secret, provider, encrypted_content)
-                   VALUES (DEFAULT, $1, $2, $3, $4) RETURNING id",
+                "INSERT INTO credentials (id, created, secret, provider, metadata, encrypted_content)
+                   VALUES (DEFAULT, $1, $2, $3, $4::jsonb, $5) RETURNING id",
             )
             .await?;
         let row_id: i64 = c
@@ -251,6 +255,7 @@ impl OAuthStore for PostgresOAuthStore {
                     &(created as i64),
                     &secret,
                     &provider.to_string(),
+                    &(serde_json::to_value(&metadata)?),
                     &encrypted_content,
                 ],
             )
@@ -263,6 +268,7 @@ impl OAuthStore for PostgresOAuthStore {
             credential_id,
             created,
             provider,
+            metadata,
             encrypted_content,
         ))
     }
@@ -275,7 +281,7 @@ impl OAuthStore for PostgresOAuthStore {
 
         let r = c
             .query_one(
-                "SELECT created, provider, encrypted_content
+                "SELECT created, provider, metadata, encrypted_content
                    FROM credentials
                    WHERE id = $1 AND secret = $2",
                 &[&row_id, &secret],
@@ -284,12 +290,14 @@ impl OAuthStore for PostgresOAuthStore {
 
         let created: i64 = r.get(0);
         let provider: CredentialProvider = CredentialProvider::from_str(r.get(1))?;
-        let encrypted_content: Vec<u8> = r.get(2);
+        let metadata: CredentialMetadata = serde_json::from_value(r.get(2))?;
+        let encrypted_content: Vec<u8> = r.get(3);
 
         Ok(Credential::new(
             credential_id.to_string(),
             created as u64,
             provider,
+            metadata,
             encrypted_content,
         ))
     }
@@ -320,6 +328,7 @@ pub const POSTGRES_TABLES: [&'static str; 2] = [
        id                             BIGSERIAL PRIMARY KEY,
        created                        BIGINT NOT NULL,
        provider                       TEXT NOT NULL,
+       metadata                       JSONB,
        secret                         TEXT NOT NULL,
        encrypted_content          BYTEA
     );",

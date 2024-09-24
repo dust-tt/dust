@@ -35,11 +35,18 @@ impl FromStr for CredentialProvider {
     }
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CredentialMetadata {
+    user_id: String,
+    workspace_id: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct Credential {
     credential_id: String,
     created: u64,
     provider: CredentialProvider,
+    metadata: CredentialMetadata,
     encrypted_content: Vec<u8>,
 }
 
@@ -48,12 +55,14 @@ impl Credential {
         credential_id: String,
         created: u64,
         provider: CredentialProvider,
+        metadata: CredentialMetadata,
         encrypted_content: Vec<u8>,
     ) -> Self {
         Self {
             credential_id,
             created,
             provider,
+            metadata,
             encrypted_content,
         }
     }
@@ -90,12 +99,13 @@ impl Credential {
     pub async fn create(
         store: Box<dyn OAuthStore + Sync + Send>,
         provider: CredentialProvider,
+        metadata: CredentialMetadata,
         content: serde_json::Map<String, serde_json::Value>,
     ) -> Result<Self> {
         // Check format of content based on provider
         let keys_to_check = match provider {
             CredentialProvider::Snowflake => {
-                vec!["account", "warehouse", "user", "password", "role"]
+                vec!["account", "warehouse", "username", "password", "role"]
             }
         };
 
@@ -114,7 +124,9 @@ impl Credential {
         // Encrypt for database
         let encrypted_content = seal_str(&serde_json::to_string(&content)?)?;
 
-        let c = store.create_credential(provider, encrypted_content).await?;
+        let c = store
+            .create_credential(provider, metadata, encrypted_content)
+            .await?;
 
         Ok(c)
     }
@@ -129,6 +141,10 @@ impl Credential {
 
     pub fn provider(&self) -> CredentialProvider {
         self.provider
+    }
+
+    pub fn metadata(&self) -> &CredentialMetadata {
+        &self.metadata
     }
 
     pub fn encrypted_content(&self) -> &Vec<u8> {

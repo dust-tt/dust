@@ -10,7 +10,7 @@ use dust::{
     api_keys::validate_api_key,
     oauth::{
         connection::{self, Connection, ConnectionProvider, MigratedCredentials},
-        credential::{Credential, CredentialProvider},
+        credential::{Credential, CredentialMetadata, CredentialProvider},
         store,
     },
     utils::{error_response, APIResponse, CoreRequestMakeSpan},
@@ -207,6 +207,7 @@ async fn connections_access_token(
 #[derive(Deserialize)]
 struct CredentialPayload {
     provider: CredentialProvider,
+    metadata: CredentialMetadata,
     content: serde_json::Map<String, serde_json::Value>,
 }
 
@@ -214,7 +215,14 @@ async fn credentials_create(
     State(state): State<Arc<OAuthState>>,
     Json(payload): Json<CredentialPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    match Credential::create(state.store.clone(), payload.provider, payload.content).await {
+    match Credential::create(
+        state.store.clone(),
+        payload.provider,
+        payload.metadata,
+        payload.content,
+    )
+    .await
+    {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
@@ -264,6 +272,7 @@ async fn credentials_retrieve(
                             "credential_id": c.credential_id(),
                             "created": c.created(),
                             "provider": c.provider(),
+                            "metadata": c.metadata(),
                             "content": content,
                         },
                     })),
