@@ -130,7 +130,7 @@ AgentTablesQueryConfigurationTable.init(
     indexes: [
       {
         unique: true,
-        fields: ["dataSourceId", "tableId", "tablesQueryConfigurationId"],
+        fields: ["dataSourceViewId", "tableId", "tablesQueryConfigurationId"],
         name: "agent_tables_query_configuration_table_unique",
       },
     ],
