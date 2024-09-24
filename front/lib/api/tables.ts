@@ -323,20 +323,6 @@ export async function rowsFromCsv({
     useAppForHeaderDetection
   );
 
-  if (useAppForHeaderDetection) {
-    // Enable static header detection for debugging
-    const headerResStatic = await detectHeaders(auth, csv, delimiter, false);
-    logger.info(
-      { headerRes, headerResStatic, useAppForHeaderDetection },
-      "Header detection result"
-    );
-  } else {
-    logger.info(
-      { headerRes, useAppForHeaderDetection },
-      "Header detection result"
-    );
-  }
-
   if (headerRes.isErr()) {
     return headerRes;
   }

@@ -1023,8 +1023,6 @@ export async function renderDatabaseFromPages({
     )
   );
 
-  const sanitizedHeaders = header;
-
   let csv = await new Promise<string>((resolve, reject) => {
     stringify(
       content,
@@ -1033,7 +1031,7 @@ export async function renderDatabaseFromPages({
         delimiter: cellSeparator,
         columns: header.map((h, idx) => ({
           key: h,
-          header: sanitizedHeaders[idx],
+          header: header[idx],
         })),
       },
       (err, output) => {
