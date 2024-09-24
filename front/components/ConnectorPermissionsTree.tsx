@@ -52,6 +52,10 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
     unselected: "none",
   },
   webcrawler: undefined,
+  snowflake: {
+    selected: "read",
+    unselected: "none",
+  },
 };
 
 type onPermissionUpdateType = (

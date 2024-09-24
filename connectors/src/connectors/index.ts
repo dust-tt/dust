@@ -14,6 +14,7 @@ import { IntercomConnectorManager } from "@connectors/connectors/intercom";
 import { MicrosoftConnectorManager } from "@connectors/connectors/microsoft";
 import { NotionConnectorManager } from "@connectors/connectors/notion";
 import { SlackConnectorManager } from "@connectors/connectors/slack";
+import { SnowflakeConnectorManager } from "@connectors/connectors/snowflake";
 import { WebcrawlerConnectorManager } from "@connectors/connectors/webcrawler";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -25,7 +26,8 @@ type ConnectorManager =
   | SlackConnectorManager
   | IntercomConnectorManager
   | GithubConnectorManager
-  | GoogleDriveConnectorManager;
+  | GoogleDriveConnectorManager
+  | SnowflakeConnectorManager;
 
 export function getConnectorManager({
   connectorProvider,
@@ -51,6 +53,8 @@ export function getConnectorManager({
       return new SlackConnectorManager(connectorId);
     case "webcrawler":
       return new WebcrawlerConnectorManager(connectorId);
+    case "snowflake":
+      return new SnowflakeConnectorManager(connectorId);
     default:
       assertNever(connectorProvider);
   }
@@ -101,6 +105,8 @@ export function createConnector({
       return SlackConnectorManager.create(params);
     case "webcrawler":
       return WebcrawlerConnectorManager.create(params);
+    case "snowflake":
+      return SnowflakeConnectorManager.create(params);
     default:
       assertNever(connectorProvider);
   }

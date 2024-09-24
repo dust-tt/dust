@@ -142,6 +142,7 @@ export function showAddDataModal(
     case "webcrawler":
     case "slack":
     case "intercom":
+    case "snowflake":
       return true;
     case "notion":
     case "github":

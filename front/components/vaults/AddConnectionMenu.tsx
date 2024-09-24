@@ -14,13 +14,7 @@ import type {
   Result,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  Err,
-  isConnectorProviderAllowed,
-  isOAuthProvider,
-  Ok,
-  setupOAuthConnection,
-} from "@dust-tt/types";
+import { Err, isOAuthProvider, Ok, setupOAuthConnection } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
@@ -183,9 +177,9 @@ export const AddConnectionMenu = ({
       (configuration.status === "rolling_out" &&
         !!configuration.rollingOutFlag &&
         owner.flags.includes(configuration.rollingOutFlag));
-    const isProviderAllowed = isConnectorProviderAllowed(
-      configuration.connectorProvider,
-      plan.limits.connections
+    const isProviderAllowed = isConnectorProviderAllowedForPlan(
+      plan,
+      configuration.connectorProvider
     );
 
     const existingDataSource = existingDataSources.find(

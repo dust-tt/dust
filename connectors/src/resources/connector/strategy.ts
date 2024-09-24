@@ -14,6 +14,7 @@ import type { IntercomWorkspace } from "@connectors/lib/models/intercom";
 import type { MicrosoftConfigurationModel } from "@connectors/lib/models/microsoft";
 import type { NotionConnectorState } from "@connectors/lib/models/notion";
 import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
+import type { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
 import { ConfluenceConnectorStrategy } from "@connectors/resources/connector/confluence";
 import { GithubConnectorStrategy } from "@connectors/resources/connector/github";
@@ -22,6 +23,7 @@ import { IntercomConnectorStrategy } from "@connectors/resources/connector/inter
 import { MicrosoftConnectorStrategy } from "@connectors/resources/connector/microsoft";
 import { NotionConnectorStrategy } from "@connectors/resources/connector/notion";
 import { SlackConnectorStrategy } from "@connectors/resources/connector/slack";
+import { SnowflakeConnectorStrategy } from "@connectors/resources/connector/snowflake";
 import { WebCrawlerStrategy } from "@connectors/resources/connector/webcrawler";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -41,6 +43,7 @@ export interface ConnectorProviderModelM {
   notion: NotionConnectorState;
   slack: SlackConfigurationModel;
   webcrawler: WebCrawlerConfigurationModel;
+  snowflake: SnowflakeConfigurationModel;
 }
 
 export type ConnectorProviderModelMapping = {
@@ -71,6 +74,7 @@ export interface ConnectorProviderConfigurationTypeM {
   intercom: null;
   microsoft: null;
   notion: null;
+  snowflake: null;
   slack: SlackConfigurationType;
   webcrawler: WebCrawlerConfigurationType;
 }
@@ -127,6 +131,9 @@ export function getConnectorProviderStrategy(
 
     case "webcrawler":
       return new WebCrawlerStrategy();
+
+    case "snowflake":
+      return new SnowflakeConnectorStrategy();
 
     default:
       assertNever(type);

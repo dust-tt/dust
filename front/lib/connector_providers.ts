@@ -8,6 +8,7 @@ import {
   MicrosoftLogo,
   NotionLogo,
   SlackLogo,
+  SnowflakeLogo,
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
@@ -169,6 +170,19 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isNested: true,
     isSearchEnabled: false,
   },
+  snowflake: {
+    name: "Snowflake",
+    connectorProvider: "snowflake",
+    status: "rolling_out",
+    hide: true,
+    description: "Query a Snowflake database.",
+    limitations: null,
+    logoComponent: SnowflakeLogo,
+    isNested: true,
+    isSearchEnabled: false,
+    guideLink: "https://docs.dust.tt/", // TODO(SNOWFLAKE): Add a doc for snowflake and point.
+    rollingOutFlag: "snowflake_connector_feature",
+  },
 };
 
 export function getConnectorProviderLogoWithFallback(
@@ -206,6 +220,9 @@ export const isConnectorProviderAllowedForPlan = (
       return true;
     case "webcrawler":
       return plan.limits.connections.isWebCrawlerAllowed;
+    case "snowflake":
+      // TODO(SNOWFLAKE): Add a isSnowflakeAllowed column to the plan model.
+      return true;
     default:
       assertNever(provider);
   }
@@ -222,6 +239,7 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "google_drive":
     case "intercom":
     case "microsoft":
+    case "snowflake":
       return true;
     case "webcrawler":
       return false;
@@ -241,6 +259,7 @@ export const isConnectionIdRequiredForProvider = (
     case "google_drive":
     case "intercom":
     case "microsoft":
+    case "snowflake":
       return true;
     case "webcrawler":
       return false;

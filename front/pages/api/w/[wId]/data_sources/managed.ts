@@ -123,6 +123,7 @@ async function handler(
         case "intercom":
         case "notion":
         case "microsoft":
+        case "snowflake":
         case "slack": {
           if (!auth.isAdmin()) {
             return apiError(req, res, {

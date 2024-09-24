@@ -94,6 +94,7 @@ async function handler(
     case "notion":
     case "microsoft":
     case "slack":
+    case "snowflake":
       if (!auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 403,

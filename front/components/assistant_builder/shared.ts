@@ -40,6 +40,7 @@ const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   github: { singular: "repository", plural: "repositories" },
   intercom: { singular: "element", plural: "elements" },
   webcrawler: { singular: "page", plural: "pages" },
+  snowflake: { singular: "table", plural: "tables" },
 };
 
 export const getConnectorProviderResourceName = (

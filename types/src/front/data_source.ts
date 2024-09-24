@@ -1,7 +1,6 @@
 import { ModelId } from "../shared/model_id";
 import { Err, Ok, Result } from "../shared/result";
 import { ConnectorType } from "./lib/connectors_api";
-import { ManageDataSourcesLimitsType } from "./plan";
 
 export const CONNECTOR_PROVIDERS = [
   "confluence",
@@ -12,6 +11,7 @@ export const CONNECTOR_PROVIDERS = [
   "slack",
   "microsoft",
   "webcrawler",
+  "snowflake",
 ] as const;
 
 export const CONNECTOR_TYPE_TO_NAME: Record<ConnectorProvider, string> = {
@@ -23,6 +23,7 @@ export const CONNECTOR_TYPE_TO_NAME: Record<ConnectorProvider, string> = {
   slack: "Slack",
   microsoft: "Microsoft",
   webcrawler: "Website",
+  snowflake: "Snowflake",
 };
 
 export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
@@ -41,6 +42,8 @@ export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
     "You cannot select another Intercom Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
   microsoft: `Microsoft / mismatch error.`,
   webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
+  snowflake:
+    "You cannot change the Snowflake account. Please add a new Snowflake connection instead.",
 };
 
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
@@ -120,38 +123,4 @@ export function isDataSourceNameValid(name: string): Result<void, string> {
   }
 
   return new Ok(undefined);
-}
-
-export function isConnectorProviderAllowed(
-  provider: ConnectorProvider,
-  limits: ManageDataSourcesLimitsType
-): boolean {
-  switch (provider) {
-    case "confluence": {
-      return limits.isConfluenceAllowed;
-    }
-    case "slack": {
-      return limits.isSlackAllowed;
-    }
-    case "notion": {
-      return limits.isNotionAllowed;
-    }
-    case "github": {
-      return limits.isGithubAllowed;
-    }
-    case "google_drive": {
-      return limits.isGoogleDriveAllowed;
-    }
-    case "intercom": {
-      return limits.isIntercomAllowed;
-    }
-    case "microsoft": {
-      return true;
-    }
-    case "webcrawler": {
-      return false;
-    }
-    default:
-      throw new Error(`Unknown connector provider ${provider}`);
-  }
 }
