@@ -94,6 +94,10 @@ impl TableSchemaColumn {
 pub struct TableSchema(Vec<TableSchemaColumn>);
 
 impl TableSchema {
+    pub fn from_columns(columns: Vec<TableSchemaColumn>) -> Self {
+        Self(columns)
+    }
+
     pub fn empty() -> Self {
         Self(vec![])
     }
