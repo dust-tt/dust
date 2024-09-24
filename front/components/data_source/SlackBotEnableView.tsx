@@ -1,16 +1,13 @@
 import { ContextItem, Popup, SlackLogo, SliderToggle } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  DataSourceType,
-  PlanType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { DataSourceType, PlanType, WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import * as React from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { useConnectorConfig } from "@app/lib/swr/connectors";
+import {
+  useConnectorConfig,
+  useToggleSlackChatBot,
+} from "@app/lib/swr/connectors";
 
 export function SlackBotEnableView({
   owner,
@@ -25,43 +22,28 @@ export function SlackBotEnableView({
   dataSource: DataSourceType;
   plan: PlanType;
 }) {
-  const { configValue, mutateConfig } = useConnectorConfig({
+  const { configValue } = useConnectorConfig({
     owner,
     dataSource,
     configKey: "botEnabled",
   });
   const botEnabled = configValue === "true";
 
-  const sendNotification = useContext(SendNotificationsContext);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showNoSlackBotPopup, setShowNoSlackBotPopup] = useState(false);
 
+  const doCreate = useToggleSlackChatBot({
+    dataSource,
+    owner,
+  });
+
   const handleSetBotEnabled = async (botEnabled: boolean) => {
     setLoading(true);
-    const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/botEnabled`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-        body: JSON.stringify({ configValue: botEnabled.toString() }),
-      }
-    );
-    if (res.ok) {
-      await mutateConfig();
-      setLoading(false);
-    } else {
-      setLoading(false);
-      const err = (await res.json()) as { error: APIError };
-      sendNotification({
-        type: "error",
-        title: "Failed to enable the Slack bot",
-        description: err.error.message,
-      });
-    }
-    return true;
+
+    await doCreate(botEnabled);
+
+    setLoading(false);
   };
 
   return (

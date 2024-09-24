@@ -144,7 +144,7 @@ const _setConnectorConfig = async (
       {
         api_error: {
           type: "internal_server_error",
-          message: `Unable to set config value for connector ${connector.id} and key ${req.params.config_key}`,
+          message: setConfigRes.error.message,
         },
         status_code: 500,
       },

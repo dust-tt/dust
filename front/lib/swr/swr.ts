@@ -177,7 +177,9 @@ export async function getErrorFromResponse(response: Response) {
   const errorData = await response.json();
 
   if (isAPIErrorResponse(errorData)) {
-    return errorData.error;
+    return errorData.error.connectors_error
+      ? errorData.error.connectors_error
+      : errorData.error;
   }
 
   return { message: "An error occurred" };
