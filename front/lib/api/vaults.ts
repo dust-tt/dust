@@ -1,6 +1,7 @@
 import type { DataSourceWithAgentsUsageType } from "@dust-tt/types";
 import { uniq } from "lodash";
 
+import { deleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -57,7 +58,7 @@ export const deleteVault = async (
     }
 
     for (const ds of dataSources) {
-      const res = await ds.delete(auth, t);
+      const res = await deleteDataSource(auth, ds, t);
       if (res.isErr()) {
         throw res.error;
       }
