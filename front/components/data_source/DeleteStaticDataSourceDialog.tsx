@@ -59,7 +59,6 @@ export function DeleteStaticDataSourceDialog({
       title={`Removing ${name}`}
       onValidate={onDelete}
       isSaving={isLoading || isUsageLoading}
-      onCancel={onClose}
       validateVariant="primaryWarning"
     >
       <div>
