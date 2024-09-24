@@ -1,13 +1,9 @@
 import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
-import { useRouter } from "next/router";
 
 import { makeColumnsForDataSources } from "@app/components/poke/data_sources/columns";
+import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-
-interface DataSourceDataTableProps {
-  owner: WorkspaceType;
-  dataSources: DataSourceType[];
-}
+import { usePokeDataSources } from "@app/poke/swr/data_sources";
 
 function prepareDataSourceForDisplay(dataSources: DataSourceType[]) {
   return dataSources.map((ds) => {
@@ -19,19 +15,25 @@ function prepareDataSourceForDisplay(dataSources: DataSourceType[]) {
   });
 }
 
-export function DataSourceDataTable({
-  owner,
-  dataSources,
-}: DataSourceDataTableProps) {
-  const router = useRouter();
+interface DataSourceDataTableProps {
+  owner: WorkspaceType;
+}
 
+export function DataSourceDataTable({ owner }: DataSourceDataTableProps) {
   return (
-    <div className="border-material-200 my-4 flex flex-col rounded-lg border p-4">
-      <h2 className="text-md mb-4 font-bold">Data Sources:</h2>
-      <PokeDataTable
-        columns={makeColumnsForDataSources(owner, router.reload)}
-        data={prepareDataSourceForDisplay(dataSources)}
-      />
-    </div>
+    <PokeDataTableConditionalFetch
+      header="Data Sources"
+      owner={owner}
+      useSWRHook={usePokeDataSources}
+    >
+      {(data, mutate) => (
+        <PokeDataTable
+          columns={makeColumnsForDataSources(owner, async () => {
+            await mutate();
+          })}
+          data={prepareDataSourceForDisplay(data)}
+        />
+      )}
+    </PokeDataTableConditionalFetch>
   );
 }

@@ -205,7 +205,6 @@ async function handler(
               dustDataSource.value.data_source.data_source_id,
             workspaceId: owner.id,
             assistantDefaultSelected: req.body.assistantDefaultSelected,
-            editedByUserId: user.id,
           },
           vault
         );

@@ -474,15 +474,15 @@ const VaultDataSourceViewItem = ({
     : basePath;
 
   const folders = nodes.filter((node) => node.expandable);
-
+  const isEmpty = isExpanded && !isNodesLoading && folders.length === 0;
   return (
     <Tree.Item
       isNavigatable
-      type={isExpanded && folders.length === 0 ? "leaf" : "node"}
+      type={isEmpty ? "leaf" : "node"}
       isSelected={router.asPath === dataSourceViewPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
       onItemClick={() => router.push(dataSourceViewPath)}
-      collapsed={!isExpanded || folders.length === 0}
+      collapsed={!isExpanded || isEmpty}
       label={node ? node.title : getDataSourceNameFromView(item)}
       visual={LogoComponent}
       areActionsFading={false}

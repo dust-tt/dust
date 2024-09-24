@@ -451,18 +451,20 @@ pub const POSTGRES_TABLES: [&'static str; 14] = [
     );",
     "-- databases tables
     CREATE TABLE IF NOT EXISTS tables (
-       id                       BIGSERIAL PRIMARY KEY,
-       created                  BIGINT NOT NULL,
-       table_id                 TEXT NOT NULL, -- unique within datasource
-       name                     TEXT NOT NULL, -- unique within datasource
-       description              TEXT NOT NULL,
-       timestamp                BIGINT NOT NULL,
-       tags_array               TEXT[] NOT NULL,
-       parents                  TEXT[] NOT NULL,
-       schema                   TEXT, -- json, kept up-to-date automatically with the last insert
-       schema_stale_at          BIGINT, -- timestamp when the schema was last invalidated
-       data_source              BIGINT NOT NULL,
-       FOREIGN KEY(data_source) REFERENCES data_sources(id)
+       id                           BIGSERIAL PRIMARY KEY,
+       created                      BIGINT NOT NULL,
+       table_id                     TEXT NOT NULL, -- unique within datasource
+       name                         TEXT NOT NULL, -- unique within datasource
+       description                  TEXT NOT NULL,
+       timestamp                    BIGINT NOT NULL,
+       tags_array                   TEXT[] NOT NULL,
+       parents                      TEXT[] NOT NULL,
+       schema                       TEXT, -- json, kept up-to-date automatically with the last insert
+       schema_stale_at              BIGINT, -- timestamp when the schema was last invalidated
+       data_source                  BIGINT NOT NULL,
+       remote_database_table_id     TEXT,
+       remote_database_secret_id    TEXT,
+       FOREIGN KEY(data_source)     REFERENCES data_sources(id)
     );",
 ];
 

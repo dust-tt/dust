@@ -82,7 +82,10 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   private static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<DataSourceViewModel>, "vaultId">,
+    blob: Omit<
+      CreationAttributes<DataSourceViewModel>,
+      "editedAt" | "editedByUserId" | "vaultId"
+    >,
     vault: VaultResource,
     dataSource: DataSourceResource,
     transaction?: Transaction

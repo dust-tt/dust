@@ -297,6 +297,7 @@ async function handler(
       const vault = await (provider === "webcrawler"
         ? VaultResource.fetchWorkspaceGlobalVault(auth)
         : VaultResource.fetchWorkspaceSystemVault(auth));
+
       const dataSourceView =
         await DataSourceViewResource.createDataSourceAndDefaultView(
           auth,
@@ -307,7 +308,6 @@ async function handler(
             dustAPIProjectId: dustProject.value.project.project_id.toString(),
             dustAPIDataSourceId:
               dustDataSource.value.data_source.data_source_id,
-            editedByUserId: user.id,
             name: dataSourceName,
             workspaceId: owner.id,
           },

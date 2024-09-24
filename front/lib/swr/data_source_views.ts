@@ -209,7 +209,7 @@ export function useDataSourceViewConnectorConfiguration({
     fetcher;
   const disabled = !dataSourceView;
 
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
       : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
@@ -218,8 +218,9 @@ export function useDataSourceViewConnectorConfiguration({
 
   return {
     configuration: data ? data.configuration : null,
-    isDocumentLoading: !disabled && !error && !data,
-    isDocumentError: error,
+    mutateConfiguration: mutate,
+    isConfigurationLoading: !disabled && !error && !data,
+    isConfigurationError: error,
   };
 }
 
