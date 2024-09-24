@@ -12,7 +12,6 @@ import { isManaged } from "@app/lib/data_sources";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -110,7 +109,7 @@ async function handler(
               sId: workspaceId,
             },
           });
-          if (!owner || dustWorkspaceId !== owner.sId) {
+          if (!owner) {
             return notFoundError();
           }
 
@@ -120,11 +119,6 @@ async function handler(
             workspaceId,
           });
 
-          const groups = await GroupResource.fetchByIds(auth, dustGroupIds);
-          if (groups.isErr()) {
-            return notFoundError();
-          }
-
           if (
             DataSourceViewResource.isDataSourceViewSId(
               dataSourceOrDataSourceViewId
@@ -132,7 +126,6 @@ async function handler(
           ) {
             const dataSourceViewRes = await handleDataSourceView(
               auth,
-              groups.value,
               dataSourceOrDataSourceViewId
             );
             if (dataSourceViewRes.isErr()) {
@@ -153,7 +146,6 @@ async function handler(
           } else {
             const dataSourceRes = await handleDataSource(
               auth,
-              groups.value,
               dataSourceOrDataSourceViewId
             );
             if (dataSourceRes.isErr()) {
@@ -197,7 +189,6 @@ export default withLogging(handler);
 
 async function handleDataSourceView(
   auth: Authenticator,
-  groups: GroupResource[],
   dataSourceViewId: string
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
   const dataSourceView = await DataSourceViewResource.fetchById(
@@ -230,7 +221,6 @@ async function handleDataSourceView(
 
 async function handleDataSource(
   auth: Authenticator,
-  groups: GroupResource[],
   dataSourceId: string
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
   const dataSource = await DataSourceResource.fetchByNameOrId(
@@ -254,7 +244,7 @@ async function handleDataSource(
         globalVault
       );
 
-    return handleDataSourceView(auth, groups, dataSourceView[0].sId);
+    return handleDataSourceView(auth, dataSourceView[0].sId);
   }
 
   if (dataSource.canRead(auth)) {
