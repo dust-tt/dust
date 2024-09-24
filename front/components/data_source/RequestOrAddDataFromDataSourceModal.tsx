@@ -28,7 +28,7 @@ export function RequestOrAddDataFromDataSourceModal({
       {owner.role === "admin" && connector ? (
         <>
           <Button
-            label="Add Data"
+            label="Add data to vault"
             icon={PlusIcon}
             onClick={() => {
               setShowConnectorPermissionsModal(true);
