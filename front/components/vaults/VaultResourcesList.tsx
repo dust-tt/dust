@@ -366,7 +366,7 @@ export const VaultResourcesList = ({
 
   const onDeleteFolderOrWebsite = async () => {
     if (selectedDataSourceView?.dataSource) {
-      const res = await doDelete(selectedDataSourceView.dataSource);
+      const res = await doDelete(selectedDataSourceView);
       if (res) {
         await router.push(
           `/w/${owner.sId}/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`

@@ -6,13 +6,11 @@ import type {
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isWebCrawlerConfiguration } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 
 import VaultFolderModal from "@app/components/vaults/VaultFolderModal";
 import VaultWebsiteModal from "@app/components/vaults/VaultWebsiteModal";
-import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
 
 interface EditVaultStaticDatasourcesViewsProps {
   owner: WorkspaceType;
@@ -42,12 +40,6 @@ export function EditVaultStaticDatasourcesViews({
   const router = useRouter();
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
-
-  const { configuration, mutateConfiguration } =
-    useDataSourceViewConnectorConfiguration({
-      dataSourceView: category === "website" ? dataSourceView : null,
-      owner,
-    });
 
   const planDataSourcesLimit = plan.limits.dataSources.count;
 
@@ -84,7 +76,7 @@ export function EditVaultStaticDatasourcesViews({
           owner={owner}
           vault={vault}
           dataSources={dataSources}
-          folder={dataSourceView?.dataSource ?? null}
+          dataSourceViewId={dataSourceView ? dataSourceView.sId : null}
         />
       ) : category === "website" ? (
         <VaultWebsiteModal
@@ -94,12 +86,6 @@ export function EditVaultStaticDatasourcesViews({
           vault={vault}
           dataSources={dataSources}
           dataSourceView={dataSourceView}
-          webCrawlerConfiguration={
-            configuration && isWebCrawlerConfiguration(configuration)
-              ? configuration
-              : null
-          }
-          mutateConfiguration={mutateConfiguration}
         />
       ) : null}
       {canWriteInVault ? (

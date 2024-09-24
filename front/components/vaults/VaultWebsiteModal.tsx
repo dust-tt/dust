@@ -17,10 +17,8 @@ import type {
   DataSourceType,
   DataSourceViewType,
   DepthOption,
-  VaultType,
-} from "@dust-tt/types";
-import type {
   UpdateConnectorConfigurationType,
+  VaultType,
   WebCrawlerConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -28,16 +26,17 @@ import {
   CrawlingFrequencies,
   DepthOptions,
   isDataSourceNameValid,
+  isWebCrawlerConfiguration,
   WEBCRAWLER_DEFAULT_CONFIGURATION,
   WEBCRAWLER_MAX_PAGES,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useState } from "react";
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
 import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
 import type { PostDataSourceWithProviderRequestBodySchema } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
@@ -53,8 +52,6 @@ export default function VaultWebsiteModal({
   dataSources,
   vault,
   dataSourceView,
-  webCrawlerConfiguration,
-  mutateConfiguration,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -62,8 +59,6 @@ export default function VaultWebsiteModal({
   vault: VaultType;
   dataSources: DataSourceType[];
   dataSourceView: DataSourceViewType | null;
-  webCrawlerConfiguration: WebCrawlerConfigurationType | null;
-  mutateConfiguration: () => void;
 }) {
   const router = useRouter();
   const sendNotification = React.useContext(SendNotificationsContext);
@@ -100,7 +95,18 @@ export default function VaultWebsiteModal({
     );
   const [advancedSettingsOpened, setAdvancedSettingsOpened] = useState(false);
   const [headers, setHeaders] = useState<{ key: string; value: string }[]>([]);
-  const isLoading = dataSourceView && !webCrawlerConfiguration;
+
+  const { configuration, mutateConfiguration, isConfigurationLoading } =
+    useDataSourceViewConnectorConfiguration({
+      dataSourceView,
+      owner,
+    });
+
+  let webCrawlerConfiguration: WebCrawlerConfigurationType | null = null;
+  if (isWebCrawlerConfiguration(configuration)) {
+    webCrawlerConfiguration = configuration;
+  }
+
   useEffect(() => {
     setIsSubmitted(false);
     setIsSaving(false);
@@ -450,7 +456,7 @@ export default function VaultWebsiteModal({
             </div>
           </Modal>
           <div className="flex flex-col gap-2">
-            {isLoading ? (
+            {isConfigurationLoading ? (
               <Spinner />
             ) : (
               <Page.Layout direction="vertical" gap="xl">

@@ -4,6 +4,7 @@ import {
   Input,
   Modal,
   Page,
+  Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
 import type { DataSourceType, VaultType, WorkspaceType } from "@dust-tt/types";
@@ -16,6 +17,7 @@ import {
   useCreateFolder,
   useDeleteFolderOrWebsite,
   useUpdateFolder,
+  useVaultDataSourceView,
 } from "@app/lib/swr/vaults";
 
 export default function VaultFolderModal({
@@ -24,15 +26,23 @@ export default function VaultFolderModal({
   owner,
   vault,
   dataSources,
-  folder,
+  dataSourceViewId,
 }: {
   isOpen: boolean;
   onClose: () => void;
   owner: WorkspaceType;
   vault: VaultType;
   dataSources: DataSourceType[];
-  folder: DataSourceType | null;
+  dataSourceViewId: string | null;
 }) {
+  const { dataSourceView, isDataSourceViewLoading, mutate } =
+    useVaultDataSourceView({
+      owner,
+      vaultId: vault.sId,
+      dataSourceViewId: dataSourceViewId || undefined,
+      disabled: !dataSourceViewId,
+    });
+
   const doCreate = useCreateFolder({
     owner,
     vaultId: vault.sId,
@@ -48,8 +58,8 @@ export default function VaultFolderModal({
   });
   const router = useRouter();
 
-  const defaultName = folder?.name ?? null;
-  const defaultDescription = folder?.description ?? null;
+  const defaultName = dataSourceView?.dataSource?.name ?? null;
+  const defaultDescription = dataSourceView?.dataSource?.description ?? null;
 
   const [name, setName] = useState<string | null>(defaultName);
   const [description, setDescription] = useState<string | null>(
@@ -59,11 +69,14 @@ export default function VaultFolderModal({
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
-    setName(folder ? folder.name : null);
-    setDescription(folder ? folder.description : null);
-  }, [folder]);
+    if (isOpen) {
+      setName(dataSourceView ? dataSourceView.dataSource.name : null);
+      setDescription(
+        dataSourceView ? dataSourceView.dataSource.description : null
+      );
+    }
+  }, [isOpen, dataSourceView]);
 
   const onSave = async () => {
     let nameError: string | null = null;
@@ -73,7 +86,7 @@ export default function VaultFolderModal({
     } else if (isDataSourceNameValid(name).isErr()) {
       nameError = "Name is invalid, must be multiple characters with no space.";
     } else if (
-      (folder === null || folder.name !== name) &&
+      (!dataSourceView || dataSourceView.dataSource.name !== name) &&
       dataSources.find((ds) => ds.name === name)
     ) {
       nameError = "A data source with this name already exists.";
@@ -84,42 +97,36 @@ export default function VaultFolderModal({
       return;
     }
 
-    if (folder === null) {
+    if (!dataSourceView) {
       const dataSourceView = await doCreate(name, description);
       if (dataSourceView) {
-        handleOnClose();
+        onClose();
         await router.push(
           `/w/${owner.sId}/vaults/${vault.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
         );
       }
     } else {
-      const res = await doUpdate(folder, description);
+      const res = await doUpdate(dataSourceView, description);
       if (res) {
-        handleOnClose();
+        void mutate();
+        onClose();
       }
     }
   };
 
   const onDeleteFolder = async () => {
-    const res = await doDelete(folder);
+    const res = await doDelete(dataSourceView);
     if (res) {
-      handleOnClose();
+      onClose();
       await router.push(
         `/w/${owner.sId}/vaults/${vault.sId}/categories/folder`
       );
     }
   };
 
-  const handleOnClose = () => {
-    onClose();
-    setName(defaultName);
-    setDescription(defaultDescription);
-  };
-
-  const hasChanged =
-    folder === null
-      ? name !== null || description !== null
-      : description !== folder.description;
+  const hasChanged = !dataSourceView
+    ? name !== null || description !== null
+    : description !== dataSourceView.dataSource.description;
 
   return (
     <Modal
@@ -128,65 +135,69 @@ export default function VaultFolderModal({
       onSave={onSave}
       hasChanged={hasChanged}
       variant="side-sm"
-      title={folder === null ? "Create Folder" : "Edit Folder"}
+      title={!dataSourceView ? "Create Folder" : "Edit Folder"}
     >
       <Page variant="modal">
         <div className="w-full">
-          <Page.Vertical sizing="grow">
-            <Page.SectionHeader title="Name" />
-            <div className="w-full">
-              <Input
-                placeholder="folder_name"
-                name="name"
-                value={name}
-                onChange={(value) => {
-                  setName(value);
-                }}
-                error={error}
-                disabled={folder !== null} // We cannot change the name of a datasource
-                showErrorLabel
-              />
-              <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-                <ExclamationCircleStrokeIcon />{" "}
-                {folder === null
-                  ? "Folder name must be unique and not use spaces."
-                  : "Folder name cannot be changed."}
-              </p>
-            </div>
-
-            <Page.Separator />
-            <Page.SectionHeader title="Description" />
-            <div className="w-full">
-              <TextArea
-                placeholder="Folder description"
-                value={description}
-                onChange={(value) => {
-                  setDescription(value);
-                }}
-                showErrorLabel
-                minRows={2}
-              />
-            </div>
-
-            {folder !== null && (
-              <>
-                <Page.Separator />
-                <DeleteStaticDataSourceDialog
-                  owner={owner}
-                  dataSource={folder}
-                  handleDelete={onDeleteFolder}
-                  isOpen={showDeleteConfirmDialog}
-                  onClose={() => setShowDeleteConfirmDialog(false)}
+          {isDataSourceViewLoading ? (
+            <Spinner />
+          ) : (
+            <Page.Vertical sizing="grow">
+              <Page.SectionHeader title="Name" />
+              <div className="w-full">
+                <Input
+                  placeholder="folder_name"
+                  name="name"
+                  value={name}
+                  onChange={(value) => {
+                    setName(value);
+                  }}
+                  error={error}
+                  disabled={!!dataSourceView} // We cannot change the name of a datasource
+                  showErrorLabel
                 />
-                <Button
-                  size="sm"
-                  label="Delete Folder"
-                  variant="primaryWarning"
-                  onClick={() => setShowDeleteConfirmDialog(true)}
+                <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+                  <ExclamationCircleStrokeIcon />{" "}
+                  {!dataSourceView
+                    ? "Folder name must be unique and not use spaces."
+                    : "Folder name cannot be changed."}
+                </p>
+              </div>
+
+              <Page.Separator />
+              <Page.SectionHeader title="Description" />
+              <div className="w-full">
+                <TextArea
+                  placeholder="Folder description"
+                  value={description}
+                  onChange={(value) => {
+                    setDescription(value);
+                  }}
+                  showErrorLabel
+                  minRows={2}
                 />
-              </>
-            )}
-          </Page.Vertical>
+              </div>
+
+              {dataSourceView && (
+                <>
+                  <Page.Separator />
+                  <DeleteStaticDataSourceDialog
+                    owner={owner}
+                    dataSource={dataSourceView.dataSource}
+                    handleDelete={onDeleteFolder}
+                    isOpen={showDeleteConfirmDialog}
+                    onClose={() => setShowDeleteConfirmDialog(false)}
+                  />
+                  <Button
+                    size="sm"
+                    label="Delete Folder"
+                    variant="primaryWarning"
+                    onClick={() => setShowDeleteConfirmDialog(true)}
+                  />
+                </>
+              )}
+            </Page.Vertical>
+          )}
         </div>
       </Page>
     </Modal>
