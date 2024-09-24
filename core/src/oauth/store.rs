@@ -56,13 +56,26 @@ impl PostgresOAuthStore {
     }
 
     pub async fn init(&self) -> Result<()> {
-        let conn = self.pool.get().await?;
+        // Execute the SQL query within a transaction
+        // use a pg_advisory_xact_lock to avoid race conditions
+
+        let mut conn = self.pool.get().await?;
+        let builder = conn.build_transaction();
+        let tx = builder.start().await?;
+
+        tx.execute("SELECT pg_advisory_xact_lock(12345)", &[])
+            .await?;
+
         for table in POSTGRES_TABLES {
-            conn.execute(table, &[]).await?;
+            tx.execute(table, &[]).await?;
         }
+
         for index in SQL_INDEXES {
-            conn.execute(index, &[]).await?;
+            tx.execute(index, &[]).await?;
         }
+
+        tx.commit().await?;
+
         Ok(())
     }
 }

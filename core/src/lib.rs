@@ -89,11 +89,13 @@ pub mod cached_request;
 pub mod consts;
 
 pub mod oauth {
+    pub mod app;
     pub mod client;
     pub mod connection;
     pub mod credential;
     pub mod encryption;
     pub mod store;
+
     pub mod providers {
         pub mod confluence;
         pub mod github;
@@ -101,8 +103,13 @@ pub mod oauth {
         pub mod google_drive;
         pub mod intercom;
         pub mod microsoft;
+        pub mod mock;
         pub mod notion;
         pub mod slack;
+        pub mod utils;
+    }
+
+    pub mod tests {
         pub mod utils;
     }
 }

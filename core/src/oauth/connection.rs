@@ -4,8 +4,8 @@ use crate::oauth::{
         confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
         gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
         intercom::IntercomConnectionProvider, microsoft::MicrosoftConnectionProvider,
-        notion::NotionConnectionProvider, slack::SlackConnectionProvider,
-        utils::ProviderHttpRequestError,
+        mock::MockConnectionProvider, notion::NotionConnectionProvider,
+        slack::SlackConnectionProvider, utils::ProviderHttpRequestError,
     },
     store::OAuthStore,
 };
@@ -88,6 +88,7 @@ pub enum ConnectionProvider {
     Microsoft,
     Notion,
     Slack,
+    Mock,
 }
 
 impl fmt::Display for ConnectionProvider {
@@ -174,6 +175,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Microsoft => Box::new(MicrosoftConnectionProvider::new()),
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
         ConnectionProvider::Slack => Box::new(SlackConnectionProvider::new()),
+        ConnectionProvider::Mock => Box::new(MockConnectionProvider::new()),
     }
 }
 
