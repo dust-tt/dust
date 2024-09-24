@@ -40,8 +40,7 @@ async function backfillViewsInAgentTableQueryConfigurationForWorkspace(
     await AgentTablesQueryConfigurationTable.count({
       // @ts-expect-error `dataSourceViewId` is not nullable.
       where: {
-        // /!\ `dataSourceId` is the data source's name, not the id.
-        dataSourceId: dataSources.map((ds) => ds.name),
+        dataSourceId: dataSources.map((ds) => ds.id),
         dataSourceViewId: {
           [Op.is]: null,
         },
@@ -69,7 +68,6 @@ async function backfillViewsInAgentTableQueryConfigurationForWorkspace(
       { dataSourceViewId: dataSourceView.id },
       {
         where: {
-          // /!\ `dataSourceId` is the data source's name, not the id.
           dataSourceId: ds.id,
         },
       }
