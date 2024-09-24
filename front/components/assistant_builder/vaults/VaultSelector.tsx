@@ -22,7 +22,7 @@ export function VaultSelector({
     workspaceId: owner.sId,
   });
   const [selectedVault, setSelectedVault] = useState<string>(defaultVault);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAlertDialogOpen, setAlertIsDialogOpen] = useState(false);
 
   if (isVaultsLoading || isVaultsError) {
     return <Spinner />;
@@ -45,10 +45,10 @@ export function VaultSelector({
           <div key={vault.sId}>
             <Page.Separator />
             <div
-              className="s-flex s-items-center s-gap-2"
+              className="flex items-center gap-2"
               onClick={() => {
                 if (isDisabled) {
-                  setIsDialogOpen(true);
+                  setAlertIsDialogOpen(true);
                 }
               }}
             >
@@ -62,7 +62,7 @@ export function VaultSelector({
                 }}
                 disabled={isDisabled}
               />
-              <div className="s-flex s-items-center s-gap-2">
+              <div className="flex items-center gap-2">
                 <Icon
                   visual={getVaultIcon(vault)}
                   size="md"
@@ -93,8 +93,8 @@ export function VaultSelector({
       <Page.Separator />
       <Dialog
         alertDialog={true}
-        isOpen={isDialogOpen}
-        onValidate={() => setIsDialogOpen(false)}
+        isOpen={isAlertDialogOpen}
+        onValidate={() => setAlertIsDialogOpen(false)}
         title="Changing source selection"
       >
         An assistant can access one source of data only. The other tools are
