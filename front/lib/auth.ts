@@ -405,7 +405,12 @@ export class Authenticator {
     };
   }
 
-  // /!\ Should only be used in the context of the registry lookup.
+  // /!\ This method is intended exclusively for use within the registry lookup context.
+  // It securely authenticates access by verifying a provided secret against the
+  // configured registry secret. If the secret is valid, it retrieves the specified
+  // workspace and its associated group resources using a system API key.
+  // Modifications to this method should be handled with caution, as it involves
+  // sensitive operations related to secret validation and workspace access.
   static async fromRegistrySecret({
     groupIds,
     secret,
