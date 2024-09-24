@@ -1,4 +1,5 @@
 import {
+  BookOpenIcon,
   BracesIcon,
   Button,
   CommandLineIcon,
@@ -343,19 +344,32 @@ export function APIKeys({
           </DropdownMenu>
         </div> */}
       </Dialog>
-      <Page.SectionHeader
-        title="API Keys"
-        description="Keys used to communicate between your servers and Dust. Do not share them with anyone. Do not use them in client-side or browser code."
-        action={{
-          label: "Create API Key",
-          variant: "primary",
-          onClick: async () => {
-            setIsNewApiKeyPromptOpen(true);
-          },
-          icon: PlusIcon,
-          disabled: isGenerating || isRevoking,
-        }}
-      />
+      <Page.Horizontal align="stretch">
+        <div className="w-full">
+          <div className="inline-flex items-center rounded-lg bg-gray-100 p-3 shadow-sm">
+            <span className="mr-2">Your workspace ID:</span>
+            <code className="font-mono rounded bg-white px-2 py-1 text-sm">
+              {owner.sId}
+            </code>
+          </div>
+        </div>
+
+        <Button
+          label="Read the API reference"
+          size="sm"
+          variant="secondary"
+          icon={BookOpenIcon}
+          onClick={() => {
+            window.open("https://docs.dust.tt/reference", "_blank");
+          }}
+        />
+        <Button
+          label="Create API Key"
+          icon={PlusIcon}
+          disabled={isGenerating || isRevoking}
+          onClick={() => setIsNewApiKeyPromptOpen(true)}
+        />
+      </Page.Horizontal>
       <div className="space-y-4 divide-y divide-gray-200">
         <ul role="list" className="pt-4">
           {keys
