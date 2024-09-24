@@ -93,20 +93,14 @@ async function handler(
             });
           };
 
-          const {
-            data_source_id: dataSourceOrDataSourceViewId,
-            workspace_id: workspaceId,
-          } = req.query;
-          if (
-            typeof workspaceId !== "string" ||
-            typeof dataSourceOrDataSourceViewId !== "string"
-          ) {
+          const { data_source_id: dataSourceOrDataSourceViewId } = req.query;
+          if (typeof dataSourceOrDataSourceViewId !== "string") {
             return notFoundError();
           }
 
           const owner = await Workspace.findOne({
             where: {
-              sId: workspaceId,
+              sId: dustWorkspaceId,
             },
           });
           if (!owner) {
@@ -116,7 +110,7 @@ async function handler(
           const auth = await Authenticator.fromRegistrySecret({
             groupIds: dustGroupIds,
             secret,
-            workspaceId,
+            workspaceId: dustWorkspaceId,
           });
 
           if (
