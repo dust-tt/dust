@@ -204,12 +204,15 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   ) {
     const dataSourceViews = await this.baseFetch(
       auth,
-      fetchDataSourceViewOptions
+      fetchDataSourceViewOptions,
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
     );
 
-    return dataSourceViews.filter(
-      (dsv) => auth.isAdmin() || auth.hasPermission([dsv.vault.acl()], "read")
-    );
+    return dataSourceViews.filter((dsv) => dsv.canList(auth));
   }
 
   static async listByVault(
