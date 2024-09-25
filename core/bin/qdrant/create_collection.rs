@@ -172,7 +172,8 @@ async fn create_qdrant_collection(
                         .shard_key(qdrant::shard_key::Key::Keyword(shard_key.clone())),
                 ),
             )
-            .await?;
+            .await
+            .map_err(|e| anyhow!("Error creating shard key: {}", e))?;
 
         match operation_result.result {
             true => {
@@ -187,7 +188,15 @@ async fn create_qdrant_collection(
         }?;
     }
 
-    create_indexes_for_collection(&raw_client, &cluster, &collection_name).await?;
+    create_indexes_for_collection(&raw_client, &cluster, &collection_name)
+        .await
+        .map_err(|e| {
+            anyhow!(
+                "Error creating indexes for collection {}: {}",
+                collection_name,
+                e
+            )
+        })?;
 
     Ok(())
 }
@@ -205,7 +214,12 @@ async fn main() -> Result<(), anyhow::Error> {
         std::process::exit(1);
     }
 
-    create_qdrant_collection(args.cluster, args.provider, args.model).await?;
+    create_qdrant_collection(args.cluster, args.provider, args.model)
+        .await
+        .map_err(|e| {
+            eprintln!("Error creating collection: {}", e);
+            e
+        })?;
 
     Ok(())
 }
