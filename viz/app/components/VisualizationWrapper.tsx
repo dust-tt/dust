@@ -218,7 +218,7 @@ export function VisualizationWrapper({
     if (ref.current) {
       try {
         const blob = await toBlob(ref.current, {
-          // Skip embedding fonts in the Blob since we cannot access cssRules from the iframe,
+          // Skip embedding fonts in the Blob since we cannot access cssRules from the iframe.
           skipFonts: true,
         });
         if (blob) {
