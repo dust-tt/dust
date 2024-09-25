@@ -1,8 +1,10 @@
 import {
+  Button,
   CloudArrowLeftRightIcon,
   FolderIcon,
   GlobeAltIcon,
   Spinner,
+  ListCheckIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -384,6 +386,41 @@ export function DataSourceViewSelector({
     ]
   );
 
+  const onToggleSelectAll = useCallback(
+    (checked: boolean) => {
+      // Setting parentsById
+      setParentsById({});
+
+      // Setting selectedResources
+      setSelectionConfigurations(
+        (prevState: DataSourceViewSelectionConfigurations) => {
+          if (!checked) {
+            // Nothing is selected at all, remove from the list
+            return _.omit(prevState, dataSourceView.sId);
+          }
+          const config =
+            prevState[dataSourceView.sId] ??
+            defaultSelectionConfiguration(dataSourceView);
+
+          config.isSelectAll = checked;
+          config.selectedResources = [];
+
+          // Return a new object to trigger a re-render
+          return keepOnlyOneVaultIfApplicable({
+            ...prevState,
+            [dataSourceView.sId]: config,
+          });
+        }
+      );
+    },
+    [
+      dataSourceView,
+      keepOnlyOneVaultIfApplicable,
+      setParentsById,
+      setSelectionConfigurations,
+    ]
+  );
+
   return (
     <Tree.Item
       key={dataSourceView.dataSource.id}
@@ -391,6 +428,20 @@ export function DataSourceViewSelector({
       visual={LogoComponent}
       type={
         canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
+      }
+      actions={
+        <Button
+          variant="tertiary"
+          size="xs"
+          className="mr-4"
+          label={
+            selectionConfiguration.isSelectAll ? "Unselect All" : "Select All"
+          }
+          icon={ListCheckIcon}
+          onClick={() => {
+            onToggleSelectAll(!selectionConfiguration.isSelectAll);
+          }}
+        />
       }
     >
       <DataSourceViewResourceSelectorTree
