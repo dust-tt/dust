@@ -81,12 +81,7 @@ async function handler(
     });
   }
 
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dsId,
-    // TODO(DATASOURCE_SID): Clean-up
-    { origin: "vault_patch_or_delete_data_source" }
-  );
+  const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,

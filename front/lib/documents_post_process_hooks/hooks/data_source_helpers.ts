@@ -114,12 +114,8 @@ export async function getDatasource(
   if (!workspace) {
     throw new Error(`Could not find workspace ${owner.sId}`);
   }
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dataSourceId,
-    // TOOD(DATASOURCE_SID): clean-up
-    { origin: "post_upsert_hook_helper" }
-  );
+
+  const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
   if (!dataSource) {
     throw new Error(
       `Could not find data source with name ${dataSourceId} and workspace ${owner.sId}`

@@ -54,12 +54,7 @@ async function handler(
     });
   }
 
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    req.query.dsId,
-    // TODO(DATASOURCE_SID): Clean-up
-    { origin: "vault_data_source_config" }
-  );
+  const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource || dataSource.vault.sId !== req.query.vId) {
     return apiError(req, res, {
       status_code: 404,

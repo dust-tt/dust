@@ -53,13 +53,8 @@ async function handler(
     });
   }
 
-  // fetchByName enforces through auth the authorization (workspace here mainly).
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dsId,
-    // TOOD(DATASOURCE_SID): Clean-up and rename param as [dsId]
-    { origin: "data_source_managed_update" }
-  );
+  // fetchById enforces through auth the authorization (workspace here mainly).
+  const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,

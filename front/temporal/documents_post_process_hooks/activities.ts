@@ -135,16 +135,12 @@ async function getDataSourceDocument({
   }
 
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dataSourceId,
-    // TODO(DATASOURCE_SID): clean-up
-    { origin: "post_upsert_hook_activities" }
-  );
 
+  const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
   if (!dataSource) {
     return new Err(new Error(`Could not find data source ${dataSourceId}`));
   }
+
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const docText = await coreAPI.getDataSourceDocument({
     projectId: dataSource.dustAPIProjectId,
