@@ -37,6 +37,7 @@ struct SnowflakeSchemaColumn {
     r#type: String,
 }
 
+// TODO(SNOWFLAKE) actual limit TBD
 pub const MAX_QUERY_RESULT_SIZE_BYTES: usize = 128 * 1024 * 1024; // 128MB
 
 impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
