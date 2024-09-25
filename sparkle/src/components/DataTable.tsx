@@ -12,10 +12,11 @@ import {
   Updater,
   useReactTable,
 } from "@tanstack/react-table";
-import React, { ReactNode, useEffect, useState } from "react";
+import React, { ReactNode, useEffect, useRef, useState } from "react";
 
 import { Avatar } from "@sparkle/components/Avatar";
 import {
+  DropdownContextMenuRef,
   DropdownItemProps,
   DropdownMenu,
 } from "@sparkle/components/DropdownMenu";
@@ -333,6 +334,7 @@ DataTable.Row = function Row({
   widthClassName,
   ...props
 }: RowProps) {
+  const contextMenuRef = useRef<DropdownContextMenuRef | null>(null);
   return (
     <tr
       className={classNames(
@@ -341,6 +343,13 @@ DataTable.Row = function Row({
         widthClassName,
         className || ""
       )}
+      onContextMenu={(e) => {
+        if (contextMenuRef.current) {
+          contextMenuRef.current.open(e);
+        } else {
+          e.preventDefault();
+        }
+      }}
       onClick={onClick ? onClick : undefined}
       {...props}
     >
@@ -348,6 +357,7 @@ DataTable.Row = function Row({
       <td className="s-flex s-w-8 s-cursor-pointer s-items-center s-pl-1 s-text-element-600">
         {moreMenuItems && moreMenuItems.length > 0 && (
           <DropdownMenu className="s-mr-1.5 s-flex">
+            <DropdownMenu.ContextMenu ref={contextMenuRef} />
             <DropdownMenu.Button>
               <IconButton
                 icon={MoreIcon}
@@ -356,7 +366,7 @@ DataTable.Row = function Row({
                 className="s-m-1"
               />
             </DropdownMenu.Button>
-            <DropdownMenu.Items origin="topRight" width={220}>
+            <DropdownMenu.Items width={220}>
               {moreMenuItems?.map((item, index) => (
                 <DropdownMenu.Item key={index} {...item} />
               ))}
