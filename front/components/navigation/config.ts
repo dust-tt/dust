@@ -8,7 +8,7 @@ import {
   LockIcon,
   PlanetIcon,
   ShapesIcon,
-  UserIcon
+  UserIcon,
 } from "@dust-tt/sparkle";
 import type { AppType, WorkspaceType } from "@dust-tt/types";
 import { isAdmin, isBuilder } from "@dust-tt/types";
