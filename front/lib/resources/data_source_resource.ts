@@ -351,6 +351,16 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
         transaction,
       });
 
+      // We directly delete the DataSourceViewResource.model here to avoid a circular dependency.
+      // DataSourceViewResource depends on DataSourceResource
+      await DataSourceViewModel.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          dataSourceId: this.id,
+        },
+        transaction,
+      });
+
       return new Ok(undefined);
     } catch (err) {
       return new Err(err as Error);
@@ -374,13 +384,15 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
 
     // We directly delete the DataSourceViewResource.model here to avoid a circular dependency.
     // DataSourceViewResource depends on DataSourceResource
-    // TODO: Implement paranoid deletion for DataSourceViewResource.
     await DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: this.id,
       },
       transaction,
+      // Use 'force: true' to ensure the record is permanently deleted from the database,
+      // bypassing the soft deletion in place.
+      force: true,
     });
 
     await this.model.destroy({

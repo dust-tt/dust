@@ -220,8 +220,6 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       auth,
       dataSourceIds,
       {
-        // TODO: Remove once we have paranoid mode on data source view.
-        includeDeleted: true,
         includeEditedBy: fetchDataSourceViewOptions?.includeEditedBy,
       }
     );
