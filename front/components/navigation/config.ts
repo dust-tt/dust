@@ -1,23 +1,17 @@
 import {
   BookOpenIcon,
   ChatBubbleLeftRightIcon,
-  CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
   DocumentTextIcon,
   FolderOpenIcon,
   LockIcon,
   PlanetIcon,
-  QuestionMarkCircleIcon,
-  RobotIcon,
   ShapesIcon,
-  UserGroupIcon,
+  UserIcon,
 } from "@dust-tt/sparkle";
-import { GlobeAltIcon } from "@dust-tt/sparkle";
-import type { AppType } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { AppType, WorkspaceType } from "@dust-tt/types";
 import { isAdmin, isBuilder } from "@dust-tt/types";
-import { UsersIcon } from "@heroicons/react/20/solid";
 
 /**
  * NavigationIds are typed ids we use to identify which navigation item is currently active. We need
@@ -151,121 +145,6 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
   return nav;
 };
 
-export const subNavigationBuild = ({
-  owner,
-  current,
-  subMenuLabel,
-  subMenu,
-}: {
-  owner: WorkspaceType;
-  current: SubNavigationAssistantsId;
-  subMenuLabel?: string;
-  subMenu?: AppLayoutNavigation[];
-}) => {
-  const nav: SidebarNavigation[] = [];
-
-  const assistantMenus: AppLayoutNavigation[] = [];
-
-  assistantMenus.push({
-    id: "workspace_assistants",
-    label: "Manage Assistants",
-    icon: RobotIcon,
-    href: `/w/${owner.sId}/builder/assistants`,
-    current: current === "workspace_assistants",
-    subMenuLabel: current === "workspace_assistants" ? subMenuLabel : undefined,
-    subMenu: current === "workspace_assistants" ? subMenu : undefined,
-  });
-
-  nav.push({
-    id: "assistants",
-    label: null,
-    variant: "secondary",
-    menus: assistantMenus,
-  });
-
-  const dataSourceItems: AppLayoutNavigation[] = [
-    {
-      id: "data_sources_managed",
-      label: "Connections",
-      icon: CloudArrowLeftRightIcon,
-      href: `/w/${owner.sId}/builder/data-sources/managed`,
-      current: current === "data_sources_managed",
-      subMenuLabel:
-        current === "data_sources_managed" ? subMenuLabel : undefined,
-      subMenu: current === "data_sources_managed" ? subMenu : undefined,
-    },
-    {
-      id: "data_sources_static",
-      label: "Folders",
-      icon: FolderOpenIcon,
-      href: `/w/${owner.sId}/builder/data-sources/static`,
-      current: current === "data_sources_static",
-      subMenuLabel:
-        current === "data_sources_static" ? subMenuLabel : undefined,
-      subMenu: current === "data_sources_static" ? subMenu : undefined,
-    },
-    {
-      id: "data_sources_url",
-      label: "Websites",
-      icon: GlobeAltIcon,
-      href: `/w/${owner.sId}/builder/data-sources/public-urls`,
-      current: current === "data_sources_url",
-      subMenuLabel: current === "data_sources_url" ? subMenuLabel : undefined,
-      subMenu: current === "data_sources_url" ? subMenu : undefined,
-    },
-  ];
-
-  nav.push({
-    id: "data_sources",
-    label: "Data Sources",
-    variant: "secondary",
-    menus: dataSourceItems,
-  });
-
-  nav.push({
-    id: "developers",
-    label: "Developers",
-    variant: "secondary",
-    menus: [
-      {
-        id: "developers",
-        label: "Developer Tools",
-        icon: CommandLineIcon,
-        href: `/w/${owner.sId}/a`,
-        current: current === "developers",
-        subMenuLabel: current === "developers" ? subMenuLabel : undefined,
-        subMenu: current === "developers" ? subMenu : undefined,
-      },
-    ],
-  });
-
-  nav.push({
-    id: "help",
-    label: "Resources",
-    variant: "secondary",
-    menus: [
-      {
-        id: "documentation",
-        label: "Documentation",
-        icon: QuestionMarkCircleIcon,
-        href: `https://docs.dust.tt`,
-        current: current === "documentation",
-        target: "_blank",
-      },
-      {
-        id: "community",
-        label: "Community Support",
-        icon: UserGroupIcon,
-        href: `https://community.dust.tt`,
-        current: current === "community",
-        target: "_blank",
-      },
-    ],
-  });
-
-  return nav;
-};
-
 export const subNavigationAdmin = ({
   owner,
   current,
@@ -292,7 +171,7 @@ export const subNavigationAdmin = ({
         {
           id: "members",
           label: "Members",
-          icon: UsersIcon,
+          icon: UserIcon,
           href: `/w/${owner.sId}/members`,
           current: current === "members",
           subMenuLabel: current === "members" ? subMenuLabel : undefined,

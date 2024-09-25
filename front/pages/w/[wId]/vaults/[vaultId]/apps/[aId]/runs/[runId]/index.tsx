@@ -13,10 +13,7 @@ import { useContext, useState } from "react";
 import CopyRun from "@app/components/app/CopyRun";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ConfirmContext } from "@app/components/Confirm";
-import {
-  subNavigationApp,
-  subNavigationBuild,
-} from "@app/components/navigation/config";
+import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getRun } from "@app/lib/api/run";
@@ -148,10 +145,7 @@ export default function AppRun({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationBuild({
-        owner,
-        current: "developers",
-      })}
+      hideSidebar
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={app.name}
@@ -160,7 +154,6 @@ export default function AppRun({
           }}
         />
       }
-      hideSidebar
     >
       <div className="flex w-full flex-col">
         <Tab

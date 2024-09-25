@@ -4,10 +4,7 @@ import { CoreAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
-import {
-  subNavigationApp,
-  subNavigationBuild,
-} from "@app/components/navigation/config";
+import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import config from "@app/lib/api/config";
@@ -86,10 +83,7 @@ export default function Specification({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationBuild({
-        owner,
-        current: "developers",
-      })}
+      hideSidebar
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={app.name}
@@ -98,7 +92,6 @@ export default function Specification({
           }}
         />
       }
-      hideSidebar
     >
       <div className="flex w-full flex-col">
         <Tab

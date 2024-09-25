@@ -8,10 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
-import {
-  subNavigationApp,
-  subNavigationBuild,
-} from "@app/components/navigation/config";
+import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -120,10 +117,7 @@ export default function RunsView({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationBuild({
-        owner,
-        current: "developers",
-      })}
+      hideSidebar
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={app.name}
@@ -132,7 +126,6 @@ export default function RunsView({
           }}
         />
       }
-      hideSidebar
     >
       <div className="flex w-full flex-col">
         <Tab

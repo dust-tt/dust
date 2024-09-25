@@ -172,7 +172,7 @@ export function AssistantBrowser({
           </Tooltip>
           {isBuilder && (
             <Tooltip label="Manage assistants">
-              <Link href={`/w/${owner.sId}/assistants/`}>
+              <Link href={`/w/${owner.sId}/builder/assistants/`}>
                 <Button
                   variant="primary"
                   icon={RobotIcon}
