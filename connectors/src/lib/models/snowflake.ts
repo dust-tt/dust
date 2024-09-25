@@ -45,4 +45,8 @@ SnowflakeConfigurationModel.init(
     indexes: [{ fields: ["connectorId"], unique: true }],
   }
 );
-ConnectorModel.hasOne(SnowflakeConfigurationModel);
+ConnectorModel.hasMany(SnowflakeConfigurationModel, {
+  foreignKey: { allowNull: false },
+  onDelete: "RESTRICT",
+});
+SnowflakeConfigurationModel.belongsTo(ConnectorModel);
