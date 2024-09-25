@@ -57,7 +57,7 @@ export abstract class ResourceWithVault<
       ): T;
     } & { model: ModelStatic<M> },
     auth: Authenticator,
-    { includes, limit, order, where }: ResourceFindOptions<M> = {}
+    { includes, limit, order, where, paranoid }: ResourceFindOptions<M> = {}
   ): Promise<T[]> {
     const includeClauses: Includeable[] = [
       {
@@ -73,6 +73,7 @@ export abstract class ResourceWithVault<
       include: includeClauses,
       limit,
       order,
+      paranoid,
     });
 
     return (

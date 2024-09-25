@@ -53,6 +53,7 @@ export type FetchDataSourceOrigin =
   | "v1_data_sources_tokenize";
 
 export type FetchDataSourceOptions = {
+  includeDeleted?: boolean;
   includeEditedBy?: boolean;
   limit?: number;
   order?: [string, "ASC" | "DESC"][];
@@ -135,9 +136,12 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     fetchDataSourceOptions?: FetchDataSourceOptions,
     options?: ResourceFindOptions<DataSourceModel>
   ) {
+    const { includeDeleted } = fetchDataSourceOptions ?? {};
+
     return this.baseFetchWithAuthorization(auth, {
       ...this.getOptions(fetchDataSourceOptions),
       ...options,
+      paranoid: !includeDeleted,
     });
   }
 
@@ -339,6 +343,21 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
+    try {
+      await this.model.destroy({
+        where: {
+          id: this.id,
+        },
+        transaction,
+      });
+
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(err as Error);
+    }
+  }
+
+  async destroy(auth: Authenticator, transaction?: Transaction): Promise<void> {
     await AgentDataSourceConfiguration.destroy({
       where: {
         dataSourceId: this.id,
@@ -355,6 +374,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
 
     // We directly delete the DataSourceViewResource.model here to avoid a circular dependency.
     // DataSourceViewResource depends on DataSourceResource
+    // TODO: Implement paranoid deletion for DataSourceViewResource.
     await DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -363,18 +383,15 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       transaction,
     });
 
-    try {
-      await this.model.destroy({
-        where: {
-          id: this.id,
-        },
-        transaction,
-      });
-
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
+    await this.model.destroy({
+      where: {
+        id: this.id,
+      },
+      transaction,
+      // Use 'force: true' to ensure the record is permanently deleted from the database,
+      // bypassing the soft deletion in place.
+      force: true,
+    });
   }
 
   // Updating.

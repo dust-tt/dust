@@ -30,5 +30,6 @@ export interface ResourceFindOptions<M extends Model> {
   includes?: TypedIncludeable<M>[];
   limit?: number;
   order?: FindOptions<M>["order"];
+  paranoid?: boolean;
   where?: WhereOptions<M>;
 }

@@ -19,11 +19,13 @@ const {
 } = activityProxies;
 
 export async function scrubDataSourceWorkflow({
-  dustAPIProjectId,
+  dataSourceId,
+  workspaceId,
 }: {
-  dustAPIProjectId: string;
+  dataSourceId: string;
+  workspaceId: string;
 }) {
-  await scrubDataSourceActivity({ dustAPIProjectId });
+  await scrubDataSourceActivity({ dataSourceId, workspaceId });
 }
 
 export async function deleteWorkspaceWorkflow({

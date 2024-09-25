@@ -59,9 +59,11 @@ import logger from "@app/logger/logger";
 const { DUST_DATA_SOURCES_BUCKET, SERVICE_ACCOUNT } = process.env;
 
 export async function scrubDataSourceActivity({
-  dustAPIProjectId,
+  dataSourceId,
+  workspaceId,
 }: {
-  dustAPIProjectId: string;
+  dataSourceId: string;
+  workspaceId: string;
 }) {
   if (!SERVICE_ACCOUNT) {
     throw new Error("SERVICE_ACCOUNT is not set.");
@@ -69,6 +71,30 @@ export async function scrubDataSourceActivity({
   if (!DUST_DATA_SOURCES_BUCKET) {
     throw new Error("DUST_DATA_SOURCES_BUCKET is not set.");
   }
+
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const dataSource = await DataSourceResource.fetchById(auth, dataSourceId, {
+    includeDeleted: true,
+  });
+  if (!dataSource) {
+    logger.info(
+      { dataSource: { sId: dataSourceId } },
+      "Data source not found."
+    );
+
+    throw new Error("Data source not found.");
+  }
+
+  // Ensure the data source has been soft deleted.
+  if (!dataSource.deletedAt) {
+    logger.info(
+      { dataSource: { sId: dataSourceId } },
+      "Data source is not soft deleted."
+    );
+    throw new Error("Data source is not soft deleted.");
+  }
+
+  const { dustAPIProjectId } = dataSource;
 
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
 
@@ -95,6 +121,8 @@ export async function scrubDataSourceActivity({
       })
     );
   }
+
+  return dataSource.destroy(auth);
 }
 
 export async function isWorkflowDeletableActivity({

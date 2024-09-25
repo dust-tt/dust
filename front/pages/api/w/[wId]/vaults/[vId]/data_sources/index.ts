@@ -428,7 +428,7 @@ const handleDataSourceWithProvider = async ({
       },
       "Failed to create the connector"
     );
-    await dataSource.delete(auth);
+    await dataSource.destroy(auth);
     const deleteRes = await coreAPI.deleteDataSource({
       projectId: dustProject.value.project.project_id.toString(),
       dataSourceId: dustDataSource.value.data_source.data_source_id,

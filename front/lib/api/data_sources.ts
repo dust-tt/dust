@@ -73,8 +73,26 @@ export async function deleteDataSource(
     });
   }
 
-  const dustAPIProjectId = dataSource.dustAPIProjectId;
+  await dataSource.delete(auth, transaction);
 
+  await launchScrubDataSourceWorkflow(owner, dataSource);
+
+  return new Ok(dataSource.toJSON());
+}
+
+export async function destroyDataSource(
+  auth: Authenticator,
+  dataSource: DataSourceResource,
+  transaction?: Transaction
+) {
+  if (!auth.isBuilder()) {
+    return new Err({
+      code: "unauthorized_deletion",
+      message: "Only builders can destroy data sources.",
+    });
+  }
+
+  const { dustAPIProjectId } = dataSource;
   if (dataSource.connectorId && dataSource.connectorProvider) {
     if (
       !MANAGED_DS_DELETABLE_AS_BUILDER.includes(dataSource.connectorProvider) &&
@@ -122,12 +140,8 @@ export async function deleteDataSource(
     }
   }
 
-  await dataSource.delete(auth, transaction);
+  await dataSource.destroy(auth, transaction);
 
-  await launchScrubDataSourceWorkflow({
-    wId: owner.sId,
-    dustAPIProjectId,
-  });
   if (dataSource.connectorProvider) {
     await warnPostDeletion(auth, dataSource.connectorProvider);
   }
