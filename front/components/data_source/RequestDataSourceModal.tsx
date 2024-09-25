@@ -100,7 +100,7 @@ export function RequestDataSourceModal({
                       (dataSource) =>
                         dataSource.connectorProvider && (
                           <DropdownMenu.Item
-                            key={dataSource.name}
+                            key={dataSource.sId}
                             label={getDataSourceName(dataSource)}
                             onClick={() => setSelectedDataSource(dataSource)}
                             icon={getConnectorProviderLogoWithFallback(
