@@ -62,6 +62,7 @@ async function handler(
     return;
   }
 
+  // Extract and validate headers necessary for user permission checks.
   const userWorkspaceId = req.headers["x-dust-workspace-id"];
   const rawDustGroupIds = req.headers["x-dust-group-ids"];
   if (
