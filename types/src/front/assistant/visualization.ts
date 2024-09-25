@@ -16,12 +16,17 @@ interface SetContentHeightParams {
   height: number;
 }
 
+interface SendScreenshotBlobParams {
+  blob: Blob;
+}
+
 // Define a mapped type to extend the base with specific parameters.
 export type VisualizationRPCRequestMap = {
   getFile: GetFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
   setErrored: void;
+  sendScreenshotBlob: SendScreenshotBlobParams;
 };
 
 // Derive the command type from the keys of the request map
@@ -137,6 +142,28 @@ export function isSetErroredRequest(
   );
 }
 
+export function isSendScreenshotBlobRequest(
+  value: unknown
+): value is VisualizationRPCRequest & {
+  command: "sendScreenshotBlob";
+  params: SendScreenshotBlobParams;
+} {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const v = value as Partial<VisualizationRPCRequest>;
+
+  return (
+    v.command === "sendScreenshotBlob" &&
+    typeof v.identifier === "string" &&
+    typeof v.messageUniqueId === "string" &&
+    typeof v.params === "object" &&
+    v.params !== null &&
+    (v.params as SendScreenshotBlobParams).blob instanceof Blob
+  );
+}
+
 export function isVisualizationRPCRequest(
   value: unknown
 ): value is VisualizationRPCRequest {
@@ -147,6 +174,7 @@ export function isVisualizationRPCRequest(
   return (
     isGetCodeToExecuteRequest(value) ||
     isGetFileRequest(value) ||
+    isSendScreenshotBlobRequest(value) ||
     isSetContentHeightRequest(value) ||
     isSetErroredRequest(value)
   );

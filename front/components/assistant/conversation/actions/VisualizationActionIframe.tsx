@@ -68,6 +68,18 @@ function useVisualizationDataHandler({
     [workspaceId]
   );
 
+  const downloadScreenshotFromBlob = useCallback(
+    (blob: Blob) => {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `visualization-${visualization.identifier}.png`;
+      link.click();
+      URL.revokeObjectURL(url);
+    },
+    [visualization.identifier]
+  );
+
   useEffect(() => {
     const listener = async (event: MessageEvent) => {
       const { data } = event;
@@ -105,6 +117,10 @@ function useVisualizationDataHandler({
           setIsErrored(true);
           break;
 
+        case "sendScreenshotBlob":
+          downloadScreenshotFromBlob(data.params.blob);
+          break;
+
         default:
           assertNever(data);
       }
@@ -113,11 +129,12 @@ function useVisualizationDataHandler({
     window.addEventListener("message", listener);
     return () => window.removeEventListener("message", listener);
   }, [
-    visualization.identifier,
     code,
+    downloadScreenshotFromBlob,
     getFileBlob,
     setContentHeight,
     setIsErrored,
+    visualization.identifier,
     vizIframeRef,
   ]);
 }
@@ -189,7 +206,7 @@ export function VisualizationActionIframe({
                       !isErrored ? "min-h-96" : ""
                     )}
                     src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}`}
-                    sandbox="allow-scripts"
+                    sandbox="allow-scripts allow-downloads"
                   />
                 </div>
               )}
