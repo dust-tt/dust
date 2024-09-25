@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { SpinnerProps } from "@sparkle/components/Spinner";
 import { Icon, Spinner } from "@sparkle/index_with_tw_base";
-import { classNames } from "@sparkle/lib/utils";
+import { classNames, cn } from "@sparkle/lib/utils";
 
 const buttonVariants = cva(
   "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors s-duration-100 focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 disabled:s-pointer-events-none",
@@ -18,16 +18,16 @@ const buttonVariants = cva(
         warning:
           "s-bg-warning-500 s-text-white hover:s-bg-warning-400 active:s-bg-warning-600  disabled:s-bg-warning-300",
         outline:
-          "s-border s-text-primary-950 s-border-primary-300 s-bg-background hover:s-bg-primary-100 active:s-bg-primary-300 disabled:s-text-primary-400 disabled:s-border-structure-100",
+          "s-border s-text-primary-950 s-border-primary-300 s-bg-background hover:s-bg-primary-100 hover:s-border-primary-200 active:s-bg-primary-300 disabled:s-text-primary-400 disabled:s-border-structure-100",
         secondary:
-          "s-bg-primary-200 s-text-primary-950 hover:s-bg-primary-100 active:s-bg-primary-200 disabled:s-text-primary-500",
+          "s-border s-border-primary-200/0 s-bg-primary-200 s-text-primary-950 hover:s-bg-primary-100 hover:s-border-primary-200 active:s-bg-primary-200 disabled:s-text-primary-500",
         ghost:
-          "hover:s-bg-primary-100 active:s-bg-primary-200 disabled:s-text-primary-400",
+          "s-border s-border-primary-200/0 hover:s-bg-primary-100 active:s-bg-primary-200 hover:s-border-primary-200 disabled:s-text-primary-400",
       },
       size: {
-        xs: "s-h-7 s-px-2.5 s-rounded s-text-xs s-gap-1.5",
-        sm: "s-h-9 s-px-3 s-rounded-md s-text-sm s-gap-2",
-        md: "s-h-12 s-px-4 s-py-2 s-rounded-lg s-text-base s-gap-2.5",
+        xs: "s-h-7 s-px-2.5 s-rounded-md s-text-xs s-gap-1.5",
+        sm: "s-h-9 s-px-3 s-rounded-lg s-text-sm s-gap-2",
+        md: "s-h-12 s-px-4 s-py-2 s-rounded-xl s-text-base s-gap-2.5",
         icon: "s-h-10 s-w-10",
       },
     },
@@ -117,7 +117,19 @@ export const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
   }
 );
 
-NewButton.displayName = "NewButton";
+interface NewButtonBarProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export const NewButtonBar: React.FC<NewButtonBarProps> = ({
+  children,
+  className,
+}) => {
+  return (
+    <div className={cn("s-flex s-flex-row s-gap-2", className)}>{children}</div>
+  );
+};
 
 export interface MetaButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,

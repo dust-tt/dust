@@ -48,7 +48,7 @@ export { Input } from "./Input";
 export { Item } from "./Item";
 export { Markdown } from "./Markdown";
 export { Modal } from "./Modal";
-export { NewButton } from "./NewButton";
+export { NewButton, NewButtonBar } from "./NewButton";
 export {
   NewDropdownMenu,
   NewDropdownMenuContent,
