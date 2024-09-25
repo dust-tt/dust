@@ -111,6 +111,26 @@ export function isResourceSId(
   return sId.startsWith(`${RESOURCES_PREFIX[resourceName]}_`);
 }
 
+export function getResourceNameAndIdFromSId(
+  sId: string
+): { resourceName: ResourceNameType; sId: string } | null {
+  const resourceName = (
+    Object.keys(RESOURCES_PREFIX) as ResourceNameType[]
+  ).find((name) => isResourceSId(name, sId));
+
+  if (!resourceName) {
+    return null;
+  }
+
+  const sIdRes = getIdsFromSId(sId);
+  // Silently ignore errors.
+  if (sIdRes.isErr()) {
+    return null;
+  }
+
+  return { resourceName, sId };
+}
+
 // Legacy behavior.
 
 /**

@@ -2,6 +2,7 @@ import type {
   ConnectorProvider,
   DataSourceType,
   ModelId,
+  PokeDataSourceType,
   Result,
 } from "@dust-tt/types";
 import { Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
@@ -14,6 +15,7 @@ import type {
 import { Op } from "sequelize";
 
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
@@ -28,6 +30,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
+import { getWorkspaceByModelId } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 import { DataSourceViewModel } from "./storage/models/data_source_view";
@@ -475,6 +478,19 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       connectorProvider: this.connectorProvider,
       assistantDefaultSelected: this.assistantDefaultSelected,
       ...this.makeEditedBy(this.editedByUser, this.editedAt),
+    };
+  }
+
+  async toPokeJSON(): Promise<PokeDataSourceType> {
+    const workspace = await getWorkspaceByModelId(this.workspaceId);
+
+    return {
+      ...this.toJSON(),
+      link: workspace
+        ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/data_sources/${this.sId}`
+        : null,
+      name: `Data Source View (${this.name})`,
+      vault: this.vault.toPokeJSON(),
     };
   }
 }

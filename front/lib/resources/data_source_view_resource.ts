@@ -6,6 +6,7 @@ import type {
   DataSourceViewKind,
   DataSourceViewType,
   ModelId,
+  PokeDataSourceViewType,
   Result,
 } from "@dust-tt/types";
 import { Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
@@ -18,6 +19,7 @@ import type {
 import { Op } from "sequelize";
 
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -36,6 +38,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
+import { getWorkspaceByModelId } from "@app/lib/workspace";
 
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
@@ -506,6 +509,20 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       },
       tags: null,
       timestamp: null,
+    };
+  }
+
+  async toPokeJSON(): Promise<PokeDataSourceViewType> {
+    const workspace = await getWorkspaceByModelId(this.workspaceId);
+
+    return {
+      ...this.toJSON(),
+      dataSource: await this.dataSource.toPokeJSON(),
+      link: workspace
+        ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/vaults/${this.vault.sId}/data_source_views/${this.sId}`
+        : null,
+      name: `Data Source (${this.dataSource.name})`,
+      vault: this.vault.toPokeJSON(),
     };
   }
 }
