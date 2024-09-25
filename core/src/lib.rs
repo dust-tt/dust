@@ -89,6 +89,7 @@ pub mod cached_request;
 pub mod consts;
 
 pub mod oauth {
+    pub mod client;
     pub mod connection;
     pub mod credential;
     pub mod encryption;
