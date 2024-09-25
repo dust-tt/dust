@@ -317,7 +317,7 @@ export function APIKeys({
       <Modal
         isOpen={isNewApiKeyCreatedOpen}
         title={"API Key Created"}
-        onClose={function (): void {
+        onClose={() => {
           setIsNewApiKeyCreatedOpen(false);
         }}
         hasChanged={false}
