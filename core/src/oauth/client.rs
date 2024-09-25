@@ -1,5 +1,8 @@
 use anyhow::{anyhow, Result};
 use lazy_static::lazy_static;
+use std::str::FromStr;
+
+use crate::oauth::credential::CredentialProvider;
 
 lazy_static! {
     static ref OAUTH_API: String = std::env::var("OAUTH_API").unwrap();
@@ -10,7 +13,7 @@ lazy_static! {
 pub struct OauthClient {}
 
 impl OauthClient {
-    pub async fn get_credential(credential_id: &str) -> Result<String> {
+    pub async fn get_credential(credential_id: &str) -> Result<(CredentialProvider, String)> {
         let res = reqwest::Client::new()
             .get(format!("{}/credentials/{}", *OAUTH_API, credential_id))
             .header("Content-Type", "application/json")
@@ -23,7 +26,12 @@ impl OauthClient {
                 let body = res.text().await?;
                 let json = serde_json::from_str::<serde_json::Value>(&body)?;
                 let content = json["content"].to_string();
-                Ok(content)
+                let provider =
+                    CredentialProvider::from_str(&json["provider"].as_str().ok_or_else(|| {
+                        anyhow!("Invalid response from `oauth`: missing provider")
+                    })?)?;
+
+                Ok((provider, content))
             }
             s => Err(anyhow!("Failed to get credential. Status: {}", s)),
         }
