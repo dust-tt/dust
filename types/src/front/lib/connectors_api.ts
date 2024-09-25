@@ -388,7 +388,9 @@ export class ConnectorsAPI {
     dataSource: DataSourceType
   ): Promise<ConnectorsAPIResponse<ConnectorType>> {
     const res = await this._fetchWithError(
-      `${this._url}/connectors/${encodeURIComponent(dataSource.connectorId ?? "")}?origin=${dataSource.id}`,
+      `${this._url}/connectors/${encodeURIComponent(
+        dataSource.connectorId ?? ""
+      )}?origin=${dataSource.id}`,
       {
         method: "GET",
         headers: this.getDefaultHeaders(),
