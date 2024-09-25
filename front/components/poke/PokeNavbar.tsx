@@ -78,10 +78,17 @@ export function PokeSearchCommand() {
         />
         <PokeCommandList>
           {isLoading && <div className="p-4 text-sm">Searching...</div>}
-          {!isError && !isLoading && results.length === 0 && (
-            <div className="p-4 text-sm">No results found.</div>
-          )}
+          {searchTerm &&
+            searchTerm.length >= 2 &&
+            !isError &&
+            !isLoading &&
+            results.length === 0 && (
+              <div className="p-4 text-sm">No results found.</div>
+            )}
           {isError && <div className="p-4 text-sm">Something went wrong.</div>}
+          {searchTerm.length < 2 && (
+            <div className="p-4 text-sm">Enter at least 2 characters...</div>
+          )}
 
           {results.map(({ id, link, name }) =>
             link ? (
