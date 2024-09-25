@@ -201,12 +201,12 @@ impl Table {
     }
 }
 
-pub struct LocalTable<'a> {
-    pub table: &'a mut Table,
+pub struct LocalTable {
+    pub table: Table,
 }
 
-impl LocalTable<'_> {
-    pub fn from_table(table: &mut Table) -> Result<LocalTable> {
+impl LocalTable {
+    pub fn from_table(table: Table) -> Result<LocalTable> {
         match table.table_type() {
             Ok(TableType::LOCAL) => Ok(LocalTable { table }),
             Ok(TableType::REMOTE) => Err(anyhow!("Table is not local")),
@@ -492,7 +492,7 @@ mod tests {
         ];
 
         let schema = TableSchema::from_rows(rows)?;
-        let mut table = Table::new(
+        let table = Table::new(
             &Project::new_from_id(42),
             "data_source_id",
             utils::now(),
@@ -507,7 +507,7 @@ mod tests {
             None,
             None,
         );
-        let local_table = LocalTable::from_table(&mut table)?;
+        let local_table = LocalTable::from_table(table)?;
 
         let expected = r#"Table test_dbml {
   user_id integer [note: 'possible values: 1, 2']
