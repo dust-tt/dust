@@ -269,6 +269,7 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         self._execute_query(&session, query).await
     }
 
+    // TODO(SNOWFLAKE): TBD caching
     async fn get_tables_schema(
         &self,
         opaque_ids: Vec<String>,
