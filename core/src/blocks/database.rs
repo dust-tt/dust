@@ -9,11 +9,7 @@ use crate::{
         block::{parse_pair, replace_variables_in_string, Block, BlockResult, BlockType, Env},
         database_schema::load_tables_from_identifiers,
     },
-    databases::{
-        error::QueryDatabaseError,
-        table::{get_table_type_for_tables, TableType},
-        transient_database::execute_query_on_transient_database,
-    },
+    databases::database::{execute_query, QueryDatabaseError},
     Rule,
 };
 
@@ -109,20 +105,7 @@ impl Block for Database {
         let query = replace_variables_in_string(&self.query, "query", env)?;
         let tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
-        let result = match get_table_type_for_tables(tables.iter().collect::<Vec<_>>())? {
-            TableType::Local => {
-                execute_query_on_transient_database(&tables, env.store.clone(), &query).await
-            }
-            TableType::Remote(_remote_db_secret_id) => Err(QueryDatabaseError::GenericError(
-                // TODO(SNOWFLAKE) - Implement remote tables support.
-                // - fetch secret from oauth
-                // - create RemoteDatabase of correct type based on provider
-                // - execute query
-                anyhow!("Remote tables support is not yet implemented."),
-            )),
-        };
-
-        match result {
+        match execute_query(&tables, &query, env.store.clone()).await {
             Ok((results, schema)) => Ok(BlockResult {
                 value: json!({
                     "results": results,

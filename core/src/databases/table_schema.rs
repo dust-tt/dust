@@ -1,12 +1,12 @@
-use std::collections::{HashMap, HashSet};
-
-use super::table::{HasValue, Row};
 use anyhow::{anyhow, Result};
 use chrono::prelude::DateTime;
 use itertools::Itertools;
 use rusqlite::{types::ToSqlOutput, ToSql};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::{HashMap, HashSet};
+
+use crate::databases::{database::HasValue, table::Row};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]

@@ -1,4 +1,4 @@
-use std::mem;
+use std::{collections::HashSet, mem};
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -6,12 +6,13 @@ use futures::future::try_join_all;
 use serde::Deserialize;
 use snowflake_connector_rs::{
     SnowflakeAuthMethod, SnowflakeClient, SnowflakeClientConfig, SnowflakeDecode, SnowflakeRow,
+    SnowflakeSession,
 };
 
 use crate::databases::{
-    error::QueryDatabaseError,
+    database::{QueryDatabaseError, QueryResult},
     remote_databases::remote_database::RemoteDatabase,
-    table::QueryResult,
+    table::Table,
     table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType},
 };
 
@@ -117,8 +118,9 @@ impl TryFrom<SnowflakeRow> for QueryResult {
 }
 
 impl SnowflakeRemoteDatabase {
-    pub fn new(secret: &str) -> Result<Self> {
-        let connection_details: SnowflakeConnectionDetails = serde_json::from_str(secret)?;
+    pub fn new(credentials: serde_json::Map<String, serde_json::Value>) -> Result<Self> {
+        let connection_details: SnowflakeConnectionDetails =
+            serde_json::from_value(serde_json::Value::Object(credentials))?;
 
         let client = SnowflakeClient::new(
             &connection_details.username,
@@ -138,36 +140,13 @@ impl SnowflakeRemoteDatabase {
             warehouse: connection_details.warehouse,
         })
     }
-}
 
-#[async_trait]
-impl RemoteDatabase for SnowflakeRemoteDatabase {
-    async fn get_tables_used_by_query(&self, query: &str) -> Result<Vec<String>> {
-        let session = self.client.create_session().await?;
-
-        let explain_query = format!("EXPLAIN {}", query);
-        let used_tables = session
-            .query(explain_query.clone())
-            .await?
-            .iter()
-            .filter_map(|row| match row.get::<String>("objects") {
-                Ok(objects) => Some(objects),
-                _ => None,
-            })
-            .collect();
-
-        Ok(used_tables)
-    }
-
-    async fn execute_query(
-        &self,
-        query: &str,
-    ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
+    async fn _get_session(&self) -> Result<SnowflakeSession> {
         let session = self.client.create_session().await.map_err(|e| {
             QueryDatabaseError::ExecutionError(anyhow!("Error creating session: {}", e).to_string())
         })?;
 
-        session
+        let _ = session
             .execute(format!("USE WAREHOUSE {}", self.warehouse))
             .await
             .map_err(|e| {
@@ -176,6 +155,14 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
                 )
             })?;
 
+        Ok(session)
+    }
+
+    async fn _execute_query(
+        &self,
+        session: &SnowflakeSession,
+        query: &str,
+    ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
         let executor = match session.execute(query).await {
             Ok(executor) => Ok(executor),
             Err(snowflake_connector_rs::Error::TimedOut) => Err(
@@ -229,6 +216,59 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         Ok((all_rows, schema))
     }
 
+    async fn _get_tables_used_by_query(
+        &self,
+        session: &SnowflakeSession,
+        query: &str,
+    ) -> Result<Vec<String>> {
+        let explain_query = format!("EXPLAIN {}", query);
+        let used_tables = session
+            .query(explain_query.clone())
+            .await?
+            .iter()
+            .filter_map(|row| match row.get::<String>("objects") {
+                Ok(objects) => Some(objects),
+                _ => None,
+            })
+            .collect();
+
+        Ok(used_tables)
+    }
+}
+
+#[async_trait]
+impl RemoteDatabase for SnowflakeRemoteDatabase {
+    async fn get_tables_used_by_query(&self, query: &str) -> Result<Vec<String>> {
+        let session = self._get_session().await?;
+        self._get_tables_used_by_query(&session, query).await
+    }
+
+    async fn execute_query(
+        &self,
+        tables: &Vec<Table>,
+        query: &str,
+    ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
+        let session = self._get_session().await?;
+
+        // Ensure that query only uses tables that are allowed.
+        let used_tables = self._get_tables_used_by_query(&session, query).await?;
+        let allowed_tables: HashSet<&str> = tables
+            .iter()
+            .filter_map(|table| table.remote_database_table_id())
+            .collect();
+
+        if used_tables
+            .iter()
+            .any(|table| !allowed_tables.contains(table.as_str()))
+        {
+            Err(QueryDatabaseError::ExecutionError(
+                "Query uses tables not allowed by the query plan".to_string(),
+            ))?
+        }
+
+        self._execute_query(&session, query).await
+    }
+
     async fn get_tables_schema(
         &self,
         opaque_ids: Vec<String>,
@@ -239,8 +279,15 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
             .map(|opaque_id| format!("DESCRIBE TABLE {}", opaque_id))
             .collect();
 
+        let session = self._get_session().await?;
+
         // Execute all queries concurrently.
-        let results = try_join_all(queries.iter().map(|query| self.execute_query(query))).await?;
+        let results = try_join_all(
+            queries
+                .iter()
+                .map(|query| self._execute_query(&session, query)),
+        )
+        .await?;
 
         // Parse the results and return a map of opaque_id -> TableSchema.
         results

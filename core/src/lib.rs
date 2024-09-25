@@ -18,10 +18,11 @@ pub mod data_sources {
     pub mod splitter;
 }
 pub mod databases {
-    pub mod error;
+    pub mod database;
     pub mod table;
     pub mod table_schema;
     pub mod remote_databases {
+        pub mod get_remote_database;
         pub mod remote_database;
         pub mod snowflake;
     }

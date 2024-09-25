@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    databases::table_schema::TableSchema,
+    databases::{database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,
     search_filter::{Filterable, SearchFilter},
@@ -423,10 +423,6 @@ impl Filterable for Table {
     }
 }
 
-pub trait HasValue {
-    fn value(&self) -> &Value;
-}
-
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Row {
     row_id: String,
@@ -447,17 +443,6 @@ impl Row {
 }
 
 impl HasValue for Row {
-    fn value(&self) -> &Value {
-        &self.value
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct QueryResult {
-    pub value: Value,
-}
-
-impl HasValue for QueryResult {
     fn value(&self) -> &Value {
         &self.value
     }
