@@ -20,7 +20,6 @@ export class DataSourceModel extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-
   declare deletedAt: Date | null;
 
   // Corresponds to the ID of the last user to configure the connection.

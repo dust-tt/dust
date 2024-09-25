@@ -21,6 +21,7 @@ export class DataSourceViewModel extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare deletedAt: Date | null;
 
   // Corresponds to the ID of the last user to configure the connection.
   declare editedByUserId: ForeignKey<User["id"]>;
@@ -50,6 +51,9 @@ DataSourceViewModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    deletedAt: {
+      type: DataTypes.DATE,
+    },
     editedAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -77,6 +81,7 @@ DataSourceViewModel.init(
       { fields: ["workspaceId", "vaultId"] },
       { fields: ["workspaceId", "dataSourceId", "vaultId"], unique: true },
     ],
+    paranoid: true,
   }
 );
 Workspace.hasMany(DataSourceViewModel, {
