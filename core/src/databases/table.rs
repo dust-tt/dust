@@ -1,34 +1,45 @@
-use super::table_schema::TableSchema;
+use anyhow::{anyhow, Result};
+use futures::future::try_join_all;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
 use crate::{
+    databases::table_schema::TableSchema,
     databases_store::store::DatabasesStore,
     project::Project,
     search_filter::{Filterable, SearchFilter},
     sqlite_workers::client::HEARTBEAT_INTERVAL_MS,
     stores::store::Store,
 };
-use anyhow::{anyhow, Result};
-use futures::future::try_join_all;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
+#[derive(Debug, Clone, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TableType {
-    LOCAL,
-    REMOTE,
-}
-
-impl ToString for TableType {
-    fn to_string(&self) -> String {
-        match self {
-            TableType::LOCAL => String::from("local"),
-            TableType::REMOTE => String::from("remote"),
-        }
-    }
+    Local,
+    Remote(String),
 }
 
 pub fn get_table_unique_id(project: &Project, data_source_id: &str, table_id: &str) -> String {
     format!("{}__{}__{}", project.project_id(), data_source_id, table_id)
+}
+
+// Ensures tables are compatible with each other. Tables must be either:
+// - all local
+// - all remote for the same remote database (i.e, same secret_id)
+pub fn get_table_type_for_tables(tables: Vec<&Table>) -> Result<TableType> {
+    let table_types = tables
+        .iter()
+        .map(|table| table.table_type())
+        .collect::<Result<Vec<TableType>>>()?;
+    let first_table_type = table_types.first().ok_or_else(|| anyhow!("No tables"))?;
+    if table_types
+        .iter()
+        .all(|table_type| table_type == first_table_type)
+    {
+        Ok(first_table_type.clone())
+    } else {
+        Err(anyhow!("Incompatible tables"))
+    }
 }
 
 #[derive(Debug, Serialize, Clone, Deserialize)]
@@ -122,8 +133,8 @@ impl Table {
             self.remote_database_table_id(),
             self.remote_database_secret_id(),
         ) {
-            (Some(_), Some(_)) => Ok(TableType::REMOTE),
-            (None, None) => Ok(TableType::LOCAL),
+            (Some(_), Some(secret_id)) => Ok(TableType::Remote(secret_id.to_string())),
+            (None, None) => Ok(TableType::Local),
             _ => Err(anyhow!(
                 "Inconsistent state: table is neither local nor remote"
             )),
@@ -138,7 +149,7 @@ impl Table {
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
     ) -> Result<()> {
-        if self.table_type()? == TableType::LOCAL {
+        if self.table_type()? == TableType::Local {
             // Invalidate the databases that use the table.
             try_join_all(
                 (store
@@ -195,8 +206,8 @@ pub struct LocalTable {
 impl LocalTable {
     pub fn from_table(table: Table) -> Result<LocalTable> {
         match table.table_type() {
-            Ok(TableType::LOCAL) => Ok(LocalTable { table }),
-            Ok(TableType::REMOTE) => Err(anyhow!("Table is not local")),
+            Ok(TableType::Local) => Ok(LocalTable { table }),
+            Ok(TableType::Remote(_)) => Err(anyhow!("Table is not local")),
             Err(e) => Err(e),
         }
     }

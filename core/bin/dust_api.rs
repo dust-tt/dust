@@ -38,7 +38,7 @@ use dust::{
     },
     databases::{
         error::QueryDatabaseError,
-        table::{LocalTable, Row, Table},
+        table::{get_table_type_for_tables, LocalTable, Row, Table, TableType},
         transient_database::execute_query_on_transient_database,
     },
     databases_store::store::{self as databases_store, DatabasesStore},
@@ -2635,44 +2635,63 @@ async fn databases_query_run(
                         None,
                     )
                 }
-                Some(tables) => {
-                    match execute_query_on_transient_database(
-                        &tables,
-                        state.store.clone(),
-                        &payload.query,
-                    )
-                    .await
-                    {
-                        Err(QueryDatabaseError::TooManyResultRows) => error_response(
+                Some(tables) => match get_table_type_for_tables(tables.iter().collect()) {
+                    Err(e) => {
+                        return error_response(
                             StatusCode::BAD_REQUEST,
-                            "too_many_result_rows",
-                            "The query returned too many rows",
-                            None,
-                        ),
-                        Err(QueryDatabaseError::ExecutionError(s)) => error_response(
-                            StatusCode::BAD_REQUEST,
-                            "query_execution_error",
-                            &s,
-                            None,
-                        ),
-                        Err(e) => error_response(
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            "internal_server_error",
-                            "Failed to run query",
-                            Some(e.into()),
-                        ),
-                        Ok((results, schema)) => (
-                            StatusCode::OK,
-                            Json(APIResponse {
-                                error: None,
-                                response: Some(json!({
-                                    "schema": schema,
-                                    "results": results,
-                                })),
-                            }),
-                        ),
+                            "invalid_table",
+                            "Failed to get table type",
+                            Some(e),
+                        )
                     }
-                }
+                    Ok(TableType::Remote(_remote_db_secret_id)) => {
+                        // TODO(SNOWFLAKE) Implement remote tables support.
+                        return error_response(
+                            StatusCode::BAD_REQUEST,
+                            "invalid_table",
+                            "Remote tables support is not implemented",
+                            None,
+                        );
+                    }
+                    Ok(TableType::Local) => {
+                        match execute_query_on_transient_database(
+                            &tables,
+                            state.store.clone(),
+                            &payload.query,
+                        )
+                        .await
+                        {
+                            Err(QueryDatabaseError::TooManyResultRows) => error_response(
+                                StatusCode::BAD_REQUEST,
+                                "too_many_result_rows",
+                                "The query returned too many rows",
+                                None,
+                            ),
+                            Err(QueryDatabaseError::ExecutionError(s)) => error_response(
+                                StatusCode::BAD_REQUEST,
+                                "query_execution_error",
+                                &s,
+                                None,
+                            ),
+                            Err(e) => error_response(
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                                "internal_server_error",
+                                "Failed to run query",
+                                Some(e.into()),
+                            ),
+                            Ok((results, schema)) => (
+                                StatusCode::OK,
+                                Json(APIResponse {
+                                    error: None,
+                                    response: Some(json!({
+                                        "schema": schema,
+                                        "results": results,
+                                    })),
+                                }),
+                            ),
+                        }
+                    }
+                },
             }
         }
     }
