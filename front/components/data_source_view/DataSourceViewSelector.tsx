@@ -309,14 +309,6 @@ export function DataSourceViewSelector({
     ...new Set(Object.values(parentsById).flatMap((c) => [...c])),
   ];
 
-  const isPartiallyChecked = internalIds.length > 0;
-
-  const checkedStatus = selectionConfiguration.isSelectAll
-    ? "checked"
-    : isPartiallyChecked
-      ? "partial"
-      : "unchecked";
-
   // When users have multiple vaults, they can opt to select only one vault per tool.
   // This is enforced in the UI via a radio button, ensuring single selection at a time.
   // However, selecting a new item in a different vault doesn't automatically clear previous selections.
@@ -336,42 +328,6 @@ export function DataSourceViewSelector({
       );
     },
     [dataSourceView]
-  );
-
-  const onToggleSelectAll = useCallback(
-    (checked: boolean) => {
-      // Setting parentsById
-      setParentsById({});
-
-      // Setting selectedResources
-      setSelectionConfigurations(
-        (prevState: DataSourceViewSelectionConfigurations) => {
-          if (!checked) {
-            // Nothing is selected at all, remove from the list
-            return _.omit(prevState, dataSourceView.sId);
-          }
-
-          const config =
-            prevState[dataSourceView.sId] ??
-            defaultSelectionConfiguration(dataSourceView);
-
-          config.isSelectAll = checked;
-          config.selectedResources = [];
-
-          // Return a new object to trigger a re-render
-          return keepOnlyOneVaultIfApplicable({
-            ...prevState,
-            [dataSourceView.sId]: config,
-          });
-        }
-      );
-    },
-    [
-      dataSourceView,
-      keepOnlyOneVaultIfApplicable,
-      setParentsById,
-      setSelectionConfigurations,
-    ]
   );
 
   const onSelectChange = useCallback(
@@ -428,11 +384,6 @@ export function DataSourceViewSelector({
     ]
   );
 
-  const isTableView = viewType === "tables";
-
-  // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
-  const hideCheckbox = readonly || (isTableView && !isPartiallyChecked);
-
   return (
     <Tree.Item
       key={dataSourceView.dataSource.id}
@@ -440,14 +391,6 @@ export function DataSourceViewSelector({
       visual={LogoComponent}
       type={
         canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
-      }
-      checkbox={
-        hideCheckbox
-          ? undefined
-          : {
-              checked: checkedStatus,
-              onChange: onToggleSelectAll,
-            }
       }
     >
       <DataSourceViewResourceSelectorTree
