@@ -172,6 +172,15 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
       return null;
     }
 
+    // Prevents users from accessing the document contents of a public data source
+    // that is not associated with their current workspace.
+    const isExternalPublicDataSource =
+      this.dataSourceView.vault.isPublic() &&
+      this.dataSourceView.workspaceId !== auth.getNonNullableWorkspace().id;
+    if (isExternalPublicDataSource) {
+      return null;
+    }
+
     const dsv = this.dataSourceView.toJSON();
 
     return `${config.getClientFacingUrl()}/w/${
