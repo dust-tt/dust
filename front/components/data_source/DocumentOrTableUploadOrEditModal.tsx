@@ -58,6 +58,11 @@ interface TableOrDocument {
   sourceUrl: string;
 }
 
+interface EditionStatus {
+  name: boolean;
+  content: boolean;
+}
+
 const supportedTableFormats = [".csv", ".tsv"].join(", ");
 
 const supportedDocumentFormats = [".txt", ".pdf", ".md", ".csv"].join(", ");
@@ -96,6 +101,10 @@ export function DocumentOrTableUploadOrEditModal({
     text: "",
     tags: [],
     sourceUrl: "",
+  });
+  const [editionStatus, setEditionStatus] = useState<EditionStatus>({
+    name: false,
+    content: false,
   });
 
   const [uploading, setUploading] = useState(false);
@@ -379,15 +388,19 @@ export function DocumentOrTableUploadOrEditModal({
                   maxLength={MAX_NAME_CHARS}
                   disabled={!!initialId}
                   value={tableOrDoc.name}
-                  onChange={(value) =>
-                    setTableOrDoc((prev) => ({ ...prev, name: value }))
-                  }
+                  onChange={(value) => {
+                    setEditionStatus((prev) => ({ ...prev, name: true }));
+                    setTableOrDoc((prev) => ({ ...prev, name: value }));
+                  }}
                   error={
                     isTable &&
                     !tableOrDoc.name &&
+                    editionStatus.name &&
                     !isSlugified(tableOrDoc.name)
                       ? `Invalid name: Must be alphanumeric, max ${MAX_NAME_CHARS} characters and no space.`
-                      : !isTable && !tableOrDoc.name ? "You need to provide a name." : null
+                      : !isTable && editionStatus.name && !tableOrDoc.name
+                        ? "You need to provide a name."
+                        : null
                   }
                   showErrorLabel={true}
                 />
@@ -403,13 +416,17 @@ export function DocumentOrTableUploadOrEditModal({
                     placeholder="This table contains..."
                     value={tableOrDoc.description}
                     onChange={(value) => {
+                      setEditionStatus((prev) => ({
+                        ...prev,
+                        content: true,
+                      }));
                       setTableOrDoc((prev) => ({
                         ...prev,
                         description: value,
                       }));
                     }}
                     error={
-                      !tableOrDoc.description
+                      !tableOrDoc.description && editionStatus.content
                         ? "You need to provide a description to your CSV file."
                         : null
                     }
@@ -494,12 +511,12 @@ export function DocumentOrTableUploadOrEditModal({
                       "focus:border-action-300 focus:ring-action-300"
                     )}
                     value={tableOrDoc.text}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setTableOrDoc((prev) => ({
                         ...prev,
                         text: e.target.value,
-                      }))
-                    }
+                      }));
+                    }}
                   />
                 )}
               </div>
