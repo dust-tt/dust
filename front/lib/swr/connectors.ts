@@ -17,12 +17,13 @@ import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sourc
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 
-export function useConnectorPermissions({
+export function useConnectorPermissions<IncludeParents extends boolean>({
   owner,
   dataSource,
   parentId,
   filterPermission,
   disabled,
+  includeParents,
   viewType,
 }: {
   owner: LightWorkspaceType;
@@ -30,6 +31,7 @@ export function useConnectorPermissions({
   parentId: string | null;
   filterPermission: ConnectorPermission | null;
   disabled?: boolean;
+  includeParents?: IncludeParents;
   viewType?: ContentNodesViewType;
 }) {
   const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
@@ -41,6 +43,9 @@ export function useConnectorPermissions({
   }
   if (filterPermission) {
     url += `&filterPermission=${filterPermission}`;
+  }
+  if (includeParents) {
+    url += "&includeParents=true";
   }
 
   const { data, error } = useSWRWithDefaults(url, permissionsFetcher, {

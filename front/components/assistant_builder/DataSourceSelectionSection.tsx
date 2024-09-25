@@ -15,7 +15,7 @@ import type {
 import { useContext, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
-import { DataSourceViewPermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
+import { DataSourceViewPermissionTree } from "@app/components/ConnectorPermissionsTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import { orderDatasourceViewSelectionConfigurationByImportance } from "@app/lib/assistant";
@@ -113,16 +113,14 @@ export default function DataSourceSelectionSection({
                   className="whitespace-nowrap"
                 >
                   {dsConfig.isSelectAll && (
-                    <DataSourceViewPermissionTreeChildren
+                    <DataSourceViewPermissionTree
                       owner={owner}
                       dataSourceView={dsConfig.dataSourceView}
                       parentId={null}
-                      canUpdatePermissions={true}
                       displayDocumentSource={(documentId: string) => {
                         setDataSourceViewToDisplay(dsConfig.dataSourceView);
                         setDocumentToDisplay(documentId);
                       }}
-                      isSearchEnabled={false}
                       viewType={viewType}
                     />
                   )}
@@ -174,16 +172,14 @@ export default function DataSourceSelectionSection({
                           </div>
                         }
                       >
-                        <DataSourceViewPermissionTreeChildren
+                        <DataSourceViewPermissionTree
                           owner={owner}
                           dataSourceView={dsConfig.dataSourceView}
                           parentId={node.internalId}
-                          canUpdatePermissions={true}
                           displayDocumentSource={(documentId: string) => {
                             setDataSourceViewToDisplay(dsConfig.dataSourceView);
                             setDocumentToDisplay(documentId);
                           }}
-                          isSearchEnabled={false}
                           viewType={viewType}
                         />
                       </Tree.Item>

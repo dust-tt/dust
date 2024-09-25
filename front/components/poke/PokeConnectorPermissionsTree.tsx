@@ -4,38 +4,37 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 
-import { DataSourcePermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
+import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
 import { usePokeConnectorPermissions } from "@app/lib/swr/poke";
 
 export function PokePermissionTree({
   owner,
   dataSource,
   permissionFilter,
-  canUpdatePermissions,
   showExpand,
   displayDocumentSource,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
   permissionFilter?: ConnectorPermission;
-  canUpdatePermissions?: boolean;
   showExpand?: boolean;
   displayDocumentSource: (documentId: string) => void;
 }) {
+  const useResourcesHook = (parentId: string | null) =>
+    usePokeConnectorPermissions({
+      dataSource,
+      filterPermission: permissionFilter ?? null,
+      owner,
+      parentId,
+    });
+
   return (
     <div className="overflow-x-auto">
-      <DataSourcePermissionTreeChildren
-        owner={owner}
-        dataSource={dataSource}
-        parentId={null}
-        permissionFilter={permissionFilter}
-        canUpdatePermissions={canUpdatePermissions}
+      <PermissionTree
         showExpand={showExpand}
-        parentIsSelected={false}
         displayDocumentSource={displayDocumentSource}
-        useConnectorPermissionsHook={usePokeConnectorPermissions}
+        useResourcesHook={useResourcesHook}
         isSearchEnabled={false}
-        viewType="documents"
       />
     </div>
   );

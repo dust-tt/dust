@@ -204,6 +204,8 @@ export async function getManagedDataSourcePermissionsHandler(
     }
   }
 
+  const includeParents = req.query.includeParents === "true";
+
   switch (filterPermission) {
     case "read":
       // We let users get the read  permissions of a connector
@@ -265,6 +267,7 @@ export async function getManagedDataSourcePermissionsHandler(
     parentId,
     filterPermission,
     viewType,
+    includeParents,
   });
   if (permissionsRes.isErr()) {
     return apiError(req, res, {

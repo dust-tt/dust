@@ -40,7 +40,7 @@ import AssistantListActions from "@app/components/assistant/AssistantListActions
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
-import { DataSourceViewPermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
+import { DataSourceViewPermissionTree } from "@app/components/ConnectorPermissionsTree";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
@@ -436,16 +436,13 @@ function DataSourceViewsSection({
               className="whitespace-nowrap"
             >
               {dataSourceView && isAllSelected && (
-                <DataSourceViewPermissionTreeChildren
+                <DataSourceViewPermissionTree
                   owner={owner}
                   dataSourceView={dataSourceView}
-                  parentId={null}
-                  canUpdatePermissions={false}
                   displayDocumentSource={(documentId: string) => {
                     setDataSourceViewToDisplay(dataSourceView);
                     setDocumentToDisplay(documentId);
                   }}
-                  isSearchEnabled={false}
                   viewType={viewType}
                 />
               )}
@@ -532,16 +529,14 @@ function DataSourceViewSelectedNodes({
             </div>
           }
         >
-          <DataSourceViewPermissionTreeChildren
+          <DataSourceViewPermissionTree
             owner={owner}
             dataSourceView={dataSourceView}
             parentId={node.internalId}
-            canUpdatePermissions={true}
             displayDocumentSource={(documentId: string) => {
               setDataSourceViewToDisplay(dataSourceView);
               setDocumentToDisplay(documentId);
             }}
-            isSearchEnabled={false}
             viewType="documents"
           />
         </Tree.Item>

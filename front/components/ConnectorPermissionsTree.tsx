@@ -11,109 +11,130 @@ import {
 import type {
   BaseContentNode,
   ConnectorPermission,
-  ConnectorProvider,
   ContentNodesViewType,
-  DataSourceType,
   DataSourceViewType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { useCallback, useState } from "react";
+import { useCallback, useContext, useState } from "react";
+import React from "react";
 
-import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
-const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
-  ConnectorProvider,
-  { selected: ConnectorPermission; unselected: ConnectorPermission } | undefined
-> = {
-  confluence: {
-    selected: "read",
-    unselected: "none",
-  },
-  slack: {
-    selected: "read_write",
-    unselected: "write",
-  },
-  google_drive: {
-    selected: "read",
-    unselected: "none",
-  },
-  microsoft: {
-    selected: "read",
-    unselected: "none",
-  },
-  notion: undefined,
-  github: undefined,
-  intercom: {
-    selected: "read",
-    unselected: "none",
-  },
-  webcrawler: undefined,
-  snowflake: {
-    selected: "read",
-    unselected: "none",
-  },
+export type UseResourcesHook = (parentId: string | null) => {
+  resources: BaseContentNode[];
+  isResourcesLoading: boolean;
+  isResourcesError: boolean;
 };
 
-type onPermissionUpdateType = (
-  node: BaseContentNode,
-  { newPermission }: { newPermission: ConnectorPermission }
-) => void;
+export type PermissionTreeNodeStatus = {
+  isSelected: boolean;
+  node: BaseContentNode;
+  parents: string[];
+};
 
-interface PermissionTreeChildrenBaseProps {
-  canUpdatePermissions?: boolean;
+type ContextType = {
   // Custom function to determine if a node is checked.
   // This is used to override the default behavior of checking if a node has read or read_write permissions.
-  customIsNodeChecked?: (node: BaseContentNode) => boolean;
   displayDocumentSource?: (documentId: string) => void;
-  onPermissionUpdate?: onPermissionUpdateType;
-  isRoundedBackground?: boolean;
-  isSearchEnabled: boolean;
-  owner: LightWorkspaceType;
-  parentId: string | null;
-  parentIsSelected?: boolean;
   showExpand?: boolean;
-}
-
-type DataSourcePermissionTreeChildrenProps = PermissionTreeChildrenBaseProps & {
-  dataSource: DataSourceType;
-  permissionFilter?: ConnectorPermission;
-  useConnectorPermissionsHook: typeof useConnectorPermissions;
-  viewType: ContentNodesViewType;
+  useResourcesHook: UseResourcesHook;
+  treeSelectionModel?: Record<string, PermissionTreeNodeStatus>;
+  setTreeSelectionModel?: React.Dispatch<
+    React.SetStateAction<Record<string, PermissionTreeNodeStatus>>
+  >;
 };
 
-export function DataSourcePermissionTreeChildren({
-  customIsNodeChecked,
-  dataSource,
-  owner,
-  parentId,
-  permissionFilter,
-  useConnectorPermissionsHook,
-  viewType,
-  ...props
-}: DataSourcePermissionTreeChildrenProps) {
-  const { resources, isResourcesLoading, isResourcesError } =
-    useConnectorPermissionsHook({
-      dataSource,
-      filterPermission: permissionFilter || null,
-      owner,
-      parentId,
-      viewType,
-    });
+const PermissionTreeContext = React.createContext<ContextType | undefined>(
+  undefined
+);
 
-  // For data source permissions, we rely on the permission field to determine if a node is checked.
-  const isNodeChecked = useCallback(
+const PermissionTreeContextProvider = ({
+  children,
+  value,
+}: {
+  children: React.ReactNode;
+  value: ContextType;
+}) => {
+  return (
+    <PermissionTreeContext.Provider value={value}>
+      {children}
+    </PermissionTreeContext.Provider>
+  );
+};
+
+const usePermissionTreeContext = () => {
+  const context = useContext(PermissionTreeContext);
+  if (!context) {
+    throw new Error(
+      "usePermissionTreeChildrenContext must be used within a PermissionTreeChildrenContext"
+    );
+  }
+  return context;
+};
+
+interface PermissionTreeChildrenProps {
+  isRoundedBackground?: boolean;
+  isSearchEnabled?: boolean;
+  parentId: string | null;
+  parentIsSelected?: boolean;
+  breadcrumb: string[];
+}
+
+function PermissionTreeChildren({
+  isSearchEnabled,
+  isRoundedBackground,
+  parentIsSelected,
+  breadcrumb,
+  parentId,
+}: PermissionTreeChildrenProps) {
+  const { displayDocumentSource, treeSelectionModel, setTreeSelectionModel } =
+    usePermissionTreeContext();
+
+  const [search, setSearch] = useState("");
+  // This is to control when to dislpay the "Select All" vs "unselect All" button.
+  // If the user pressed "select all", we want to display "unselect all" and vice versa.
+  // But if the user types in the search bar, we want to reset the button to "select all".
+  const [selectAllClicked, setSelectAllClicked] = useState(false);
+
+  const { useResourcesHook } = usePermissionTreeContext();
+
+  const { resources, isResourcesLoading, isResourcesError } =
+    useResourcesHook(parentId);
+
+  const filteredNodes = resources.filter(
+    (n) => search.trim().length === 0 || n.title.includes(search)
+  );
+
+  const getCheckedState = useCallback(
     (node: BaseContentNode) => {
-      if (customIsNodeChecked) {
-        return customIsNodeChecked(node);
+      if (!treeSelectionModel) {
+        return "unchecked";
       }
 
-      return ["read", "read_write"].includes(node.permission);
+      // If the parent is selected, the node is considered selected.
+      if (parentIsSelected) {
+        return "checked";
+      }
+
+      // Check if there is a local state for this node.
+      const localState = treeSelectionModel[node.internalId];
+      if (localState?.isSelected) {
+        return "checked";
+      }
+
+      const internalPartiallySelectedId = Object.values(treeSelectionModel)
+        .map((status) => status.parents)
+        .flat();
+      if (internalPartiallySelectedId.includes(node.internalId)) {
+        return "partial";
+      }
+
+      // Return false if no custom function is provided.
+      return "unchecked";
     },
-    [customIsNodeChecked]
+    [parentIsSelected, treeSelectionModel]
   );
 
   if (isResourcesError) {
@@ -124,170 +145,10 @@ export function DataSourcePermissionTreeChildren({
     );
   }
 
-  return (
-    <PermissionTreeChildren
-      dataSource={dataSource}
-      isNodeChecked={isNodeChecked}
-      isLoading={isResourcesLoading}
-      nodes={resources}
-      owner={owner}
-      parentId={parentId}
-      renderChildItem={(node: BaseContentNode, { isParentNodeSelected }) => (
-        <DataSourcePermissionTreeChildren
-          dataSource={dataSource}
-          owner={owner}
-          parentId={node.internalId}
-          parentIsSelected={isParentNodeSelected}
-          permissionFilter={permissionFilter}
-          useConnectorPermissionsHook={useConnectorPermissionsHook}
-          viewType={viewType}
-          {...props}
-          // Disable search for children.
-          isSearchEnabled={false}
-          isRoundedBackground={false}
-        />
-      )}
-      {...props}
-    />
-  );
-}
-
-type DataSourceViewPermissionTreeChildrenProps =
-  PermissionTreeChildrenBaseProps & {
-    dataSourceView: DataSourceViewType;
-    permissionFilter?: ConnectorPermission;
-    viewType: ContentNodesViewType;
-  };
-
-export function DataSourceViewPermissionTreeChildren({
-  dataSourceView,
-  owner,
-  parentId,
-  viewType,
-  ...props
-}: DataSourceViewPermissionTreeChildrenProps) {
-  const { nodes, isNodesLoading, isNodesError } = useDataSourceViewContentNodes(
-    {
-      dataSourceView: dataSourceView,
-      owner,
-      parentId: parentId ?? undefined,
-      viewType,
-    }
-  );
-
-  if (isNodesError) {
-    return (
-      <div className="text-warning text-sm">
-        Failed to retrieve permissions likely due to a revoked authorization.
-      </div>
-    );
-  }
-
-  const { dataSource } = dataSourceView;
-
-  return (
-    <>
-      <PermissionTreeChildren
-        dataSource={dataSource}
-        isLoading={isNodesLoading}
-        nodes={nodes}
-        owner={owner}
-        parentId={parentId}
-        renderChildItem={(node: BaseContentNode, { isParentNodeSelected }) => (
-          <DataSourceViewPermissionTreeChildren
-            dataSourceView={dataSourceView}
-            owner={owner}
-            parentId={node.internalId}
-            parentIsSelected={isParentNodeSelected}
-            viewType={viewType}
-            {...props}
-            // Disable search for children.
-            isSearchEnabled={false}
-            isRoundedBackground={false}
-          />
-        )}
-        {...props}
-      />
-    </>
-  );
-}
-
-type PermissionTreeChildrenProps = PermissionTreeChildrenBaseProps & {
-  dataSource: DataSourceType;
-  isLoading: boolean;
-  isNodeChecked?: (node: BaseContentNode) => boolean;
-  nodes: BaseContentNode[];
-  renderChildItem: (
-    r: BaseContentNode,
-    { isParentNodeSelected }: { isParentNodeSelected: boolean }
-  ) => React.ReactNode;
-};
-
-function PermissionTreeChildren({
-  canUpdatePermissions,
-  dataSource,
-  displayDocumentSource,
-  isLoading,
-  isNodeChecked,
-  isSearchEnabled,
-  isRoundedBackground,
-  nodes,
-  onPermissionUpdate,
-  parentIsSelected,
-  renderChildItem,
-}: PermissionTreeChildrenProps) {
-  const [search, setSearch] = useState("");
-  // This is to control when to dislpay the "Select All" vs "unselect All" button.
-  // If the user pressed "select all", we want to display "unselect all" and vice versa.
-  // But if the user types in the search bar, we want to reset the button to "select all".
-  const [selectAllClicked, setSelectAllClicked] = useState(false);
-
-  const [localStateByInternalId, setLocalStateByInternalId] = useState<
-    Record<string, boolean>
-  >({});
-
-  const selectedPermission: ConnectorPermission =
-    (dataSource.connectorProvider &&
-      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]?.selected) ||
-    "none";
-  const unselectedPermission: ConnectorPermission =
-    (dataSource.connectorProvider &&
-      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]
-        ?.unselected) ||
-    "none";
-
-  const filteredNodes = nodes.filter(
-    (n) => search.trim().length === 0 || n.title.includes(search)
-  );
-
-  const isNodeSelected = useCallback(
-    (node: BaseContentNode, stateByInternalId: Record<string, boolean>) => {
-      // If the parent is selected, the node is considered selected.
-      if (parentIsSelected) {
-        return true;
-      }
-
-      // Check if there is a local state for this node.
-      const localState = stateByInternalId[node.internalId];
-      if (localState !== undefined) {
-        return localState;
-      }
-
-      // If a custom isNodeChecked function is provided, use it.
-      if (isNodeChecked) {
-        return isNodeChecked(node);
-      }
-
-      // Return false if no custom function is provided.
-      return false;
-    },
-    [isNodeChecked, parentIsSelected]
-  );
-
   const tree = (
-    <Tree isLoading={isLoading}>
+    <Tree isLoading={isResourcesLoading}>
       {filteredNodes.map((n, i) => {
-        const isChecked = isNodeSelected(n, localStateByInternalId);
+        const checkedState = getCheckedState(n);
 
         return (
           <Tree.Item
@@ -297,22 +158,21 @@ function PermissionTreeChildren({
             visual={getVisualForContentNode(n)}
             className="whitespace-nowrap"
             checkbox={
-              n.preventSelection !== true &&
-              canUpdatePermissions &&
-              onPermissionUpdate
+              n.preventSelection !== true && setTreeSelectionModel
                 ? {
                     disabled: parentIsSelected,
-                    checked: isChecked ? "checked" : "unchecked",
+                    checked: checkedState,
                     onChange: (checked) => {
-                      setLocalStateByInternalId((prev) => ({
-                        ...prev,
-                        [n.internalId]: checked,
-                      }));
-                      onPermissionUpdate(n, {
-                        newPermission: checked
-                          ? selectedPermission
-                          : unselectedPermission,
-                      });
+                      if (checkedState !== "partial") {
+                        setTreeSelectionModel((prev) => ({
+                          ...prev,
+                          [n.internalId]: {
+                            isSelected: checked,
+                            node: n,
+                            parents: checked ? breadcrumb : [],
+                          },
+                        }));
+                      }
                     },
                   }
                 : undefined
@@ -363,14 +223,13 @@ function PermissionTreeChildren({
                 )}
               </div>
             }
-            renderTreeItems={() => {
-              const isParentNodeSelected = isNodeSelected(
-                n,
-                localStateByInternalId
-              );
-
-              return renderChildItem(n, { isParentNodeSelected });
-            }}
+            renderTreeItems={() => (
+              <PermissionTreeChildren
+                parentId={n.internalId}
+                parentIsSelected={getCheckedState(n) === "checked"}
+                breadcrumb={[n.internalId, ...breadcrumb]}
+              />
+            )}
           />
         );
       })}
@@ -379,7 +238,7 @@ function PermissionTreeChildren({
 
   return (
     <>
-      {isSearchEnabled && (
+      {isSearchEnabled && setTreeSelectionModel && (
         <>
           <div className="flex w-full flex-row items-center">
             <div className="flex-grow p-1">
@@ -402,23 +261,19 @@ function PermissionTreeChildren({
                 icon={ListCheckIcon}
                 disabled={search.trim().length === 0}
                 onClick={() => {
-                  setSelectAllClicked((prev) => !prev);
-                  setLocalStateByInternalId((prev) => {
+                  const isSelected = !selectAllClicked;
+                  setSelectAllClicked(isSelected);
+                  setTreeSelectionModel((prev) => {
                     const newState = { ...prev };
                     filteredNodes.forEach((n) => {
-                      newState[n.internalId] = !selectAllClicked;
+                      newState[n.internalId] = {
+                        isSelected,
+                        node: n,
+                        parents: isSelected ? breadcrumb : [],
+                      };
                     });
                     return newState;
                   });
-                  if (onPermissionUpdate) {
-                    filteredNodes.forEach((n) => {
-                      onPermissionUpdate(n, {
-                        newPermission: !selectAllClicked
-                          ? selectedPermission
-                          : unselectedPermission,
-                      });
-                    });
-                  }
                 }}
               />
             </div>
@@ -437,63 +292,100 @@ function PermissionTreeChildren({
 }
 
 interface PermissionTreeProps {
-  canUpdatePermissions?: boolean;
-  dataSource: DataSourceType;
-  isSearchEnabled: boolean;
+  isSearchEnabled?: boolean;
   isRoundedBackground?: boolean;
-  onPermissionUpdate?: onPermissionUpdateType;
-  owner: LightWorkspaceType;
-  permissionFilter?: ConnectorPermission;
+  displayDocumentSource?: (documentId: string) => void;
+  customIsNodeChecked?: (node: BaseContentNode) => boolean;
   showExpand?: boolean;
-  viewType: ContentNodesViewType;
+  useResourcesHook: UseResourcesHook;
+  treeSelectionModel?: Record<string, PermissionTreeNodeStatus>;
+  setTreeSelectionModel?: React.Dispatch<
+    React.SetStateAction<Record<string, PermissionTreeNodeStatus>>
+  >;
 }
 
 export function PermissionTree({
-  canUpdatePermissions,
-  dataSource,
   isSearchEnabled,
   isRoundedBackground,
-  onPermissionUpdate,
-  owner,
-  permissionFilter,
+  useResourcesHook,
+  displayDocumentSource,
+  treeSelectionModel,
+  setTreeSelectionModel,
   showExpand,
-  viewType,
 }: PermissionTreeProps) {
-  const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
-    null
-  );
-
   return (
     <>
-      <ManagedDataSourceDocumentModal
-        owner={owner}
-        dataSource={dataSource}
-        documentId={documentToDisplay}
-        isOpen={!!documentToDisplay}
-        setOpen={(open) => {
-          if (!open) {
-            setDocumentToDisplay(null);
-          }
+      <PermissionTreeContextProvider
+        value={{
+          showExpand,
+          useResourcesHook,
+          treeSelectionModel,
+          setTreeSelectionModel,
+          displayDocumentSource,
         }}
-      />
-
-      <DataSourcePermissionTreeChildren
-        owner={owner}
-        dataSource={dataSource}
-        parentId={null}
-        permissionFilter={permissionFilter}
-        canUpdatePermissions={canUpdatePermissions}
-        onPermissionUpdate={onPermissionUpdate}
-        showExpand={showExpand}
-        parentIsSelected={false}
-        displayDocumentSource={(documentId: string) => {
-          setDocumentToDisplay(documentId);
-        }}
-        useConnectorPermissionsHook={useConnectorPermissions}
-        isSearchEnabled={isSearchEnabled}
-        isRoundedBackground={isRoundedBackground}
-        viewType={viewType}
-      />
+      >
+        <PermissionTreeChildren
+          isSearchEnabled={isSearchEnabled}
+          isRoundedBackground={isRoundedBackground}
+          parentId={null}
+          parentIsSelected={false}
+          breadcrumb={[]}
+        />
+      </PermissionTreeContextProvider>
     </>
+  );
+}
+
+interface DataSourceViewPermissionTreeProps {
+  dataSourceView: DataSourceViewType;
+  displayDocumentSource: (documentId: string) => void;
+  isSearchEnabled?: boolean;
+  isRoundedBackground?: boolean;
+  owner: LightWorkspaceType;
+  parentId?: string | null;
+  permissionFilter?: ConnectorPermission;
+  showExpand?: boolean;
+  viewType: ContentNodesViewType;
+  treeSelectionModel?: Record<string, PermissionTreeNodeStatus>;
+  setTreeSelectionModel?: React.Dispatch<
+    React.SetStateAction<Record<string, PermissionTreeNodeStatus>>
+  >;
+}
+
+export function DataSourceViewPermissionTree({
+  dataSourceView,
+  isSearchEnabled,
+  isRoundedBackground,
+  owner,
+  displayDocumentSource,
+  showExpand,
+  viewType,
+  treeSelectionModel,
+  setTreeSelectionModel,
+}: DataSourceViewPermissionTreeProps) {
+  const useResourcesHook = (parentId: string | null) => {
+    const res = useDataSourceViewContentNodes({
+      dataSourceView: dataSourceView,
+      owner,
+      parentId: parentId ?? undefined,
+      viewType,
+    });
+    return {
+      resources: res.nodes,
+      isResourcesLoading: res.isNodesLoading,
+      isResourcesError: res.isNodesError,
+    };
+  };
+
+  return (
+    <PermissionTree
+      isSearchEnabled={isSearchEnabled}
+      isRoundedBackground={isRoundedBackground}
+      displayDocumentSource={displayDocumentSource}
+      showExpand={showExpand}
+      useResourcesHook={useResourcesHook}
+      treeSelectionModel={treeSelectionModel}
+      setTreeSelectionModel={setTreeSelectionModel}
+    />
   );
 }

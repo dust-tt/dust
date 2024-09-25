@@ -8,7 +8,8 @@ import type {
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
 
-import { DataSourcePermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
+import type { PermissionTreeNodeStatus } from "@app/components/ConnectorPermissionsTree";
+import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 
 export type SlackChannel = { slackChannelId: string; slackChannelName: string };
@@ -77,21 +78,71 @@ export function SlackIntegration({
     }
   }, [newSelection, onSelectionChange]);
 
+  // The "write" permission filter is applied to retrieve all available channels on Slack,
+  const useResourcesHook = (parentId: string | null) =>
+    useConnectorPermissions({
+      dataSource: slackDataSourceView.dataSource,
+      filterPermission: "write",
+      owner,
+      parentId,
+      viewType: "documents",
+    });
+
+  const { resources } = useResourcesHook(null);
+  const treeSelectionModel = resources.reduce(
+    (acc, c) =>
+      customIsNodeChecked(c)
+        ? {
+            ...acc,
+            [c.internalId]: {
+              node: c,
+              isSelected: true,
+              parents: [],
+            },
+          }
+        : acc,
+    {} as Record<string, PermissionTreeNodeStatus>
+  );
+
   return (
-    <DataSourcePermissionTreeChildren
-      owner={owner}
-      dataSource={slackDataSourceView.dataSource}
-      parentId={null}
-      // The "write" permission filter is applied to retrieve all available channels on Slack,
+    <PermissionTree
       // not limited to those synced with Dust.
-      permissionFilter="write"
-      canUpdatePermissions={true}
-      onPermissionUpdate={handlePermissionUpdate}
+      treeSelectionModel={treeSelectionModel}
+      setTreeSelectionModel={(
+        updater:
+          | ((
+              prev: Record<string, PermissionTreeNodeStatus>
+            ) => Record<string, PermissionTreeNodeStatus>)
+          | Record<string, PermissionTreeNodeStatus>
+      ) => {
+        const newModel =
+          typeof updater === "function" ? updater(treeSelectionModel) : updater;
+
+        setNewSelection((prevSelection) => {
+          const newSelection = [...prevSelection];
+          Object.values(newModel).forEach((item) => {
+            const { isSelected, node } = item;
+            const index = newSelection.findIndex(
+              (c) => c.slackChannelId === node.internalId
+            );
+
+            if (isSelected && index === -1) {
+              newSelection.push({
+                slackChannelId: node.internalId,
+                slackChannelName: node.title,
+              });
+            }
+
+            if (!isSelected && index !== -1) {
+              newSelection.splice(index, 1);
+            }
+          });
+          return newSelection;
+        });
+      }}
       showExpand={false}
       isSearchEnabled={false}
-      customIsNodeChecked={customIsNodeChecked}
-      useConnectorPermissionsHook={useConnectorPermissions}
-      viewType="documents"
+      useResourcesHook={useResourcesHook}
     />
   );
 }
