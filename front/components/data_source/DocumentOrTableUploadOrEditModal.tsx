@@ -81,6 +81,24 @@ function isCoreAPIDocumentType(
   );
 }
 
+const getErrorMessage = (
+  isTable: boolean,
+  tableOrDoc: TableOrDocument,
+  editionStatus: EditionStatus
+) => {
+  if (
+    isTable &&
+    !tableOrDoc.name &&
+    editionStatus.name &&
+    !isSlugified(tableOrDoc.name)
+  ) {
+    return `Invalid name: Must be alphanumeric, max ${MAX_NAME_CHARS} characters and no space.`;
+  } else if (!isTable && editionStatus.name && !tableOrDoc.name) {
+    return "You need to provide a name.";
+  }
+  return null;
+};
+
 export function DocumentOrTableUploadOrEditModal({
   contentNode,
   dataSourceView,
@@ -160,24 +178,14 @@ export function DocumentOrTableUploadOrEditModal({
   }, [isTable, initialId, table, owner.sId, document]);
 
   useEffect(() => {
-    let isNameValid: boolean;
-    let isContentValid: boolean;
-    if (isTable) {
-      isNameValid = !!tableOrDoc.name && isSlugified(tableOrDoc.name);
-      isContentValid = !!tableOrDoc.description;
-    } else {
-      isNameValid = !!tableOrDoc.name;
-      isContentValid = !!tableOrDoc.text || !!tableOrDoc.file;
-    }
+    const isNameValid = isTable
+      ? !!tableOrDoc.name && isSlugified(tableOrDoc.name)
+      : !!tableOrDoc.name;
+    const isContentValid = isTable
+      ? !!tableOrDoc.description
+      : !!tableOrDoc.text || !!tableOrDoc.file;
     setIsValidDocOrTable(isNameValid && isContentValid);
-  }, [
-    isTable,
-    isValidDocOrTable,
-    tableOrDoc.description,
-    tableOrDoc.file,
-    tableOrDoc.name,
-    tableOrDoc.text,
-  ]);
+  }, [isTable, tableOrDoc]);
 
   const isLoading = isTableLoading || isDocumentLoading;
   const isError = isDocumentError || isTableError;
@@ -392,16 +400,7 @@ export function DocumentOrTableUploadOrEditModal({
                     setEditionStatus((prev) => ({ ...prev, name: true }));
                     setTableOrDoc((prev) => ({ ...prev, name: value }));
                   }}
-                  error={
-                    isTable &&
-                    !tableOrDoc.name &&
-                    editionStatus.name &&
-                    !isSlugified(tableOrDoc.name)
-                      ? `Invalid name: Must be alphanumeric, max ${MAX_NAME_CHARS} characters and no space.`
-                      : !isTable && editionStatus.name && !tableOrDoc.name
-                        ? "You need to provide a name."
-                        : null
-                  }
+                  error={getErrorMessage(isTable, tableOrDoc, editionStatus)}
                   showErrorLabel={true}
                 />
               </div>
