@@ -62,10 +62,10 @@ async function handler(
     return;
   }
 
-  const dustWorkspaceId = req.headers["x-dust-workspace-id"];
+  const userWorkspaceId = req.headers["x-dust-workspace-id"];
   const rawDustGroupIds = req.headers["x-dust-group-ids"];
   if (
-    typeof dustWorkspaceId !== "string" ||
+    typeof userWorkspaceId !== "string" ||
     typeof rawDustGroupIds !== "string"
   ) {
     return apiError(req, res, {
@@ -98,19 +98,10 @@ async function handler(
             return notFoundError();
           }
 
-          const owner = await Workspace.findOne({
-            where: {
-              sId: dustWorkspaceId,
-            },
-          });
-          if (!owner) {
-            return notFoundError();
-          }
-
           const auth = await Authenticator.fromRegistrySecret({
             groupIds: dustGroupIds,
             secret,
-            workspaceId: dustWorkspaceId,
+            workspaceId: userWorkspaceId,
           });
 
           if (
@@ -128,7 +119,7 @@ async function handler(
                   dataSourceViewId: dataSourceOrDataSourceViewId,
                   err: dataSourceViewRes.error,
                   groups: dustGroupIds,
-                  workspaceId: dustWorkspaceId,
+                  workspaceId: userWorkspaceId,
                 },
                 "Failed to lookup data source view."
               );
@@ -148,7 +139,7 @@ async function handler(
                   dataSourceId: dataSourceOrDataSourceViewId,
                   err: dataSourceRes.error,
                   groups: dustGroupIds,
-                  workspaceId: dustWorkspaceId,
+                  workspaceId: userWorkspaceId,
                 },
                 "Failed to lookup data source."
               );
@@ -217,6 +208,19 @@ async function handleDataSource(
   auth: Authenticator,
   dataSourceId: string
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
+  logger.info(
+    {
+      dataSource: {
+        id: dataSourceId,
+      },
+      workspace: {
+        id: auth.getNonNullableWorkspace().id,
+        sId: auth.getNonNullableWorkspace().sId,
+      },
+    },
+    "Looking up registry with data source id"
+  );
+
   const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,
     dataSourceId,
