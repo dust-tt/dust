@@ -63,6 +63,10 @@ pub async fn validate_api_key(
     mut req: Request<axum::body::Body>,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    if *DISABLE_API_KEY_CHECK {
+        return Ok(next.run(req).await);
+    }
+
     let api_keys = get_api_keys().await.map_err(|e| {
         error!("Failed to get API keys: {}", e);
         StatusCode::INTERNAL_SERVER_ERROR
@@ -81,9 +85,5 @@ pub async fn validate_api_key(
         }
     }
 
-    if !*DISABLE_API_KEY_CHECK {
-        Err(StatusCode::UNAUTHORIZED)
-    } else {
-        Ok(next.run(req).await)
-    }
+    Err(StatusCode::UNAUTHORIZED)
 }
