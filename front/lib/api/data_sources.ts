@@ -166,7 +166,8 @@ export async function augmentDataSourceWithConnectorDetails(
       config.getConnectorsAPIConfig(),
       logger
     );
-    const statusRes = await connectorsAPI.getConnector(dataSource.connectorId);
+    const statusRes =
+      await connectorsAPI.getConnectorFromDataSource(dataSource);
     if (statusRes.isErr()) {
       fetchConnectorError = true;
       fetchConnectorErrorMessage = statusRes.error.message;
