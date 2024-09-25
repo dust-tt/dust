@@ -443,7 +443,8 @@ interface Table {
   file: File | null;
 }
 
-interface TableUploadOrEditModalProps extends DocumentOrTableUploadOrEditModalProps {
+interface TableUploadOrEditModalProps
+  extends DocumentOrTableUploadOrEditModalProps {
   table: CoreAPITable | null;
   isTableError: boolean;
   isTableLoading: boolean;
