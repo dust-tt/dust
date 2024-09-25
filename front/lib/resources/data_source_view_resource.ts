@@ -517,6 +517,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       dataSource: this.dataSource.toPokeJSON(),
       link: `${config.getClientFacingUrl()}/poke/${this.workspaceId}/vaults/${this.vault.sId}/data_source_views/${this.sId}`,
       name: `Data Source (${this.dataSource.name})`,
+      vault: this.vault.toPokeJSON(),
     };
   }
 }

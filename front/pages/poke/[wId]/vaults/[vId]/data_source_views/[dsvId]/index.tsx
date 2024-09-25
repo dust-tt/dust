@@ -1,4 +1,4 @@
-import type { DataSourceViewType, WorkspaceType } from "@dust-tt/types";
+import type { PokeDataSourceViewType, WorkspaceType } from "@dust-tt/types";
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
@@ -11,7 +11,7 @@ import PokeLayout from "@app/pages/poke/PokeLayout";
 import { usePokeDataSourceViewContentNodes } from "@app/poke/swr/data_source_views";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  dataSourceView: DataSourceViewType;
+  dataSourceView: PokeDataSourceViewType;
   owner: WorkspaceType;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -35,7 +35,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      dataSourceView: dataSourceView.toJSON(),
+      dataSourceView: dataSourceView.toPokeJSON(),
     },
   };
 });
