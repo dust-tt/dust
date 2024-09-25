@@ -253,10 +253,7 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
 
         // Ensure that query only uses tables that are allowed.
         let used_tables = self._get_tables_used_by_query(&session, query).await?;
-        let allowed_tables: HashSet<&str> = tables
-            .iter()
-            .filter_map(|table| table.remote_database_table_id())
-            .collect();
+        let allowed_tables: HashSet<&str> = tables.iter().map(|table| table.name()).collect();
 
         if used_tables
             .iter()
@@ -271,10 +268,7 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
     }
 
     // TODO(SNOWFLAKE): TBD caching
-    async fn get_tables_schema(
-        &self,
-        opaque_ids: Vec<String>,
-    ) -> Result<std::collections::HashMap<String, TableSchema>> {
+    async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<TableSchema>> {
         // Construct a "DESCRIBE TABLE" query for each opaque table ID.
         let queries: Vec<String> = opaque_ids
             .iter()
@@ -316,7 +310,7 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
                         )
                     })?;
 
-                Ok((opaque_id, TableSchema::from_columns(columns)))
+                Ok(TableSchema::from_columns(columns))
             })
             .collect()
     }
