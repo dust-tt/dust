@@ -8,21 +8,26 @@ export function useTable({
   owner,
   dataSourceView,
   tableId,
+  disabled,
 }: {
   owner: LightWorkspaceType;
   dataSourceView: DataSourceViewType;
   tableId: string | null;
+  disabled?: boolean;
 }) {
   const tableFetcher: Fetcher<GetTableResponseBody> = fetcher;
 
   const endpoint = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/tables/${tableId}`;
   const { data, error, mutate } = useSWRWithDefaults(
     tableId ? endpoint : null,
-    tableFetcher
+    tableFetcher,
+    {
+      disabled,
+    }
   );
   return {
     table: data ? data.table : null,
-    isTableLoading: tableId && !error && !data,
+    isTableLoading: !!tableId && !error && !data,
     isTableError: error,
     mutateTable: mutate,
   };
