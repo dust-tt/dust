@@ -34,8 +34,6 @@ import { DataSourceViewModel } from "./storage/models/data_source_view";
 
 export type FetchDataSourceOrigin =
   | "document_tracker"
-  | "vault_patch_content"
-  | "data_source_view_create"
   | "registry_lookup"
   | "v1_data_sources_search"
   | "v1_data_sources_documents"

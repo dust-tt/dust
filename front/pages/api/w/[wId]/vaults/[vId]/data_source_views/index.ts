@@ -174,19 +174,16 @@ async function handler(
         });
       }
 
-      const { name, parentsIn } = bodyValidation.right;
+      const { dataSourceId, parentsIn } = bodyValidation.right;
 
       // Create a new view
-      const dataSource = await DataSourceResource.fetchByNameOrId(auth, name, {
-        // TODO(DATASOURCE_SID): Clean-up
-        origin: "data_source_view_create",
-      });
+      const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
       if (!dataSource) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid data source: ${name}`,
+            message: `Invalid data source: ${dataSourceId}`,
           },
         });
       }
@@ -200,7 +197,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `View already exists for data source: ${name}`,
+            message: `View already exists for data source: ${dataSourceId}`,
           },
         });
       }

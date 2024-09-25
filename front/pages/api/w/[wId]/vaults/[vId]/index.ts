@@ -155,27 +155,25 @@ async function handler(
           vault
         );
 
-        const viewByDataSourceName = currentViews.reduce(
+        const viewByDataSourceId = currentViews.reduce(
           (acc, view) => {
-            acc[view.dataSource.name] = view;
+            acc[view.dataSource.sId] = view;
             return acc;
           },
           {} as { [key: string]: DataSourceViewResource }
         );
 
         for (const dataSourceConfig of content) {
-          const view = viewByDataSourceName[dataSourceConfig.dataSource];
+          const view = viewByDataSourceId[dataSourceConfig.dataSourceId];
           if (view) {
             // Update existing view
             await view.updateParents(dataSourceConfig.parentsIn);
             await view.setEditedBy(auth);
           } else {
             // Create a new view
-            const dataSource = await DataSourceResource.fetchByNameOrId(
+            const dataSource = await DataSourceResource.fetchById(
               auth,
-              dataSourceConfig.dataSource,
-              // TODO(DATASOURCE_SID): Clean-up
-              { origin: "vault_patch_content" }
+              dataSourceConfig.dataSourceId
             );
             if (dataSource) {
               await DataSourceViewResource.createViewInVaultFromDataSource(
@@ -188,9 +186,9 @@ async function handler(
           }
         }
 
-        for (const dataSourceName of Object.keys(viewByDataSourceName)) {
-          if (!content.map((c) => c.dataSource).includes(dataSourceName)) {
-            const view = viewByDataSourceName[dataSourceName];
+        for (const dataSourceId of Object.keys(viewByDataSourceId)) {
+          if (!content.map((c) => c.dataSourceId).includes(dataSourceId)) {
+            const view = viewByDataSourceId[dataSourceId];
             await view.delete(auth);
           }
         }
