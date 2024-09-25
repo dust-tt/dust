@@ -74,6 +74,15 @@ AgentDataSourceConfiguration.init(
       {
         fields: ["retrievalConfigurationId"],
       },
+      {
+        fields: ["processConfigurationId"],
+      },
+      {
+        fields: ["dataSourceId"],
+      },
+      {
+        fields: ["dataSourceViewId"],
+      },
     ],
     sequelize: frontSequelize,
     hooks: {
