@@ -62,14 +62,13 @@ export default function VaultManagedDataSourcesViewsModal({
           const isSelectAll = config.dataSourceView.parentsIn === null;
           const selectedResources = isSelectAll ? [] : config.nodes;
 
-          // We are selecting from the system data source views to create / edit a vault data source view.
-          // The initialSelectedDataSources represents the current selection.
-          // Here, we must remap to the system view that corresponds to the non system vault data source view.
+          // We are selecting from the system data source views to create / edit a vault data source
+          // view. The initialSelectedDataSources represents the current selection. Here, we must
+          // remap to the system view that corresponds to the non system vault data source view.
           const systemDataSourceView =
             systemVaultDataSourceViews.find(
               (dsv) =>
-                // TODO(DATASOURCE_SID): move to sId
-                dsv.dataSource.name === config.dataSourceView.dataSource.name
+                dsv.dataSource.sId === config.dataSourceView.dataSource.sId
             ) ?? config.dataSourceView; // Fallback to make sure we are never undefined
 
           acc[systemDataSourceView.sId] = {
