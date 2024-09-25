@@ -2,6 +2,7 @@ import type {
   ConnectorProvider,
   DataSourceType,
   ModelId,
+  PokeDataSourceType,
   Result,
 } from "@dust-tt/types";
 import { Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
@@ -14,6 +15,7 @@ import type {
 import { Op } from "sequelize";
 
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
@@ -475,6 +477,15 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       connectorProvider: this.connectorProvider,
       assistantDefaultSelected: this.assistantDefaultSelected,
       ...this.makeEditedBy(this.editedByUser, this.editedAt),
+    };
+  }
+
+  toPokeJSON(): PokeDataSourceType {
+    return {
+      ...this.toJSON(),
+      link: `${config.getClientFacingUrl()}/poke/${this.workspaceId}/data_sources/${this.sId}`,
+      name: `Data Source View (${this.name})`,
+      vault: this.vault.toPokeJSON(),
     };
   }
 }

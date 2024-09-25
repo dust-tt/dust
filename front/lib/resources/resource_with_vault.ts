@@ -138,6 +138,9 @@ export abstract class ResourceWithVault<
   // and tested carefully to prevent unauthorized access.
   private canFetch(auth: Authenticator) {
     return (
+      // Superusers can fetch any resource.
+      auth.isDustSuperUser() ||
+      // Others, can only fetch resources from their workspace or public vaults.
       this.workspaceId === auth.getNonNullableWorkspace().id ||
       this.vault.isPublic()
     );

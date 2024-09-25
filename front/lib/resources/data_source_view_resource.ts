@@ -6,6 +6,7 @@ import type {
   DataSourceViewKind,
   DataSourceViewType,
   ModelId,
+  PokeDataSourceViewType,
   Result,
 } from "@dust-tt/types";
 import { Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
@@ -18,6 +19,7 @@ import type {
 import { Op } from "sequelize";
 
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -506,6 +508,15 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       },
       tags: null,
       timestamp: null,
+    };
+  }
+
+  toPokeJSON(): PokeDataSourceViewType {
+    return {
+      ...this.toJSON(),
+      dataSource: this.dataSource.toPokeJSON(),
+      link: `${config.getClientFacingUrl()}/poke/${this.workspaceId}/vaults/${this.vault.sId}/data_source_views/${this.sId}`,
+      name: `Data Source (${this.dataSource.name})`,
     };
   }
 }

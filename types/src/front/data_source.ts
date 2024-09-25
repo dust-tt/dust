@@ -1,6 +1,8 @@
 import { ModelId } from "../shared/model_id";
 import { Err, Ok, Result } from "../shared/result";
 import { ConnectorType } from "./lib/connectors_api";
+import { PokeItemBase } from "./lib/poke";
+import { PokeVaultType } from "./vault";
 
 export const CONNECTOR_PROVIDERS = [
   "confluence",
@@ -86,6 +88,11 @@ export type DataSourceType = {
   connectorProvider: ConnectorProvider | null;
   editedByUser?: EditedByUser | null;
 };
+
+export type PokeDataSourceType = DataSourceType &
+  PokeItemBase & {
+    vault: PokeVaultType;
+  };
 
 export type WithConnector = {
   connectorProvider: ConnectorProvider;

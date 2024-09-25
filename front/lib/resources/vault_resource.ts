@@ -1,4 +1,10 @@
-import type { ACLType, ModelId, Result, VaultType } from "@dust-tt/types";
+import type {
+  ACLType,
+  ModelId,
+  PokeVaultType,
+  Result,
+  VaultType,
+} from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import { assertNever, Ok } from "@dust-tt/types";
 import assert from "assert";
@@ -398,6 +404,13 @@ export class VaultResource extends BaseResource<VaultModel> {
       name: this.name,
       kind: this.kind,
       groupIds: this.groups.map((group) => group.sId),
+    };
+  }
+
+  toPokeJSON(): PokeVaultType {
+    return {
+      ...this.toJSON(),
+      groups: this.groups.map((group) => group.toJSON()),
     };
   }
 }

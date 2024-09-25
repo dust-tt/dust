@@ -1,3 +1,5 @@
+import { GroupType } from "./groups";
+
 const VAULT_KINDS = ["regular", "global", "system", "public"] as const;
 export type VaultKind = (typeof VAULT_KINDS)[number];
 
@@ -6,4 +8,8 @@ export type VaultType = {
   sId: string;
   kind: VaultKind;
   groupIds: string[];
+};
+
+export type PokeVaultType = VaultType & {
+  groups: GroupType[];
 };
