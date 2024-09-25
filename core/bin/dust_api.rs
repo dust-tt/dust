@@ -2290,7 +2290,7 @@ async fn tables_rows_upsert(
                 None,
             )
         }
-        Ok(Some(mut table)) => match LocalTable::from_table(&mut table) {
+        Ok(Some(table)) => match LocalTable::from_table(table) {
             Err(e) => {
                 return error_response(
                     StatusCode::BAD_REQUEST,
@@ -2380,7 +2380,7 @@ async fn tables_rows_retrieve(
                     None,
                 )
             }
-            Some(mut table) => match LocalTable::from_table(&mut table) {
+            Some(table) => match LocalTable::from_table(table) {
                 Err(e) => {
                     return error_response(
                         StatusCode::BAD_REQUEST,
@@ -2459,7 +2459,7 @@ async fn tables_rows_delete(
                 }),
             )
         }
-        Ok(Some(mut table)) => match LocalTable::from_table(&mut table) {
+        Ok(Some(table)) => match LocalTable::from_table(table) {
             Err(e) => {
                 return error_response(
                     StatusCode::BAD_REQUEST,
@@ -2548,7 +2548,7 @@ async fn tables_rows_list(
                     None,
                 )
             }
-            Some(mut table) => match LocalTable::from_table(&mut table) {
+            Some(table) => match LocalTable::from_table(table) {
                 Err(e) => error_response(
                     StatusCode::BAD_REQUEST,
                     "invalid_table",

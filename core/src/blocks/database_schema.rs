@@ -80,7 +80,7 @@ impl Block for DatabaseSchema {
             _ => Err(anyhow!(err_msg.clone()))?,
         };
 
-        let mut tables = load_tables_from_identifiers(&table_identifiers, env).await?;
+        let tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
         // Compute the unique table names for each table.
         let unique_table_names = get_unique_table_names_for_transient_database(&tables);
@@ -88,7 +88,7 @@ impl Block for DatabaseSchema {
         // TODO(SNOWFLAKE): add support for remote databases
         // Check that all tables are local tables and create a "LocalTable" for each.
         let mut local_tables = tables
-            .iter_mut()
+            .into_iter()
             .map(|t| LocalTable::from_table(t))
             .collect::<Result<Vec<_>>>()?;
 
