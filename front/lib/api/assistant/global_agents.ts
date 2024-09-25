@@ -772,7 +772,7 @@ function _getManagedDataSourceAgent(
         relativeTimeFrame: "auto",
         topK: "auto",
         dataSources: filteredDataSourceViews.map((dsView) => ({
-          dataSourceId: dsView.dataSource.name,
+          dataSourceId: dsView.dataSource.sId,
           dataSourceViewId: dsView.sId,
           workspaceId: preFetchedDataSources.workspaceId,
           filter: { tags: null, parents: null },
@@ -1014,7 +1014,7 @@ function _getDustGlobalAgent(
       relativeTimeFrame: "auto",
       topK: "auto",
       dataSources: dataSourceViews.map((dsView) => ({
-        dataSourceId: dsView.dataSource.name,
+        dataSourceId: dsView.dataSource.sId,
         dataSourceViewId: dsView.sId,
         workspaceId: preFetchedDataSources.workspaceId,
         filter: { parents: null },
@@ -1036,7 +1036,7 @@ function _getDustGlobalAgent(
         sId:
           GLOBAL_AGENTS_SID.DUST +
           "-datasource-action-" +
-          dsView.dataSource.name,
+          dsView.dataSource.sId,
         type: "retrieval_configuration",
         query: "auto",
         relativeTimeFrame: "auto",
