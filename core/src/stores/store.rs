@@ -6,9 +6,7 @@ use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
     data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
-    databases::{
-        database::Table, table_schema::TableSchema, transient_database::TransientDatabase,
-    },
+    databases::{table::Table, table_schema::TableSchema, transient_database::TransientDatabase},
     dataset::Dataset,
     http::request::{HttpRequest, HttpResponse},
     project::Project,

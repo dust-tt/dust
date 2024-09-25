@@ -9,8 +9,9 @@ use snowflake_connector_rs::{
 };
 
 use crate::databases::{
-    database::{QueryDatabaseError, QueryResult},
+    error::QueryDatabaseError,
     remote_databases::remote_database::RemoteDatabase,
+    table::QueryResult,
     table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType},
 };
 

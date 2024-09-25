@@ -7,7 +7,8 @@ use tracing::info;
 
 use crate::{
     databases::{
-        database::{QueryDatabaseError, QueryResult, Table},
+        error::QueryDatabaseError,
+        table::{QueryResult, Table},
         table_schema::TableSchema,
     },
     sqlite_workers::client::{SqliteWorker, SqliteWorkerError, HEARTBEAT_INTERVAL_MS},

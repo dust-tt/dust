@@ -37,7 +37,8 @@ use dust::{
         qdrant::QdrantClients,
     },
     databases::{
-        database::{LocalTable, QueryDatabaseError, Row, Table},
+        error::QueryDatabaseError,
+        table::{LocalTable, Row, Table},
         transient_database::execute_query_on_transient_database,
     },
     databases_store::store::{self as databases_store, DatabasesStore},

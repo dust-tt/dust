@@ -18,7 +18,8 @@ pub mod data_sources {
     pub mod splitter;
 }
 pub mod databases {
-    pub mod database;
+    pub mod error;
+    pub mod table;
     pub mod table_schema;
     pub mod remote_databases {
         pub mod remote_database;

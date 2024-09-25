@@ -18,7 +18,7 @@ use crate::{
     consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX,
     data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
     databases::{
-        database::{get_table_unique_id, Table},
+        table::{get_table_unique_id, Table},
         table_schema::TableSchema,
         transient_database::TransientDatabase,
     },

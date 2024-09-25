@@ -10,7 +10,7 @@ use crate::{
         database_schema::load_tables_from_identifiers,
     },
     databases::{
-        database::QueryDatabaseError, transient_database::execute_query_on_transient_database,
+        error::QueryDatabaseError, transient_database::execute_query_on_transient_database,
     },
     Rule,
 };
