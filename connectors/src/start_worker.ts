@@ -33,6 +33,9 @@ const workerFunctions: Record<
   notion_garbage_collector: runNotionGarbageCollectWorker,
   slack: runSlackWorker,
   webcrawler: runWebCrawlerWorker,
+  snowflake: async () => {
+    // TODO(SNOWFLAKE): Implement worker.
+  },
 };
 
 const ALL_WORKERS = Object.keys(workerFunctions) as ConnectorProvider[];

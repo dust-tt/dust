@@ -981,6 +981,12 @@ function getRenderingConfigForConnectorProvider(
         displayWebcrawlerSettingsButton: true,
         guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
       };
+    case "snowflake":
+      return {
+        ...commonConfig,
+        displayEditionModal: true,
+        guideLink: CONNECTOR_CONFIGURATIONS[connectorProvider].guideLink,
+      };
     default:
       assertNever(connectorProvider);
   }
@@ -1143,6 +1149,7 @@ function ManagedDataSourceView({
                 case "notion":
                 case "intercom":
                 case "microsoft":
+                case "snowflake":
                   return `Manage Dust connection to ${CONNECTOR_CONFIGURATIONS[connectorProvider].name}`;
                 case "webcrawler":
                   return `Manage Website`;
@@ -1216,6 +1223,7 @@ function ManagedDataSourceView({
                     case "notion":
                     case "intercom":
                     case "microsoft":
+                    case "snowflake":
                       return (
                         <>
                           Selected resources will be accessible to all members

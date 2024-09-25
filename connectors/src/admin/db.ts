@@ -49,6 +49,7 @@ import {
   SlackConfigurationModel,
   SlackMessages,
 } from "@connectors/lib/models/slack";
+import { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import {
   WebCrawlerConfigurationHeader,
   WebCrawlerConfigurationModel,
@@ -103,6 +104,7 @@ async function main(): Promise<void> {
   await WebCrawlerFolder.sync({ alter: true });
   await WebCrawlerPage.sync({ alter: true });
   await WebCrawlerConfigurationHeader.sync({ alter: true });
+  await SnowflakeConfigurationModel.sync({ alter: true });
 
   // enable the `unaccent` extension
   await sequelizeConnection.query("CREATE EXTENSION IF NOT EXISTS unaccent;");

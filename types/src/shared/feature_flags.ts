@@ -8,6 +8,7 @@ export const WHITELISTABLE_FEATURES = [
   "private_data_vaults_feature",
   "openai_o1_feature",
   "openai_o1_mini_feature",
+  "snowflake_connector_feature",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
