@@ -49,7 +49,7 @@ export default function APIKeysPage({
         <Page.Header
           title="API Keys"
           icon={ShapesIcon}
-          description="Manage your API Keys. API Keys allows you to securely connect to Dust from other applications and work with your data."
+          description="API Keys allow you to securely connect to Dust from other applications and work with your data programmatically."
         />
         <Page.Vertical align="stretch" gap="md">
           <APIKeys owner={owner} groups={groups} />

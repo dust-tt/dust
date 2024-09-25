@@ -1,11 +1,15 @@
 import {
+  BookOpenIcon,
   BracesIcon,
   Button,
+  ClipboardIcon,
   CommandLineIcon,
   Dialog,
   ExternalLinkIcon,
+  IconButton,
   Input,
   LockIcon,
+  Modal,
   Page,
   PlusIcon,
   ShapesIcon,
@@ -275,6 +279,7 @@ export function APIKeys({
   const [newApiKeyName, setNewApiKeyName] = useState("");
   const [newApiKeyGroup] = useState(globalGroup);
   const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);
+  const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
 
   const { keys } = useKeys(owner);
   const { submit: handleGenerate, isSubmitting: isGenerating } =
@@ -290,6 +295,7 @@ export function APIKeys({
         await mutate(`/api/w/${owner.sId}/keys`);
         setIsNewApiKeyPromptOpen(false);
         setNewApiKeyName("");
+        setIsNewApiKeyCreatedOpen(true);
       }
     );
 
@@ -308,6 +314,49 @@ export function APIKeys({
 
   return (
     <>
+      <Modal
+        isOpen={isNewApiKeyCreatedOpen}
+        title={"API Key Created"}
+        onClose={() => {
+          setIsNewApiKeyCreatedOpen(false);
+        }}
+        hasChanged={false}
+      >
+        <div className="mt-4">
+          <p className="text-sm text-gray-700">
+            Your API key will remain visible for 10 minutes only. <br />
+            You can use it to authenticate with the Dust API. <br />
+          </p>
+          <br />
+          <div className="mt-4">
+            <Page.H variant="h5">Workspace ID</Page.H>
+            <Page.Horizontal align="stretch">
+              <pre>{owner.sId}</pre>
+              <IconButton
+                tooltip="Copy to clipboard"
+                icon={ClipboardIcon}
+                onClick={() => {
+                  void navigator.clipboard.writeText(owner.sId);
+                }}
+              />
+            </Page.Horizontal>
+          </div>
+          <div className="mt-4">
+            <Page.H variant="h5">API Key</Page.H>
+            <Page.Horizontal align="stretch">
+              <pre>{keys[0]?.secret}</pre>
+              <IconButton
+                tooltip="Copy to clipboard"
+                icon={ClipboardIcon}
+                onClick={() => {
+                  void navigator.clipboard.writeText(keys[0]?.secret);
+                }}
+              />
+            </Page.Horizontal>
+          </div>
+        </div>
+      </Modal>
+
       <Dialog
         isOpen={isNewApiKeyPromptOpen}
         title="New API Key"
@@ -343,19 +392,24 @@ export function APIKeys({
           </DropdownMenu>
         </div> */}
       </Dialog>
-      <Page.SectionHeader
-        title="API Keys"
-        description="Keys used to communicate between your servers and Dust. Do not share them with anyone. Do not use them in client-side or browser code."
-        action={{
-          label: "Create API Key",
-          variant: "primary",
-          onClick: async () => {
-            setIsNewApiKeyPromptOpen(true);
-          },
-          icon: PlusIcon,
-          disabled: isGenerating || isRevoking,
-        }}
-      />
+      <Page.Horizontal align="stretch">
+        <div className="w-full" />
+        <Button
+          label="Read the API reference"
+          size="sm"
+          variant="secondary"
+          icon={BookOpenIcon}
+          onClick={() => {
+            window.open("https://docs.dust.tt/reference", "_blank");
+          }}
+        />
+        <Button
+          label="Create API Key"
+          icon={PlusIcon}
+          disabled={isGenerating || isRevoking}
+          onClick={() => setIsNewApiKeyPromptOpen(true)}
+        />
+      </Page.Horizontal>
       <div className="space-y-4 divide-y divide-gray-200">
         <ul role="list" className="pt-4">
           {keys
