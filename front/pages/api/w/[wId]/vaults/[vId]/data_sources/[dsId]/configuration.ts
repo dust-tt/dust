@@ -34,22 +34,13 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (typeof req.query.vId !== "string") {
+  const { dsId, vId } = req.query;
+  if (typeof dsId !== "string" || typeof vId !== "string") {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 400,
       api_error: {
-        type: "vault_not_found",
-        message: "The vault you requested was not found.",
-      },
-    });
-  }
-
-  if (!req.query.dsId || typeof req.query.dsId !== "string") {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        type: "invalid_request_error",
+        message: "Invalid path parameters.",
       },
     });
   }
