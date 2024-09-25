@@ -133,11 +133,6 @@ AgentTablesQueryConfigurationTable.init(
         fields: ["dataSourceViewId", "tableId", "tablesQueryConfigurationId"],
         name: "agent_tables_query_configuration_table_unique_dsv",
       },
-      {
-        unique: true,
-        fields: ["dataSourceId", "tableId", "tablesQueryConfigurationId"],
-        name: "agent_tables_query_configuration_table_unique_ds",
-      },
     ],
     sequelize: frontSequelize,
   }
