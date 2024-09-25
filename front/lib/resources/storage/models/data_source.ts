@@ -96,6 +96,7 @@ DataSourceModel.init(
       { fields: ["workspaceId", "connectorProvider"] },
       { fields: ["workspaceId", "vaultId"] },
     ],
+    paranoid: true,
   }
 );
 Workspace.hasMany(DataSourceModel, {
