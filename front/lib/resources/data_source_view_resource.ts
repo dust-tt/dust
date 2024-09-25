@@ -38,6 +38,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
+import { getWorkspaceByModelId } from "@app/lib/workspace";
 
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
@@ -511,11 +512,15 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     };
   }
 
-  toPokeJSON(): PokeDataSourceViewType {
+  async toPokeJSON(): Promise<PokeDataSourceViewType> {
+    const workspace = await getWorkspaceByModelId(this.workspaceId);
+
     return {
       ...this.toJSON(),
-      dataSource: this.dataSource.toPokeJSON(),
-      link: `${config.getClientFacingUrl()}/poke/${this.workspaceId}/vaults/${this.vault.sId}/data_source_views/${this.sId}`,
+      dataSource: await this.dataSource.toPokeJSON(),
+      link: workspace
+        ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/vaults/${this.vault.sId}/data_source_views/${this.sId}`
+        : null,
       name: `Data Source (${this.dataSource.name})`,
       vault: this.vault.toPokeJSON(),
     };

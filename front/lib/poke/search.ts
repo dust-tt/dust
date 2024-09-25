@@ -31,7 +31,7 @@ async function searchPokeResourcesBySId(
         return [];
       }
 
-      return [dataSourceView.toPokeJSON()];
+      return [await dataSourceView.toPokeJSON()];
 
     case "data_source":
       const dataSource = await DataSourceResource.fetchByNameOrId(auth, sId);
@@ -39,7 +39,7 @@ async function searchPokeResourcesBySId(
         return [];
       }
 
-      return [dataSource.toPokeJSON()];
+      return [await dataSource.toPokeJSON()];
 
     default:
       return [];

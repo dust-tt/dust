@@ -83,15 +83,19 @@ export function PokeSearchCommand() {
           )}
           {isError && <div className="p-4 text-sm">Something went wrong.</div>}
 
-          {results.map(({ id, link, name }) => {
-            return (
+          {results.map(({ id, link, name }) =>
+            link ? (
               <Link href={link} key={id}>
-                <PokeCommandItem key={id} value={name}>
+                <PokeCommandItem value={name}>
                   {name} (id: {id})
                 </PokeCommandItem>
               </Link>
-            );
-          })}
+            ) : (
+              <PokeCommandItem key={id} value={name}>
+                {name} (id: {id})
+              </PokeCommandItem>
+            )
+          )}
         </PokeCommandList>
       </PokeCommandDialog>
     </>
