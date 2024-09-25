@@ -54,7 +54,7 @@ impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
         Ok(TableSchemaColumn {
             name: col.name,
             value_type: col_type,
-            // TODO(@fontanierh): decide if we want possible values for remote DBs.
+            // TODO(SNOWFLAKE): decide if we want possible values for remote DBs.
             // We could potentially look at rows count and decide based on that.
             // Or have a cache specifically for this.
             possible_values: None,
@@ -222,7 +222,7 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
             }?;
         }
 
-        // TODO(@fontanierh): decide if we want to infer query result schema for remote DBs.
+        // TODO(SNOWFLAKE): decide if we want to infer query result schema for remote DBs.
         let schema = TableSchema::empty();
 
         Ok((all_rows, schema))
