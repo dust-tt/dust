@@ -35,7 +35,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       owner,
-      dataSourceView: dataSourceView.toPokeJSON(),
+      dataSourceView: await dataSourceView.toPokeJSON(),
     },
   };
 });
