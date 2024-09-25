@@ -3,9 +3,6 @@ import * as t from "io-ts";
 import { ContentNodeType } from "../../lib/connectors_api";
 
 export const ContentSchema = t.type({
-  // TODO(DATASOURCE_SID): remove `dataSource`
-  dataSource: t.string,
-  // server done
   dataSourceId: t.string,
   parentsIn: t.union([t.array(t.string), t.null]),
 });
