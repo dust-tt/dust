@@ -9,10 +9,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { isManaged } from "@app/lib/data_sources";
-import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
@@ -63,10 +61,11 @@ async function handler(
     return;
   }
 
-  const dustWorkspaceId = req.headers["x-dust-workspace-id"];
+  // Extract and validate headers necessary for user permission checks.
+  const userWorkspaceId = req.headers["x-dust-workspace-id"];
   const rawDustGroupIds = req.headers["x-dust-group-ids"];
   if (
-    typeof dustWorkspaceId !== "string" ||
+    typeof userWorkspaceId !== "string" ||
     typeof rawDustGroupIds !== "string"
   ) {
     return apiError(req, res, {
@@ -94,36 +93,16 @@ async function handler(
             });
           };
 
-          const {
-            data_source_id: dataSourceOrDataSourceViewId,
-            workspace_id: workspaceId,
-          } = req.query;
-          if (
-            typeof workspaceId !== "string" ||
-            typeof dataSourceOrDataSourceViewId !== "string"
-          ) {
-            return notFoundError();
-          }
-
-          const owner = await Workspace.findOne({
-            where: {
-              sId: workspaceId,
-            },
-          });
-          if (!owner || dustWorkspaceId !== owner.sId) {
+          const { data_source_id: dataSourceOrDataSourceViewId } = req.query;
+          if (typeof dataSourceOrDataSourceViewId !== "string") {
             return notFoundError();
           }
 
           const auth = await Authenticator.fromRegistrySecret({
             groupIds: dustGroupIds,
             secret,
-            workspaceId,
+            workspaceId: userWorkspaceId,
           });
-
-          const groups = await GroupResource.fetchByIds(auth, dustGroupIds);
-          if (groups.isErr()) {
-            return notFoundError();
-          }
 
           if (
             DataSourceViewResource.isDataSourceViewSId(
@@ -132,7 +111,6 @@ async function handler(
           ) {
             const dataSourceViewRes = await handleDataSourceView(
               auth,
-              groups.value,
               dataSourceOrDataSourceViewId
             );
             if (dataSourceViewRes.isErr()) {
@@ -141,7 +119,7 @@ async function handler(
                   dataSourceViewId: dataSourceOrDataSourceViewId,
                   err: dataSourceViewRes.error,
                   groups: dustGroupIds,
-                  workspaceId: dustWorkspaceId,
+                  workspaceId: userWorkspaceId,
                 },
                 "Failed to lookup data source view."
               );
@@ -153,7 +131,6 @@ async function handler(
           } else {
             const dataSourceRes = await handleDataSource(
               auth,
-              groups.value,
               dataSourceOrDataSourceViewId
             );
             if (dataSourceRes.isErr()) {
@@ -162,7 +139,7 @@ async function handler(
                   dataSourceId: dataSourceOrDataSourceViewId,
                   err: dataSourceRes.error,
                   groups: dustGroupIds,
-                  workspaceId: dustWorkspaceId,
+                  workspaceId: userWorkspaceId,
                 },
                 "Failed to lookup data source."
               );
@@ -197,7 +174,6 @@ export default withLogging(handler);
 
 async function handleDataSourceView(
   auth: Authenticator,
-  groups: GroupResource[],
   dataSourceViewId: string
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
   const dataSourceView = await DataSourceViewResource.fetchById(
@@ -230,9 +206,21 @@ async function handleDataSourceView(
 
 async function handleDataSource(
   auth: Authenticator,
-  groups: GroupResource[],
   dataSourceId: string
 ): Promise<Result<LookupDataSourceResponseBody, Error>> {
+  logger.info(
+    {
+      dataSource: {
+        id: dataSourceId,
+      },
+      workspace: {
+        id: auth.getNonNullableWorkspace().id,
+        sId: auth.getNonNullableWorkspace().sId,
+      },
+    },
+    "Looking up registry with data source id"
+  );
+
   const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,
     dataSourceId,
@@ -254,7 +242,7 @@ async function handleDataSource(
         globalVault
       );
 
-    return handleDataSourceView(auth, groups, dataSourceView[0].sId);
+    return handleDataSourceView(auth, dataSourceView[0].sId);
   }
 
   if (dataSource.canRead(auth)) {
