@@ -206,7 +206,7 @@ export function VisualizationActionIframe({
                       !isErrored ? "min-h-96" : ""
                     )}
                     src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}`}
-                    sandbox="allow-scripts allow-downloads"
+                    sandbox="allow-scripts"
                   />
                 </div>
               )}
