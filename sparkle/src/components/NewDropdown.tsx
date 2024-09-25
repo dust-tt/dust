@@ -14,7 +14,7 @@ import { classNames } from "@sparkle/lib/utils";
 export const menuStyleClasses = {
   inset: "s-pl-8",
   container: classNames(
-    "s-rounded-lg s-border s-border-structure-100 s-bg-white s-p-1 s-text-primary-950",
+    "s-rounded-lg s-border s-border-hovering s-bg-white s-p-1 s-text-primary-950",
     "s-z-50 s-min-w-[8rem] s-overflow-hidden",
     "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2"
   ),
@@ -28,7 +28,7 @@ export const menuStyleClasses = {
     span: "s-absolute s-left-2 s-flex s-h-3.5 s-w-3.5 s-items-center s-justify-center",
   },
   label: "s-font-regular s-px-2 s-py-2 s-text-sm s-text-primary-500",
-  separator: "-s-mx-1 s-my-1 s-h-px s-bg-structure-100",
+  separator: "-s-mx-1 s-my-1 s-h-px s-bg-separator",
   shortcut: "s-ml-auto s-text-xs s-tracking-widest s-text-primary-400",
 };
 

@@ -31,7 +31,7 @@ export function TabsDemo() {
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="account" label="Hello" icon={CommandIcon} />
         <TabsTrigger value="password" label="World" icon={LightbulbIcon} />
-        <TabsTrigger value="settings" icon={Cog6ToothIcon} />
+        <TabsTrigger value="password" icon={Cog6ToothIcon} />
       </TabsList>
       <TabsContent value="account">Hello</TabsContent>
       <TabsContent value="password">World</TabsContent>
