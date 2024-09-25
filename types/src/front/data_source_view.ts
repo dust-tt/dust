@@ -5,11 +5,8 @@ import {
   DataSourceType,
   DataSourceWithAgentsUsageType,
   EditedByUser,
-  PokeDataSourceType,
 } from "./data_source";
 import { BaseContentNode } from "./lib/connectors_api";
-import { PokeItemBase } from "./lib/poke";
-import { PokeVaultType } from "./vault";
 
 export interface DataSourceViewType {
   category: DataSourceViewCategory;
@@ -23,12 +20,6 @@ export interface DataSourceViewType {
   updatedAt: number;
   vaultId: string;
 }
-
-export type PokeDataSourceViewType = DataSourceViewType &
-  PokeItemBase & {
-    dataSource: PokeDataSourceType;
-    vault: PokeVaultType;
-  };
 
 export type DataSourceViewsWithDetails = DataSourceViewType & {
   dataSource: DataSourceType & ConnectorStatusDetails;
