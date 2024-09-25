@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::database::{HasValue, Row};
+use super::table::{HasValue, Row};
 use anyhow::{anyhow, Result};
 use chrono::prelude::DateTime;
 use itertools::Itertools;

@@ -12,7 +12,7 @@ use crate::{
         helpers::get_data_source_project_and_view_filter,
     },
     databases::{
-        database::{LocalTable, Table},
+        table::{LocalTable, Table},
         transient_database::get_unique_table_names_for_transient_database,
     },
     Rule,

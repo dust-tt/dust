@@ -2,10 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
 
-use crate::databases::{
-    database::{QueryDatabaseError, QueryResult},
-    table_schema::TableSchema,
-};
+use crate::databases::{error::QueryDatabaseError, table::QueryResult, table_schema::TableSchema};
 
 #[async_trait]
 pub trait RemoteDatabase {

@@ -10,7 +10,7 @@ use tracing::info;
 
 use crate::{
     databases::{
-        database::{QueryResult, Row, Table},
+        table::{QueryResult, Row, Table},
         transient_database::get_unique_table_names_for_transient_database,
     },
     databases_store::store::DatabasesStore,

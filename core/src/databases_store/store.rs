@@ -5,7 +5,7 @@ use bb8_postgres::PostgresConnectionManager;
 use serde_json::Value;
 use tokio_postgres::{types::ToSql, NoTls};
 
-use crate::{databases::database::Row, utils};
+use crate::{databases::table::Row, utils};
 
 #[async_trait]
 pub trait DatabasesStore {

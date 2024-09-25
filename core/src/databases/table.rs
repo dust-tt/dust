@@ -10,7 +10,6 @@ use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -28,16 +27,8 @@ impl ToString for TableType {
     }
 }
 
-#[derive(Debug, Error)]
-pub enum QueryDatabaseError {
-    #[error("{0}")]
-    GenericError(#[from] anyhow::Error),
-    #[error("Too many result rows")]
-    TooManyResultRows,
-    #[error("Result is too large: {0}")]
-    ResultTooLarge(String),
-    #[error("Query execution error: {0}")]
-    ExecutionError(String),
+pub fn get_table_unique_id(project: &Project, data_source_id: &str, table_id: &str) -> String {
+    format!("{}__{}__{}", project.project_id(), data_source_id, table_id)
 }
 
 #[derive(Debug, Serialize, Clone, Deserialize)]
@@ -58,10 +49,6 @@ pub struct Table {
 
     remote_database_table_id: Option<String>,
     remote_database_secret_id: Option<String>,
-}
-
-pub fn get_table_unique_id(project: &Project, data_source_id: &str, table_id: &str) -> String {
-    format!("{}__{}__{}", project.project_id(), data_source_id, table_id)
 }
 
 impl Table {
