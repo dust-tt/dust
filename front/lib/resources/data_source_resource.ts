@@ -4,7 +4,7 @@ import type {
   ModelId,
   Result,
 } from "@dust-tt/types";
-import { Err, formatUserFullName, Ok } from "@dust-tt/types";
+import { Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -33,46 +33,10 @@ import logger from "@app/logger/logger";
 import { DataSourceViewModel } from "./storage/models/data_source_view";
 
 export type FetchDataSourceOrigin =
-  | "labs_transcripts_resource"
   | "document_tracker"
-  | "post_upsert_hook_helper"
-  | "post_upsert_hook_activities"
-  | "lib_api_get_data_source"
-  | "cli_delete"
-  | "cli_delete_document"
   | "vault_patch_content"
   | "data_source_view_create"
-  | "poke_data_sources"
-  | "poke_data_sources_page"
-  | "poke_data_sources_page_search"
-  | "poke_data_sources_page_view"
-  | "poke_data_sources_search"
-  | "poke_data_sources_config"
-  | "poke_data_sources_documents"
-  | "poke_data_sources_permissions"
-  | "upsert_queue_activities"
   | "registry_lookup"
-  | "data_source_get_or_post"
-  | "data_source_managed_update"
-  | "vault_data_source_config"
-  | "vault_patch_or_delete_data_source"
-  | "vault_data_source_documents"
-  | "data_source_get_documents"
-  | "data_source_configuration"
-  | "data_source_get_document_by_id"
-  | "data_source_managed_config"
-  | "data_source_managed_permissions"
-  | "data_source_managed_slack"
-  | "data_source_search"
-  | "data_source_tables"
-  | "data_source_tables_table"
-  | "data_source_tables_csv"
-  | "data_source_builder_edit_public_url"
-  | "data_source_builder_index"
-  | "data_source_builder_search"
-  | "data_source_builder_settings"
-  | "data_source_builder_upsert"
-  | "data_source_builder_tables_upsert"
   | "v1_data_sources_search"
   | "v1_data_sources_documents"
   | "v1_data_sources_documents_document_get_or_upsert"
@@ -174,6 +138,21 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     });
   }
 
+  static async fetchById(
+    auth: Authenticator,
+    id: string,
+    options?: Omit<FetchDataSourceOptions, "limit" | "order">
+  ): Promise<DataSourceResource | null> {
+    const [dataSource] = await DataSourceResource.fetchByIds(
+      auth,
+      [id],
+      options
+    );
+
+    return dataSource ?? null;
+  }
+
+  // TODO(DATASOURCE_SID): remove
   static async fetchByNameOrId(
     auth: Authenticator,
     nameOrId: string,
@@ -295,6 +274,18 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
         id: ids,
       },
     });
+  }
+
+  static async fetchByIds(
+    auth: Authenticator,
+    ids: string[],
+    options?: Omit<FetchDataSourceOptions, "limit" | "order">
+  ) {
+    return DataSourceResource.fetchByModelIds(
+      auth,
+      removeNulls(ids.map(getResourceIdFromSId)),
+      options
+    );
   }
 
   static async listByWorkspace(
