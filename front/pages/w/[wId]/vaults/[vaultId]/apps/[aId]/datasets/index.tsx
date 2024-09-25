@@ -9,10 +9,7 @@ import { useRouter } from "next/router";
 import { useContext } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
-import {
-  subNavigationApp,
-  subNavigationBuild,
-} from "@app/components/navigation/config";
+import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getDatasets } from "@app/lib/api/datasets";
@@ -96,10 +93,7 @@ export default function DatasetsView({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationBuild({
-        owner,
-        current: "developers",
-      })}
+      hideSidebar
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={app.name}
@@ -108,7 +102,6 @@ export default function DatasetsView({
           }}
         />
       }
-      hideSidebar
     >
       <div className="flex w-full flex-col">
         <Tab

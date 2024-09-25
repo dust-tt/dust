@@ -18,10 +18,7 @@ import { useSWRConfig } from "swr";
 import Deploy from "@app/components/app/Deploy";
 import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
-import {
-  subNavigationApp,
-  subNavigationBuild,
-} from "@app/components/navigation/config";
+import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import config from "@app/lib/api/config";
@@ -318,10 +315,6 @@ export default function AppView({
       subscription={subscription}
       hideSidebar
       owner={owner}
-      subNavigation={subNavigationBuild({
-        owner,
-        current: "developers",
-      })}
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={app.name}

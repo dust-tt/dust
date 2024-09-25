@@ -57,7 +57,6 @@ import {
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { useSlackChannel } from "@app/components/assistant_builder/useSlackChannels";
 import { useTemplate } from "@app/components/assistant_builder/useTemplate";
-import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import {
   AppLayoutSimpleCloseTitle,
@@ -402,10 +401,6 @@ export default function AssistantBuilder({
         hideSidebar
         isWideMode
         owner={owner}
-        subNavigation={subNavigationBuild({
-          owner,
-          current: "workspace_assistants",
-        })}
         titleChildren={
           !edited ? (
             <AppLayoutSimpleCloseTitle

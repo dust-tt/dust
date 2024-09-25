@@ -10,10 +10,7 @@ import { useContext, useState } from "react";
 import { useEffect } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
-import {
-  subNavigationApp,
-  subNavigationBuild,
-} from "@app/components/navigation/config";
+import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -163,10 +160,7 @@ export default function SettingsView({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationBuild({
-        owner,
-        current: "developers",
-      })}
+      hideSidebar
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={app.name}
@@ -175,7 +169,6 @@ export default function SettingsView({
           }}
         />
       }
-      hideSidebar
     >
       <div className="flex w-full flex-col">
         <Tab
