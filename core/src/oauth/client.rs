@@ -13,7 +13,12 @@ lazy_static! {
 pub struct OauthClient {}
 
 impl OauthClient {
-    pub async fn get_credential(credential_id: &str) -> Result<(CredentialProvider, String)> {
+    pub async fn get_credential(
+        credential_id: &str,
+    ) -> Result<(
+        CredentialProvider,
+        serde_json::Map<String, serde_json::Value>,
+    )> {
         let res = reqwest::Client::new()
             .get(format!("{}/credentials/{}", *OAUTH_API, credential_id))
             .header("Content-Type", "application/json")
@@ -25,11 +30,15 @@ impl OauthClient {
             200 => {
                 let body = res.text().await?;
                 let json = serde_json::from_str::<serde_json::Value>(&body)?;
-                let content = json["content"].to_string();
                 let provider =
                     CredentialProvider::from_str(&json["provider"].as_str().ok_or_else(|| {
                         anyhow!("Invalid response from `oauth`: missing provider")
                     })?)?;
+
+                let content = serde_json::from_value::<serde_json::Map<String, serde_json::Value>>(
+                    json["content"].clone(),
+                )
+                .map_err(|e| anyhow!("Failed to parse content: {}", e))?;
 
                 Ok((provider, content))
             }
