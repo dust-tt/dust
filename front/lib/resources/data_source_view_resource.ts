@@ -397,19 +397,6 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
     try {
-      // Delete agent configurations elements pointing to this data source view.
-      await AgentDataSourceConfiguration.destroy({
-        where: {
-          dataSourceViewId: this.id,
-        },
-        transaction,
-      });
-      await AgentTablesQueryConfigurationTable.destroy({
-        where: {
-          dataSourceViewId: this.id,
-        },
-      });
-
       await this.model.destroy({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -422,6 +409,32 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     } catch (err) {
       return new Err(err as Error);
     }
+  }
+
+  async destroy(auth: Authenticator, transaction?: Transaction) {
+    // Delete agent configurations elements pointing to this data source view.
+    await AgentDataSourceConfiguration.destroy({
+      where: {
+        dataSourceViewId: this.id,
+      },
+      transaction,
+    });
+    await AgentTablesQueryConfigurationTable.destroy({
+      where: {
+        dataSourceViewId: this.id,
+      },
+    });
+
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: this.id,
+      },
+      transaction,
+      // Use 'force: true' to ensure the record is permanently deleted from the database,
+      // bypassing the soft deletion in place.
+      force: true,
+    });
   }
 
   // This method can only be used once all agent configurations have been deleted. Otherwise use the

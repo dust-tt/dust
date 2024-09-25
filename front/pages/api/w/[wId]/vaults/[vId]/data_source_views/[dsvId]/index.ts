@@ -114,17 +114,8 @@ async function handler(
         });
       }
 
-      const deleteResult = await dataSourceView.delete(auth);
-
-      if (deleteResult.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "The data source view cannot be updated.",
-          },
-        });
-      }
+      // Directly, hard delete the data source view.
+      await dataSourceView.destroy(auth);
 
       res.status(204).end();
       return;

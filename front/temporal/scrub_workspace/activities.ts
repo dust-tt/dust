@@ -153,6 +153,7 @@ async function deleteDatasources(auth: Authenticator) {
   // First, we delete all the data source views.
   const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
   for (const dataSourceView of dataSourceViews) {
+    // Soft delete the data source view.
     const r = await dataSourceView.delete(auth);
     if (r.isErr()) {
       throw new Error(`Failed to delete data source view: ${r.error.message}`);
