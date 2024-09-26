@@ -35,4 +35,4 @@ export type ResourceFindOptions<M extends Model> = {
   where?: WhereOptions<M>;
 } & (M extends SoftDeletableModel
   ? { includeDeleted?: boolean }
-  : { inckldedDeleted?: never });
+  : { includeDeleted?: never });
