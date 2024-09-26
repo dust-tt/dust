@@ -244,7 +244,7 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         self._get_tables_used_by_query(&session, query).await
     }
 
-    async fn execute_query(
+    async fn authorize_and_execute_query(
         &self,
         tables: &Vec<Table>,
         query: &str,

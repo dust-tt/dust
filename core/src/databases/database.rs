@@ -50,7 +50,7 @@ pub async fn execute_query(
             e
         ))),
         Ok(TableType::Remote(credential_id)) => match get_remote_database(&credential_id).await {
-            Ok(remote_db) => remote_db.execute_query(&tables, query).await,
+            Ok(remote_db) => remote_db.authorize_and_execute_query(&tables, query).await,
             Err(e) => Err(QueryDatabaseError::GenericError(anyhow!(
                 "Failed to get remote database: {}",
                 e
