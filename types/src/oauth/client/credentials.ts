@@ -35,3 +35,30 @@ export async function postConnectionCredentials({
 
   return res;
 }
+
+export async function getConnectionCredentials({
+  config,
+  logger,
+  credentialsId,
+}: {
+  config: { url: string; apiKey: string | null };
+  logger: LoggerInterface;
+  credentialsId: string;
+}): Promise<
+  Result<
+    {
+      credentials: ConnectionCredentials;
+    },
+    OAuthAPIError
+  >
+> {
+  const res = await new OAuthAPI(config, logger).getCredentials({
+    credentialsId,
+  });
+
+  if (res.isErr()) {
+    return res;
+  }
+
+  return res;
+}

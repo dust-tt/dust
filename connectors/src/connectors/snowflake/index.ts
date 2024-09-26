@@ -5,9 +5,13 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
+import { Err, getConnectionCredentials, Ok } from "@dust-tt/types";
 
 import { BaseConnectorManager } from "@connectors/connectors/interface";
+import { testConnection } from "@connectors/connectors/snowflake/lib/snowflake_api";
+import { apiConfig } from "@connectors/lib/api/config";
 import mainLogger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({
@@ -22,8 +26,41 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
   }): Promise<Result<string, Error>> {
-    logger.info({ dataSourceConfig, connectionId }, "To be implemented");
-    throw new Error("Method not implemented.");
+    // For snowflake the connectionId is actually the credentialsId saved in OAuth db.
+    const credentialsId = connectionId;
+
+    // First we retrieve the credentials from OAuth service.
+    const credentialsRes = await getConnectionCredentials({
+      config: apiConfig.getOAuthAPIConfig(),
+      logger,
+      credentialsId,
+    });
+    if (credentialsRes.isErr()) {
+      return new Err(Error("Failed to retrieve credentials"));
+    }
+    const credentials = credentialsRes.value.credentials;
+
+    // Then we test the connection is successful.
+    const connection = await testConnection({ credentials });
+    if (connection.isErr()) {
+      return new Err(connection.error);
+    }
+
+    // We can create the connector.
+    const snowflakeConfigBlob = {};
+    const connector = await ConnectorResource.makeNew(
+      "snowflake",
+      {
+        connectionId,
+        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+      },
+      snowflakeConfigBlob
+    );
+
+    // TODO(SNOWFLAKE): Launch Sync Workflow.
+    return new Ok(connector.id.toString());
   }
 
   async update({
