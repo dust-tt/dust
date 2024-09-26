@@ -12,13 +12,13 @@ export function PokePermissionTree({
   dataSource,
   permissionFilter,
   showExpand,
-  displayDocumentSource,
+  onDocumentViewClick,
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
   permissionFilter?: ConnectorPermission;
   showExpand?: boolean;
-  displayDocumentSource: (documentId: string) => void;
+  onDocumentViewClick: (documentId: string) => void;
 }) {
   const useResourcesHook = (parentId: string | null) =>
     usePokeConnectorPermissions({
@@ -32,7 +32,7 @@ export function PokePermissionTree({
     <div className="overflow-x-auto">
       <ContentNodeTree
         showExpand={showExpand}
-        displayDocumentSource={displayDocumentSource}
+        onDocumentViewClick={onDocumentViewClick}
         useResourcesHook={useResourcesHook}
         isSearchEnabled={false}
       />

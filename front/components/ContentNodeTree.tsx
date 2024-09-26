@@ -32,9 +32,7 @@ type TreeSelectionModelUpdater = (
 ) => Record<string, ContentNodeTreeNodeStatus>;
 
 type ContextType = {
-  // Custom function to determine if a node is checked.
-  // This is used to override the default behavior of checking if a node has read or read_write permissions.
-  displayDocumentSource?: (documentId: string) => void;
+  onDocumentViewClick?: (documentId: string) => void;
   showExpand?: boolean;
   useResourcesHook: UseResourcesHook;
   treeSelectionModel?: Record<string, ContentNodeTreeNodeStatus>;
@@ -84,7 +82,7 @@ function ContentNodeTreeChildren({
   breadcrumb,
   parentId,
 }: ContentNodeTreeChildrenProps) {
-  const { displayDocumentSource, treeSelectionModel, setTreeSelectionModel } =
+  const { onDocumentViewClick, treeSelectionModel, setTreeSelectionModel } =
     useContentNodeTreeContext();
 
   const [search, setSearch] = useState("");
@@ -200,13 +198,13 @@ function ContentNodeTreeChildren({
                   disabled={!n.sourceUrl}
                   variant="tertiary"
                 />
-                {displayDocumentSource && (
+                {onDocumentViewClick && (
                   <IconButton
                     size="xs"
                     icon={BracesIcon}
                     onClick={() => {
                       if (n.dustDocumentId) {
-                        displayDocumentSource(n.dustDocumentId);
+                        onDocumentViewClick(n.dustDocumentId);
                       }
                     }}
                     className={classNames(
@@ -289,7 +287,7 @@ function ContentNodeTreeChildren({
 interface ContentNodeTreeProps {
   isSearchEnabled?: boolean;
   isRoundedBackground?: boolean;
-  displayDocumentSource?: (documentId: string) => void;
+  onDocumentViewClick?: (documentId: string) => void;
   customIsNodeChecked?: (node: BaseContentNode) => boolean;
   showExpand?: boolean;
   useResourcesHook: UseResourcesHook;
@@ -301,7 +299,7 @@ export function ContentNodeTree({
   isSearchEnabled,
   isRoundedBackground,
   useResourcesHook,
-  displayDocumentSource,
+  onDocumentViewClick,
   treeSelectionModel,
   setTreeSelectionModel,
   showExpand,
@@ -314,7 +312,7 @@ export function ContentNodeTree({
           useResourcesHook,
           treeSelectionModel,
           setTreeSelectionModel,
-          displayDocumentSource,
+          onDocumentViewClick,
         }}
       >
         <ContentNodeTreeChildren

@@ -439,7 +439,7 @@ function DataSourceViewsSection({
                 <DataSourceViewPermissionTree
                   owner={owner}
                   dataSourceView={dataSourceView}
-                  displayDocumentSource={(documentId: string) => {
+                  onDocumentViewClick={(documentId: string) => {
                     setDataSourceViewToDisplay(dataSourceView);
                     setDocumentToDisplay(documentId);
                   }}
@@ -533,7 +533,7 @@ function DataSourceViewSelectedNodes({
             owner={owner}
             dataSourceView={dataSourceView}
             parentId={node.internalId}
-            displayDocumentSource={(documentId: string) => {
+            onDocumentViewClick={(documentId: string) => {
               setDataSourceViewToDisplay(dataSourceView);
               setDocumentToDisplay(documentId);
             }}

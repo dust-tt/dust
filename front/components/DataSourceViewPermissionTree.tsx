@@ -11,7 +11,7 @@ import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 
 interface DataSourceViewPermissionTreeProps {
   dataSourceView: DataSourceViewType;
-  displayDocumentSource: (documentId: string) => void;
+  onDocumentViewClick: (documentId: string) => void;
   isSearchEnabled?: boolean;
   isRoundedBackground?: boolean;
   owner: LightWorkspaceType;
@@ -32,7 +32,7 @@ export function DataSourceViewPermissionTree({
   isSearchEnabled,
   isRoundedBackground,
   owner,
-  displayDocumentSource,
+  onDocumentViewClick,
   showExpand,
   viewType,
   treeSelectionModel,
@@ -56,7 +56,7 @@ export function DataSourceViewPermissionTree({
     <ContentNodeTree
       isSearchEnabled={isSearchEnabled}
       isRoundedBackground={isRoundedBackground}
-      displayDocumentSource={displayDocumentSource}
+      onDocumentViewClick={onDocumentViewClick}
       showExpand={showExpand}
       useResourcesHook={useResourcesHook}
       treeSelectionModel={treeSelectionModel}

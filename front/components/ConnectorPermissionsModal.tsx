@@ -423,7 +423,7 @@ export function ConnectorPermissionsModal({
 
   const initialTreeSelectionModel = useMemo(
     () =>
-      allSelectedResources.reduce(
+      allSelectedResources.reduce<Record<string, ContentNodeTreeNodeStatus>>(
         (acc, r) => ({
           ...acc,
           [r.internalId]: {
@@ -432,7 +432,7 @@ export function ConnectorPermissionsModal({
             parents: r.parentInternalIds || [],
           },
         }),
-        {} as Record<string, ContentNodeTreeNodeStatus>
+        {}
       ),
     [allSelectedResources]
   );
@@ -513,7 +513,7 @@ export function ConnectorPermissionsModal({
     setSaving(false);
   }
 
-  const unchanged = useMemo(
+  const isUnchanged = useMemo(
     () =>
       Object.values(treeSelectionModel)
         .filter((item) => item.isSelected)
@@ -574,7 +574,7 @@ export function ConnectorPermissionsModal({
         saveLabel="Save"
         savingLabel="Saving..."
         isSaving={saving}
-        hasChanged={!unchanged}
+        hasChanged={!isUnchanged}
         className="flex"
         variant="side-md"
       >
@@ -620,7 +620,7 @@ export function ConnectorPermissionsModal({
             }}
           />
           <ContentNodeTree
-            displayDocumentSource={(documentId: string) => {
+            onDocumentViewClick={(documentId: string) => {
               setDocumentToDisplay(documentId);
             }}
             isSearchEnabled={
