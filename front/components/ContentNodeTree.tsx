@@ -305,24 +305,22 @@ export function ContentNodeTree({
   showExpand,
 }: ContentNodeTreeProps) {
   return (
-    <>
-      <ContentNodeTreeContextProvider
-        value={{
-          showExpand,
-          useResourcesHook,
-          treeSelectionModel,
-          setTreeSelectionModel,
-          onDocumentViewClick,
-        }}
-      >
-        <ContentNodeTreeChildren
-          isSearchEnabled={isSearchEnabled}
-          isRoundedBackground={isRoundedBackground}
-          parentId={null}
-          parentIsSelected={false}
-          breadcrumb={[]}
-        />
-      </ContentNodeTreeContextProvider>
-    </>
+    <ContentNodeTreeContextProvider
+      value={{
+        showExpand,
+        useResourcesHook,
+        treeSelectionModel,
+        setTreeSelectionModel,
+        onDocumentViewClick,
+      }}
+    >
+      <ContentNodeTreeChildren
+        isSearchEnabled={isSearchEnabled}
+        isRoundedBackground={isRoundedBackground}
+        parentId={null}
+        parentIsSelected={false}
+        breadcrumb={[]}
+      />
+    </ContentNodeTreeContextProvider>
   );
 }

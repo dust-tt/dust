@@ -532,7 +532,7 @@ const DataSourcePage = ({
               <PokePermissionTree
                 owner={owner}
                 dataSource={dataSource}
-                displayDocumentSource={onDisplayDocumentSource}
+                onDocumentViewClick={onDisplayDocumentSource}
                 permissionFilter="read"
               />
             )}

@@ -117,7 +117,7 @@ export default function DataSourceSelectionSection({
                       owner={owner}
                       dataSourceView={dsConfig.dataSourceView}
                       parentId={null}
-                      displayDocumentSource={(documentId: string) => {
+                      onDocumentViewClick={(documentId: string) => {
                         setDataSourceViewToDisplay(dsConfig.dataSourceView);
                         setDocumentToDisplay(documentId);
                       }}
@@ -176,7 +176,7 @@ export default function DataSourceSelectionSection({
                           owner={owner}
                           dataSourceView={dsConfig.dataSourceView}
                           parentId={node.internalId}
-                          displayDocumentSource={(documentId: string) => {
+                          onDocumentViewClick={(documentId: string) => {
                             setDataSourceViewToDisplay(dsConfig.dataSourceView);
                             setDocumentToDisplay(documentId);
                           }}
