@@ -86,11 +86,11 @@ type VaultResourcesListProps = {
 const getTableColumns = ({
   isManaged,
   isWebsite,
-  isSystemVault,
+  vault,
 }: {
   isManaged: boolean;
   isWebsite: boolean;
-  isSystemVault: boolean;
+  vault: VaultType;
 }) => {
   const nameColumn: ColumnDef<RowData, string> = {
     header: "Name",
@@ -104,12 +104,14 @@ const getTableColumns = ({
     ),
   };
 
+  const isGlobalOrSystemVault = ["global", "system"].includes(vault.kind);
+
   const managedByColumn = {
     header: "Managed by",
     accessorFn: (row: RowData) =>
-      (row.dataSourceView.kind === "default"
+      isGlobalOrSystemVault
         ? row.dataSourceView.dataSource.editedByUser?.imageUrl
-        : row.dataSourceView.editedByUser?.imageUrl) ?? "",
+        : row.dataSourceView.editedByUser?.imageUrl,
     meta: {
       width: "6rem",
     },
@@ -117,7 +119,9 @@ const getTableColumns = ({
     accessorKey: "managedBy",
     cell: (info: CellContext<RowData, string>) => {
       const dsv = info.row.original.dataSourceView;
-      const editedByUser = dsv.dataSource.editedByUser ?? dsv.editedByUser;
+      const editedByUser = isGlobalOrSystemVault
+        ? dsv.dataSource.editedByUser
+        : dsv.editedByUser;
 
       return (
         <DataTable.CellContent
@@ -224,7 +228,7 @@ const getTableColumns = ({
     },
   };
 
-  if (isSystemVault && isManaged) {
+  if (vault.kind === "system" && isManaged) {
     return [
       nameColumn,
       usedByColumn,
@@ -485,7 +489,7 @@ export const VaultResourcesList = ({
           columns={getTableColumns({
             isManaged: isManagedCategory,
             isWebsite: isWebsite,
-            isSystemVault,
+            vault,
           })}
           filter={dataSourceSearch}
           filterColumn="name"
