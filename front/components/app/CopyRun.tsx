@@ -16,7 +16,6 @@ interface CopyRunProps {
   owner: WorkspaceType;
   run: RunType;
   spec: SpecificationType;
-  url: string;
 }
 
 export default function CopyRun({
@@ -25,7 +24,6 @@ export default function CopyRun({
   owner,
   run,
   spec,
-  url,
 }: CopyRunProps) {
   const [open, setOpen] = useState(false);
 
@@ -106,7 +104,6 @@ export default function CopyRun({
                         inputs={inputs}
                         owner={owner}
                         run={run}
-                        url={url}
                       />
                     </div>
                   </div>

@@ -209,7 +209,6 @@ export default function AppRun({
                 app={app}
                 run={run}
                 disabled={false}
-                url={"test"}
                 spec={spec}
               />
             </p>
