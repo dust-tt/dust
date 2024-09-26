@@ -16,6 +16,7 @@ export const testConnection = async ({
 
   try {
     const conn = await connectToSnowflake(connection);
+    // TODO(SNOWFLAKE): Improve checks: we want to make sure we have read and read-only access.
     const rows = await executeQuery(conn, "SHOW DATABASES");
 
     if (!rows || rows.length === 0) {
