@@ -175,9 +175,9 @@ export function CreateConnectionSnowflakeModal({
                   variant="primary"
                   size="md"
                   icon={CloudArrowLeftRightIcon}
-                  onClick={async () => {
+                  onClick={() => {
                     setIsLoading(true);
-                    await createSnowflakeConnection();
+                    void createSnowflakeConnection();
                   }}
                   disabled={isLoading || !areCredentialsValid()}
                   label={

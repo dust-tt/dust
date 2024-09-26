@@ -253,9 +253,9 @@ export const AddConnectionMenu = ({
                   integration: prev.integration,
                 }))
               }
-              onConfirm={async () => {
+              onConfirm={() => {
                 if (showConfirmConnection.integration) {
-                  await handleEnableManagedDataSource(
+                  void handleEnableManagedDataSource(
                     connectorProvider,
                     integration.setupWithSuffix
                   );
