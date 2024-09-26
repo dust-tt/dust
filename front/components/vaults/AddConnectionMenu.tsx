@@ -26,7 +26,8 @@ import {
   isConnectionIdRequiredForProvider,
   isConnectorProviderAllowedForPlan,
 } from "@app/lib/connector_providers";
-import type { PostManagedDataSourceRequestBody } from "@app/pages/api/w/[wId]/data_sources/managed";
+import { useSystemVault } from "@app/lib/swr/vaults";
+import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 export type DataSourceIntegration = {
   connectorProvider: ConnectorProvider;
@@ -101,6 +102,10 @@ export const AddConnectionMenu = ({
       isConnectionIdRequiredForProvider(i.connectorProvider)
   );
 
+  const { systemVault } = useSystemVault({
+    workspaceId: owner.sId,
+  });
+
   const handleEnableManagedDataSource = async (
     provider: ConnectorProvider,
     suffix: string | null
@@ -124,8 +129,8 @@ export const AddConnectionMenu = ({
         suffix
           ? `/api/w/${
               owner.sId
-            }/data_sources/managed?suffix=${encodeURIComponent(suffix)}`
-          : `/api/w/${owner.sId}/data_sources/managed`,
+            }/vaults/${systemVault?.sId}/data_sources?suffix=${encodeURIComponent(suffix)}`
+          : `/api/w/${owner.sId}/vaults/${systemVault?.sId}/data_sources`,
         {
           method: "POST",
           headers: {
@@ -136,7 +141,7 @@ export const AddConnectionMenu = ({
             connectionId: connectionIdRes.value,
             name: undefined,
             configuration: null,
-          } satisfies PostManagedDataSourceRequestBody),
+          } satisfies PostDataSourceRequestBody),
         }
       );
 

@@ -74,6 +74,10 @@ const PostDataSourceRequestBodySchema = t.union([
   PostDataSourceWithProviderRequestBodySchema,
 ]);
 
+export type PostDataSourceRequestBody = t.TypeOf<
+  typeof PostDataSourceRequestBodySchema
+>;
+
 export type PostVaultDataSourceResponseBody = {
   dataSource: DataSourceType;
   dataSourceView: DataSourceViewType;
