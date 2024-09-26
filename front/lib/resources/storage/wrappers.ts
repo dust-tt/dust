@@ -1,4 +1,4 @@
-import {
+import type {
   Attributes,
   CountWithOptions,
   CreationOptional,
@@ -7,13 +7,11 @@ import {
   GroupedCountResultItem,
   InferAttributes,
   InferCreationAttributes,
-  Model,
   ModelStatic,
-  NonNullFindOptions,
-  Op,
   UpdateOptions,
   WhereOptions,
 } from "sequelize";
+import { Model, Op } from "sequelize";
 
 export type ModelStaticSoftDeletable<M extends SoftDeletableModel> =
   ModelStatic<M> & {
@@ -138,8 +136,7 @@ export class SoftDeletableModel<M extends Model = any> extends Model<
     options?: WithIncludeDeleted<CountWithOptions>
   ): Promise<number | GroupedCountResultItem[]> {
     if (options?.includeDeleted) {
-      const { includeDeleted, ...sequelizeOptions } = options;
-      return super.count(sequelizeOptions);
+      return super.count(options);
     }
 
     const whereClause: WhereOptions<M & any> = {

@@ -1,19 +1,12 @@
 import type { DataSourceViewKind } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
-import { ResourceFindOptions } from "@app/lib/resources/types";
 import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
 export class DataSourceViewModel extends SoftDeletableModel<DataSourceViewModel> {

@@ -1,4 +1,3 @@
-import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 import type {
   FindOptions,
   Model,
@@ -6,6 +5,8 @@ import type {
   NonAttribute,
   WhereOptions,
 } from "sequelize";
+
+import type { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
 export type NonAttributeKeys<M> = {
   [K in keyof M]: M[K] extends NonAttribute<Model<any, any>> ? K : never;
@@ -32,4 +33,6 @@ export type ResourceFindOptions<M extends Model> = {
   limit?: number;
   order?: FindOptions<M>["order"];
   where?: WhereOptions<M>;
-} & (M extends SoftDeletableModel ? { includeDeleted?: boolean } : {});
+} & (M extends SoftDeletableModel
+  ? { includeDeleted?: boolean }
+  : { inckldedDeleted?: never });

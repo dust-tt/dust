@@ -1,13 +1,6 @@
 import type { ConnectorProvider } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  DestroyOptions,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";

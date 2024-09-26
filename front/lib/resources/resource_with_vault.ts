@@ -2,8 +2,6 @@ import type {
   Attributes,
   ForeignKey,
   Includeable,
-  InferAttributes,
-  InferCreationAttributes,
   ModelStatic,
   NonAttribute,
   WhereOptions,
@@ -18,14 +16,14 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { VaultModel } from "@app/lib/resources/storage/models/vaults";
 import type {
+  ModelStaticSoftDeletable,
+  SoftDeletableModel,
+} from "@app/lib/resources/storage/wrappers";
+import type {
   InferIncludeType,
   ResourceFindOptions,
 } from "@app/lib/resources/types";
 import { VaultResource } from "@app/lib/resources/vault_resource";
-import {
-  ModelStaticSoftDeletable,
-  SoftDeletableModel,
-} from "@app/lib/resources/storage/wrappers";
 
 // Interface to enforce workspaceId and vaultId.
 interface ModelWithVault extends ResourceWithId {
