@@ -1,4 +1,4 @@
-import { Button, Dialog, DropdownMenu, LockIcon } from "@dust-tt/sparkle";
+import { Button, Dialog, DropdownMenu } from "@dust-tt/sparkle";
 import type {
   APIError,
   DataSourceViewContentNode,
