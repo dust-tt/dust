@@ -14,6 +14,7 @@ import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { isWebsite } from "@app/lib/data_sources";
 import {
   RetrievalDocument,
   RetrievalDocumentChunk,
@@ -164,20 +165,25 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
 
   // Helpers.
   getSourceUrl(auth: Authenticator): string | null {
+    // Prevent users from accessing document contents of a public data source
+    // not associated with their workspace, unless it's a website.
+    const { vault, workspaceId, dataSource } = this.dataSourceView || {};
+    const userWorkspaceId = auth.getNonNullableWorkspace().id;
+
+    if (
+      vault?.isPublic() &&
+      workspaceId !== userWorkspaceId &&
+      dataSource &&
+      !isWebsite(dataSource)
+    ) {
+      return null;
+    }
+
     if (this.sourceUrl) {
       return this.sourceUrl;
     }
 
     if (!this.dataSourceView) {
-      return null;
-    }
-
-    // Prevents users from accessing the document contents of a public data source
-    // that is not associated with their current workspace.
-    const isExternalPublicDataSource =
-      this.dataSourceView.vault.isPublic() &&
-      this.dataSourceView.workspaceId !== auth.getNonNullableWorkspace().id;
-    if (isExternalPublicDataSource) {
       return null;
     }
 
