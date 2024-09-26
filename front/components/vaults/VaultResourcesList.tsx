@@ -117,8 +117,8 @@ const getTableColumns = ({
     accessorKey: "managedBy",
     cell: (info: CellContext<RowData, string>) => {
       const dsv = info.row.original.dataSourceView;
-      const editedByUser =
-        dsv.kind === "default" ? dsv.dataSource.editedByUser : dsv.editedByUser;
+      const editedByUser = dsv.dataSource.editedByUser ?? dsv.editedByUser;
+
       return (
         <DataTable.CellContent
           avatarUrl={info.getValue()}
