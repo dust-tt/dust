@@ -15,6 +15,22 @@ import React from "react";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
+const unselectedChildren = (
+  selection: Record<string, ContentNodeTreeItemStatus>,
+  node: BaseContentNode
+) =>
+  Object.entries(selection).reduce((acc, [k, v]) => {
+    const shouldUnselect = v.parents.includes(node.internalId);
+    return {
+      ...acc,
+      [k]: {
+        ...v,
+        parents: shouldUnselect ? [] : v.parents,
+        isSelected: v.isSelected && !shouldUnselect,
+      },
+    };
+  }, {});
+
 export type UseResourcesHook = (parentId: string | null) => {
   resources: BaseContentNode[];
   isResourcesLoading: boolean;
@@ -161,19 +177,7 @@ function ContentNodeTreeChildren({
                           // Handle clicking on partial : unselect all selected children
                           setSelectedNodes((prev) => {
                             return {
-                              ...Object.entries(prev).reduce((acc, [k, v]) => {
-                                const shouldUnselect = v.parents.includes(
-                                  n.internalId
-                                );
-                                return {
-                                  ...acc,
-                                  [k]: {
-                                    ...v,
-                                    parents: shouldUnselect ? [] : v.parents,
-                                    isSelected: v.isSelected && !shouldUnselect,
-                                  },
-                                };
-                              }, {}),
+                              ...unselectedChildren(prev, n),
                               [n.internalId]: {
                                 isSelected: true,
                                 node: n,
@@ -311,13 +315,36 @@ function ContentNodeTreeChildren({
 }
 
 interface ContentNodeTreeProps {
-  customIsNodeChecked?: (node: BaseContentNode) => boolean;
+  /**
+   * If true, the tree will have a rounded background.
+   */
   isRoundedBackground?: boolean;
+  /**
+   * If true, a search bar will be displayed at the top of the tree.
+   */
   isSearchEnabled?: boolean;
+  /**
+   * Callback when the user clicks on the "view document" action
+   * If undefined, the action will not be displayed.
+   */
   onDocumentViewClick?: (documentId: string) => void;
+  /**
+   * The current nodes selection.
+   * If undefined, no checkbox will be displayed.
+   */
   selectedNodes?: Record<string, ContentNodeTreeItemStatus>;
+  /**
+   * This function is called when the user selects or unselects a node.
+   * If undefined, the tree will be read-only.
+   */
   setSelectedNodes?: (updater: TreeSelectionModelUpdater) => void;
+  /**
+   * If true, the expand/collapse buttons will be displayed.
+   */
   showExpand?: boolean;
+  /**
+   * The hook to fetch the resources under a given parent.
+   */
   useResourcesHook: UseResourcesHook;
 }
 
