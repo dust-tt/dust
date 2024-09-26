@@ -266,7 +266,6 @@ async function handler(
 
       const dustDataSource = await coreAPI.createDataSource({
         projectId: dustProject.value.project.project_id.toString(),
-        dataSourceId: dataSourceName,
         config: {
           embedder_config: {
             embedder: {

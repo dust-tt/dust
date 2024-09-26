@@ -573,12 +573,10 @@ export class CoreAPI {
 
   async createDataSource({
     projectId,
-    dataSourceId,
     config,
     credentials,
   }: {
     projectId: string;
-    dataSourceId: string;
     config: CoreAPIDataSourceConfig;
     credentials: CredentialsType;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
@@ -590,7 +588,6 @@ export class CoreAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          data_source_id: dataSourceId,
           config: config,
           credentials: credentials,
         }),

@@ -348,7 +348,6 @@ const handleDataSourceWithProvider = async ({
 
   const dustDataSource = await coreAPI.createDataSource({
     projectId: dustProject.value.project.project_id.toString(),
-    dataSourceId: dataSourceName,
     config: {
       embedder_config: {
         embedder: {
@@ -565,7 +564,6 @@ const handleDataSourceWithoutProvider = async ({
 
   const dustDataSource = await coreAPI.createDataSource({
     projectId: dustProject.value.project.project_id.toString(),
-    dataSourceId: name,
     config: {
       qdrant_config: {
         cluster: DEFAULT_QDRANT_CLUSTER,

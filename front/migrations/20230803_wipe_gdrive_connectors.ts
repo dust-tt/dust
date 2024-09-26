@@ -44,7 +44,6 @@ async function main() {
     console.log(`creating data source ${d.name} in core`);
     await coreAPI.createDataSource({
       projectId: d.dustAPIProjectId,
-      dataSourceId: d.name,
       config: {
         embedder_config: {
           embedder: {
