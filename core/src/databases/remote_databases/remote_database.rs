@@ -14,7 +14,6 @@ use super::snowflake::SnowflakeRemoteDatabase;
 
 #[async_trait]
 pub trait RemoteDatabase {
-    async fn get_tables_used_by_query(&self, query: &str) -> Result<Vec<String>>;
     // Checks that the query only uses tables from the passed vector of tables and
     // then executes the query.
     async fn authorize_and_execute_query(
