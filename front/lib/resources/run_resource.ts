@@ -17,7 +17,7 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { App } from "@app/lib/resources/storage/models/apps";
+import { AppModel } from "@app/lib/resources/storage/models/apps";
 import {
   RunModel,
   RunUsageModel,
@@ -25,7 +25,7 @@ import {
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
 
-type RunResourceWithApp = RunResource & { app: App };
+type RunResourceWithApp = RunResource & { app: AppModel };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface RunResource extends ReadonlyAttributesType<RunModel> {}
@@ -50,7 +50,7 @@ export class RunResource extends BaseResource<RunModel> {
     const include = includeApp
       ? [
           {
-            model: App,
+            model: AppModel,
             as: "app",
             required: true,
           },

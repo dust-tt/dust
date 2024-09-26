@@ -3,14 +3,14 @@ import { Op } from "sequelize";
 
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { App } from "@app/lib/resources/storage/models/apps";
+import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vaults";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   const allDustAppRunConfigs = await AgentDustAppRunConfiguration.findAll();
-  const allDustAppModels = await App.findAll({
+  const allDustAppModels = await AppModel.findAll({
     where: {
       sId: allDustAppRunConfigs.map((config) => config.appId),
     },

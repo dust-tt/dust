@@ -9,7 +9,7 @@ import { DatasetResource } from "@app/lib/resources/dataset_resource";
 import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { App, Clone } from "@app/lib/resources/storage/models/apps";
+import { AppModel, Clone } from "@app/lib/resources/storage/models/apps";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
@@ -17,36 +17,36 @@ import type { VaultResource } from "@app/lib/resources/vault_resource";
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
-export interface AppResource extends ReadonlyAttributesType<App> {}
+export interface AppResource extends ReadonlyAttributesType<AppModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class AppResource extends ResourceWithVault<App> {
-  static model: ModelStatic<App> = App;
+export class AppResource extends ResourceWithVault<AppModel> {
+  static model: ModelStatic<AppModel> = AppModel;
 
   constructor(
-    model: ModelStatic<App>,
-    blob: Attributes<App>,
+    model: ModelStatic<AppModel>,
+    blob: Attributes<AppModel>,
     vault: VaultResource
   ) {
-    super(App, blob, vault);
+    super(AppModel, blob, vault);
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<App>, "vaultId">,
+    blob: Omit<CreationAttributes<AppModel>, "vaultId">,
     vault: VaultResource
   ) {
-    const app = await App.create({
+    const app = await AppModel.create({
       ...blob,
       vaultId: vault.id,
     });
 
-    return new this(App, app.get(), vault);
+    return new this(AppModel, app.get(), vault);
   }
 
   // Fetching.
 
   private static async baseFetch(
     auth: Authenticator,
-    options?: ResourceFindOptions<App>
+    options?: ResourceFindOptions<AppModel>
   ) {
     const apps = await this.baseFetchWithAuthorization(auth, {
       ...options,
@@ -165,7 +165,7 @@ export class AppResource extends ResourceWithVault<App> {
           // Interrupt the transaction if there was an error deleting datasets.
           throw res.error;
         }
-        await App.destroy({
+        await AppModel.destroy({
           where: {
             workspaceId: auth.getNonNullableWorkspace().id,
             id: this.id,
