@@ -265,7 +265,7 @@ export default function LabsTranscriptsIndex({
     await makePatchRequest(
       transcriptConfigurationId,
       {
-        dataSourceId: dataSource ? dataSource.dataSource.name : null,
+        dataSourceId: dataSource ? dataSource.dataSource.sId : null,
       },
       successMessage
     );

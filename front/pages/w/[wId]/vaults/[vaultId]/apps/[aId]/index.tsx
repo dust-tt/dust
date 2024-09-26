@@ -18,10 +18,7 @@ import { useSWRConfig } from "swr";
 import Deploy from "@app/components/app/Deploy";
 import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
-import {
-  subNavigationApp,
-  subNavigationBuild,
-} from "@app/components/navigation/config";
+import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import config from "@app/lib/api/config";
@@ -36,14 +33,14 @@ import {
   moveBlockUp,
 } from "@app/lib/specification";
 import { useSavedRunStatus } from "@app/lib/swr/apps";
-import { getDustAppsListUrl } from "@app/lib/vault_rollout";
+import { dustAppsListUrl } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   readOnly: boolean;
+  isAdmin: boolean;
   url: string;
-  dustAppsListUrl: string;
   app: AppType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -53,6 +50,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     auth,
     context.query.vaultId as string
   );
+
+  const isAdmin = auth.isAdmin();
 
   if (!owner || !subscription || !vault || !vault.canList(auth)) {
     return {
@@ -70,18 +69,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const dustAppsListUrl = await getDustAppsListUrl(
-    auth,
-    context.params.vaultId
-  );
-
   return {
     props: {
       owner,
       subscription,
+      isAdmin,
       readOnly,
       url: config.getClientFacingUrl(),
-      dustAppsListUrl,
       app: app.toJSON(),
     },
   };
@@ -145,9 +139,9 @@ export default function AppView({
   owner,
   subscription,
   readOnly,
+  isAdmin,
   app,
   url,
-  dustAppsListUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { mutate } = useSWRConfig();
 
@@ -321,15 +315,11 @@ export default function AppView({
       subscription={subscription}
       hideSidebar
       owner={owner}
-      subNavigation={subNavigationBuild({
-        owner,
-        current: "developers",
-      })}
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl);
+            void router.push(dustAppsListUrl(owner, app.vault));
           }}
         />
       }
@@ -407,6 +397,7 @@ export default function AppView({
             owner={owner}
             app={app}
             readOnly={readOnly}
+            isAdmin={isAdmin}
             showOutputs={!readOnly}
             spec={spec}
             run={run}

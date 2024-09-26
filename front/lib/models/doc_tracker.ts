@@ -8,7 +8,7 @@ import { DataTypes, Model } from "sequelize";
 
 import { User } from "@app/lib/models/user";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 
 export class TrackedDocument extends Model<
   InferAttributes<TrackedDocument>,
@@ -22,7 +22,7 @@ export class TrackedDocument extends Model<
   declare trackingEnabledAt: Date | null;
 
   declare userId: ForeignKey<User["id"]>;
-  declare dataSourceId: ForeignKey<DataSource["id"]>;
+  declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
 }
 
 TrackedDocument.init(
@@ -62,7 +62,7 @@ TrackedDocument.init(
   }
 );
 
-DataSource.hasMany(TrackedDocument, {
+DataSourceModel.hasMany(TrackedDocument, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
@@ -84,7 +84,7 @@ export class DocumentTrackerChangeSuggestion extends Model<
   declare status: "pending" | "done" | "rejected";
 
   declare trackedDocumentId: ForeignKey<TrackedDocument["id"]>;
-  declare sourceDataSourceId: ForeignKey<DataSource["id"]>;
+  declare sourceDataSourceId: ForeignKey<DataSourceModel["id"]>;
   declare sourceDocumentId: string;
 }
 
@@ -122,7 +122,7 @@ TrackedDocument.hasMany(DocumentTrackerChangeSuggestion, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
-DataSource.hasMany(DocumentTrackerChangeSuggestion, {
+DataSourceModel.hasMany(DocumentTrackerChangeSuggestion, {
   foreignKey: { allowNull: false, name: "sourceDataSourceId" },
   onDelete: "CASCADE",
 });

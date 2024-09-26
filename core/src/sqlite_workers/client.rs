@@ -7,7 +7,7 @@ use thiserror::Error;
 use urlencoding::encode;
 
 use crate::{
-    databases::database::{QueryResult, Table},
+    databases::{database::QueryResult, table::Table},
     utils,
 };
 

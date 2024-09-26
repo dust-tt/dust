@@ -8,17 +8,14 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
-import {
-  subNavigationApp,
-  subNavigationBuild,
-} from "@app/components/navigation/config";
+import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import { getDustAppsListUrl } from "@app/lib/vault_rollout";
+import { dustAppsListUrl } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -26,7 +23,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   readOnly: boolean;
   app: AppType;
   wIdTarget: string | null;
-  dustAppsListUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -50,11 +46,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   // Mostly useful for debugging as an example our use of `dust-apps` as `dust`.
   const wIdTarget = (context.query?.wIdTarget as string) || null;
 
-  const dustAppsListUrl = await getDustAppsListUrl(
-    auth,
-    context.params.vaultId
-  );
-
   return {
     props: {
       owner,
@@ -62,7 +53,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       readOnly,
       app: app.toJSON(),
       wIdTarget,
-      dustAppsListUrl,
     },
   };
 });
@@ -89,7 +79,6 @@ export default function RunsView({
   readOnly,
   app,
   wIdTarget,
-  dustAppsListUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [runType, setRunType] = useState(
     (wIdTarget ? "deploy" : "local") as RunRunType
@@ -128,19 +117,15 @@ export default function RunsView({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationBuild({
-        owner,
-        current: "developers",
-      })}
+      hideSidebar
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl);
+            void router.push(dustAppsListUrl(owner, app.vault));
           }}
         />
       }
-      hideSidebar
     >
       <div className="flex w-full flex-col">
         <Tab

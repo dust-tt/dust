@@ -31,5 +31,6 @@ export { default as OpenaiWhiteLogo } from "./OpenaiWhite";
 export { default as ReplicateLogo } from "./Replicate";
 export { default as SalesforceLogo } from "./Salesforce";
 export { default as SlackLogo } from "./Slack";
+export { default as SnowflakeLogo } from "./Snowflake";
 export { default as ZapierLogo } from "./Zapier";
 export { default as ZendeskLogo } from "./Zendesk";

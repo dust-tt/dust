@@ -145,6 +145,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (!key.isSystem) {
       throw new Error("Only system keys are supported.");
     }
+
     const groups = await this.model.findAll({
       where: {
         workspaceId: key.workspaceId,

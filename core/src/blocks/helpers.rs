@@ -20,7 +20,6 @@ pub async fn get_data_source_project_and_view_filter(
     workspace_id: &String,
     data_source_id: &String,
     env: &Env,
-    origin: &str,
 ) -> Result<(Project, Option<SearchFilter>, String)> {
     let dust_workspace_id = match env.credentials.get("DUST_WORKSPACE_ID") {
         None => Err(anyhow!(
@@ -63,7 +62,6 @@ pub async fn get_data_source_project_and_view_filter(
         )
         .header("X-Dust-Workspace-Id", dust_workspace_id)
         .header("X-Dust-Group-Ids", dust_group_ids)
-        .header("X-Dust-Origin", origin)
         .send()
         .await?;
 

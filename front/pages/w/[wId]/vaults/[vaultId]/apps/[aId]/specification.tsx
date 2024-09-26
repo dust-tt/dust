@@ -4,17 +4,14 @@ import { CoreAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
-import {
-  subNavigationApp,
-  subNavigationBuild,
-} from "@app/components/navigation/config";
+import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dumpSpecification } from "@app/lib/specification";
-import { getDustAppsListUrl } from "@app/lib/vault_rollout";
+import { dustAppsListUrl } from "@app/lib/vaults";
 import logger from "@app/logger/logger";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -23,7 +20,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   readOnly: boolean;
   app: AppType;
   specification: string;
-  dustAppsListUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -64,11 +60,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     latestDatasets
   );
 
-  const dustAppsListUrl = await getDustAppsListUrl(
-    auth,
-    context.params.vaultId
-  );
-
   return {
     props: {
       owner,
@@ -76,7 +67,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       readOnly,
       app: app.toJSON(),
       specification: spec,
-      dustAppsListUrl,
     },
   };
 });
@@ -86,7 +76,6 @@ export default function Specification({
   subscription,
   app,
   specification,
-  dustAppsListUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
@@ -94,19 +83,15 @@ export default function Specification({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationBuild({
-        owner,
-        current: "developers",
-      })}
+      hideSidebar
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl);
+            void router.push(dustAppsListUrl(owner, app.vault));
           }}
         />
       }
-      hideSidebar
     >
       <div className="flex w-full flex-col">
         <Tab

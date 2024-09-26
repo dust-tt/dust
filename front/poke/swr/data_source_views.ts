@@ -31,7 +31,7 @@ export function usePokeDataSourceViews({
 
   return {
     data: useMemo(() => (data ? data.data_source_views : []), [data]),
-    isLoading: !error && !data,
+    isLoading: !error && !data && !disabled,
     isError: error,
     mutate,
   };
@@ -102,7 +102,7 @@ export function usePokeDataSourceViewContentNodes({
 
   return {
     isNodesError: !!error,
-    isNodesLoading: !error && !data,
+    isNodesLoading: !error && !data && !disabled,
     isNodesValidating: isValidating,
     mutate,
     mutateRegardlessOfQueryParams,

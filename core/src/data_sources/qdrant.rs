@@ -7,8 +7,13 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 use qdrant_client::{
-    prelude::{Payload, QdrantClient, QdrantClientConfig},
-    qdrant::{self, shard_key},
+    config::QdrantConfig,
+    prelude::Payload,
+    qdrant::{
+        self, shard_key, CountPointsBuilder, DeletePointsBuilder, ScrollPointsBuilder,
+        SearchPointsBuilder, SetPayloadPointsBuilder, UpsertPointsBuilder,
+    },
+    Qdrant,
 };
 use serde::{Deserialize, Serialize};
 
@@ -61,17 +66,19 @@ pub struct QdrantDataSourceConfig {
 }
 
 impl QdrantClients {
-    async fn qdrant_client(cluster: QdrantCluster) -> Result<QdrantClient> {
+    async fn qdrant_client(cluster: QdrantCluster) -> Result<Qdrant> {
         let url_var = format!("{}_URL", env_var_prefix_for_cluster(cluster));
         let api_key_var = format!("{}_API_KEY", env_var_prefix_for_cluster(cluster));
 
         match std::env::var(url_var.clone()) {
             Ok(url) => {
-                let mut config = QdrantClientConfig::from_url(&url);
+                let mut config = QdrantConfig::from_url(&url);
                 match std::env::var(api_key_var.clone()) {
                     Ok(api_key) => {
                         config.set_api_key(&api_key);
-                        QdrantClient::new(Some(config))
+                        Qdrant::new(config).map_err(|e| {
+                            anyhow!("Error creating Qdrant client for {}: {}", url_var, e)
+                        })
                     }
                     Err(_) => Err(anyhow!("{} is not set", api_key_var))?,
                 }
@@ -113,7 +120,7 @@ impl QdrantClients {
 
 #[derive(Clone)]
 pub struct DustQdrantClient {
-    client: Arc<QdrantClient>,
+    client: Arc<Qdrant>,
     pub cluster: QdrantCluster,
 }
 
@@ -187,10 +194,9 @@ impl DustQdrantClient {
 
         self.client
             .delete_points(
-                self.collection_name(embedder_config),
-                Some(vec![self.shard_key(internal_id)?]),
-                &filter.into(),
-                None,
+                DeletePointsBuilder::new(self.collection_name(embedder_config))
+                    .shard_key_selector(vec![self.shard_key(internal_id)?])
+                    .points(filter),
             )
             .await?;
 
@@ -204,6 +210,7 @@ impl DustQdrantClient {
         self.client
             .collection_info(self.collection_name(embedder_config))
             .await
+            .map_err(|e| anyhow!("Error getting collection info: {}", e))
     }
 
     pub async fn delete_points(
@@ -217,12 +224,12 @@ impl DustQdrantClient {
 
         self.client
             .delete_points(
-                self.collection_name(embedder_config),
-                Some(vec![self.shard_key(internal_id)?]),
-                &filter.into(),
-                None,
+                DeletePointsBuilder::new(self.collection_name(embedder_config))
+                    .shard_key_selector(vec![self.shard_key(internal_id)?])
+                    .points(filter),
             )
             .await
+            .map_err(|e| anyhow!("Error deleting points: {}", e))
     }
 
     pub async fn scroll(
@@ -232,23 +239,30 @@ impl DustQdrantClient {
         filter: Option<qdrant::Filter>,
         limit: Option<u32>,
         offset: Option<qdrant::PointId>,
-        with_vectors: Option<qdrant::WithVectorsSelector>,
+        with_vectors: Option<bool>,
     ) -> Result<qdrant::ScrollResponse> {
         // If we don't have a filter create an empty one to ensure tenant separation.
         let mut filter = filter.unwrap_or_default();
         self.apply_tenant_filter(internal_id, &mut filter);
 
+        let mut builder = ScrollPointsBuilder::new(self.collection_name(embedder_config))
+            .shard_key_selector(vec![self.shard_key(internal_id)?])
+            .filter(filter);
+
+        if let Some(limit) = limit {
+            builder = builder.limit(limit);
+        }
+        if let Some(offset) = offset {
+            builder = builder.offset(offset);
+        }
+        if let Some(with_vectors) = with_vectors {
+            builder = builder.with_vectors(with_vectors);
+        }
+
         self.client
-            .scroll(&qdrant::ScrollPoints {
-                collection_name: self.collection_name(embedder_config),
-                with_vectors,
-                limit,
-                offset,
-                filter: Some(filter),
-                shard_key_selector: Some(vec![self.shard_key(internal_id)?].into()),
-                ..Default::default()
-            })
+            .scroll(builder)
             .await
+            .map_err(|e| anyhow!("Error scrolling points: {}", e))
     }
 
     pub async fn search_points(
@@ -258,23 +272,25 @@ impl DustQdrantClient {
         vector: Vec<f32>,
         filter: Option<qdrant::Filter>,
         limit: u64,
-        with_payload: Option<qdrant::WithPayloadSelector>,
+        with_payload: Option<bool>,
     ) -> Result<qdrant::SearchResponse> {
         // If we don't have a filter create an empty one to ensure tenant separation.
         let mut filter = filter.unwrap_or_default();
         self.apply_tenant_filter(internal_id, &mut filter);
 
+        let mut builder =
+            SearchPointsBuilder::new(self.collection_name(embedder_config), vector, limit)
+                .shard_key_selector(vec![self.shard_key(internal_id)?])
+                .filter(filter);
+
+        if let Some(with_payload) = with_payload {
+            builder = builder.with_payload(with_payload);
+        }
+
         self.client
-            .search_points(&qdrant::SearchPoints {
-                collection_name: self.collection_name(embedder_config),
-                vector,
-                filter: Some(filter),
-                limit,
-                with_payload,
-                shard_key_selector: Some(vec![self.shard_key(internal_id)?].into()),
-                ..Default::default()
-            })
+            .search_points(builder)
             .await
+            .map_err(|e| anyhow!("Error searching points: {}", e))
     }
 
     pub async fn count_points(
@@ -289,14 +305,14 @@ impl DustQdrantClient {
         self.apply_tenant_filter(internal_id, &mut filter);
 
         self.client
-            .count(&qdrant::CountPoints {
-                collection_name: self.collection_name(embedder_config),
-                filter: Some(filter),
-                exact: Some(exact),
-                shard_key_selector: Some(vec![self.shard_key(internal_id)?].into()),
-                ..Default::default()
-            })
+            .count(
+                CountPointsBuilder::new(self.collection_name(embedder_config))
+                    .shard_key_selector(vec![self.shard_key(internal_id)?])
+                    .filter(filter)
+                    .exact(exact),
+            )
             .await
+            .map_err(|e| anyhow!("Error counting points: {}", e))
     }
 
     pub async fn upsert_points(
@@ -307,12 +323,11 @@ impl DustQdrantClient {
     ) -> Result<qdrant::PointsOperationResponse> {
         self.client
             .upsert_points(
-                self.collection_name(embedder_config),
-                Some(vec![self.shard_key(internal_id)?]),
-                points,
-                None,
+                UpsertPointsBuilder::new(self.collection_name(embedder_config), points)
+                    .shard_key_selector(vec![self.shard_key(internal_id)?]),
             )
             .await
+            .map_err(|e| anyhow!("Error upserting points: {}", e))
     }
 
     pub async fn set_payload(
@@ -327,17 +342,15 @@ impl DustQdrantClient {
 
         self.client
             .set_payload(
-                self.collection_name(embedder_config),
-                Some(vec![self.shard_key(internal_id)?]),
-                &filter.into(),
-                payload,
-                None,
-                None,
+                SetPayloadPointsBuilder::new(self.collection_name(embedder_config), payload)
+                    .shard_key_selector(vec![self.shard_key(internal_id)?])
+                    .points_selector(filter),
             )
             .await
+            .map_err(|e| anyhow!("Error setting payload: {}", e))
     }
 
-    pub fn raw_client(&self) -> Arc<QdrantClient> {
+    pub fn raw_client(&self) -> Arc<Qdrant> {
         return self.client.clone();
     }
 }

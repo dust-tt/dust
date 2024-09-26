@@ -6,24 +6,22 @@ import type {
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isWebCrawlerConfiguration } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 
 import VaultFolderModal from "@app/components/vaults/VaultFolderModal";
 import VaultWebsiteModal from "@app/components/vaults/VaultWebsiteModal";
-import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
 
 interface EditVaultStaticDatasourcesViewsProps {
   owner: WorkspaceType;
   canWriteInVault: boolean;
   isOpen: boolean;
-  setOpen: (isOpen: boolean) => void;
   plan: PlanType;
   vault: VaultType;
   dataSources: DataSourceType[];
   dataSourceView: DataSourceViewType | null;
   category: "folder" | "website";
+  onOpen: () => void;
   onClose: () => void;
 }
 
@@ -33,20 +31,15 @@ export function EditVaultStaticDatasourcesViews({
   plan,
   vault,
   isOpen,
-  setOpen,
   dataSources,
   dataSourceView,
   category,
+  onOpen,
   onClose,
 }: EditVaultStaticDatasourcesViewsProps) {
   const router = useRouter();
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
-
-  const { configuration } = useDataSourceViewConnectorConfiguration({
-    dataSourceView: category === "website" ? dataSourceView : null,
-    owner,
-  });
 
   const planDataSourcesLimit = plan.limits.dataSources.count;
 
@@ -57,9 +50,9 @@ export function EditVaultStaticDatasourcesViews({
     ) {
       setShowDatasourceLimitPopup(true);
     } else {
-      setOpen(true);
+      onOpen();
     }
-  }, [dataSources.length, planDataSourcesLimit, setOpen]);
+  }, [dataSources.length, planDataSourcesLimit, onOpen]);
 
   return (
     <>
@@ -83,7 +76,7 @@ export function EditVaultStaticDatasourcesViews({
           owner={owner}
           vault={vault}
           dataSources={dataSources}
-          folder={dataSourceView?.dataSource ?? null}
+          dataSourceViewId={dataSourceView ? dataSourceView.sId : null}
         />
       ) : category === "website" ? (
         <VaultWebsiteModal
@@ -93,11 +86,6 @@ export function EditVaultStaticDatasourcesViews({
           vault={vault}
           dataSources={dataSources}
           dataSourceView={dataSourceView}
-          webCrawlerConfiguration={
-            configuration && isWebCrawlerConfiguration(configuration)
-              ? configuration
-              : null
-          }
         />
       ) : null}
       {canWriteInVault ? (

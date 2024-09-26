@@ -22,6 +22,7 @@ export default function Search({
   status,
   running,
   readOnly,
+  isAdmin,
   showOutputs,
   onBlockUpdate,
   onBlockDelete,
@@ -37,6 +38,7 @@ export default function Search({
   status: any;
   running: boolean;
   readOnly: boolean;
+  isAdmin: boolean;
   showOutputs: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
@@ -112,21 +114,32 @@ export default function Search({
             !readOnly &&
             searchProviders?.length === 0 && (
               <div className="px-2">
-                {searchProviders?.length === 0 && (
-                  <Link
-                    href={`/w/${owner.sId}/a?t=providers`}
-                    className={classNames(
-                      "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                      "border px-3",
-                      readOnly
-                        ? "border-white text-gray-300"
-                        : "border-orange-400 text-gray-700",
-                      "focus:outline-none focus:ring-0"
-                    )}
-                  >
-                    Setup provider
-                  </Link>
-                )}
+                {searchProviders?.length === 0 &&
+                  (isAdmin ? (
+                    <Link
+                      href={`/w/${owner.sId}/developers/providers?t=providers`}
+                      className={classNames(
+                        "inline-flex items-center rounded-md py-1 text-sm font-normal",
+                        "border px-3",
+                        readOnly
+                          ? "border-white text-gray-300"
+                          : "border-orange-400 text-gray-700",
+                        "focus:outline-none focus:ring-0"
+                      )}
+                    >
+                      Setup provider
+                    </Link>
+                  ) : (
+                    <div
+                      className={classNames(
+                        "inline-flex items-center rounded-md py-1 text-sm font-normal",
+                        "border px-3",
+                        "border-white text-gray-300"
+                      )}
+                    >
+                      Provider not available
+                    </div>
+                  ))}
               </div>
             )}
 

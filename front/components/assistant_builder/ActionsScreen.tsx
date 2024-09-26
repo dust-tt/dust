@@ -852,6 +852,7 @@ function ActionEditor({
                     icon={MoreIcon}
                     size="sm"
                     variant="tertiary"
+                    disabledTooltip={true}
                   />
                 </DropdownMenu.Button>
                 <DropdownMenu.Items width={320} overflow="visible">

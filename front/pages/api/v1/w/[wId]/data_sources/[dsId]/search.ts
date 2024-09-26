@@ -64,9 +64,9 @@ type DatasourceSearchResponseBody = {
  *         schema:
  *           type: string
  *       - in: path
- *         name: name
+ *         name: dsId
  *         required: true
- *         description: Name of the data source
+ *         description: ID of the data source
  *         schema:
  *           type: string
  *       - in: query

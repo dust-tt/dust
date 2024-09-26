@@ -4,10 +4,15 @@ import type {
   DataSourceType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { useMemo } from "react";
+import { useContext, useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import {
+  fetcher,
+  getErrorFromResponse,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/connector";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
@@ -50,20 +55,24 @@ export function useConnectorPermissions({
 }
 
 export function useConnectorConfig({
-  owner,
-  dataSource,
   configKey,
+  dataSource,
+  disabled,
+  owner,
 }: {
-  owner: LightWorkspaceType;
-  dataSource: DataSourceType;
   configKey: string;
+  dataSource: DataSourceType;
+  disabled?: boolean;
+  owner: LightWorkspaceType;
 }) {
   const configFetcher: Fetcher<GetOrPostManagedDataSourceConfigResponseBody> =
     fetcher;
 
   const url = `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`;
 
-  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher);
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
+    disabled,
+  });
 
   return {
     configValue: data ? data.configValue : null,
@@ -116,4 +125,61 @@ export function useConnector({
     isConnectorError: error,
     mutateConnector: mutate,
   };
+}
+
+export function useToggleSlackChatBot({
+  dataSource,
+  owner,
+}: {
+  dataSource: DataSourceType;
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useContext(SendNotificationsContext);
+
+  const { mutateConfig } = useConnectorConfig({
+    owner,
+    dataSource,
+    configKey: "botEnabled",
+    disabled: true, // Needed just to mutate
+  });
+
+  const doToggle = async (botEnabled: boolean) => {
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/botEnabled`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({ configValue: botEnabled.toString() }),
+      }
+    );
+
+    if (res.ok) {
+      void mutateConfig();
+
+      const response: GetOrPostManagedDataSourceConfigResponseBody =
+        await res.json();
+
+      const { configValue } = response;
+
+      sendNotification({
+        type: "success",
+        title: "Slack Bot Enabled Successfully",
+        description: "The Slack bot is now active and ready to use.",
+      });
+      return configValue;
+    } else {
+      const errorData = await getErrorFromResponse(res);
+
+      sendNotification({
+        type: "error",
+        title: "Failed to Enable Slack Bot",
+        description: errorData.message,
+      });
+      return null;
+    }
+  };
+
+  return doToggle;
 }

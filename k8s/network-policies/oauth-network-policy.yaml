@@ -31,6 +31,9 @@ spec:
         - podSelector:
             matchLabels:
               app: prodbox
+        - podSelector:
+            matchLabels:
+              app: core
       ports:
         - protocol: TCP
           port: 3006

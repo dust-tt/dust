@@ -1,7 +1,3 @@
-use super::helpers::get_data_source_project_and_view_filter;
-use crate::blocks::block::{Block, BlockResult, BlockType, Env};
-use crate::databases::database::{get_unique_table_names_for_database, Table};
-use crate::Rule;
 use anyhow::{anyhow, Ok, Result};
 use async_trait::async_trait;
 use futures::future::try_join_all;
@@ -9,6 +5,19 @@ use itertools::Itertools;
 use pest::iterators::Pair;
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
+
+use crate::{
+    blocks::{
+        block::{Block, BlockResult, BlockType, Env},
+        helpers::get_data_source_project_and_view_filter,
+    },
+    databases::{
+        table::{get_table_type_for_tables, LocalTable, Table, TableType},
+        transient_database::get_unique_table_names_for_transient_database,
+    },
+    Rule,
+};
+
 #[derive(Clone)]
 pub struct DatabaseSchema {}
 
@@ -71,35 +80,53 @@ impl Block for DatabaseSchema {
             _ => Err(anyhow!(err_msg.clone()))?,
         };
 
-        let mut tables = load_tables_from_identifiers(&table_identifiers, env).await?;
+        let tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
         // Compute the unique table names for each table.
-        let unique_table_names = get_unique_table_names_for_database(&tables);
 
-        // Load the schema for each table.
-        // If the schema cache is stale, this will update it in place.
-        try_join_all(
-            tables
-                .iter_mut()
-                .map(|t| t.schema(env.store.clone(), env.databases_store.clone())),
-        )
-        .await?;
+        let schemas = match get_table_type_for_tables(tables.iter().collect::<Vec<_>>())? {
+            TableType::Local => {
+                let unique_table_names = get_unique_table_names_for_transient_database(&tables);
 
-        Ok(BlockResult {
-            value: serde_json::to_value(
-                tables
+                let mut local_tables = tables
+                    .into_iter()
+                    .map(|t| LocalTable::from_table(t))
+                    .collect::<Result<Vec<_>>>()?;
+
+                // Load the schema for each table.
+                // If the schema cache is stale, this will update it in place.
+                try_join_all(
+                    local_tables
+                        .iter_mut()
+                        .map(|t| t.schema(env.store.clone(), env.databases_store.clone())),
+                )
+                .await?;
+
+                Ok(local_tables
                     .into_iter()
                     .map(|t| {
                         let unique_table_name = unique_table_names
-                            .get(&t.unique_id())
+                            .get(&t.table.unique_id())
                             .expect("Unreachable: missing unique table name.");
                         json!({
-                            "table_schema": t.schema_cached(),
+                            "table_schema": t.table.schema_cached(),
                             "dbml": t.render_dbml(Some(&unique_table_name)),
                         })
                     })
-                    .collect::<Vec<_>>(),
-            )?,
+                    .collect::<Vec<_>>())
+            }
+
+            TableType::Remote(_remote_db_secret_id) => {
+                // TODO(SNOWFLAKE): Implement remote tables support.
+                // - fetch secret from oauth
+                // - create RemoteDatabase of correct type based on provider
+                // - retrieve schema for tables
+                Err(anyhow!("Remote tables support is not yet implemented."))
+            }
+        }?;
+
+        Ok(BlockResult {
+            value: serde_json::to_value(schemas)?,
             meta: None,
         })
     }
@@ -127,12 +154,7 @@ pub async fn load_tables_from_identifiers(
     // Get a vec of the corresponding project ids for each (workspace_id, data_source_id) pair.
     let project_ids_view_filters = try_join_all(data_source_identifiers.iter().map(
         |(workspace_id, data_source_or_view_id)| {
-            get_data_source_project_and_view_filter(
-                workspace_id,
-                data_source_or_view_id,
-                env,
-                "database_schema",
-            )
+            get_data_source_project_and_view_filter(workspace_id, data_source_or_view_id, env)
         },
     ))
     .await?;

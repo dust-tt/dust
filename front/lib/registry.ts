@@ -5,7 +5,8 @@ import config from "@app/lib/api/config";
 export const PRODUCTION_DUST_WORKSPACE_ID = "0ec9852c2f";
 export const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
 export const PRODUCTION_DUST_APPS_VAULT_ID = "vlt_rICtlrSEpWqX";
-
+export const PRODUCTION_DUST_APPS_HELPER_DATASOURCE_VIEW_ID =
+  "dsv_artLN7ZRrKWB";
 export type Action = {
   app: {
     workspaceId: string;

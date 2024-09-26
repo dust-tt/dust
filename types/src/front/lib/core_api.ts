@@ -116,16 +116,21 @@ export type CoreAPITableSchema = {
   possible_values: string[] | null;
 }[];
 
-export type CoreAPITable = {
-  created: number;
+export type CoreAPITablePublic = {
   table_id: string;
-  data_source_id: string;
   name: string;
   description: string;
   schema: CoreAPITableSchema | null;
   timestamp: number;
   tags: string[];
   parents: string[];
+};
+
+export type CoreAPITable = CoreAPITablePublic & {
+  created: number;
+  data_source_id: string;
+  remote_database_table_id: string | null;
+  remote_database_secret_id: string | null;
 };
 
 export type CoreAPIRowValue =
@@ -1048,6 +1053,8 @@ export class CoreAPI {
     timestamp,
     tags,
     parents,
+    remoteDatabaseTableId,
+    remoteDatabaseSecretId,
   }: {
     projectId: string;
     dataSourceId: string;
@@ -1057,6 +1064,8 @@ export class CoreAPI {
     timestamp: number | null;
     tags: string[];
     parents: string[];
+    remoteDatabaseTableId?: string | null;
+    remoteDatabaseSecretId?: string | null;
   }): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
@@ -1074,6 +1083,8 @@ export class CoreAPI {
           timestamp,
           tags,
           parents,
+          remote_database_table_id: remoteDatabaseTableId ?? null,
+          remote_database_secret_id: remoteDatabaseSecretId ?? null,
         }),
       }
     );

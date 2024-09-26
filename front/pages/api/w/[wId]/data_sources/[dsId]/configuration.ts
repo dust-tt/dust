@@ -46,12 +46,7 @@ async function handler(
       },
     });
   }
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dsId,
-    // TODO(DATASOURCE_SID): Clean-up
-    { origin: "data_source_configuration" }
-  );
+  const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,
@@ -94,6 +89,7 @@ async function handler(
     case "notion":
     case "microsoft":
     case "slack":
+    case "snowflake":
       if (!auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 403,

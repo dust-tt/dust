@@ -6,7 +6,7 @@ use axum::{
     Router,
 };
 use dust::{
-    databases::database::Table,
+    databases::table::Table,
     databases_store::{self, store::DatabasesStore},
     sqlite_workers::sqlite_database::{SqliteDatabase, SqliteDatabaseError},
     utils::{error_response, APIResponse, CoreRequestMakeSpan},

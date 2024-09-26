@@ -57,11 +57,9 @@ export async function upsertDocumentActivity(
     upsertQueueItem.workspaceId
   );
 
-  const dataSource = await DataSourceResource.fetchByNameOrId(
+  const dataSource = await DataSourceResource.fetchById(
     auth,
-    upsertQueueItem.dataSourceId,
-    // TODO(DATASOURCE_SID): Clean-up
-    { origin: "upsert_queue_activities" }
+    upsertQueueItem.dataSourceId
   );
   if (!dataSource) {
     // If the data source was not found, we simply give up and remove the item from the queue as it
@@ -205,11 +203,9 @@ export async function upsertTableActivity(
     return;
   }
 
-  const dataSource = await DataSourceResource.fetchByNameOrId(
+  const dataSource = await DataSourceResource.fetchById(
     auth,
-    upsertQueueItem.dataSourceId,
-    // TODO(DATASOURCE_SID): Clean-up
-    { origin: "upsert_queue_activities" }
+    upsertQueueItem.dataSourceId
   );
   if (!dataSource) {
     // If the data source was not found, we simply give up and remove the item from the queue as it

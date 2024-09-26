@@ -8,7 +8,11 @@ import {
   TableIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, VaultType, WorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceViewType,
+  VaultType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { RefObject } from "react";
 import { useState } from "react";
 
@@ -20,7 +24,7 @@ type FoldersHeaderMenuProps = {
   owner: WorkspaceType;
   vault: VaultType;
   canWriteInVault: boolean;
-  folder: DataSourceType;
+  folder: DataSourceViewType;
   contentActionsRef: RefObject<ContentActionsRef>;
 };
 
@@ -133,7 +137,7 @@ const AddDataDropDownButton = ({
 type EditFolderButtonProps = {
   owner: WorkspaceType;
   vault: VaultType;
-  folder: DataSourceType;
+  folder: DataSourceViewType;
   canWriteInVault: boolean;
 };
 
@@ -157,7 +161,7 @@ const EditFolderButton = ({
         owner={owner}
         vault={vault}
         dataSources={dataSources}
-        folder={folder}
+        dataSourceViewId={folder.sId}
       />
       <Button
         size="sm"

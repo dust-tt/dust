@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import { Sequelize } from "sequelize";
 
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { makeScript } from "@app/scripts/helpers";
 const { CORE_DATABASE_URI } = process.env;
 
@@ -46,7 +46,7 @@ makeScript(
     for (const chunk of _.chunk(dataSources, 16)) {
       await Promise.all(
         chunk.map(async (ds) => {
-          const fds = await DataSource.findOne({
+          const fds = await DataSourceModel.findOne({
             where: {
               dustAPIProjectId: ds.project_id.toString(),
             },

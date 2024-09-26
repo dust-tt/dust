@@ -2,7 +2,6 @@ import type {
   DataSourceType,
   DataSourceViewType,
   PlanType,
-  UserType,
   WithAPIErrorResponse,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -87,7 +86,6 @@ async function handler(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
-  const user = auth.getNonNullableUser();
 
   if (typeof req.query.vId !== "string") {
     return apiError(req, res, {
@@ -165,7 +163,6 @@ async function handler(
         >;
         await handleDataSourceWithProvider({
           auth,
-          user,
           plan,
           owner,
           vault,
@@ -179,7 +176,6 @@ async function handler(
         >;
         await handleDataSourceWithoutProvider({
           auth,
-          user,
           plan,
           owner,
           vault,
@@ -207,7 +203,6 @@ async function handler(
  */
 const handleDataSourceWithProvider = async ({
   auth,
-  user,
   plan,
   owner,
   vault,
@@ -216,7 +211,6 @@ const handleDataSourceWithProvider = async ({
   res,
 }: {
   auth: Authenticator;
-  user: UserType;
   plan: PlanType;
   owner: WorkspaceType;
   vault: VaultResource;
@@ -383,25 +377,25 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
-  const dataSource = await DataSourceResource.makeNew(
-    auth,
-    {
-      assistantDefaultSelected:
-        isConnectorProviderAssistantDefaultSelected(provider),
-      connectorProvider: provider,
-      description: dataSourceDescription,
-      dustAPIProjectId: dustProject.value.project.project_id.toString(),
-      dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
-      editedByUserId: user.id,
-      name: dataSourceName,
-      workspaceId: owner.id,
-    },
-    vault
-  );
+  const dataSourceView =
+    await DataSourceViewResource.createDataSourceAndDefaultView(
+      auth,
+      {
+        assistantDefaultSelected:
+          isConnectorProviderAssistantDefaultSelected(provider),
+        connectorProvider: provider,
+        description: dataSourceDescription,
+        dustAPIProjectId: dustProject.value.project.project_id.toString(),
+        dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
+        name: dataSourceName,
+        workspaceId: owner.id,
+      },
+      vault
+    );
 
-  // For each data source, we create two views:
-  // - One default view in its associated vault
-  // - If the data source resides in the system vault, we also create a custom view in the global vault until vault are released.
+  const dataSource = dataSourceView.dataSource;
+
+  // If the data source resides in the system vault, we also create a custom view in the global vault until vault are released.
   if (dataSource.vault.isSystem()) {
     const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
 
@@ -412,13 +406,6 @@ const handleDataSourceWithProvider = async ({
       "custom"
     );
   }
-
-  const dataSourceView =
-    await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
-      auth,
-      dataSource.vault,
-      dataSource
-    );
 
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
@@ -475,7 +462,7 @@ const handleDataSourceWithProvider = async ({
     // Asynchronous tracking & operations without awaiting, handled safely
     void ServerSideTracking.trackDataSourceCreated({
       dataSource: dataSource.toJSON(),
-      user,
+      user: auth.getNonNullableUser(),
       workspace: owner,
     });
 
@@ -509,7 +496,6 @@ const handleDataSourceWithProvider = async ({
  */
 const handleDataSourceWithoutProvider = async ({
   auth,
-  user,
   plan,
   owner,
   vault,
@@ -518,7 +504,6 @@ const handleDataSourceWithoutProvider = async ({
   res,
 }: {
   auth: Authenticator;
-  user: UserType;
   plan: PlanType;
   owner: WorkspaceType;
   vault: VaultResource;
@@ -609,26 +594,21 @@ const handleDataSourceWithoutProvider = async ({
     });
   }
 
-  const dataSource = await DataSourceResource.makeNew(
-    auth,
-    {
-      name,
-      description,
-      dustAPIProjectId: dustProject.value.project.project_id.toString(),
-      dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
-      workspaceId: owner.id,
-      assistantDefaultSelected: false,
-      editedByUserId: user.id,
-    },
-    vault
-  );
-
   const dataSourceView =
-    await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
+    await DataSourceViewResource.createDataSourceAndDefaultView(
       auth,
-      dataSource.vault,
-      dataSource
+      {
+        name,
+        description,
+        dustAPIProjectId: dustProject.value.project.project_id.toString(),
+        dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
+        workspaceId: owner.id,
+        assistantDefaultSelected: false,
+      },
+      vault
     );
+
+  const { dataSource } = dataSourceView;
 
   res.status(201).json({
     dataSource: dataSource.toJSON(),
@@ -638,7 +618,7 @@ const handleDataSourceWithoutProvider = async ({
   try {
     // Asynchronous tracking without awaiting, handled safely
     void ServerSideTracking.trackDataSourceCreated({
-      user,
+      user: auth.getNonNullableUser(),
       workspace: owner,
       dataSource: dataSource.toJSON(),
     });

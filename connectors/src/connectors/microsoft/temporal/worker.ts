@@ -1,5 +1,6 @@
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import { MicrosoftCastKnownErrorsInterceptor } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import * as sync_status from "@connectors/lib/sync_status";
@@ -31,6 +32,15 @@ export async function runMicrosoftWorker() {
         },
         () => new MicrosoftCastKnownErrorsInterceptor(),
       ],
+    },
+    bundlerOptions: {
+      // Update the webpack config to use aliases from our tsconfig.json.
+      webpackConfigHook: (config) => {
+        const plugins = config.resolve?.plugins ?? [];
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
+        return config;
+      },
     },
   });
 

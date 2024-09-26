@@ -28,6 +28,7 @@ export const PublicPostMessagesRequestBodySchema = t.intersection([
         t.literal("zapier"),
         t.literal("make"),
         t.literal("zendesk"),
+        t.literal("raycast"),
         t.null,
         t.undefined,
       ]),

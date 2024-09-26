@@ -3,7 +3,7 @@ import { Sequelize } from "sequelize";
 
 import config from "@app/lib/api/config";
 import { Workspace } from "@app/lib/models/workspace";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 
@@ -16,7 +16,7 @@ async function main() {
 
   const coreSequelize = new Sequelize(CORE_DATABASE_URI, { logging: false });
 
-  const dataSources = await DataSource.findAll({});
+  const dataSources = await DataSourceModel.findAll({});
   console.log(`Processing ${dataSources.length} data sources.`);
 
   let countDeleted = 0;

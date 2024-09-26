@@ -14,6 +14,7 @@ import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { isWebsite } from "@app/lib/data_sources";
 import {
   RetrievalDocument,
   RetrievalDocumentChunk,
@@ -164,35 +165,38 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
 
   // Helpers.
   getSourceUrl(auth: Authenticator): string | null {
+    // Prevent users from accessing document contents of a public data source
+    // not associated with their workspace, unless it's a website.
+    const { vault, workspaceId, dataSource } = this.dataSourceView || {};
+    const userWorkspaceId = auth.getNonNullableWorkspace().id;
+
+    if (
+      vault?.isPublic() &&
+      workspaceId !== userWorkspaceId &&
+      dataSource &&
+      !isWebsite(dataSource)
+    ) {
+      return null;
+    }
+
     if (this.sourceUrl) {
       return this.sourceUrl;
     }
 
-    // If the workspace has the data vaults feature, we should use the new data vaults URL.
-    if (auth.getNonNullableWorkspace().flags.includes("data_vaults_feature")) {
-      if (!this.dataSourceView) {
-        return null;
-      }
-
-      const dsv = this.dataSourceView.toJSON();
-
-      return `${config.getClientFacingUrl()}/w/${
-        this.dataSourceWorkspaceId
-      }/vaults/${dsv.vaultId}/categories/${
-        dsv.category
-      }/data_source_views/${dsv.sId}#?documentId=${encodeURIComponent(this.documentId)}`;
+    if (!this.dataSourceView) {
+      return null;
     }
 
+    const dsv = this.dataSourceView.toJSON();
+
     return `${config.getClientFacingUrl()}/w/${
-      this.dataSourceWorkspaceId
-    }/builder/data-sources/${
-      this.dataSourceId
-    }/upsert?documentId=${encodeURIComponent(this.documentId)}`;
+      auth.getNonNullableWorkspace().sId
+    }/vaults/${dsv.vaultId}/categories/${
+      dsv.category
+    }/data_source_views/${dsv.sId}#?documentId=${encodeURIComponent(this.documentId)}`;
   }
 
   // Serialization.
-
-  // TODO(VAULTS_INFRA) Remove authenticator once new connection management UI is released.
   toJSON(auth: Authenticator): RetrievalDocumentType {
     return {
       id: this.id,

@@ -1,12 +1,12 @@
-use std::collections::{HashMap, HashSet};
-
-use super::database::{HasValue, Row};
 use anyhow::{anyhow, Result};
 use chrono::prelude::DateTime;
 use itertools::Itertools;
 use rusqlite::{types::ToSqlOutput, ToSql};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::{HashMap, HashSet};
+
+use crate::databases::{database::HasValue, table::Row};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -94,6 +94,10 @@ impl TableSchemaColumn {
 pub struct TableSchema(Vec<TableSchemaColumn>);
 
 impl TableSchema {
+    pub fn from_columns(columns: Vec<TableSchemaColumn>) -> Self {
+        Self(columns)
+    }
+
     pub fn empty() -> Self {
         Self(vec![])
     }
@@ -369,6 +373,18 @@ impl TableSchema {
             .collect::<Result<Vec<_>>>()?;
 
         Ok(TableSchema(merged_schema))
+    }
+
+    pub fn render_dbml(&self, name: &str, description: &str) -> String {
+        return format!(
+            "Table {} {{\n{}\n\n  Note: '{}'\n}}",
+            name,
+            self.columns()
+                .iter()
+                .map(|c| format!("  {}", c.render_dbml()))
+                .join("\n"),
+            description
+        );
     }
 
     fn try_parse_date_object(maybe_date_obj: &serde_json::Map<String, Value>) -> Option<String> {

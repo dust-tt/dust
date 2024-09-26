@@ -1,7 +1,6 @@
 import type {
-  APIError,
-  DataSourceType,
   DataSourceViewCategory,
+  DataSourceViewType,
   LightWorkspaceType,
   VaultType,
 } from "@dust-tt/types";
@@ -10,7 +9,11 @@ import type { Fetcher } from "swr";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSourceName } from "@app/lib/data_sources";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  fetcher,
+  getErrorFromResponse,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import { getVaultName } from "@app/lib/vaults";
 import type {
   GetVaultsResponseBody,
@@ -21,6 +24,7 @@ import type {
   PatchVaultResponseBody,
 } from "@app/pages/api/w/[wId]/vaults/[vId]";
 import type { GetVaultDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
+import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]";
 import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 export function useVaults({
@@ -93,6 +97,36 @@ export function useVaultInfo({
     mutateVaultInfo: mutate,
     isVaultInfoLoading: !error && !data,
     isVaultInfoError: error,
+  };
+}
+
+export function useVaultDataSourceView({
+  owner,
+  vaultId,
+  dataSourceViewId,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  vaultId: string;
+  dataSourceViewId?: string;
+  disabled?: boolean;
+}) {
+  const dataSourceViewsFetcher: Fetcher<GetDataSourceViewResponseBody> =
+    fetcher;
+
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      `/api/w/${owner.sId}/vaults/${vaultId}/data_source_views/${dataSourceViewId}`,
+      dataSourceViewsFetcher,
+      { disabled }
+    );
+
+  return {
+    dataSourceView: data?.dataSourceView,
+    isDataSourceViewLoading: !disabled && !error && !data,
+    isDataSourceViewError: error,
+    mutate,
+    mutateRegardlessOfQueryParams,
   };
 }
 
@@ -226,11 +260,12 @@ export function useCreateFolder({
       });
       return dataSourceView;
     } else {
-      const err: { error: APIError } = await res.json();
+      const errorData = await getErrorFromResponse(res);
+
       sendNotification({
         type: "error",
         title: "Error creating Folder",
-        description: `Error: ${err.error.message}`,
+        description: `Error: ${errorData.message}`,
       });
       return null;
     }
@@ -247,24 +282,15 @@ export function useUpdateFolder({
   vaultId: string;
 }) {
   const sendNotification = useContext(SendNotificationsContext);
-  const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
-    useVaultDataSourceViews({
-      workspaceId: owner.sId,
-      vaultId: vaultId,
-      category: "folder",
-      disabled: true, // Needed just to mutate
-    });
-
-  // TODO(GROUPS_INFRA) - Ideally, it should be a DataSourceViewType
   const doUpdate = async (
-    dataSource: DataSourceType | null,
+    dataSourceView: DataSourceViewType | null,
     description: string | null
   ) => {
-    if (!dataSource || !description) {
+    if (!dataSourceView || !description) {
       return false;
     }
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSource.sId}`,
+      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSourceView.dataSource.sId}`,
       {
         method: "PATCH",
         headers: {
@@ -276,19 +302,18 @@ export function useUpdateFolder({
       }
     );
     if (res.ok) {
-      void mutateVaultDataSourceViews();
-
       sendNotification({
         type: "success",
         title: "Successfully updated folder",
         description: "Folder was successfully updated.",
       });
     } else {
-      const err: { error: APIError } = await res.json();
+      const errorData = await getErrorFromResponse(res);
+
       sendNotification({
         type: "error",
         title: "Error updating Folder",
-        description: `Error: ${err.error.message}`,
+        description: `Error: ${errorData.message}`,
       });
     }
     return res.ok;
@@ -315,30 +340,30 @@ export function useDeleteFolderOrWebsite({
       disabled: true, // Needed just to mutate
     });
 
-  // TODO(GROUPS_INFRA) - Ideally, it should be a DataSourceViewType
-  const doDelete = async (dataSource: DataSourceType | null) => {
-    if (!dataSource) {
+  const doDelete = async (dataSourceView: DataSourceViewType | undefined) => {
+    if (!dataSourceView) {
       return false;
     }
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSource.sId}`,
+      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSourceView.dataSource.sId}`,
       { method: "DELETE" }
     );
 
     if (res.ok) {
-      void mutateVaultDataSourceViews();
+      await mutateVaultDataSourceViews();
 
       sendNotification({
         type: "success",
         title: `Successfully deleted ${category}`,
-        description: `${getDataSourceName(dataSource)} was successfully deleted.`,
+        description: `${getDataSourceName(dataSourceView.dataSource)} was successfully deleted.`,
       });
     } else {
-      const err: { error: APIError } = await res.json();
+      const errorData = await getErrorFromResponse(res);
+
       sendNotification({
         type: "error",
         title: `Error deleting ${category}`,
-        description: `Error: ${err.error.message}`,
+        description: `Error: ${errorData.message}`,
       });
     }
     return res.ok;
@@ -376,7 +401,8 @@ export function useCreateVault({ owner }: { owner: LightWorkspaceType }) {
     });
 
     if (!res.ok) {
-      const errorData = await res.json();
+      const errorData = await getErrorFromResponse(res);
+
       sendNotification({
         type: "error",
         title: "Error creating Vault",
@@ -463,7 +489,8 @@ export function useUpdateVault({ owner }: { owner: LightWorkspaceType }) {
 
     for (const res of results) {
       if (!res.ok) {
-        const errorData = await res.json();
+        const errorData = await getErrorFromResponse(res);
+
         sendNotification({
           type: "error",
           title: "Error updating Vault",
@@ -517,11 +544,12 @@ export function useDeleteVault({ owner }: { owner: LightWorkspaceType }) {
         description: `${getVaultName(vault)} was successfully deleted.`,
       });
     } else {
-      const err: { error: APIError } = await res.json();
+      const errorData = await getErrorFromResponse(res);
+
       sendNotification({
         type: "error",
         title: `Error deleting ${getVaultName(vault)}`,
-        description: `Error: ${err.error.message}`,
+        description: `Error: ${errorData.message}`,
       });
     }
     return res.ok;

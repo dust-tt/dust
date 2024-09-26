@@ -32,12 +32,7 @@ async function handler(
     });
   }
 
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dsId,
-    // TODO(DATASOURCE_SID): Clean-up
-    { origin: "data_source_tables_table" }
-  );
+  const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
     return apiError(req, res, {
       status_code: 404,

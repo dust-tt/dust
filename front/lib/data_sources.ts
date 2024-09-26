@@ -30,6 +30,7 @@ export function getDisplayNameForDataSource(ds: DataSourceType) {
       case "intercom":
       case "microsoft":
       case "notion":
+      case "snowflake":
         return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
       case "webcrawler":
         return ds.name;

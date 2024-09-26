@@ -1,19 +1,3 @@
-use crate::blocks::block::BlockType;
-use crate::cached_request::CachedRequest;
-use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
-use crate::data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion};
-use crate::databases::database::{get_table_unique_id, Database, Table};
-use crate::databases::table_schema::TableSchema;
-use crate::dataset::Dataset;
-use crate::http::request::{HttpRequest, HttpResponse};
-use crate::project::Project;
-use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
-use crate::providers::llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest};
-use crate::run::{BlockExecution, Run, RunConfig, RunStatus, RunType};
-use crate::search_filter::SearchFilter;
-use crate::sqlite_workers::client::SqliteWorker;
-use crate::stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES};
-use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use bb8::Pool;
@@ -27,6 +11,30 @@ use std::hash::Hasher;
 use std::str::FromStr;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
+
+use crate::{
+    blocks::block::BlockType,
+    cached_request::CachedRequest,
+    consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX,
+    data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
+    databases::{
+        table::{get_table_unique_id, Table},
+        table_schema::TableSchema,
+        transient_database::TransientDatabase,
+    },
+    dataset::Dataset,
+    http::request::{HttpRequest, HttpResponse},
+    project::Project,
+    providers::{
+        embedder::{EmbedderRequest, EmbedderVector},
+        llm::{LLMChatGeneration, LLMChatRequest, LLMGeneration, LLMRequest},
+    },
+    run::{BlockExecution, Run, RunConfig, RunStatus, RunType},
+    search_filter::SearchFilter,
+    sqlite_workers::client::SqliteWorker,
+    stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES},
+    utils,
+};
 
 #[derive(Clone)]
 pub struct PostgresStore {
@@ -1954,7 +1962,11 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn upsert_database(&self, table_ids_hash: &str, worker_ttl: u64) -> Result<Database> {
+    async fn upsert_database(
+        &self,
+        table_ids_hash: &str,
+        worker_ttl: u64,
+    ) -> Result<TransientDatabase> {
         let pool = self.pool.clone();
         let mut c = pool.get().await?;
         let mut tx = c.transaction().await?;
@@ -1971,7 +1983,7 @@ impl Store for PostgresStore {
             table_ids_hash: &str,
             worker_ttl: u64,
             existing_database_row_id: &Option<i64>,
-        ) -> Result<Database> {
+        ) -> Result<TransientDatabase> {
             if existing_database_row_id.is_some() {
                 // Delete the database.
                 let stmt = tx.prepare("DELETE FROM databases WHERE id = $1").await?;
@@ -2013,7 +2025,7 @@ impl Store for PostgresStore {
                     )
                     .await?;
 
-                    Ok(Database::new(
+                    Ok(TransientDatabase::new(
                         created as u64,
                         &table_ids_hash,
                         &Some(SqliteWorker::new(url, last_heartbeat as u64)),
@@ -2038,7 +2050,7 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        let database_result: Result<Database, anyhow::Error> = match database_row {
+        let database_result: Result<TransientDatabase, anyhow::Error> = match database_row {
             // There is no database with the same table_ids_hash, we can create a new one.
             None => create_database(&mut tx, table_ids_hash, worker_ttl, &None).await,
             // There is a database with the same table_ids_hash.
@@ -2095,7 +2107,7 @@ impl Store for PostgresStore {
                         Some(sqlite_worker) => {
                             // The sqlite_worker is still alive.
                             // We can release the lock and return the database.
-                            Ok(Database::new(
+                            Ok(TransientDatabase::new(
                                 created as u64,
                                 &table_ids_hash,
                                 &Some(sqlite_worker),
@@ -2116,7 +2128,7 @@ impl Store for PostgresStore {
         &self,
         table_ids_hash: &str,
         worker_ttl: u64,
-    ) -> Result<Option<Database>> {
+    ) -> Result<Option<TransientDatabase>> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
@@ -2138,7 +2150,11 @@ impl Store for PostgresStore {
             None => Ok(None),
             Some((_database_row_id, created, table_ids_hash, sqlite_worker_row_id)) => {
                 match sqlite_worker_row_id {
-                    None => Ok(Some(Database::new(created as u64, &table_ids_hash, &None))),
+                    None => Ok(Some(TransientDatabase::new(
+                        created as u64,
+                        &table_ids_hash,
+                        &None,
+                    ))),
                     Some(worker_id) => {
                         let sqlite_worker: Option<SqliteWorker> = {
                             let stmt = c
@@ -2161,7 +2177,7 @@ impl Store for PostgresStore {
                             }
                         };
 
-                        Ok(Some(Database::new(
+                        Ok(Some(TransientDatabase::new(
                             created as u64,
                             &table_ids_hash,
                             &sqlite_worker,
@@ -2201,7 +2217,7 @@ impl Store for PostgresStore {
         data_source_id: &str,
         table_id: &str,
         worker_ttl: u64,
-    ) -> Result<Vec<Database>> {
+    ) -> Result<Vec<TransientDatabase>> {
         let data_source_id = data_source_id.to_string();
         let table_id = table_id.to_string();
 
@@ -2252,6 +2268,8 @@ impl Store for PostgresStore {
         timestamp: u64,
         tags: &Vec<String>,
         parents: &Vec<String>,
+        remote_database_table_id: Option<String>,
+        remote_database_secret_id: Option<String>,
     ) -> Result<Table> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -2263,6 +2281,8 @@ impl Store for PostgresStore {
         let table_timestamp = timestamp;
         let table_tags = tags.clone();
         let table_parents = parents.clone();
+        let table_remote_database_table_id = remote_database_table_id.clone();
+        let table_remote_database_secret_id = remote_database_secret_id.clone();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -2285,11 +2305,12 @@ impl Store for PostgresStore {
             .prepare(
                 "INSERT INTO tables \
                    (id, data_source, created, table_id, name, description,
-                    timestamp, tags_array, parents) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8) \
+                    timestamp, tags_array, parents, remote_database_table_id, remote_database_secret_id) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) \
                    ON CONFLICT (table_id, data_source) DO UPDATE \
                    SET name = EXCLUDED.name, description = EXCLUDED.description, \
-                   timestamp = EXCLUDED.timestamp, tags_array = EXCLUDED.tags_array, parents = EXCLUDED.parents \
+                   timestamp = EXCLUDED.timestamp, tags_array = EXCLUDED.tags_array, parents = EXCLUDED.parents, \
+                     remote_database_table_id = EXCLUDED.remote_database_table_id, remote_database_secret_id = EXCLUDED.remote_database_secret_id \
                    RETURNING id",
             )
             .await?;
@@ -2305,6 +2326,8 @@ impl Store for PostgresStore {
                 &(table_timestamp as i64),
                 &table_tags,
                 &table_parents,
+                &table_remote_database_table_id,
+                &table_remote_database_secret_id,
             ],
         )
         .await?;
@@ -2321,6 +2344,8 @@ impl Store for PostgresStore {
             table_parents,
             &None,
             None,
+            table_remote_database_table_id,
+            table_remote_database_secret_id,
         ))
     }
 
@@ -2476,8 +2501,10 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT created, table_id, name, description, timestamp, tags_array, parents, \
-                        schema, schema_stale_at FROM tables \
+                "SELECT created, table_id, name, description, \
+                        timestamp, tags_array, parents, \
+                        schema, schema_stale_at, \
+                        remote_database_table_id, remote_database_secret_id FROM tables \
                 WHERE data_source = $1 AND table_id = $2 LIMIT 1",
             )
             .await?;
@@ -2493,6 +2520,8 @@ impl Store for PostgresStore {
             Vec<String>,
             Option<String>,
             Option<i64>,
+            Option<String>,
+            Option<String>,
         )> = match r.len() {
             0 => None,
             1 => Some((
@@ -2505,6 +2534,8 @@ impl Store for PostgresStore {
                 r[0].get(6),
                 r[0].get(7),
                 r[0].get(8),
+                r[0].get(9),
+                r[0].get(10),
             )),
             _ => unreachable!(),
         };
@@ -2521,6 +2552,8 @@ impl Store for PostgresStore {
                 parents,
                 schema,
                 schema_stale_at,
+                remote_database_table_id,
+                remote_database_secret_id,
             )) => {
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
@@ -2544,6 +2577,8 @@ impl Store for PostgresStore {
                     parents,
                     &parsed_schema,
                     schema_stale_at.map(|t| t as u64),
+                    remote_database_table_id,
+                    remote_database_secret_id,
                 )))
             }
         }
@@ -2606,7 +2641,9 @@ impl Store for PostgresStore {
 
         let sql = format!(
             "SELECT created, table_id, name, description, timestamp, tags_array, \
-                                parents, schema, schema_stale_at FROM tables \
+                                parents, schema, schema_stale_at, \
+                                remote_database_table_id, remote_database_secret_id \
+                                FROM tables \
                WHERE {} ORDER BY timestamp DESC",
             where_clauses.join(" AND "),
         );
@@ -2643,6 +2680,8 @@ impl Store for PostgresStore {
                 let parents: Vec<String> = r.get(6);
                 let schema: Option<String> = r.get(7);
                 let schema_stale_at: Option<i64> = r.get(8);
+                let remote_database_table_id: Option<String> = r.get(9);
+                let remote_database_secret_id: Option<String> = r.get(10);
 
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
@@ -2667,6 +2706,8 @@ impl Store for PostgresStore {
                     parents,
                     &parsed_schema,
                     schema_stale_at.map(|t| t as u64),
+                    remote_database_table_id,
+                    remote_database_secret_id,
                 ))
             })
             .collect::<Result<Vec<_>>>()?;

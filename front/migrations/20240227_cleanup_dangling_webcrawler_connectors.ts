@@ -3,7 +3,7 @@ import { QueryTypes } from "sequelize";
 
 import config from "@app/lib/api/config";
 import { getConnectorReplicaDbConnection } from "@app/lib/production_checks/utils";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import logger from "@app/logger/logger";
 
 async function main() {
@@ -17,7 +17,7 @@ async function main() {
   );
   console.log("Will check this number of connectors:", connectors.length);
   for (const connector of connectors) {
-    const dataSource = await DataSource.findOne({
+    const dataSource = await DataSourceModel.findOne({
       where: {
         connectorId: connector.id.toString(),
         connectorProvider: "webcrawler",

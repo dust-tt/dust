@@ -617,8 +617,6 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
 
             return {
               blob: {
-                dataSourceWorkspaceId: details.workspaceId,
-                dataSourceId: details.dataSourceView.dataSource.sId,
                 sourceUrl: d.source_url,
                 documentId: d.document_id,
                 reference,

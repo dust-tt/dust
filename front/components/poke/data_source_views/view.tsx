@@ -1,4 +1,7 @@
-import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
+import type {
+  LightWorkspaceType,
+  PokeDataSourceViewType,
+} from "@dust-tt/types";
 
 import {
   PokeTable,
@@ -13,7 +16,7 @@ import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 interface ViewDataSourceViewTableProps {
-  dataSourceView: DataSourceViewType;
+  dataSourceView: PokeDataSourceViewType;
   owner: LightWorkspaceType;
 }
 
@@ -44,7 +47,13 @@ export function ViewDataSourceViewTable({
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Vault</PokeTableHead>
-                <PokeTableCell>{dataSourceView.vaultId}</PokeTableCell>
+                <PokeTableCell>
+                  {dataSourceView.vault.name} ({dataSourceView.vault.sId})
+                </PokeTableCell>
+              </PokeTableRow>
+              <PokeTableRow>
+                <PokeTableHead>Vault Type</PokeTableHead>
+                <PokeTableCell>{dataSourceView.vault.kind}</PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Data source</PokeTableHead>

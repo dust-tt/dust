@@ -17,6 +17,7 @@ import {
   MicrosoftLogo,
   NotionLogo,
   SlackLogo,
+  SnowflakeLogo,
   ZendeskLogo,
 } from "@sparkle/logo/platforms";
 
@@ -30,7 +31,8 @@ export type CitationType =
   | "microsoft"
   | "zendesk"
   | "notion"
-  | "slack";
+  | "slack"
+  | "snowflake";
 
 interface CitationProps {
   avatarSrc?: string;
@@ -58,6 +60,7 @@ const typeIcons = {
   notion: NotionLogo,
   slack: SlackLogo,
   image: ImageStrokeIcon,
+  snowflake: SnowflakeLogo,
 };
 
 const typeSizing = {

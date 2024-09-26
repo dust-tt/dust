@@ -26,6 +26,7 @@ export default function SpecRunView({
   owner,
   app,
   readOnly,
+  isAdmin,
   showOutputs,
   spec,
   run,
@@ -39,6 +40,7 @@ export default function SpecRunView({
   owner: WorkspaceType;
   app: AppType;
   readOnly: boolean;
+  isAdmin: boolean;
   showOutputs: boolean;
   spec: SpecificationType;
   run: RunType | null;
@@ -135,6 +137,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  isAdmin={isAdmin}
                   showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
@@ -156,6 +159,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  isAdmin={isAdmin}
                   showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
@@ -303,6 +307,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  isAdmin={isAdmin}
                   showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}
@@ -345,6 +350,7 @@ export default function SpecRunView({
                   status={status}
                   running={runRequested || run?.status.run == "running"}
                   readOnly={readOnly}
+                  isAdmin={isAdmin}
                   showOutputs={showOutputs}
                   onBlockUpdate={(block) => handleSetBlock(idx, block)}
                   onBlockDelete={() => handleDeleteBlock(idx)}

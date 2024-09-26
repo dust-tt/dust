@@ -13,6 +13,7 @@ import { Err, Ok } from "@dust-tt/types";
 import type * as t from "io-ts";
 
 import type { NotificationType } from "@app/components/sparkle/Notification";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 
 /**
@@ -190,10 +191,11 @@ export async function deleteConversation({
   );
 
   if (!res.ok) {
-    const data = await res.json();
+    const errorData = await getErrorFromResponse(res);
+
     sendNotification({
       title: "Error deleting conversation.",
-      description: data.error.message || "Please try again or contact us.",
+      description: errorData.message,
       type: "error",
     });
     return false;

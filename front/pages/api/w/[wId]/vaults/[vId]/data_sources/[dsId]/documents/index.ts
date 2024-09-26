@@ -43,11 +43,7 @@ async function handler(
     });
   }
 
-  const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId, {
-    // TODO(DATASOURCE_SID): clean-up
-    origin: "vault_data_source_documents",
-  });
-
+  const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (
     !dataSource ||
     vId !== dataSource.vault.sId ||

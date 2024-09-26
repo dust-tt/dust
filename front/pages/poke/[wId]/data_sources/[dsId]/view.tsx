@@ -20,10 +20,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const dataSource = await DataSourceResource.fetchByNameOrId(auth, dsId, {
+  const dataSource = await DataSourceResource.fetchById(auth, dsId, {
     includeEditedBy: true,
-    // TODO(DATASOURCE_SID): Clean-up
-    origin: "poke_data_sources_page_view",
   });
   if (!dataSource) {
     return {

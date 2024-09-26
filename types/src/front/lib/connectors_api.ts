@@ -8,7 +8,7 @@ import { ConnectorCreateRequestBody } from "../../connectors/api_handlers/create
 import { UpdateConnectorRequestBody } from "../../connectors/api_handlers/update_connector";
 import { ConnectorConfiguration } from "../../connectors/configuration";
 import { ContentNodesViewType } from "../../connectors/content_nodes";
-import { ConnectorProvider } from "../../front/data_source";
+import { ConnectorProvider, DataSourceType } from "../../front/data_source";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
 
@@ -383,6 +383,23 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
+  // TODO(jules): remove after debugging
+  async getConnectorFromDataSource(
+    dataSource: DataSourceType
+  ): Promise<ConnectorsAPIResponse<ConnectorType>> {
+    const res = await this._fetchWithError(
+      `${this._url}/connectors/${encodeURIComponent(
+        dataSource.connectorId ?? ""
+      )}?origin=${dataSource.id}`,
+      {
+        method: "GET",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
   async getConnectors(
     provider: ConnectorProvider,
     connectorIds: string[]
@@ -495,6 +512,7 @@ export class ConnectorsAPI {
         connectorId
       )}/content_nodes`,
       {
+        keepalive: false,
         method: "POST",
         headers: this.getDefaultHeaders(),
         body: JSON.stringify({

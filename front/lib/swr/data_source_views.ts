@@ -12,7 +12,6 @@ import {
   fetcher,
   fetcherMultiple,
   postFetcher,
-  useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
@@ -171,109 +170,30 @@ export function useDataSourceViewContentNodes({
   };
 }
 
-export function useDataSourceViewContentNodesWithInfiniteScroll({
-  owner,
-  dataSourceView,
-  internalIds,
-  parentId,
-  pageSize = 500,
-  viewType,
-}: {
-  owner: LightWorkspaceType;
-  dataSourceView?: DataSourceViewType;
-  internalIds?: string[];
-  parentId?: string;
-  pageSize?: number;
-  viewType?: ContentNodesViewType;
-}): {
-  isNodesError: boolean;
-  isNodesLoading: boolean;
-  isNodesValidating: boolean;
-  nodes: GetDataSourceViewContentNodes["nodes"];
-  totalNodesCount: number;
-  hasMore: boolean;
-  nextPage: () => Promise<void>;
-} {
-  const url =
-    dataSourceView && viewType
-      ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
-      : null;
-
-  const body = {
-    internalIds,
-    parentId,
-    viewType,
-  };
-
-  const fetcher: Fetcher<GetDataSourceViewContentNodes, [string, object]> =
-    postFetcher;
-
-  const { data, error, setSize, size, isValidating } =
-    useSWRInfiniteWithDefaults(
-      (index) => {
-        if (!url) {
-          // No URL, return an empty array to skip the fetch
-          return null;
-        }
-
-        // Append the pagination params to the URL
-        const params = new URLSearchParams();
-        appendPaginationParams(params, {
-          pageIndex: index,
-          pageSize,
-        });
-
-        return JSON.stringify([url + "?" + params.toString(), body]);
-      },
-      async (fetchKey) => {
-        if (!fetchKey) {
-          return undefined;
-        }
-
-        // Get the URL and body from the fetchKey
-        const params = JSON.parse(fetchKey);
-
-        return fetcher(params);
-      },
-      {
-        revalidateFirstPage: false,
-      }
-    );
-
-  return {
-    isNodesError: !!error,
-    isNodesLoading: !error && !data,
-    isNodesValidating: isValidating,
-    nodes: useMemo(
-      () => (data ? data.flatMap((d) => (d ? d.nodes : [])) : []),
-      [data]
-    ),
-    totalNodesCount: data?.[0] ? data[0].total : 0,
-    hasMore: size * pageSize < (data?.[0] ? data[0].total : 0),
-    nextPage: async () => {
-      await setSize((size) => size + 1);
-    },
-  };
-}
-
 export function useDataSourceViewDocument({
   dataSourceView,
   documentId,
   owner,
+  disabled,
 }: {
   dataSourceView: DataSourceViewType | null;
   documentId: string | null;
   owner: LightWorkspaceType;
+  disabled?: boolean;
 }) {
   const dataSourceViewDocumentFetcher: Fetcher<GetDataSourceViewDocumentResponseBody> =
     fetcher;
-  const disabled = !dataSourceView || !documentId;
+  const url =
+    dataSourceView && documentId
+      ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`
+      : null;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    disabled
-      ? null
-      : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`,
-    dataSourceViewDocumentFetcher
+    url,
+    dataSourceViewDocumentFetcher,
+    {
+      disabled,
+    }
   );
 
   return {
@@ -295,7 +215,7 @@ export function useDataSourceViewConnectorConfiguration({
     fetcher;
   const disabled = !dataSourceView;
 
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
       : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
@@ -304,8 +224,9 @@ export function useDataSourceViewConnectorConfiguration({
 
   return {
     configuration: data ? data.configuration : null,
-    isDocumentLoading: !disabled && !error && !data,
-    isDocumentError: error,
+    mutateConfiguration: mutate,
+    isConfigurationLoading: !disabled && !error && !data,
+    isConfigurationError: error,
   };
 }
 

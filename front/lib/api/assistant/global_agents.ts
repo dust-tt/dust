@@ -40,6 +40,10 @@ import {
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import {
+  PRODUCTION_DUST_APPS_HELPER_DATASOURCE_VIEW_ID,
+  PRODUCTION_DUST_APPS_WORKSPACE_ID,
+} from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
@@ -169,13 +173,23 @@ function _getHelperGlobalAgent({
     actions: [
       {
         id: -1,
-        sId: GLOBAL_AGENTS_SID.HELPER + "-websearch-action",
-        type: "websearch_configuration",
-        name: DEFAULT_WEBSEARCH_ACTION_NAME,
-        description: null,
+        sId: GLOBAL_AGENTS_SID.HELPER + "-datasource-action",
+        type: "retrieval_configuration",
+        query: "auto",
+        relativeTimeFrame: "auto",
+        topK: "auto",
+        dataSources: [
+          {
+            dataSourceViewId: PRODUCTION_DUST_APPS_HELPER_DATASOURCE_VIEW_ID,
+            workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+            filter: { parents: null },
+          },
+        ],
+        name: "search_dust_docs",
+        description: `The documentation of the Dust platform.`,
       },
     ],
-    maxStepsPerRun: 0,
+    maxStepsPerRun: 3,
     visualizationEnabled: false,
     templateId: null,
     groupIds: [],
@@ -772,7 +786,7 @@ function _getManagedDataSourceAgent(
         relativeTimeFrame: "auto",
         topK: "auto",
         dataSources: filteredDataSourceViews.map((dsView) => ({
-          dataSourceId: dsView.dataSource.name,
+          dataSourceId: dsView.dataSource.sId,
           dataSourceViewId: dsView.sId,
           workspaceId: preFetchedDataSources.workspaceId,
           filter: { tags: null, parents: null },
@@ -926,9 +940,9 @@ function _getDustGlobalAgent(
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
   const modelConfiguration = (() => {
-    // If we can use Sonnet 3.5, we use it. Otherwise we use the default model.
-    if (auth.isUpgraded() && isProviderWhitelisted(owner, "anthropic")) {
-      return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
+    // Default to GPT-4o if available.
+    if (auth.isUpgraded() && isProviderWhitelisted(owner, "openai")) {
+      return GPT_4O_MODEL_CONFIG;
     }
     return auth.isUpgraded()
       ? getLargeWhitelistedModel(owner)
@@ -1014,7 +1028,7 @@ function _getDustGlobalAgent(
       relativeTimeFrame: "auto",
       topK: "auto",
       dataSources: dataSourceViews.map((dsView) => ({
-        dataSourceId: dsView.dataSource.name,
+        dataSourceId: dsView.dataSource.sId,
         dataSourceViewId: dsView.sId,
         workspaceId: preFetchedDataSources.workspaceId,
         filter: { parents: null },
@@ -1036,7 +1050,7 @@ function _getDustGlobalAgent(
         sId:
           GLOBAL_AGENTS_SID.DUST +
           "-datasource-action-" +
-          dsView.dataSource.name,
+          dsView.dataSource.sId,
         type: "retrieval_configuration",
         query: "auto",
         relativeTimeFrame: "auto",

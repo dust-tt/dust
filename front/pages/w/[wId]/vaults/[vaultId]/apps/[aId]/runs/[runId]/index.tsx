@@ -1,8 +1,11 @@
 import { Button, CheckCircleIcon, ClockIcon, Tab } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { AppType, SpecificationType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
-import type { RunType } from "@dust-tt/types";
+import type {
+  AppType,
+  RunType,
+  SpecificationType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
@@ -10,25 +13,22 @@ import { useContext, useState } from "react";
 import CopyRun from "@app/components/app/CopyRun";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ConfirmContext } from "@app/components/Confirm";
-import {
-  subNavigationApp,
-  subNavigationBuild,
-} from "@app/components/navigation/config";
+import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getRun } from "@app/lib/api/run";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { getDustAppsListUrl } from "@app/lib/vault_rollout";
+import { dustAppsListUrl } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   isBuilder: boolean;
+  isAdmin: boolean;
   app: AppType;
   run: RunType;
   spec: SpecificationType;
-  dustAppsListUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -40,6 +40,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const isBuilder = auth.isBuilder();
+  const isAdmin = auth.isAdmin();
 
   const app = await AppResource.fetchById(auth, context.params?.aId as string);
   if (!app) {
@@ -56,20 +57,15 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
   const { run, spec } = r;
 
-  const dustAppsListUrl = await getDustAppsListUrl(
-    auth,
-    context.params.vaultId
-  );
-
   return {
     props: {
       owner,
       subscription,
       isBuilder,
+      isAdmin,
       app: app.toJSON(),
       spec,
       run,
-      dustAppsListUrl,
     },
   };
 });
@@ -78,10 +74,10 @@ export default function AppRun({
   owner,
   subscription,
   isBuilder,
+  isAdmin,
   app,
   spec,
   run,
-  dustAppsListUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [savedRunId, setSavedRunId] = useState<string | null | undefined>(
     app.savedRun
@@ -149,19 +145,15 @@ export default function AppRun({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationBuild({
-        owner,
-        current: "developers",
-      })}
+      hideSidebar
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl);
+            void router.push(dustAppsListUrl(owner, app.vault));
           }}
         />
       }
-      hideSidebar
     >
       <div className="flex w-full flex-col">
         <Tab
@@ -227,6 +219,7 @@ export default function AppRun({
           <SpecRunView
             owner={owner}
             app={app}
+            isAdmin={isAdmin}
             readOnly={true}
             showOutputs={isBuilder}
             spec={spec}

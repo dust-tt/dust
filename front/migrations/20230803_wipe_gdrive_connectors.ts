@@ -3,7 +3,7 @@ import { CoreAPI } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import config from "@app/lib/api/config";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import logger from "@app/logger/logger";
 
 const { CONNECTORS_DB = "" } = process.env;
@@ -19,7 +19,7 @@ async function main() {
   });
 
   console.log("fetching gdrive data sources");
-  const ds = await DataSource.findAll({
+  const ds = await DataSourceModel.findAll({
     where: {
       connectorProvider: "google_drive",
     },

@@ -1,4 +1,10 @@
-import type { ACLType, ModelId, Result, VaultType } from "@dust-tt/types";
+import type {
+  ACLType,
+  ModelId,
+  PokeVaultType,
+  Result,
+  VaultType,
+} from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import { assertNever, Ok } from "@dust-tt/types";
 import assert from "assert";
@@ -314,13 +320,18 @@ export class VaultResource extends BaseResource<VaultModel> {
 
       case "regular":
         return isPrivateVaultsEnabled ? auth.canWrite([this.acl()]) : false;
+
       case "public":
         return auth.canWrite([this.acl()]);
+
       default:
         assertNever(this.kind);
     }
   }
 
+  // Ensure thorough testing when modifying this method, as it is crucial for
+  // the integrity of the permissions system. It acts as the gatekeeper,
+  // determining who has the right to read resources from a vault.
   canRead(auth: Authenticator) {
     const isPrivateVaultsEnabled = auth
       .getNonNullableWorkspace()
@@ -330,8 +341,10 @@ export class VaultResource extends BaseResource<VaultModel> {
       case "global":
       case "system":
         return auth.canRead([this.acl()]);
+
       case "regular":
         return isPrivateVaultsEnabled ? auth.canRead([this.acl()]) : false;
+
       case "public":
         return true;
 
@@ -345,21 +358,28 @@ export class VaultResource extends BaseResource<VaultModel> {
       .getNonNullableWorkspace()
       .flags.includes("private_data_vaults_feature");
 
-    if (this.isRegular() && !isPrivateVaultsEnabled) {
-      return false;
-    }
+    const isWorkspaceAdmin =
+      auth.isAdmin() && auth.getNonNullableWorkspace().id === this.workspaceId;
 
-    // Admins can list all vaults.
-    if (auth.isAdmin()) {
-      return true;
-    }
+    switch (this.kind) {
+      case "global":
+        return auth.canRead([this.acl()]);
 
-    // Public vaults can be listed by anyone.
-    if (this.isPublic()) {
-      return true;
-    }
+      // Public vaults can be listed by anyone.
+      case "public":
+        return true;
 
-    return auth.canRead([this.acl()]);
+      case "regular":
+        return isPrivateVaultsEnabled
+          ? isWorkspaceAdmin || auth.canRead([this.acl()])
+          : false;
+
+      case "system":
+        return isWorkspaceAdmin;
+
+      default:
+        assertNever(this.kind);
+    }
   }
 
   isGlobal() {
@@ -384,6 +404,13 @@ export class VaultResource extends BaseResource<VaultModel> {
       name: this.name,
       kind: this.kind,
       groupIds: this.groups.map((group) => group.sId),
+    };
+  }
+
+  toPokeJSON(): PokeVaultType {
+    return {
+      ...this.toJSON(),
+      groups: this.groups.map((group) => group.toJSON()),
     };
   }
 }

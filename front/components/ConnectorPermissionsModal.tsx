@@ -142,6 +142,7 @@ export function showAddDataModal(
     case "webcrawler":
     case "slack":
     case "intercom":
+    case "snowflake":
       return true;
     case "notion":
     case "github":
@@ -470,7 +471,7 @@ export function ConnectorPermissionsModal({
         className="flex"
         variant="side-md"
       >
-        <div className="mx-auto mt-4 flex max-w-4xl grow flex-col gap-4">
+        <div className="mx-auto mt-4 flex w-full max-w-4xl grow flex-col gap-4">
           <div className="flex">
             <Button
               className="ml-auto justify-self-end"

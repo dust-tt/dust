@@ -167,9 +167,7 @@ const getTableColumns = ({
             !info.row.original.dataSourceView.dataSource
               .fetchConnectorError && <Chip color="amber">Never</Chip>}
           {info.row.original.dataSourceView.dataSource.fetchConnectorError && (
-            <Chip color="warning">
-              Error loading the connector. Try again in a few minutes.
-            </Chip>
+            <Chip color="warning">Retry in a few minutes</Chip>
           )}
           {info.row.original.dataSourceView.dataSource.connector &&
             info.row.original.workspaceId &&
@@ -366,7 +364,7 @@ export const VaultResourcesList = ({
 
   const onDeleteFolderOrWebsite = async () => {
     if (selectedDataSourceView?.dataSource) {
-      const res = await doDelete(selectedDataSourceView.dataSource);
+      const res = await doDelete(selectedDataSourceView);
       if (res) {
         await router.push(
           `/w/${owner.sId}/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`
@@ -454,7 +452,10 @@ export const VaultResourcesList = ({
           <>
             <EditVaultStaticDatasourcesViews
               isOpen={showFolderOrWebsiteModal}
-              setOpen={setShowFolderOrWebsiteModal}
+              onOpen={() => {
+                setSelectedDataSourceView(null);
+                setShowFolderOrWebsiteModal(true);
+              }}
               owner={owner}
               vault={vault}
               canWriteInVault={canWriteInVault}
@@ -464,7 +465,6 @@ export const VaultResourcesList = ({
               category={category}
               onClose={() => {
                 setShowFolderOrWebsiteModal(false);
-                setSelectedDataSourceView(null);
               }}
             />
             {selectedDataSourceView && (

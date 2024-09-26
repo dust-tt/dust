@@ -18,7 +18,6 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext } from "react";
 
-import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -150,10 +149,6 @@ export default function EditDustAssistant({
       subscription={subscription}
       hideSidebar
       owner={owner}
-      subNavigation={subNavigationBuild({
-        owner,
-        current: "workspace_assistants",
-      })}
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title="Manage Dust Assistant"

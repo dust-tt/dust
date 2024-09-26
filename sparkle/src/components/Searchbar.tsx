@@ -17,18 +17,19 @@ const iconClasses = {
   md: "s-pr-4",
 };
 
+type SearchbarProps = {
+  placeholder: string;
+  value: string | null;
+  onChange?: (value: string) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  name: string;
+  size?: "xs" | "sm" | "md";
+  disabled?: boolean;
+  className?: string;
+}
+
 export const Searchbar = forwardRef<
-  HTMLInputElement,
-  {
-    placeholder: string;
-    value: string | null;
-    onChange?: (value: string) => void;
-    onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-    name: string;
-    size?: "xs" | "sm" | "md";
-    disabled?: boolean;
-    className?: string;
-  }
+  HTMLInputElement, SearchbarProps
 >(
   (
     {

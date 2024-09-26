@@ -17,7 +17,7 @@ interface DataSources {
 
 export function makeColumnsForDataSources(
   owner: WorkspaceType,
-  reload: () => void
+  onDeleted: () => Promise<void>
 ): ColumnDef<DataSources>[] {
   return [
     {
@@ -95,7 +95,7 @@ export function makeColumnsForDataSources(
             size="xs"
             variant="tertiary"
             onClick={async () => {
-              await deleteDataSource(owner, dataSource.sId, reload);
+              await deleteDataSource(owner, dataSource.sId, onDeleted);
             }}
           />
         );
@@ -107,7 +107,7 @@ export function makeColumnsForDataSources(
 async function deleteDataSource(
   owner: WorkspaceType,
   dataSourceId: string,
-  reload: () => void
+  onDeleted: () => Promise<void>
 ) {
   if (
     !window.confirm(
@@ -136,7 +136,8 @@ async function deleteDataSource(
 
       throw new Error(`Failed to delete data source: ${text}`);
     }
-    reload();
+
+    await onDeleted();
   } catch (e) {
     console.error(e);
     window.alert(e);

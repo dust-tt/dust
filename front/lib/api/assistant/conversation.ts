@@ -54,11 +54,7 @@ import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
-import {
-  batchRenderAgentMessages,
-  batchRenderContentFragment,
-  batchRenderUserMessages,
-} from "@app/lib/api/assistant/messages";
+import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
@@ -265,6 +261,34 @@ export async function getUserConversations(
   return conversations;
 }
 
+async function createOrUpdateParticipation({
+  user,
+  conversation,
+}: {
+  user: UserType | null;
+  conversation: ConversationType;
+}) {
+  if (user) {
+    const participant = await ConversationParticipant.findOne({
+      where: {
+        conversationId: conversation.id,
+        userId: user.id,
+      },
+    });
+    if (participant) {
+      return participant.update({
+        action: "posted",
+      });
+    } else {
+      return ConversationParticipant.create({
+        conversationId: conversation.id,
+        action: "posted",
+        userId: user.id,
+      });
+    }
+  }
+}
+
 export async function getConversation(
   auth: Authenticator,
   conversationId: string,
@@ -324,19 +348,7 @@ export async function getConversation(
     ],
   });
 
-  const [userMessages, agentMessages, contentFragments] = await Promise.all([
-    batchRenderUserMessages(messages),
-    batchRenderAgentMessages(auth, messages),
-    batchRenderContentFragment(auth, conversationId, messages),
-  ]);
-
-  const render = [...userMessages, ...agentMessages, ...contentFragments];
-  render.sort((a, b) => {
-    if (a.rank !== b.rank) {
-      return a.rank - b.rank;
-    }
-    return a.version - b.version;
-  });
+  const render = await batchRenderMessages(auth, conversation.sId, messages);
 
   // We need to escape the type system here to create content. We pre-create an array that will hold
   // the versions of each User/Assistant/ContentFragment message. The lenght of that array is by definition the
@@ -347,7 +359,7 @@ export async function getConversation(
     () => []
   );
 
-  for (const { m, rank } of render) {
+  for (const { rank, ...m } of render) {
     content[rank] = [...content[rank], m];
   }
 
@@ -670,28 +682,6 @@ export async function* postUserMessage(
     return;
   }
 
-  async function createOrUpdateParticipation() {
-    if (user) {
-      const participant = await ConversationParticipant.findOne({
-        where: {
-          conversationId: conversation.id,
-          userId: user.id,
-        },
-      });
-      if (participant) {
-        return participant.update({
-          action: "posted",
-        });
-      } else {
-        return ConversationParticipant.create({
-          conversationId: conversation.id,
-          userId: user.id,
-          action: "posted",
-        });
-      }
-    }
-  }
-
   const results = await Promise.all([
     removeNulls(
       await Promise.all(
@@ -700,7 +690,10 @@ export async function* postUserMessage(
         })
       )
     ),
-    await createOrUpdateParticipation(),
+    await createOrUpdateParticipation({
+      user,
+      conversation,
+    }),
   ]);
   const agentConfigurations = results[0];
 
@@ -1129,24 +1122,6 @@ export async function* editUserMessage(
   let agentMessages: AgentMessageWithRankType[] = [];
   let agentMessageRows: AgentMessage[] = [];
 
-  async function createOrUpdateParticipation() {
-    if (user) {
-      const participant = await ConversationParticipant.findOne({
-        where: {
-          conversationId: conversation.id,
-          userId: user.id,
-        },
-      });
-      if (participant) {
-        return participant.update({
-          action: "posted",
-        });
-      } else {
-        throw new Error("Unreachable: edited message implies participation");
-      }
-    }
-  }
-
   const results = await Promise.all([
     removeNulls(
       await Promise.all(
@@ -1155,8 +1130,10 @@ export async function* editUserMessage(
         })
       )
     ),
-
-    createOrUpdateParticipation(),
+    await createOrUpdateParticipation({
+      user,
+      conversation,
+    }),
   ]);
 
   const agentConfigurations = results[0];

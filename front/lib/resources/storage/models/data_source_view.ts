@@ -11,7 +11,7 @@ import { DataTypes, Model } from "sequelize";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 
 export class DataSourceViewModel extends Model<
@@ -24,16 +24,16 @@ export class DataSourceViewModel extends Model<
 
   // Corresponds to the ID of the last user to configure the connection.
   declare editedByUserId: ForeignKey<User["id"]>;
-  declare editedAt: CreationOptional<Date>;
+  declare editedAt: Date;
 
   declare kind: DataSourceViewKind;
   declare parentsIn: string[] | null;
 
-  declare dataSourceId: ForeignKey<DataSource["id"]>;
+  declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
   declare vaultId: ForeignKey<VaultModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
-  declare dataSourceForView: NonAttribute<DataSource>;
+  declare dataSourceForView: NonAttribute<DataSourceModel>;
   declare editedByUser: NonAttribute<User>;
   declare vault: NonAttribute<VaultModel>;
   declare workspace: NonAttribute<Workspace>;
@@ -52,9 +52,7 @@ DataSourceViewModel.init(
     },
     editedAt: {
       type: DataTypes.DATE,
-      // TODO(2024-08-28 (thomas) Set `allowNull` to `false` once backfilled.
-      allowNull: true,
-      defaultValue: DataTypes.NOW,
+      allowNull: false,
     },
     kind: {
       type: DataTypes.STRING,
@@ -93,18 +91,17 @@ VaultModel.hasMany(DataSourceViewModel, {
 });
 DataSourceViewModel.belongsTo(VaultModel);
 
-DataSource.hasMany(DataSourceViewModel, {
+DataSourceModel.hasMany(DataSourceViewModel, {
   as: "dataSourceForView",
   foreignKey: { name: "dataSourceId", allowNull: false },
   onDelete: "RESTRICT",
 });
-DataSourceViewModel.belongsTo(DataSource, {
+DataSourceViewModel.belongsTo(DataSourceModel, {
   as: "dataSourceForView",
   foreignKey: { name: "dataSourceId", allowNull: false },
 });
 
 DataSourceViewModel.belongsTo(User, {
   as: "editedByUser",
-  // TODO(2024-08-28 (thomas) Set `allowNull` to `false` once backfilled.
-  foreignKey: { name: "editedByUserId", allowNull: true },
+  foreignKey: { name: "editedByUserId", allowNull: false },
 });

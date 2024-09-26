@@ -31,6 +31,7 @@ export default function LLM({
   status,
   running,
   readOnly,
+  isAdmin,
   showOutputs,
   onBlockUpdate,
   onBlockDelete,
@@ -46,6 +47,7 @@ export default function LLM({
   status: any;
   running: boolean;
   readOnly: boolean;
+  isAdmin: boolean;
   showOutputs: boolean;
   onBlockUpdate: (block: SpecificationBlockType) => void;
   onBlockDelete: () => void;
@@ -174,6 +176,7 @@ export default function LLM({
             <ModelPicker
               owner={owner}
               readOnly={readOnly}
+              isAdmin={isAdmin}
               model={
                 block.config
                   ? (block.config as { provider_id: string; model_id: string })

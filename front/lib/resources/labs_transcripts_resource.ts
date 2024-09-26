@@ -136,12 +136,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       return;
     }
 
-    const dataSource = await DataSourceResource.fetchByNameOrId(
-      auth,
-      dataSourceId,
-      // TODO(DATASOURCE_SID): clean-up
-      { origin: "labs_transcripts_resource" }
-    );
+    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
 
     if (!dataSource || this.dataSourceId === dataSource.id) {
       return;

@@ -3,13 +3,14 @@ import { Err, microsoftGarbageCollectionWorkflowId, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/common";
 
+import { getRootNodesToSync } from "@connectors/connectors/microsoft/temporal/activities";
 import { QUEUE_NAME } from "@connectors/connectors/microsoft/temporal/config";
+import type { FolderUpdatesSignal } from "@connectors/connectors/microsoft/temporal/signal";
+import { folderUpdatesSignal } from "@connectors/connectors/microsoft/temporal/signal";
 import { microsoftGarbageCollectionWorkflow } from "@connectors/connectors/microsoft/temporal/workflows";
 import {
   fullSyncWorkflow,
   incrementalSyncWorkflow,
-  microsoftDeletionWorkflow,
-  microsoftDeletionWorkflowId,
   microsoftFullSyncWorkflowId,
   microsoftIncrementalSyncWorkflowId,
 } from "@connectors/connectors/microsoft/temporal/workflows";
@@ -20,23 +21,41 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 export async function launchMicrosoftFullSyncWorkflow(
   connectorId: ModelId,
-  nodeIdsToSync?: string[]
+  nodeIdsToSync?: string[],
+  nodeIdsToDelete?: string[]
 ): Promise<Result<string, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
-
   const client = await getTemporalClient();
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const workflowId = microsoftFullSyncWorkflowId(connectorId);
 
+  if (!nodeIdsToSync) {
+    nodeIdsToSync = await getRootNodesToSync(connectorId);
+  }
+
+  if (!nodeIdsToDelete) {
+    nodeIdsToDelete = [];
+  }
+
+  const signalArgs: FolderUpdatesSignal[] = [
+    ...nodeIdsToSync.map((sId) => ({
+      action: "added" as const,
+      folderId: sId,
+    })),
+    ...nodeIdsToDelete.map((sId) => ({
+      action: "removed" as const,
+      folderId: sId,
+    })),
+  ];
+
   try {
-    await terminateWorkflow(workflowId);
-    await client.workflow.start(fullSyncWorkflow, {
-      args: [{ connectorId, nodeIdsToSync }],
+    await client.workflow.signalWithStart(fullSyncWorkflow, {
+      args: [{ connectorId }],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
@@ -45,6 +64,8 @@ export async function launchMicrosoftFullSyncWorkflow(
       memo: {
         connectorId: connectorId,
       },
+      signal: folderUpdatesSignal,
+      signalArgs: [signalArgs],
     });
     logger.info(
       {
@@ -182,48 +203,5 @@ export async function launchMicrosoftGarbageCollectionWorkflow(
       `Failed starting workflow.`
     );
     return new Err(e as Error);
-  }
-}
-
-export async function launchMicrosoftDeletionWorkflow(
-  connectorId: ModelId,
-  nodeIdsToDelete: string[]
-): Promise<Result<void, Error>> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    return new Err(new Error(`Connector ${connectorId} not found`));
-  }
-  const client = await getTemporalClient();
-
-  const workflowId = microsoftDeletionWorkflowId(connectorId, nodeIdsToDelete);
-
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
-  try {
-    await terminateWorkflow(workflowId);
-
-    await client.workflow.start(microsoftDeletionWorkflow, {
-      args: [{ connectorId, nodeIdsToDelete }],
-      taskQueue: QUEUE_NAME,
-      workflowId: workflowId,
-      searchAttributes: {
-        connectorId: [connectorId],
-      },
-      memo: {
-        connectorId: connectorId,
-      },
-    });
-
-    return new Ok(undefined);
-  } catch (err) {
-    logger.error(
-      {
-        workspaceId: dataSourceConfig.workspaceId,
-        workflowId,
-        error: err,
-      },
-      `Failed starting workflow.`
-    );
-    return new Err(err as Error);
   }
 }

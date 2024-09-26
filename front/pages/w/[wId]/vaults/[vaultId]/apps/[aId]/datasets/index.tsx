@@ -9,17 +9,14 @@ import { useRouter } from "next/router";
 import { useContext } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
-import {
-  subNavigationApp,
-  subNavigationBuild,
-} from "@app/components/navigation/config";
+import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { getDatasets } from "@app/lib/api/datasets";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { classNames } from "@app/lib/utils";
-import { getDustAppsListUrl } from "@app/lib/vault_rollout";
+import { dustAppsListUrl } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -27,7 +24,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   readOnly: boolean;
   app: AppType;
   datasets: DatasetType[];
-  dustAppsListUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -48,10 +44,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const datasets = await getDatasets(auth, app.toJSON());
-  const dustAppsListUrl = await getDustAppsListUrl(
-    auth,
-    context.params.vaultId
-  );
 
   return {
     props: {
@@ -60,7 +52,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       readOnly,
       app: app.toJSON(),
       datasets,
-      dustAppsListUrl,
     },
   };
 });
@@ -71,7 +62,6 @@ export default function DatasetsView({
   readOnly,
   app,
   datasets,
-  dustAppsListUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const confirm = useContext(ConfirmContext);
@@ -103,19 +93,15 @@ export default function DatasetsView({
     <AppLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationBuild({
-        owner,
-        current: "developers",
-      })}
+      hideSidebar
       titleChildren={
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl);
+            void router.push(dustAppsListUrl(owner, app.vault));
           }}
         />
       }
-      hideSidebar
     >
       <div className="flex w-full flex-col">
         <Tab

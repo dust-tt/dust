@@ -113,6 +113,7 @@ export function useSearchMembers({
         disabled,
       }
     );
+
   return {
     members: useMemo(() => (data ? data.members : []), [data]),
     totalMembersCount: data?.total ?? 0,

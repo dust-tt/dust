@@ -30,7 +30,6 @@ import { SearchOrderDropdown } from "@app/components/assistant/SearchOrderDropdo
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import { subNavigationBuild } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -40,7 +39,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   tabScope: AgentConfigurationScope;
-  loadFromChatMenu: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -60,7 +58,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       tabScope,
       subscription,
-      loadFromChatMenu: false,
     },
   };
 });
@@ -69,7 +66,6 @@ export default function WorkspaceAssistants({
   owner,
   tabScope,
   subscription,
-  loadFromChatMenu,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
   const [orderBy, setOrderBy] = useState<SearchOrderType>("name");
@@ -215,24 +211,11 @@ export default function WorkspaceAssistants({
     }
   }, [tabScope]);
 
-  // toto[GROUPS_INFRA]: this is a Hack to display this page either from Builder or Chat Menu
-  // Once the Build menu is gone, we should edit this one to use ConversationLayout instead of AppLayout.
-
-  const subNavigation = !loadFromChatMenu
-    ? subNavigationBuild({
-        owner,
-        current: "workspace_assistants",
-      })
-    : null;
-  const navChildren = loadFromChatMenu ? (
-    <AssistantSidebarMenu owner={owner} />
-  ) : null;
   return (
     <AppLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigation}
-      navChildren={navChildren}
+      navChildren={<AssistantSidebarMenu owner={owner} />}
     >
       <AssistantDetails
         owner={owner}

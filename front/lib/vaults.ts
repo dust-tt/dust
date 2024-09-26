@@ -1,5 +1,5 @@
 import { CompanyIcon, LockIcon, PlanetIcon } from "@dust-tt/sparkle";
-import type { VaultType } from "@dust-tt/types";
+import type { VaultType, WorkspaceType } from "@dust-tt/types";
 import type React from "react";
 
 export function getVaultIcon(
@@ -16,4 +16,11 @@ export function getVaultIcon(
 
 export const getVaultName = (vault: VaultType) => {
   return vault.kind === "global" ? "Company Data" : vault.name;
+};
+
+export const dustAppsListUrl = (
+  owner: WorkspaceType,
+  vault: VaultType
+): string => {
+  return `/w/${owner.sId}/vaults/${vault.sId}/categories/apps`;
 };

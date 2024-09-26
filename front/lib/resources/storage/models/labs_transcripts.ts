@@ -12,7 +12,7 @@ import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { DataSource } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 
 export class LabsTranscriptsConfigurationModel extends Model<
   InferAttributes<LabsTranscriptsConfigurationModel>,
@@ -29,7 +29,7 @@ export class LabsTranscriptsConfigurationModel extends Model<
 
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare dataSourceId: ForeignKey<DataSource["id"]> | null;
+  declare dataSourceId: ForeignKey<DataSourceModel["id"]> | null;
 }
 
 LabsTranscriptsConfigurationModel.init(
@@ -92,10 +92,10 @@ LabsTranscriptsConfigurationModel.belongsTo(Workspace, {
   foreignKey: { name: "workspaceId", allowNull: false },
 });
 
-DataSource.hasMany(LabsTranscriptsConfigurationModel, {
+DataSourceModel.hasMany(LabsTranscriptsConfigurationModel, {
   foreignKey: { name: "dataSourceId", allowNull: true },
 });
-LabsTranscriptsConfigurationModel.belongsTo(DataSource, {
+LabsTranscriptsConfigurationModel.belongsTo(DataSourceModel, {
   as: "dataSource",
   foreignKey: { name: "dataSourceId", allowNull: true },
 });

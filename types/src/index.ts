@@ -63,6 +63,7 @@ export * from "./front/lib/diff";
 export * from "./front/lib/dust_api";
 export * from "./front/lib/error";
 export * from "./front/lib/labs";
+export * from "./front/lib/poke";
 export * from "./front/membership_invitation";
 export * from "./front/memberships";
 export * from "./front/plan";
