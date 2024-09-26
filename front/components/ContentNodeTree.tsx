@@ -156,15 +156,41 @@ function ContentNodeTreeChildren({
                     disabled: parentIsSelected || !setSelectedNodes,
                     checked: checkedState,
                     onChange: (checked) => {
-                      if (checkedState !== "partial" && setSelectedNodes) {
-                        setSelectedNodes((prev) => ({
-                          ...prev,
-                          [n.internalId]: {
-                            isSelected: checked,
-                            node: n,
-                            parents: checked ? breadcrumb : [],
-                          },
-                        }));
+                      if (setSelectedNodes) {
+                        if (checkedState === "partial") {
+                          // Handle clicking on partial : unselect all selected children
+                          setSelectedNodes((prev) => {
+                            return {
+                              ...Object.entries(prev).reduce((acc, [k, v]) => {
+                                const shouldUnselect = v.parents.includes(
+                                  n.internalId
+                                );
+                                return {
+                                  ...acc,
+                                  [k]: {
+                                    ...v,
+                                    parents: shouldUnselect ? [] : v.parents,
+                                    isSelected: v.isSelected && !shouldUnselect,
+                                  },
+                                };
+                              }, {}),
+                              [n.internalId]: {
+                                isSelected: true,
+                                node: n,
+                                parents: breadcrumb,
+                              },
+                            };
+                          });
+                        } else {
+                          setSelectedNodes((prev) => ({
+                            ...prev,
+                            [n.internalId]: {
+                              isSelected: checked,
+                              node: n,
+                              parents: checked ? breadcrumb : [],
+                            },
+                          }));
+                        }
                       }
                     },
                   }
