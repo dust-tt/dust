@@ -142,7 +142,7 @@ impl SnowflakeRemoteDatabase {
         })
     }
 
-    async fn _get_session(&self) -> Result<SnowflakeSession> {
+    async fn get_session(&self) -> Result<SnowflakeSession> {
         let session = self.client.create_session().await.map_err(|e| {
             QueryDatabaseError::ExecutionError(anyhow!("Error creating session: {}", e).to_string())
         })?;
@@ -159,7 +159,7 @@ impl SnowflakeRemoteDatabase {
         Ok(session)
     }
 
-    async fn _execute_query(
+    async fn execute_query(
         &self,
         session: &SnowflakeSession,
         query: &str,
@@ -217,7 +217,7 @@ impl SnowflakeRemoteDatabase {
         Ok((all_rows, schema))
     }
 
-    async fn _get_tables_used_by_query(
+    async fn get_tables_used_by_query(
         &self,
         session: &SnowflakeSession,
         query: &str,
@@ -239,20 +239,15 @@ impl SnowflakeRemoteDatabase {
 
 #[async_trait]
 impl RemoteDatabase for SnowflakeRemoteDatabase {
-    async fn get_tables_used_by_query(&self, query: &str) -> Result<Vec<String>> {
-        let session = self._get_session().await?;
-        self._get_tables_used_by_query(&session, query).await
-    }
-
     async fn authorize_and_execute_query(
         &self,
         tables: &Vec<Table>,
         query: &str,
     ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
-        let session = self._get_session().await?;
+        let session = self.get_session().await?;
 
         // Ensure that query only uses tables that are allowed.
-        let used_tables = self._get_tables_used_by_query(&session, query).await?;
+        let used_tables = self.get_tables_used_by_query(&session, query).await?;
         let allowed_tables: HashSet<&str> = tables.iter().map(|table| table.name()).collect();
 
         if used_tables
@@ -264,7 +259,7 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
             ))?
         }
 
-        self._execute_query(&session, query).await
+        self.execute_query(&session, query).await
     }
 
     // TODO(SNOWFLAKE): TBD caching
@@ -275,13 +270,13 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
             .map(|opaque_id| format!("DESCRIBE TABLE {}", opaque_id))
             .collect();
 
-        let session = self._get_session().await?;
+        let session = self.get_session().await?;
 
         // Execute all queries concurrently.
         let results = try_join_all(
             queries
                 .iter()
-                .map(|query| self._execute_query(&session, query)),
+                .map(|query| self.execute_query(&session, query)),
         )
         .await?;
 
