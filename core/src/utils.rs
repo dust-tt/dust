@@ -2,7 +2,7 @@ use anyhow::Result;
 use async_std::path::PathBuf;
 use axum::{Extension, Json};
 use hyper::StatusCode;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqids::Sqids;
 use std::{io::Write, sync::Arc};
@@ -112,13 +112,13 @@ pub fn confirm(msg: &str) -> Result<bool> {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct APIError {
     pub code: String,
     pub message: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct APIResponse {
     pub error: Option<APIError>,
     pub response: Option<Value>,
