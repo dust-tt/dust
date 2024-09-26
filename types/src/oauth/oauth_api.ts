@@ -169,6 +169,16 @@ export class OAuthAPI {
     });
     return this._resultFromResponse(response);
   }
+  async getCredentials({
+    credentialsId,
+  }: {
+    credentialsId: string;
+  }): Promise<OAuthAPIResponse<{ credentials: ConnectionCredentials }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/credentials/${credentialsId}`
+    );
+    return this._resultFromResponse(response);
+  }
 
   private async _fetchWithError(
     url: string,
