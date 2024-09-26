@@ -96,7 +96,7 @@ DataSourceModel.init(
     modelName: "data_source",
     sequelize: frontSequelize,
     indexes: [
-      { fields: ["workspaceId", "name"], unique: true },
+      { fields: ["workspaceId", "name", "deletedAt"], unique: true },
       { fields: ["workspaceId", "connectorProvider"] },
       { fields: ["workspaceId", "vaultId"] },
     ],

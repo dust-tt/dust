@@ -79,7 +79,10 @@ DataSourceViewModel.init(
     indexes: [
       { fields: ["workspaceId", "id"] },
       { fields: ["workspaceId", "vaultId"] },
-      { fields: ["workspaceId", "dataSourceId", "vaultId"], unique: true },
+      {
+        fields: ["workspaceId", "dataSourceId", "vaultId", "deletedAt"],
+        unique: true,
+      },
     ],
     paranoid: true,
   }
