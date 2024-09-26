@@ -167,7 +167,7 @@ export function DisplayCurlRequest({
         ? activeKey.secret
         : `sk-...${activeKey.secret.slice(-5)}`;
     }
-    const cURL = `curl ${url}/api/v1/w/${owner.sId}/apps/${app.sId}/runs \\
+    const cURL = `curl ${url}/api/v1/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs \\
     -H "Authorization: Bearer ${cURLKey}" \\
     -H "Content-Type: application/json" \\
     -d '{
@@ -207,7 +207,7 @@ export function DisplayCurlRequest({
             <p className="text-sm text-gray-500">
               This command is ready to copy with your first active API key.{" "}
               <Link
-                href={`/w/${owner.sId}/a`}
+                href={`/w/${owner.sId}/developers/api-keys`}
                 className={classNames(
                   "inline-flex items-center rounded-md py-1 text-sm font-bold",
                   "text-action-600"
@@ -220,7 +220,7 @@ export function DisplayCurlRequest({
           ) : (
             <p className="text-sm text-gray-500">
               <Link
-                href={`/w/${owner.sId}/a?t=apikeys`}
+                href={`/w/${owner.sId}/developers/api-keys`}
                 className={classNames(
                   "inline-flex items-center rounded-md py-1 text-sm font-bold",
                   "text-action-600"
