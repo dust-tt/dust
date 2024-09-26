@@ -19,20 +19,11 @@ import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sourc
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 
-type UseConnectorPermissionsReturn<IncludeParents extends boolean = false> = {
+interface UseConnectorPermissionsReturnBase<IncludeParents extends boolean> {
+  resources: GetDataSourcePermissionsResponseBody<IncludeParents>["resources"];
   isResourcesLoading: boolean;
-  isResourcesError: boolean;
-} & IncludeParents extends true
-  ? {
-      resources: ContentNodeWithParentIds[];
-      isResourcesLoading: boolean;
-      isResourcesError: boolean;
-    }
-  : {
-      resources: ContentNode[];
-      isResourcesLoading: boolean;
-      isResourcesError: boolean;
-    };
+  isResourcesError: any;
+}
 
 export function useConnectorPermissions<IncludeParents extends boolean>({
   owner,
@@ -50,7 +41,7 @@ export function useConnectorPermissions<IncludeParents extends boolean>({
   disabled?: boolean;
   includeParents?: IncludeParents;
   viewType?: ContentNodesViewType;
-}): UseConnectorPermissionsReturn<IncludeParents> {
+}): UseConnectorPermissionsReturnBase<IncludeParents> {
   const permissionsFetcher: Fetcher<
     GetDataSourcePermissionsResponseBody<IncludeParents>
   > = fetcher;
