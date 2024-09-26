@@ -1,4 +1,10 @@
-import { OAuthConnectionType, OAuthProvider } from "../oauth/lib";
+import {
+  ConnectionCredentials,
+  CredentialsProvider,
+  OauthAPIPostCredentialsResponse,
+  OAuthConnectionType,
+  OAuthProvider,
+} from "../oauth/lib";
 import { LoggerInterface } from "../shared/logger";
 import { Err, Ok, Result } from "../shared/result";
 
@@ -133,6 +139,34 @@ export class OAuthAPI {
         }),
       }
     );
+    return this._resultFromResponse(response);
+  }
+
+  async postCredentials({
+    provider,
+    userId,
+    workspaceId,
+    credentials,
+  }: {
+    provider: CredentialsProvider;
+    userId: string;
+    workspaceId: string;
+    credentials: ConnectionCredentials;
+  }): Promise<OAuthAPIResponse<OauthAPIPostCredentialsResponse>> {
+    const response = await this._fetchWithError(`${this._url}/credentials`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        provider,
+        metadata: {
+          user_id: userId,
+          workspace_id: workspaceId,
+        },
+        content: credentials,
+      }),
+    });
     return this._resultFromResponse(response);
   }
 
