@@ -33,10 +33,10 @@ type TreeSelectionModelUpdater = (
 
 type ContextType = {
   onDocumentViewClick?: (documentId: string) => void;
-  showExpand?: boolean;
-  useResourcesHook: UseResourcesHook;
   selectedNodes?: Record<string, ContentNodeTreeItemStatus>;
   setSelectedNodes?: (updater: TreeSelectionModelUpdater) => void;
+  showExpand?: boolean;
+  useResourcesHook: UseResourcesHook;
 };
 
 const ContentNodeTreeContext = React.createContext<ContextType | undefined>(
@@ -71,16 +71,16 @@ interface ContentNodeTreeChildrenProps {
   isRoundedBackground?: boolean;
   isSearchEnabled?: boolean;
   parentId: string | null;
+  parentIds: string[];
   parentIsSelected?: boolean;
-  breadcrumb: string[];
 }
 
 function ContentNodeTreeChildren({
-  isSearchEnabled,
   isRoundedBackground,
-  parentIsSelected,
-  breadcrumb,
+  isSearchEnabled,
   parentId,
+  parentIds,
+  parentIsSelected,
 }: ContentNodeTreeChildrenProps) {
   const { onDocumentViewClick, selectedNodes, setSelectedNodes } =
     useContentNodeTreeContext();
@@ -177,7 +177,7 @@ function ContentNodeTreeChildren({
                               [n.internalId]: {
                                 isSelected: true,
                                 node: n,
-                                parents: breadcrumb,
+                                parents: parentIds,
                               },
                             };
                           });
@@ -187,7 +187,7 @@ function ContentNodeTreeChildren({
                             [n.internalId]: {
                               isSelected: checked,
                               node: n,
-                              parents: checked ? breadcrumb : [],
+                              parents: checked ? parentIds : [],
                             },
                           }));
                         }
@@ -245,8 +245,8 @@ function ContentNodeTreeChildren({
             renderTreeItems={() => (
               <ContentNodeTreeChildren
                 parentId={n.internalId}
+                parentIds={[n.internalId, ...parentIds]}
                 parentIsSelected={getCheckedState(n) === "checked"}
-                breadcrumb={[n.internalId, ...breadcrumb]}
               />
             )}
           />
@@ -262,23 +262,23 @@ function ContentNodeTreeChildren({
           <div className="flex w-full flex-row items-center">
             <div className="flex-grow p-1">
               <Searchbar
+                name="search"
                 placeholder="Search..."
                 value={search}
                 onChange={(v) => {
                   setSearch(v);
                   setSelectAllClicked(false);
                 }}
-                name="search"
               />
             </div>
 
             <div className="p-1">
               <Button
-                variant="tertiary"
-                size="sm"
-                label={selectAllClicked ? "Unselect All" : "Select All"}
-                icon={ListCheckIcon}
                 disabled={search.trim().length === 0}
+                icon={ListCheckIcon}
+                label={selectAllClicked ? "Unselect All" : "Select All"}
+                size="sm"
+                variant="tertiary"
                 onClick={() => {
                   const isSelected = !selectAllClicked;
                   setSelectAllClicked(isSelected);
@@ -288,7 +288,7 @@ function ContentNodeTreeChildren({
                       newState[n.internalId] = {
                         isSelected,
                         node: n,
-                        parents: isSelected ? breadcrumb : [],
+                        parents: isSelected ? parentIds : [],
                       };
                     });
                     return newState;
@@ -311,41 +311,41 @@ function ContentNodeTreeChildren({
 }
 
 interface ContentNodeTreeProps {
-  isSearchEnabled?: boolean;
-  isRoundedBackground?: boolean;
-  onDocumentViewClick?: (documentId: string) => void;
   customIsNodeChecked?: (node: BaseContentNode) => boolean;
-  showExpand?: boolean;
-  useResourcesHook: UseResourcesHook;
+  isRoundedBackground?: boolean;
+  isSearchEnabled?: boolean;
+  onDocumentViewClick?: (documentId: string) => void;
   selectedNodes?: Record<string, ContentNodeTreeItemStatus>;
   setSelectedNodes?: (updater: TreeSelectionModelUpdater) => void;
+  showExpand?: boolean;
+  useResourcesHook: UseResourcesHook;
 }
 
 export function ContentNodeTree({
-  isSearchEnabled,
   isRoundedBackground,
-  useResourcesHook,
+  isSearchEnabled,
   onDocumentViewClick,
   selectedNodes,
   setSelectedNodes,
   showExpand,
+  useResourcesHook,
 }: ContentNodeTreeProps) {
   return (
     <ContentNodeTreeContextProvider
       value={{
-        showExpand,
-        useResourcesHook,
+        onDocumentViewClick,
         selectedNodes,
         setSelectedNodes,
-        onDocumentViewClick,
+        showExpand,
+        useResourcesHook,
       }}
     >
       <ContentNodeTreeChildren
-        isSearchEnabled={isSearchEnabled}
         isRoundedBackground={isRoundedBackground}
+        isSearchEnabled={isSearchEnabled}
         parentId={null}
+        parentIds={[]}
         parentIsSelected={false}
-        breadcrumb={[]}
       />
     </ContentNodeTreeContextProvider>
   );
