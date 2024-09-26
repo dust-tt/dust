@@ -30,13 +30,32 @@ type WithIncludeDeleted<T> = T & {
   includeDeleted?: boolean;
 };
 
+/**
+ * The `SoftDeletableModel` class extends Sequelize's `Model` to implement custom soft delete
+ * functionality. This class overrides certain static methods to provide a mechanism for marking
+ * records as deleted without physically removing them from the database. The `deletedAt` field is
+ * used to track when a record is soft deleted.
+ *
+ * Key Features:
+ * - **Soft Delete:** The `destroy` method is overridden to perform a soft delete by default, setting
+ *   the `deletedAt` field to the current date and time. A hard delete can be triggered by passing the
+ *   `hardDelete` option.
+ * - **Filtering Deleted Records:** The `findAll`, `findOne`, and `count` methods are overridden to
+ *   exclude soft-deleted records by default. The `includeDeleted` option can be used to include these
+ *   records in queries.
+ * - **No Instance Method Override Needed:** Instance methods are not overridden as Sequelize utilizes
+ *   the static methods internally, making this implementation efficient and seamless for
+ *   instance-specific operations.
+ *
+ * Usage:
+ * Extend this class for models that require soft delete functionality. The `deletedAt` field
+ * is automatically declared and managed by this class.
+ */
 export class SoftDeletableModel<M extends Model = any> extends Model<
   InferAttributes<M>,
   InferCreationAttributes<M>
 > {
   declare deletedAt: CreationOptional<Date | null>;
-
-  // TODO: Update instance method?
 
   // Delete.
 
