@@ -151,7 +151,13 @@ LabsTranscriptsHistoryModel.init(
   {
     modelName: "labs_transcripts_history",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["fileId"], unique: true }],
+    indexes: [
+      {
+        fields: ["fileId", "configurationId"],
+        unique: true,
+        name: "labs_transcripts_histories_file_configuration_id",
+      },
+    ],
   }
 );
 
