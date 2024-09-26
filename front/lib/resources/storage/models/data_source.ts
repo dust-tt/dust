@@ -95,6 +95,7 @@ DataSourceModel.init(
       { fields: ["workspaceId", "name"], unique: true },
       { fields: ["workspaceId", "connectorProvider"] },
       { fields: ["workspaceId", "vaultId"] },
+      { fields: ["dustAPIProjectId"] },
     ],
   }
 );

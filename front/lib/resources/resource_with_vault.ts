@@ -132,10 +132,9 @@ export abstract class ResourceWithVault<
     return this.vault.canWrite(auth);
   }
 
-  // This method determines if the authenticated user can fetch data,
-  // based on workspace ownership or public vault access. Changes to
-  // this logic can impact data security, so they must be reviewed
-  // and tested carefully to prevent unauthorized access.
+  // This method determines if the authenticated user can fetch data, based on workspace ownership
+  // or public vault access. Changes to this logic can impact data security, so they must be
+  // reviewed and tested carefully to prevent unauthorized access.
   private canFetch(auth: Authenticator) {
     return (
       // Superusers can fetch any resource.

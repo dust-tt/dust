@@ -309,11 +309,11 @@ fn target_document_tokens_offsets(
 }
 
 impl DataSource {
-    pub fn new(project: &Project, data_source_id: &str, config: &DataSourceConfig) -> Self {
+    pub fn new(project: &Project, config: &DataSourceConfig) -> Self {
         DataSource {
             project: project.clone(),
             created: utils::now(),
-            data_source_id: data_source_id.to_string(),
+            data_source_id: utils::new_id(),
             internal_id: utils::new_id(),
             config: config.clone(),
         }
@@ -941,7 +941,6 @@ impl DataSource {
                 payload.insert("timestamp", document.timestamp as i64);
                 payload.insert("chunk_offset", c.offset as i64);
                 payload.insert("chunk_hash", c.hash.clone());
-                payload.insert("data_source_id", self.data_source_id.clone());
                 payload.insert("data_source_internal_id", self.internal_id.clone());
                 payload.insert("document_id", document.document_id.clone());
                 payload.insert("document_id_hash", document_id_hash);

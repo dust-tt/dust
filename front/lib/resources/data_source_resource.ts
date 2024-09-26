@@ -36,7 +36,6 @@ import logger from "@app/logger/logger";
 import { DataSourceViewModel } from "./storage/models/data_source_view";
 
 export type FetchDataSourceOrigin =
-  | "document_tracker"
   | "registry_lookup"
   | "v1_data_sources_search"
   | "v1_data_sources_documents"
@@ -246,6 +245,20 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     }
   }
 
+  static async fetchByDustAPIDataSourceId(
+    auth: Authenticator,
+    dustAPIDataSourceId: string,
+    options?: FetchDataSourceOptions
+  ): Promise<DataSourceResource | null> {
+    const [dataSource] = await this.fetchByDustAPIDataSourceIds(
+      auth,
+      [dustAPIDataSourceId],
+      options
+    );
+
+    return dataSource ?? null;
+  }
+
   // TODO(DATASOURCE_SID): remove
   static async fetchByNames(
     auth: Authenticator,
@@ -287,6 +300,18 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       removeNulls(ids.map(getResourceIdFromSId)),
       options
     );
+  }
+
+  static async fetchByDustAPIDataSourceIds(
+    auth: Authenticator,
+    dustAPIDataSourceIds: string[],
+    options?: FetchDataSourceOptions
+  ) {
+    return this.baseFetch(auth, options, {
+      where: {
+        dustAPIDataSourceId: dustAPIDataSourceIds,
+      },
+    });
   }
 
   static async listByWorkspace(
