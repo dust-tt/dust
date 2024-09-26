@@ -181,6 +181,17 @@ const DocumentUploadOrEditModal = ({
       });
     } finally {
       setUploading(false);
+      setDocumentState({
+        name: "",
+        file: null,
+        text: "",
+        tags: [],
+        sourceUrl: "",
+      });
+      setEditionStatus({
+        content: false,
+        name: false,
+      });
     }
   };
 
