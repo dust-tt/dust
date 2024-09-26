@@ -14,7 +14,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 import { ResourceFindOptions } from "@app/lib/resources/types";
-import { SoftDeletableModel } from "@app/lib/resources/storage/wrapper";
+import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
 export class DataSourceViewModel extends SoftDeletableModel<DataSourceViewModel> {
   declare id: CreationOptional<number>;

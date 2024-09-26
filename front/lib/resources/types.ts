@@ -1,4 +1,4 @@
-import { SoftDeletableModel } from "@app/lib/resources/storage/wrapper";
+import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 import type {
   FindOptions,
   Model,

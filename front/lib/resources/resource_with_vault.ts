@@ -25,7 +25,7 @@ import { VaultResource } from "@app/lib/resources/vault_resource";
 import {
   ModelStaticSoftDeletable,
   SoftDeletableModel,
-} from "@app/lib/resources/storage/wrapper";
+} from "@app/lib/resources/storage/wrappers";
 
 // Interface to enforce workspaceId and vaultId.
 interface ModelWithVault extends ResourceWithId {

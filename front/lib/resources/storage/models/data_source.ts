@@ -13,7 +13,7 @@ import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
-import { SoftDeletableModel } from "@app/lib/resources/storage/wrapper";
+import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
 export class DataSourceModel extends SoftDeletableModel<DataSourceModel> {
   declare id: CreationOptional<number>;
