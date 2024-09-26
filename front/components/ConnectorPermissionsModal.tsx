@@ -23,7 +23,6 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
-import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDataSourceName } from "@app/lib/data_sources";
@@ -390,10 +389,6 @@ export function ConnectorPermissionsModal({
 }: ConnectorPermissionsModalProps) {
   const { mutate } = useSWRConfig();
 
-  const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
-    null
-  );
-
   const [selectedNodes, setSelectedNodes] = useState<
     Record<string, ContentNodeTreeItemStatus>
   >({});
@@ -615,21 +610,7 @@ export function ConnectorPermissionsModal({
             {CONNECTOR_CONFIGURATIONS[connector.type].selectLabel}
           </div>
 
-          <ManagedDataSourceDocumentModal
-            owner={owner}
-            dataSource={dataSource}
-            documentId={documentToDisplay}
-            isOpen={!!documentToDisplay}
-            setOpen={(open) => {
-              if (!open) {
-                setDocumentToDisplay(null);
-              }
-            }}
-          />
           <ContentNodeTree
-            onDocumentViewClick={(documentId: string) => {
-              setDocumentToDisplay(documentId);
-            }}
             isSearchEnabled={
               CONNECTOR_CONFIGURATIONS[connector.type].isSearchEnabled
             }
