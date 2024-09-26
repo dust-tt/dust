@@ -2,7 +2,6 @@ import type {
   Attributes,
   ForeignKey,
   Includeable,
-  ModelStatic,
   NonAttribute,
   WhereOptions,
 } from "sequelize";
@@ -38,7 +37,7 @@ export abstract class ResourceWithVault<
   readonly workspaceId: ModelWithVault["workspaceId"];
 
   protected constructor(
-    model: ModelStatic<M>,
+    model: ModelStaticSoftDeletable<M>,
     blob: Attributes<M>,
     public readonly vault: VaultResource
   ) {
@@ -54,7 +53,7 @@ export abstract class ResourceWithVault<
   >(
     this: {
       new (
-        model: ModelStatic<M>,
+        model: ModelStaticSoftDeletable<M>,
         blob: Attributes<M>,
         vault: VaultResource,
         includes?: IncludeType
