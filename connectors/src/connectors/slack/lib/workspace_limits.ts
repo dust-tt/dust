@@ -216,7 +216,7 @@ export async function isBotAllowed(
   const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
     connector.id
   );
-  const whitelist = await slackConfig?.isBotWhitelisted(realName);
+  const whitelist = await slackConfig?.isBotWhitelistedToSummon(realName);
 
   if (!whitelist) {
     logger.info(

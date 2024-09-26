@@ -1,4 +1,9 @@
-import type { ModelId, Result, SlackConfigurationType } from "@dust-tt/types";
+import type {
+  ModelId,
+  Result,
+  SlackbotWhitelistType,
+  SlackConfigurationType,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
@@ -106,24 +111,39 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return new this(this.model, blob.get());
   }
 
-  async isBotWhitelisted(botName: string | string[]): Promise<boolean> {
+  async isBotWhitelistedToSummon(botName: string | string[]): Promise<boolean> {
     return !!(await SlackBotWhitelistModel.findOne({
       where: {
         connectorId: this.connectorId,
         botName: botName,
+        whitelistType: "summon_agent",
+      },
+    }));
+  }
+
+  async isBotWhitelistedToIndexMessages(
+    botName: string | string[]
+  ): Promise<boolean> {
+    return !!(await SlackBotWhitelistModel.findOne({
+      where: {
+        connectorId: this.connectorId,
+        botName: botName,
+        whitelistType: "index_messages",
       },
     }));
   }
 
   async whitelistBot(
     botName: string,
-    groupIds: string[]
+    groupIds: string[],
+    whitelistType: SlackbotWhitelistType
   ): Promise<Result<undefined, Error>> {
     await SlackBotWhitelistModel.create({
       connectorId: this.connectorId,
       slackConfigurationId: this.id,
       botName,
       groupIds,
+      whitelistType,
     });
 
     return new Ok(undefined);
