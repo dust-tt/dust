@@ -21,22 +21,22 @@ export type UseResourcesHook = (parentId: string | null) => {
   isResourcesError: boolean;
 };
 
-export type ContentNodeTreeNodeStatus = {
+export type ContentNodeTreeItemStatus = {
   isSelected: boolean;
   node: BaseContentNode;
   parents: string[];
 };
 
 type TreeSelectionModelUpdater = (
-  prev: Record<string, ContentNodeTreeNodeStatus>
-) => Record<string, ContentNodeTreeNodeStatus>;
+  prev: Record<string, ContentNodeTreeItemStatus>
+) => Record<string, ContentNodeTreeItemStatus>;
 
 type ContextType = {
   onDocumentViewClick?: (documentId: string) => void;
   showExpand?: boolean;
   useResourcesHook: UseResourcesHook;
-  treeSelectionModel?: Record<string, ContentNodeTreeNodeStatus>;
-  setTreeSelectionModel?: (updater: TreeSelectionModelUpdater) => void;
+  selectedNodes?: Record<string, ContentNodeTreeItemStatus>;
+  setSelectedNodes?: (updater: TreeSelectionModelUpdater) => void;
 };
 
 const ContentNodeTreeContext = React.createContext<ContextType | undefined>(
@@ -82,7 +82,7 @@ function ContentNodeTreeChildren({
   breadcrumb,
   parentId,
 }: ContentNodeTreeChildrenProps) {
-  const { onDocumentViewClick, treeSelectionModel, setTreeSelectionModel } =
+  const { onDocumentViewClick, selectedNodes, setSelectedNodes } =
     useContentNodeTreeContext();
 
   const [search, setSearch] = useState("");
@@ -102,7 +102,7 @@ function ContentNodeTreeChildren({
 
   const getCheckedState = useCallback(
     (node: BaseContentNode) => {
-      if (!treeSelectionModel) {
+      if (!selectedNodes) {
         return "unchecked";
       }
 
@@ -112,12 +112,12 @@ function ContentNodeTreeChildren({
       }
 
       // Check if there is a local state for this node.
-      const localState = treeSelectionModel[node.internalId];
+      const localState = selectedNodes[node.internalId];
       if (localState?.isSelected) {
         return "checked";
       }
 
-      const internalPartiallySelectedId = Object.values(treeSelectionModel)
+      const internalPartiallySelectedId = Object.values(selectedNodes)
         .map((status) => status.parents)
         .flat();
       if (internalPartiallySelectedId.includes(node.internalId)) {
@@ -127,7 +127,7 @@ function ContentNodeTreeChildren({
       // Return false if no custom function is provided.
       return "unchecked";
     },
-    [parentIsSelected, treeSelectionModel]
+    [parentIsSelected, selectedNodes]
   );
 
   if (isResourcesError) {
@@ -151,13 +151,13 @@ function ContentNodeTreeChildren({
             visual={getVisualForContentNode(n)}
             className="whitespace-nowrap"
             checkbox={
-              n.preventSelection !== true && treeSelectionModel
+              n.preventSelection !== true && selectedNodes
                 ? {
-                    disabled: parentIsSelected || !setTreeSelectionModel,
+                    disabled: parentIsSelected || !setSelectedNodes,
                     checked: checkedState,
                     onChange: (checked) => {
-                      if (checkedState !== "partial" && setTreeSelectionModel) {
-                        setTreeSelectionModel((prev) => ({
+                      if (checkedState !== "partial" && setSelectedNodes) {
+                        setSelectedNodes((prev) => ({
                           ...prev,
                           [n.internalId]: {
                             isSelected: checked,
@@ -231,7 +231,7 @@ function ContentNodeTreeChildren({
 
   return (
     <>
-      {isSearchEnabled && setTreeSelectionModel && (
+      {isSearchEnabled && setSelectedNodes && (
         <>
           <div className="flex w-full flex-row items-center">
             <div className="flex-grow p-1">
@@ -256,7 +256,7 @@ function ContentNodeTreeChildren({
                 onClick={() => {
                   const isSelected = !selectAllClicked;
                   setSelectAllClicked(isSelected);
-                  setTreeSelectionModel((prev) => {
+                  setSelectedNodes((prev) => {
                     const newState = { ...prev };
                     filteredNodes.forEach((n) => {
                       newState[n.internalId] = {
@@ -291,8 +291,8 @@ interface ContentNodeTreeProps {
   customIsNodeChecked?: (node: BaseContentNode) => boolean;
   showExpand?: boolean;
   useResourcesHook: UseResourcesHook;
-  treeSelectionModel?: Record<string, ContentNodeTreeNodeStatus>;
-  setTreeSelectionModel?: (updater: TreeSelectionModelUpdater) => void;
+  selectedNodes?: Record<string, ContentNodeTreeItemStatus>;
+  setSelectedNodes?: (updater: TreeSelectionModelUpdater) => void;
 }
 
 export function ContentNodeTree({
@@ -300,8 +300,8 @@ export function ContentNodeTree({
   isRoundedBackground,
   useResourcesHook,
   onDocumentViewClick,
-  treeSelectionModel,
-  setTreeSelectionModel,
+  selectedNodes,
+  setSelectedNodes,
   showExpand,
 }: ContentNodeTreeProps) {
   return (
@@ -309,8 +309,8 @@ export function ContentNodeTree({
       value={{
         showExpand,
         useResourcesHook,
-        treeSelectionModel,
-        setTreeSelectionModel,
+        selectedNodes,
+        setSelectedNodes,
         onDocumentViewClick,
       }}
     >

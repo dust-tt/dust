@@ -7,7 +7,7 @@ import type {
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
 
-import type { ContentNodeTreeNodeStatus } from "@app/components/ContentNodeTree";
+import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 
@@ -61,7 +61,7 @@ export function SlackIntegration({
     });
 
   const { resources } = useResourcesHook(null);
-  const treeSelectionModel = resources.reduce(
+  const selectedNodes = resources.reduce(
     (acc, c) =>
       customIsNodeChecked(c)
         ? {
@@ -73,15 +73,15 @@ export function SlackIntegration({
             },
           }
         : acc,
-    {} as Record<string, ContentNodeTreeNodeStatus>
+    {} as Record<string, ContentNodeTreeItemStatus>
   );
 
   return (
     <ContentNodeTree
       // not limited to those synced with Dust.
-      treeSelectionModel={treeSelectionModel}
-      setTreeSelectionModel={(updater) => {
-        const newModel = updater(treeSelectionModel);
+      selectedNodes={selectedNodes}
+      setSelectedNodes={(updater) => {
+        const newModel = updater(selectedNodes);
 
         setNewSelection((prevSelection) => {
           const newSelection = [...prevSelection];

@@ -33,7 +33,7 @@ import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
-import type { ContentNodeTreeNodeStatus } from "./ContentNodeTree";
+import type { ContentNodeTreeItemStatus } from "./ContentNodeTree";
 import { ContentNodeTree } from "./ContentNodeTree";
 import type { NotificationType } from "./sparkle/Notification";
 import { SendNotificationsContext } from "./sparkle/Notification";
@@ -384,8 +384,8 @@ export function ConnectorPermissionsModal({
     null
   );
 
-  const [treeSelectionModel, setTreeSelectionModel] = useState<
-    Record<string, ContentNodeTreeNodeStatus>
+  const [selectedNodes, setSelectedNodes] = useState<
+    Record<string, ContentNodeTreeItemStatus>
   >({});
 
   const canUpdatePermissions = PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(
@@ -423,7 +423,7 @@ export function ConnectorPermissionsModal({
 
   const initialTreeSelectionModel = useMemo(
     () =>
-      allSelectedResources.reduce<Record<string, ContentNodeTreeNodeStatus>>(
+      allSelectedResources.reduce<Record<string, ContentNodeTreeItemStatus>>(
         (acc, r) => ({
           ...acc,
           [r.internalId]: {
@@ -439,7 +439,7 @@ export function ConnectorPermissionsModal({
 
   useEffect(() => {
     if (isOpen) {
-      setTreeSelectionModel(initialTreeSelectionModel);
+      setSelectedNodes(initialTreeSelectionModel);
     }
   }, [initialTreeSelectionModel, isOpen]);
 
@@ -460,14 +460,14 @@ export function ConnectorPermissionsModal({
     setModalToShow(null);
     onClose(save);
     setTimeout(() => {
-      setTreeSelectionModel({});
+      setSelectedNodes({});
     }, 300);
   }
 
   async function save() {
     setSaving(true);
     try {
-      if (Object.keys(treeSelectionModel).length) {
+      if (Object.keys(selectedNodes).length) {
         const r = await fetch(
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`,
           {
@@ -476,9 +476,9 @@ export function ConnectorPermissionsModal({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              resources: Object.keys(treeSelectionModel).map((internalId) => ({
+              resources: Object.keys(selectedNodes).map((internalId) => ({
                 internal_id: internalId,
-                permission: treeSelectionModel[internalId].isSelected
+                permission: selectedNodes[internalId].isSelected
                   ? selectedPermission
                   : unselectedPermission,
               })),
@@ -515,17 +515,17 @@ export function ConnectorPermissionsModal({
 
   const isUnchanged = useMemo(
     () =>
-      Object.values(treeSelectionModel)
+      Object.values(selectedNodes)
         .filter((item) => item.isSelected)
         .every(
           (item) =>
             item.isSelected ===
             initialTreeSelectionModel[item.node.internalId]?.isSelected
         ) &&
-      Object.values(treeSelectionModel)
+      Object.values(selectedNodes)
         .filter((item) => !item.isSelected)
         .every((item) => !initialTreeSelectionModel[item.node.internalId]),
-    [treeSelectionModel, initialTreeSelectionModel]
+    [selectedNodes, initialTreeSelectionModel]
   );
 
   useEffect(() => {
@@ -628,12 +628,10 @@ export function ConnectorPermissionsModal({
             }
             isRoundedBackground={true}
             useResourcesHook={useResourcesHook}
-            treeSelectionModel={
-              canUpdatePermissions ? treeSelectionModel : undefined
-            }
-            setTreeSelectionModel={
+            selectedNodes={canUpdatePermissions ? selectedNodes : undefined}
+            setSelectedNodes={
               canUpdatePermissions && !isResourcesLoading
-                ? setTreeSelectionModel
+                ? setSelectedNodes
                 : undefined
             }
             showExpand={CONNECTOR_CONFIGURATIONS[connector.type]?.isNested}

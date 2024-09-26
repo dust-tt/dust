@@ -5,7 +5,7 @@ import type {
   LightWorkspaceType,
 } from "@dust-tt/types";
 
-import type { ContentNodeTreeNodeStatus } from "@app/components/ContentNodeTree";
+import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 
@@ -19,11 +19,11 @@ interface DataSourceViewPermissionTreeProps {
   permissionFilter?: ConnectorPermission;
   showExpand?: boolean;
   viewType: ContentNodesViewType;
-  treeSelectionModel?: Record<string, ContentNodeTreeNodeStatus>;
-  setTreeSelectionModel?: (
+  selectedNodes?: Record<string, ContentNodeTreeItemStatus>;
+  setSelectedNodes?: (
     updater: (
-      prev: Record<string, ContentNodeTreeNodeStatus>
-    ) => Record<string, ContentNodeTreeNodeStatus>
+      prev: Record<string, ContentNodeTreeItemStatus>
+    ) => Record<string, ContentNodeTreeItemStatus>
   ) => void;
 }
 
@@ -35,8 +35,8 @@ export function DataSourceViewPermissionTree({
   onDocumentViewClick,
   showExpand,
   viewType,
-  treeSelectionModel,
-  setTreeSelectionModel,
+  selectedNodes,
+  setSelectedNodes,
 }: DataSourceViewPermissionTreeProps) {
   const useResourcesHook = (parentId: string | null) => {
     const res = useDataSourceViewContentNodes({
@@ -59,8 +59,8 @@ export function DataSourceViewPermissionTree({
       onDocumentViewClick={onDocumentViewClick}
       showExpand={showExpand}
       useResourcesHook={useResourcesHook}
-      treeSelectionModel={treeSelectionModel}
-      setTreeSelectionModel={setTreeSelectionModel}
+      selectedNodes={selectedNodes}
+      setSelectedNodes={setSelectedNodes}
     />
   );
 }
