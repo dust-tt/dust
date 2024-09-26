@@ -1,8 +1,6 @@
 import type {
   ConnectorPermission,
-  ContentNode,
   ContentNodesViewType,
-  ContentNodeWithParentIds,
   DataSourceType,
   LightWorkspaceType,
 } from "@dust-tt/types";
