@@ -34,8 +34,8 @@ import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
-import type { PermissionTreeNodeStatus } from "./ConnectorPermissionsTree";
-import { PermissionTree } from "./ConnectorPermissionsTree";
+import type { ContentNodeTreeNodeStatus } from "./ContentNodeTree";
+import { ContentNodeTree } from "./ContentNodeTree";
 import type { NotificationType } from "./sparkle/Notification";
 import { SendNotificationsContext } from "./sparkle/Notification";
 
@@ -386,7 +386,7 @@ export function ConnectorPermissionsModal({
   );
 
   const [treeSelectionModel, setTreeSelectionModel] = useState<
-    Record<string, PermissionTreeNodeStatus>
+    Record<string, ContentNodeTreeNodeStatus>
   >({});
 
   const canUpdatePermissions = PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(
@@ -433,7 +433,7 @@ export function ConnectorPermissionsModal({
               parents: r.parentInternalIds,
             },
           }),
-          {} as Record<string, PermissionTreeNodeStatus>
+          {} as Record<string, ContentNodeTreeNodeStatus>
         )
       );
     }
@@ -600,7 +600,7 @@ export function ConnectorPermissionsModal({
               }
             }}
           />
-          <PermissionTree
+          <ContentNodeTree
             displayDocumentSource={(documentId: string) => {
               setDocumentToDisplay(documentId);
             }}

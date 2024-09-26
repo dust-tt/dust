@@ -15,7 +15,7 @@ import type {
 import { useContext, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
-import { DataSourceViewPermissionTree } from "@app/components/ConnectorPermissionsTree";
+import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import { orderDatasourceViewSelectionConfigurationByImportance } from "@app/lib/assistant";

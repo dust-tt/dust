@@ -40,8 +40,8 @@ import AssistantListActions from "@app/components/assistant/AssistantListActions
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
-import { DataSourceViewPermissionTree } from "@app/components/ConnectorPermissionsTree";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
+import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { updateAgentScope } from "@app/lib/client/dust_api";

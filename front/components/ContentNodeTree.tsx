@@ -8,18 +8,11 @@ import {
   Tooltip,
   Tree,
 } from "@dust-tt/sparkle";
-import type {
-  BaseContentNode,
-  ConnectorPermission,
-  ContentNodesViewType,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
+import type { BaseContentNode } from "@dust-tt/types";
 import { useCallback, useContext, useState } from "react";
 import React from "react";
 
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 export type UseResourcesHook = (parentId: string | null) => {
@@ -28,7 +21,7 @@ export type UseResourcesHook = (parentId: string | null) => {
   isResourcesError: boolean;
 };
 
-export type PermissionTreeNodeStatus = {
+export type ContentNodeTreeNodeStatus = {
   isSelected: boolean;
   node: BaseContentNode;
   parents: string[];
@@ -40,17 +33,17 @@ type ContextType = {
   displayDocumentSource?: (documentId: string) => void;
   showExpand?: boolean;
   useResourcesHook: UseResourcesHook;
-  treeSelectionModel?: Record<string, PermissionTreeNodeStatus>;
+  treeSelectionModel?: Record<string, ContentNodeTreeNodeStatus>;
   setTreeSelectionModel?: React.Dispatch<
-    React.SetStateAction<Record<string, PermissionTreeNodeStatus>>
+    React.SetStateAction<Record<string, ContentNodeTreeNodeStatus>>
   >;
 };
 
-const PermissionTreeContext = React.createContext<ContextType | undefined>(
+const ContentNodeTreeContext = React.createContext<ContextType | undefined>(
   undefined
 );
 
-const PermissionTreeContextProvider = ({
+const ContentNodeTreeContextProvider = ({
   children,
   value,
 }: {
@@ -58,23 +51,23 @@ const PermissionTreeContextProvider = ({
   value: ContextType;
 }) => {
   return (
-    <PermissionTreeContext.Provider value={value}>
+    <ContentNodeTreeContext.Provider value={value}>
       {children}
-    </PermissionTreeContext.Provider>
+    </ContentNodeTreeContext.Provider>
   );
 };
 
-const usePermissionTreeContext = () => {
-  const context = useContext(PermissionTreeContext);
+const useContentNodeTreeContext = () => {
+  const context = useContext(ContentNodeTreeContext);
   if (!context) {
     throw new Error(
-      "usePermissionTreeChildrenContext must be used within a PermissionTreeChildrenContext"
+      "useContentNodeTreeContext must be used within a ContentNodeTreeContext"
     );
   }
   return context;
 };
 
-interface PermissionTreeChildrenProps {
+interface ContentNodeTreeChildrenProps {
   isRoundedBackground?: boolean;
   isSearchEnabled?: boolean;
   parentId: string | null;
@@ -82,15 +75,15 @@ interface PermissionTreeChildrenProps {
   breadcrumb: string[];
 }
 
-function PermissionTreeChildren({
+function ContentNodeTreeChildren({
   isSearchEnabled,
   isRoundedBackground,
   parentIsSelected,
   breadcrumb,
   parentId,
-}: PermissionTreeChildrenProps) {
+}: ContentNodeTreeChildrenProps) {
   const { displayDocumentSource, treeSelectionModel, setTreeSelectionModel } =
-    usePermissionTreeContext();
+    useContentNodeTreeContext();
 
   const [search, setSearch] = useState("");
   // This is to control when to dislpay the "Select All" vs "unselect All" button.
@@ -98,7 +91,7 @@ function PermissionTreeChildren({
   // But if the user types in the search bar, we want to reset the button to "select all".
   const [selectAllClicked, setSelectAllClicked] = useState(false);
 
-  const { useResourcesHook } = usePermissionTreeContext();
+  const { useResourcesHook } = useContentNodeTreeContext();
 
   const { resources, isResourcesLoading, isResourcesError } =
     useResourcesHook(parentId);
@@ -158,12 +151,12 @@ function PermissionTreeChildren({
             visual={getVisualForContentNode(n)}
             className="whitespace-nowrap"
             checkbox={
-              n.preventSelection !== true && setTreeSelectionModel
+              n.preventSelection !== true && treeSelectionModel
                 ? {
-                    disabled: parentIsSelected,
+                    disabled: parentIsSelected || !setTreeSelectionModel,
                     checked: checkedState,
                     onChange: (checked) => {
-                      if (checkedState !== "partial") {
+                      if (checkedState !== "partial" && setTreeSelectionModel) {
                         setTreeSelectionModel((prev) => ({
                           ...prev,
                           [n.internalId]: {
@@ -224,7 +217,7 @@ function PermissionTreeChildren({
               </div>
             }
             renderTreeItems={() => (
-              <PermissionTreeChildren
+              <ContentNodeTreeChildren
                 parentId={n.internalId}
                 parentIsSelected={getCheckedState(n) === "checked"}
                 breadcrumb={[n.internalId, ...breadcrumb]}
@@ -291,20 +284,20 @@ function PermissionTreeChildren({
   );
 }
 
-interface PermissionTreeProps {
+interface ContentNodeTreeProps {
   isSearchEnabled?: boolean;
   isRoundedBackground?: boolean;
   displayDocumentSource?: (documentId: string) => void;
   customIsNodeChecked?: (node: BaseContentNode) => boolean;
   showExpand?: boolean;
   useResourcesHook: UseResourcesHook;
-  treeSelectionModel?: Record<string, PermissionTreeNodeStatus>;
+  treeSelectionModel?: Record<string, ContentNodeTreeNodeStatus>;
   setTreeSelectionModel?: React.Dispatch<
-    React.SetStateAction<Record<string, PermissionTreeNodeStatus>>
+    React.SetStateAction<Record<string, ContentNodeTreeNodeStatus>>
   >;
 }
 
-export function PermissionTree({
+export function ContentNodeTree({
   isSearchEnabled,
   isRoundedBackground,
   useResourcesHook,
@@ -312,10 +305,10 @@ export function PermissionTree({
   treeSelectionModel,
   setTreeSelectionModel,
   showExpand,
-}: PermissionTreeProps) {
+}: ContentNodeTreeProps) {
   return (
     <>
-      <PermissionTreeContextProvider
+      <ContentNodeTreeContextProvider
         value={{
           showExpand,
           useResourcesHook,
@@ -324,68 +317,14 @@ export function PermissionTree({
           displayDocumentSource,
         }}
       >
-        <PermissionTreeChildren
+        <ContentNodeTreeChildren
           isSearchEnabled={isSearchEnabled}
           isRoundedBackground={isRoundedBackground}
           parentId={null}
           parentIsSelected={false}
           breadcrumb={[]}
         />
-      </PermissionTreeContextProvider>
+      </ContentNodeTreeContextProvider>
     </>
-  );
-}
-
-interface DataSourceViewPermissionTreeProps {
-  dataSourceView: DataSourceViewType;
-  displayDocumentSource: (documentId: string) => void;
-  isSearchEnabled?: boolean;
-  isRoundedBackground?: boolean;
-  owner: LightWorkspaceType;
-  parentId?: string | null;
-  permissionFilter?: ConnectorPermission;
-  showExpand?: boolean;
-  viewType: ContentNodesViewType;
-  treeSelectionModel?: Record<string, PermissionTreeNodeStatus>;
-  setTreeSelectionModel?: React.Dispatch<
-    React.SetStateAction<Record<string, PermissionTreeNodeStatus>>
-  >;
-}
-
-export function DataSourceViewPermissionTree({
-  dataSourceView,
-  isSearchEnabled,
-  isRoundedBackground,
-  owner,
-  displayDocumentSource,
-  showExpand,
-  viewType,
-  treeSelectionModel,
-  setTreeSelectionModel,
-}: DataSourceViewPermissionTreeProps) {
-  const useResourcesHook = (parentId: string | null) => {
-    const res = useDataSourceViewContentNodes({
-      dataSourceView: dataSourceView,
-      owner,
-      parentId: parentId ?? undefined,
-      viewType,
-    });
-    return {
-      resources: res.nodes,
-      isResourcesLoading: res.isNodesLoading,
-      isResourcesError: res.isNodesError,
-    };
-  };
-
-  return (
-    <PermissionTree
-      isSearchEnabled={isSearchEnabled}
-      isRoundedBackground={isRoundedBackground}
-      displayDocumentSource={displayDocumentSource}
-      showExpand={showExpand}
-      useResourcesHook={useResourcesHook}
-      treeSelectionModel={treeSelectionModel}
-      setTreeSelectionModel={setTreeSelectionModel}
-    />
   );
 }

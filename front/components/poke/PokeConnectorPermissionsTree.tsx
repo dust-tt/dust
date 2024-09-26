@@ -4,7 +4,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 
-import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
+import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { usePokeConnectorPermissions } from "@app/lib/swr/poke";
 
 export function PokePermissionTree({
@@ -30,7 +30,7 @@ export function PokePermissionTree({
 
   return (
     <div className="overflow-x-auto">
-      <PermissionTree
+      <ContentNodeTree
         showExpand={showExpand}
         displayDocumentSource={displayDocumentSource}
         useResourcesHook={useResourcesHook}

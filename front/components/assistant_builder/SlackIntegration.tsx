@@ -8,8 +8,8 @@ import type {
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
 
-import type { PermissionTreeNodeStatus } from "@app/components/ConnectorPermissionsTree";
-import { PermissionTree } from "@app/components/ConnectorPermissionsTree";
+import type { ContentNodeTreeNodeStatus } from "@app/components/ContentNodeTree";
+import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 
 export type SlackChannel = { slackChannelId: string; slackChannelName: string };
@@ -101,19 +101,19 @@ export function SlackIntegration({
             },
           }
         : acc,
-    {} as Record<string, PermissionTreeNodeStatus>
+    {} as Record<string, ContentNodeTreeNodeStatus>
   );
 
   return (
-    <PermissionTree
+    <ContentNodeTree
       // not limited to those synced with Dust.
       treeSelectionModel={treeSelectionModel}
       setTreeSelectionModel={(
         updater:
           | ((
-              prev: Record<string, PermissionTreeNodeStatus>
-            ) => Record<string, PermissionTreeNodeStatus>)
-          | Record<string, PermissionTreeNodeStatus>
+              prev: Record<string, ContentNodeTreeNodeStatus>
+            ) => Record<string, ContentNodeTreeNodeStatus>)
+          | Record<string, ContentNodeTreeNodeStatus>
       ) => {
         const newModel =
           typeof updater === "function" ? updater(treeSelectionModel) : updater;
