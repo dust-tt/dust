@@ -1,4 +1,7 @@
-import type { ConnectorPermission } from "@dust-tt/types";
+import type {
+  ConnectorPermission,
+  SlackbotWhitelistType,
+} from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,
@@ -311,7 +314,7 @@ export class SlackBotWhitelistModel extends Model<
   declare updatedAt: CreationOptional<Date>;
   declare botName: string;
   declare groupIds: string[];
-  declare whitelistType: "summon_agent" | "index_messages";
+  declare whitelistType: SlackbotWhitelistType;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare slackConfigurationId: ForeignKey<SlackConfigurationModel["id"]>;
 }
