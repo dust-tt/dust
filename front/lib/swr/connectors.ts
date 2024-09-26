@@ -17,7 +17,7 @@ import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sourc
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 
-interface UseConnectorPermissionsReturnBase<IncludeParents extends boolean> {
+interface UseConnectorPermissionsReturn<IncludeParents extends boolean> {
   resources: GetDataSourcePermissionsResponseBody<IncludeParents>["resources"];
   isResourcesLoading: boolean;
   isResourcesError: any;
@@ -39,7 +39,7 @@ export function useConnectorPermissions<IncludeParents extends boolean>({
   disabled?: boolean;
   includeParents?: IncludeParents;
   viewType?: ContentNodesViewType;
-}): UseConnectorPermissionsReturnBase<IncludeParents> {
+}): UseConnectorPermissionsReturn<IncludeParents> {
   const permissionsFetcher: Fetcher<
     GetDataSourcePermissionsResponseBody<IncludeParents>
   > = fetcher;
