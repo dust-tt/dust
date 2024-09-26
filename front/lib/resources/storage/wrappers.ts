@@ -62,8 +62,6 @@ export class SoftDeletableModel<M extends Model = any> extends Model<
   private static async softDelete<M extends Model>(
     options: DestroyOptions<Attributes<M>>
   ): Promise<number> {
-    console.log(">> Custom soft delete <<");
-
     const updateOptions: UpdateOptions<Attributes<M>> = {
       ...options,
       fields: ["deletedAt"],
@@ -81,10 +79,7 @@ export class SoftDeletableModel<M extends Model = any> extends Model<
   public static override async destroy<M extends Model>(
     options: WithHardDelete<DestroyOptions<Attributes<M>>>
   ): Promise<number> {
-    console.log(">> Attempt to destroy a SoftDeletable model");
-
     if (options.hardDelete) {
-      console.log(">> Hard delete <<");
       return super.destroy(options);
     }
 
@@ -97,8 +92,6 @@ export class SoftDeletableModel<M extends Model = any> extends Model<
     this: ModelStatic<M>,
     options?: WithIncludeDeleted<FindOptions<Attributes<M>>>
   ): Promise<M[]> {
-    console.log(">> Custom findAll <<");
-
     if (options?.includeDeleted) {
       return super.findAll<M>(options) as Promise<M[]>;
     }
@@ -120,8 +113,6 @@ export class SoftDeletableModel<M extends Model = any> extends Model<
     this: ModelStatic<M>,
     options?: WithIncludeDeleted<FindOptions<Attributes<M>>>
   ): Promise<M | null> {
-    console.log(">> Custom findOne <<");
-
     if (options?.includeDeleted) {
       return super.findOne(options) as Promise<M | null>;
     }
@@ -146,8 +137,6 @@ export class SoftDeletableModel<M extends Model = any> extends Model<
   public static override async count<M extends Model>(
     options?: WithIncludeDeleted<CountWithOptions>
   ): Promise<number | GroupedCountResultItem[]> {
-    console.log(">> Custom count <<");
-
     if (options?.includeDeleted) {
       const { includeDeleted, ...sequelizeOptions } = options;
       return super.count(sequelizeOptions);
