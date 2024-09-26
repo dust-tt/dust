@@ -198,7 +198,7 @@ export function useDataSourceViewDocument({
 
   return {
     document: data?.document,
-    isDocumentLoading: !error && !data,
+    isDocumentLoading: !disabled && !error && !data,
     isDocumentError: error,
     mutateDocument: mutate,
   };

@@ -30,7 +30,6 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useDataSourceViewDocument } from "@app/lib/swr/data_source_views";
 import { useTable } from "@app/lib/swr/tables";
-import { classNames } from "@app/lib/utils";
 
 const MAX_NAME_CHARS = 32;
 
@@ -109,6 +108,7 @@ const DocumentUploadOrEditModal = ({
       owner: owner,
       dataSourceView: dataSourceView,
       documentId: initialId ?? null,
+      disabled: !initialId,
     });
 
   useEffect(() => {
@@ -313,21 +313,23 @@ const DocumentUploadOrEditModal = ({
                   accept=".txt, .pdf, .md, .csv"
                   onChange={handleFileChange}
                 />
-                <textarea
-                  name="text"
-                  rows={10}
-                  className={classNames(
-                    "font-mono text-normal block w-full min-w-0 flex-1 rounded-md",
-                    "border-structure-200 bg-structure-50",
-                    "focus:border-action-300 focus:ring-action-300"
-                  )}
+                <TextArea
+                  minRows={10}
+                  placeholder="Your document content..."
                   value={documentState.text}
-                  onChange={(e) =>
+                  onChange={(value) => {
+                    setEditionStatus((prev) => ({ ...prev, content: true }));
                     setDocumentState((prev) => ({
                       ...prev,
-                      text: e.target.value,
-                    }))
+                      text: value,
+                    }));
+                  }}
+                  error={
+                    editionStatus.content && !documentState.text
+                      ? "You need to upload a file or specify the content of the document."
+                      : null
                   }
+                  showErrorLabel={true}
                 />
               </div>
 
