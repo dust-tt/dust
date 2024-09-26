@@ -19,6 +19,7 @@ import type {
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
+import { useState } from "react";
 import { useCallback, useMemo } from "react";
 
 import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
@@ -290,6 +291,11 @@ export function DataSourceViewSelector({
   useContentNodes = useDataSourceViewContentNodes,
   viewType,
 }: DataSourceViewSelectorProps) {
+  const [isSelectedAll, setIsSelectedAll] = useState(false);
+  const { parentsById, setParentsById } = useParentResourcesById({
+    selectedResources: selectionConfiguration.selectedResources,
+  });
+
   const dataSourceView = selectionConfiguration.dataSourceView;
   const config = dataSourceView.dataSource.connectorProvider
     ? CONNECTOR_CONFIGURATIONS[dataSourceView.dataSource.connectorProvider]
@@ -302,10 +308,6 @@ export function DataSourceViewSelector({
   const internalIds = selectionConfiguration.selectedResources.map(
     (r) => r.internalId
   );
-
-  const { parentsById, setParentsById } = useParentResourcesById({
-    selectedResources: selectionConfiguration.selectedResources,
-  });
 
   const selectedParents = [
     ...new Set(Object.values(parentsById).flatMap((c) => [...c])),
@@ -386,76 +388,52 @@ export function DataSourceViewSelector({
     ]
   );
 
-  const onToggleSelectAll = useCallback(
-    (checked: boolean) => {
-      // Setting parentsById
-      setParentsById({});
-
-      // Setting selectedResources
-      setSelectionConfigurations(
-        (prevState: DataSourceViewSelectionConfigurations) => {
-          if (!checked) {
-            // Nothing is selected at all, remove from the list
-            return _.omit(prevState, dataSourceView.sId);
-          }
-          const config =
-            prevState[dataSourceView.sId] ??
-            defaultSelectionConfiguration(dataSourceView);
-
-          config.isSelectAll = checked;
-          config.selectedResources = [];
-
-          // Return a new object to trigger a re-render
-          return keepOnlyOneVaultIfApplicable({
-            ...prevState,
-            [dataSourceView.sId]: config,
-          });
-        }
-      );
-    },
-    [
-      dataSourceView,
-      keepOnlyOneVaultIfApplicable,
-      setParentsById,
-      setSelectionConfigurations,
-    ]
-  );
-
   return (
-    <Tree.Item
-      key={dataSourceView.dataSource.id}
-      label={getDisplayNameForDataSource(dataSourceView.dataSource)}
-      visual={LogoComponent}
-      type={
-        canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
-      }
-      actions={
-        <Button
-          variant="tertiary"
-          size="xs"
-          className="mr-4"
-          label={
-            selectionConfiguration.isSelectAll ? "Unselect All" : "Select All"
-          }
-          icon={ListCheckIcon}
-          onClick={() => {
-            onToggleSelectAll(!selectionConfiguration.isSelectAll);
-          }}
+    <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.name}`}>
+      <Tree.Item
+        key={dataSourceView.dataSource.id}
+        label={getDisplayNameForDataSource(dataSourceView.dataSource)}
+        visual={LogoComponent}
+        type={
+          canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
+        }
+        actions={
+          <Button
+            variant="tertiary"
+            size="xs"
+            className="mr-4"
+            label={isSelectedAll ? "Unselect All" : "Select All"}
+            icon={ListCheckIcon}
+            onClick={() => {
+              document
+                .querySelectorAll<HTMLInputElement>(
+                  `#dataSourceViewsSelector-${dataSourceView.dataSource.name} label > input[type="checkbox"]:first-child`
+                )
+                .forEach((el) => {
+                  if (el.checked && !isSelectedAll) {
+                    return;
+                  } else {
+                    el.click();
+                  }
+                });
+              setIsSelectedAll(!isSelectedAll);
+            }}
+          />
+        }
+      >
+        <DataSourceViewResourceSelectorTree
+          dataSourceView={dataSourceView}
+          onSelectChange={onSelectChange}
+          owner={owner}
+          parentIsSelected={false}
+          readonly={readonly}
+          selectedParents={selectedParents}
+          selectedResourceIds={internalIds}
+          showExpand={config?.isNested ?? true}
+          useContentNodes={useContentNodes}
+          viewType={viewType}
         />
-      }
-    >
-      <DataSourceViewResourceSelectorTree
-        dataSourceView={dataSourceView}
-        onSelectChange={onSelectChange}
-        owner={owner}
-        parentIsSelected={selectionConfiguration.isSelectAll}
-        readonly={readonly}
-        selectedParents={selectedParents}
-        selectedResourceIds={internalIds}
-        showExpand={config?.isNested ?? true}
-        useContentNodes={useContentNodes}
-        viewType={viewType}
-      />
-    </Tree.Item>
+      </Tree.Item>
+    </div>
   );
 }
