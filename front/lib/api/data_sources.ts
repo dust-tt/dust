@@ -82,8 +82,7 @@ export async function deleteDataSource(
 
 export async function destroyDataSource(
   auth: Authenticator,
-  dataSource: DataSourceResource,
-  transaction?: Transaction
+  dataSource: DataSourceResource
 ) {
   if (!auth.isBuilder()) {
     return new Err({
@@ -140,7 +139,7 @@ export async function destroyDataSource(
     }
   }
 
-  await dataSource.destroy(auth, transaction);
+  await dataSource.destroy(auth);
 
   if (dataSource.connectorProvider) {
     await warnPostDeletion(auth, dataSource.connectorProvider);
