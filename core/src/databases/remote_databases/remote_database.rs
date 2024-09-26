@@ -1,6 +1,5 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use std::collections::HashMap;
 
 use crate::{
     databases::{
@@ -23,10 +22,7 @@ pub trait RemoteDatabase {
         tables: &Vec<Table>,
         query: &str,
     ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError>;
-    async fn get_tables_schema(
-        &self,
-        opaque_ids: Vec<String>,
-    ) -> Result<HashMap<String, TableSchema>>;
+    async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<TableSchema>>;
 }
 
 pub async fn get_remote_database(

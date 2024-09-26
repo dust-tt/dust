@@ -1,14 +1,18 @@
 use anyhow::{anyhow, Result};
+use futures::future::try_join_all;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::{
     databases::{
         remote_databases::remote_database::get_remote_database,
-        table::{get_table_type_for_tables, Table, TableType},
+        table::{get_table_type_for_tables, LocalTable, Table, TableType},
         table_schema::TableSchema,
-        transient_database::execute_query_on_transient_database,
+        transient_database::{
+            execute_query_on_transient_database, get_unique_table_names_for_transient_database,
+        },
     },
+    databases_store::store::DatabasesStore,
     stores::store::Store,
 };
 
@@ -57,5 +61,69 @@ pub async fn execute_query(
             ))),
         },
         Ok(TableType::Local) => execute_query_on_transient_database(&tables, store, query).await,
+    }
+}
+
+pub async fn get_tables_schema(
+    tables: Vec<Table>,
+    store: Box<dyn Store + Sync + Send>,
+    databases_store: Box<dyn DatabasesStore + Sync + Send>,
+) -> Result<Vec<(Option<TableSchema>, String)>> {
+    match get_table_type_for_tables(tables.iter().collect::<Vec<_>>())? {
+        TableType::Remote(credential_id) => {
+            let remote_db = get_remote_database(&credential_id).await?;
+            let remote_table_ids = tables
+                .iter()
+                .map(|t| {
+                    t.remote_database_table_id().ok_or(anyhow!(
+                        "Remote table unexpectedly missing remote database table ID."
+                    ))
+                })
+                .collect::<Result<Vec<_>>>()?;
+            let schemas = remote_db.get_tables_schema(&remote_table_ids).await?;
+
+            let dbmls = tables
+                .iter()
+                .zip(schemas.iter())
+                .map(|(table, schema)| schema.render_dbml(table.name(), table.description()))
+                .collect::<Vec<_>>();
+
+            Ok(schemas
+                .into_iter()
+                .zip(dbmls.into_iter())
+                .map(|(schema, dbml)| (Some(schema), dbml))
+                .collect::<Vec<_>>())
+        }
+        TableType::Local => {
+            let unique_table_names = get_unique_table_names_for_transient_database(&tables);
+
+            let mut local_tables = tables
+                .into_iter()
+                .map(|t| LocalTable::from_table(t))
+                .collect::<Result<Vec<_>>>()?;
+
+            // Load the schema for each table.
+            // If the schema cache is stale, this will update it in place.
+            try_join_all(
+                local_tables
+                    .iter_mut()
+                    .map(|t| t.schema(store.clone(), databases_store.clone())),
+            )
+            .await?;
+
+            Ok(local_tables
+                .into_iter()
+                .map(|t| {
+                    let unique_table_name = unique_table_names
+                        .get(&t.table.unique_id())
+                        .expect("Unreachable: missing unique table name.");
+
+                    (
+                        t.table.schema_cached().map(|s| s.clone()),
+                        t.render_dbml(Some(&unique_table_name)),
+                    )
+                })
+                .collect::<Vec<_>>())
+        }
     }
 }
