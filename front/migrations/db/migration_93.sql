@@ -14,4 +14,3 @@ REFERENCES "labs_transcripts_configurations" ("userId");
 DROP INDEX IF EXISTS "labs_transcripts_histories_file_id";
 DROP INDEX IF EXISTS "labs_transcripts_histories_file_id_user_id";
 CREATE UNIQUE INDEX "labs_transcripts_histories_file_id_user_id" ON "labs_transcripts_histories" ("fileId", "userId");
-

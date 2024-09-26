@@ -216,6 +216,7 @@ export async function processTranscriptActivity(
       configurationId: transcriptsConfiguration.id,
       fileId,
       fileName: transcriptTitle,
+      userId: user.id,
     });
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
@@ -239,6 +240,7 @@ export async function processTranscriptActivity(
       fileId,
       fileName: transcriptTitle,
       conversationId: null,
+      userId: user.id,
     });
 
     await sendEmailWithTemplate({
