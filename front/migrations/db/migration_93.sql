@@ -17,3 +17,8 @@ CREATE UNIQUE INDEX CONCURRENTLY "data_source_views_workspace_id_data_source_id_
   "vaultId",
   "deletedAt"
 );
+
+ALTER TABLE "public"."apps"
+ADD COLUMN "deletedAt" TIMESTAMP
+WITH
+  TIME ZONE;
