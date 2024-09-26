@@ -1,12 +1,18 @@
 use anyhow::{anyhow, Result};
 use lazy_static::lazy_static;
-use std::str::FromStr;
+use serde::Deserialize;
 
-use crate::oauth::credential::CredentialProvider;
+use crate::{oauth::credential::CredentialProvider, utils::APIResponse};
 
 lazy_static! {
     static ref OAUTH_API: String = std::env::var("OAUTH_API").unwrap();
-    static ref OAUTH_API_KEY: String = std::env::var("OAUTH_API_KEY").unwrap();
+    static ref OAUTH_API_KEY: String = std::env::var("OAUTH_API_KEY").unwrap_or_default();
+}
+
+#[derive(Debug, Deserialize)]
+struct CredentialReponse {
+    provider: CredentialProvider,
+    content: serde_json::Map<String, serde_json::Value>,
 }
 
 // Meant to query the `oauth`` service from `core`
@@ -29,18 +35,18 @@ impl OauthClient {
         match res.status().as_u16() {
             200 => {
                 let body = res.text().await?;
-                let json = serde_json::from_str::<serde_json::Value>(&body)?;
-                let provider =
-                    CredentialProvider::from_str(&json["provider"].as_str().ok_or_else(|| {
-                        anyhow!("Invalid response from `oauth`: missing provider")
-                    })?)?;
+                let response = serde_json::from_str::<APIResponse>(&body)?
+                    .response
+                    .ok_or_else(|| {
+                        anyhow!("Failed to get credential: missing response from `oauth`")
+                    })?;
+                let credential = response.get("credential").ok_or_else(|| {
+                    anyhow!("Failed to get credential: missing credential from `oauth`")
+                })?;
+                let credential = serde_json::from_value::<CredentialReponse>(credential.to_owned())
+                    .map_err(|e| anyhow!("Failed to parse credential: {}", e))?;
 
-                let content = serde_json::from_value::<serde_json::Map<String, serde_json::Value>>(
-                    json["content"].clone(),
-                )
-                .map_err(|e| anyhow!("Failed to parse content: {}", e))?;
-
-                Ok((provider, content))
+                Ok((credential.provider, credential.content))
             }
             s => Err(anyhow!("Failed to get credential. Status: {}", s)),
         }
