@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: socks-proxy-service
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: "socks-proxy-static-ip"
+    networking.gke.io/load-balancer-type: "Internal" 
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 1080
+    targetPort: 1080
+  selector:
+    app: socks-proxy
