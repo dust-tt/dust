@@ -1,7 +1,6 @@
 import { ContentMessage, Modal, Page, SlackLogo } from "@dust-tt/sparkle";
 import type {
   BaseContentNode,
-  ConnectorPermission,
   DataSourceViewType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -42,33 +41,6 @@ export function SlackIntegration({
       );
     },
     [newSelection]
-  );
-
-  const handlePermissionUpdate = useCallback(
-    (
-      node: BaseContentNode,
-      { newPermission }: { newPermission: ConnectorPermission }
-    ) => {
-      const { internalId, title } = node;
-
-      setNewSelection((prevSelection) => {
-        const channel = { slackChannelId: internalId, slackChannelName: title };
-        const index = prevSelection.findIndex(
-          (c) => c.slackChannelId === internalId
-        );
-
-        if (newPermission === "read_write" && index === -1) {
-          return [...prevSelection, channel];
-        }
-
-        if (newPermission !== "read_write" && index !== -1) {
-          return prevSelection.filter((_, i) => i !== index);
-        }
-
-        return prevSelection;
-      });
-    },
-    [setNewSelection]
   );
 
   // Notify parent component when newSelection changes.

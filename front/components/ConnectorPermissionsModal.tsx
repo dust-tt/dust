@@ -431,7 +431,7 @@ export function ConnectorPermissionsModal({
             [r.internalId]: {
               isSelected: true,
               node: r,
-              parents: r.parentInternalIds,
+              parents: r.parentInternalIds || [],
             },
           }),
           {} as Record<string, ContentNodeTreeNodeStatus>

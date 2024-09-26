@@ -1,6 +1,8 @@
 import type {
   ConnectorPermission,
+  ContentNode,
   ContentNodesViewType,
+  ContentNodeWithParentIds,
   DataSourceType,
   LightWorkspaceType,
 } from "@dust-tt/types";
@@ -16,6 +18,21 @@ import {
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/connector";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
+
+type UseConnectorPermissionsReturn<IncludeParents extends boolean = false> = {
+  isResourcesLoading: boolean;
+  isResourcesError: boolean;
+} & IncludeParents extends true
+  ? {
+      resources: ContentNodeWithParentIds[];
+      isResourcesLoading: boolean;
+      isResourcesError: boolean;
+    }
+  : {
+      resources: ContentNode[];
+      isResourcesLoading: boolean;
+      isResourcesError: boolean;
+    };
 
 export function useConnectorPermissions<IncludeParents extends boolean>({
   owner,
@@ -33,9 +50,10 @@ export function useConnectorPermissions<IncludeParents extends boolean>({
   disabled?: boolean;
   includeParents?: IncludeParents;
   viewType?: ContentNodesViewType;
-}) {
-  const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
-    fetcher;
+}): UseConnectorPermissionsReturn<IncludeParents> {
+  const permissionsFetcher: Fetcher<
+    GetDataSourcePermissionsResponseBody<IncludeParents>
+  > = fetcher;
 
   let url = `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions?viewType=${viewType}`;
   if (parentId) {
