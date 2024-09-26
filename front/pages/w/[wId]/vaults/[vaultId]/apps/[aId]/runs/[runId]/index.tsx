@@ -16,7 +16,6 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import config from "@app/lib/api/config";
 import { getRun } from "@app/lib/api/run";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -30,7 +29,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   app: AppType;
   run: RunType;
   spec: SpecificationType;
-  url: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -68,7 +66,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       app: app.toJSON(),
       spec,
       run,
-      url: config.getClientFacingUrl(),
     },
   };
 });
@@ -81,7 +78,6 @@ export default function AppRun({
   app,
   spec,
   run,
-  url,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [savedRunId, setSavedRunId] = useState<string | null | undefined>(
     app.savedRun
@@ -213,7 +209,6 @@ export default function AppRun({
                 app={app}
                 run={run}
                 disabled={false}
-                url={url}
                 spec={spec}
               />
             </p>

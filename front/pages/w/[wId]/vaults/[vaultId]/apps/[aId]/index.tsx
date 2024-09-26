@@ -21,7 +21,6 @@ import SpecRunView from "@app/components/app/SpecRunView";
 import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import config from "@app/lib/api/config";
 import { extractConfig } from "@app/lib/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -40,7 +39,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   readOnly: boolean;
   isAdmin: boolean;
-  url: string;
   app: AppType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -75,7 +73,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       isAdmin,
       readOnly,
-      url: config.getClientFacingUrl(),
       app: app.toJSON(),
     },
   };
@@ -141,7 +138,6 @@ export default function AppView({
   readOnly,
   isAdmin,
   app,
-  url,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { mutate } = useSWRConfig();
 
@@ -387,7 +383,6 @@ export default function AppView({
                   app={app}
                   run={run}
                   spec={spec}
-                  url={url}
                 />
               </div>
             ) : null}
