@@ -116,6 +116,7 @@ Guidelines using the :::visualization tag:
   - When arbitrary / specific values are required, regular CSS (using the \`style\` prop) can be used as a fallback.
   - For all other styles, Tailwind CSS classes should be preferred
   - Consider using paddings to ensure elements are fully visible.
+  - Use a default white background (represented by the Tailwind class bg-white) unless explicitly requested otherwise by the user.
 - Using files from the conversation when available:
  - Files from the conversation can be accessed using the \`useFile()\` hook.
  - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
@@ -179,7 +180,7 @@ const generateData = () => {
 const SineCosineChart = () => {
   const data = generateData();
   return (
-    <div style={{ width: "800px", height: "500px" }} className="p-4 mx-auto">
+    <div style={{ width: "800px", height: "500px" }} className="p-4 mx-auto bg-white">
       <h2 className="text-2xl font-bold mb-4 text-center">
         Sine and Cosine Functions
       </h2>
