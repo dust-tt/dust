@@ -20,7 +20,7 @@ import type {
 import { assertNever, CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import * as React from "react";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -421,23 +421,27 @@ export function ConnectorPermissionsModal({
       disabled: !canUpdatePermissions,
     });
 
+  const initialTreeSelectionModel = useMemo(
+    () =>
+      allSelectedResources.reduce(
+        (acc, r) => ({
+          ...acc,
+          [r.internalId]: {
+            isSelected: true,
+            node: r,
+            parents: r.parentInternalIds || [],
+          },
+        }),
+        {} as Record<string, ContentNodeTreeNodeStatus>
+      ),
+    [allSelectedResources]
+  );
+
   useEffect(() => {
     if (isOpen) {
-      setTreeSelectionModel(
-        allSelectedResources.reduce(
-          (acc, r) => ({
-            ...acc,
-            [r.internalId]: {
-              isSelected: true,
-              node: r,
-              parents: r.parentInternalIds || [],
-            },
-          }),
-          {} as Record<string, ContentNodeTreeNodeStatus>
-        )
-      );
+      setTreeSelectionModel(initialTreeSelectionModel);
     }
-  }, [allSelectedResources, isOpen]);
+  }, [initialTreeSelectionModel, isOpen]);
 
   const [modalToShow, setModalToShow] = useState<
     "edition" | "selection" | null
@@ -509,6 +513,21 @@ export function ConnectorPermissionsModal({
     setSaving(false);
   }
 
+  const unchanged = useMemo(
+    () =>
+      Object.values(treeSelectionModel)
+        .filter((item) => item.isSelected)
+        .every(
+          (item) =>
+            item.isSelected ===
+            initialTreeSelectionModel[item.node.internalId]?.isSelected
+        ) &&
+      Object.values(treeSelectionModel)
+        .filter((item) => !item.isSelected)
+        .every((item) => !initialTreeSelectionModel[item.node.internalId]),
+    [treeSelectionModel, initialTreeSelectionModel]
+  );
+
   useEffect(() => {
     if (isOpen) {
       if (showAddDataModal(connector.type)) {
@@ -555,7 +574,7 @@ export function ConnectorPermissionsModal({
         saveLabel="Save"
         savingLabel="Saving..."
         isSaving={saving}
-        hasChanged={!!Object.keys(treeSelectionModel).length}
+        hasChanged={!unchanged}
         className="flex"
         variant="side-md"
       >
