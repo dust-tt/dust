@@ -1,6 +1,7 @@
 import type { ConnectorProvider } from "@dust-tt/types";
 import type {
   CreationOptional,
+  DestroyOptions,
   ForeignKey,
   InferAttributes,
   InferCreationAttributes,
@@ -12,15 +13,12 @@ import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { SoftDeletableModel } from "@app/lib/resources/storage/wrapper";
 
-export class DataSourceModel extends Model<
-  InferAttributes<DataSourceModel>,
-  InferCreationAttributes<DataSourceModel>
-> {
+export class DataSourceModel extends SoftDeletableModel<DataSourceModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare deletedAt: Date | null;
 
   // Corresponds to the ID of the last user to configure the connection.
   declare editedByUserId: ForeignKey<User["id"]>;
@@ -100,7 +98,6 @@ DataSourceModel.init(
       { fields: ["workspaceId", "connectorProvider"] },
       { fields: ["workspaceId", "vaultId"] },
     ],
-    paranoid: true,
   }
 );
 Workspace.hasMany(DataSourceModel, {

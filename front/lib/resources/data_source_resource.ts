@@ -141,7 +141,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     return this.baseFetchWithAuthorization(auth, {
       ...this.getOptions(fetchDataSourceOptions),
       ...options,
-      paranoid: !includeDeleted,
+      includeDeleted,
     });
   }
 
@@ -390,19 +390,19 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
         dataSourceId: this.id,
       },
       transaction,
-      // Use 'force: true' to ensure the record is permanently deleted from the database,
+      // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
       // bypassing the soft deletion in place.
-      force: true,
+      hardDelete: true,
     });
 
-    await this.model.destroy({
+    await DataSourceModel.destroy({
       where: {
         id: this.id,
       },
       transaction,
-      // Use 'force: true' to ensure the record is permanently deleted from the database,
+      // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
       // bypassing the soft deletion in place.
-      force: true,
+      hardDelete: true,
     });
   }
 

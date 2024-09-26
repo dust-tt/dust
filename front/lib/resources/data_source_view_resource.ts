@@ -55,6 +55,7 @@ const getDataSourceCategory = (
 };
 
 export type FetchDataSourceViewOptions = {
+  includeDeleted?: boolean;
   includeEditedBy?: boolean;
   limit?: number;
   order?: [string, "ASC" | "DESC"][];
@@ -207,9 +208,12 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions,
     options?: ResourceFindOptions<DataSourceViewModel>
   ) {
+    const { includeDeleted } = fetchDataSourceViewOptions ?? {};
+
     const dataSourceViews = await this.baseFetchWithAuthorization(auth, {
       ...this.getOptions(fetchDataSourceViewOptions),
       ...options,
+      includeDeleted,
     });
 
     const dataSourceIds = removeNulls(
@@ -423,15 +427,15 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       },
     });
 
-    await this.model.destroy({
+    await DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         id: this.id,
       },
       transaction,
-      // Use 'force: true' to ensure the record is permanently deleted from the database,
+      // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
       // bypassing the soft deletion in place.
-      force: true,
+      hardDelete: true,
     });
   }
 

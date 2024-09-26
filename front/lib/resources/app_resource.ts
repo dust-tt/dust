@@ -165,12 +165,15 @@ export class AppResource extends ResourceWithVault<App> {
           // Interrupt the transaction if there was an error deleting datasets.
           throw res.error;
         }
-        await this.model.destroy({
+        await App.destroy({
           where: {
             workspaceId: auth.getNonNullableWorkspace().id,
             id: this.id,
           },
           transaction: t,
+          // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
+          // bypassing the soft deletion in place.
+          hardDelete: true,
         });
       });
       return new Ok(undefined);

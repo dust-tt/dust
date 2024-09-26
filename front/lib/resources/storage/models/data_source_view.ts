@@ -13,15 +13,13 @@ import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { ResourceFindOptions } from "@app/lib/resources/types";
+import { SoftDeletableModel } from "@app/lib/resources/storage/wrapper";
 
-export class DataSourceViewModel extends Model<
-  InferAttributes<DataSourceViewModel>,
-  InferCreationAttributes<DataSourceViewModel>
-> {
+export class DataSourceViewModel extends SoftDeletableModel<DataSourceViewModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare deletedAt: Date | null;
 
   // Corresponds to the ID of the last user to configure the connection.
   declare editedByUserId: ForeignKey<User["id"]>;
@@ -84,7 +82,6 @@ DataSourceViewModel.init(
         unique: true,
       },
     ],
-    paranoid: true,
   }
 );
 Workspace.hasMany(DataSourceViewModel, {

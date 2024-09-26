@@ -1,3 +1,4 @@
+import { SoftDeletableModel } from "@app/lib/resources/storage/wrapper";
 import type {
   FindOptions,
   Model,
@@ -26,10 +27,9 @@ export type TypedIncludeable<M> = {
   };
 }[NonAttributeKeys<M>];
 
-export interface ResourceFindOptions<M extends Model> {
+export type ResourceFindOptions<M extends Model> = {
   includes?: TypedIncludeable<M>[];
   limit?: number;
   order?: FindOptions<M>["order"];
-  paranoid?: boolean;
   where?: WhereOptions<M>;
-}
+} & (M extends SoftDeletableModel ? { includeDeleted?: boolean } : {});

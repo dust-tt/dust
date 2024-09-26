@@ -2,6 +2,8 @@ import type {
   Attributes,
   ForeignKey,
   Includeable,
+  InferAttributes,
+  InferCreationAttributes,
   ModelStatic,
   NonAttribute,
   WhereOptions,
@@ -20,6 +22,10 @@ import type {
   ResourceFindOptions,
 } from "@app/lib/resources/types";
 import { VaultResource } from "@app/lib/resources/vault_resource";
+import {
+  ModelStaticSoftDeletable,
+  SoftDeletableModel,
+} from "@app/lib/resources/storage/wrapper";
 
 // Interface to enforce workspaceId and vaultId.
 interface ModelWithVault extends ResourceWithId {
@@ -29,7 +35,7 @@ interface ModelWithVault extends ResourceWithId {
 }
 
 export abstract class ResourceWithVault<
-  M extends Model & ModelWithVault,
+  M extends SoftDeletableModel & ModelWithVault,
 > extends BaseResource<M> {
   readonly workspaceId: ModelWithVault["workspaceId"];
 
@@ -45,7 +51,7 @@ export abstract class ResourceWithVault<
 
   protected static async baseFetchWithAuthorization<
     T extends ResourceWithVault<M>,
-    M extends Model & ModelWithVault,
+    M extends SoftDeletableModel & ModelWithVault,
     IncludeType extends Partial<InferIncludeType<M>>,
   >(
     this: {
@@ -55,9 +61,15 @@ export abstract class ResourceWithVault<
         vault: VaultResource,
         includes?: IncludeType
       ): T;
-    } & { model: ModelStatic<M> },
+    } & { model: ModelStaticSoftDeletable<M> },
     auth: Authenticator,
-    { includes, limit, order, where, paranoid }: ResourceFindOptions<M> = {}
+    {
+      includes,
+      limit,
+      order,
+      where,
+      includeDeleted,
+    }: ResourceFindOptions<M> = {}
   ): Promise<T[]> {
     const includeClauses: Includeable[] = [
       {
@@ -73,7 +85,7 @@ export abstract class ResourceWithVault<
       include: includeClauses,
       limit,
       order,
-      paranoid,
+      includeDeleted,
     });
 
     return (
