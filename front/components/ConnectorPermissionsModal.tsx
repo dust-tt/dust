@@ -12,7 +12,6 @@ import type {
   ConnectorPermission,
   ConnectorProvider,
   ConnectorType,
-  ContentNodeWithParentIds,
   DataSourceType,
   LightWorkspaceType,
   UpdateConnectorRequestBody,
