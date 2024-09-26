@@ -167,9 +167,7 @@ const getTableColumns = ({
             !info.row.original.dataSourceView.dataSource
               .fetchConnectorError && <Chip color="amber">Never</Chip>}
           {info.row.original.dataSourceView.dataSource.fetchConnectorError && (
-            <Chip color="warning">
-              Error loading the connector. Try again in a few minutes.
-            </Chip>
+            <Chip color="warning">Retry in a few minutes</Chip>
           )}
           {info.row.original.dataSourceView.dataSource.connector &&
             info.row.original.workspaceId &&
