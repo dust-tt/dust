@@ -1,5 +1,5 @@
 import type { Result } from "@dust-tt/types";
-import { Err, getSanitizedHeaders, Ok, slugify } from "@dust-tt/types";
+import { Err, Ok, slugify } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { stringify } from "csv-stringify/sync";
 
@@ -99,6 +99,7 @@ async function upsertTable(
     },
     truncate: true,
     parents,
+    useAppForHeaderDetection: true,
   });
 
   logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
@@ -177,12 +178,8 @@ async function processSheet({
     );
   }
 
-  const [rawHeaders, ...rest] = rows;
-
   // Assuming the first line as headers, at least one additional data line is required.
-  if (rawHeaders && rows.length > 1) {
-    const headers = getSanitizedHeaders(rawHeaders);
-
+  if (rows.length > 1) {
     const parents = [
       worksheetInternalId,
       ...(await getParents({
@@ -199,7 +196,7 @@ async function processSheet({
         spreadsheet,
         worksheet,
         parents,
-        [headers, ...rest],
+        rows,
         loggerArgs
       );
     } catch (err) {

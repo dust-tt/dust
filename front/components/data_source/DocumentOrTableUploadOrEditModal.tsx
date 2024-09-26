@@ -8,6 +8,7 @@ import {
   Modal,
   Page,
   PlusIcon,
+  SparklesIcon,
   Spinner,
   TextArea,
   TrashIcon,
@@ -18,8 +19,8 @@ import type {
   CoreAPILightDocument,
   DataSourceViewType,
   LightContentNode,
-  LightWorkspaceType,
   PlanType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { parseAndStringifyCsv } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
@@ -50,7 +51,7 @@ interface DocumentOrTableUploadOrEditModalProps {
   dataSourceView: DataSourceViewType;
   isOpen: boolean;
   onClose: (save: boolean) => void;
-  owner: LightWorkspaceType;
+  owner: WorkspaceType;
   plan: PlanType;
   totalNodesCount: number;
   viewType: ContentNodesViewType;
@@ -448,6 +449,8 @@ const TableUploadOrEditModal = ({
   const [uploading, setUploading] = useState(false);
   const [isBigFile, setIsBigFile] = useState(false);
   const [isValidTable, setIsValidTable] = useState(false);
+  const [useAppForHeaderDetection, setUseAppForHeaderDetection] =
+    useState(false);
 
   const { table, isTableError, isTableLoading } = useTable({
     owner: owner,
@@ -508,6 +511,7 @@ const TableUploadOrEditModal = ({
         parents: [],
         truncate: false,
         async: false,
+        useAppForHeaderDetection,
       });
 
       const res = await fetch(endpoint, {
@@ -684,6 +688,25 @@ const TableUploadOrEditModal = ({
                   </div>
                 )}
               </div>
+              {owner.flags.includes("use_app_for_header_detection") && (
+                <div>
+                  <Page.SectionHeader
+                    title="Enable header detection"
+                    description={
+                      "Use the LLM model to detect headers in the CSV file."
+                    }
+                    action={{
+                      label: useAppForHeaderDetection ? "Disable" : "Enable",
+                      variant: useAppForHeaderDetection
+                        ? "primary"
+                        : "tertiary",
+                      icon: SparklesIcon,
+                      onClick: () =>
+                        setUseAppForHeaderDetection(!useAppForHeaderDetection),
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
         </Page.Vertical>
