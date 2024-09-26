@@ -142,10 +142,11 @@ export const AddToVaultDialog = ({
         <DropdownMenu>
           <DropdownMenu.Button>
             <Button
+              hasMagnifying={false}
               label={vault ? vault.name : "Select vault"}
-              variant="primary"
-              icon={LockIcon}
               size="sm"
+              type="select"
+              variant="secondary"
             />
           </DropdownMenu.Button>
           <DropdownMenu.Items>
