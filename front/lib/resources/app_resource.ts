@@ -1,4 +1,4 @@
-import type { AppType, AppVisibility, Result } from "@dust-tt/types";
+import type { AppType, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import assert from "assert";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
