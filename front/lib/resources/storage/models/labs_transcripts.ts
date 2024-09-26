@@ -114,7 +114,7 @@ export class LabsTranscriptsHistoryModel extends Model<
   declare conversationId: string | null;
 
   declare configurationId: ForeignKey<LabsTranscriptsConfigurationModel["id"]>;
-  declare userId: ForeignKey<LabsTranscriptsConfigurationModel["userId"]>;
+
   declare configuration: NonAttribute<LabsTranscriptsConfigurationModel>;
 }
 
@@ -153,9 +153,9 @@ LabsTranscriptsHistoryModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["fileId", "userId"],
+        fields: ["fileId", "configurationId"],
         unique: true,
-        name: "labs_transcripts_history_file_user_idx",
+        name: "labs_transcripts_histories_file_configuration_id",
       },
     ],
   }
@@ -166,10 +166,6 @@ LabsTranscriptsHistoryModel.belongsTo(LabsTranscriptsConfigurationModel, {
   foreignKey: { name: "configurationId", allowNull: false },
 });
 LabsTranscriptsConfigurationModel.hasMany(LabsTranscriptsHistoryModel, {
-  as: "configuration",
+  as: "history",
   foreignKey: { name: "configurationId", allowNull: false },
-});
-LabsTranscriptsHistoryModel.hasOne(LabsTranscriptsConfigurationModel, {
-  as: "configuration",
-  foreignKey: { name: "userId", allowNull: false },
 });
