@@ -56,8 +56,6 @@ export class AppResource extends ResourceWithVault<AppModel> {
     return apps.filter((app) => auth.isAdmin() || app.canRead(auth));
   }
 
-  // `fetchByIds` filters out deleted apps. The accessibility of an app is enforced by its
-  // associated vault enforced in `baseFetch`.
   static async fetchByIds(
     auth: Authenticator,
     ids: string[]
@@ -65,7 +63,6 @@ export class AppResource extends ResourceWithVault<AppModel> {
     return this.baseFetch(auth, {
       where: {
         sId: ids,
-        visibility: { [Op.ne]: "deleted" },
       },
     });
   }
@@ -79,13 +76,10 @@ export class AppResource extends ResourceWithVault<AppModel> {
     return app ?? null;
   }
 
-  // `listByWorkspace` filters out deleted apps. The accessibility of an app is enforced by its
-  // associated vault enforced in `baseFetch`.
   static async listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth, {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
-        visibility: { [Op.ne]: "deleted" },
       },
     });
   }
@@ -94,7 +88,6 @@ export class AppResource extends ResourceWithVault<AppModel> {
     return this.baseFetch(auth, {
       where: {
         vaultId: vault.id,
-        visibility: { [Op.ne]: "deleted" },
       },
     });
   }
@@ -114,6 +107,7 @@ export class AppResource extends ResourceWithVault<AppModel> {
     }
   ) {
     assert(this.canWrite(auth), "Unauthorized write attempt");
+
     await this.update({
       savedSpecification,
       savedConfig,
@@ -126,60 +120,69 @@ export class AppResource extends ResourceWithVault<AppModel> {
     {
       name,
       description,
-      visibility,
     }: {
       name: string;
       description: string | null;
-      visibility: AppVisibility;
     }
   ) {
     assert(this.canWrite(auth), "Unauthorized write attempt");
+
     await this.update({
       name,
       description,
-      visibility,
-    });
-  }
-
-  async markAsDeleted(auth: Authenticator) {
-    assert(this.canWrite(auth), "Unauthorized write attempt");
-    await this.update({
-      visibility: "deleted",
     });
   }
 
   // Deletion.
 
   async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
+    assert(this.canWrite(auth), "Unauthorized write attempt");
+
     try {
-      await frontSequelize.transaction(async (t) => {
-        await RunResource.deleteAllByAppId(this.id, t);
-        await Clone.destroy({
-          where: {
-            [Op.or]: [{ fromId: this.id }, { toId: this.id }],
-          },
-          transaction: t,
-        });
-        const res = await DatasetResource.deleteForApp(auth, this, t);
-        if (res.isErr()) {
-          // Interrupt the transaction if there was an error deleting datasets.
-          throw res.error;
-        }
-        await AppModel.destroy({
-          where: {
-            workspaceId: auth.getNonNullableWorkspace().id,
-            id: this.id,
-          },
-          transaction: t,
-          // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
-          // bypassing the soft deletion in place.
-          hardDelete: true,
-        });
+      // Soft delete the app.
+      await AppModel.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: this.id,
+        },
       });
+
       return new Ok(undefined);
     } catch (err) {
       return new Err(err as Error);
     }
+  }
+
+  async destroy(auth: Authenticator) {
+    assert(this.canWrite(auth), "Unauthorized write attempt");
+
+    await frontSequelize.transaction(async (t) => {
+      await RunResource.deleteAllByAppId(this.id, t);
+
+      await Clone.destroy({
+        where: {
+          [Op.or]: [{ fromId: this.id }, { toId: this.id }],
+        },
+        transaction: t,
+      });
+
+      const res = await DatasetResource.deleteForApp(auth, this, t);
+      if (res.isErr()) {
+        // Interrupt the transaction if there was an error deleting datasets.
+        throw res.error;
+      }
+
+      await AppModel.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: this.id,
+        },
+        transaction: t,
+        // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
+        // bypassing the soft deletion in place.
+        hardDelete: true,
+      });
+    });
   }
 
   // Serialization.
