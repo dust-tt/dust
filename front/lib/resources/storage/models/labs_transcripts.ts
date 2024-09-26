@@ -169,3 +169,7 @@ LabsTranscriptsConfigurationModel.hasMany(LabsTranscriptsHistoryModel, {
   as: "configuration",
   foreignKey: { name: "configurationId", allowNull: false },
 });
+LabsTranscriptsHistoryModel.belongsTo(LabsTranscriptsHistoryModel, {
+  as: "configuration",
+  foreignKey: { name: "userId", allowNull: false },
+});
