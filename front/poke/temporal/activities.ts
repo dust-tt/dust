@@ -425,10 +425,7 @@ export async function deleteAppsActivity({
       throw new Error(`Error deleting Project from Core: ${res.error.message}`);
     }
 
-    const delRes = await app.destroy(auth);
-    if (delRes.isErr()) {
-      throw new Error(`Error deleting App ${app.sId}: ${delRes.error.message}`);
-    }
+    await app.destroy(auth);
   }
 
   await frontSequelize.transaction(async (t) => {
