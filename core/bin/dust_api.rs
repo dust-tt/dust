@@ -1136,7 +1136,6 @@ async fn runs_retrieve_status(
 
 #[derive(serde::Deserialize)]
 struct DataSourcesRegisterPayload {
-    data_source_id: String,
     config: data_source::DataSourceConfig,
     #[allow(dead_code)]
     credentials: run::Credentials,
@@ -1148,7 +1147,7 @@ async fn data_sources_register(
     Json(payload): Json<DataSourcesRegisterPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    let ds = data_source::DataSource::new(&project, &payload.data_source_id, &payload.config);
+    let ds = data_source::DataSource::new(&project, &payload.config);
     match state.store.register_data_source(&project, &ds).await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -1164,7 +1163,6 @@ async fn data_sources_register(
                     "data_source": {
                         "created": ds.created(),
                         "data_source_id": ds.data_source_id(),
-                        "data_source_internal_id": ds.internal_id(),
                         "config": ds.config(),
                     },
                 })),
