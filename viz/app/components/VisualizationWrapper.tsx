@@ -14,6 +14,8 @@ import { importCode, Runner } from "react-runner";
 import * as rechartsAll from "recharts";
 import { useResizeDetector } from "react-resize-detector";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
+import { Download } from "lucide-react";
+import { toBlob } from "html-to-image";
 
 export function useVisualizationAPI(
   sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>
@@ -74,7 +76,20 @@ export function useVisualizationAPI(
     [sendCrossDocumentMessage]
   );
 
-  return { fetchCode, fetchFile, error, sendHeightToParent };
+  const sendScreenshotBlob = useCallback(
+    async (blob: Blob) => {
+      await sendCrossDocumentMessage("sendScreenshotBlob", { blob });
+    },
+    [sendCrossDocumentMessage]
+  );
+
+  return {
+    error,
+    fetchCode,
+    fetchFile,
+    sendHeightToParent,
+    sendScreenshotBlob,
+  };
 }
 
 const useFile = (
@@ -145,7 +160,13 @@ export function VisualizationWrapper({
 
   const [errored, setErrored] = useState<Error | null>(null);
 
-  const { fetchCode, fetchFile, error, sendHeightToParent } = api;
+  const {
+    fetchCode,
+    fetchFile,
+    error,
+    sendHeightToParent,
+    sendScreenshotBlob,
+  } = api;
 
   useEffect(() => {
     const loadCode = async () => {
@@ -193,6 +214,22 @@ export function VisualizationWrapper({
     onResize: sendHeightToParent,
   });
 
+  const handleDownload = useCallback(async () => {
+    if (ref.current) {
+      try {
+        const blob = await toBlob(ref.current, {
+          // Skip embedding fonts in the Blob since we cannot access cssRules from the iframe.
+          skipFonts: true,
+        });
+        if (blob) {
+          await sendScreenshotBlob(blob);
+        }
+      } catch (err) {
+        console.error("Failed to convert to Blob", err);
+      }
+    }
+  }, [ref, sendScreenshotBlob]);
+
   useEffect(() => {
     if (error) {
       setErrored(error);
@@ -209,16 +246,24 @@ export function VisualizationWrapper({
   }
 
   return (
-    <div ref={ref}>
-      <Runner
-        code={runnerParams.code}
-        scope={runnerParams.scope}
-        onRendered={(error) => {
-          if (error) {
-            setErrored(error);
-          }
-        }}
-      />
+    <div className="relative group/viz">
+      <button
+        onClick={handleDownload}
+        className="absolute top-2 right-2 bg-white p-2 rounded shadow hover:bg-gray-100 transition opacity-0 group-hover/viz:opacity-100"
+      >
+        <Download size={20} />
+      </button>
+      <div ref={ref}>
+        <Runner
+          code={runnerParams.code}
+          scope={runnerParams.scope}
+          onRendered={(error) => {
+            if (error) {
+              setErrored(error);
+            }
+          }}
+        />
+      </div>
     </div>
   );
 }
