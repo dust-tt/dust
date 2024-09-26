@@ -1,6 +1,7 @@
 import type {
   ConnectorPermission,
   ContentNode,
+  ContentNodeWithParentIds,
   DataSourceType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
@@ -31,9 +32,15 @@ const SetConnectorPermissionsRequestBodySchema = t.type({
   ),
 });
 
-export type GetDataSourcePermissionsResponseBody = {
-  resources: ContentNode[];
-};
+export type GetDataSourcePermissionsResponseBody<
+  IncludeParents extends boolean = false,
+> = IncludeParents extends true
+  ? {
+      resources: ContentNodeWithParentIds[];
+    }
+  : {
+      resources: ContentNode[];
+    };
 
 export type SetDataSourcePermissionsResponseBody = {
   success: true;
@@ -199,6 +206,8 @@ export async function getManagedDataSourcePermissionsHandler(
     }
   }
 
+  const includeParents = req.query.includeParents === "true";
+
   switch (filterPermission) {
     case "read":
       // We let users get the read  permissions of a connector
@@ -260,6 +269,7 @@ export async function getManagedDataSourcePermissionsHandler(
     parentId,
     filterPermission,
     viewType,
+    includeParents,
   });
   if (permissionsRes.isErr()) {
     return apiError(req, res, {

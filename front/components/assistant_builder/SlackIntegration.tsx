@@ -1,17 +1,29 @@
 import { ContentMessage, Modal, Page, SlackLogo } from "@dust-tt/sparkle";
 import type {
   BaseContentNode,
-  ConnectorPermission,
   DataSourceViewType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useCallback, useEffect, useState } from "react";
 import React from "react";
 
-import { DataSourcePermissionTreeChildren } from "@app/components/ConnectorPermissionsTree";
+import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
+import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 
 export type SlackChannel = { slackChannelId: string; slackChannelName: string };
+
+// The "write" permission filter is applied to retrieve all available channels on Slack,
+const getUseResourceHook =
+  (owner: WorkspaceType, slackDataSourceView: DataSourceViewType) =>
+  (parentId: string | null) =>
+    useConnectorPermissions({
+      dataSource: slackDataSourceView.dataSource,
+      filterPermission: "write",
+      owner,
+      parentId,
+      viewType: "documents",
+    });
 
 interface SlacIntegrationProps {
   existingSelection: SlackChannel[];
@@ -43,33 +55,6 @@ export function SlackIntegration({
     [newSelection]
   );
 
-  const handlePermissionUpdate = useCallback(
-    (
-      node: BaseContentNode,
-      { newPermission }: { newPermission: ConnectorPermission }
-    ) => {
-      const { internalId, title } = node;
-
-      setNewSelection((prevSelection) => {
-        const channel = { slackChannelId: internalId, slackChannelName: title };
-        const index = prevSelection.findIndex(
-          (c) => c.slackChannelId === internalId
-        );
-
-        if (newPermission === "read_write" && index === -1) {
-          return [...prevSelection, channel];
-        }
-
-        if (newPermission !== "read_write" && index !== -1) {
-          return prevSelection.filter((_, i) => i !== index);
-        }
-
-        return prevSelection;
-      });
-    },
-    [setNewSelection]
-  );
-
   // Notify parent component when newSelection changes.
   useEffect(() => {
     if (newSelection !== null) {
@@ -77,21 +62,60 @@ export function SlackIntegration({
     }
   }, [newSelection, onSelectionChange]);
 
+  const useResourcesHook = useCallback(
+    (parentId: string | null) =>
+      getUseResourceHook(owner, slackDataSourceView)(parentId),
+    [owner, slackDataSourceView]
+  );
+
+  const { resources } = useResourcesHook(null);
+  const selectedNodes = resources.reduce(
+    (acc, c) =>
+      customIsNodeChecked(c)
+        ? {
+            ...acc,
+            [c.internalId]: {
+              node: c,
+              isSelected: true,
+              parents: [],
+            },
+          }
+        : acc,
+    {} as Record<string, ContentNodeTreeItemStatus>
+  );
+
   return (
-    <DataSourcePermissionTreeChildren
-      owner={owner}
-      dataSource={slackDataSourceView.dataSource}
-      parentId={null}
-      // The "write" permission filter is applied to retrieve all available channels on Slack,
+    <ContentNodeTree
       // not limited to those synced with Dust.
-      permissionFilter="write"
-      canUpdatePermissions={true}
-      onPermissionUpdate={handlePermissionUpdate}
+      selectedNodes={selectedNodes}
+      setSelectedNodes={(updater) => {
+        const newModel = updater(selectedNodes);
+
+        setNewSelection((prevSelection) => {
+          const newSelection = [...prevSelection];
+          Object.values(newModel).forEach((item) => {
+            const { isSelected, node } = item;
+            const index = newSelection.findIndex(
+              (c) => c.slackChannelId === node.internalId
+            );
+
+            if (isSelected && index === -1) {
+              newSelection.push({
+                slackChannelId: node.internalId,
+                slackChannelName: node.title,
+              });
+            }
+
+            if (!isSelected && index !== -1) {
+              newSelection.splice(index, 1);
+            }
+          });
+          return newSelection;
+        });
+      }}
       showExpand={false}
       isSearchEnabled={false}
-      customIsNodeChecked={customIsNodeChecked}
-      useConnectorPermissionsHook={useConnectorPermissions}
-      viewType="documents"
+      useResourcesHook={useResourcesHook}
     />
   );
 }

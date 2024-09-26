@@ -19,19 +19,20 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import * as React from "react";
-import { useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDataSourceName } from "@app/lib/data_sources";
+import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
-import { PermissionTree } from "./ConnectorPermissionsTree";
+import type { ContentNodeTreeItemStatus } from "./ContentNodeTree";
+import { ContentNodeTree } from "./ContentNodeTree";
 import type { NotificationType } from "./sparkle/Notification";
 import { SendNotificationsContext } from "./sparkle/Notification";
 
@@ -43,6 +44,49 @@ const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "intercom",
 ]);
 
+const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
+  ConnectorProvider,
+  { selected: ConnectorPermission; unselected: ConnectorPermission } | undefined
+> = {
+  confluence: {
+    selected: "read",
+    unselected: "none",
+  },
+  slack: {
+    selected: "read_write",
+    unselected: "write",
+  },
+  google_drive: {
+    selected: "read",
+    unselected: "none",
+  },
+  microsoft: {
+    selected: "read",
+    unselected: "none",
+  },
+  notion: undefined,
+  github: undefined,
+  intercom: {
+    selected: "read",
+    unselected: "none",
+  },
+  webcrawler: undefined,
+  snowflake: {
+    selected: "read",
+    unselected: "none",
+  },
+};
+
+const getUseResourceHook =
+  (owner: LightWorkspaceType, dataSource: DataSourceType) =>
+  (parentId: string | null) =>
+    useConnectorPermissions({
+      dataSource,
+      filterPermission: null,
+      owner,
+      parentId,
+      viewType: "documents",
+    });
 interface DataSourceManagementModalProps {
   children: React.ReactNode;
   isOpen: boolean;
@@ -345,8 +389,62 @@ export function ConnectorPermissionsModal({
 }: ConnectorPermissionsModalProps) {
   const { mutate } = useSWRConfig();
 
-  const [updatedPermissionByInternalId, setUpdatedPermissionByInternalId] =
-    useState<Record<string, ConnectorPermission>>({});
+  const [selectedNodes, setSelectedNodes] = useState<
+    Record<string, ContentNodeTreeItemStatus>
+  >({});
+
+  const canUpdatePermissions = PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(
+    connector.type
+  );
+  const selectedPermission: ConnectorPermission =
+    (dataSource.connectorProvider &&
+      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]?.selected) ||
+    "none";
+  const unselectedPermission: ConnectorPermission =
+    (dataSource.connectorProvider &&
+      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]
+        ?.unselected) ||
+    "none";
+
+  const useResourcesHook = useCallback(
+    (parentId: string | null) =>
+      getUseResourceHook(owner, dataSource)(parentId),
+    [owner, dataSource]
+  );
+
+  const { resources: allSelectedResources, isResourcesLoading } =
+    useConnectorPermissions({
+      dataSource,
+      filterPermission: "read",
+      owner,
+      parentId: null,
+      viewType: "documents",
+      includeParents: true,
+      disabled: !canUpdatePermissions,
+    });
+
+  const initialTreeSelectionModel = useMemo(
+    () =>
+      allSelectedResources.reduce<Record<string, ContentNodeTreeItemStatus>>(
+        (acc, r) => ({
+          ...acc,
+          [r.internalId]: {
+            isSelected: true,
+            node: r,
+            parents: r.parentInternalIds || [],
+          },
+        }),
+        {}
+      ),
+    [allSelectedResources]
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedNodes(initialTreeSelectionModel);
+    }
+  }, [initialTreeSelectionModel, isOpen]);
+
   const [modalToShow, setModalToShow] = useState<
     "edition" | "selection" | null
   >(null);
@@ -364,18 +462,14 @@ export function ConnectorPermissionsModal({
     setModalToShow(null);
     onClose(save);
     setTimeout(() => {
-      setUpdatedPermissionByInternalId({});
+      setSelectedNodes({});
     }, 300);
   }
-
-  const canUpdatePermissions = PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(
-    connector.type
-  );
 
   async function save() {
     setSaving(true);
     try {
-      if (Object.keys(updatedPermissionByInternalId).length) {
+      if (Object.keys(selectedNodes).length) {
         const r = await fetch(
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`,
           {
@@ -384,12 +478,12 @@ export function ConnectorPermissionsModal({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              resources: Object.keys(updatedPermissionByInternalId).map(
-                (internalId) => ({
-                  internal_id: internalId,
-                  permission: updatedPermissionByInternalId[internalId],
-                })
-              ),
+              resources: Object.keys(selectedNodes).map((internalId) => ({
+                internal_id: internalId,
+                permission: selectedNodes[internalId].isSelected
+                  ? selectedPermission
+                  : unselectedPermission,
+              })),
             }),
           }
         );
@@ -420,6 +514,21 @@ export function ConnectorPermissionsModal({
     }
     setSaving(false);
   }
+
+  const isUnchanged = useMemo(
+    () =>
+      Object.values(selectedNodes)
+        .filter((item) => item.isSelected)
+        .every(
+          (item) =>
+            item.isSelected ===
+            initialTreeSelectionModel[item.node.internalId]?.isSelected
+        ) &&
+      Object.values(selectedNodes)
+        .filter((item) => !item.isSelected)
+        .every((item) => !initialTreeSelectionModel[item.node.internalId]),
+    [selectedNodes, initialTreeSelectionModel]
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -467,7 +576,7 @@ export function ConnectorPermissionsModal({
         saveLabel="Save"
         savingLabel="Saving..."
         isSaving={saving}
-        hasChanged={!!Object.keys(updatedPermissionByInternalId).length}
+        hasChanged={!isUnchanged}
         className="flex"
         variant="side-md"
       >
@@ -501,25 +610,19 @@ export function ConnectorPermissionsModal({
             {CONNECTOR_CONFIGURATIONS[connector.type].selectLabel}
           </div>
 
-          <PermissionTree
+          <ContentNodeTree
             isSearchEnabled={
               CONNECTOR_CONFIGURATIONS[connector.type].isSearchEnabled
             }
             isRoundedBackground={true}
-            owner={owner}
-            dataSource={dataSource}
-            canUpdatePermissions={canUpdatePermissions}
-            onPermissionUpdate={(node, { newPermission }) => {
-              const { internalId } = node;
-
-              setUpdatedPermissionByInternalId((prev) => ({
-                ...prev,
-                [internalId]: newPermission,
-              }));
-            }}
+            useResourcesHook={useResourcesHook}
+            selectedNodes={canUpdatePermissions ? selectedNodes : undefined}
+            setSelectedNodes={
+              canUpdatePermissions && !isResourcesLoading
+                ? setSelectedNodes
+                : undefined
+            }
             showExpand={CONNECTOR_CONFIGURATIONS[connector.type]?.isNested}
-            // List only document-type items when displaying permissions for a data source.
-            viewType="documents"
           />
         </div>
       </Modal>
