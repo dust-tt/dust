@@ -19,6 +19,7 @@ import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
 import { CreateConnectionConfirmationModal } from "@app/components/data_source/CreateConnectionConfirmationModal";
+import { CreateConnectionSnowflakeModal } from "@app/components/data_source/CreateConnectionSnowflakeModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   CONNECTOR_CONFIGURATIONS,
@@ -208,6 +209,9 @@ export const AddConnectionMenu = ({
     }
   };
 
+  const { integration, isOpen } = showConfirmConnection || {};
+  const connectorProvider = integration?.connectorProvider;
+
   return (
     availableIntegrations.length > 0 && (
       <>
@@ -222,29 +226,43 @@ export const AddConnectionMenu = ({
           <p>Unlock this managed data source by upgrading your plan.</p>
         </Dialog>
 
-        {showConfirmConnection.integration && (
-          <CreateConnectionConfirmationModal
+        {connectorProvider === "snowflake" ? (
+          <CreateConnectionSnowflakeModal
+            owner={owner}
             connectorProviderConfiguration={
-              CONNECTOR_CONFIGURATIONS[
-                showConfirmConnection.integration.connectorProvider
-              ]
+              CONNECTOR_CONFIGURATIONS[connectorProvider]
             }
-            isOpen={showConfirmConnection.isOpen}
+            isOpen={isOpen}
             onClose={() =>
               setShowConfirmConnection((prev) => ({
                 isOpen: false,
                 integration: prev.integration,
               }))
             }
-            onConfirm={async () => {
-              if (showConfirmConnection.integration) {
-                await handleEnableManagedDataSource(
-                  showConfirmConnection.integration.connectorProvider,
-                  showConfirmConnection.integration.setupWithSuffix
-                );
-              }
-            }}
           />
+        ) : (
+          connectorProvider && (
+            <CreateConnectionConfirmationModal
+              connectorProviderConfiguration={
+                CONNECTOR_CONFIGURATIONS[connectorProvider]
+              }
+              isOpen={isOpen}
+              onClose={() =>
+                setShowConfirmConnection((prev) => ({
+                  isOpen: false,
+                  integration: prev.integration,
+                }))
+              }
+              onConfirm={() => {
+                if (showConfirmConnection.integration) {
+                  void handleEnableManagedDataSource(
+                    connectorProvider,
+                    integration.setupWithSuffix
+                  );
+                }
+              }}
+            />
+          )
         )}
         <Dialog
           isOpen={showPreviewPopupForProvider.isOpen}

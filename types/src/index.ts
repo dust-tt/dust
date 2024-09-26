@@ -74,6 +74,7 @@ export * from "./front/user";
 export * from "./front/vault";
 export * from "./front/workspace";
 export * from "./oauth/client/access_token";
+export * from "./oauth/client/credentials";
 export * from "./oauth/client/setup";
 export * from "./oauth/lib";
 export * from "./oauth/oauth_api";

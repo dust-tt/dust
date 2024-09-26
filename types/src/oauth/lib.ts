@@ -1,3 +1,5 @@
+import * as t from "io-ts";
+
 export const OAUTH_USE_CASES = ["connection", "labs_transcripts"] as const;
 
 export type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];
@@ -42,3 +44,41 @@ export function isOAuthConnectionType(
     (connection.status === "pending" || connection.status === "finalized")
   );
 }
+
+// Credentials Providers
+
+export const CREDENTIALS_PROVIDERS = ["snowflake"] as const;
+export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
+
+export function isCredentialProvider(obj: unknown): obj is CredentialsProvider {
+  return CREDENTIALS_PROVIDERS.includes(obj as CredentialsProvider);
+}
+
+// Credentials
+
+export const SnowflakeCredentialsSchema = t.type({
+  username: t.string,
+  password: t.string,
+  account: t.string,
+  role: t.string,
+  warehouse: t.string,
+});
+export type SnowflakeCredentials = t.TypeOf<typeof SnowflakeCredentialsSchema>;
+export type ConnectionCredentials = SnowflakeCredentials;
+
+// POST Credentials
+
+export const PostSnowflakeCredentialsBodySchema = t.type({
+  provider: t.literal("snowflake"),
+  credentials: SnowflakeCredentialsSchema,
+});
+
+export const PostCredentialsBodySchema = PostSnowflakeCredentialsBodySchema;
+
+export type OauthAPIPostCredentialsResponse = {
+  credential: {
+    credential_id: string;
+    provider: CredentialsProvider;
+    created: number;
+  };
+};
