@@ -174,20 +174,26 @@ export function useDataSourceViewDocument({
   dataSourceView,
   documentId,
   owner,
+  disabled,
 }: {
   dataSourceView: DataSourceViewType | null;
   documentId: string | null;
   owner: LightWorkspaceType;
+  disabled?: boolean;
 }) {
   const dataSourceViewDocumentFetcher: Fetcher<GetDataSourceViewDocumentResponseBody> =
     fetcher;
-  const disabled = !dataSourceView || !documentId;
+  const url =
+    dataSourceView && documentId
+      ? `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`
+      : null;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    disabled
-      ? null
-      : `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`,
-    dataSourceViewDocumentFetcher
+    url,
+    dataSourceViewDocumentFetcher,
+    {
+      disabled,
+    }
   );
 
   return {

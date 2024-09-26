@@ -63,6 +63,7 @@ export const PatchDataSourceTableRequestBodySchema = t.type({
   truncate: t.boolean,
   async: t.union([t.boolean, t.undefined]),
   csv: t.union([t.string, t.undefined]),
+  useAppForHeaderDetection: t.union([t.boolean, t.undefined]),
 });
 
 export type PatchDataSourceTableRequest = t.TypeOf<

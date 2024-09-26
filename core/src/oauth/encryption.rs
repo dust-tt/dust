@@ -56,3 +56,23 @@ pub fn unseal_str(encrypted_data: &[u8]) -> Result<String> {
         in_out[0..(in_out.len() - aead::CHACHA20_POLY1305.tag_len())].to_vec(),
     )?)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_seal_unseal() {
+        let data = "Hello, world!";
+        let encrypted_data = seal_str(data).unwrap();
+
+        // Check encrypted data match what we expect
+        assert_eq!(
+            encrypted_data.len(),
+            12 + data.len() + aead::CHACHA20_POLY1305.tag_len()
+        );
+        let decrypted_data = unseal_str(&encrypted_data).unwrap();
+
+        assert_eq!(data, decrypted_data);
+    }
+}

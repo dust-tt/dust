@@ -77,6 +77,7 @@ kubectl apply -f "$(dirname "$0")/configmaps/core-sqlite-worker-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/oauth-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/prodbox-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/viz-configmap.yaml"
+kubectl apply -f "$(dirname "$0")/configmaps/socks-proxy-configmap.yaml"
 
 echo "-----------------------------------"
 echo "Applying backend configs"
@@ -130,6 +131,7 @@ apply_deployment core-sqlite-worker-deployment
 apply_deployment oauth-deployment
 apply_deployment prodbox-deployment
 apply_deployment viz-deployment
+apply_deployment socks-proxy-deployment
 
 echo "-----------------------------------"
 echo "Applying HPAs"
@@ -152,6 +154,7 @@ kubectl apply -f "$(dirname "$0")/services/core-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/core-sqlite-worker-headless-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/oauth-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/viz-service.yaml"
+kubectl apply -f "$(dirname "$0")/services/socks-proxy-service.yaml"
 
 
 echo "-----------------------------------"

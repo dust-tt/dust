@@ -5,11 +5,7 @@ import type {
   ParsedNotionPage,
   PropertyKeys,
 } from "@dust-tt/types";
-import {
-  assertNever,
-  cacheWithRedis,
-  getSanitizedHeaders,
-} from "@dust-tt/types";
+import { assertNever, cacheWithRedis } from "@dust-tt/types";
 import type { LogLevel } from "@notionhq/client";
 import {
   APIResponseError,
@@ -1027,8 +1023,6 @@ export async function renderDatabaseFromPages({
     )
   );
 
-  const sanitizedHeaders = getSanitizedHeaders(header);
-
   let csv = await new Promise<string>((resolve, reject) => {
     stringify(
       content,
@@ -1037,7 +1031,7 @@ export async function renderDatabaseFromPages({
         delimiter: cellSeparator,
         columns: header.map((h, idx) => ({
           key: h,
-          header: sanitizedHeaders[idx],
+          header: header[idx],
         })),
       },
       (err, output) => {

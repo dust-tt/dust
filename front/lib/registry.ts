@@ -5,7 +5,8 @@ import config from "@app/lib/api/config";
 export const PRODUCTION_DUST_WORKSPACE_ID = "0ec9852c2f";
 export const PRODUCTION_DUST_APPS_WORKSPACE_ID = "78bda07b39";
 export const PRODUCTION_DUST_APPS_VAULT_ID = "vlt_rICtlrSEpWqX";
-
+export const PRODUCTION_DUST_APPS_HELPER_DATASOURCE_VIEW_ID =
+  "dsv_artLN7ZRrKWB";
 export type Action = {
   app: {
     workspaceId: string;
@@ -280,6 +281,22 @@ export const DustProdActionRegistry = createActionRegistry({
       appId: "tWcuYDj1OE",
       appHash:
         "8298c6543759d1d11db0e360a8b7aa7b8ec0fa71ed274f2667678302073e4f8d",
+      appVaultId: PRODUCTION_DUST_APPS_VAULT_ID,
+    },
+    config: {
+      MODEL: {
+        // `provider_id` and `model_id` must be set by caller.
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
+  "table-header-detection": {
+    app: {
+      workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
+      appId: "Hllp6rDlNo",
+      appHash:
+        "99f72c76477abd761f33d693b13c8d98750b2e80a68d24eb8963de777a77ebdc",
       appVaultId: PRODUCTION_DUST_APPS_VAULT_ID,
     },
     config: {

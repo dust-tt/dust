@@ -42,14 +42,12 @@ export default function Deploy({
   app,
   run,
   disabled,
-  url,
 }: {
   owner: WorkspaceType;
   app: AppType;
   spec: SpecificationType;
   run: RunType;
   disabled: boolean;
-  url: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -108,12 +106,7 @@ export default function Deploy({
                       >
                         Run as API Endpoint
                       </Dialog.Title>
-                      <DisplayCurlRequest
-                        app={app}
-                        owner={owner}
-                        run={run}
-                        url={url}
-                      />
+                      <DisplayCurlRequest app={app} owner={owner} run={run} />
                     </div>
                   </div>
                   <div className="mt-5 flex flex-row items-center space-x-2 sm:mt-6">
@@ -143,7 +136,6 @@ interface DisplayCurlRequestProps {
   inputs?: unknown[];
   owner: WorkspaceType;
   run: RunType;
-  url: string;
 }
 
 export function DisplayCurlRequest({
@@ -151,7 +143,6 @@ export function DisplayCurlRequest({
   inputs = DEFAULT_INPUTS,
   owner,
   run,
-  url,
 }: DisplayCurlRequestProps) {
   const [copyButtonText, setCopyButtonText] = useState("Copy");
 
@@ -167,7 +158,7 @@ export function DisplayCurlRequest({
         ? activeKey.secret
         : `sk-...${activeKey.secret.slice(-5)}`;
     }
-    const cURL = `curl ${url}/api/v1/w/${owner.sId}/apps/${app.sId}/runs \\
+    const cURL = `curl ${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs \\
     -H "Authorization: Bearer ${cURLKey}" \\
     -H "Content-Type: application/json" \\
     -d '{
@@ -207,7 +198,7 @@ export function DisplayCurlRequest({
             <p className="text-sm text-gray-500">
               This command is ready to copy with your first active API key.{" "}
               <Link
-                href={`/w/${owner.sId}/a`}
+                href={`/w/${owner.sId}/developers/api-keys`}
                 className={classNames(
                   "inline-flex items-center rounded-md py-1 text-sm font-bold",
                   "text-action-600"
@@ -220,7 +211,7 @@ export function DisplayCurlRequest({
           ) : (
             <p className="text-sm text-gray-500">
               <Link
-                href={`/w/${owner.sId}/a?t=apikeys`}
+                href={`/w/${owner.sId}/developers/api-keys`}
                 className={classNames(
                   "inline-flex items-center rounded-md py-1 text-sm font-bold",
                   "text-action-600"

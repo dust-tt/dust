@@ -287,14 +287,16 @@ export async function documentTrackerSuggestChangesOnUpsert({
 
   const suggestedChanges = suggestChangesResult.suggested_changes;
   const reason = suggestChangesResult.reason;
-  const matchedDsName = top1.data_source_id;
-  const matchedDocId = top1.document_id;
-  const matchedDocUrl = top1.source_url;
+  const {
+    data_source_id: matchedDsDustAPIDataSourceId,
+    document_id: matchedDocId,
+    source_url: matchedDocUrl,
+  } = top1;
   const matchedDocTitle = getDocumentTitle(top1.tags);
 
   localLogger.info(
     {
-      matchedDsName,
+      matchedDsDustAPIDataSourceId,
       matchedDocId,
       matchedDocUrl,
       matchedDocTitle,
@@ -303,21 +305,19 @@ export async function documentTrackerSuggestChangesOnUpsert({
     "Match found."
   );
 
-  const matchedDs = await DataSourceResource.fetchByNameOrId(
+  const matchedDs = await DataSourceResource.fetchByDustAPIDataSourceId(
     auth,
-    matchedDsName,
-    // TODO(DATASOURCE_SID): clean-up we have an assumption here that core.data_source_id is
-    // retrievable in front. Here as name, in the future as sId. This should be a fetch by
-    // dustAPIDataSourceId but we need the project_id as well in the response which is not
-    // desirable.
-    {
-      origin: "document_tracker",
-    }
+    matchedDsDustAPIDataSourceId
   );
+
   if (!matchedDs) {
-    throw new Error(
-      `Could not find data source with name ${matchedDsName} and workspace ${owner.sId}`
+    localLogger.warn(
+      {
+        matchedDsDustAPIDataSourceId,
+      },
+      "Could not find data source for matched document."
     );
+    return;
   }
 
   // again, checking for race condition here and skipping if the
@@ -325,7 +325,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
   if (matchedDs.id === dataSource.id && matchedDocId === documentId) {
     localLogger.info(
       {
-        matchedDsName,
+        matchedDsDustAPIDataSourceId,
         matchedDocId,
       },
       "Matched document is the document that was just upserted."
@@ -342,7 +342,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
   if (!trackedDocuments.length) {
     localLogger.warn(
       {
-        matchedDsName,
+        matchedDsDustAPIDataSourceId,
         matchedDocId,
       },
       "Could not find tracked documents for matched document."
@@ -352,7 +352,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
 
   logger.info(
     {
-      matchedDsName,
+      matchedDsDustAPIDataSourceId,
       matchedDocId,
     },
     "Creating change suggestions in database."

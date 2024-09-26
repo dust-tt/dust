@@ -179,7 +179,8 @@ export async function augmentDataSourceWithConnectorDetails(
       config.getConnectorsAPIConfig(),
       logger
     );
-    const statusRes = await connectorsAPI.getConnector(dataSource.connectorId);
+    const statusRes =
+      await connectorsAPI.getConnectorFromDataSource(dataSource);
     if (statusRes.isErr()) {
       fetchConnectorError = true;
       fetchConnectorErrorMessage = statusRes.error.message;
@@ -382,6 +383,7 @@ export async function upsertTable({
   async,
   dataSource,
   auth,
+  useAppForHeaderDetection,
 }: {
   tableId?: string | null;
   name: string;
@@ -394,6 +396,7 @@ export async function upsertTable({
   async: boolean;
   dataSource: DataSourceResource;
   auth: Authenticator;
+  useAppForHeaderDetection?: boolean;
 }) {
   const nonNullTableId = tableId ?? generateLegacyModelSId();
   const tableParents: string[] = parents ?? [];
@@ -402,9 +405,17 @@ export async function upsertTable({
     tableParents.push(nonNullTableId);
   }
 
+  const useAppForHeaderDetectionFlag = auth
+    .getNonNullableWorkspace()
+    .flags.includes("use_app_for_header_detection");
+
+  const useApp = !!useAppForHeaderDetection && useAppForHeaderDetectionFlag;
+
   if (async) {
     // Ensure the CSV is valid before enqueuing the upsert.
-    const csvRowsRes = csv ? await rowsFromCsv(csv) : null;
+    const csvRowsRes = csv
+      ? await rowsFromCsv({ auth, csv, useAppForHeaderDetection: useApp })
+      : null;
     if (csvRowsRes?.isErr()) {
       return csvRowsRes;
     }
@@ -421,6 +432,7 @@ export async function upsertTable({
         tableParents,
         csv: csv ?? null,
         truncate,
+        useAppForHeaderDetection: useApp,
       },
     });
     if (enqueueRes.isErr()) {
@@ -441,6 +453,7 @@ export async function upsertTable({
     tableParents,
     csv: csv ?? null,
     truncate,
+    useAppForHeaderDetection: useApp,
   });
 
   return tableRes;

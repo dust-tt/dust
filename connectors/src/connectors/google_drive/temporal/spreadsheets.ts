@@ -1,7 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import {
   getGoogleSheetTableId,
-  getSanitizedHeaders,
   InvalidStructuredDataHeaderError,
   slugify,
 } from "@dust-tt/types";
@@ -15,9 +14,15 @@ import type { OAuth2Client } from "googleapis-common";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/lib/data_sources";
-import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
-import { ProviderWorkflowError } from "@connectors/lib/error";
+import {
+  deleteTable,
+  MAX_FILE_SIZE_TO_DOWNLOAD,
+  upsertTableFromCsv,
+} from "@connectors/lib/data_sources";
+import {
+  InvalidRowsRequestError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
@@ -80,6 +85,7 @@ async function upsertTable(
     },
     truncate: true,
     parents: [tableId, ...parents],
+    useAppForHeaderDetection: true,
   });
 
   logger.info(loggerArgs, "[Spreadsheet] Table upserted.");
@@ -87,30 +93,20 @@ async function upsertTable(
 
 function findDataRangeAndSelectRows(allRows: string[][]): string[][] {
   // Find the first row with data to determine the range.
-  const firstNonEmptyRow = allRows.find((row) =>
+  const nonEmptyRow = allRows.filter((row) =>
     row.some((cell) => cell.trim() !== "")
   );
-  if (!firstNonEmptyRow) {
-    return []; // No data found.
-  }
 
-  // Identify the range of data: Start at the first non-empty cell and end at the nearest following empty cell or row end.
-  const startIndex = firstNonEmptyRow.findIndex((cell) => cell.trim() !== "");
-  let endIndex = firstNonEmptyRow.findIndex(
-    (cell, idx) => idx > startIndex && cell.trim() === ""
-  );
-  if (endIndex === -1) {
-    endIndex = firstNonEmptyRow.length;
-  }
-
-  // Select only rows and columns within the data range.
-  return allRows
-    .map((row) => row.slice(startIndex, endIndex))
-    .filter((row) => row.some((cell) => cell.trim() !== ""));
+  return nonEmptyRow;
 }
 
 function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
   const filteredRows = findDataRangeAndSelectRows(allRows);
+
+  const maxCols = filteredRows.reduce(
+    (acc, row) => (row.length > acc ? row.length : acc),
+    0
+  );
 
   // We assume that the first row is always the headers.
   // Headers are used to assert the number of cells per row.
@@ -124,23 +120,11 @@ function getValidRows(allRows: string[][], loggerArgs: object): string[][] {
   }
 
   try {
-    const headers = getSanitizedHeaders(rawHeaders);
-
-    const validRows: string[][] = filteredRows.map((row, index) => {
-      // Return raw headers.
-      if (index === 0) {
-        return headers;
-      }
-
+    const validRows: string[][] = filteredRows.map((row) => {
       // If a row has less cells than headers, we fill the gap with empty strings.
-      if (row.length < headers.length) {
-        const shortfall = headers.length - row.length;
+      if (row.length < maxCols) {
+        const shortfall = maxCols - row.length;
         return [...row, ...Array(shortfall).fill("")];
-      }
-
-      // If a row has more cells than headers we truncate the row.
-      if (row.length > headers.length) {
-        return row.slice(0, headers.length);
       }
 
       return row;
@@ -200,7 +184,23 @@ async function processSheet(
   const rows = await getValidRows(sheet.values, loggerArgs);
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
-    await upsertTable(connector, sheet, parents, rows, loggerArgs);
+    try {
+      await upsertTable(connector, sheet, parents, rows, loggerArgs);
+    } catch (err) {
+      if (err instanceof InvalidRowsRequestError) {
+        logger.warn(
+          { ...loggerArgs, error: err },
+          "[Spreadsheet] Invalid rows detected - skipping (but not failing)."
+        );
+        return false;
+      } else {
+        logger.error(
+          { ...loggerArgs, error: err },
+          "[Spreadsheet] Failed to upsert table."
+        );
+        throw err;
+      }
+    }
 
     await upsertSheetInDb(connector, sheet);
 

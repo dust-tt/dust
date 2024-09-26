@@ -137,8 +137,6 @@ async function handler(
       const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
       const dustDataSource = await coreAPI.createDataSource({
         projectId: dustProject.value.project.project_id.toString(),
-        // TODO(DATASOURCE_SID): Start creating Core API with sId
-        dataSourceId: req.body.name as string,
         config: {
           qdrant_config: {
             cluster: DEFAULT_QDRANT_CLUSTER,

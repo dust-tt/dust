@@ -11,10 +11,7 @@ use crate::{
         block::{Block, BlockResult, BlockType, Env},
         helpers::get_data_source_project_and_view_filter,
     },
-    databases::{
-        table::{get_table_type_for_tables, LocalTable, Table, TableType},
-        transient_database::get_unique_table_names_for_transient_database,
-    },
+    databases::{database::get_tables_schema, table::Table},
     Rule,
 };
 
@@ -84,49 +81,16 @@ impl Block for DatabaseSchema {
 
         // Compute the unique table names for each table.
 
-        let schemas = match get_table_type_for_tables(tables.iter().collect::<Vec<_>>())? {
-            TableType::Local => {
-                let unique_table_names = get_unique_table_names_for_transient_database(&tables);
-
-                let mut local_tables = tables
-                    .into_iter()
-                    .map(|t| LocalTable::from_table(t))
-                    .collect::<Result<Vec<_>>>()?;
-
-                // Load the schema for each table.
-                // If the schema cache is stale, this will update it in place.
-                try_join_all(
-                    local_tables
-                        .iter_mut()
-                        .map(|t| t.schema(env.store.clone(), env.databases_store.clone())),
-                )
-                .await?;
-
-                Ok(local_tables
-                    .into_iter()
-                    .map(|t| {
-                        let unique_table_name = unique_table_names
-                            .get(&t.table.unique_id())
-                            .expect("Unreachable: missing unique table name.");
-                        json!({
-                            "table_schema": t.table.schema_cached(),
-                            "dbml": t.render_dbml(Some(&unique_table_name)),
-                        })
-                    })
-                    .collect::<Vec<_>>())
-            }
-
-            TableType::Remote(_remote_db_secret_id) => {
-                // TODO(SNOWFLAKE): Implement remote tables support.
-                // - fetch secret from oauth
-                // - create RemoteDatabase of correct type based on provider
-                // - retrieve schema for tables
-                Err(anyhow!("Remote tables support is not yet implemented."))
-            }
-        }?;
+        let schemas =
+            get_tables_schema(tables, env.store.clone(), env.databases_store.clone()).await?;
 
         Ok(BlockResult {
-            value: serde_json::to_value(schemas)?,
+            value: serde_json::to_value(
+                schemas
+                    .iter()
+                    .map(|(schema, dbml)| json!({ "table_schema": schema, "dbml": dbml }))
+                    .collect::<Vec<_>>(),
+            )?,
             meta: None,
         })
     }

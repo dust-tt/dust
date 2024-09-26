@@ -31,6 +31,14 @@ path = "bin/oauth.rs"
 name = "oauth_generate_key"
 path = "bin/oauth_generate_key.rs"
 
+[[test]]
+name = "oauth_connections_test"
+path = "src/oauth/tests/functional_connections.rs"
+
+[[test]]
+name = "oauth_credentials_test"
+path = "src/oauth/tests/functional_credentials.rs"
+
 [dependencies]
 anyhow = "1.0"
 serde = { version = "1.0", features = ["rc", "derive"] }
@@ -86,3 +94,4 @@ ring = "0.17.8"
 jsonwebtoken = "9.3.0"
 rslock = { version = "0.4.0", default-features = false, features = ["tokio-comp"] }
 snowflake-connector-rs = "0.6.1"
+axum-test = "16.0.0"

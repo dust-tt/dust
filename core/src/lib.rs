@@ -18,10 +18,11 @@ pub mod data_sources {
     pub mod splitter;
 }
 pub mod databases {
-    pub mod error;
+    pub mod database;
     pub mod table;
     pub mod table_schema;
     pub mod remote_databases {
+        pub mod get_remote_database;
         pub mod remote_database;
         pub mod snowflake;
     }
@@ -89,11 +90,13 @@ pub mod cached_request;
 pub mod consts;
 
 pub mod oauth {
+    pub mod app;
     pub mod client;
     pub mod connection;
     pub mod credential;
     pub mod encryption;
     pub mod store;
+
     pub mod providers {
         pub mod confluence;
         pub mod github;
@@ -101,8 +104,13 @@ pub mod oauth {
         pub mod google_drive;
         pub mod intercom;
         pub mod microsoft;
+        pub mod mock;
         pub mod notion;
         pub mod slack;
+        pub mod utils;
+    }
+
+    pub mod tests {
         pub mod utils;
     }
 }

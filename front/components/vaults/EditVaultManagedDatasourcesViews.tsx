@@ -101,11 +101,11 @@ export function EditVaultManagedDataSourcesViews({
           } = selectionConfiguration;
 
           const existingViewForDs = vaultDataSourceViews.find(
-            (d) => d.dataSource.name === sDs.name
+            (d) => d.dataSource.sId === sDs.sId
           );
 
           const body = {
-            name: sDs.name,
+            dataSourceId: sDs.sId,
             parentsIn: selectionConfiguration.isSelectAll
               ? null
               : selectionConfiguration.selectedResources.map(
@@ -121,7 +121,8 @@ export function EditVaultManagedDataSourcesViews({
                 selectionConfiguration.selectedResources.length === 0
               ) {
                 throw new Error(
-                  "We should never have a view with no data in the selection, it should have been removed. Action: check the DataSourceViewSelector component."
+                  "We should never have a view with no data in the selection, " +
+                    "it should have been removed. Action: check the DataSourceViewSelector component."
                 );
               } else {
                 res = await fetch(
