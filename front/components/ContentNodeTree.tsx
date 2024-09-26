@@ -27,6 +27,10 @@ export type ContentNodeTreeNodeStatus = {
   parents: string[];
 };
 
+type TreeSelectionModelUpdater = (
+  prev: Record<string, ContentNodeTreeNodeStatus>
+) => Record<string, ContentNodeTreeNodeStatus>;
+
 type ContextType = {
   // Custom function to determine if a node is checked.
   // This is used to override the default behavior of checking if a node has read or read_write permissions.
@@ -34,9 +38,7 @@ type ContextType = {
   showExpand?: boolean;
   useResourcesHook: UseResourcesHook;
   treeSelectionModel?: Record<string, ContentNodeTreeNodeStatus>;
-  setTreeSelectionModel?: React.Dispatch<
-    React.SetStateAction<Record<string, ContentNodeTreeNodeStatus>>
-  >;
+  setTreeSelectionModel?: (updater: TreeSelectionModelUpdater) => void;
 };
 
 const ContentNodeTreeContext = React.createContext<ContextType | undefined>(
@@ -292,9 +294,7 @@ interface ContentNodeTreeProps {
   showExpand?: boolean;
   useResourcesHook: UseResourcesHook;
   treeSelectionModel?: Record<string, ContentNodeTreeNodeStatus>;
-  setTreeSelectionModel?: React.Dispatch<
-    React.SetStateAction<Record<string, ContentNodeTreeNodeStatus>>
-  >;
+  setTreeSelectionModel?: (updater: TreeSelectionModelUpdater) => void;
 }
 
 export function ContentNodeTree({

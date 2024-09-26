@@ -108,15 +108,8 @@ export function SlackIntegration({
     <ContentNodeTree
       // not limited to those synced with Dust.
       treeSelectionModel={treeSelectionModel}
-      setTreeSelectionModel={(
-        updater:
-          | ((
-              prev: Record<string, ContentNodeTreeNodeStatus>
-            ) => Record<string, ContentNodeTreeNodeStatus>)
-          | Record<string, ContentNodeTreeNodeStatus>
-      ) => {
-        const newModel =
-          typeof updater === "function" ? updater(treeSelectionModel) : updater;
+      setTreeSelectionModel={(updater) => {
+        const newModel = updater(treeSelectionModel);
 
         setNewSelection((prevSelection) => {
           const newSelection = [...prevSelection];

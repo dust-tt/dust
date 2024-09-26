@@ -411,15 +411,16 @@ export function ConnectorPermissionsModal({
       viewType: "documents",
     });
 
-  const { resources: allSelectedResources } = useConnectorPermissions({
-    dataSource,
-    filterPermission: "read",
-    owner,
-    parentId: null,
-    viewType: "documents",
-    includeParents: true,
-    disabled: !canUpdatePermissions,
-  });
+  const { resources: allSelectedResources, isResourcesLoading } =
+    useConnectorPermissions({
+      dataSource,
+      filterPermission: "read",
+      owner,
+      parentId: null,
+      viewType: "documents",
+      includeParents: true,
+      disabled: !canUpdatePermissions,
+    });
 
   useEffect(() => {
     if (isOpen) {
@@ -613,7 +614,9 @@ export function ConnectorPermissionsModal({
               canUpdatePermissions ? treeSelectionModel : undefined
             }
             setTreeSelectionModel={
-              canUpdatePermissions ? setTreeSelectionModel : undefined
+              canUpdatePermissions && !isResourcesLoading
+                ? setTreeSelectionModel
+                : undefined
             }
             showExpand={CONNECTOR_CONFIGURATIONS[connector.type]?.isNested}
           />

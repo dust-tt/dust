@@ -20,9 +20,11 @@ interface DataSourceViewPermissionTreeProps {
   showExpand?: boolean;
   viewType: ContentNodesViewType;
   treeSelectionModel?: Record<string, ContentNodeTreeNodeStatus>;
-  setTreeSelectionModel?: React.Dispatch<
-    React.SetStateAction<Record<string, ContentNodeTreeNodeStatus>>
-  >;
+  setTreeSelectionModel?: (
+    updater: (
+      prev: Record<string, ContentNodeTreeNodeStatus>
+    ) => Record<string, ContentNodeTreeNodeStatus>
+  ) => void;
 }
 
 export function DataSourceViewPermissionTree({
