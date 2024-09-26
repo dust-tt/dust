@@ -16,7 +16,6 @@ import type {
   ContentNodesViewType,
   CoreAPIDocument,
   CoreAPILightDocument,
-  CoreAPITable,
   DataSourceViewType,
   LightContentNode,
   LightWorkspaceType,
@@ -56,6 +55,7 @@ interface DocumentOrTableUploadOrEditModalProps {
   plan: PlanType;
   totalNodesCount: number;
   viewType: ContentNodesViewType;
+  initialId?: string;
 }
 
 export function DocumentOrTableUploadOrEditModal(
@@ -64,36 +64,10 @@ export function DocumentOrTableUploadOrEditModal(
   const isTable = props.viewType === "tables";
   const initialId = props.contentNode?.internalId;
 
-  const { table, isTableError, isTableLoading } = useTable({
-    owner: props.owner,
-    dataSourceView: props.dataSourceView,
-    tableId: isTable ? initialId ?? null : null,
-    disabled: !isTable,
-  });
-
-  const { document, isDocumentError, isDocumentLoading } =
-    useDataSourceViewDocument({
-      owner: props.owner,
-      dataSourceView: props.dataSourceView,
-      documentId: !isTable ? initialId ?? null : null,
-      disabled: isTable,
-    });
   return isTable ? (
-    <TableUploadOrEditModal
-      {...props}
-      table={table}
-      isTableError={isTableError}
-      isTableLoading={isTableLoading ?? false}
-      initialId={initialId}
-    />
+    <TableUploadOrEditModal {...props} initialId={initialId} />
   ) : (
-    <DocumentUploadOrEditModal
-      {...props}
-      document={document ?? null}
-      isDocumentError={isDocumentError}
-      isDocumentLoading={isDocumentLoading}
-      initialId={initialId}
-    />
+    <DocumentUploadOrEditModal {...props} initialId={initialId} />
   );
 }
 
@@ -105,25 +79,14 @@ interface Document {
   sourceUrl: string;
 }
 
-interface DocumentUploadOrEditModalProps
-  extends DocumentOrTableUploadOrEditModalProps {
-  document: CoreAPIDocument | null;
-  isDocumentError: boolean;
-  isDocumentLoading: boolean;
-  initialId?: string;
-}
-
 const DocumentUploadOrEditModal = ({
-  document,
-  isDocumentError,
-  isDocumentLoading,
   initialId,
   dataSourceView,
   isOpen,
   onClose,
   owner,
   plan,
-}: DocumentUploadOrEditModalProps) => {
+}: DocumentOrTableUploadOrEditModalProps) => {
   const sendNotification = useContext(SendNotificationsContext);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [documentState, setDocumentState] = useState<Document>({
@@ -140,6 +103,13 @@ const DocumentUploadOrEditModal = ({
   const [uploading, setUploading] = useState(false);
   const [isValidDocument, setIsValidDocument] = useState(false);
   const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
+
+  const { document, isDocumentError, isDocumentLoading } =
+    useDataSourceViewDocument({
+      owner: owner,
+      dataSourceView: dataSourceView,
+      documentId: initialId ?? null,
+    });
 
   useEffect(() => {
     if (!initialId) {
@@ -443,24 +413,13 @@ interface Table {
   file: File | null;
 }
 
-interface TableUploadOrEditModalProps
-  extends DocumentOrTableUploadOrEditModalProps {
-  table: CoreAPITable | null;
-  isTableError: boolean;
-  isTableLoading: boolean;
-  initialId?: string;
-}
-
 const TableUploadOrEditModal = ({
-  table,
-  isTableError,
-  isTableLoading,
   initialId,
   dataSourceView,
   isOpen,
   onClose,
   owner,
-}: TableUploadOrEditModalProps) => {
+}: DocumentOrTableUploadOrEditModalProps) => {
   const sendNotification = useContext(SendNotificationsContext);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -476,6 +435,12 @@ const TableUploadOrEditModal = ({
   const [uploading, setUploading] = useState(false);
   const [isBigFile, setIsBigFile] = useState(false);
   const [isValidTable, setIsValidTable] = useState(false);
+
+  const { table, isTableError, isTableLoading } = useTable({
+    owner: owner,
+    dataSourceView: dataSourceView,
+    tableId: initialId ?? null,
+  });
 
   useEffect(() => {
     if (!initialId) {
