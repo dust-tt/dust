@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::{
     databases::{
-        remote_databases::get_remote_database::get_remote_database,
+        remote_databases::remote_database::get_remote_database,
         table::{get_table_type_for_tables, Table, TableType},
         table_schema::TableSchema,
         transient_database::execute_query_on_transient_database,

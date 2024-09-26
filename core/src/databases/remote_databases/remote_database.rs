@@ -2,11 +2,16 @@ use anyhow::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
 
-use crate::databases::{
-    database::{QueryDatabaseError, QueryResult},
-    table::Table,
-    table_schema::TableSchema,
+use crate::{
+    databases::{
+        database::{QueryDatabaseError, QueryResult},
+        table::Table,
+        table_schema::TableSchema,
+    },
+    oauth::{client::OauthClient, credential::CredentialProvider},
 };
+
+use super::snowflake::SnowflakeRemoteDatabase;
 
 #[async_trait]
 pub trait RemoteDatabase {
@@ -20,4 +25,17 @@ pub trait RemoteDatabase {
         &self,
         opaque_ids: Vec<String>,
     ) -> Result<HashMap<String, TableSchema>>;
+}
+
+pub async fn get_remote_database(
+    credential_id: &str,
+) -> Result<Box<dyn RemoteDatabase + Sync + Send>> {
+    let (provider, content) = OauthClient::get_credential(credential_id).await?;
+
+    match provider {
+        CredentialProvider::Snowflake => {
+            let db = SnowflakeRemoteDatabase::new(content)?;
+            Ok(Box::new(db) as Box<dyn RemoteDatabase + Sync + Send>)
+        }
+    }
 }
