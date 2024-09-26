@@ -19,8 +19,7 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import * as React from "react";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -78,6 +77,17 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
     unselected: "none",
   },
 };
+
+const getUseResourceHook =
+  (owner: LightWorkspaceType, dataSource: DataSourceType) =>
+  (parentId: string | null) =>
+    useConnectorPermissions({
+      dataSource,
+      filterPermission: null,
+      owner,
+      parentId,
+      viewType: "documents",
+    });
 interface DataSourceManagementModalProps {
   children: React.ReactNode;
   isOpen: boolean;
@@ -401,14 +411,11 @@ export function ConnectorPermissionsModal({
         ?.unselected) ||
     "none";
 
-  const useResourcesHook = (parentId: string | null) =>
-    useConnectorPermissions({
-      dataSource,
-      filterPermission: null,
-      owner,
-      parentId,
-      viewType: "documents",
-    });
+  const useResourcesHook = useCallback(
+    (parentId: string | null) =>
+      getUseResourceHook(owner, dataSource)(parentId),
+    [owner, dataSource]
+  );
 
   const { resources: allSelectedResources, isResourcesLoading } =
     useConnectorPermissions({

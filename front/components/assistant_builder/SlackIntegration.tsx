@@ -13,6 +13,18 @@ import { useConnectorPermissions } from "@app/lib/swr/connectors";
 
 export type SlackChannel = { slackChannelId: string; slackChannelName: string };
 
+// The "write" permission filter is applied to retrieve all available channels on Slack,
+const getUseResourceHook =
+  (owner: WorkspaceType, slackDataSourceView: DataSourceViewType) =>
+  (parentId: string | null) =>
+    useConnectorPermissions({
+      dataSource: slackDataSourceView.dataSource,
+      filterPermission: "write",
+      owner,
+      parentId,
+      viewType: "documents",
+    });
+
 interface SlacIntegrationProps {
   existingSelection: SlackChannel[];
   onSelectionChange: (channels: SlackChannel[]) => void;
@@ -50,15 +62,11 @@ export function SlackIntegration({
     }
   }, [newSelection, onSelectionChange]);
 
-  // The "write" permission filter is applied to retrieve all available channels on Slack,
-  const useResourcesHook = (parentId: string | null) =>
-    useConnectorPermissions({
-      dataSource: slackDataSourceView.dataSource,
-      filterPermission: "write",
-      owner,
-      parentId,
-      viewType: "documents",
-    });
+  const useResourcesHook = useCallback(
+    (parentId: string | null) =>
+      getUseResourceHook(owner, slackDataSourceView)(parentId),
+    [owner, slackDataSourceView]
+  );
 
   const { resources } = useResourcesHook(null);
   const selectedNodes = resources.reduce(
