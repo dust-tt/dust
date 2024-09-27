@@ -121,6 +121,10 @@ module.exports = {
             opacity: 0,
           },
         },
+        "indicator-blink": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0" },
+        },
         fadeout: {
           "0%": {
             opacity: "1",
@@ -145,6 +149,7 @@ module.exports = {
         breathing: "breathing 4s infinite ease-in-out",
         "breathing-scale": "breathing-scale 3s infinite ease-in-out",
         "cursor-blink": "cursor-blink 0.9s infinite;",
+        "indicator-blink": "indicator-blink 1.5s infinite;",
         shake: "shake 0.82s cubic-bezier(.36,.07,.19,.97) both",
         reload: "reload 1000ms ease-out",
         fadeout: "fadeout 500ms ease-out",

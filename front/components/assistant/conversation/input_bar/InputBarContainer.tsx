@@ -24,6 +24,8 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { classNames } from "@app/lib/utils";
 
+import InputMediaRecorder from "./InputMediaRecorder";
+
 export const INPUT_BAR_ACTIONS = ["attachment", "quick-actions"] as const;
 
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
@@ -117,64 +119,85 @@ const InputBarContainer = ({
       />
 
       <div className="flex flex-row items-end justify-between gap-2 self-stretch py-2 pr-2 sm:flex-col sm:border-0">
-        <div
-          className={classNames(
-            "flex gap-5 rounded-full px-4 py-2 sm:gap-3 sm:px-2",
-            // Hide border when there are no actions.
-            actions.length === 0 ? "" : "border border-structure-200/60"
-          )}
-        >
-          {actions.includes("attachment") && (
-            <>
-              <input
-                accept={supportedFileExtensions.join(",")}
-                onChange={async (e) => {
-                  await fileUploaderService.handleFileChange(e);
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = "";
-                  }
-                  editorService.focusEnd();
-                }}
-                ref={fileInputRef}
-                style={{ display: "none" }}
-                type="file"
-                multiple={true}
-              />
-              <IconButton
-                variant={"tertiary"}
-                icon={AttachmentIcon}
-                size="sm"
-                tooltip={`Add a document to the conversation (${supportedFileExtensions.join(", ")}).`}
-                tooltipPosition="above"
-                className="flex"
-                onClick={() => {
-                  fileInputRef.current?.click();
-                }}
-              />
-            </>
-          )}
-          {actions.includes("quick-actions") && (
-            <>
-              <AssistantPicker
-                owner={owner}
-                size="sm"
-                onItemClick={(c) => {
-                  editorService.insertMention({ id: c.sId, label: c.name });
-                }}
-                assistants={allAssistants}
-                showFooterButtons={true}
-              />
-              <div className="hidden sm:flex">
+        <div className="flex w-56 flex-wrap items-center justify-end gap-x-2">
+          <div
+            className={classNames(
+              "flex gap-5 rounded-full px-4 py-2 sm:gap-3 sm:px-2",
+              actions.length === 0 ? "" : "border border-structure-200/60"
+            )}
+          >
+            <InputMediaRecorder
+              onFinished={async (text: string) => {
+                const textBlob = new Blob([text], { type: "text/plain" });
+                const textFile = new File([textBlob], "transcription.txt", {
+                  type: "text/plain",
+                });
+                const synthetic: any = {
+                  target: { files: [textFile] },
+                };
+                await fileUploaderService.handleFileChange(synthetic);
+              }}
+            />
+          </div>
+          <div
+            className={classNames(
+              "flex gap-5 rounded-full px-4 py-2 sm:gap-3 sm:px-2",
+              // Hide border when there are no actions.
+              actions.length === 0 ? "" : "border border-structure-200/60"
+            )}
+          >
+            {actions.includes("attachment") && (
+              <>
+                <input
+                  accept={supportedFileExtensions.join(",")}
+                  onChange={async (e) => {
+                    await fileUploaderService.handleFileChange(e);
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = "";
+                    }
+                    editorService.focusEnd();
+                  }}
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  type="file"
+                  multiple={true}
+                />
                 <IconButton
                   variant={"tertiary"}
-                  icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                  icon={AttachmentIcon}
                   size="sm"
+                  tooltip={`Add a document to the conversation (${supportedFileExtensions.join(", ")}).`}
+                  tooltipPosition="above"
                   className="flex"
-                  onClick={handleExpansionToggle}
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                  }}
                 />
-              </div>
-            </>
-          )}
+              </>
+            )}
+            {actions.includes("quick-actions") && (
+              <>
+                <AssistantPicker
+                  owner={owner}
+                  size="sm"
+                  onItemClick={(c) => {
+                    editorService.insertMention({ id: c.sId, label: c.name });
+                  }}
+                  assistants={allAssistants}
+                  showFooterButtons={true}
+                />
+                <div className="hidden sm:flex">
+                  <IconButton
+                    variant={"tertiary"}
+                    icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                    size="sm"
+                    className="flex"
+                    onClick={handleExpansionToggle}
+                  />
+                </div>
+              </>
+            )}
+          </div>
         </div>
         <Button
           size="sm"
