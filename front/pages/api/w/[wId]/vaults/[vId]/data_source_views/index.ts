@@ -206,7 +206,7 @@ async function handler(
           auth,
           vault,
           dataSource,
-          parentsIn
+          isManaged(dataSource) && !parentsIn ? [] : parentsIn
         );
       return res.status(201).json({
         dataSourceView: dataSourceView.toJSON(),
