@@ -170,6 +170,14 @@ export const VaultCategoriesList = ({
                 setDataSourceSearch(s);
               }}
             />
+            {onButtonClick && vault.kind === "regular" && (
+              <Button
+                label="Settings and Members"
+                icon={Cog6ToothIcon}
+                onClick={onButtonClick}
+                variant="tertiary"
+              />
+            )}
             <DropdownMenu>
               <DropdownMenu.Button>
                 <Button label="Add data" icon={PlusIcon} />
@@ -206,13 +214,6 @@ export const VaultCategoriesList = ({
               </DropdownMenu.Items>
             </DropdownMenu>
           </div>
-        )}
-        {onButtonClick && vault.kind === "regular" && (
-          <Button
-            label="Settings and Members"
-            icon={Cog6ToothIcon}
-            onClick={onButtonClick}
-          />
         )}
       </div>
       {rows.length > 0 && (
