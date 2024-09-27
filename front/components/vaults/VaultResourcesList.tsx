@@ -41,6 +41,7 @@ import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import type { DataSourceIntegration } from "@app/components/vaults/AddConnectionMenu";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
+import { DataSourceViewSelectionModal } from "@app/components/vaults/DataSourceViewSelectionModal";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -254,6 +255,8 @@ export const VaultResourcesList = ({
     useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
     useState<DataSourceViewsWithDetails | null>(null);
+  const [showSelectionModal, setShowSelectionModal] = useState(false);
+
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [showFolderOrWebsiteModal, setShowFolderOrWebsiteModal] =
     useState(false);
@@ -417,20 +420,23 @@ export const VaultResourcesList = ({
               onCreated={async (dataSource) => {
                 const updateDataSourceViews =
                   await mutateVaultDataSourceViews();
-                if (
-                  dataSource.connectorProvider &&
-                  REDIRECT_TO_EDIT_PERMISSIONS.includes(
-                    dataSource.connectorProvider
-                  )
-                ) {
-                  if (updateDataSourceViews) {
-                    const view = updateDataSourceViews.dataSourceViews.find(
-                      (v: DataSourceViewType) =>
-                        v.dataSource.sId === dataSource.sId
-                    );
-                    if (view) {
-                      setSelectedDataSourceView(view);
+                if (updateDataSourceViews) {
+                  const view = updateDataSourceViews.dataSourceViews.find(
+                    (v: DataSourceViewType) =>
+                      v.dataSource.sId === dataSource.sId
+                  );
+                  if (view) {
+                    setSelectedDataSourceView(view);
+                    if (
+                      dataSource.connectorProvider &&
+                      REDIRECT_TO_EDIT_PERMISSIONS.includes(
+                        dataSource.connectorProvider
+                      )
+                    ) {
                       setShowConnectorPermissionsModal(true);
+                      setShowSelectionModal(true);
+                    } else {
+                      setShowSelectionModal(true);
                     }
                   }
                 }
@@ -501,17 +507,27 @@ export const VaultResourcesList = ({
       )}
       {selectedDataSourceView &&
         selectedDataSourceView.dataSource.connector && (
-          <ConnectorPermissionsModal
-            owner={owner}
-            connector={selectedDataSourceView.dataSource.connector}
-            dataSource={selectedDataSourceView.dataSource}
-            isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
-            onClose={() => {
-              setShowConnectorPermissionsModal(false);
-            }}
-            readOnly={false}
-            isAdmin={isAdmin}
-          />
+          <>
+            <ConnectorPermissionsModal
+              owner={owner}
+              connector={selectedDataSourceView.dataSource.connector}
+              dataSource={selectedDataSourceView.dataSource}
+              isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
+              onClose={() => {
+                setShowConnectorPermissionsModal(false);
+              }}
+              readOnly={false}
+              isAdmin={isAdmin}
+            />
+            <DataSourceViewSelectionModal
+              owner={owner}
+              dataSource={selectedDataSourceView.dataSource}
+              isOpen={showSelectionModal && !showConnectorPermissionsModal}
+              onClose={() => {
+                setShowSelectionModal(false);
+              }}
+            />
+          </>
         )}
     </>
   );
