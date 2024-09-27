@@ -28,7 +28,6 @@ makeScript({}, async ({ execute }, logger) => {
   const coreDataSources = coreData[0] as {
     id: number;
     project: number;
-    created: number;
     data_source_id: string;
     internal_id: string;
   }[];
