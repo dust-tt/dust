@@ -125,7 +125,7 @@ export const AddConnectionMenu = ({
     connectionId: string;
     suffix: string | null;
   }): Promise<Response> => {
-    const test = await fetch(
+    const res = await fetch(
       suffix
         ? `/api/w/${
             owner.sId
@@ -144,7 +144,7 @@ export const AddConnectionMenu = ({
         } satisfies PostDataSourceRequestBody),
       }
     );
-    return test;
+    return res;
   };
 
   const handleOauthProviderManagedDataSource = async (
