@@ -5,6 +5,7 @@ import { hideBin } from "yargs/helpers";
 
 import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
 import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/worker";
+import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/worker";
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
@@ -33,9 +34,7 @@ const workerFunctions: Record<
   notion_garbage_collector: runNotionGarbageCollectWorker,
   slack: runSlackWorker,
   webcrawler: runWebCrawlerWorker,
-  snowflake: async () => {
-    // TODO(SNOWFLAKE): Implement worker.
-  },
+  snowflake: runSnowflakeWorker,
 };
 
 const ALL_WORKERS = Object.keys(workerFunctions) as ConnectorProvider[];
