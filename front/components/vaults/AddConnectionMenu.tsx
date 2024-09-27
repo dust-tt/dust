@@ -12,6 +12,7 @@ import type {
   LightWorkspaceType,
   PlanType,
   Result,
+  VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Err, isOAuthProvider, Ok, setupOAuthConnection } from "@dust-tt/types";
@@ -107,7 +108,46 @@ export const AddConnectionMenu = ({
     workspaceId: owner.sId,
   });
 
-  const handleEnableManagedDataSource = async (
+  if (!systemVault) {
+    return null;
+  }
+
+  const postDataSource = async ({
+    owner,
+    systemVault,
+    provider,
+    connectionId,
+    suffix,
+  }: {
+    owner: WorkspaceType;
+    systemVault: VaultType;
+    provider: ConnectorProvider;
+    connectionId: string;
+    suffix: string | null;
+  }): Promise<Response> => {
+    const res = await fetch(
+      suffix
+        ? `/api/w/${
+            owner.sId
+          }/vaults/${systemVault.sId}/data_sources?suffix=${encodeURIComponent(suffix)}`
+        : `/api/w/${owner.sId}/vaults/${systemVault.sId}/data_sources`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider,
+          connectionId,
+          name: undefined,
+          configuration: null,
+        } satisfies PostDataSourceRequestBody),
+      }
+    );
+    return res;
+  };
+
+  const handleOauthProviderManagedDataSource = async (
     provider: ConnectorProvider,
     suffix: string | null
   ) => {
@@ -126,25 +166,13 @@ export const AddConnectionMenu = ({
       }));
       setIsProviderLoading(provider, true);
 
-      const res = await fetch(
-        suffix
-          ? `/api/w/${
-              owner.sId
-            }/vaults/${systemVault?.sId}/data_sources?suffix=${encodeURIComponent(suffix)}`
-          : `/api/w/${owner.sId}/vaults/${systemVault?.sId}/data_sources`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            provider,
-            connectionId: connectionIdRes.value,
-            name: undefined,
-            configuration: null,
-          } satisfies PostDataSourceRequestBody),
-        }
-      );
+      const res = await postDataSource({
+        owner,
+        systemVault,
+        provider,
+        connectionId: connectionIdRes.value,
+        suffix,
+      });
 
       if (res.ok) {
         const createdManagedDataSource: {
@@ -172,6 +200,24 @@ export const AddConnectionMenu = ({
     } finally {
       setIsProviderLoading(provider, false);
     }
+  };
+
+  const handleCredentialProviderManagedDataSource = async ({
+    connectionId,
+    provider,
+    suffix,
+  }: {
+    connectionId: string;
+    provider: ConnectorProvider;
+    suffix: string | null;
+  }) => {
+    return postDataSource({
+      owner,
+      systemVault,
+      provider,
+      connectionId,
+      suffix,
+    });
   };
 
   const handleConnectionClick = (integration: DataSourceIntegration) => {
@@ -244,6 +290,8 @@ export const AddConnectionMenu = ({
                 integration: prev.integration,
               }))
             }
+            onSubmit={handleCredentialProviderManagedDataSource}
+            onCreated={onCreated}
           />
         ) : (
           connectorProvider && (
@@ -260,7 +308,7 @@ export const AddConnectionMenu = ({
               }
               onConfirm={() => {
                 if (showConfirmConnection.integration) {
-                  void handleEnableManagedDataSource(
+                  void handleOauthProviderManagedDataSource(
                     connectorProvider,
                     integration.setupWithSuffix
                   );
