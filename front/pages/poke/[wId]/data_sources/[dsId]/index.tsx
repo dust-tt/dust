@@ -865,9 +865,11 @@ function SlackWhitelistBot({
             value={botNameOrId}
             name={""}
           />
+        </div>
+        <div>
           <DropdownMenu>
             <DropdownMenu.Button
-              label={selectedGroupName ?? "Whitelist type"}
+              label={selectedBotIdentifierType ?? "Whitelist type"}
             />
             <DropdownMenu.Items width={220}>
               <DropdownMenu.Item
