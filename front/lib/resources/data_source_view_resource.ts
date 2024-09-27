@@ -398,12 +398,13 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<number> {
-    return this.model.destroy({
+    return DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         id: this.id,
       },
       transaction,
+      hardDelete: false,
     });
   }
 

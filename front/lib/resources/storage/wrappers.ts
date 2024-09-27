@@ -21,7 +21,7 @@ export type ModelStaticSoftDeletable<M extends SoftDeletableModel> =
   };
 
 type WithHardDelete<T> = T & {
-  hardDelete?: boolean;
+  hardDelete: boolean;
 };
 
 type WithIncludeDeleted<T> = T & {

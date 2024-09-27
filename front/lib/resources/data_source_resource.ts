@@ -372,6 +372,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
         dataSourceId: this.id,
       },
       transaction,
+      hardDelete: false,
     });
 
     return this.model.destroy({

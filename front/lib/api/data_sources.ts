@@ -57,6 +57,9 @@ export async function getDataSources(
   });
 }
 
+/**
+ * Soft delete a data source. This will mark the data source as deleted and will trigger a scrubbing.
+ */
 export async function softDeleteDataSource(
   auth: Authenticator,
   dataSource: DataSourceResource,
@@ -75,11 +78,16 @@ export async function softDeleteDataSource(
 
   await dataSource.delete(auth, { transaction, hardDelete: false });
 
+  // The scrubbing workflow will delete associated resources and hard delete the data source.
   await launchScrubDataSourceWorkflow(owner, dataSource);
 
   return new Ok(dataSource.toJSON());
 }
 
+/**
+ * Performs a hard deletion of the specified data source, ensuring complete removal of the data
+ * source and all its associated resources, including any existing connectors.
+ */
 export async function hardDeleteDataSource(
   auth: Authenticator,
   dataSource: DataSourceResource
