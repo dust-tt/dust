@@ -111,14 +111,35 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return new this(this.model, blob.get());
   }
 
-  async isBotWhitelistedToSummon(botName: string | string[]): Promise<boolean> {
-    return !!(await SlackBotWhitelistModel.findOne({
-      where: {
-        connectorId: this.connectorId,
-        botName: botName,
-        whitelistType: "summon_agent",
-      },
-    }));
+  async isBotWhitelistedToSummon(
+    botName: string | string[] | null,
+    botId: string | string[] | null
+  ): Promise<boolean> {
+    type WhitelistAttributes = {
+      connectorId: ModelId;
+      whitelistType: string;
+      botName?: string | string[];
+      botId?: string | string[];
+    };
+
+    const whereClause: WhitelistAttributes = {
+      connectorId: this.connectorId,
+      whitelistType: "summon_agent",
+    };
+
+    if (botName !== null) {
+      whereClause.botName = botName;
+    } else if (botId !== null) {
+      whereClause.botId = botId;
+    } else {
+      return false;
+    }
+
+    const whitelistedBot = await SlackBotWhitelistModel.findOne({
+      where: whereClause,
+    });
+
+    return !!whitelistedBot;
   }
 
   async isBotWhitelistedToIndexMessages(

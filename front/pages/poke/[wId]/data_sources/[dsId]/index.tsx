@@ -852,7 +852,7 @@ function SlackWhitelistBot({
         <div>Whitelist slack bot or workflow</div>
         <div className="grow">
           <Input
-            placeholder="Bot or workflow name"
+            placeholder="Bot or workflow name or id"
             onChange={setBotName}
             value={botName}
             name={""}
