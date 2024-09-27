@@ -9,7 +9,7 @@ use crate::{
         table::{get_table_type_for_tables, LocalTable, Table, TableType},
         table_schema::TableSchema,
         transient_database::{
-            execute_query_on_transient_database, get_unique_table_names_for_transient_database,
+            execute_query_on_transient_database, get_transient_database_tables_info,
         },
     },
     databases_store::store::DatabasesStore,
@@ -28,6 +28,13 @@ pub enum QueryDatabaseError {
     ExecutionError(String),
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SqlDialect {
+    DustSqlite,
+    Snowflake,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct QueryResult {
     pub value: serde_json::Value,
@@ -44,7 +51,7 @@ impl HasValue for QueryResult {
 }
 
 pub async fn execute_query(
-    tables: &Vec<Table>,
+    tables: Vec<Table>,
     query: &str,
     store: Box<dyn Store + Sync + Send>,
 ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
@@ -60,15 +67,31 @@ pub async fn execute_query(
                 e
             ))),
         },
-        Ok(TableType::Local) => execute_query_on_transient_database(&tables, store, query).await,
+        Ok(TableType::Local) => {
+            execute_query_on_transient_database(
+                &tables
+                    .into_iter()
+                    .map(|t| LocalTable::from_table(t))
+                    .collect::<Result<Vec<_>>>()?,
+                store,
+                query,
+            )
+            .await
+        }
     }
+}
+
+pub struct GetTableSchemaResult {
+    pub schema: Option<TableSchema>,
+    pub dbml: String,
+    pub head: Option<Vec<QueryResult>>,
 }
 
 pub async fn get_tables_schema(
     tables: Vec<Table>,
     store: Box<dyn Store + Sync + Send>,
     databases_store: Box<dyn DatabasesStore + Sync + Send>,
-) -> Result<Vec<(Option<TableSchema>, String)>> {
+) -> Result<(SqlDialect, Vec<GetTableSchemaResult>)> {
     match get_table_type_for_tables(tables.iter().collect::<Vec<_>>())? {
         TableType::Remote(credential_id) => {
             let remote_db = get_remote_database(&credential_id).await?;
@@ -88,15 +111,20 @@ pub async fn get_tables_schema(
                 .map(|(table, schema)| schema.render_dbml(table.name(), table.description()))
                 .collect::<Vec<_>>();
 
-            Ok(schemas
-                .into_iter()
-                .zip(dbmls.into_iter())
-                .map(|(schema, dbml)| (Some(schema), dbml))
-                .collect::<Vec<_>>())
+            Ok((
+                remote_db.dialect(),
+                schemas
+                    .into_iter()
+                    .zip(dbmls.into_iter())
+                    .map(|(schema, dbml)| GetTableSchemaResult {
+                        schema: Some(schema),
+                        dbml,
+                        head: None,
+                    })
+                    .collect::<Vec<_>>(),
+            ))
         }
         TableType::Local => {
-            let unique_table_names = get_unique_table_names_for_transient_database(&tables);
-
             let mut local_tables = tables
                 .into_iter()
                 .map(|t| LocalTable::from_table(t))
@@ -111,19 +139,28 @@ pub async fn get_tables_schema(
             )
             .await?;
 
-            Ok(local_tables
-                .into_iter()
-                .map(|t| {
-                    let unique_table_name = unique_table_names
-                        .get(&t.table.unique_id())
-                        .expect("Unreachable: missing unique table name.");
+            let tables_info =
+                get_transient_database_tables_info(&local_tables, store.clone()).await?;
 
-                    (
-                        t.table.schema_cached().map(|s| s.clone()),
-                        t.render_dbml(Some(&unique_table_name)),
-                    )
-                })
-                .collect::<Vec<_>>())
+            Ok((
+                SqlDialect::DustSqlite,
+                local_tables
+                    .into_iter()
+                    .zip(tables_info.into_iter())
+                    .map(|(lt, ti)| {
+                        let unique_table_name = ti.unique_name;
+                        let head = ti.head;
+                        let schema = lt.table.schema_cached().map(|s| s.clone());
+                        let dbml = lt.render_dbml(Some(&unique_table_name));
+
+                        GetTableSchemaResult {
+                            schema,
+                            dbml,
+                            head: Some(head),
+                        }
+                    })
+                    .collect::<Vec<_>>(),
+            ))
         }
     }
 }
