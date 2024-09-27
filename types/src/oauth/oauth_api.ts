@@ -1,6 +1,7 @@
 import {
   ConnectionCredentials,
   CredentialsProvider,
+  OauthAPIGetCredentialsResponse,
   OauthAPIPostCredentialsResponse,
   OAuthConnectionType,
   OAuthProvider,
@@ -173,7 +174,7 @@ export class OAuthAPI {
     credentialsId,
   }: {
     credentialsId: string;
-  }): Promise<OAuthAPIResponse<{ credentials: ConnectionCredentials }>> {
+  }): Promise<OAuthAPIResponse<OauthAPIGetCredentialsResponse>> {
     const response = await this._fetchWithError(
       `${this._url}/credentials/${credentialsId}`
     );
