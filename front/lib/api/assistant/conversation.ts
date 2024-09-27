@@ -102,6 +102,7 @@ export async function createConversation(
     workspaceId: owner.id,
     title: title,
     visibility: visibility,
+    groupIds: [],
   });
 
   return {
