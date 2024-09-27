@@ -856,8 +856,8 @@ function SlackWhitelistBot({
 
   return (
     <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
+      <div>Whitelist slack bot or workflow</div>
       <div className="flex items-center gap-2">
-        <div>Whitelist slack bot or workflow</div>
         <div className="grow">
           <Input
             placeholder="Bot or workflow Name or Id"
