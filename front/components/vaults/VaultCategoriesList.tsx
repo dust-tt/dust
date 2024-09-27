@@ -1,22 +1,27 @@
 import {
+  ArrowUpOnSquareIcon,
   Button,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
   DataTable,
+  DropdownMenu,
   FolderIcon,
   GlobeAltIcon,
+  PlusIcon,
   RobotIcon,
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
+  DataSourceViewCategory,
   DataSourceWithAgentsUsageType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
+import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useState } from "react";
 
@@ -113,6 +118,7 @@ export const VaultCategoriesList = ({
     workspaceId: owner.sId,
     vaultId: vault.sId,
   });
+  const router = useRouter();
 
   const rows: RowData[] = vaultInfo
     ? removeNulls(
@@ -138,6 +144,12 @@ export const VaultCategoriesList = ({
     );
   }
 
+  const redirectTo = (category: DataSourceViewCategory) => {
+    void router.push(
+      `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`
+    );
+  };
+
   return (
     <>
       <div
@@ -149,14 +161,51 @@ export const VaultCategoriesList = ({
         )}
       >
         {rows.length > 0 && (
-          <Searchbar
-            name="search"
-            placeholder="Search (Name)"
-            value={dataSourceSearch}
-            onChange={(s) => {
-              setDataSourceSearch(s);
-            }}
-          />
+          <div className="flex w-full gap-2">
+            <Searchbar
+              name="search"
+              placeholder="Search (Name)"
+              value={dataSourceSearch}
+              onChange={(s) => {
+                setDataSourceSearch(s);
+              }}
+            />
+            <DropdownMenu>
+              <DropdownMenu.Button>
+                <Button label="Add data" icon={PlusIcon} />
+              </DropdownMenu.Button>
+              <DropdownMenu.Items width={200}>
+                <DropdownMenu.Item
+                  label="Connected Data"
+                  icon={CloudArrowLeftRightIcon}
+                  onClick={() => {
+                    redirectTo("managed");
+                  }}
+                />
+                <DropdownMenu.Item
+                  label="Upload Data"
+                  icon={ArrowUpOnSquareIcon}
+                  onClick={() => {
+                    redirectTo("folder");
+                  }}
+                />
+                <DropdownMenu.Item
+                  label="Scrap a website"
+                  icon={GlobeAltIcon}
+                  onClick={() => {
+                    redirectTo("website");
+                  }}
+                />
+                <DropdownMenu.Item
+                  label="Create a Dust App"
+                  icon={CommandLineIcon}
+                  onClick={() => {
+                    redirectTo("apps");
+                  }}
+                />
+              </DropdownMenu.Items>
+            </DropdownMenu>
+          </div>
         )}
         {onButtonClick && vault.kind === "regular" && (
           <Button
