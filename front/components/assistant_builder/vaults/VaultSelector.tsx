@@ -36,7 +36,7 @@ export function VaultSelector({
   const sortedVaults = groupVaults(vaults)
     .filter((i) => i.kind !== "system")
     .map((i) =>
-      [...i.vaults].sort((a, b) => {
+      i.vaults.sort((a, b) => {
         return a.name.localeCompare(b.name);
       })
     )
