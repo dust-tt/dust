@@ -8,6 +8,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { makeScript } from "@app/scripts/helpers";
+import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 
 makeScript({}, async ({ execute }, logger) => {
   // fetch all data source views with parentsIn set to null
@@ -26,6 +27,15 @@ makeScript({}, async ({ execute }, logger) => {
           },
         },
       },
+      {
+        model: VaultModel,
+        as: "VaultModel",
+        where: {
+          kind: {
+            [Op.not]: "system"
+          }
+        }
+      }
     ],
   });
 
@@ -69,21 +79,18 @@ makeScript({}, async ({ execute }, logger) => {
     );
 
     if (contentNodesDocumentsRes.isErr() || contentNodesTablesRes.isErr()) {
-      logger.error(
-        `Error fetching content nodes for data source view ${dataSourceView.id}`
-      );
-      continue;
+      throw new Error(`Error fetching content nodes for data source view ${dataSourceView.id}`);
     }
 
     const rootNodesDocuments = contentNodesDocumentsRes.value.nodes.filter(
       (node) => node.parentInternalId === null
     );
-    const rooNodesTables = contentNodesTablesRes.value.nodes.filter(
+    const rootNodesTables = contentNodesTablesRes.value.nodes.filter(
       (node) => node.parentInternalId === null
     );
 
     const rootNodes = _.uniqBy(
-      [...rootNodesDocuments, ...rooNodesTables],
+      [...rootNodesDocuments, ...rootNodesTables],
       "internalId"
     );
 
