@@ -1922,14 +1922,12 @@ async function updateConversationGroups({
   conversation: ConversationType;
   t: Transaction;
 }): Promise<void> {
-  const newGroupIds = new Set(
-    mentionedAgents.flatMap((agent) => agent.groupIds)
-  );
+  const newGroupIds = mentionedAgents.flatMap((agent) => agent.groupIds);
 
   const currentGroupIds = new Set(conversation.groupIds);
 
   // no need to update if  newGroupIds is a subset of currentGroupIds
-  if (!newGroupIds.isSubsetOf(currentGroupIds)) {
+  if (!newGroupIds.every((g) => currentGroupIds.has(g))) {
     const groupIds = Array.from(newGroupIds).map((g) => {
       const id = getResourceIdFromSId(g);
       if (id === null) {
