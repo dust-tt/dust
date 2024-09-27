@@ -39,7 +39,7 @@ interface VaultSideBarMenuProps {
   isPrivateVaultsEnabled: boolean;
   owner: LightWorkspaceType;
   isAdmin: boolean;
-  setShowVaultCreationModal: (show: boolean) => void;
+  setShowVaultCreationModal?: (show: boolean) => void;
 }
 
 const VAULTS_SORT_ORDER: VaultKind[] = [
@@ -121,16 +121,18 @@ export default function VaultSideBarMenu({
                     label={sectionLabel}
                     variant="secondary"
                   />
-                  {sectionLabel === "PRIVATE" && isAdmin && (
-                    <Button
-                      className="mt-4"
-                      size="xs"
-                      variant="tertiary"
-                      label="Create Vault"
-                      icon={LockIcon}
-                      onClick={() => setShowVaultCreationModal(true)}
-                    />
-                  )}
+                  {sectionLabel === "PRIVATE" &&
+                    isAdmin &&
+                    setShowVaultCreationModal && (
+                      <Button
+                        className="mt-4"
+                        size="xs"
+                        variant="tertiary"
+                        label="Create Vault"
+                        icon={LockIcon}
+                        onClick={() => setShowVaultCreationModal(true)}
+                      />
+                    )}
                 </div>
                 {renderVaultItems(
                   vaults.toSorted(compareVaults),

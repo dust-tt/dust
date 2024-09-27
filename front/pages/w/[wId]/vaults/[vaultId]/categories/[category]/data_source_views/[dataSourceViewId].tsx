@@ -4,13 +4,11 @@ import type {
   DataSourceType,
   DataSourceViewCategory,
   DataSourceViewType,
-  PlanType,
 } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import React from "react";
 
 import { VaultDataSourceViewContentList } from "@app/components/vaults/VaultDataSourceViewContentList";
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
@@ -28,7 +26,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     canWriteInVault: boolean;
     canReadInVault: boolean;
     parentId?: string;
-    plan: PlanType;
     connector: ConnectorType | null;
   }
 >(async (context, auth) => {

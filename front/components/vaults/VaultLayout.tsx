@@ -2,6 +2,7 @@ import { Breadcrumbs } from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
   DataSourceViewType,
+  PlanType,
   SubscriptionType,
   VaultType,
   WorkspaceType,
@@ -16,10 +17,12 @@ import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
 import VaultSideBarMenu from "@app/components/vaults/VaultSideBarMenu";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { useVaultsAsAdmin } from "@app/lib/swr/vaults";
 import { getVaultIcon } from "@app/lib/vaults";
 
 export interface VaultLayoutProps {
   owner: WorkspaceType;
+  plan: PlanType;
   isAdmin: boolean;
   subscription: SubscriptionType;
   vault: VaultType;
@@ -38,6 +41,7 @@ export function VaultLayout({
   const [showVaultCreationModal, setShowVaultCreationModal] = useState(false);
   const {
     owner,
+    plan,
     isAdmin,
     subscription,
     vault,
@@ -46,9 +50,17 @@ export function VaultLayout({
     parentId,
   } = pageProps;
 
+  const { vaults, isVaultsLoading } = useVaultsAsAdmin({
+    workspaceId: owner.sId,
+  });
+
   const isPrivateVaultsEnabled = owner.flags.includes(
     "private_data_vaults_feature"
   );
+  const isLimitReached =
+    isVaultsLoading ||
+    vaults.filter((v) => v.kind === "regular" || v.kind === "public").length >=
+      plan.limits.vaults.maxVaults;
 
   return (
     <RootLayout>
@@ -60,7 +72,9 @@ export function VaultLayout({
             owner={owner}
             isAdmin={isAdmin}
             isPrivateVaultsEnabled={isPrivateVaultsEnabled}
-            setShowVaultCreationModal={setShowVaultCreationModal}
+            setShowVaultCreationModal={
+              isLimitReached ? undefined : setShowVaultCreationModal
+            }
           />
         }
       >
@@ -72,7 +86,7 @@ export function VaultLayout({
           parentId={parentId ?? undefined}
         />
         {children}
-        {isAdmin && isPrivateVaultsEnabled && (
+        {isAdmin && isPrivateVaultsEnabled && !isLimitReached && (
           <CreateOrEditVaultModal
             isAdmin={isAdmin}
             owner={owner}

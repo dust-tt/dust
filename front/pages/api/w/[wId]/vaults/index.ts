@@ -98,6 +98,21 @@ async function handler(
         });
       }
 
+      const plan = auth.getNonNullablePlan();
+      const all = await VaultResource.listWorkspaceVaults(auth);
+      if (
+        all.filter((v) => v.kind === "regular" || v.kind === "public").length >=
+        plan.limits.vaults.maxVaults
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "The maximum number of vaults has been reached.",
+          },
+        });
+      }
+
       const { name, memberIds } = bodyValidation.right;
 
       const nameAvailable = await VaultResource.isNameAvailable(auth, name);
