@@ -17,6 +17,7 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
   GenerationTokensEvent,
+  LightAgentConfigurationType,
   MentionType,
   PlanType,
   Result,
@@ -68,10 +69,14 @@ import {
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import {
+  generateLegacyModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid } from "@app/lib/utils";
@@ -113,6 +118,7 @@ export async function createConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content: [],
+    groupIds: getConversationGroupIdsFromModel(owner, conversation),
   };
 }
 
@@ -252,6 +258,7 @@ export async function getUserConversations(
         owner,
         title: p.conversation.title,
         visibility: p.conversation.visibility,
+        groupIds: getConversationGroupIdsFromModel(owner, p.conversation),
       };
 
       return [...acc, conversation];
@@ -372,6 +379,7 @@ export async function getConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content,
+    groupIds: getConversationGroupIdsFromModel(owner, conversation),
   };
 }
 
@@ -404,6 +412,7 @@ export async function getConversationWithoutContent(
     owner,
     title: conversation.title,
     visibility: conversation.visibility,
+    groupIds: getConversationGroupIdsFromModel(owner, conversation),
   };
 }
 
@@ -855,6 +864,12 @@ export async function* postUserMessage(
         row: AgentMessage;
         m: AgentMessageWithRankType;
       }[];
+
+      await updateConversationGroups({
+        mentionedAgents: agentMessages.map((a) => a.configuration),
+        conversation,
+        t,
+      });
 
       return {
         userMessage,
@@ -1337,6 +1352,13 @@ export async function* editUserMessage(
         row: AgentMessage;
         m: AgentMessageWithRankType;
       }[];
+
+      await updateConversationGroups({
+        mentionedAgents: agentMessages.map((a) => a.configuration),
+        conversation,
+        t,
+      });
+
       return {
         userMessage,
         agentMessages: nonNullResults.map(({ m }) => m),
@@ -1525,6 +1547,13 @@ export async function* retryAgentMessage(
           transaction: t,
         }
       );
+
+      await updateConversationGroups({
+        mentionedAgents: [message.configuration],
+        conversation,
+        t,
+      });
+
       const agentMessage: AgentMessageWithRankType = {
         id: m.id,
         agentMessageId: agentMessageRow.id,
@@ -1882,4 +1911,55 @@ export function normalizeContentFragmentType({
     return "text/plain";
   }
   return contentType;
+}
+
+async function updateConversationGroups({
+  mentionedAgents,
+  conversation,
+  t,
+}: {
+  mentionedAgents: LightAgentConfigurationType[];
+  conversation: ConversationType;
+  t: Transaction;
+}): Promise<void> {
+  const newGroupIds = new Set(
+    mentionedAgents.flatMap((agent) => agent.groupIds)
+  );
+
+  const currentGroupIds = new Set(conversation.groupIds);
+
+  // no need to update if  newGroupIds is a subset of currentGroupIds
+  if (!newGroupIds.isSubsetOf(currentGroupIds)) {
+    const groupIds = Array.from(newGroupIds).map((g) => {
+      const id = getResourceIdFromSId(g);
+      if (id === null) {
+        throw new Error("Unexpected: invalid group id");
+      }
+      return id;
+    });
+
+    await Conversation.update(
+      {
+        groupIds,
+      },
+      {
+        where: {
+          id: conversation.id,
+        },
+        transaction: t,
+      }
+    );
+  }
+}
+
+function getConversationGroupIdsFromModel(
+  owner: WorkspaceType,
+  conversation: Conversation
+): string[] {
+  return conversation.groupIds.map((g) =>
+    GroupResource.modelIdToSId({
+      id: g,
+      workspaceId: owner.id,
+    })
+  );
 }

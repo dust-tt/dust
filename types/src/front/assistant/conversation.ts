@@ -170,6 +170,7 @@ export type ConversationWithoutContentType = {
   sId: string;
   title: string | null;
   visibility: ConversationVisibility;
+  groupIds: string[];
 };
 
 /**
