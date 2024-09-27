@@ -181,6 +181,7 @@ export async function getSlackBotInfo(
   }
 
   return {
+    id: slackBot.bot?.id || null,
     display_name: slackBot.bot?.name,
     real_name: slackBot.bot.name,
     email: null,

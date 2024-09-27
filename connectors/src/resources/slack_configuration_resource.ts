@@ -6,6 +6,7 @@ import type {
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 import {
   SlackBotWhitelistModel,
@@ -112,27 +113,34 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   }
 
   async isBotWhitelistedToSummon(
-    botName: string | string[] | null,
-    botId: string | string[] | null
+    botName: string | null,
+    botId: string | null
   ): Promise<boolean> {
-    type WhitelistAttributes = {
+    if (botName === null && botId === null) {
+      return false;
+    }
+
+    type WhereClause = {
       connectorId: ModelId;
       whitelistType: string;
-      botName?: string | string[];
-      botId?: string | string[];
+      [Op.or]?: Array<{ botName: string } | { botId: string }>;
     };
 
-    const whereClause: WhitelistAttributes = {
+    const whereClause: WhereClause = {
       connectorId: this.connectorId,
       whitelistType: "summon_agent",
     };
 
+    const orConditions = [];
+    if (botId !== null) {
+      orConditions.push({ botId });
+    }
     if (botName !== null) {
-      whereClause.botName = botName;
-    } else if (botId !== null) {
-      whereClause.botId = botId;
-    } else {
-      return false;
+      orConditions.push({ botName });
+    }
+
+    if (orConditions.length > 0) {
+      whereClause[Op.or] = orConditions;
     }
 
     const whitelistedBot = await SlackBotWhitelistModel.findOne({
@@ -155,14 +163,16 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   }
 
   async whitelistBot(
-    botName: string,
+    botNameOrId: string,
+    botIdentifierType: "name" | "id",
     groupIds: string[],
     whitelistType: SlackbotWhitelistType
   ): Promise<Result<undefined, Error>> {
     await SlackBotWhitelistModel.create({
       connectorId: this.connectorId,
       slackConfigurationId: this.id,
-      botName,
+      botName: botIdentifierType === "name" ? botNameOrId : null,
+      botId: botIdentifierType === "id" ? botNameOrId : null,
       groupIds,
       whitelistType,
     });
