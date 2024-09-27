@@ -1,37 +1,26 @@
-import { Checkbox, Dialog, Icon, Page, Spinner } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, VaultType } from "@dust-tt/types";
+import { Checkbox, Dialog, Icon, Page } from "@dust-tt/sparkle";
+import type { VaultType } from "@dust-tt/types";
 import React, { useState } from "react";
 
-import { useVaults, useVaultsAsAdmin } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
 import { getVaultIcon, getVaultName, groupVaults } from "@app/lib/vaults";
 
 interface VaultSelectorProps {
-  owner: LightWorkspaceType;
   allowedVaults?: VaultType[];
-  asAdmin?: boolean;
   defaultVault: string | undefined;
+  vaults: VaultType[];
   renderChildren: (vault?: VaultType) => React.ReactNode;
 }
 export function VaultSelector({
-  owner,
   allowedVaults,
-  asAdmin,
   defaultVault,
   renderChildren,
+  vaults,
 }: VaultSelectorProps) {
-  const useVaultsHook = asAdmin ? useVaultsAsAdmin : useVaults;
-  const { vaults, isVaultsError, isVaultsLoading } = useVaultsHook({
-    workspaceId: owner.sId,
-  });
   const [selectedVault, setSelectedVault] = useState<string | undefined>(
     defaultVault
   );
   const [isAlertDialogOpen, setAlertIsDialogOpen] = useState(false);
-
-  if (isVaultsLoading || isVaultsError) {
-    return <Spinner />;
-  }
 
   const shouldRenderDirectly = vaults.length === 1;
   const selectedVaultObj = vaults.find((v) => v.sId === selectedVault);

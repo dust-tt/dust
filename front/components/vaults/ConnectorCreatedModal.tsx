@@ -22,6 +22,9 @@ export const ConnectorCreatedModal = ({
 }: DataSourceViewSelectionModalProps) => {
   // const [showVaultCreationModal, setShowVaultCreationModal] = useState(false);
   // const [defaultVault, setDefaultVault] = useState<VaultType | null>(null);
+  // const { vaults, isVaultsLoading } = useVaultsAsAdmin({
+  //   workspaceId: owner.sId,
+  // });
 
   return (
     <Modal
@@ -72,8 +75,7 @@ export const ConnectorCreatedModal = ({
                 </div>
                 <VaultSelector
                   key={defaultVault?.sId}
-                  asAdmin
-                  owner={owner}
+                  vaults={vaults}
                   defaultVault={defaultVault?.sId}
                   renderChildren={(vault) => <div>{vault?.name}</div>}
                 />

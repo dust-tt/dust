@@ -227,9 +227,8 @@ export function CreateOrEditVaultModal({
   }, [
     doCreate,
     doUpdate,
+    onCreated,
     handleClose,
-    owner.sId,
-    router,
     selectedMembers,
     vault,
     vaultName,
