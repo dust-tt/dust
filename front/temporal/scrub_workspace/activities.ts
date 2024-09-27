@@ -8,7 +8,10 @@ import {
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import config from "@app/lib/api/config";
-import { deleteDataSource, getDataSources } from "@app/lib/api/data_sources";
+import {
+  getDataSources,
+  softDeleteDataSource,
+} from "@app/lib/api/data_sources";
 import { sendAdminDataDeletionEmail } from "@app/lib/api/email";
 import {
   getMembers,
@@ -163,7 +166,7 @@ async function deleteDatasources(auth: Authenticator) {
   // Then, we delete all the data sources.
   const dataSources = await getDataSources(auth);
   for (const dataSource of dataSources) {
-    const r = await deleteDataSource(auth, dataSource);
+    const r = await softDeleteDataSource(auth, dataSource);
     if (r.isErr()) {
       throw new Error(`Failed to delete data source: ${r.error.message}`);
     }

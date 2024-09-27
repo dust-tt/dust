@@ -4,9 +4,7 @@ import {
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
-import { Storage } from "@google-cloud/storage";
 import parseArgs from "minimist";
-import readline from "readline";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import {
@@ -14,7 +12,7 @@ import {
   renderConversationForModelMultiActions,
 } from "@app/lib/api/assistant/generation";
 import config from "@app/lib/api/config";
-import { deleteDataSource, getDataSources } from "@app/lib/api/data_sources";
+import { getDataSources } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";

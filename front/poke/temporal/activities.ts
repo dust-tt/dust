@@ -4,7 +4,7 @@ import { chunk } from "lodash";
 import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
-import { destroyDataSource } from "@app/lib/api/data_sources";
+import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -123,7 +123,7 @@ export async function scrubDataSourceActivity({
     );
   }
 
-  return destroyDataSource(auth, dataSource);
+  return hardDeleteDataSource(auth, dataSource);
 }
 
 export async function isWorkflowDeletableActivity({

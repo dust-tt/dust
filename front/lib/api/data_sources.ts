@@ -57,7 +57,7 @@ export async function getDataSources(
   });
 }
 
-export async function deleteDataSource(
+export async function softDeleteDataSource(
   auth: Authenticator,
   dataSource: DataSourceResource,
   transaction?: Transaction
@@ -80,7 +80,7 @@ export async function deleteDataSource(
   return new Ok(dataSource.toJSON());
 }
 
-export async function destroyDataSource(
+export async function hardDeleteDataSource(
   auth: Authenticator,
   dataSource: DataSourceResource
 ) {

@@ -365,8 +365,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<number> {
-    // We directly delete the DataSourceViewResource.model here to avoid a circular dependency.
-    // DataSourceViewResource depends on DataSourceResource
+    // Directly delete the DataSourceViewModel here to avoid a circular dependency.
     await DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -401,8 +400,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       transaction,
     });
 
-    // We directly delete the DataSourceViewResource.model here to avoid a circular dependency.
-    // DataSourceViewResource depends on DataSourceResource
+    // Directly delete the DataSourceViewModel here to avoid a circular dependency.
     await DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -424,34 +422,6 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       hardDelete: true,
     });
   }
-
-  // async delete(
-  //   auth: Authenticator,
-  //   transaction?: Transaction
-  // ): Promise<Result<undefined, Error>> {
-  //   try {
-  //     await this.model.destroy({
-  //       where: {
-  //         id: this.id,
-  //       },
-  //       transaction,
-  //     });
-
-  //     // We directly delete the DataSourceViewResource.model here to avoid a circular dependency.
-  //     // DataSourceViewResource depends on DataSourceResource
-  //     await DataSourceViewModel.destroy({
-  //       where: {
-  //         workspaceId: auth.getNonNullableWorkspace().id,
-  //         dataSourceId: this.id,
-  //       },
-  //       transaction,
-  //     });
-
-  //     return new Ok(undefined);
-  //   } catch (err) {
-  //     return new Err(err as Error);
-  //   }
-  // }
 
   // Updating.
 

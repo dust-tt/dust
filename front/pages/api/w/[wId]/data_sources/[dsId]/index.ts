@@ -2,8 +2,8 @@ import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
-  deleteDataSource,
   MANAGED_DS_DELETABLE_AS_BUILDER,
+  softDeleteDataSource,
 } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -140,7 +140,7 @@ async function handler(
         });
       }
 
-      const dRes = await deleteDataSource(auth, dataSource);
+      const dRes = await softDeleteDataSource(auth, dataSource);
       if (dRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
