@@ -670,13 +670,17 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
     await GroupMembershipModel.destroy({
       where: {
-        workspaceId: workspace.id,
+        groupId: {
+          [Op.in]: groupIds,
+        },
       },
       transaction,
     });
     await this.model.destroy({
       where: {
-        workspaceId: workspace.id,
+        id: {
+          [Op.in]: groupIds,
+        },
       },
       transaction,
     });

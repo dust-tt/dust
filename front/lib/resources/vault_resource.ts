@@ -280,7 +280,9 @@ export class VaultResource extends BaseResource<VaultModel> {
 
     await this.model.destroy({
       where: {
-        workspaceId: owner.id,
+        id: {
+          [Op.in]: vaultIds,
+        },
       },
       transaction,
     });
