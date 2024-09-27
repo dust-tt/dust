@@ -41,7 +41,7 @@ import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import type { DataSourceIntegration } from "@app/components/vaults/AddConnectionMenu";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
-import { DataSourceViewSelectionModal } from "@app/components/vaults/DataSourceViewSelectionModal";
+import { ConnectorCreatedModal } from "@app/components/vaults/ConnectorCreatedModal";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -519,7 +519,7 @@ export const VaultResourcesList = ({
               readOnly={false}
               isAdmin={isAdmin}
             />
-            <DataSourceViewSelectionModal
+            <ConnectorCreatedModal
               owner={owner}
               dataSource={selectedDataSourceView.dataSource}
               isOpen={showSelectionModal && !showConnectorPermissionsModal}

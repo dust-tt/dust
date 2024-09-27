@@ -14,7 +14,7 @@ type DataSourceViewSelectionModalProps = {
   owner: LightWorkspaceType;
 };
 
-export const DataSourceViewSelectionModal = ({
+export const ConnectorCreatedModal = ({
   isOpen,
   onClose,
   dataSource,
