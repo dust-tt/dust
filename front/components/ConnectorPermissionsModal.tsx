@@ -492,7 +492,7 @@ export function ConnectorPermissionsModal({
           const error: { error: { message: string } } = await r.json();
           window.alert(error.error.message);
         }
-        await mutate(
+        void mutate(
           (key) =>
             typeof key === "string" &&
             key.startsWith(
