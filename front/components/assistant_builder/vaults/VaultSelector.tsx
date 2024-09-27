@@ -48,7 +48,7 @@ export function VaultSelector({
     <>
       {sortedVaults.map((vault) => {
         const isDisabled =
-          allowedVaults && !allowedVaults?.some((v) => v.sId === vault.sId);
+          allowedVaults && !allowedVaults.some((v) => v.sId === vault.sId);
         const isChecked = selectedVault === vault.sId;
 
         return (
