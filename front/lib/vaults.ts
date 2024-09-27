@@ -39,6 +39,5 @@ export const groupVaults = (vaults: VaultType[]) => {
   return VAULTS_SORT_ORDER.map((kind) => ({
     kind,
     vaults: groupedVaults[kind] || [],
-    // remove the empty system menu for users & builders
-  })).filter(({ vaults, kind }) => kind !== "system" || vaults.length !== 0);
+  }));
 };

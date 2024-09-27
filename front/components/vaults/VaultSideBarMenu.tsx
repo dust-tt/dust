@@ -85,7 +85,9 @@ export default function VaultSideBarMenu({
   }
 
   // Group by kind and sort.
-  const sortedGroupedVaults = groupVaults(vaults);
+  const sortedGroupedVaults = groupVaults(vaults)
+    // remove the empty system menu for users & builders
+    .filter(({ vaults, kind }) => kind !== "system" || vaults.length !== 0);
 
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
