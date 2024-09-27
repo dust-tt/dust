@@ -26,7 +26,7 @@ export function VaultSelector({
   const selectedVaultObj = vaults.find((v) => v.sId === selectedVault);
 
   if (shouldRenderDirectly) {
-    if (allowedVaults && !allowedVaults?.some((v) => v.sId === vaults[0].sId)) {
+    if (allowedVaults && !allowedVaults.some((v) => v.sId === vaults[0].sId)) {
       return renderChildren(undefined);
     }
     return renderChildren(vaults[0]);
