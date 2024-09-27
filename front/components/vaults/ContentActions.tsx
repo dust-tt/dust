@@ -175,10 +175,7 @@ export const getMenuItems = (
 
   // View in source:
   // We have a source for all types of docs excepts folder docs unless manually set by the user.
-  if (
-    canReadInVault &&
-    (!isFolder(dataSourceView.dataSource) || contentNode.sourceUrl)
-  ) {
+  if (!isFolder(dataSourceView.dataSource) || contentNode.sourceUrl) {
     actions.push(makeViewSourceUrlContentAction(contentNode, dataSourceView));
   }
 
