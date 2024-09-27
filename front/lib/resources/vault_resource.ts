@@ -260,12 +260,26 @@ export class VaultResource extends BaseResource<VaultModel> {
     transaction?: Transaction
   ) {
     const owner = auth.getNonNullableWorkspace();
+
+    const vaults = await this.model.findAll({
+      attributes: ["id"],
+      where: { workspaceId: owner.id },
+      transaction,
+    })
+
+    const vaultIds = vaults.map(
+      (vault) => vault.id,
+    )
+
     await GroupVaultModel.destroy({
       where: {
-        vaultId: owner.id,
+        vaultId: {
+          [Op.in]: vaultIds
+        }
       },
       transaction,
     });
+
     await this.model.destroy({
       where: {
         workspaceId: owner.id,

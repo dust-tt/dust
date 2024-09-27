@@ -652,6 +652,22 @@ export class GroupResource extends BaseResource<GroupModel> {
     workspace: LightWorkspaceType,
     transaction?: Transaction
   ) {
+    const groups = await this.model.findAll({
+      attributes: ["id"],
+      where: { workspaceId: workspace.id },
+      transaction,
+    })
+
+    const groupIds = groups.map((group) => group.id);
+
+    await GroupVaultModel.destroy({
+      where: {
+        groupId: {
+          [Op.in]: groupIds
+        }
+      },
+      transaction,
+    });
     await GroupMembershipModel.destroy({
       where: {
         workspaceId: workspace.id,
