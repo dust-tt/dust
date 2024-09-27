@@ -425,7 +425,7 @@ export async function deleteAppsActivity({
       throw new Error(`Error deleting Project from Core: ${res.error.message}`);
     }
 
-    const delRes = await app.delete(auth);
+    const delRes = await app.delete(auth, { hardDelete: true });
     if (delRes.isErr()) {
       throw new Error(`Error deleting App ${app.sId}: ${delRes.error.message}`);
     }
@@ -534,12 +534,12 @@ export async function deleteMembersActivity({
           );
           // Delete the user's files
           await FileResource.deleteAllForUser(user.toJSON(), t);
-          await membership.delete(auth, t);
-          await user.delete(auth, t);
+          await membership.delete(auth, { transaction: t });
+          await user.delete(auth, { transaction: t });
         }
       } else {
         logger.info(`[Workspace delete] Deleting Membership ${membership.id}`);
-        await membership.delete(auth, t);
+        await membership.delete(auth, { transaction: t });
       }
     }
   });

@@ -242,7 +242,7 @@ export class UserResource extends BaseResource<User> {
 
   async delete(
     auth: Authenticator,
-    transaction?: Transaction
+    { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     try {
       await this.model.destroy({

@@ -236,7 +236,7 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   async delete(
     auth: Authenticator,
-    transaction?: Transaction
+    { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     await GroupVaultModel.destroy({
       where: {

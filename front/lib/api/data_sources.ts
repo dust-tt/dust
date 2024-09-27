@@ -73,7 +73,7 @@ export async function deleteDataSource(
     });
   }
 
-  await dataSource.delete(auth, transaction);
+  await dataSource.delete(auth, { transaction, hardDelete: false });
 
   await launchScrubDataSourceWorkflow(owner, dataSource);
 
@@ -139,7 +139,7 @@ export async function destroyDataSource(
     }
   }
 
-  await dataSource.destroy(auth);
+  await dataSource.delete(auth, { hardDelete: true });
 
   if (dataSource.connectorProvider) {
     await warnPostDeletion(auth, dataSource.connectorProvider);

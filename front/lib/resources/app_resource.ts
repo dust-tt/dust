@@ -150,32 +150,49 @@ export class AppResource extends ResourceWithVault<App> {
 
   // Deletion.
 
-  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
-    try {
-      await frontSequelize.transaction(async (t) => {
-        await RunResource.deleteAllByAppId(this.id, t);
-        await Clone.destroy({
-          where: {
-            [Op.or]: [{ fromId: this.id }, { toId: this.id }],
-          },
-          transaction: t,
-        });
-        const res = await DatasetResource.deleteForApp(auth, this, t);
-        if (res.isErr()) {
-          // Interrupt the transaction if there was an error deleting datasets.
-          throw res.error;
-        }
-        await App.destroy({
-          where: {
-            workspaceId: auth.getNonNullableWorkspace().id,
-            id: this.id,
-          },
-          transaction: t,
-          // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
-          // bypassing the soft deletion in place.
-          hardDelete: true,
-        });
+  protected async hardDelete(auth: Authenticator): Promise<number> {
+    return frontSequelize.transaction(async (t) => {
+      await RunResource.deleteAllByAppId(this.id, t);
+
+      await Clone.destroy({
+        where: {
+          [Op.or]: [{ fromId: this.id }, { toId: this.id }],
+        },
+        transaction: t,
       });
+      const res = await DatasetResource.deleteForApp(auth, this, t);
+      if (res.isErr()) {
+        // Interrupt the transaction if there was an error deleting datasets.
+        throw res.error;
+      }
+
+      return App.destroy({
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: this.id,
+        },
+        transaction: t,
+        // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
+        // bypassing the soft deletion in place.
+        hardDelete: true,
+      });
+    });
+  }
+
+  // TODO(2024-09-27 flav): Implement soft delete of apps.
+  protected softDelete(): Promise<number> {
+    throw new Error("Method not implemented.");
+  }
+
+  // TODO(2024-09-27 flav): Implement soft delete of apps.
+  async delete(
+    auth: Authenticator,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    { hardDelete }: { hardDelete: true }
+  ): Promise<Result<undefined, Error>> {
+    try {
+      await this.hardDelete(auth);
+
       return new Ok(undefined);
     } catch (err) {
       return new Err(err as Error);

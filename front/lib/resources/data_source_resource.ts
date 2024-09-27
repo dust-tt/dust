@@ -3,9 +3,8 @@ import type {
   DataSourceType,
   ModelId,
   PokeDataSourceType,
-  Result,
 } from "@dust-tt/types";
-import { Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
+import { formatUserFullName, removeNulls } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -362,35 +361,32 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     return dataSource ?? null;
   }
 
-  async delete(
+  protected async softDelete(
     auth: Authenticator,
     transaction?: Transaction
-  ): Promise<Result<undefined, Error>> {
-    try {
-      await this.model.destroy({
-        where: {
-          id: this.id,
-        },
-        transaction,
-      });
+  ): Promise<number> {
+    // We directly delete the DataSourceViewResource.model here to avoid a circular dependency.
+    // DataSourceViewResource depends on DataSourceResource
+    await DataSourceViewModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        dataSourceId: this.id,
+      },
+      transaction,
+    });
 
-      // We directly delete the DataSourceViewResource.model here to avoid a circular dependency.
-      // DataSourceViewResource depends on DataSourceResource
-      await DataSourceViewModel.destroy({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          dataSourceId: this.id,
-        },
-        transaction,
-      });
-
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
+    return this.model.destroy({
+      where: {
+        id: this.id,
+      },
+      transaction,
+    });
   }
 
-  async destroy(auth: Authenticator, transaction?: Transaction): Promise<void> {
+  protected async hardDelete(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<number> {
     await AgentDataSourceConfiguration.destroy({
       where: {
         dataSourceId: this.id,
@@ -418,7 +414,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       hardDelete: true,
     });
 
-    await DataSourceModel.destroy({
+    return DataSourceModel.destroy({
       where: {
         id: this.id,
       },
@@ -428,6 +424,34 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       hardDelete: true,
     });
   }
+
+  // async delete(
+  //   auth: Authenticator,
+  //   transaction?: Transaction
+  // ): Promise<Result<undefined, Error>> {
+  //   try {
+  //     await this.model.destroy({
+  //       where: {
+  //         id: this.id,
+  //       },
+  //       transaction,
+  //     });
+
+  //     // We directly delete the DataSourceViewResource.model here to avoid a circular dependency.
+  //     // DataSourceViewResource depends on DataSourceResource
+  //     await DataSourceViewModel.destroy({
+  //       where: {
+  //         workspaceId: auth.getNonNullableWorkspace().id,
+  //         dataSourceId: this.id,
+  //       },
+  //       transaction,
+  //     });
+
+  //     return new Ok(undefined);
+  //   } catch (err) {
+  //     return new Err(err as Error);
+  //   }
+  // }
 
   // Updating.
 

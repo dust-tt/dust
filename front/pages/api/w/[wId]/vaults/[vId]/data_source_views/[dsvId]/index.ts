@@ -115,7 +115,7 @@ async function handler(
       }
 
       // Directly, hard delete the data source view.
-      await dataSourceView.destroy(auth);
+      await dataSourceView.delete(auth, { hardDelete: true });
 
       res.status(204).end();
       return;

@@ -90,6 +90,6 @@ export abstract class BaseResource<M extends Model & ResourceWithId> {
 
   abstract delete(
     auth: Authenticator,
-    transaction?: Transaction
+    { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>>;
 }

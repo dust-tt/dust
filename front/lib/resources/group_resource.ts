@@ -618,7 +618,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async delete(
     auth: Authenticator,
-    transaction?: Transaction
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
       await GroupVaultModel.destroy({

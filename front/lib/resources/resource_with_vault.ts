@@ -1,8 +1,11 @@
+import type { Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   ForeignKey,
   Includeable,
   NonAttribute,
+  Transaction,
   WhereOptions,
 } from "sequelize";
 import { Model } from "sequelize";
@@ -122,6 +125,37 @@ export abstract class ResourceWithVault<
         // Filter out resources that the user cannot fetch.
         .filter((cls) => cls.canFetch(auth))
     );
+  }
+
+  // Delete.
+
+  protected abstract hardDelete(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<number>;
+
+  protected abstract softDelete(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<number>;
+
+  async delete(
+    auth: Authenticator,
+    options: { hardDelete: boolean; transaction?: Transaction }
+  ): Promise<Result<undefined, Error>> {
+    const { hardDelete, transaction } = options;
+
+    try {
+      if (hardDelete) {
+        await this.hardDelete(auth, transaction);
+      }
+
+      await this.softDelete(auth, transaction);
+
+      return new Ok(undefined);
+    } catch (err) {
+      return new Err(err as Error);
+    }
   }
 
   // Permissions.

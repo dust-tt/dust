@@ -51,7 +51,11 @@ export const deleteVault = async (
   await frontSequelize.transaction(async (t) => {
     // delete all data source views
     for (const view of dataSourceViews) {
-      const res = await view.delete(auth, t);
+      // Soft delete view, they will be hard deleted when the data source scrubbing job runs.
+      const res = await view.delete(auth, {
+        transaction: t,
+        hardDelete: false,
+      });
       if (res.isErr()) {
         throw res.error;
       }
@@ -66,14 +70,14 @@ export const deleteVault = async (
 
     // delete all vaults groups
     for (const group of vault.groups) {
-      const res = await group.delete(auth, t);
+      const res = await group.delete(auth, { transaction: t });
       if (res.isErr()) {
         throw res.error;
       }
     }
 
     // Finally, delete the vault
-    const res = await vault.delete(auth, t);
+    const res = await vault.delete(auth, { transaction: t });
     if (res.isErr()) {
       throw res.error;
     }

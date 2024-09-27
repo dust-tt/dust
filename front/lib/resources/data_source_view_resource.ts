@@ -9,7 +9,7 @@ import type {
   PokeDataSourceViewType,
   Result,
 } from "@dust-tt/types";
-import { Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
+import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -394,26 +394,23 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   // Deletion.
 
-  async delete(
+  protected async softDelete(
     auth: Authenticator,
     transaction?: Transaction
-  ): Promise<Result<undefined, Error>> {
-    try {
-      await this.model.destroy({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          id: this.id,
-        },
-        transaction,
-      });
-
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
+  ): Promise<number> {
+    return this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: this.id,
+      },
+      transaction,
+    });
   }
 
-  async destroy(auth: Authenticator, transaction?: Transaction) {
+  async hardDelete(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<number> {
     // Delete agent configurations elements pointing to this data source view.
     await AgentDataSourceConfiguration.destroy({
       where: {
@@ -427,7 +424,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       },
     });
 
-    await DataSourceViewModel.destroy({
+    return DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         id: this.id,
