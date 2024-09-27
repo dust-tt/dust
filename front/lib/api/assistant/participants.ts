@@ -69,7 +69,6 @@ export async function fetchConversationParticipants(
     where: {
       conversationId: conversation.id,
     },
-    order: [["rank", "ASC"]],
     include: [
       {
         model: UserMessage,
