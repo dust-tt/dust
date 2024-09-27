@@ -220,7 +220,7 @@ export const PLAN_FIELDS = {
   },
   maxMessages: {
     type: "number",
-    width: "medium",
+    width: "small",
     title: "# Messages",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxMessages),
   },
@@ -233,13 +233,13 @@ export const PLAN_FIELDS = {
   },
   dataSourcesCount: {
     type: "number",
-    width: "medium",
+    width: "small",
     title: "# DS",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.dataSourcesCount),
   },
   dataSourcesDocumentsCount: {
     type: "number",
-    width: "medium",
+    width: "small",
     title: "# Docs",
     error: (plan: EditingPlanType) =>
       errorCheckNumber(plan.dataSourcesDocumentsCount),
@@ -253,9 +253,15 @@ export const PLAN_FIELDS = {
   },
   maxUsers: {
     type: "number",
-    width: "medium",
+    width: "small",
     title: "# Users",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxUsers),
+  },
+  maxVaults: {
+    type: "number",
+    width: "small",
+    title: "# Vaults",
+    error: (plan: EditingPlanType) => errorCheckNumber(plan.maxVaults),
   },
   trialPeriodDays: {
     type: "number",
@@ -310,6 +316,7 @@ export const Field: React.FC<FieldProps> = ({
       case "number":
         return isEditing && !disabled ? (
           <Input
+            className="px-2"
             value={editingPlan && editingPlan[fieldName].toString()}
             onChange={(x) => {
               if (!editingPlan) {
