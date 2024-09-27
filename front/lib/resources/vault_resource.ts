@@ -265,17 +265,15 @@ export class VaultResource extends BaseResource<VaultModel> {
       attributes: ["id"],
       where: { workspaceId: owner.id },
       transaction,
-    })
+    });
 
-    const vaultIds = vaults.map(
-      (vault) => vault.id,
-    )
+    const vaultIds = vaults.map((vault) => vault.id);
 
     await GroupVaultModel.destroy({
       where: {
         vaultId: {
-          [Op.in]: vaultIds
-        }
+          [Op.in]: vaultIds,
+        },
       },
       transaction,
     });

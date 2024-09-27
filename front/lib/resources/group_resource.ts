@@ -656,15 +656,15 @@ export class GroupResource extends BaseResource<GroupModel> {
       attributes: ["id"],
       where: { workspaceId: workspace.id },
       transaction,
-    })
+    });
 
     const groupIds = groups.map((group) => group.id);
 
     await GroupVaultModel.destroy({
       where: {
         groupId: {
-          [Op.in]: groupIds
-        }
+          [Op.in]: groupIds,
+        },
       },
       transaction,
     });
