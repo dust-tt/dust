@@ -322,7 +322,7 @@ async function handler(
 
       if (dataSource.vault.isSystem()) {
         const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
-        // TODO
+
         await DataSourceViewResource.createViewInVaultFromDataSource(
           auth,
           globalVault,
