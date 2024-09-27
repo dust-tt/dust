@@ -36,6 +36,7 @@ export type EditingPlanType = {
   dataSourcesDocumentsCount: string | number;
   dataSourcesDocumentsSizeMb: string | number;
   maxUsers: string | number;
+  maxVaults: string | number;
   isNewPlan?: boolean;
   trialPeriodDays: string | number;
 };
@@ -58,6 +59,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     dataSourcesDocumentsCount: plan.limits.dataSources.documents.count,
     dataSourcesDocumentsSizeMb: plan.limits.dataSources.documents.sizeMb,
     maxUsers: plan.limits.users.maxUsers,
+    maxVaults: plan.limits.vaults.maxVaults,
     trialPeriodDays: plan.trialPeriodDays,
   };
 };
@@ -101,6 +103,9 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       users: {
         maxUsers: parseMaybeNumber(editingPlan.maxUsers),
       },
+      vaults: {
+        maxVaults: parseMaybeNumber(editingPlan.maxVaults),
+      },
       canUseProduct: true,
     },
     trialPeriodDays: parseMaybeNumber(editingPlan.trialPeriodDays),
@@ -124,6 +129,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   dataSourcesDocumentsCount: "",
   dataSourcesDocumentsSizeMb: "",
   maxUsers: "",
+  maxVaults: "",
   isNewPlan: true,
   trialPeriodDays: 0,
 });

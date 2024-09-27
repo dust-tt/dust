@@ -239,6 +239,15 @@ export function ActiveSubscriptionTable({
                 </PokeTableRow>
 
                 <PokeTableRow>
+                  <PokeTableCell>Max number of vaults</PokeTableCell>
+                  <PokeTableCell>
+                    {activePlan.limits.vaults.maxVaults === -1
+                      ? "unlimited"
+                      : activePlan.limits.vaults.maxVaults}
+                  </PokeTableCell>
+                </PokeTableRow>
+
+                <PokeTableRow>
                   <PokeTableCell>Max number of messages</PokeTableCell>
                   <PokeTableCell>
                     {activePlan.limits.assistant.maxMessages === -1

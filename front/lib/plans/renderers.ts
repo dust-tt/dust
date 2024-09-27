@@ -37,6 +37,9 @@ export function renderPlanFromModel({
       users: {
         maxUsers: plan.maxUsersInWorkspace,
       },
+      vaults: {
+        maxVaults: plan.maxVaultsInWorkspace,
+      },
       canUseProduct: plan.canUseProduct,
     },
     trialPeriodDays: plan.trialPeriodDays,

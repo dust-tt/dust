@@ -51,6 +51,7 @@ export default function CreatePlanForm({ owner }: { owner: WorkspaceType }) {
       dataSourcesDocumentsCount: -1,
       dataSourcesDocumentsSizeMb: 2,
       maxUsers: 1000,
+      maxVaults: 1,
     },
   });
 
