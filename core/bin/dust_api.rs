@@ -2634,7 +2634,7 @@ async fn databases_query_run(
                         None,
                     )
                 }
-                Some(tables) => match execute_query(&tables, &payload.query, state.store.clone())
+                Some(tables) => match execute_query(tables, &payload.query, state.store.clone())
                     .await
                 {
                     Err(QueryDatabaseError::TooManyResultRows) => error_response(
