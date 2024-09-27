@@ -20,12 +20,6 @@ export const ConnectorCreatedModal = ({
   dataSource,
   owner,
 }: DataSourceViewSelectionModalProps) => {
-  // const [showVaultCreationModal, setShowVaultCreationModal] = useState(false);
-  // const [defaultVault, setDefaultVault] = useState<VaultType | null>(null);
-  // const { vaults, isVaultsLoading } = useVaultsAsAdmin({
-  //   workspaceId: owner.sId,
-  // });
-
   return (
     <Modal
       title={`Select data sources`}
@@ -66,38 +60,8 @@ export const ConnectorCreatedModal = ({
               <em>"Vaults"</em>.
             </li>
           </ul>
-          {/* <>
-              <div className="flex w-full flex-col gap-2 border-t pb-4 pt-4">
-                <Page.SectionHeader title="Data access settings" />
-                <div className="flex items-center gap-2">
-                  By default, the access to the data is restricted. Make the
-                  data available in:
-                </div>
-                <VaultSelector
-                  key={defaultVault?.sId}
-                  vaults={vaults}
-                  defaultVault={defaultVault?.sId}
-                  renderChildren={(vault) => <div>{vault?.name}</div>}
-                />
-              </div>
-              <Button
-                className="mt-4"
-                size="xs"
-                variant="tertiary"
-                label="Create a new Vault"
-                icon={PlusIcon}
-                onClick={() => setShowVaultCreationModal(true)}
-              />
-            </> */}
         </Page.Vertical>
       </Page>
-      {/* <CreateOrEditVaultModal
-        owner={owner}
-        isOpen={showVaultCreationModal}
-        onClose={() => setShowVaultCreationModal(false)}
-        onCreated={(created) => setDefaultVault(created)}
-        isAdmin={true}
-      /> */}
     </Modal>
   );
 };
