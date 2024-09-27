@@ -7,8 +7,8 @@ import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { makeScript } from "@app/scripts/helpers";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   // fetch all data source views with parentsIn set to null
@@ -32,10 +32,10 @@ makeScript({}, async ({ execute }, logger) => {
         as: "VaultModel",
         where: {
           kind: {
-            [Op.not]: "system"
-          }
-        }
-      }
+            [Op.not]: "system",
+          },
+        },
+      },
     ],
   });
 
@@ -79,7 +79,9 @@ makeScript({}, async ({ execute }, logger) => {
     );
 
     if (contentNodesDocumentsRes.isErr() || contentNodesTablesRes.isErr()) {
-      throw new Error(`Error fetching content nodes for data source view ${dataSourceView.id}`);
+      throw new Error(
+        `Error fetching content nodes for data source view ${dataSourceView.id}`
+      );
     }
 
     const rootNodesDocuments = contentNodesDocumentsRes.value.nodes.filter(
