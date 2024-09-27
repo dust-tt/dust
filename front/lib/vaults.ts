@@ -40,5 +40,5 @@ export const groupVaults = (vaults: VaultType[]) => {
     kind,
     vaults: groupedVaults[kind] || [],
     // remove the empty system menu for users & builders
-  })).filter(({ vaults, kind }) => !(kind !== "system" && vaults.length === 0));
+  })).filter(({ vaults, kind }) => kind !== "system" || vaults.length !== 0);
 };
