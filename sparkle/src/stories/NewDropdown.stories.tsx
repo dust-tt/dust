@@ -13,7 +13,6 @@ import {
   NewDropdownMenuRadioGroup,
   NewDropdownMenuRadioItem,
   NewDropdownMenuSeparator,
-  NewDropdownMenuShortcut,
   NewDropdownMenuSub,
   NewDropdownMenuSubContent,
   NewDropdownMenuSubTrigger,
@@ -26,9 +25,10 @@ import {
   ChatBubbleBottomCenterPlusIcon,
   CloudArrowDownIcon,
   Cog6ToothIcon,
-  Icon,
   LogoutIcon,
   MagicIcon,
+  NewButton,
+  UserGroupIcon,
   UserIcon,
 } from "../index_with_tw_base";
 
@@ -50,16 +50,15 @@ export const DropdownExamples = () => (
 export function SimpleDropdownDemo() {
   return (
     <NewDropdownMenu>
-      <NewDropdownMenuTrigger variant="outline">
-        Open Simple Dropdown
+      <NewDropdownMenuTrigger>
+        <NewButton isSelect label="Open Simple Dropdown" />
       </NewDropdownMenuTrigger>
       <NewDropdownMenuContent>
-        <NewDropdownMenuLabel>My Account</NewDropdownMenuLabel>
-        <NewDropdownMenuSeparator />
-        <NewDropdownMenuItem>Profile</NewDropdownMenuItem>
-        <NewDropdownMenuItem>Billing</NewDropdownMenuItem>
-        <NewDropdownMenuItem>Team</NewDropdownMenuItem>
-        <NewDropdownMenuItem>Subscription</NewDropdownMenuItem>
+        <NewDropdownMenuLabel label="My Account" />
+        <NewDropdownMenuItem label="Profile" />
+        <NewDropdownMenuItem label="Billing" />
+        <NewDropdownMenuItem label="Team" />
+        <NewDropdownMenuItem label="Subscription" />
       </NewDropdownMenuContent>
     </NewDropdownMenu>
   );
@@ -68,88 +67,59 @@ export function SimpleDropdownDemo() {
 export function ComplexDropdownDemo() {
   return (
     <NewDropdownMenu>
-      <NewDropdownMenuTrigger variant="primary">
-        Open Complex
+      <NewDropdownMenuTrigger>
+        <NewButton isSelect variant="primary" label="Open Complex" />
       </NewDropdownMenuTrigger>
       <NewDropdownMenuContent className="w-56">
-        <NewDropdownMenuLabel>My Account</NewDropdownMenuLabel>
-        <NewDropdownMenuSeparator />
+        <NewDropdownMenuLabel label="My Account" />
         <NewDropdownMenuGroup>
-          <NewDropdownMenuItem>
-            <Icon visual={UserIcon} size="xs" />
-            Profile
-            <NewDropdownMenuShortcut>⇧⌘P</NewDropdownMenuShortcut>
-          </NewDropdownMenuItem>
-          <NewDropdownMenuItem>
-            <Icon visual={ArrowDownCircleIcon} size="xs" />
-            Billing
-            <NewDropdownMenuShortcut>⌘B</NewDropdownMenuShortcut>
-          </NewDropdownMenuItem>
-          <NewDropdownMenuItem>
-            <Icon visual={Cog6ToothIcon} size="xs" />
-            Settings
-            <NewDropdownMenuShortcut>⌘S</NewDropdownMenuShortcut>
-          </NewDropdownMenuItem>
-          <NewDropdownMenuItem>
-            <Icon visual={UserIcon} size="xs" />
-            Keyboard shortcuts
-            <NewDropdownMenuShortcut>⌘K</NewDropdownMenuShortcut>
-          </NewDropdownMenuItem>
+          <NewDropdownMenuItem icon={UserIcon} label="Profile" shortcut="⌘P" />
+          <NewDropdownMenuItem
+            icon={ArrowDownCircleIcon}
+            label="Billing"
+            shortcut="⌘B"
+          />
+          <NewDropdownMenuItem
+            icon={Cog6ToothIcon}
+            label="Settings"
+            shortcut="⌘S"
+          />
+          <NewDropdownMenuItem
+            icon={UserIcon}
+            label="Keyboard shortcuts"
+            shortcut="⌘K"
+          />
         </NewDropdownMenuGroup>
         <NewDropdownMenuSeparator />
         <NewDropdownMenuGroup>
-          <NewDropdownMenuItem>
-            <Icon visual={UserIcon} size="xs" />
-            Team
-          </NewDropdownMenuItem>
+          <NewDropdownMenuLabel label="Team" />
+          <NewDropdownMenuItem icon={UserIcon} label="Members" />
           <NewDropdownMenuSub>
-            <NewDropdownMenuSubTrigger>
-              <Icon visual={UserIcon} size="xs" />
-              Invite users
-            </NewDropdownMenuSubTrigger>
+            <NewDropdownMenuSubTrigger icon={UserIcon} label="Invite users" />
             <NewDropdownMenuPortal>
               <NewDropdownMenuSubContent>
-                <NewDropdownMenuItem>
-                  <Icon visual={MagicIcon} size="xs" />
-                  Email
-                </NewDropdownMenuItem>
-                <NewDropdownMenuItem>
-                  <Icon visual={ChatBubbleBottomCenterPlusIcon} size="xs" />
-                  Message
-                </NewDropdownMenuItem>
+                <NewDropdownMenuItem icon={MagicIcon} label="Email" />
+                <NewDropdownMenuItem
+                  icon={ChatBubbleBottomCenterPlusIcon}
+                  label="Message"
+                />
                 <NewDropdownMenuSeparator />
-                <NewDropdownMenuItem>
-                  <Icon visual={UserIcon} size="xs" />
-                  More...
-                </NewDropdownMenuItem>
+                <NewDropdownMenuItem icon={UserIcon} label="More..." />
               </NewDropdownMenuSubContent>
             </NewDropdownMenuPortal>
           </NewDropdownMenuSub>
-          <NewDropdownMenuItem>
-            <Icon visual={UserIcon} size="xs" />
-            New Team
-            <NewDropdownMenuShortcut>⌘+T</NewDropdownMenuShortcut>
-          </NewDropdownMenuItem>
+          <NewDropdownMenuItem
+            icon={UserGroupIcon}
+            label="New Team"
+            shortcut="⌘+T"
+          />
         </NewDropdownMenuGroup>
         <NewDropdownMenuSeparator />
-        <NewDropdownMenuItem>
-          <Icon visual={GithubLogo} size="xs" />
-          GitHub
-        </NewDropdownMenuItem>
-        <NewDropdownMenuItem>
-          <Icon visual={UserIcon} size="xs" />
-          Support
-        </NewDropdownMenuItem>
-        <NewDropdownMenuItem disabled>
-          <Icon visual={CloudArrowDownIcon} size="xs" />
-          API
-        </NewDropdownMenuItem>
+        <NewDropdownMenuItem icon={GithubLogo} label="GitHub" />
+        <NewDropdownMenuItem icon={UserIcon} label="Support" />
+        <NewDropdownMenuItem icon={CloudArrowDownIcon} label="API" disabled />
         <NewDropdownMenuSeparator />
-        <NewDropdownMenuItem>
-          <Icon visual={LogoutIcon} size="xs" />
-          Log out
-          <NewDropdownMenuShortcut>⇧⌘Q</NewDropdownMenuShortcut>
-        </NewDropdownMenuItem>
+        <NewDropdownMenuItem icon={LogoutIcon} label="Log out" shortcut="⇧⌘Q" />
       </NewDropdownMenuContent>
     </NewDropdownMenu>
   );
@@ -164,11 +134,11 @@ export function DropdownMenuCheckboxes() {
 
   return (
     <NewDropdownMenu>
-      <NewDropdownMenuTrigger variant="ghost">
-        Open Checkbox
+      <NewDropdownMenuTrigger>
+        <NewButton isSelect variant="ghost" label="Open Checkbox" />
       </NewDropdownMenuTrigger>
       <NewDropdownMenuContent className="w-56">
-        <NewDropdownMenuLabel>Appearance</NewDropdownMenuLabel>
+        <NewDropdownMenuLabel label="Appearance" />
         <NewDropdownMenuSeparator />
         <NewDropdownMenuCheckboxItem
           checked={showStatusBar}
@@ -199,11 +169,11 @@ export function DropdownMenuRadioGroupDemo() {
 
   return (
     <NewDropdownMenu>
-      <NewDropdownMenuTrigger variant="ghost">
-        Open Radio
+      <NewDropdownMenuTrigger>
+        <NewButton isSelect variant="ghost" label="Open Radio" />
       </NewDropdownMenuTrigger>
       <NewDropdownMenuContent className="w-56">
-        <NewDropdownMenuLabel>Panel Position</NewDropdownMenuLabel>
+        <NewDropdownMenuLabel label="Panel Position" />
         <NewDropdownMenuSeparator />
         <NewDropdownMenuRadioGroup value={position} onValueChange={setPosition}>
           <NewDropdownMenuRadioItem value="top">Top</NewDropdownMenuRadioItem>

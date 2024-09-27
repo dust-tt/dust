@@ -1,10 +1,8 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import * as React from "react";
 
-import { MetaButton, MetaButtonProps } from "@sparkle/components/NewButton";
 import {
   CheckIcon,
-  ChevronDownIcon,
   ChevronRightIcon,
   CircleIcon,
   Icon,
@@ -27,7 +25,7 @@ export const menuStyleClasses = {
     default: "s-mr-1 s-ml-auto s-tracking-widest s-text-primary-400",
     span: "s-absolute s-left-2 s-flex s-h-3.5 s-w-3.5 s-items-center s-justify-center",
   },
-  label: "s-font-regular s-px-2 s-py-2 s-text-sm s-text-primary-500",
+  label: "s-font-semibold s-px-2 s-py-2 s-text-xs s-text-muted-foreground",
   separator: "-s-mx-1 s-my-1 s-h-px s-bg-separator",
   shortcut: "s-ml-auto s-text-xs s-tracking-widest s-text-primary-400",
 };
@@ -37,34 +35,16 @@ const NewDropdownMenuGroup = DropdownMenuPrimitive.Group;
 const NewDropdownMenuPortal = DropdownMenuPrimitive.Portal;
 const NewDropdownMenuSub = DropdownMenuPrimitive.Sub;
 const NewDropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
-
-const NewDropdownMenuTrigger = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger> & {
-    customClass?: string;
-  } & MetaButtonProps
->(({ customClass, className, children, variant, size, ...props }, ref) => (
-  <DropdownMenuPrimitive.Trigger asChild>
-    <MetaButton
-      ref={ref}
-      variant={variant || "primary"}
-      size={size || "sm"}
-      className={classNames(customClass || "", className || "")}
-      {...props}
-    >
-      {children}
-      <Icon size="xs" visual={ChevronDownIcon} className="-s-mr-1" />
-    </MetaButton>
-  </DropdownMenuPrimitive.Trigger>
-));
-NewDropdownMenuTrigger.displayName = "NewDropdownMenuTrigger";
+const NewDropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
 const NewDropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
     inset?: boolean;
+    label: string;
+    icon?: React.ComponentType;
   }
->(({ className, inset, children, ...props }, ref) => (
+>(({ className, inset, label, icon, ...props }, ref) => (
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={classNames(
@@ -74,7 +54,8 @@ const NewDropdownMenuSubTrigger = React.forwardRef<
     )}
     {...props}
   >
-    {children}
+    {icon && <Icon size="xs" visual={icon} />}
+    {label}
     <span className={menuStyleClasses.subTrigger.default}>
       <Icon size="xs" visual={ChevronRightIcon} />
     </span>
@@ -123,8 +104,11 @@ const NewDropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
     inset?: boolean;
+    icon?: React.ComponentType;
+    label: string;
+    shortcut?: string;
   }
->(({ className, inset, ...props }, ref) => (
+>(({ className, inset, icon, label, shortcut, ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={classNames(
@@ -133,7 +117,11 @@ const NewDropdownMenuItem = React.forwardRef<
       className || ""
     )}
     {...props}
-  />
+  >
+    {icon && <Icon size="xs" visual={icon} />}
+    {label}
+    {shortcut && <NewDropdownMenuShortcut>⇧{shortcut}</NewDropdownMenuShortcut>}
+  </DropdownMenuPrimitive.Item>
 ));
 NewDropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
 
@@ -190,8 +178,9 @@ const NewDropdownMenuLabel = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Label>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
     inset?: boolean;
+    label: string;
   }
->(({ className, inset, ...props }, ref) => (
+>(({ className, inset, label, ...props }, ref) => (
   <DropdownMenuPrimitive.Label
     ref={ref}
     className={classNames(
@@ -200,7 +189,9 @@ const NewDropdownMenuLabel = React.forwardRef<
       className || ""
     )}
     {...props}
-  />
+  >
+    {label}
+  </DropdownMenuPrimitive.Label>
 ));
 NewDropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
 

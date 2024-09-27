@@ -21,8 +21,11 @@ const ContextMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.SubTrigger>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.SubTrigger> & {
     inset?: boolean;
+    label: string;
+    icon?: React.ComponentType;
+    shortcut?: string;
   }
->(({ className, inset, children, ...props }, ref) => (
+>(({ className, inset, icon, label, shortcut, ...props }, ref) => (
   <ContextMenuPrimitive.SubTrigger
     ref={ref}
     className={classNames(
@@ -32,7 +35,9 @@ const ContextMenuSubTrigger = React.forwardRef<
     )}
     {...props}
   >
-    {children}
+    {icon && <Icon size="xs" visual={icon} />}
+    {label}
+    {shortcut && <ContextMenuShortcut>⇧{shortcut}</ContextMenuShortcut>}
     <span className={menuStyleClasses.subTrigger.default}>
       <Icon size="xs" visual={ChevronRightIcon} />
     </span>
@@ -78,8 +83,11 @@ const ContextMenuItem = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Item> & {
     inset?: boolean;
+    label: string;
+    icon?: React.ComponentType;
+    shortcut?: string;
   }
->(({ className, inset, ...props }, ref) => (
+>(({ className, inset, label, icon, shortcut, ...props }, ref) => (
   <ContextMenuPrimitive.Item
     ref={ref}
     className={classNames(
@@ -88,7 +96,11 @@ const ContextMenuItem = React.forwardRef<
       className || ""
     )}
     {...props}
-  />
+  >
+    {icon && <Icon size="xs" visual={icon} />}
+    {label}
+    {shortcut && <ContextMenuShortcut>⇧{shortcut}</ContextMenuShortcut>}
+  </ContextMenuPrimitive.Item>
 ));
 ContextMenuItem.displayName = ContextMenuPrimitive.Item.displayName;
 

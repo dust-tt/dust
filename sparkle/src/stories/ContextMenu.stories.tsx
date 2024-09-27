@@ -2,25 +2,19 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import {
+  ArrowDownCircleIcon,
+  Cog6ToothIcon,
   ContextMenu,
   ContextMenuContent,
   ContextMenuGroup,
   ContextMenuItem,
   ContextMenuLabel,
-  ContextMenuSeparator,
-  ContextMenuShortcut,
-  ContextMenuTrigger,
-} from "@sparkle/components/ContextMenu";
-import {
-  ArrowDownCircleIcon,
-  ChatBubbleBottomCenterPlusIcon,
-  Cog6ToothIcon,
   ContextMenuPortal,
+  ContextMenuSeparator,
   ContextMenuSub,
   ContextMenuSubContent,
   ContextMenuSubTrigger,
-  Icon,
-  MagicIcon,
+  ContextMenuTrigger,
   UserIcon,
 } from "@sparkle/index_with_tw_base";
 
@@ -42,10 +36,10 @@ export function SimpleContewtDemo() {
     <ContextMenu>
       <ContextMenuTrigger>Right click</ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem>Profile</ContextMenuItem>
-        <ContextMenuItem>Billing</ContextMenuItem>
-        <ContextMenuItem>Team</ContextMenuItem>
-        <ContextMenuItem>Subscription</ContextMenuItem>
+        <ContextMenuItem label="Profile" />
+        <ContextMenuItem label="Billing" />
+        <ContextMenuItem label="Team" />
+        <ContextMenuItem label="Subscription" />
       </ContextMenuContent>
     </ContextMenu>
   );
@@ -59,53 +53,21 @@ export function ComplexContextDemo() {
         <ContextMenuLabel>My Account</ContextMenuLabel>
         <ContextMenuSeparator />
         <ContextMenuGroup>
-          <ContextMenuItem>
-            <Icon visual={UserIcon} size="xs" />
-            Profile
-            <ContextMenuShortcut>⇧⌘P</ContextMenuShortcut>
-          </ContextMenuItem>
-          <ContextMenuItem>
-            <Icon visual={ArrowDownCircleIcon} size="xs" />
-            Billing
-            <ContextMenuShortcut>⌘B</ContextMenuShortcut>
-          </ContextMenuItem>
-          <ContextMenuItem>
-            <Icon visual={Cog6ToothIcon} size="xs" />
-            Settings
-            <ContextMenuShortcut>⌘S</ContextMenuShortcut>
-          </ContextMenuItem>
-          <ContextMenuItem>
-            <Icon visual={UserIcon} size="xs" />
-            Keyboard shortcuts
-            <ContextMenuShortcut>⌘K</ContextMenuShortcut>
-          </ContextMenuItem>
+          <ContextMenuItem icon={UserIcon} label="Profile" shortcut="⇧⌘P" />
+          <ContextMenuItem icon={ArrowDownCircleIcon} label="Billing" />
+          <ContextMenuItem icon={Cog6ToothIcon} label="Settings" />
         </ContextMenuGroup>
         <ContextMenuSeparator />
         <ContextMenuGroup>
-          <ContextMenuItem>
-            <Icon visual={UserIcon} size="xs" />
-            Team
-          </ContextMenuItem>
+          <ContextMenuItem icon={UserIcon} label="Team" />
           <ContextMenuSub>
-            <ContextMenuSubTrigger>
-              <Icon visual={UserIcon} size="xs" />
-              Invite users
-            </ContextMenuSubTrigger>
+            <ContextMenuSubTrigger icon={UserIcon} label="Invite users" />
             <ContextMenuPortal>
               <ContextMenuSubContent>
-                <ContextMenuItem>
-                  <Icon visual={MagicIcon} size="xs" />
-                  Email
-                </ContextMenuItem>
-                <ContextMenuItem>
-                  <Icon visual={ChatBubbleBottomCenterPlusIcon} size="xs" />
-                  Message
-                </ContextMenuItem>
+                <ContextMenuItem label="Email" />
+                <ContextMenuItem label="Message" />
                 <ContextMenuSeparator />
-                <ContextMenuItem>
-                  <Icon visual={UserIcon} size="xs" />
-                  More...
-                </ContextMenuItem>
+                <ContextMenuItem label="More..." />
               </ContextMenuSubContent>
             </ContextMenuPortal>
           </ContextMenuSub>

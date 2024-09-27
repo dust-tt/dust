@@ -58,6 +58,11 @@ export {
   NewDropdownMenuTrigger,
 } from "./NewDropdown";
 export {
+  NewNavigationList,
+  NewNavigationListItem,
+  NewNavigationListLabel,
+} from "./NewNavigationList";
+export {
   NewTooltip,
   NewTooltipContent,
   NewTooltipProvider,
