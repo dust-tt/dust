@@ -14,7 +14,7 @@ spec:
         name: socks-proxy-pod
         admission.datadoghq.com/enabled: "true"
       annotations:
-        ad.datadoghq.com/web.logs: '[{"source": "sock5-proxy","service": "sock5-proxy","tags": ["env:prod"]}]'
+        ad.datadoghq.com/web.logs: '[{"source": "dante","service": "sock5-proxy","tags": ["env:prod"]}]'
     spec:
       containers:
         - name: socks-proxy
