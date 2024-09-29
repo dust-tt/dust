@@ -223,23 +223,17 @@ export async function processTranscriptActivity(
         {},
         "[processTranscriptActivity] History record already exists. Stopping."
       );
-      return;
+      return; // Already processed.
     }
     throw error;
   }
 
-  // Short transcripts are likely not useful to process.
+  // Short transcripts are not useful to process.
   if (transcriptContent.length < minTranscriptsSize) {
     localLogger.info(
       { contentLength: transcriptContent.length },
       "[processTranscriptActivity] Transcript content too short or empty. Skipping."
     );
-    await transcriptsConfiguration.recordHistory({
-      configurationId: transcriptsConfiguration.id,
-      fileId,
-      fileName: transcriptTitle,
-      conversationId: null,
-    });
 
     await sendEmailWithTemplate({
       to: user.email,
@@ -425,6 +419,17 @@ export async function processTranscriptActivity(
       email: "team@dust.help",
     },
     subject: `[DUST] Meeting summary - ${transcriptTitle}`,
-    body: `<a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}">Open this conversation in Dust</a><br /><br /> ${htmlAnswer}<br /><br />The team at <a href="https://dust.tt">Dust.tt</a>`,
+    body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
+  <a href="https://dust.tt/w/${owner.sId}/assistant/${conversation.sId}" 
+     style="display: inline-block; 
+            padding: 10px 20px; 
+            background-color: #007bff; 
+            color: #ffffff; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            font-weight: bold;">
+    Open this conversation in Dust
+  </a>
+</div>`,
   });
 }
