@@ -440,7 +440,7 @@ export async function getConversationWithoutContent(
     title: conversation.title,
     visibility: conversation.visibility,
     groupIds: getConversationGroupIdsFromModel(owner, conversation),
-  };
+  });
 }
 
 export async function getConversationMessageType(
@@ -725,7 +725,7 @@ export async function* postUserMessage(
         return getLightAgentConfiguration(auth, mention.configurationId);
       })
     ),
-    createOrUpdateParticipation(),
+    createOrUpdateParticipation({ user, conversation }),
   ]);
 
   if (results[0].some((a) => a === null)) {
@@ -1162,7 +1162,7 @@ export async function* editUserMessage(
         return getLightAgentConfiguration(auth, mention.configurationId);
       })
     ),
-    await createOrUpdateParticipation(),
+    await createOrUpdateParticipation({ user, conversation }),
   ]);
 
   if (results[0].some((a) => a === null)) {
