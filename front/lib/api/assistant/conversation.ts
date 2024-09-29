@@ -60,12 +60,11 @@ import {
   batchRenderMessages,
   canReadMessage,
 } from "@app/lib/api/assistant/messages";
-import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
@@ -2047,22 +2046,19 @@ function getConversationGroupIdsFromModel(
   );
 }
 
-export async function canAccessConversation(
+export function canAccessConversation(
   auth: Authenticator,
   conversation: ConversationWithoutContentType | ConversationType | Conversation
-): Promise<boolean> {
-  if ("content" in conversation) {
-    // If the conversation has its content already loaded, we can check without an additional query
-    return conversation.content.every(
-      (messages) =>
-        !isAgentMessageType(messages[messages.length - 1]) ||
-        canReadMessage(auth, messages[messages.length - 1] as AgentMessageType)
-    );
+): boolean {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected: owner without auth");
   }
 
-  const res = await fetchConversationParticipants(auth, conversation);
-  if (res.isErr() && res.error instanceof ConversationPermissionError) {
-    return false;
-  }
-  return true;
+  const groupIds =
+    conversation instanceof Conversation
+      ? getConversationGroupIdsFromModel(owner, conversation)
+      : conversation.groupIds;
+
+  return auth.canRead(Authenticator.aclsFromGroupIds(groupIds));
 }
