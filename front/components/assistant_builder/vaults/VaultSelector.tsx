@@ -1,47 +1,54 @@
-import { Checkbox, Dialog, Icon, Page, Spinner } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, VaultType } from "@dust-tt/types";
+import { Checkbox, Dialog, Icon, Page } from "@dust-tt/sparkle";
+import type { VaultType } from "@dust-tt/types";
 import React, { useState } from "react";
 
-import { useVaults } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
-import { getVaultIcon, getVaultName } from "@app/lib/vaults";
+import { getVaultIcon, getVaultName, groupVaults } from "@app/lib/vaults";
 
 interface VaultSelectorProps {
-  owner: LightWorkspaceType;
   allowedVaults?: VaultType[];
-  defaultVault: string;
+  defaultVault: string | undefined;
+  vaults: VaultType[];
   renderChildren: (vault?: VaultType) => React.ReactNode;
 }
 export function VaultSelector({
-  owner,
   allowedVaults,
   defaultVault,
   renderChildren,
+  vaults,
 }: VaultSelectorProps) {
-  const { vaults, isVaultsError, isVaultsLoading } = useVaults({
-    workspaceId: owner.sId,
-  });
-  const [selectedVault, setSelectedVault] = useState<string>(defaultVault);
+  const [selectedVault, setSelectedVault] = useState<string | undefined>(
+    defaultVault
+  );
   const [isAlertDialogOpen, setAlertIsDialogOpen] = useState(false);
 
-  if (isVaultsLoading || isVaultsError) {
-    return <Spinner />;
-  }
-
-  const shouldRenderDirectly = !allowedVaults || vaults.length === 1;
+  const shouldRenderDirectly = vaults.length === 1;
   const selectedVaultObj = vaults.find((v) => v.sId === selectedVault);
 
   if (shouldRenderDirectly) {
-    return renderChildren(allowedVaults ? allowedVaults[0] : undefined);
+    if (allowedVaults && !allowedVaults.some((v) => v.sId === vaults[0].sId)) {
+      return renderChildren(undefined);
+    }
+    return renderChildren(vaults[0]);
   }
 
+  // Group by kind and sort.
+  const sortedVaults = groupVaults(vaults)
+    .filter((i) => i.kind !== "system")
+    .map((i) =>
+      i.vaults.sort((a, b) => {
+        return a.name.localeCompare(b.name);
+      })
+    )
+    .flat();
   // TODO: we are using Checkboxes here as our RadioButton isn't flexible
   // enough to allow a onClick callback on a disabled item and to render
   // elements in between labels. We are aiming to refactor RadioButton
   return (
     <>
-      {vaults.map((vault) => {
-        const isDisabled = !allowedVaults?.some((v) => v.sId === vault.sId);
+      {sortedVaults.map((vault) => {
+        const isDisabled =
+          allowedVaults && !allowedVaults.some((v) => v.sId === vault.sId);
         const isChecked = selectedVault === vault.sId;
 
         return (

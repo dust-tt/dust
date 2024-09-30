@@ -2,6 +2,7 @@ import {
   CloudArrowLeftRightIcon,
   FolderIcon,
   GlobeAltIcon,
+  Spinner,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -34,6 +35,7 @@ import {
   isWebsite,
 } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { useVaults } from "@app/lib/swr/vaults";
 
 const MIN_TOTAL_DATA_SOURCES_TO_GROUP = 12;
 const MIN_DATA_SOURCES_PER_KIND_TO_GROUP = 3;
@@ -58,10 +60,10 @@ export function DataSourceViewsSelector({
   setSelectionConfigurations,
   viewType,
 }: DataSourceViewsSelectorProps) {
+  const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
+
   // Apply grouping if there are many data sources, and there are enough of each kind
   // So we don't show a long list of data sources to the user
-  const nbOfVaults = _.uniqBy(dataSourceViews, (dsv) => dsv.vaultId).length;
-
   const applyGrouping =
     dataSourceViews.length >= MIN_TOTAL_DATA_SOURCES_TO_GROUP;
 
@@ -92,10 +94,19 @@ export function DataSourceViewsSelector({
       : "";
   }, [selectionConfigurations]);
 
-  if (nbOfVaults > 1) {
+  const filteredVaults = useMemo(() => {
+    const vaultIds = [...new Set(dataSourceViews.map((dsv) => dsv.vaultId))];
+    return vaults.filter((v) => vaultIds.includes(v.sId));
+  }, [vaults, dataSourceViews]);
+
+  if (isVaultsLoading) {
+    return <Spinner />;
+  }
+
+  if (filteredVaults.length > 1) {
     return (
       <VaultSelector
-        owner={owner}
+        vaults={filteredVaults}
         allowedVaults={allowedVaults}
         defaultVault={defaultVault}
         renderChildren={(vault) => {

@@ -18,7 +18,7 @@ import type {
   VaultType,
 } from "@dust-tt/types";
 import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@dust-tt/types";
-import { groupBy, sortBy, uniqBy } from "lodash";
+import { sortBy, uniqBy } from "lodash";
 import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
@@ -33,7 +33,7 @@ import {
   useVaults,
   useVaultsAsAdmin,
 } from "@app/lib/swr/vaults";
-import { getVaultIcon, getVaultName } from "@app/lib/vaults";
+import { getVaultIcon, getVaultName, groupVaults } from "@app/lib/vaults";
 
 interface VaultSideBarMenuProps {
   isPrivateVaultsEnabled: boolean;
@@ -41,13 +41,6 @@ interface VaultSideBarMenuProps {
   isAdmin: boolean;
   setShowVaultCreationModal: (show: boolean) => void;
 }
-
-const VAULTS_SORT_ORDER: VaultKind[] = [
-  "system",
-  "global",
-  "regular",
-  "public",
-];
 
 export default function VaultSideBarMenu({
   isPrivateVaultsEnabled,
@@ -92,12 +85,9 @@ export default function VaultSideBarMenu({
   }
 
   // Group by kind and sort.
-  const groupedVaults = groupBy(vaults, (vault) => vault.kind);
-  const sortedGroupedVaults = VAULTS_SORT_ORDER.map((kind) => ({
-    kind,
-    vaults: groupedVaults[kind] || [],
+  const sortedGroupedVaults = groupVaults(vaults)
     // remove the empty system menu for users & builders
-  })).filter(({ vaults, kind }) => !(kind === "system" && vaults.length === 0));
+    .filter(({ vaults, kind }) => kind !== "system" || vaults.length !== 0);
 
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
