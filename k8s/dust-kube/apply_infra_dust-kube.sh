@@ -105,7 +105,6 @@ kubectl apply -f "$(dirname "$0")/services/core-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/core-sqlite-worker-headless-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/oauth-service.yaml"
 kubectl apply -f "$(dirname "$0")/services/viz-service.yaml"
-kubectl apply -f "$(dirname "$0")/services/socks-proxy-service.yaml"
 
 
 echo "-----------------------------------"
