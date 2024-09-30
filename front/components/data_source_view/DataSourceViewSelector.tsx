@@ -390,7 +390,9 @@ export function DataSourceViewSelector({
           !showSelectAll
             ? {
                 checked: checkedStatus,
-                onChange: handleSelectAll,
+                onChange: () => {
+                  selectionConfiguration.isSelectAll = checkedStatus === "checked";
+                },
               }
             : undefined
         }
