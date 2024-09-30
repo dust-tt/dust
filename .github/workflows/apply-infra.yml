@@ -37,10 +37,6 @@ jobs:
         run: |
           gcloud components install gke-gcloud-auth-plugin
 
-      - name: Setup kubectl
-        run: |
-          gcloud container clusters get-credentials dust-kube --region us-central1
-
       - name: Install yq
         run: |
           wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
