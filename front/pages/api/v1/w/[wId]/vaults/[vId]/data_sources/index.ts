@@ -13,7 +13,7 @@ export type GetDataSourcesResponseBody = {
 
 /**
  * @swagger
- * /api/v1/w/{wId}/vaults/[vId]/data_sources:
+ * /api/v1/w/{wId}/vaults/{vId}/data_sources:
  *   get:
  *     summary: Get data sources
  *     description: Get data sources in the workspace identified by {wId}.
