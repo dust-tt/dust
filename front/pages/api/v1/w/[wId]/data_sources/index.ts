@@ -1,5 +1,7 @@
 import handler from "@app/pages/api/v1/w/[wId]/vaults/[vId]/data_sources";
 
-/* eslint jsdoc/no-missing-syntax: 0 */ //
-// Legacy endpoint.
+/**
+ * @ignoreswagger
+ * Legacy endpoint.
+ */
 export default handler;
