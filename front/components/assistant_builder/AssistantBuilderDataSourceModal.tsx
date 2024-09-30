@@ -1,4 +1,4 @@
-import { Button, ListCheckIcon, Modal } from "@dust-tt/sparkle";
+import { Modal } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
@@ -85,24 +85,6 @@ export default function AssistantBuilderDataSourceModal({
         id="dataSourceViewsSelector"
         className="overflow-y-auto scrollbar-hide"
       >
-        <div className="flex w-full justify-end py-4">
-          <Button
-            variant="tertiary"
-            label="Select all visible"
-            icon={ListCheckIcon}
-            onClick={() => {
-              document
-                .querySelectorAll<HTMLInputElement>(
-                  '#dataSourceViewsSelector div.is-collapsed label > input[type="checkbox"]:first-child'
-                )
-                .forEach((el) => {
-                  if (!el.checked) {
-                    el.click();
-                  }
-                });
-            }}
-          />
-        </div>
         <div
           id="dataSourceViewsSelector"
           className="overflow-y-auto scrollbar-hide"
