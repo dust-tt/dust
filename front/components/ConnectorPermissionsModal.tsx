@@ -42,6 +42,7 @@ const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "google_drive",
   "microsoft",
   "intercom",
+  "snowflake",
 ]);
 
 const CONNECTOR_TYPE_TO_PERMISSIONS: Record<

@@ -5,11 +5,23 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import { Err, getConnectionCredentials, Ok } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 
 import { BaseConnectorManager } from "@connectors/connectors/interface";
+import {
+  fetchAvailableChildrenInSnowflake,
+  fetchReadNodes,
+  fetchSyncedChildren,
+  getBatchContentNodes,
+  getContentNodeParents,
+  saveNodesFromPermissions,
+} from "@connectors/connectors/snowflake/lib/permissions";
 import { testConnection } from "@connectors/connectors/snowflake/lib/snowflake_api";
-import { apiConfig } from "@connectors/lib/api/config";
+import {
+  getConnector,
+  getConnectorAndCredentials,
+  getCredentials,
+} from "@connectors/connectors/snowflake/lib/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -26,19 +38,14 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
   }): Promise<Result<string, Error>> {
-    // For snowflake the connectionId is actually the credentialsId saved in OAuth db.
-    const credentialsId = connectionId;
-
-    // First we retrieve the credentials from OAuth service.
-    const credentialsRes = await getConnectionCredentials({
-      config: apiConfig.getOAuthAPIConfig(),
+    const credentialsRes = await getCredentials({
+      credentialsId: connectionId,
       logger,
-      credentialsId,
     });
     if (credentialsRes.isErr()) {
-      return new Err(Error("Failed to retrieve credentials"));
+      return credentialsRes;
     }
-    const credentials = credentialsRes.value.credential.content;
+    const credentials = credentialsRes.value.credentials;
 
     // Then we test the connection is successful.
     const connection = await testConnection({ credentials });
@@ -69,19 +76,19 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     connectionId?: string | null;
   }): Promise<Result<string, ConnectorsAPIError>> {
     logger.info({ connectionId }, "To be implemented");
-    throw new Error("Method not implemented.");
+    throw new Error("Method update not implemented.");
   }
 
   async clean(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method clean not implemented.");
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method stop not implemented.");
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method resume not implemented.");
   }
 
   async sync({
@@ -90,9 +97,12 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
     logger.info({ fromTs }, "To be implemented");
-    throw new Error("Method not implemented.");
+    throw new Error("Method sync not implemented.");
   }
 
+  /**
+   * For Snowflake the tree is: databases > schemas > tables
+   */
   async retrievePermissions({
     parentInternalId,
     filterPermission,
@@ -100,8 +110,41 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
   }): Promise<Result<ContentNode[], Error>> {
-    logger.info({ parentInternalId, filterPermission }, "To be implemented");
-    throw new Error("Method not implemented.");
+    const connectorAndCredentialsRes = await getConnectorAndCredentials({
+      connectorId: this.connectorId,
+      logger,
+    });
+    if (connectorAndCredentialsRes.isErr()) {
+      return connectorAndCredentialsRes;
+    }
+    const { connector, credentials } = connectorAndCredentialsRes.value;
+
+    // I don't understand why but connector expects all the selected node
+    // no matter if they are at the root level if we filter on read + parentInternalId === null.
+    // This really sucks because for Snowflake it's easy to build the real tree.
+    // It means that we get a weird behavior on the tree displayed in the UI sidebar.
+    // TODO(SNOWFLAKE): Fix this, even if with a hack.
+    if (filterPermission === "read" && parentInternalId === null) {
+      return fetchReadNodes({
+        connectorId: connector.id,
+      });
+    }
+
+    // We display the nodes that we were given access to by the admin.
+    // We display the db/schemas if we have access to at least one table within those.
+    if (filterPermission === "read") {
+      return fetchSyncedChildren({
+        connectorId: connector.id,
+        parentInternalId: parentInternalId,
+      });
+    }
+
+    // We display all available nodes with our credentials.
+    return fetchAvailableChildrenInSnowflake({
+      connectorId: connector.id,
+      credentials: credentials,
+      parentInternalId: parentInternalId,
+    });
   }
 
   async setPermissions({
@@ -109,8 +152,13 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   }: {
     permissions: Record<string, ConnectorPermission>;
   }): Promise<Result<void, Error>> {
-    logger.info({ permissions }, "To be implemented");
-    throw new Error("Method not implemented.");
+    await saveNodesFromPermissions({
+      connectorId: this.connectorId,
+      permissions,
+      logger,
+    });
+
+    return new Ok(undefined);
   }
 
   async retrieveBatchContentNodes({
@@ -119,8 +167,23 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     internalIds: string[];
     viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>> {
-    logger.info({ internalIds }, "To be implemented");
-    throw new Error("Method not implemented.");
+    const connectorRes = await getConnector({
+      connectorId: this.connectorId,
+      logger,
+    });
+    if (connectorRes.isErr()) {
+      return connectorRes;
+    }
+    const connector = connectorRes.value.connector;
+
+    const nodesRes = await getBatchContentNodes({
+      connectorId: connector.id,
+      internalIds,
+    });
+    if (nodesRes.isErr()) {
+      return nodesRes;
+    }
+    return new Ok(nodesRes.value);
   }
 
   /**
@@ -133,31 +196,34 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    logger.info({ internalId }, "To be implemented");
-    throw new Error("Method not implemented.");
+    const parentsRes = getContentNodeParents({ internalId });
+    if (parentsRes.isErr()) {
+      return parentsRes;
+    }
+    return new Ok(parentsRes.value);
   }
 
   async pause(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method pause not implemented.");
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method unpause not implemented.");
   }
 
   async setConfigurationKey(): Promise<Result<void, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method setConfigurationKey not implemented.");
   }
 
   async getConfigurationKey(): Promise<Result<string | null, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method getConfigurationKey not implemented.");
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method garbageCollect not implemented.");
   }
 
   async configure(): Promise<Result<void, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method configure not implemented.");
   }
 }

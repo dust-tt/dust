@@ -181,6 +181,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isNested: true,
     isSearchEnabled: false,
     guideLink: "https://docs.dust.tt/", // TODO(SNOWFLAKE): Add a doc for snowflake and point.
+    selectLabel: "Select tables",
     rollingOutFlag: "snowflake_connector_feature",
   },
 };
