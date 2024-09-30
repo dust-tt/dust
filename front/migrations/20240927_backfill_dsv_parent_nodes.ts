@@ -1,3 +1,4 @@
+import * as fs from "fs";
 import * as _ from "lodash";
 
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
@@ -8,6 +9,8 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
+  let revertScript = "";
+
   const dataSourceViews = await DataSourceViewModel.findAll({
     where: {
       parentsIn: null,
@@ -75,6 +78,9 @@ makeScript({}, async ({ execute }, logger) => {
     if (rootNodes.length > 0) {
       const rootNodeIds = rootNodes.map((node) => node.internalId);
 
+      const revertQuery = `UPDATE data_source_views SET "parentsIn"=${JSON.stringify(dataSourceView.parentsIn)} WHERE id=${dataSourceView.id};`;
+      revertScript += revertQuery + "\n";
+
       if (execute) {
         await dataSourceView.update({
           parentsIn: rootNodeIds,
@@ -93,4 +99,8 @@ makeScript({}, async ({ execute }, logger) => {
       );
     }
   }
+  fs.writeFileSync(
+    "revert_20240927_backfill_dsv_parent_nodes.sql",
+    revertScript
+  );
 });
