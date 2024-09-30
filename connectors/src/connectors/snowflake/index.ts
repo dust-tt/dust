@@ -80,11 +80,11 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   }
 
   async clean(): Promise<Result<undefined, Error>> {
-    throw new Error("Method clean not implemented.");
+    return new Ok(undefined);
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    throw new Error("Method stop not implemented.");
+    return new Ok(undefined);
   }
 
   async resume(): Promise<Result<undefined, Error>> {

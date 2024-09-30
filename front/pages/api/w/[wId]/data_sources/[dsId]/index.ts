@@ -1,10 +1,8 @@
 import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
+import { MANAGED_DS_DELETABLE } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  deleteDataSource,
-  MANAGED_DS_DELETABLE_AS_BUILDER,
-} from "@app/lib/api/data_sources";
+import { deleteDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -129,7 +127,7 @@ async function handler(
       if (
         dataSource.connectorId &&
         dataSource.connectorProvider &&
-        !MANAGED_DS_DELETABLE_AS_BUILDER.includes(dataSource.connectorProvider)
+        !MANAGED_DS_DELETABLE.includes(dataSource.connectorProvider)
       ) {
         return apiError(req, res, {
           status_code: 400,

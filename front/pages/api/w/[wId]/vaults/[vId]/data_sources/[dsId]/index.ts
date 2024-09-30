@@ -1,13 +1,11 @@
 import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
+import { MANAGED_DS_DELETABLE } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  deleteDataSource,
-  MANAGED_DS_DELETABLE_AS_BUILDER,
-} from "@app/lib/api/data_sources";
+import { deleteDataSource } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -50,16 +48,6 @@ async function handler(
       },
     });
   }
-  if (!vault.canWrite(auth)) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message:
-          "Only the users that have `write` permission for the current vault can update a data source.",
-      },
-    });
-  }
 
   if (vault.isSystem() && !auth.isAdmin()) {
     return apiError(req, res, {
@@ -94,6 +82,17 @@ async function handler(
 
   switch (req.method) {
     case "PATCH": {
+      if (!vault.canWrite(auth)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message:
+              "Only the users that have `write` permission for the current vault can update a data source.",
+          },
+        });
+      }
+
       if (dataSource.connectorId) {
         // Not implemented yet, next PR will allow patching a website.
         return apiError(req, res, {
@@ -126,10 +125,27 @@ async function handler(
       });
     }
     case "DELETE": {
+      const isAuthorized =
+        vault.canWrite(auth) ||
+        (vault.isSystem() &&
+          auth.isAdmin() &&
+          dataSource.connectorProvider === "snowflake");
+
+      if (!isAuthorized) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message:
+              "Only the users that have `write` permission for the current vault can delete a data source.",
+          },
+        });
+      }
+
       if (
         dataSource.connectorId &&
         dataSource.connectorProvider &&
-        !MANAGED_DS_DELETABLE_AS_BUILDER.includes(dataSource.connectorProvider)
+        !MANAGED_DS_DELETABLE.includes(dataSource.connectorProvider)
       ) {
         return apiError(req, res, {
           status_code: 400,
