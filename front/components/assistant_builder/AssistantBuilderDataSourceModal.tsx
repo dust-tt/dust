@@ -82,7 +82,8 @@ export default function AssistantBuilderDataSourceModal({
       className="flex flex-col overflow-hidden"
     >
       <div
-        className="flex shrink flex-col overflow-hidden px-2" // Otherwise, padding do not match figma and we can't alter Page's padding
+        id="dataSourceViewsSelector"
+        className="overflow-y-auto scrollbar-hide"
       >
         <div className="flex w-full justify-end py-4">
           <Button
@@ -114,7 +115,7 @@ export default function AssistantBuilderDataSourceModal({
             selectionConfigurations={selectionConfigurations}
             setSelectionConfigurations={setSelectionConfigurationsCallback}
             viewType={viewType}
-            showSelectAll={false}
+            isRootSelectable={true}
           />
         </div>
       </div>

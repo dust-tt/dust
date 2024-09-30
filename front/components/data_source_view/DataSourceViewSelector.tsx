@@ -52,7 +52,7 @@ interface DataSourceViewsSelectorProps {
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
   viewType: ContentNodesViewType;
-  showSelectAll: boolean;
+  isRootSelectable: boolean;
 }
 
 export function DataSourceViewsSelector({
@@ -63,7 +63,7 @@ export function DataSourceViewsSelector({
   selectionConfigurations,
   setSelectionConfigurations,
   viewType,
-  showSelectAll,
+  isRootSelectable,
 }: DataSourceViewsSelectorProps) {
   const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
 
@@ -156,7 +156,7 @@ export function DataSourceViewsSelector({
               selectionConfigurations={selectionConfigurations}
               setSelectionConfigurations={setSelectionConfigurations}
               viewType={viewType}
-              showSelectAll={showSelectAll}
+              isRootSelectable={isRootSelectable}
             />
           );
         }}
@@ -182,7 +182,7 @@ export function DataSourceViewsSelector({
                 }
                 setSelectionConfigurations={setSelectionConfigurations}
                 viewType={viewType}
-                showSelectAll={showSelectAll}
+                isRootSelectable={isRootSelectable}
               />
             ))}
           </Tree.Item>
@@ -205,7 +205,7 @@ export function DataSourceViewsSelector({
                 }
                 setSelectionConfigurations={setSelectionConfigurations}
                 viewType={viewType}
-                showSelectAll={showSelectAll}
+                isRootSelectable={isRootSelectable}
               />
             ))}
           </Tree.Item>
@@ -228,7 +228,7 @@ export function DataSourceViewsSelector({
                 }
                 setSelectionConfigurations={setSelectionConfigurations}
                 viewType={viewType}
-                showSelectAll={showSelectAll}
+                isRootSelectable={isRootSelectable}
               />
             ))}
           </Tree.Item>
@@ -247,7 +247,7 @@ interface DataSourceViewSelectorProps {
   >;
   useContentNodes?: typeof useDataSourceViewContentNodes;
   viewType: ContentNodesViewType;
-  showSelectAll: boolean;
+  isRootSelectable: boolean;
 }
 
 export function DataSourceViewSelector({
@@ -257,9 +257,11 @@ export function DataSourceViewSelector({
   setSelectionConfigurations,
   useContentNodes = useDataSourceViewContentNodes,
   viewType,
-  showSelectAll,
+  isRootSelectable,
 }: DataSourceViewSelectorProps) {
-  const [isSelectedAll, setIsSelectedAll] = useState(false);
+  const [isSelectedAll, setIsSelectedAll] = useState(
+    selectionConfiguration.selectedResources.length > 0
+  );
   const { parentsById, setParentsById } = useParentResourcesById({
     selectedResources: selectionConfiguration.selectedResources,
   });
@@ -367,7 +369,7 @@ export function DataSourceViewSelector({
   const handleSelectAll = () => {
     document
       .querySelectorAll<HTMLInputElement>(
-        `#dataSourceViewsSelector-${dataSourceView.dataSource.name} label > input[type="checkbox"]:first-child`
+        `#dataSourceViewsSelector-${dataSourceView.dataSource.name} input[type="checkbox"]:first-child`
       )
       .forEach((el) => {
         if (el.checked === isSelectedAll) {
@@ -387,17 +389,18 @@ export function DataSourceViewSelector({
           canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
         }
         checkbox={
-          !showSelectAll
+          !isRootSelectable
             ? {
                 checked: checkedStatus,
                 onChange: () => {
-                  selectionConfiguration.isSelectAll = checkedStatus === "checked";
+                  selectionConfiguration.isSelectAll =
+                    checkedStatus === "checked";
                 },
               }
             : undefined
         }
         actions={
-          showSelectAll && (
+          isManaged(dataSourceView.dataSource) && (
             <Button
               variant="tertiary"
               size="xs"

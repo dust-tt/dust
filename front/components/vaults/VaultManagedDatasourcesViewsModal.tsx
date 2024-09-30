@@ -113,7 +113,7 @@ export default function VaultManagedDataSourcesViewsModal({
             selectionConfigurations={selectionConfigurations}
             setSelectionConfigurations={setSelectionConfigurationsCallback}
             viewType="documents"
-            showSelectAll={true}
+            isRootSelectable={true}
           />
         </div>
       </div>
