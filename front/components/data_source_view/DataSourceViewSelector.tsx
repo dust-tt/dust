@@ -45,14 +45,6 @@ const MIN_TOTAL_DATA_SOURCES_TO_GROUP = 12;
 const MIN_DATA_SOURCES_PER_KIND_TO_GROUP = 3;
 const ONLY_ONE_VAULT_PER_SELECTION = true;
 
-const dataSourceViewsSelectorDisplayMode = [
-  "assistant_builder",
-  "managed_datasource",
-] as const;
-
-type DataSourceViewsSelectorDisplayModeType =
-  (typeof dataSourceViewsSelectorDisplayMode)[number];
-
 interface DataSourceViewsSelectorProps {
   owner: WorkspaceType;
   useCase: "vaultDatasourceManagement" | "assistantBuilder";
@@ -63,7 +55,7 @@ interface DataSourceViewsSelectorProps {
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
   viewType: ContentNodesViewType;
-  displayMode: DataSourceViewsSelectorDisplayModeType;
+  showSelectAll: boolean;
 }
 
 export function DataSourceViewsSelector({
@@ -74,7 +66,7 @@ export function DataSourceViewsSelector({
   selectionConfigurations,
   setSelectionConfigurations,
   viewType,
-  displayMode,
+  showSelectAll,
 }: DataSourceViewsSelectorProps) {
   const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
 
@@ -178,7 +170,7 @@ export function DataSourceViewsSelector({
               selectionConfigurations={selectionConfigurations}
               setSelectionConfigurations={setSelectionConfigurations}
               viewType={viewType}
-              displayMode={displayMode}
+              showSelectAll={showSelectAll}
             />
           );
         }}
@@ -206,7 +198,7 @@ export function DataSourceViewsSelector({
                   }
                   setSelectionConfigurations={setSelectionConfigurations}
                   viewType={viewType}
-                  displayMode={displayMode}
+                  showSelectAll={showSelectAll}
                 />
               ))}
           </Tree.Item>
@@ -229,7 +221,7 @@ export function DataSourceViewsSelector({
               }
               setSelectionConfigurations={setSelectionConfigurations}
               viewType={viewType}
-              displayMode={displayMode}
+              showSelectAll={showSelectAll}
             />
           ))}
 
@@ -252,7 +244,7 @@ export function DataSourceViewsSelector({
                   }
                   setSelectionConfigurations={setSelectionConfigurations}
                   viewType={viewType}
-                  displayMode={displayMode}
+                  showSelectAll={showSelectAll}
                 />
               ))}
           </Tree.Item>
@@ -277,7 +269,7 @@ export function DataSourceViewsSelector({
                   }
                   setSelectionConfigurations={setSelectionConfigurations}
                   viewType={viewType}
-                  displayMode={displayMode}
+                  showSelectAll={showSelectAll}
                 />
               ))}
           </Tree.Item>
@@ -296,7 +288,7 @@ interface DataSourceViewSelectorProps {
   >;
   useContentNodes?: typeof useDataSourceViewContentNodes;
   viewType: ContentNodesViewType;
-  displayMode: DataSourceViewsSelectorDisplayModeType;
+  showSelectAll: boolean;
 }
 
 export function DataSourceViewSelector({
@@ -306,7 +298,7 @@ export function DataSourceViewSelector({
   setSelectionConfigurations,
   useContentNodes = useDataSourceViewContentNodes,
   viewType,
-  displayMode,
+  showSelectAll,
 }: DataSourceViewSelectorProps) {
   const [isSelectedAll, setIsSelectedAll] = useState(false);
   const { parentsById, setParentsById } = useParentResourcesById({
@@ -428,54 +420,23 @@ export function DataSourceViewSelector({
 
   return (
     <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.name}`}>
-      {displayMode === "assistant_builder" ? (
-        <Tree.Item
-          key={dataSourceView.dataSource.id}
-          label={getDisplayNameForDataSource(dataSourceView.dataSource)}
-          visual={LogoComponent}
-          type={
-            canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
-          }
-          checkbox={{
-            checked: checkedStatus,
-            onChange: () => {
-              document
-                .querySelectorAll<HTMLInputElement>(
-                  `#dataSourceViewsSelector-${dataSourceView.dataSource.name} label > input[type="checkbox"]:first-child`
-                )
-                .forEach((el) => {
-                  if (el.checked && !isSelectedAll) {
-                    return;
-                  } else {
-                    el.click();
-                  }
-                });
-              setIsSelectedAll(!isSelectedAll);
-            },
-          }}
-        >
-          <DataSourceViewResourceSelectorTree
-            dataSourceView={dataSourceView}
-            onSelectChange={onSelectChange}
-            owner={owner}
-            parentIsSelected={selectionConfiguration.isSelectAll}
-            readonly={readonly}
-            selectedParents={selectedParents}
-            selectedResourceIds={internalIds}
-            showExpand={config?.isNested ?? true}
-            useContentNodes={useContentNodes}
-            viewType={viewType}
-          />
-        </Tree.Item>
-      ) : (
-        <Tree.Item
-          key={dataSourceView.dataSource.name}
-          label={getDisplayNameForDataSource(dataSourceView.dataSource)}
-          visual={LogoComponent}
-          type={
-            canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
-          }
-          actions={
+      <Tree.Item
+        key={dataSourceView.dataSource.name}
+        label={getDisplayNameForDataSource(dataSourceView.dataSource)}
+        visual={LogoComponent}
+        type={
+          canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
+        }
+        checkbox={
+          !showSelectAll
+            ? {
+                checked: checkedStatus,
+                onChange: handleSelectAll,
+              }
+            : undefined
+        }
+        actions={
+          showSelectAll && (
             <Button
               variant="tertiary"
               size="xs"
@@ -484,9 +445,8 @@ export function DataSourceViewSelector({
               icon={ListCheckIcon}
               onClick={handleSelectAll}
             />
-          }
-        />
-      )}
+          )}
+      />
       <DataSourceViewResourceSelectorTree
         dataSourceView={dataSourceView}
         onSelectChange={onSelectChange}
