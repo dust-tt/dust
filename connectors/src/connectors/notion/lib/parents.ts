@@ -10,7 +10,7 @@ import {
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
-import type { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -239,3 +239,22 @@ function notionPageOrDbId(pageOrDb: NotionPage | NotionDatabase): string {
     (pageOrDb as NotionDatabase).notionDatabaseId
   );
 }
+
+export const hasChildren = async (page: NotionPage, connectorId: number) => {
+  const [childPage, childDB] = await Promise.all([
+    NotionPage.findOne({
+      where: {
+        connectorId,
+        parentId: page.notionPageId,
+      },
+    }),
+    NotionDatabase.findOne({
+      where: {
+        connectorId,
+        parentId: page.notionPageId,
+      },
+    }),
+  ]);
+
+  return childPage || childDB ? true : false;
+};

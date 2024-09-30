@@ -29,7 +29,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { BaseConnectorManager } from "../interface";
-import { getParents } from "./lib/parents";
+import { getParents, hasChildren } from "./lib/parents";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -430,22 +430,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     ]);
 
     const getPageNodes = async (page: NotionPage): Promise<ContentNode> => {
-      const [childPage, childDB] = await Promise.all([
-        NotionPage.findOne({
-          where: {
-            connectorId: this.connectorId,
-            parentId: page.notionPageId,
-          },
-        }),
-        NotionDatabase.findOne({
-          where: {
-            connectorId: this.connectorId,
-            parentId: page.notionPageId,
-          },
-        }),
-      ]);
-
-      const expandable = childPage || childDB ? true : false;
+      const expandable = await hasChildren(page, this.connectorId);
 
       return {
         provider: c.type,
@@ -553,20 +538,24 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       }),
     ]);
 
-    const pageNodes: ContentNode[] = pages.map((page) => ({
-      provider: "notion",
-      internalId: page.notionPageId,
-      parentInternalId:
-        !page.parentId || page.parentId === "workspace" ? null : page.parentId,
-      type: "file",
-      title: page.title || "",
-      sourceUrl: page.notionUrl || null,
-      expandable: false,
-      permission: "read",
-      dustDocumentId: `notion-${page.notionPageId}`,
-      lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
-      dustTableId: null,
-    }));
+    const pageNodes: ContentNode[] = await Promise.all(
+      pages.map(async (page) => ({
+        provider: "notion",
+        internalId: page.notionPageId,
+        parentInternalId:
+          !page.parentId || page.parentId === "workspace"
+            ? null
+            : page.parentId,
+        type: "file",
+        title: page.title || "",
+        sourceUrl: page.notionUrl || null,
+        expandable: await hasChildren(page, this.connectorId),
+        permission: "read",
+        dustDocumentId: `notion-${page.notionPageId}`,
+        lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
+        dustTableId: null,
+      }))
+    );
 
     const dbNodes: ContentNode[] = dbs.map((db) => ({
       provider: "notion",
