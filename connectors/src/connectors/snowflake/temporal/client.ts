@@ -40,11 +40,13 @@ export async function launchSnowflakeSyncWorkflow(
         connectorId: [connectorId],
       },
       signal: resyncSignal,
+      // If we don't pass signalArgs the workflow will not be signaled.
+      signalArgs: [],
       memo: {
         connectorId,
       },
       // Every 6 hours.
-      cronSchedule: "0 0 */6 * * *",
+      cronSchedule: "0 */6 * * *",
     });
   } catch (err) {
     return new Err(err as Error);
