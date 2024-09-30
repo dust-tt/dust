@@ -33,6 +33,7 @@ if (isDevelopment()) {
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
     maxUsersInWorkspace: 1000,
+    maxVaultsInWorkspace: 1,
     isSlackbotAllowed: true,
     isManagedSlackAllowed: true,
     isManagedConfluenceAllowed: true,

@@ -1,7 +1,8 @@
-import { Breadcrumbs } from "@dust-tt/sparkle";
+import { Breadcrumbs, Dialog } from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
   DataSourceViewType,
+  PlanType,
   SubscriptionType,
   VaultType,
   WorkspaceType,
@@ -17,10 +18,12 @@ import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
 import VaultSideBarMenu from "@app/components/vaults/VaultSideBarMenu";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { useVaultsAsAdmin } from "@app/lib/swr/vaults";
 import { getVaultIcon } from "@app/lib/vaults";
 
 export interface VaultLayoutProps {
   owner: WorkspaceType;
+  plan: PlanType;
   isAdmin: boolean;
   subscription: SubscriptionType;
   vault: VaultType;
@@ -39,6 +42,7 @@ export function VaultLayout({
   const [showVaultCreationModal, setShowVaultCreationModal] = useState(false);
   const {
     owner,
+    plan,
     isAdmin,
     subscription,
     vault,
@@ -47,9 +51,19 @@ export function VaultLayout({
     parentId,
   } = pageProps;
   const router = useRouter();
+
+  const { vaults } = useVaultsAsAdmin({
+    workspaceId: owner.sId,
+    disabled: plan.limits.vaults.maxVaults === 0,
+  });
+
   const isPrivateVaultsEnabled = owner.flags.includes(
     "private_data_vaults_feature"
   );
+
+  const isLimitReached =
+    vaults.filter((v) => v.kind === "regular" || v.kind === "public").length >=
+    plan.limits.vaults.maxVaults;
 
   return (
     <RootLayout>
@@ -73,16 +87,26 @@ export function VaultLayout({
           parentId={parentId ?? undefined}
         />
         {children}
-        {isAdmin && isPrivateVaultsEnabled && (
+        {isAdmin && isPrivateVaultsEnabled && !isLimitReached && (
           <CreateOrEditVaultModal
             isAdmin={isAdmin}
             owner={owner}
-            isOpen={showVaultCreationModal}
+            isOpen={!isLimitReached && showVaultCreationModal}
             onClose={() => setShowVaultCreationModal(false)}
             onCreated={(vault) => {
               void router.push(`/w/${owner.sId}/vaults/${vault.sId}`);
             }}
           />
+        )}
+        {isAdmin && isPrivateVaultsEnabled && !isLimitReached && (
+          <Dialog
+            alertDialog={true}
+            isOpen={isLimitReached && showVaultCreationModal}
+            title="Alert Dialog title"
+            onValidate={() => setShowVaultCreationModal(false)}
+          >
+            <div>You can create more vaults. Please upgrade to add more.</div>
+          </Dialog>
         )}
       </AppLayout>
     </RootLayout>
