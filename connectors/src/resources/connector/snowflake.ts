@@ -1,6 +1,11 @@
 import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
+import {
+  RemoteDatabaseModel,
+  RemoteSchemaModel,
+  RemoteTableModel,
+} from "@connectors/lib/models/remote_databases";
 import { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import type {
   ConnectorProviderConfigurationType,
@@ -35,6 +40,24 @@ export class SnowflakeConnectorStrategy
   ): Promise<void> {
     await Promise.all([
       SnowflakeConfigurationModel.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction,
+      }),
+      RemoteTableModel.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction,
+      }),
+      RemoteSchemaModel.destroy({
+        where: {
+          connectorId: connector.id,
+        },
+        transaction,
+      }),
+      RemoteDatabaseModel.destroy({
         where: {
           connectorId: connector.id,
         },
