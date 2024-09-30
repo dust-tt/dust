@@ -57,9 +57,10 @@ export function VaultLayout({
     disabled: plan.limits.vaults.maxVaults === 0,
   });
 
-  const isPrivateVaultsEnabled =
-    owner.flags.includes("private_data_vaults_feature") &&
-    plan.limits.vaults.maxVaults > 0;
+  const isPrivateVaultsEnabled = owner.flags.includes(
+    "private_data_vaults_feature"
+  );
+
   const isLimitReached =
     vaults.filter((v) => v.kind === "regular" || v.kind === "public").length >=
     plan.limits.vaults.maxVaults;
