@@ -20,7 +20,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator } from "@app/lib/auth";
 import { getDocumentsPostDeleteHooksToRun } from "@app/lib/documents_post_process_hooks/hooks";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import {VaultResource} from "@app/lib/resources/vault_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import {
   enqueueUpsertDocument,
   runPostUpsertHooks,
@@ -233,6 +233,7 @@ async function handler(
   // Handling the case where vId is undefined to keep support for the legacy endpoint (not under
   // vault, global vault assumed for the auth (the authenticator associated with the app, not the
   // user)).
+  // Legacy endpoint still relied on by connectors.
   let { vId } = req.query;
   if (typeof vId !== "string") {
     vId = (await VaultResource.fetchWorkspaceGlobalVault(auth)).sId;

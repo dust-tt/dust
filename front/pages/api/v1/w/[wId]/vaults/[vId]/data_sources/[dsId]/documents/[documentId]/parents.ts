@@ -6,7 +6,7 @@ import config from "@app/lib/api/config";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import {VaultResource} from "@app/lib/resources/vault_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -95,11 +95,11 @@ async function handler(
   // Handling the case where vId is undefined to keep support for the legacy endpoint (not under
   // vault, global vault assumed for the auth (the authenticator associated with the app, not the
   // user)).
+  // Legacy endpoint still relied on by connectors.
   let { vId } = req.query;
   if (typeof vId !== "string") {
     vId = (await VaultResource.fetchWorkspaceGlobalVault(auth)).sId;
   }
-
 
   const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,
