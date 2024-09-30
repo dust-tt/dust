@@ -55,6 +55,7 @@ export default function DataSourceViewPage({
           setSelectionConfigurations={() => {}}
           useContentNodes={usePokeDataSourceViewContentNodes}
           viewType="documents"
+          displayMode="managed_datasource"
         />
       </div>
     </div>
