@@ -43,7 +43,7 @@ export type ContentNodeTreeItemStatus = {
   parents: string[];
 };
 
-type TreeSelectionModelUpdater = (
+export type TreeSelectionModelUpdater = (
   prev: Record<string, ContentNodeTreeItemStatus>
 ) => Record<string, ContentNodeTreeItemStatus>;
 
@@ -84,6 +84,7 @@ const useContentNodeTreeContext = () => {
 };
 
 interface ContentNodeTreeChildrenProps {
+  depth: number;
   isRoundedBackground?: boolean;
   isSearchEnabled?: boolean;
   parentId: string | null;
@@ -92,6 +93,7 @@ interface ContentNodeTreeChildrenProps {
 }
 
 function ContentNodeTreeChildren({
+  depth,
   isRoundedBackground,
   isSearchEnabled,
   parentId,
@@ -165,7 +167,7 @@ function ContentNodeTreeChildren({
             type={n.expandable ? "node" : "leaf"}
             label={n.title}
             visual={getVisualForContentNode(n)}
-            className="whitespace-nowrap"
+            className={`whitespace-nowrap tree-depth-${depth}`}
             checkbox={
               n.preventSelection !== true && selectedNodes
                 ? {
@@ -248,6 +250,7 @@ function ContentNodeTreeChildren({
             }
             renderTreeItems={() => (
               <ContentNodeTreeChildren
+                depth={depth + 1}
                 parentId={n.internalId}
                 parentIds={[n.internalId, ...parentIds]}
                 parentIsSelected={getCheckedState(n) === "checked"}
@@ -324,6 +327,10 @@ interface ContentNodeTreeProps {
    */
   isSearchEnabled?: boolean;
   /**
+   * Whole tree will be considered selected and disabled.
+   */
+  parentIsSelected?: boolean;
+  /**
    * Callback when the user clicks on the "view document" action
    * If undefined, the action will not be displayed.
    */
@@ -352,6 +359,7 @@ export function ContentNodeTree({
   isRoundedBackground,
   isSearchEnabled,
   onDocumentViewClick,
+  parentIsSelected,
   selectedNodes,
   setSelectedNodes,
   showExpand,
@@ -368,11 +376,12 @@ export function ContentNodeTree({
       }}
     >
       <ContentNodeTreeChildren
+        depth={0}
         isRoundedBackground={isRoundedBackground}
         isSearchEnabled={isSearchEnabled}
         parentId={null}
         parentIds={[]}
-        parentIsSelected={false}
+        parentIsSelected={parentIsSelected ?? false}
       />
     </ContentNodeTreeContextProvider>
   );

@@ -45,6 +45,7 @@ export default function VaultManagedDataSourcesViewsModal({
     dataSourceViewsAndInternalIds,
     owner,
     viewType: "documents",
+    useFullParentIds: true,
   });
 
   const [selectionConfigurations, setSelectionConfigurations] =

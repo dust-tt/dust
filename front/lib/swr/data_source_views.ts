@@ -54,10 +54,12 @@ export function useMultipleDataSourceViewsContentNodes({
   dataSourceViewsAndInternalIds,
   owner,
   viewType,
+  useFullParentIds,
 }: {
   dataSourceViewsAndInternalIds: DataSourceViewsAndInternalIds[];
   owner: LightWorkspaceType;
   viewType: ContentNodesViewType;
+  useFullParentIds?: boolean;
 }): {
   dataSourceViewsAndNodes: DataSourceViewsAndNodes[];
   isNodesLoading: boolean;
@@ -65,10 +67,11 @@ export function useMultipleDataSourceViewsContentNodes({
 } {
   const urlsAndOptions = dataSourceViewsAndInternalIds.map(
     ({ dataSourceView, internalIds }) => {
-      const url = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`;
+      const url = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes?xx`;
       const body = JSON.stringify({
         internalIds,
         viewType,
+        useFullParentIds,
       });
       const options = {
         method: "POST",

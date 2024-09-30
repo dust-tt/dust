@@ -16,7 +16,8 @@ import logger from "@app/logger/logger";
 
 export function filterAndCropContentNodesByView(
   dataSourceView: DataSourceViewResource,
-  contentNodes: DataSourceViewContentNode[]
+  contentNodes: DataSourceViewContentNode[],
+  useFullParentIds?: boolean
 ): DataSourceViewContentNode[] {
   const viewHasParents = dataSourceView.parentsIn !== null;
 
@@ -40,9 +41,10 @@ export function filterAndCropContentNodesByView(
     const isInView = !viewHasParents || indexToSplit !== -1;
 
     if (isInView) {
-      const parentIdsInView = !viewHasParents
-        ? parentInternalIds
-        : parentInternalIds.slice(0, indexToSplit + 1);
+      const parentIdsInView =
+        !viewHasParents || useFullParentIds
+          ? parentInternalIds
+          : parentInternalIds.slice(0, indexToSplit + 1);
 
       return {
         ...node,
@@ -64,6 +66,7 @@ interface GetContentNodesForDataSourceViewParams {
   viewType: ContentNodesViewType;
   // If onlyCoreAPI is true, the function will only use the Core API to fetch the content nodes.
   onlyCoreAPI?: boolean;
+  useFullParentIds?: boolean;
 }
 
 interface GetContentNodesForDataSourceViewResult {
@@ -235,7 +238,7 @@ export async function getContentNodesForDataSourceView(
 ): Promise<
   Result<GetContentNodesForDataSourceViewResult, Error | CoreAPIError>
 > {
-  const { onlyCoreAPI = false } = params;
+  const { onlyCoreAPI = false, useFullParentIds } = params;
 
   let contentNodesResult: GetContentNodesForDataSourceViewResult;
 
@@ -265,9 +268,10 @@ export async function getContentNodesForDataSourceView(
 
   const contentNodesInView = filterAndCropContentNodesByView(
     dataSourceView,
-    contentNodesResult.nodes
+    contentNodesResult.nodes,
+    useFullParentIds
   );
-
+  console.log("contentNodesInView", contentNodesInView);
   return new Ok({
     nodes: contentNodesInView,
     total: contentNodesResult.total,
