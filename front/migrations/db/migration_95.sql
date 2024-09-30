@@ -1,3 +1,5 @@
+-- Migration created on Sep 28, 2024
+
 CREATE OR REPLACE FUNCTION public.sqidsShuffle(alphabet TEXT) RETURNS TEXT AS $$
 DECLARE
   chars TEXT[];
