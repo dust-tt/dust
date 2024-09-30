@@ -4,6 +4,7 @@ import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/snowflake/temporal/config";
+import { resyncSignal } from "@connectors/connectors/snowflake/temporal/signals";
 import { snowflakeSyncWorkflow } from "@connectors/connectors/snowflake/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
@@ -27,7 +28,7 @@ export async function launchSnowflakeSyncWorkflow(
   const workflowId = makeSnowflakeSyncWorkflowId(connectorId);
 
   try {
-    await client.workflow.start(snowflakeSyncWorkflow, {
+    await client.workflow.signalWithStart(snowflakeSyncWorkflow, {
       args: [
         {
           connectorId: connector.id,
@@ -38,6 +39,7 @@ export async function launchSnowflakeSyncWorkflow(
       searchAttributes: {
         connectorId: [connectorId],
       },
+      signal: resyncSignal,
       memo: {
         connectorId,
       },
