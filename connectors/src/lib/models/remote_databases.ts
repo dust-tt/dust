@@ -9,6 +9,8 @@ import { DataTypes, Model } from "sequelize";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
+type RemoteTablePermission = "selected" | "inherited"; // todo Daph move in next PR
+
 export class RemoteDatabaseModel extends Model<
   InferAttributes<RemoteDatabaseModel>,
   InferCreationAttributes<RemoteDatabaseModel>
@@ -124,12 +126,14 @@ export class RemoteTableModel extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare lastUpsertedAt: CreationOptional<Date>;
 
   declare internalId: string;
   declare name: string;
 
   declare schemaName: string;
   declare databaseName: string;
+  declare permission: RemoteTablePermission;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
@@ -156,6 +160,10 @@ RemoteTableModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    permission: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -165,6 +173,10 @@ RemoteTableModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    lastUpsertedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {
