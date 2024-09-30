@@ -63,7 +63,9 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
   const readGrantedInternalIds = new Set([
     ...allDatabases.map((db) => db.internalId),
     ...allSchemas.map((s) => s.internalId),
-    ...allTables.map((t) => t.internalId),
+    ...allTables
+      .filter((t) => t.permission === "selected")
+      .map((t) => t.internalId),
   ]);
   const tableByInternalId = Object.fromEntries(
     allTables.map((table) => [table.internalId, table])
