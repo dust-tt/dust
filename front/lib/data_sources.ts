@@ -71,6 +71,7 @@ const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
   "google_drive",
   "notion",
   "microsoft",
+  "snowflake",
 ];
 
 export function supportsStructuredData(ds: DataSource): boolean {
