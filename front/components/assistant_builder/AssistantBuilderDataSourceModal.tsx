@@ -114,6 +114,7 @@ export default function AssistantBuilderDataSourceModal({
             selectionConfigurations={selectionConfigurations}
             setSelectionConfigurations={setSelectionConfigurationsCallback}
             viewType={viewType}
+            displayMode="assistant_builder"
           />
         </div>
       </div>
