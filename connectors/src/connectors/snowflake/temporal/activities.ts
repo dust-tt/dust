@@ -36,12 +36,18 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
   if (tablesRes.isErr()) {
     throw tablesRes.error;
   }
-
   const tablesValidation = t.array(snowflakeTableCodec).decode(tablesRes.value);
   if (isLeft(tablesValidation)) {
     const pathError = reporter.formatValidationErrors(tablesValidation.left);
     throw new Error(`Invalid tables response: ${pathError}`);
   }
+  const tablesOnSnowflake = tablesValidation.right;
+  const internalIdsOnSnowflake = new Set(
+    tablesOnSnowflake.map(
+      (t) => `${t.database_name}.${t.schema_name}.${t.name}`
+    )
+  );
+
   const [allDatabases, allSchemas, allTables] = await Promise.all([
     RemoteDatabaseModel.findAll({
       where: {
@@ -93,13 +99,6 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
       readGrantedInternalIds.has(tableInternalId)
     );
   };
-
-  const tablesOnSnowflake = tablesValidation.right;
-  const internalIdsOnSnowflake = new Set(
-    tablesOnSnowflake.map(
-      (t) => `${t.database_name}.${t.schema_name}.${t.name}`
-    )
-  );
 
   for (const internalId of internalIdsOnSnowflake) {
     if (isTableReadGranted(internalId)) {
