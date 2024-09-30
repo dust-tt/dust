@@ -30,7 +30,6 @@ kubectl apply -f "$(dirname "$0")/configmaps/core-sqlite-worker-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/oauth-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/prodbox-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/viz-configmap.yaml"
-kubectl apply -f "$(dirname "$0")/configmaps/socks-proxy-configmap.yaml"
 
 echo "-----------------------------------"
 echo "Applying backend configs"
