@@ -13,7 +13,7 @@ import config from "@app/lib/api/config";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import {VaultResource} from "@app/lib/resources/vault_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -76,12 +76,12 @@ type ListTableRowsResponseBody = {
  *        description: Unique string identifier for the workspace
  *        schema:
  *          type: string
- *       - in: path
- *         name: vId
- *         required: true
- *         description: ID of the vault
- *         schema:
- *           type: string
+ *      - in: path
+ *        name: vId
+ *        required: true
+ *        description: ID of the vault
+ *        schema:
+ *          type: string
  *      - in: path
  *        name: dsId
  *        required: true
