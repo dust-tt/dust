@@ -105,7 +105,7 @@ export function VaultLayout({
             title="Alert Dialog title"
             onValidate={() => setShowVaultCreationModal(false)}
           >
-            <div>You can create more vaults. Please upgrade to add more.</div>
+            <div>You can't create more vaults. Please upgrade to add more.</div>
           </Dialog>
         )}
       </AppLayout>
