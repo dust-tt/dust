@@ -107,6 +107,7 @@ export default function AssistantBuilderDataSourceModal({
           className="overflow-y-auto scrollbar-hide"
         >
           <DataSourceViewsSelector
+            useCase="assistantBuilder"
             dataSourceViews={supportedDataSourceViewsForViewType}
             allowedVaults={allowedVaults}
             owner={owner}

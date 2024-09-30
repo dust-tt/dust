@@ -32,6 +32,7 @@ import {
   getDisplayNameForDataSource,
   isFolder,
   isManaged,
+  isRemoteDatabase,
   isWebsite,
 } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
@@ -43,6 +44,7 @@ const ONLY_ONE_VAULT_PER_SELECTION = true;
 
 interface DataSourceViewsSelectorProps {
   owner: WorkspaceType;
+  useCase: "vaultDatasourceManagement" | "assistantBuilder";
   dataSourceViews: DataSourceViewType[];
   allowedVaults?: VaultType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
@@ -54,6 +56,7 @@ interface DataSourceViewsSelectorProps {
 
 export function DataSourceViewsSelector({
   owner,
+  useCase,
   dataSourceViews,
   allowedVaults,
   selectionConfigurations,
@@ -62,29 +65,65 @@ export function DataSourceViewsSelector({
 }: DataSourceViewsSelectorProps) {
   const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
 
+  const includesConnectorIDs: string[] = [];
+  const excludesConnectorIDs: string[] = [];
+
+  // If view type is tables
+  // You can either select tables from the same remote database (as the query will be executed live on the database)
+  // Or select tables from different non-remote databases (as we load all data in the same sqlite database)
+  if (viewType === "tables" && useCase === "assistantBuilder") {
+    // Find the first data source in the selection configurations
+    const selection = Object.values(selectionConfigurations);
+    const firstDs =
+      selection.length > 0 ? selection[0].dataSourceView.dataSource : null;
+
+    if (firstDs) {
+      // If it's a remote database, we only allow selecting tables with the same connector
+      if (isRemoteDatabase(firstDs)) {
+        includesConnectorIDs.push(firstDs.connectorId);
+      } else {
+        // Otherwise, we exclude the connector ID of all remote databases providers
+        dataSourceViews.forEach((dsv) => {
+          if (isRemoteDatabase(dsv.dataSource)) {
+            excludesConnectorIDs.push(dsv.dataSource.connectorId);
+          }
+        });
+      }
+    }
+  }
+
+  const filteredDSVs = dataSourceViews.filter(
+    (dsv) =>
+      !dsv.dataSource.connectorId ||
+      (dsv.dataSource.connectorId &&
+        (!includesConnectorIDs.length ||
+          includesConnectorIDs.includes(dsv.dataSource.connectorId)) &&
+        (!excludesConnectorIDs.length ||
+          !excludesConnectorIDs.includes(dsv.dataSource.connectorId)))
+  );
+
   // Apply grouping if there are many data sources, and there are enough of each kind
   // So we don't show a long list of data sources to the user
-  const applyGrouping =
-    dataSourceViews.length >= MIN_TOTAL_DATA_SOURCES_TO_GROUP;
+  const applyGrouping = filteredDSVs.length >= MIN_TOTAL_DATA_SOURCES_TO_GROUP;
 
   const groupManaged =
     applyGrouping &&
-    dataSourceViews.filter((dsv) => isManaged(dsv.dataSource)).length >=
+    filteredDSVs.filter((dsv) => isManaged(dsv.dataSource)).length >=
       MIN_DATA_SOURCES_PER_KIND_TO_GROUP;
 
   const groupFolders =
     applyGrouping &&
-    dataSourceViews.filter((dsv) => isFolder(dsv.dataSource)).length >=
+    filteredDSVs.filter((dsv) => isFolder(dsv.dataSource)).length >=
       MIN_DATA_SOURCES_PER_KIND_TO_GROUP;
 
   const groupWebsites =
     applyGrouping &&
-    dataSourceViews.filter((dsv) => isWebsite(dsv.dataSource)).length >=
+    filteredDSVs.filter((dsv) => isWebsite(dsv.dataSource)).length >=
       MIN_DATA_SOURCES_PER_KIND_TO_GROUP;
 
   const orderDatasourceViews = useMemo(
-    () => orderDatasourceViewByImportance(dataSourceViews),
-    [dataSourceViews]
+    () => orderDatasourceViewByImportance(filteredDSVs),
+    [filteredDSVs]
   );
 
   const defaultVault = useMemo(() => {
@@ -121,6 +160,7 @@ export function DataSourceViewsSelector({
           return (
             <DataSourceViewsSelector
               owner={owner}
+              useCase={useCase}
               dataSourceViews={dataSourceViewsForVault}
               selectionConfigurations={selectionConfigurations}
               setSelectionConfigurations={setSelectionConfigurations}
@@ -395,7 +435,7 @@ export function DataSourceViewSelector({
 
   return (
     <Tree.Item
-      key={dataSourceView.dataSource.name}
+      key={dataSourceView.dataSource.id}
       label={getDisplayNameForDataSource(dataSourceView.dataSource)}
       visual={LogoComponent}
       type={

@@ -61,10 +61,17 @@ export function isManaged(ds: DataSource): ds is DataSource & WithConnector {
   return ds.connectorProvider !== null && !isWebsite(ds);
 }
 
+export function isRemoteDatabase(
+  ds: DataSource
+): ds is DataSource & WithConnector & { connectorProvider: "snowflake" } {
+  return ds.connectorProvider === "snowflake";
+}
+
 const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
   "google_drive",
   "notion",
   "microsoft",
+  "snowflake",
 ];
 
 export function supportsStructuredData(ds: DataSource): boolean {
