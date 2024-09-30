@@ -595,7 +595,7 @@ export async function upsertTable({
     name: tableName,
     parents,
     description: tableDescription,
-    tableId,
+    table_id: tableId,
     remote_database_table_id: remoteDatabaseTableId,
     remote_database_secret_id: remoteDatabaseSecretId,
   };
