@@ -11,6 +11,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
+use regex::Regex;
 use serde_json::json;
 use std::env;
 
@@ -143,6 +144,8 @@ impl Provider for MicrosoftConnectionProvider {
     }
 
     fn handle_provider_request_error(&self, error: ProviderHttpRequestError) -> ProviderError {
+        let app_disabled_regex = Regex::new(r"Application.*is disabled").unwrap();
+
         match &error {
             ProviderHttpRequestError::RequestFailed {
                 status, message, ..
@@ -155,6 +158,15 @@ impl Provider for MicrosoftConnectionProvider {
                     ProviderError::TokenRevokedError
                 } else {
                     // Call the default implementation for other 400 errors.
+                    self.default_handle_provider_request_error(error)
+                }
+            }
+            ProviderHttpRequestError::RequestFailed {
+                status, message, ..
+            } if *status == 403 => {
+                if app_disabled_regex.is_match(message) {
+                    ProviderError::TokenRevokedError
+                } else {
                     self.default_handle_provider_request_error(error)
                 }
             }

@@ -7,6 +7,7 @@ import type {
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import React, { useMemo, useState } from "react";
 
@@ -49,6 +50,7 @@ export function VaultLayout({
     dataSourceView,
     parentId,
   } = pageProps;
+  const router = useRouter();
 
   const { vaults, isVaultsLoading } = useVaultsAsAdmin({
     workspaceId: owner.sId,
@@ -92,6 +94,9 @@ export function VaultLayout({
             owner={owner}
             isOpen={showVaultCreationModal}
             onClose={() => setShowVaultCreationModal(false)}
+            onCreated={(vault) => {
+              void router.push(`/w/${owner.sId}/vaults/${vault.sId}`);
+            }}
           />
         )}
       </AppLayout>

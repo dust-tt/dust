@@ -1,6 +1,14 @@
 import { CompanyIcon, LockIcon, PlanetIcon } from "@dust-tt/sparkle";
-import type { VaultType, WorkspaceType } from "@dust-tt/types";
+import type { VaultKind, VaultType, WorkspaceType } from "@dust-tt/types";
+import { groupBy } from "lodash";
 import type React from "react";
+
+export const VAULTS_SORT_ORDER: VaultKind[] = [
+  "system",
+  "global",
+  "regular",
+  "public",
+];
 
 export function getVaultIcon(
   vault: VaultType
@@ -23,4 +31,13 @@ export const dustAppsListUrl = (
   vault: VaultType
 ): string => {
   return `/w/${owner.sId}/vaults/${vault.sId}/categories/apps`;
+};
+
+export const groupVaults = (vaults: VaultType[]) => {
+  // Group by kind and sort.
+  const groupedVaults = groupBy(vaults, (vault) => vault.kind);
+  return VAULTS_SORT_ORDER.map((kind) => ({
+    kind,
+    vaults: groupedVaults[kind] || [],
+  }));
 };
