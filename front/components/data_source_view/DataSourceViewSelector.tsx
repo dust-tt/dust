@@ -25,7 +25,6 @@ import { useCallback, useMemo } from "react";
 import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
 import DataSourceViewResourceSelectorTree from "@app/components/DataSourceViewResourceSelectorTree";
 import { useParentResourcesById } from "@app/hooks/useParentResourcesById";
-import { orderDatasourceViewByImportance } from "@app/lib/assistant";
 import {
   CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
@@ -41,8 +40,6 @@ import {
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useVaults } from "@app/lib/swr/vaults";
 
-const MIN_TOTAL_DATA_SOURCES_TO_GROUP = 12;
-const MIN_DATA_SOURCES_PER_KIND_TO_GROUP = 3;
 const ONLY_ONE_VAULT_PER_SELECTION = true;
 
 interface DataSourceViewsSelectorProps {
@@ -107,28 +104,17 @@ export function DataSourceViewsSelector({
           !excludesConnectorIDs.includes(dsv.dataSource.connectorId)))
   );
 
-  // Apply grouping if there are many data sources, and there are enough of each kind
-  // So we don't show a long list of data sources to the user
-  const applyGrouping = filteredDSVs.length >= MIN_TOTAL_DATA_SOURCES_TO_GROUP;
-
-  const groupManaged =
-    applyGrouping &&
-    filteredDSVs.filter((dsv) => isManaged(dsv.dataSource)).length >=
-      MIN_DATA_SOURCES_PER_KIND_TO_GROUP;
-
-  const groupFolders =
-    applyGrouping &&
-    filteredDSVs.filter((dsv) => isFolder(dsv.dataSource)).length >=
-      MIN_DATA_SOURCES_PER_KIND_TO_GROUP;
-
-  const groupWebsites =
-    applyGrouping &&
-    filteredDSVs.filter((dsv) => isWebsite(dsv.dataSource)).length >=
-      MIN_DATA_SOURCES_PER_KIND_TO_GROUP;
-
-  const orderDatasourceViews = useMemo(
-    () => orderDatasourceViewByImportance(filteredDSVs),
-    [filteredDSVs]
+  const folders = useMemo(
+    () => filteredDSVs.filter((dsv) => isFolder(dsv.dataSource)),
+    [dataSourceViews]
+  );
+  const websites = useMemo(
+    () => filteredDSVs.filter((dsv) => isWebsite(dsv.dataSource)),
+    [dataSourceViews]
+  );
+  const managed = useMemo(
+    () => filteredDSVs.filter((dsv) => isManaged(dsv.dataSource)),
+    [dataSourceViews]
   );
 
   const defaultVault = useMemo(() => {
@@ -179,99 +165,72 @@ export function DataSourceViewsSelector({
   } else {
     return (
       <Tree isLoading={false}>
-        {groupManaged && (
+        {managed.length > 0 && (
           <Tree.Item
             key="connected"
             label="Connected Data"
             visual={CloudArrowLeftRightIcon}
             type="node"
           >
-            {orderDatasourceViews
-              .filter((dsv) => isManaged(dsv.dataSource))
-              .map((dataSourceView) => (
-                <DataSourceViewSelector
-                  key={dataSourceView.sId}
-                  owner={owner}
-                  selectionConfiguration={
-                    selectionConfigurations[dataSourceView.sId] ??
-                    defaultSelectionConfiguration(dataSourceView)
-                  }
-                  setSelectionConfigurations={setSelectionConfigurations}
-                  viewType={viewType}
-                  showSelectAll={showSelectAll}
-                />
-              ))}
+            {managed.map((dataSourceView) => (
+              <DataSourceViewSelector
+                key={dataSourceView.sId}
+                owner={owner}
+                selectionConfiguration={
+                  selectionConfigurations[dataSourceView.sId] ??
+                  defaultSelectionConfiguration(dataSourceView)
+                }
+                setSelectionConfigurations={setSelectionConfigurations}
+                viewType={viewType}
+                showSelectAll={showSelectAll}
+              />
+            ))}
           </Tree.Item>
         )}
 
-        {orderDatasourceViews
-          .filter(
-            (dsv) =>
-              (!groupFolders && isFolder(dsv.dataSource)) ||
-              (!groupWebsites && isWebsite(dsv.dataSource)) ||
-              (!groupManaged && isManaged(dsv.dataSource))
-          )
-          .map((dataSourceView) => (
-            <DataSourceViewSelector
-              key={dataSourceView.sId}
-              owner={owner}
-              selectionConfiguration={
-                selectionConfigurations[dataSourceView.sId] ??
-                defaultSelectionConfiguration(dataSourceView)
-              }
-              setSelectionConfigurations={setSelectionConfigurations}
-              viewType={viewType}
-              showSelectAll={showSelectAll}
-            />
-          ))}
-
-        {groupFolders && (
+        {folders.length > 0 && (
           <Tree.Item
             key="folders"
             label="Folders"
             visual={FolderIcon}
             type="node"
           >
-            {dataSourceViews
-              .filter((dsv) => isFolder(dsv.dataSource))
-              .map((dataSourceView) => (
-                <DataSourceViewSelector
-                  key={dataSourceView.sId}
-                  owner={owner}
-                  selectionConfiguration={
-                    selectionConfigurations[dataSourceView.sId] ??
-                    defaultSelectionConfiguration(dataSourceView)
-                  }
-                  setSelectionConfigurations={setSelectionConfigurations}
-                  viewType={viewType}
-                  showSelectAll={showSelectAll}
-                />
-              ))}
+            {folders.map((dataSourceView) => (
+              <DataSourceViewSelector
+                key={dataSourceView.sId}
+                owner={owner}
+                selectionConfiguration={
+                  selectionConfigurations[dataSourceView.sId] ??
+                  defaultSelectionConfiguration(dataSourceView)
+                }
+                setSelectionConfigurations={setSelectionConfigurations}
+                viewType={viewType}
+                showSelectAll={showSelectAll}
+              />
+            ))}
           </Tree.Item>
         )}
 
-        {groupWebsites && (
+        {websites.length > 0 && (
           <Tree.Item
             key="websites"
             label="Websites"
             visual={GlobeAltIcon}
             type="node"
           >
-            {dataSourceViews
-              .filter((dsv) => isWebsite(dsv.dataSource))
-              .map((dataSourceView) => (
-                <DataSourceViewSelector
-                  key={dataSourceView.sId}
-                  owner={owner}
-                  selectionConfiguration={
-                    selectionConfigurations[dataSourceView.sId] ??
-                    defaultSelectionConfiguration(dataSourceView)
-                  }
-                  setSelectionConfigurations={setSelectionConfigurations}
-                  viewType={viewType}
-                  showSelectAll={showSelectAll}
-                />
-              ))}
+            {websites.map((dataSourceView) => (
+              <DataSourceViewSelector
+                key={dataSourceView.sId}
+                owner={owner}
+                selectionConfiguration={
+                  selectionConfigurations[dataSourceView.sId] ??
+                  defaultSelectionConfiguration(dataSourceView)
+                }
+                setSelectionConfigurations={setSelectionConfigurations}
+                viewType={viewType}
+                showSelectAll={showSelectAll}
+              />
+            ))}
           </Tree.Item>
         )}
       </Tree>
