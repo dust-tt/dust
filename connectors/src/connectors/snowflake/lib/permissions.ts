@@ -173,15 +173,17 @@ export const fetchSyncedChildren = async ({
       getContentNodeFromInternalId(db.internalId, "read")
     );
     availableSchemas.forEach((schema) => {
-      const db = getContentNodeFromInternalId(schema.databaseName, "none");
       if (!databases.find((db) => db.internalId === schema.databaseName)) {
-        databases.push(db);
+        databases.push(
+          getContentNodeFromInternalId(schema.databaseName, "none")
+        );
       }
     });
     availableTables.forEach((table) => {
-      const db = getContentNodeFromInternalId(table.databaseName, "none");
       if (!databases.find((db) => db.internalId === table.databaseName)) {
-        databases.push(db);
+        databases.push(
+          getContentNodeFromInternalId(table.databaseName, "none")
+        );
       }
     });
     return new Ok(databases);
@@ -196,12 +198,9 @@ export const fetchSyncedChildren = async ({
       .map((schema) => getContentNodeFromInternalId(schema.internalId, "read"));
 
     availableTables.forEach((table) => {
-      const db = getContentNodeFromInternalId(
-        `${table.databaseName}.${table.schemaName}`,
-        "none"
-      );
-      if (!schemas.find((db) => db.internalId === table.databaseName)) {
-        schemas.push(db);
+      const schemaToAdd = `${table.databaseName}.${table.schemaName}`;
+      if (!schemas.find((s) => s.internalId === schemaToAdd)) {
+        schemas.push(getContentNodeFromInternalId(schemaToAdd, "none"));
       }
     });
     return new Ok(schemas);
