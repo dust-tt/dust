@@ -1,4 +1,4 @@
-import { Breadcrumbs } from "@dust-tt/sparkle";
+import { Breadcrumbs, Dialog } from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
   DataSourceViewType,
@@ -52,7 +52,7 @@ export function VaultLayout({
   } = pageProps;
   const router = useRouter();
 
-  const { vaults, isVaultsLoading } = useVaultsAsAdmin({
+  const { vaults } = useVaultsAsAdmin({
     workspaceId: owner.sId,
     disabled: plan.limits.vaults.maxVaults === 0,
   });
@@ -61,9 +61,8 @@ export function VaultLayout({
     owner.flags.includes("private_data_vaults_feature") &&
     plan.limits.vaults.maxVaults > 0;
   const isLimitReached =
-    isVaultsLoading ||
     vaults.filter((v) => v.kind === "regular" || v.kind === "public").length >=
-      plan.limits.vaults.maxVaults;
+    plan.limits.vaults.maxVaults;
 
   return (
     <RootLayout>
@@ -75,9 +74,7 @@ export function VaultLayout({
             owner={owner}
             isAdmin={isAdmin}
             isPrivateVaultsEnabled={isPrivateVaultsEnabled}
-            setShowVaultCreationModal={
-              isLimitReached ? undefined : setShowVaultCreationModal
-            }
+            setShowVaultCreationModal={setShowVaultCreationModal}
           />
         }
       >
@@ -93,12 +90,22 @@ export function VaultLayout({
           <CreateOrEditVaultModal
             isAdmin={isAdmin}
             owner={owner}
-            isOpen={showVaultCreationModal}
+            isOpen={!isLimitReached && showVaultCreationModal}
             onClose={() => setShowVaultCreationModal(false)}
             onCreated={(vault) => {
               void router.push(`/w/${owner.sId}/vaults/${vault.sId}`);
             }}
           />
+        )}
+        {isAdmin && isPrivateVaultsEnabled && !isLimitReached && (
+          <Dialog
+            alertDialog={true}
+            isOpen={isLimitReached && showVaultCreationModal}
+            title="Alert Dialog title"
+            onValidate={() => setShowVaultCreationModal(false)}
+          >
+            <div>You can create more vaults. Please upgrade to add more.</div>
+          </Dialog>
         )}
       </AppLayout>
     </RootLayout>
