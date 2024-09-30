@@ -164,7 +164,7 @@ export function IntroSection() {
           )}
         >
           <H4 className="w-full text-center text-white">
-            Trusted by 100+ organizations, including:
+            Trusted by 500+ organizations, including:
           </H4>
           <div
             className={classNames(
