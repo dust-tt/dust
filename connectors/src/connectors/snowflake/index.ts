@@ -22,6 +22,11 @@ import {
   getConnectorAndCredentials,
   getCredentials,
 } from "@connectors/connectors/snowflake/lib/utils";
+import {
+  launchSnowflakeSyncWorkflow,
+  stopSnowflakeSyncWorkflow,
+} from "@connectors/connectors/snowflake/temporal/client";
+import { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -66,6 +71,11 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       snowflakeConfigBlob
     );
 
+    const launchRes = await launchSnowflakeSyncWorkflow(connector.id);
+    if (launchRes.isErr()) {
+      return launchRes;
+    }
+
     // TODO(SNOWFLAKE): Launch Sync Workflow.
     return new Ok(connector.id.toString());
   }
@@ -80,10 +90,29 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   }
 
   async clean(): Promise<Result<undefined, Error>> {
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(new Error("Connector not found"));
+    }
+
+    await SnowflakeConfigurationModel.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+    const res = await connector.delete();
+    if (res.isErr()) {
+      return res;
+    }
+
     return new Ok(undefined);
   }
 
   async stop(): Promise<Result<undefined, Error>> {
+    const stopRes = await stopSnowflakeSyncWorkflow(this.connectorId);
+    if (stopRes.isErr()) {
+      return stopRes;
+    }
     return new Ok(undefined);
   }
 
@@ -157,6 +186,11 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       permissions,
       logger,
     });
+
+    const launchRes = await launchSnowflakeSyncWorkflow(this.connectorId);
+    if (launchRes.isErr()) {
+      return launchRes;
+    }
 
     return new Ok(undefined);
   }
