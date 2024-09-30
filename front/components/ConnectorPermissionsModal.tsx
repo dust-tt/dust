@@ -393,6 +393,7 @@ function DataSourceDeletionModal({
   onClose,
   owner,
 }: DataSourceDeletionModalProps) {
+  const [isLoading, setIsLoading] = useState(false);
   const sendNotification = useContext(SendNotificationsContext);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { user } = useUser();
@@ -415,6 +416,7 @@ function DataSourceDeletionModal({
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
 
   const handleDelete = async () => {
+    setIsLoading(true);
     const res = await fetch(
       `/api/w/${owner.sId}/vaults/${systemVault.sId}/data_sources/${dataSource.sId}`,
       {
@@ -437,6 +439,7 @@ function DataSourceDeletionModal({
         description: err.error.message,
       });
     }
+    setIsLoading(false);
   };
 
   return (
@@ -496,6 +499,7 @@ function DataSourceDeletionModal({
           validateVariant="primaryWarning"
           cancelLabel="Cancel"
           validateLabel="Continue"
+          isSaving={isLoading}
         >
           The changes you are about to make will break existing assistants using{" "}
           {connectorConfiguration.name}. Are you sure you want to continue?
