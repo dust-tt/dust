@@ -4,8 +4,7 @@ import { Button, CubeIcon, Tooltip } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType, SpecificationType } from "@dust-tt/types";
 import type { RunType } from "@dust-tt/types";
-import { Dialog, Transition } from "@headlessui/react";
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   ViewAppAPIModal,
