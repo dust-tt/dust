@@ -413,6 +413,19 @@ export function DataSourceViewSelector({
       ? "partial"
       : "unchecked";
 
+  const handleSelectAll = () => {
+    document
+      .querySelectorAll<HTMLInputElement>(
+        `#dataSourceViewsSelector-${dataSourceView.dataSource.name} label > input[type="checkbox"]:first-child`
+      )
+      .forEach((el) => {
+        if (el.checked === isSelectedAll) {
+          el.click();
+        }
+      });
+    setIsSelectedAll(!isSelectedAll);
+  };
+
   return (
     <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.name}`}>
       {displayMode === "assistant_builder" ? (
@@ -469,37 +482,23 @@ export function DataSourceViewSelector({
               className="mr-4"
               label={isSelectedAll ? "Unselect All" : "Select All"}
               icon={ListCheckIcon}
-              onClick={() => {
-                document
-                  .querySelectorAll<HTMLInputElement>(
-                    `#dataSourceViewsSelector-${dataSourceView.dataSource.name} label > input[type="checkbox"]:first-child`
-                  )
-                  .forEach((el) => {
-                    if (el.checked && !isSelectedAll) {
-                      return;
-                    } else {
-                      el.click();
-                    }
-                  });
-                setIsSelectedAll(!isSelectedAll);
-              }}
+              onClick={handleSelectAll}
             />
           }
-        >
-          <DataSourceViewResourceSelectorTree
-            dataSourceView={dataSourceView}
-            onSelectChange={onSelectChange}
-            owner={owner}
-            parentIsSelected={false}
-            readonly={readonly}
-            selectedParents={selectedParents}
-            selectedResourceIds={internalIds}
-            showExpand={config?.isNested ?? true}
-            useContentNodes={useContentNodes}
-            viewType={viewType}
-          />
-        </Tree.Item>
+        />
       )}
+      <DataSourceViewResourceSelectorTree
+        dataSourceView={dataSourceView}
+        onSelectChange={onSelectChange}
+        owner={owner}
+        parentIsSelected={selectionConfiguration.isSelectAll}
+        readonly={readonly}
+        selectedParents={selectedParents}
+        selectedResourceIds={internalIds}
+        showExpand={config?.isNested ?? true}
+        useContentNodes={useContentNodes}
+        viewType={viewType}
+      />
     </div>
   );
 }
