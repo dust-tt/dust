@@ -54,9 +54,9 @@ export function VaultLayout({
     workspaceId: owner.sId,
   });
 
-  const isPrivateVaultsEnabled = owner.flags.includes(
-    "private_data_vaults_feature"
-  );
+  const isPrivateVaultsEnabled =
+    owner.flags.includes("private_data_vaults_feature") &&
+    plan.limits.vaults.maxVaults > 0;
   const isLimitReached =
     isVaultsLoading ||
     vaults.filter((v) => v.kind === "regular" || v.kind === "public").length >=
