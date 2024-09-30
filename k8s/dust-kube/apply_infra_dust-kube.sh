@@ -83,7 +83,6 @@ apply_deployment core-sqlite-worker-deployment
 apply_deployment oauth-deployment
 apply_deployment prodbox-deployment
 apply_deployment viz-deployment
-apply_deployment socks-proxy-deployment
 
 echo "-----------------------------------"
 echo "Applying HPAs"
