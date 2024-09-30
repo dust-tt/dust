@@ -6,9 +6,7 @@ import type { AppType, SpecificationType } from "@dust-tt/types";
 import type { RunType } from "@dust-tt/types";
 import { useMemo, useState } from "react";
 
-import {
-  ViewAppAPIModal,
-} from "@app/components/app/Deploy";
+import { ViewAppAPIModal } from "@app/components/app/Deploy";
 import { useRunBlock } from "@app/lib/swr/apps";
 
 interface CopyRunProps {
