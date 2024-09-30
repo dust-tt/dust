@@ -9,7 +9,7 @@ import { Err, Ok } from "@dust-tt/types";
 
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import {
-  fetchavailableChildrenInSnowflake,
+  fetchAvailableChildrenInSnowflake,
   fetchReadNodes,
   fetchSyncedChildren,
   getBatchContentNodes,
@@ -140,7 +140,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     }
 
     // We display all available nodes with our credentials.
-    return fetchavailableChildrenInSnowflake({
+    return fetchAvailableChildrenInSnowflake({
       connectorId: connector.id,
       credentials: credentials,
       parentInternalId: parentInternalId,

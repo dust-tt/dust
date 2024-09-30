@@ -30,7 +30,7 @@ import type { Logger } from "@connectors/logger/logger";
  * If parentInternalId is a database, we fetch schemas.
  * If parentInternalId is a schema, we fetch tables.
  */
-export const fetchavailableChildrenInSnowflake = async ({
+export const fetchAvailableChildrenInSnowflake = async ({
   connectorId,
   credentials,
   parentInternalId,
@@ -167,7 +167,7 @@ export const fetchSyncedChildren = async ({
       RemoteTableModel.findAll({ where: { connectorId } }),
     ]);
 
-  // We want to fetch all the databases for wich we have access for at least one table.
+  // We want to fetch all the databases for which we have access to at least one table.
   if (parentInternalId === null) {
     const databases = availableDatabases.map((db) =>
       getContentNodeFromInternalId(db.internalId, "read")
@@ -190,7 +190,7 @@ export const fetchSyncedChildren = async ({
   const parentType = getContentNodeTypeFromInternalId(parentInternalId);
 
   if (parentType === "database") {
-    // We want to fetch all the schemas for wich we have access for at least one table.
+    // We want to fetch all the schemas for which we have access to at least one table.
     const schemas = availableSchemas
       .filter((schema) => schema.databaseName === parentInternalId)
       .map((schema) => getContentNodeFromInternalId(schema.internalId, "read"));

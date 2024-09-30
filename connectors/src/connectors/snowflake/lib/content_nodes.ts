@@ -9,9 +9,9 @@ export const EXCLUDE_SCHEMAS = ["INFORMATION_SCHEMA"];
 
 /**
  * 3 types of nodes in a remote database content tree:
- * - database: internalId is the database name: "database_name"
- * - schema: internalId is the schema name: "database_name.schema_name"
- * - table: internalId is the table name: "database_name.schema_name.table_name"
+ * - database: internalId = "database_name"
+ * - schema: internalId = "database_name.schema_name"
+ * - table: internalId = "database_name.schema_name.table_name"
  */
 
 export type REMOTE_DB_CONTENT_NODE_TYPES = "database" | "schema" | "table";
