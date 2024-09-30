@@ -107,6 +107,7 @@ export default function VaultManagedDataSourcesViewsModal({
       <div className="w-full pt-12">
         <div className="overflow-x-auto">
           <DataSourceViewsSelector
+            useCase="vaultDatasourceManagement"
             dataSourceViews={systemVaultDataSourceViews}
             owner={owner}
             selectionConfigurations={selectionConfigurations}
