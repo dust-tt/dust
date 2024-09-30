@@ -182,7 +182,6 @@ type DatasourceSearchResponseBody = {
  *       405:
  *         description: Method not supported error
  */
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<DatasourceSearchResponseBody>>,
