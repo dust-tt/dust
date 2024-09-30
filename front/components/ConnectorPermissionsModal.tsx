@@ -265,16 +265,19 @@ function DataSourceEditionModal({
                 Assistants using them.
               </div>
 
-              <div className="pl-4 text-sm text-amber-800">
-                Read our{" "}
-                <a
-                  href="https://docs.dust.tt/docs/google-drive-connection"
-                  className="text-blue-600"
-                >
-                  Playbook
-                </a>
-                .
-              </div>
+              {connectorConfiguration.guideLink && (
+                <div className="pl-4 text-sm text-amber-800">
+                  Read our{" "}
+                  <a
+                    href={connectorConfiguration.guideLink}
+                    className="text-blue-600"
+                    target="_blank"
+                  >
+                    Playbook
+                  </a>
+                  .
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -319,16 +322,19 @@ function DataSourceEditionModal({
                 them.
               </div>
 
-              <div className="pl-4 text-sm text-amber-800">
-                Read our{" "}
-                <a
-                  href="https://docs.dust.tt/docs/google-drive-connection"
-                  className="text-blue-600"
-                >
-                  Playbook
-                </a>
-                .
-              </div>
+              {connectorConfiguration.guideLink && (
+                <div className="pl-4 text-sm text-amber-800">
+                  Read our{" "}
+                  <a
+                    href={connectorConfiguration.guideLink}
+                    className="text-blue-600"
+                    target="_blank"
+                  >
+                    Playbook
+                  </a>
+                  .
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-center">
               <Button
