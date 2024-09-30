@@ -14,7 +14,7 @@ export const CONNECTOR_PROVIDERS = [
   "snowflake",
 ] as const;
 
-export const MANAGED_DS_DELETABLE_AS_BUILDER: ConnectorProvider[] = [
+export const MANAGED_DS_DELETABLE: ConnectorProvider[] = [
   "webcrawler",
   "snowflake",
 ];

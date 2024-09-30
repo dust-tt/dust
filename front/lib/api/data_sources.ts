@@ -15,7 +15,7 @@ import {
   CoreAPI,
   dustManagedCredentials,
   Err,
-  MANAGED_DS_DELETABLE_AS_BUILDER,
+  MANAGED_DS_DELETABLE,
   Ok,
   sectionFullText,
 } from "@dust-tt/types";
@@ -74,7 +74,7 @@ export async function deleteDataSource(
 
   if (dataSource.connectorId && dataSource.connectorProvider) {
     if (
-      !MANAGED_DS_DELETABLE_AS_BUILDER.includes(dataSource.connectorProvider) &&
+      !MANAGED_DS_DELETABLE.includes(dataSource.connectorProvider) &&
       !auth.isAdmin()
     ) {
       return new Err({

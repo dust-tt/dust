@@ -1,5 +1,5 @@
 import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
-import { MANAGED_DS_DELETABLE_AS_BUILDER } from "@dust-tt/types";
+import { MANAGED_DS_DELETABLE } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -145,7 +145,7 @@ async function handler(
       if (
         dataSource.connectorId &&
         dataSource.connectorProvider &&
-        !MANAGED_DS_DELETABLE_AS_BUILDER.includes(dataSource.connectorProvider)
+        !MANAGED_DS_DELETABLE.includes(dataSource.connectorProvider)
       ) {
         return apiError(req, res, {
           status_code: 400,

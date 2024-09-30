@@ -23,7 +23,7 @@ import {
   assertNever,
   CONNECTOR_TYPE_TO_MISMATCH_ERROR,
   isOAuthProvider,
-  MANAGED_DS_DELETABLE_AS_BUILDER,
+  MANAGED_DS_DELETABLE,
 } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
@@ -726,7 +726,7 @@ export function ConnectorPermissionsModal({
                 }}
               />
             )}
-            {MANAGED_DS_DELETABLE_AS_BUILDER.includes(connector.type) && (
+            {MANAGED_DS_DELETABLE.includes(connector.type) && (
               <Button
                 className="ml-auto justify-self-end"
                 label="Delete connection"

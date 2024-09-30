@@ -1,5 +1,5 @@
 import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
-import { MANAGED_DS_DELETABLE_AS_BUILDER } from "@dust-tt/types";
+import { MANAGED_DS_DELETABLE } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { deleteDataSource } from "@app/lib/api/data_sources";
@@ -127,7 +127,7 @@ async function handler(
       if (
         dataSource.connectorId &&
         dataSource.connectorProvider &&
-        !MANAGED_DS_DELETABLE_AS_BUILDER.includes(dataSource.connectorProvider)
+        !MANAGED_DS_DELETABLE.includes(dataSource.connectorProvider)
       ) {
         return apiError(req, res, {
           status_code: 400,
