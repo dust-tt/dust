@@ -14,6 +14,11 @@ export const CONNECTOR_PROVIDERS = [
   "snowflake",
 ] as const;
 
+export const MANAGED_DS_DELETABLE_AS_BUILDER: ConnectorProvider[] = [
+  "webcrawler",
+  "snowflake",
+];
+
 export const CONNECTOR_TYPE_TO_NAME: Record<ConnectorProvider, string> = {
   confluence: "Confluence",
   github: "GitHub",
