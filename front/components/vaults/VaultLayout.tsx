@@ -62,8 +62,9 @@ export function VaultLayout({
   );
 
   const isLimitReached =
+    plan.limits.vaults.maxVaults !== -1 &&
     vaults.filter((v) => v.kind === "regular" || v.kind === "public").length >=
-    plan.limits.vaults.maxVaults;
+      plan.limits.vaults.maxVaults;
 
   return (
     <RootLayout>
@@ -98,7 +99,7 @@ export function VaultLayout({
             }}
           />
         )}
-        {isAdmin && isPrivateVaultsEnabled && !isLimitReached && (
+        {isAdmin && isPrivateVaultsEnabled && isLimitReached && (
           <Dialog
             alertDialog={true}
             isOpen={isLimitReached && showVaultCreationModal}
