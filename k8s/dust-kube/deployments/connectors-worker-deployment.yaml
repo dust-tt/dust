@@ -29,6 +29,7 @@ spec:
               "intercom",
               "slack",
               "microsoft",
+              "snowflake",
             ]
           imagePullPolicy: Always
           envFrom:
