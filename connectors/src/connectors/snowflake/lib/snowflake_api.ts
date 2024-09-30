@@ -89,6 +89,11 @@ async function _fetchRows({
   credentials: SnowflakeCredentials;
   query: string;
 }): Promise<Result<SnowflakeRows, Error>> {
+  snowflake.configure({
+    // @ts-expect-error OFF is not in the types but it's a valid value.
+    logLevel: "OFF",
+  });
+
   const connection = snowflake.createConnection(credentials);
 
   try {
