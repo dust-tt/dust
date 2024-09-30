@@ -113,7 +113,7 @@ export function ViewAppAPIModal({
 
             <Page.Separator />
 
-            <Page.SectionHeader title="Run an app" />
+            <Page.SectionHeader title="Run app" />
             <Page.P>
               Use the following cURL command to run the app{" "}
               <span className="italic">{app.name}</span>:
@@ -146,6 +146,7 @@ export function ViewAppAPIModal({
                 />
               </div>
             </div>
+
             <Page.Separator />
 
             <Page.SectionHeader title="API Keys" />
@@ -221,7 +222,7 @@ export default function Deploy({
         }
       >
         <Button
-          label="View API endpoint"
+          label="API"
           variant="primary"
           onClick={() => {
             setShowViewAppAPIModal(true);

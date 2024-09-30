@@ -325,7 +325,7 @@ export const VaultResourcesList = ({
           });
           if (isFolder) {
             moreMenuItems.push({
-              label: "View API",
+              label: "API",
               icon: CubeIcon,
               onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
                 e.stopPropagation();

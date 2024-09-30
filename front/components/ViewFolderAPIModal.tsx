@@ -95,7 +95,7 @@ export function ViewFolderAPIModal({
 
             <Page.Separator />
 
-            <Page.SectionHeader title="Upsert a document" />
+            <Page.SectionHeader title="Upsert document" />
             <Page.P>
               Use the following cURL command to upsert a document to folder{" "}
               <span className="italic">{dataSource.name}</span>:
