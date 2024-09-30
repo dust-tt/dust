@@ -20,21 +20,12 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetAppsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you're trying to access was not found",
-      },
-    });
-  }
+  const { vId } = req.query;
 
-  // Handling the case where vId is undefined to keep support
-  // for the legacy endpoint (not under vault, global vault assumed).
+  // Handling the case where vId is undefined to keep support for the legacy endpoint (not under
+  // vault, global vault assumed).
   const vault =
-    req.query.vId === undefined
+    vId === undefined
       ? await VaultResource.fetchWorkspaceGlobalVault(auth)
       : await VaultResource.fetchById(auth, req.query.vId as string);
 

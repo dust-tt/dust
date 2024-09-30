@@ -29,34 +29,24 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<GetRunResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you're trying to access was not found",
-      },
-    });
-  }
+  const owner = auth.getNonNullableWorkspace();
 
-  let vaultId = req.query.vId;
-
-  // Handling the case where vId is undefined to keep support
-  // for the legacy endpoint (not under vault, global vault assumed).
-  if (vaultId === undefined) {
-    const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
-    vaultId = globalVault.sId;
+  // Handling the case where vId is undefined to keep support for the legacy endpoint (not under
+  // vault, global vault assumed for the auth (the authenticator associated with the app, not the
+  // user)).
+  let { vId } = req.query;
+  if (vId === undefined) {
+    vId = (await VaultResource.fetchWorkspaceGlobalVault(auth)).sId;
   }
 
   const app = await AppResource.fetchById(auth, req.query.aId as string);
 
-  if (!app || !app.canRead(auth) || app.vault.sId !== vaultId) {
+  if (!app || !app.canRead(auth) || app.vault.sId !== vId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "app_not_found",
-        message: "The app you're trying to run was not found",
+        message: "The app you're trying to access was not found",
       },
     });
   }
@@ -77,9 +67,6 @@ async function handler(
         "App run retrieve"
       );
 
-      // TODO(spolu): This is borderline security-wise as it allows to recover a full run from the
-      // runId assuming the app is public. We should use getRun and also enforce in getRun that we
-      // retrieve only our own runs. Basically this assumes the `runId` as a secret.
       const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
       const runRes = await coreAPI.getRun({
         projectId: app.dustAPIProjectId,
