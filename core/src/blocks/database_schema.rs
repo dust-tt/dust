@@ -81,16 +81,14 @@ impl Block for DatabaseSchema {
 
         // Compute the unique table names for each table.
 
-        let (dialect, schemas) =
+        let schemas =
             get_tables_schema(tables, env.store.clone(), env.databases_store.clone()).await?;
 
         Ok(BlockResult {
             value: serde_json::to_value(
                 schemas
                     .iter()
-                    .map(
-                        |s| json!({ "table_schema": s.schema, "dbml": s.dbml, "dialect": dialect, "head": s.head }),
-                    )
+                    .map(|(schema, dbml)| json!({ "table_schema": schema, "dbml": dbml }))
                     .collect::<Vec<_>>(),
             )?,
             meta: None,

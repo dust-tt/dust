@@ -10,7 +10,7 @@ use snowflake_connector_rs::{
 };
 
 use crate::databases::{
-    database::{QueryDatabaseError, QueryResult, SqlDialect},
+    database::{QueryDatabaseError, QueryResult},
     remote_databases::remote_database::RemoteDatabase,
     table::Table,
     table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType},
@@ -239,10 +239,6 @@ impl SnowflakeRemoteDatabase {
 
 #[async_trait]
 impl RemoteDatabase for SnowflakeRemoteDatabase {
-    fn dialect(&self) -> SqlDialect {
-        SqlDialect::Snowflake
-    }
-
     async fn authorize_and_execute_query(
         &self,
         tables: &Vec<Table>,

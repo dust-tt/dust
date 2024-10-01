@@ -3,7 +3,6 @@ import { Result } from "../../shared/result";
 import {
   ConnectionCredentials,
   CredentialsProvider,
-  OauthAPIGetCredentialsResponse,
   OauthAPIPostCredentialsResponse,
 } from "../lib";
 import { OAuthAPI, OAuthAPIError } from "../oauth_api";
@@ -45,7 +44,14 @@ export async function getConnectionCredentials({
   config: { url: string; apiKey: string | null };
   logger: LoggerInterface;
   credentialsId: string;
-}): Promise<Result<OauthAPIGetCredentialsResponse, OAuthAPIError>> {
+}): Promise<
+  Result<
+    {
+      credentials: ConnectionCredentials;
+    },
+    OAuthAPIError
+  >
+> {
   const res = await new OAuthAPI(config, logger).getCredentials({
     credentialsId,
   });

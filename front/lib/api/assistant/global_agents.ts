@@ -940,9 +940,9 @@ function _getDustGlobalAgent(
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
   const modelConfiguration = (() => {
-    // If we can use Sonnet 3.5, we use it. Otherwise we use the default model.
-    if (auth.isUpgraded() && isProviderWhitelisted(owner, "anthropic")) {
-      return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
+    // Default to GPT-4o if available.
+    if (auth.isUpgraded() && isProviderWhitelisted(owner, "openai")) {
+      return GPT_4O_MODEL_CONFIG;
     }
     return auth.isUpgraded()
       ? getLargeWhitelistedModel(owner)
