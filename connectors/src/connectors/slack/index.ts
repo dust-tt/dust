@@ -324,14 +324,14 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             connectorId: this.connectorId,
             permission: permissionToFilter,
           },
-        })
-        slackChannels.push(...localChannels.map(
-          (channel) => ({
+        });
+        slackChannels.push(
+          ...localChannels.map((channel) => ({
             slackChannelId: channel.slackChannelId,
             slackChannelName: channel.slackChannelName,
-            permission: channel.permission
-          })
-        ))
+            permission: channel.permission,
+          }))
+        );
       } else {
         const [remoteChannels, localChannels] = await Promise.all([
           getChannels(c.id, false),
