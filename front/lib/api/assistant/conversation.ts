@@ -1353,6 +1353,8 @@ export async function* editUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
+      // updateConversationGroups is purely additive, this will not remove any
+      // group from the conversation (see function description)
       await updateConversationGroups({
         mentionedAgents: agentMessages.map((a) => a.configuration),
         conversation,
@@ -1913,6 +1915,20 @@ export function normalizeContentFragmentType({
   return contentType;
 }
 
+/**
+ *  Update the conversation groupIds based on the mentioned agents. This
+ *  function is purely additive, groupIds will never be removed from the
+ *  conversation.
+ *
+ *  At time of writing, this is a no brainer, because messages can't be deleted
+ *  from a conversation
+ *
+ *  Even considering message deletion, the purely additive model is simpler in
+ *  code and less risky permission-wise. Considering that we version messages,
+ *  and that deleting a message would likely keep its previous version in
+ *  conversation, the additive model is appropriate.
+ *
+ */
 async function updateConversationGroups({
   mentionedAgents,
   conversation,
@@ -1927,27 +1943,31 @@ async function updateConversationGroups({
   const currentGroupIds = new Set(conversation.groupIds);
 
   // no need to update if  newGroupIds is a subset of currentGroupIds
-  if (!newGroupIds.every((g) => currentGroupIds.has(g))) {
-    const groupIds = Array.from(newGroupIds).map((g) => {
-      const id = getResourceIdFromSId(g);
-      if (id === null) {
-        throw new Error("Unexpected: invalid group id");
-      }
-      return id;
-    });
-
-    await Conversation.update(
-      {
-        groupIds,
-      },
-      {
-        where: {
-          id: conversation.id,
-        },
-        transaction: t,
-      }
-    );
+  if (newGroupIds.every((g) => currentGroupIds.has(g))) {
+    return;
   }
+
+  newGroupIds.forEach((g) => currentGroupIds.add(g));
+
+  const groupIds = Array.from(currentGroupIds).map((g) => {
+    const id = getResourceIdFromSId(g);
+    if (id === null) {
+      throw new Error("Unexpected: invalid group id");
+    }
+    return id;
+  });
+
+  await Conversation.update(
+    {
+      groupIds,
+    },
+    {
+      where: {
+        id: conversation.id,
+      },
+      transaction: t,
+    }
+  );
 }
 
 function getConversationGroupIdsFromModel(
