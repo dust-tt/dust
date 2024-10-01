@@ -33,7 +33,6 @@ import {
   isWebsearchConfiguration,
 } from "@dust-tt/types";
 import { useContext, useMemo, useState } from "react";
-import type { KeyedMutator } from "swr";
 
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import AssistantListActions from "@app/components/assistant/AssistantListActions";
