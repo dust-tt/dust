@@ -211,7 +211,7 @@ export const fetchSyncedChildren = async ({
   // Since we have all tables in the database, we can just return the tables for the schema.
   if (parentType === "schema") {
     const tables = availableTables
-      .filter((table) => table.schemaName === parentInternalId)
+      .filter((table) => table.internalId.startsWith(parentInternalId))
       .map((table) => getContentNodeFromInternalId(table.internalId, "read"));
 
     return new Ok(tables);

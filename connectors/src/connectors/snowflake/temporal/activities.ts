@@ -126,6 +126,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           // TODO(SNOWFLAKE): decide what to do wrt description.
           tableDescription: "",
           parents: [
+            table.internalId,
             `${table.databaseName}.${table.schemaName}`,
             table.databaseName,
           ],
