@@ -1,7 +1,4 @@
 import type { ModelId } from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 
 import { fetchTables } from "@connectors/connectors/snowflake/lib/snowflake_api";
 import { getConnectorAndCredentials } from "@connectors/connectors/snowflake/lib/utils";
@@ -14,12 +11,6 @@ import {
 } from "@connectors/lib/models/remote_databases";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
-
-const snowflakeTableCodec = t.type({
-  name: t.string,
-  database_name: t.string,
-  schema_name: t.string,
-});
 
 export async function syncSnowflakeConnection(connectorId: ModelId) {
   const getConnectorAndCredentialsRes = await getConnectorAndCredentials({
@@ -36,12 +27,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
   if (tablesRes.isErr()) {
     throw tablesRes.error;
   }
-  const tablesValidation = t.array(snowflakeTableCodec).decode(tablesRes.value);
-  if (isLeft(tablesValidation)) {
-    const pathError = reporter.formatValidationErrors(tablesValidation.left);
-    throw new Error(`Invalid tables response: ${pathError}`);
-  }
-  const tablesOnSnowflake = tablesValidation.right;
+  const tablesOnSnowflake = tablesRes.value;
   const internalIdsOnSnowflake = new Set(
     tablesOnSnowflake.map(
       (t) => `${t.database_name}.${t.schema_name}.${t.name}`

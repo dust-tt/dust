@@ -1,19 +1,11 @@
 import type { ConnectorPermission, ContentNode } from "@dust-tt/types";
 
 /**
- * Some databases and schemas are not useful to show in the content tree.
- * We exclude them here.
- */
-export const EXCLUDE_DATABASES = ["SNOWFLAKE"];
-export const EXCLUDE_SCHEMAS = ["INFORMATION_SCHEMA"];
-
-/**
  * 3 types of nodes in a remote database content tree:
  * - database: internalId = "database_name"
  * - schema: internalId = "database_name.schema_name"
  * - table: internalId = "database_name.schema_name.table_name"
  */
-
 export type REMOTE_DB_CONTENT_NODE_TYPES = "database" | "schema" | "table";
 
 export const getContentNodeTypeFromInternalId = (
