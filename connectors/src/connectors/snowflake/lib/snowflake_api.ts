@@ -17,7 +17,15 @@ export const testConnection = async ({
 }: {
   credentials: SnowflakeCredentials;
 }): Promise<Result<string, Error>> => {
-  const connection = snowflake.createConnection(credentials);
+  const connection = snowflake.createConnection({
+    ...credentials,
+
+    // Use proxy to have all requests coming from the same IP.
+    proxyHost: "proxy-service.default.svc.clusterset.local",
+    proxyPort: 80,
+    proxyUser: process.env.PROXY_USER_NAME,
+    proxyPassword: process.env.PROXY_USER_PASSWORD,
+  });
 
   try {
     const conn = await _connectToSnowflake(connection);
@@ -94,7 +102,15 @@ async function _fetchRows({
     logLevel: "OFF",
   });
 
-  const connection = snowflake.createConnection(credentials);
+  const connection = snowflake.createConnection({
+    ...credentials,
+
+    // Use proxy to have all requests coming from the same IP.
+    proxyHost: "proxy-service.default.svc.clusterset.local",
+    proxyPort: 80,
+    proxyUser: process.env.PROXY_USER_NAME,
+    proxyPassword: process.env.PROXY_USER_PASSWORD,
+  });
 
   try {
     const conn = await _connectToSnowflake(connection);
