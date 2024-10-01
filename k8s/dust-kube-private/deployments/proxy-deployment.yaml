@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxy-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: proxy
+  template:
+    metadata:
+      labels:
+        app: proxy
+        name: proxy-pod
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/web.logs: '[{"source": "nginx","service": "proxy","tags": ["env:prod"]}]'
+    spec:
+      containers:
+        - name: proxy
+          image: rpardini/nginx-proxy-connect-stable-alpine:nginx-1.16.1-alpine-3.11
+          ports:
+          - containerPort: 80
+          - containerPort: 1080
+          volumeMounts:
+          - name: nginx-config
+            mountPath: /etc/nginx/nginx.conf
+            subPath: nginx.conf
+          - name: auth-file
+            mountPath: /etc/nginx/auth
+            subPath: auth
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 1Gi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: proxy-config
+      - name: auth-file
+        secret:
+          secretName: proxy-auth
