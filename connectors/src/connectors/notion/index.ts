@@ -429,8 +429,9 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       }),
     ]);
 
-    const getPageNodes = async (page: NotionPage): Promise<ContentNode> => {
-      const expandable = await hasChildren(page, this.connectorId);
+    const childrenCount = await hasChildren(pages, this.connectorId);
+    const getPageNode = async (page: NotionPage): Promise<ContentNode> => {
+      const expandable = Boolean(childrenCount[page.notionPageId]);
 
       return {
         provider: c.type,
@@ -449,7 +450,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       };
     };
 
-    let pageNodes = await Promise.all(pages.map((p) => getPageNodes(p)));
+    let pageNodes = await Promise.all(pages.map((p) => getPageNode(p)));
     // In structured data mode, we remove leaf node pages
     if (viewType === "tables") {
       pageNodes = pageNodes.filter((p) => p.expandable);
@@ -538,6 +539,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       }),
     ]);
 
+    const childrenCount = await hasChildren(pages, this.connectorId);
     const pageNodes: ContentNode[] = await Promise.all(
       pages.map(async (page) => ({
         provider: "notion",
@@ -549,7 +551,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         type: "file",
         title: page.title || "",
         sourceUrl: page.notionUrl || null,
-        expandable: await hasChildren(page, this.connectorId),
+        expandable: Boolean(childrenCount[page.notionPageId]),
         permission: "read",
         dustDocumentId: `notion-${page.notionPageId}`,
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
