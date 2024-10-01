@@ -103,7 +103,7 @@ export function VaultLayout({
           <Dialog
             alertDialog={true}
             isOpen={isLimitReached && showVaultCreationModal}
-            title="Alert Dialog title"
+            title="Max privates vaults reached"
             onValidate={() => setShowVaultCreationModal(false)}
           >
             <div>You can't create more vaults. Please upgrade to add more.</div>
