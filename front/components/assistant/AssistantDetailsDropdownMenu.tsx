@@ -153,15 +153,25 @@ export function AssistantDetailsDropdownMenu({
                   close();
                 }}
               />
-              {showAssistantDetails && (
+              {showAssistantDetails ? (
                 <DropdownMenu.Item
-                  label={`More about @${agentConfiguration.name}`}
+                  label={`More info`}
                   onClick={(e) => {
                     e.stopPropagation();
                     close();
                     showAssistantDetails();
                   }}
                   icon={EyeIcon}
+                />
+              ) : (
+                <DropdownMenu.Item
+                  label={`Copy assistant ID`}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await navigator.clipboard.writeText(agentConfiguration.sId);
+                    close();
+                  }}
+                  icon={ClipboardIcon}
                 />
               )}
               {!isGlobalAgent && (
