@@ -318,41 +318,57 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     }[] = [];
 
     try {
-      const [remoteChannels, localChannels] = await Promise.all([
-        getChannels(c.id, false),
-        SlackChannel.findAll({
+      if (filterPermission === "read") {
+        const localChannels = await SlackChannel.findAll({
           where: {
             connectorId: this.connectorId,
+            permission: permissionToFilter,
           },
-        }),
-      ]);
+        });
+        slackChannels.push(
+          ...localChannels.map((channel) => ({
+            slackChannelId: channel.slackChannelId,
+            slackChannelName: channel.slackChannelName,
+            permission: channel.permission,
+          }))
+        );
+      } else {
+        const [remoteChannels, localChannels] = await Promise.all([
+          getChannels(c.id, false),
+          SlackChannel.findAll({
+            where: {
+              connectorId: this.connectorId,
+            },
+          }),
+        ]);
 
-      const localChannelsById = localChannels.reduce(
-        (acc, ch) => {
-          acc[ch.slackChannelId] = ch;
-          return acc;
-        },
-        {} as Record<string, SlackChannel>
-      );
+        const localChannelsById = localChannels.reduce(
+          (acc, ch) => {
+            acc[ch.slackChannelId] = ch;
+            return acc;
+          },
+          {} as Record<string, SlackChannel>
+        );
 
-      for (const remoteChannel of remoteChannels) {
-        if (!remoteChannel.id || !remoteChannel.name) {
-          continue;
-        }
+        for (const remoteChannel of remoteChannels) {
+          if (!remoteChannel.id || !remoteChannel.name) {
+            continue;
+          }
 
-        const permissions =
-          localChannelsById[remoteChannel.id]?.permission ||
-          (remoteChannel.is_member ? "write" : "none");
+          const permissions =
+            localChannelsById[remoteChannel.id]?.permission ||
+            (remoteChannel.is_member ? "write" : "none");
 
-        if (
-          permissionToFilter.length === 0 ||
-          permissionToFilter.includes(permissions)
-        ) {
-          slackChannels.push({
-            slackChannelId: remoteChannel.id,
-            slackChannelName: remoteChannel.name,
-            permission: permissions,
-          });
+          if (
+            permissionToFilter.length === 0 ||
+            permissionToFilter.includes(permissions)
+          ) {
+            slackChannels.push({
+              slackChannelId: remoteChannel.id,
+              slackChannelName: remoteChannel.name,
+              permission: permissions,
+            });
+          }
         }
       }
 
