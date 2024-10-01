@@ -278,3 +278,22 @@ export const hasChildren = async (pages: NotionPage[], connectorId: number) => {
 
   return { ...hasChildrenPage, ...hasChildrenDb };
 };
+
+export const getOrphanedCount = async (connectorId: number) => {
+  const [orphanedPagesCount, orphanedDbsCount] = await Promise.all([
+    NotionPage.count({
+      where: {
+        connectorId: connectorId,
+        parentId: "unknown",
+      },
+    }),
+    NotionDatabase.count({
+      where: {
+        connectorId: connectorId,
+        parentId: "unknown",
+      },
+    }),
+  ]);
+
+  return orphanedDbsCount + orphanedPagesCount;
+};
