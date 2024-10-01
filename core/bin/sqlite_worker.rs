@@ -6,7 +6,7 @@ use axum::{
     Router,
 };
 use dust::{
-    databases::table::Table,
+    databases::table::{LocalTable, Table},
     databases_store::{self, store::DatabasesStore},
     sqlite_workers::sqlite_database::{SqliteDatabase, SqliteDatabaseError},
     utils::{error_response, APIResponse, CoreRequestMakeSpan},
@@ -190,10 +190,27 @@ async fn databases_query(
     };
     let timeout = payload.timeout_ms.unwrap_or(DEFAULT_QUERY_TIMEOUT_MS);
 
+    let local_tables = match payload
+        .tables
+        .into_iter()
+        .map(|t| LocalTable::from_table(t))
+        .collect::<Result<Vec<_>>>()
+    {
+        Ok(lts) => lts,
+        Err(e) => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_table",
+                "Failed to convert tables to local tables",
+                Some(e),
+            )
+        }
+    };
+
     let mut guard = database.lock().await;
 
     match guard
-        .init(payload.tables, state.databases_store.clone())
+        .init(local_tables, state.databases_store.clone())
         .await
     {
         Ok(_) => (),

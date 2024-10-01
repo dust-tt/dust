@@ -38,7 +38,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     if (credentialsRes.isErr()) {
       return new Err(Error("Failed to retrieve credentials"));
     }
-    const credentials = credentialsRes.value.credentials;
+    const credentials = credentialsRes.value.credential.content;
 
     // Then we test the connection is successful.
     const connection = await testConnection({ credentials });
