@@ -3,7 +3,6 @@
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 import type {
   DataSourceViewCategory,
-  DataSourceViewKind,
   DataSourceViewType,
   ModelId,
   PokeDataSourceViewType,
@@ -128,7 +127,6 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
         auth,
         dataSource.vault,
         dataSource,
-        "default",
         transaction
       );
     });
@@ -138,7 +136,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     auth: Authenticator,
     vault: VaultResource,
     dataSource: DataSourceResource,
-    parentsIn: string[] | null
+    parentsIn: string[]
   ) {
     return this.makeNew(
       auth,
@@ -154,11 +152,10 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   }
 
   // This view has access to all documents, which is represented by null.
-  static async createViewInVaultFromDataSourceIncludingAllDocuments(
+  private static async createViewInVaultFromDataSourceIncludingAllDocuments(
     auth: Authenticator,
     vault: VaultResource,
     dataSource: DataSourceResource,
-    kind: DataSourceViewKind = "default",
     transaction?: Transaction
   ) {
     return this.makeNew(
@@ -167,7 +164,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
         dataSourceId: dataSource.id,
         parentsIn: null,
         workspaceId: vault.workspaceId,
-        kind,
+        kind: "default",
       },
       vault,
       dataSource,
