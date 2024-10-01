@@ -10,6 +10,7 @@ import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   let revertScript = "";
+  let revertScriptFailingConnectors = "";
 
   const dataSourceViews = await DataSourceViewModel.findAll({
     where: {
@@ -82,7 +83,11 @@ makeScript({}, async ({ execute }, logger) => {
     }
 
     const revertQuery = `UPDATE data_source_views SET "parentsIn"=${JSON.stringify(dataSourceView.parentsIn)} WHERE id=${dataSourceView.id};`;
-    revertScript += revertQuery + "\n";
+    if (rootNodeIds.length > 0) {
+      revertScript += revertQuery + "\n";
+    } else {
+      revertScriptFailingConnectors += revertQuery + "\n";
+    }
 
     if (execute) {
       await dataSourceView.update({
@@ -100,5 +105,9 @@ makeScript({}, async ({ execute }, logger) => {
   fs.writeFileSync(
     "revert_20240927_backfill_dsv_parent_nodes.sql",
     revertScript
+  );
+  fs.writeFileSync(
+    "revert_20240927_backfill_dsv_parent_nodes_failed_connectors.sql",
+    revertScriptFailingConnectors
   );
 });
