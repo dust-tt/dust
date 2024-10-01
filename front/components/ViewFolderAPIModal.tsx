@@ -1,16 +1,7 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import {
-  Button,
-  ClipboardIcon,
-  CubeIcon,
-  Modal,
-  Page,
-  Tooltip,
-} from "@dust-tt/sparkle";
-import type { AppType, SpecificationType } from "@dust-tt/types";
-import type { RunConfig, RunType } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
+import { Button, ClipboardIcon, Modal, Page } from "@dust-tt/sparkle";
+import type { DataSourceType, VaultType, WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -21,67 +12,57 @@ const CodeEditor = dynamic(
   { ssr: false }
 );
 
-const cleanUpConfig = (config: RunConfig) => {
-  if (!config) {
-    return "{}";
-  }
-  const c = {} as { [key: string]: any };
-  for (const key in config.blocks) {
-    if (config.blocks[key].type !== "input") {
-      c[key] = config.blocks[key];
-      delete c[key].type;
-    }
-  }
-  return JSON.stringify(c);
-};
-
-const DEFAULT_INPUTS = [{ hello: "world" }];
-
-interface ViewAppAPIModalProps {
+interface ViewFolderAPIModalProps {
   owner: WorkspaceType;
-  app: AppType;
-  run: RunType;
-  inputs?: unknown[];
+  vault: VaultType;
+  dataSource: DataSourceType;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function ViewAppAPIModal({
+export function ViewFolderAPIModal({
   owner,
-  app,
-  run,
-  inputs = DEFAULT_INPUTS,
+  vault,
+  dataSource,
   isOpen,
   onClose,
-}: ViewAppAPIModalProps) {
-  const cURLRequest = (type: "run") => {
+}: ViewFolderAPIModalProps) {
+  const cURLRequest = (type: "upsert" | "search") => {
     switch (type) {
-      case "run":
-        return `curl ${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs \\
+      case "upsert":
+        return `curl "${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/data_sources/${dataSource.sId}/documents/YOUR_DOCUMENT_ID" \\
     -H "Authorization: Bearer YOUR_API_KEY" \\
     -H "Content-Type: application/json" \\
     -d '{
-      "specification_hash": "${run?.app_hash}",
-      "config": ${cleanUpConfig(run?.config)},
-      "blocking": true,
-      "inputs": ${JSON.stringify(inputs)}
+      "text": "Lorem ipsum dolor sit amet...",
+      "source_url": "https://acme.com"
     }'`;
+      case "search":
+        return `curl "${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/data_sources/${dataSource.sId}/search?search=foo+bar&top_k=16" \\
+    -H "Authorization: Bearer YOUR_API_KEY"`;
       default:
         assertNever(type);
     }
   };
 
-  const [copyRunButtonText, setCopyRunButtonText] = useState("Copy");
+  const [copySearchButtonText, setCopySearchButtonText] = useState("Copy");
+  const [copyUpsertButtonText, setCopyUpsertButtonText] = useState("Copy");
 
   // Copy the cURL request to the clipboard
-  const handleCopyClick = async (type: "run") => {
+  const handleCopyClick = async (type: "upsert" | "search") => {
     await navigator.clipboard.writeText(cURLRequest(type));
 
     switch (type) {
-      case "run":
-        setCopyRunButtonText("Copied!");
+      case "upsert":
+        setCopyUpsertButtonText("Copied!");
         setTimeout(() => {
-          setCopyRunButtonText("Copy");
+          setCopyUpsertButtonText("Copy");
+        }, 1500);
+        break;
+      case "search":
+        setCopySearchButtonText("Copied!");
+        setTimeout(() => {
+          setCopySearchButtonText("Copy");
         }, 1500);
         break;
       default:
@@ -95,7 +76,7 @@ export function ViewAppAPIModal({
       onClose={onClose}
       hasChanged={false}
       variant="side-sm"
-      title={"Apps API"}
+      title={"Data source API"}
     >
       <Page variant="modal">
         <div className="w-full">
@@ -103,25 +84,26 @@ export function ViewAppAPIModal({
             <Page.P>
               <ul className="text-gray-500">
                 <li>
-                  vaultId: <span className="font-bold">{app.vault.sId}</span>{" "}
+                  vaultId: <span className="font-bold">{vault.sId}</span>{" "}
                 </li>
                 <li>
-                  appId: <span className="font-bold">{app.sId}</span>
+                  dataSourceId:{" "}
+                  <span className="font-bold">{dataSource.sId}</span>
                 </li>
               </ul>
             </Page.P>
 
             <Page.Separator />
 
-            <Page.SectionHeader title="Run app" />
+            <Page.SectionHeader title="Upsert document" />
             <Page.P>
-              Use the following cURL command to run the app{" "}
-              <span className="italic">{app.name}</span>:
+              Use the following cURL command to upsert a document to folder{" "}
+              <span className="italic">{dataSource.name}</span>:
             </Page.P>
             <CodeEditor
               data-color-mode="light"
               readOnly={true}
-              value={`$ ${cURLRequest("run")}`}
+              value={`$ ${cURLRequest("upsert")}`}
               language="shell"
               padding={15}
               className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
@@ -140,8 +122,42 @@ export function ViewAppAPIModal({
               <div className="flex">
                 <Button
                   variant="secondary"
-                  onClick={() => handleCopyClick("run")}
-                  label={copyRunButtonText}
+                  onClick={() => handleCopyClick("upsert")}
+                  label={copyUpsertButtonText}
+                  icon={ClipboardIcon}
+                />
+              </div>
+            </div>
+            <Page.Separator />
+
+            <Page.SectionHeader title="Search" />
+            <Page.P>
+              Use the following cURL command to search in folder{" "}
+              <span className="italic">{dataSource.name}</span>:
+            </Page.P>
+            <CodeEditor
+              data-color-mode="light"
+              readOnly={true}
+              value={`$ ${cURLRequest("search")}`}
+              language="shell"
+              padding={15}
+              className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
+              style={{
+                fontSize: 13,
+                fontFamily:
+                  "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                backgroundColor: "rgb(241 245 249)",
+                width: "100%",
+                marginTop: "0rem",
+              }}
+            />
+            <div className="flex w-full flex-row items-end">
+              <div className="flex-grow"></div>
+              <div className="flex">
+                <Button
+                  variant="secondary"
+                  onClick={() => handleCopyClick("search")}
+                  label={copySearchButtonText}
                   icon={ClipboardIcon}
                 />
               </div>
@@ -177,7 +193,7 @@ export function ViewAppAPIModal({
               to the{" "}
               <Link
                 href={
-                  "https://docs.dust.tt/reference/post_api-v1-w-wid-apps-aid-runs"
+                  "https://docs.dust.tt/reference/get_api-v1-w-wid-data-sources-dsid-documents-documentid"
                 }
                 className="py-1 font-bold text-action-600"
               >
@@ -188,49 +204,5 @@ export function ViewAppAPIModal({
         </div>
       </Page>
     </Modal>
-  );
-}
-
-export default function Deploy({
-  owner,
-  app,
-  run,
-  disabled,
-}: {
-  owner: WorkspaceType;
-  app: AppType;
-  spec: SpecificationType;
-  run: RunType;
-  disabled: boolean;
-}) {
-  const [showViewAppAPIModal, setShowViewAppAPIModal] = useState(false);
-
-  return (
-    <div>
-      <ViewAppAPIModal
-        owner={owner}
-        app={app}
-        run={run}
-        isOpen={showViewAppAPIModal}
-        onClose={() => setShowViewAppAPIModal(false)}
-      />
-      <Tooltip
-        label={
-          disabled
-            ? "You need to run this app at least once successfully to view the endpoint"
-            : "View how to run this app programmatically"
-        }
-      >
-        <Button
-          label="API"
-          variant="primary"
-          onClick={() => {
-            setShowViewAppAPIModal(true);
-          }}
-          disabled={disabled}
-          icon={CubeIcon}
-        />
-      </Tooltip>
-    </div>
   );
 }
