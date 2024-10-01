@@ -323,11 +323,11 @@ async function handler(
       if (dataSource.vault.isSystem()) {
         const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
 
-        await DataSourceViewResource.createViewInVaultFromDataSource(
+        await DataSourceViewResource.createViewInVaultFromDataSourceIncludingAllDocuments(
           auth,
           globalVault,
           dataSource,
-          []
+          "custom"
         );
       }
 

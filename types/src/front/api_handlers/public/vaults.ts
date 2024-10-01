@@ -4,18 +4,18 @@ import { ContentNodeType } from "../../lib/connectors_api";
 
 export const ContentSchema = t.type({
   dataSourceId: t.string,
-  parentsIn:t.array(t.string),
+  parentsIn: t.union([t.array(t.string), t.null]),
 });
 
 export const PostDataSourceViewSchema = t.type({
   dataSourceId: t.string,
-  parentsIn: t.array(t.string),
+  parentsIn: t.union([t.array(t.string), t.null]),
 });
 
 export type PostDataSourceViewType = t.TypeOf<typeof PostDataSourceViewSchema>;
 
 export const PatchDataSourceViewSchema = t.type({
-  parentsIn: t.array(t.string),
+  parentsIn: t.union([t.array(t.string), t.null]),
 });
 
 export type PatchDataSourceViewType = t.TypeOf<
