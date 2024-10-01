@@ -120,6 +120,12 @@ export type UpsertDocumentResponseBody = {
  *         schema:
  *           type: string
  *       - in: path
+ *         name: vId
+ *         required: true
+ *         description: ID of the vault
+ *         schema:
+ *           type: string
+ *       - in: path
  *         name: dsId
  *         required: true
  *         description: ID of the data source
@@ -179,6 +185,12 @@ export type UpsertDocumentResponseBody = {
  *         name: wId
  *         required: true
  *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: vId
+ *         required: true
+ *         description: ID of the vault
  *         schema:
  *           type: string
  *       - in: path
