@@ -694,6 +694,10 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     return new Ok(nodes);
   }
 
+  /**
+   * Retrieves the parent IDs of a content node in hierarchical order.
+   * The first ID is the internal ID of the content node itself.
+   */
   async retrieveContentNodeParents({
     internalId,
   }: {
@@ -706,14 +710,14 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       internalId
     );
     if (helpCenterId) {
-      return new Ok([]);
+      return new Ok([internalId]);
     }
     const teamId = getTeamIdFromInternalId(this.connectorId, internalId);
     if (teamId) {
-      return new Ok([getTeamsInternalId(this.connectorId)]);
+      return new Ok([internalId, getTeamsInternalId(this.connectorId)]);
     }
 
-    const parents: string[] = [];
+    const parents: string[] = [internalId];
     let collection = null;
 
     const collectionId = getHelpCenterCollectionIdFromInternalId(

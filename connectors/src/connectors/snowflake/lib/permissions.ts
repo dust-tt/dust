@@ -366,7 +366,8 @@ export const saveNodesFromPermissions = async ({
 };
 
 /**
- * Gets the list of parent internalIds for a given content node.
+ * Retrieves the parent IDs of a content node in hierarchical order.
+ * The first ID is the internal ID of the content node itself.
  * Quite straightforward for Snowflake as we can extract the parent IDs from the internalId.
  */
 export const getContentNodeParents = ({
@@ -378,13 +379,13 @@ export const getContentNodeParents = ({
   const internalType = getContentNodeTypeFromInternalId(internalId);
 
   if (internalType === "database") {
-    return new Ok([]);
+    return new Ok([internalId]);
   }
   if (internalType === "schema") {
-    return new Ok([`${database}`]);
+    return new Ok([internalId, `${database}`]);
   }
   if (internalType === "table") {
-    return new Ok([`${database}.${schema}`, `${database}`]);
+    return new Ok([internalId, `${database}.${schema}`, `${database}`]);
   }
   return new Err(
     new Error(
