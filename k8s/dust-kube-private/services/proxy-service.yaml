@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxy-service
+spec:
+  type: ClusterIP
+  selector:
+    app: proxy
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+    - name: socks5
+      port: 1080
+      targetPort: 1080
+  
+---
+apiVersion: net.gke.io/v1
+kind: ServiceExport
+metadata:
+  name: proxy-service

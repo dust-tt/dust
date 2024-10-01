@@ -154,9 +154,9 @@ export function AssistantDetailsDropdownMenu({
                   close();
                 }}
               />
-              {isShowAssistantDetails && (
+              {isShowAssistantDetails ? (
                 <DropdownMenu.Item
-                  label={`More about @${agentConfiguration.name}`}
+                  label={`More info`}
                   onClick={() => {
                     const q = router.query;
                     q.assistantDetails = agentConfiguration.sId;
@@ -170,6 +170,16 @@ export function AssistantDetailsDropdownMenu({
                     );
                   }}
                   icon={EyeIcon}
+                />
+              ) : (
+                <DropdownMenu.Item
+                  label={`Copy assistant ID`}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await navigator.clipboard.writeText(agentConfiguration.sId);
+                    close();
+                  }}
+                  icon={ClipboardIcon}
                 />
               )}
               {!isGlobalAgent && (
