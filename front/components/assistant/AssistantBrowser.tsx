@@ -17,13 +17,11 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import Link from "next/link";
-import React, { useEffect, useMemo, useState } from "react";
-import type { KeyedMutator } from "swr";
+import { useRouter } from "next/router";
+import React, { useMemo, useState } from "react";
 
-import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import { subFilter } from "@app/lib/utils";
-import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 interface AssistantListProps {
   owner: WorkspaceType;
@@ -31,7 +29,6 @@ interface AssistantListProps {
   agents: LightAgentConfigurationType[];
   loadingStatus: "loading" | "finished";
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
-  mutateAgentConfigurations: KeyedMutator<GetAgentConfigurationsResponseBody>;
 }
 
 const ALL_AGENTS_TABS = [
@@ -52,13 +49,9 @@ export function AssistantBrowser({
   agents,
   loadingStatus,
   handleAssistantClick,
-  mutateAgentConfigurations,
 }: AssistantListProps) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
-  const [assistantIdToShow, setAssistantIdToShow] = useState<string | null>(
-    null
-  );
-
+  const router = useRouter();
   const agentsByTab = useMemo(() => {
     const filteredAgents: LightAgentConfigurationType[] = agents
       .filter(
@@ -100,21 +93,12 @@ export function AssistantBrowser({
 
   // check the query string for the tab to show, the query param to look for is called "defaultTab"
   // if it's not found, show the first tab with agents
-  const defaultTab = useMemo(() => {
-    const queryParams = new URLSearchParams(window.location.search);
-    const defaultTab = queryParams.get("defaultTab") as TabId | null;
-    return visibleTabs.find((tab) => tab.id === defaultTab)
-      ? defaultTab
+  const selectedTab = useMemo(() => {
+    const selectedTab = router.query.selectedTab as TabId | null;
+    return visibleTabs.find((tab) => tab.id === selectedTab)
+      ? selectedTab
       : visibleTabs[0]?.id;
-  }, [visibleTabs]);
-
-  const [selectedTab, setSelectedTab] = useState<TabId | null>(defaultTab);
-
-  useEffect(() => {
-    if (!selectedTab && defaultTab) {
-      setSelectedTab(defaultTab);
-    }
-  }, [defaultTab, selectedTab]);
+  }, [router.query.selectedTab, visibleTabs]);
 
   const displayedTab =
     assistantSearch.trim() !== "" // If search is active, show all agents
@@ -127,12 +111,6 @@ export function AssistantBrowser({
 
   return (
     <>
-      <AssistantDetails
-        assistantId={assistantIdToShow}
-        onClose={() => setAssistantIdToShow(null)}
-        owner={owner}
-        mutateAgentConfigurations={mutateAgentConfigurations}
-      />
       {/* Search bar */}
       <div
         id="search-container"
@@ -193,7 +171,18 @@ export function AssistantBrowser({
             ...tab,
             current: tab.id === displayedTab,
           }))}
-          setCurrentTab={setSelectedTab}
+          setCurrentTab={(t) => {
+            const q = router.query;
+            q.selectedTab = t;
+            void router.push(
+              {
+                pathname: router.pathname,
+                query: q,
+              },
+              undefined,
+              { shallow: true }
+            );
+          }}
         />
       </div>
       {!displayedTab && (
@@ -223,9 +212,7 @@ export function AssistantBrowser({
                       agentConfiguration={agent}
                       owner={owner}
                       variant="button"
-                      showAssistantDetails={() =>
-                        setAssistantIdToShow(agent.sId)
-                      }
+                      isShowAssistantDetails
                       canDelete
                     />
                   </div>

@@ -17,6 +17,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, isBuilder } from "@dust-tt/types";
+import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
@@ -30,7 +31,7 @@ interface AssistantDetailsDropdownMenuProps {
   owner: WorkspaceType;
   variant?: "button" | "plain";
   canDelete?: boolean;
-  showAssistantDetails?: () => void;
+  isShowAssistantDetails?: boolean;
   showAddRemoveToList?: boolean;
 }
 
@@ -39,7 +40,7 @@ export function AssistantDetailsDropdownMenu({
   owner,
   variant = "plain",
   canDelete,
-  showAssistantDetails,
+  isShowAssistantDetails,
   showAddRemoveToList = false,
 }: AssistantDetailsDropdownMenuProps) {
   const [isUpdatingList, setIsUpdatingList] = useState(false);
@@ -50,7 +51,7 @@ export function AssistantDetailsDropdownMenu({
     agentConfigurationId: agentConfiguration.sId,
     disabled: true,
   });
-
+  const router = useRouter();
   const [showDeletionModal, setShowDeletionModal] =
     useState<LightAgentConfigurationType | null>(null);
 
@@ -153,13 +154,20 @@ export function AssistantDetailsDropdownMenu({
                   close();
                 }}
               />
-              {showAssistantDetails && (
+              {isShowAssistantDetails && (
                 <DropdownMenu.Item
                   label={`More about @${agentConfiguration.name}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    close();
-                    showAssistantDetails();
+                  onClick={() => {
+                    const q = router.query;
+                    q.assistantDetails = agentConfiguration.sId;
+                    void router.push(
+                      {
+                        pathname: router.pathname,
+                        query: q,
+                      },
+                      undefined,
+                      { shallow: true }
+                    );
                   }}
                   icon={EyeIcon}
                 />

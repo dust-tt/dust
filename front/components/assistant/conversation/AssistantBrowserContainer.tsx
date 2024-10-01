@@ -22,11 +22,7 @@ export function AssistantBrowserContainer({
   isBuilder,
   setAssistantToMention,
 }: AssistantBrowserContainerProps) {
-  const {
-    agentConfigurations,
-    isLoading,
-    mutateRegardlessOfQueryParams: mutateAgentConfigurations,
-  } = useProgressiveAgentConfigurations({
+  const { agentConfigurations, isLoading } = useProgressiveAgentConfigurations({
     workspaceId: owner.sId,
   });
 
@@ -77,7 +73,6 @@ export function AssistantBrowserContainer({
         agents={agentConfigurations}
         loadingStatus={isLoading ? "loading" : "finished"}
         handleAssistantClick={handleAssistantClick}
-        mutateAgentConfigurations={mutateAgentConfigurations}
       />
     </div>
   );

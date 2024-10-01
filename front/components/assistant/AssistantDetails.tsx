@@ -52,25 +52,26 @@ import {
   getDisplayNameForDataSource,
   isFolder,
 } from "@app/lib/data_sources";
-import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
+import {
+  useAgentConfiguration,
+  useAgentUsage,
+  useProgressiveAgentConfigurations,
+} from "@app/lib/swr/assistants";
 import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
   onClose: () => void;
-  mutateAgentConfigurations?: KeyedMutator<GetAgentConfigurationsResponseBody>;
   assistantId: string | null;
 };
 
 export function AssistantDetails({
   assistantId,
   onClose,
-  mutateAgentConfigurations,
   owner,
 }: AssistantDetailsProps) {
   const sendNotification = useContext(SendNotificationsContext);
@@ -85,6 +86,10 @@ export function AssistantDetails({
     workspaceId: owner.sId,
     agentConfigurationId: assistantId,
   });
+  const { mutate: mutateAgentConfigurations } =
+    useProgressiveAgentConfigurations({
+      workspaceId: owner.sId,
+    });
 
   const { dataSourceViews } = useDataSourceViews(owner);
 
@@ -110,9 +115,7 @@ export function AssistantDetails({
         title: `Assistant sharing updated.`,
         type: "success",
       });
-      if (mutateAgentConfigurations) {
-        await mutateAgentConfigurations();
-      }
+      await mutateAgentConfigurations();
       await mutateCurrentAgentConfiguration();
     } else {
       sendNotification({
