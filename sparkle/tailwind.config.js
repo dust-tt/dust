@@ -33,7 +33,9 @@ const safeColorsArray = [
 const safeColorlist = safeColorsArray.flatMap((color) => [
   // Whitelist all bg colors from shade 100 t0 800.
   ...Array.from({ length: 8 }, (_, i) => `s-bg-${color}-${(i + 1) * 100}`),
+  `s-border-${color}-100`,
   `s-border-${color}-200`,
+  `s-border-${color}-300`,
   `s-text-${color}-800`,
   `s-text-${color}-900`,
   `s-text-${color}-950`,
@@ -179,6 +181,10 @@ module.exports = {
         border: {
           DEFAULT: colors.slate[100],
           dark: colors.slate[900],
+        },
+        "border-dark": {
+          DEFAULT: colors.slate[200],
+          dark: colors.slate[800],
         },
         background: { DEFAULT: colors.white, dark: colors.slate[950] },
         foreground: { DEFAULT: colors.slate[950], dark: colors.white },

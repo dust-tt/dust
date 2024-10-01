@@ -46,6 +46,7 @@ export { IconButton } from "./IconButton";
 export { IconToggleButton } from "./IconToggleButton";
 export { Input } from "./Input";
 export { Item } from "./Item";
+export { Label } from "./Label";
 export { Markdown } from "./Markdown";
 export { Modal } from "./Modal";
 export { NewButton, NewButtonBar } from "./NewButton";
@@ -57,11 +58,13 @@ export {
   NewDropdownMenuSeparator,
   NewDropdownMenuTrigger,
 } from "./NewDropdown";
+export { NewInput } from "./NewInput";
 export {
   NewNavigationList,
   NewNavigationListItem,
   NewNavigationListLabel,
 } from "./NewNavigationList";
+export { NewSearchInput } from "./NewSearchInput";
 export {
   NewTooltip,
   NewTooltipContent,
@@ -76,6 +79,11 @@ export { Popover, PopoverContent, PopoverTrigger } from "./Popover";
 export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioButton } from "./RadioButton";
+export {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "./Resizable";
 export { ScrollArea } from "./ScrollArea";
 export { Searchbar } from "./Searchbar";
 export { Separator } from "./Separator";

@@ -1,7 +1,6 @@
 import { Meta } from "@storybook/react";
 import React, { useEffect, useState } from "react";
 
-import { ScrollBar } from "@sparkle/components/ScrollArea";
 import {
   ArrowUpOnSquareIcon,
   Avatar,
@@ -9,13 +8,17 @@ import {
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
   ChevronDoubleLeftIcon,
+  CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
+  FolderIcon,
   HandThumbUpIcon,
   HeartAltIcon,
+  HomeIcon,
+  LockIcon,
   LogoutIcon,
   MoreIcon,
   NewButton,
@@ -29,18 +32,26 @@ import {
   NewNavigationList,
   NewNavigationListItem,
   NewNavigationListLabel,
+  NewSearchInput,
+  NotionLogo,
   PencilSquareIcon,
   PlusIcon,
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
   RobotIcon,
   ScrollArea,
   Separator,
+  SlackLogo,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   TrashIcon,
+  Tree,
   UserIcon,
 } from "@sparkle/index_with_tw_base";
+import { cn } from "@sparkle/lib/utils";
 
 const meta = {
   title: "NewLayouts/MainLayout",
@@ -55,31 +66,45 @@ const getRandomTitles = (count: number) => {
 
 export const LayoutDemo = () => {
   return (
-    <div className="s-flex s-h-[800px] s-w-full s-flex-row s-border">
-      <div className="s-relative s-flex s-h-full s-w-[320px] s-flex-col s-border-r s-border-structure-200 s-bg-primary-50">
-        <Tabs defaultValue="account" className="s-h-full">
-          <TabsList className="s-mt-2 s-w-full s-px-2">
-            <TabsTrigger
-              value="account"
-              label="Chat"
-              icon={ChatBubbleLeftRightIcon}
-            />
-            <TabsTrigger
-              value="password"
-              label="Knowledge"
-              icon={BookOpenIcon}
-            />
-            <div className="s-grow" />
-            <TabsTrigger value="settings" icon={Cog6ToothIcon} />
-          </TabsList>
-          <TabsContent value="account" className="s-h-full">
-            <ChatTab />
-          </TabsContent>
-          <TabsContent value="password"></TabsContent>
-          <TabsContent value="settings">Settings</TabsContent>
-        </Tabs>
-        <BottomNav />
-      </div>
+    <div className="s-h-[800px] s-w-[1000px] s-border">
+      <ResizablePanelGroup direction="horizontal" className="s-h-full s-w-full">
+        <ResizablePanel defaultSize={30} maxSize={32} minSize={20}>
+          <div className="s-border-box s-h-full s-max-h-full s-w-full s-justify-between s-bg-structure-50">
+            <Tabs defaultValue="account" className="s-h-full s-w-full">
+              <TabsList className="s-mt-2 s-w-full s-px-2">
+                <TabsTrigger
+                  value="account"
+                  label="Chat"
+                  icon={ChatBubbleLeftRightIcon}
+                />
+                <TabsTrigger
+                  value="password"
+                  label="Knowledge"
+                  icon={BookOpenIcon}
+                />
+                <div className="s-grow" />
+                <TabsTrigger value="settings" icon={Cog6ToothIcon} />
+              </TabsList>
+              <TabsContent value="account" className="s-h-full s-w-full">
+                <ChatTab />
+              </TabsContent>
+              <TabsContent value="password" className="s-h-full s-w-full">
+                <KnowledgeNav />
+              </TabsContent>
+              <TabsContent value="settings" className="s-h-full s-w-full">
+                Settings
+              </TabsContent>
+            </Tabs>
+            <BottomNav className="-s-mt-14 s-h-14 s-shrink-0" />
+          </div>
+        </ResizablePanel>
+        <ResizableHandle />
+        <ResizablePanel defaultSize={70}>
+          <div className="s-flex s-h-full s-items-center s-justify-center s-p-6">
+            <span className="s-font-semibold">Content</span>
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 };
@@ -104,72 +129,75 @@ export const ChatTab = () => {
   const allItems = conversationTitles.flatMap((section) => section.items);
 
   return (
-    <div className="s-relative s-h-[697px] s-w-full">
-      <ScrollArea className="s-h-full s-w-full">
-        <NewButtonBar className="s-my-2 s-w-full s-justify-end s-px-2">
-          <NewDropdownMenu>
-            <NewDropdownMenuTrigger>
-              <NewButton
-                variant="outline"
-                tooltip="Manage conversation history, assistants..."
-                icon={MoreIcon}
-              />
-            </NewDropdownMenuTrigger>
-            <NewDropdownMenuContent>
-              <NewDropdownMenuLabel label="Assistants" />
-              <NewDropdownMenuItem icon={PlusIcon} label="New" />
-              <NewDropdownMenuItem icon={RobotIcon} label="Manage" />
-              <NewDropdownMenuSeparator />
-              <NewDropdownMenuLabel label="Conversations" />
-              <NewDropdownMenuItem icon={PencilSquareIcon} label="Edit" />
-              <NewDropdownMenuItem icon={TrashIcon} label="Remove all" />
-            </NewDropdownMenuContent>
-          </NewDropdownMenu>
-          <NewButton
-            icon={ChatBubbleBottomCenterTextIcon}
-            label="New"
-            tooltip="New conversation"
-          />
-        </NewButtonBar>
-        <NewNavigationList>
-          {conversationTitles.map((section, sectionIndex) => (
-            <React.Fragment key={sectionIndex}>
-              <NewNavigationListLabel>{section.label}</NewNavigationListLabel>
-              {section.items.map((title, index) => {
-                const itemIndex = allItems.indexOf(title);
-                return (
-                  <ContextMenu>
-                    <ContextMenuTrigger>
-                      <NewNavigationListItem
-                        key={index}
-                        selected={itemIndex === selectedIndex}
-                        onClick={() => setSelectedIndex(itemIndex)}
-                      >
-                        {title}
-                      </NewNavigationListItem>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent>
-                      <ContextMenuItem label="Delete" icon={TrashIcon} />
-                      <ContextMenuItem
-                        label="Share"
-                        icon={ArrowUpOnSquareIcon}
-                      />
-                    </ContextMenuContent>
-                  </ContextMenu>
-                );
-              })}
-            </React.Fragment>
-          ))}
-        </NewNavigationList>
-        <ScrollBar orientation="vertical" />
-      </ScrollArea>
-    </div>
+    <ScrollArea className="s-border-box s-h-full s-w-full">
+      <NewButtonBar className="s-my-2 s-w-full s-justify-end s-px-2">
+        <NewSearchInput name="input" value="" />
+        <NewButton
+          icon={ChatBubbleBottomCenterTextIcon}
+          label="New"
+          tooltip="New conversation"
+        />
+        <NewDropdownMenu>
+          <NewDropdownMenuTrigger>
+            <NewButton
+              variant="outline"
+              tooltip="Manage conversation history, assistants..."
+              icon={MoreIcon}
+            />
+          </NewDropdownMenuTrigger>
+          <NewDropdownMenuContent>
+            <NewDropdownMenuLabel label="Assistants" />
+            <NewDropdownMenuItem icon={PlusIcon} label="New" />
+            <NewDropdownMenuItem icon={RobotIcon} label="Manage" />
+            <NewDropdownMenuSeparator />
+            <NewDropdownMenuLabel label="Conversations" />
+            <NewDropdownMenuItem icon={PencilSquareIcon} label="Edit" />
+            <NewDropdownMenuItem icon={TrashIcon} label="Remove all" />
+          </NewDropdownMenuContent>
+        </NewDropdownMenu>
+      </NewButtonBar>
+      <NewNavigationList className="s-w-full">
+        {conversationTitles.map((section, sectionIndex) => (
+          <React.Fragment key={sectionIndex}>
+            <NewNavigationListLabel>{section.label}</NewNavigationListLabel>
+            {section.items.map((title, index) => {
+              const itemIndex = allItems.indexOf(title);
+              return (
+                <ContextMenu>
+                  <ContextMenuTrigger>
+                    <NewNavigationListItem
+                      key={index}
+                      selected={itemIndex === selectedIndex}
+                      onClick={() => setSelectedIndex(itemIndex)}
+                      label={title}
+                    />
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem label="Delete" icon={TrashIcon} />
+                    <ContextMenuItem label="Share" icon={ArrowUpOnSquareIcon} />
+                  </ContextMenuContent>
+                </ContextMenu>
+              );
+            })}
+          </React.Fragment>
+        ))}
+      </NewNavigationList>
+    </ScrollArea>
   );
 };
+interface BottomNavProps {
+  className?: string; // Optional prop for additional classes
+}
 
-export const BottomNav = () => {
+export const BottomNav: React.FC<BottomNavProps> = ({ className = "" }) => {
   return (
-    <div className="s-flex s-flex-row s-items-center s-gap-2 s-border-t s-border-structure-200 s-bg-white s-p-2">
+    <div
+      id="SecondaryNav"
+      className={cn(
+        "s-flex s-flex-row s-items-center s-gap-2 s-border-t s-border-structure-200 s-bg-white s-p-2",
+        className
+      )}
+    >
       <NewDropdownMenu>
         <NewDropdownMenuTrigger>
           <Avatar
@@ -320,3 +348,147 @@ const fakeTitles = [
   "Employee Benefits Review",
   "Business Continuity Planning",
 ];
+
+interface BottomNavProps {
+  className?: string; // Optional prop for additional classes
+}
+
+export const KnowledgeNav: React.FC<BottomNavProps> = ({ className = "" }) => {
+  return (
+    <div className={cn("s-flex s-flex-col s-gap-2 s-px-2", className)}>
+      <Tree variant="navigator">
+        <Tree.Item
+          label="Connection Managment"
+          visual={CloudArrowLeftRightIcon}
+          onItemClick={() => console.log("Clickable")}
+          isSelected={true}
+          size="md"
+        >
+          <Tree variant="navigator">
+            <Tree.Item label="Notion" visual={NotionLogo}>
+              <Tree variant="navigator">
+                <Tree.Item
+                  label="item 1 with a very very very very very very very long text"
+                  visual={FolderIcon}
+                >
+                  <Tree variant="navigator">
+                    <Tree.Item
+                      label="item 1 with a very very very very very very very long text"
+                      visual={FolderIcon}
+                      type="leaf"
+                    />
+                    <Tree.Item label="item 2" visual={FolderIcon} />
+                    <Tree.Item label="item 3" visual={FolderIcon} />
+                  </Tree>
+                </Tree.Item>
+                <Tree.Item label="item 2" visual={FolderIcon}>
+                  <Tree variant="navigator">
+                    <Tree.Item label="item 1" visual={FolderIcon} />
+                    <Tree.Item label="item 2" visual={FolderIcon} />
+                    <Tree.Item label="item 3" visual={FolderIcon} />
+                  </Tree>
+                </Tree.Item>
+                <Tree.Item label="item 3" visual={FolderIcon}>
+                  <Tree variant="navigator">
+                    <Tree.Item label="item 1" visual={FolderIcon} />
+                    <Tree.Item label="item 2" visual={FolderIcon} />
+                    <Tree.Item label="item 3" visual={FolderIcon} />
+                  </Tree>
+                </Tree.Item>
+              </Tree>
+            </Tree.Item>
+            <Tree.Item label="Slack" visual={SlackLogo} />
+          </Tree>
+        </Tree.Item>
+      </Tree>
+      <Tree variant="navigator">
+        <Tree.Item
+          label="Share Data"
+          visual={HomeIcon}
+          onItemClick={() => console.log("Clickable")}
+          size="md"
+        >
+          <Tree variant="navigator">
+            <Tree.Item label="Notion" visual={NotionLogo}>
+              <Tree variant="navigator">
+                <Tree.Item
+                  label="item 1 with a very very very very very very very long text"
+                  visual={FolderIcon}
+                >
+                  <Tree variant="navigator">
+                    <Tree.Item
+                      label="item 1 with a very very very very very very very long text"
+                      visual={FolderIcon}
+                      type="leaf"
+                    />
+                    <Tree.Item label="item 2" visual={FolderIcon} />
+                    <Tree.Item label="item 3" visual={FolderIcon} />
+                  </Tree>
+                </Tree.Item>
+                <Tree.Item label="item 2" visual={FolderIcon}>
+                  <Tree variant="navigator">
+                    <Tree.Item label="item 1" visual={FolderIcon} />
+                    <Tree.Item label="item 2" visual={FolderIcon} />
+                    <Tree.Item label="item 3" visual={FolderIcon} />
+                  </Tree>
+                </Tree.Item>
+                <Tree.Item label="item 3" visual={FolderIcon}>
+                  <Tree variant="navigator">
+                    <Tree.Item label="item 1" visual={FolderIcon} />
+                    <Tree.Item label="item 2" visual={FolderIcon} />
+                    <Tree.Item label="item 3" visual={FolderIcon} />
+                  </Tree>
+                </Tree.Item>
+              </Tree>
+            </Tree.Item>
+            <Tree.Item label="Slack" visual={SlackLogo} />
+          </Tree>
+        </Tree.Item>
+      </Tree>
+      <Tree variant="navigator">
+        <Tree.Item
+          label="Finance"
+          visual={LockIcon}
+          onItemClick={() => console.log("Clickable")}
+          size="md"
+        >
+          <Tree variant="navigator">
+            <Tree.Item label="Notion" visual={NotionLogo}>
+              <Tree variant="navigator">
+                <Tree.Item
+                  label="item 1 with a very very very very very very very long text"
+                  visual={FolderIcon}
+                >
+                  <Tree variant="navigator">
+                    <Tree.Item
+                      label="item 1 with a very very very very very very very long text"
+                      visual={FolderIcon}
+                      type="leaf"
+                    />
+                    <Tree.Item label="item 2" visual={FolderIcon} />
+                    <Tree.Item label="item 3" visual={FolderIcon} />
+                  </Tree>
+                </Tree.Item>
+                <Tree.Item label="item 2" visual={FolderIcon}>
+                  <Tree variant="navigator">
+                    <Tree.Item label="item 1" visual={FolderIcon} />
+                    <Tree.Item label="item 2" visual={FolderIcon} />
+                    <Tree.Item label="item 3" visual={FolderIcon} />
+                  </Tree>
+                </Tree.Item>
+                <Tree.Item label="item 3" visual={FolderIcon}>
+                  <Tree variant="navigator">
+                    <Tree.Item label="item 1" visual={FolderIcon} />
+                    <Tree.Item label="item 2" visual={FolderIcon} />
+                    <Tree.Item label="item 3" visual={FolderIcon} />
+                  </Tree>
+                </Tree.Item>
+              </Tree>
+            </Tree.Item>
+            <Tree.Item label="Slack" visual={SlackLogo} />
+          </Tree>
+        </Tree.Item>
+      </Tree>
+    </div>
+  );
+};

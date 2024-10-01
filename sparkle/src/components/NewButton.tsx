@@ -27,7 +27,7 @@ const buttonVariants = cva(
         warning:
           "s-bg-warning-500 s-text-white hover:s-bg-warning-400 active:s-bg-warning-600  disabled:s-bg-warning-300",
         outline:
-          "s-border s-text-primary-950 s-border-primary-200 s-bg-background hover:s-text-primary-900 hover:s-bg-primary-100 hover:s-border-primary-200 active:s-bg-primary-300 disabled:s-text-primary-400 disabled:s-border-structure-100",
+          "s-border s-text-primary-950 s-border-border-dark s-bg-background hover:s-text-primary-900 hover:s-bg-primary-100 hover:s-border-primary-200 active:s-bg-primary-300 disabled:s-text-primary-400 disabled:s-border-structure-100",
         secondary:
           "s-border s-border-primary-200/0 s-bg-primary-200 s-text-primary-950 hover:s-text-primary-900 hover:s-bg-primary-100 hover:s-border-primary-200 active:s-bg-primary-200 disabled:s-text-primary-500",
         ghost:
@@ -36,9 +36,9 @@ const buttonVariants = cva(
           "s-border s-border-primary-200/0 s-text-muted-foreground hover:s-text-primary-600 hover:s-bg-primary-100 active:s-bg-primary-200 hover:s-border-primary-200 disabled:s-text-primary-400",
       },
       size: {
-        xs: "s-h-7 s-px-2.5 s-rounded-md s-text-xs s-gap-1.5",
-        sm: "s-h-9 s-px-3 s-rounded-lg s-text-sm s-gap-2",
-        md: "s-h-12 s-px-4 s-py-2 s-rounded-xl s-text-base s-gap-2.5",
+        xs: "s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5",
+        sm: "s-h-9 s-px-3 s-rounded-xl s-text-sm s-gap-2",
+        md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-text-base s-gap-2.5",
         icon: "s-h-10 s-w-10",
       },
     },

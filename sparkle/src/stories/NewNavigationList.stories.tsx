@@ -1,16 +1,18 @@
 import type { Meta } from "@storybook/react";
 import React, { useEffect, useState } from "react";
 
+import { ScrollBar } from "@sparkle/components/ScrollArea";
+
 import {
   NewNavigationList,
   NewNavigationListItem,
   NewNavigationListLabel,
+  ScrollArea,
 } from "../index_with_tw_base";
 
 const meta = {
   title: "NewPrimitives/NavigationList",
-  component: NewNavigationList,
-} satisfies Meta<typeof NewNavigationList>;
+} satisfies Meta;
 
 export default meta;
 
@@ -30,35 +32,37 @@ export const NewNavigationListDemo = () => {
     setConversationTitles([
       { label: "Today", items: getRandomTitles(5) },
       { label: "Yesterday", items: getRandomTitles(10) },
-      { label: "Last Week", items: getRandomTitles(20) },
-      { label: "Last Month", items: getRandomTitles(40) },
     ]);
+    console.log(conversationTitles); // Add this line
   }, []);
 
   // Flatten the items array to easily manage indices
   const allItems = conversationTitles.flatMap((section) => section.items);
 
   return (
-    <div>
-      <NewNavigationList>
-        {conversationTitles.map((section, sectionIndex) => (
-          <React.Fragment key={sectionIndex}>
-            <NewNavigationListLabel>{section.label}</NewNavigationListLabel>
-            {section.items.map((title, index) => {
-              const itemIndex = allItems.indexOf(title); // Calculate the global index
-              return (
-                <NewNavigationListItem
-                  key={index}
-                  selected={itemIndex === selectedIndex}
-                  onClick={() => setSelectedIndex(itemIndex)} // Update selected index on click
-                >
-                  {title}
-                </NewNavigationListItem>
-              );
-            })}
-          </React.Fragment>
-        ))}
-      </NewNavigationList>
+    <div className="s-h-[400px] s-w-[200px] s-py-12">
+      <ScrollArea>
+        <NewNavigationList className="s-w-full">
+          {conversationTitles.map((section, sectionIndex) => (
+            <React.Fragment key={sectionIndex}>
+              <NewNavigationListLabel>{section.label}</NewNavigationListLabel>
+              {section.items.map((title, index) => {
+                const itemIndex = allItems.indexOf(title); // Calculate the global index
+                return (
+                  <NewNavigationListItem
+                    key={index}
+                    selected={itemIndex === selectedIndex}
+                    onClick={() => setSelectedIndex(itemIndex)}
+                    label={title}
+                    className="s-w-full"
+                  />
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </NewNavigationList>
+        <ScrollBar />
+      </ScrollArea>
     </div>
   );
 };

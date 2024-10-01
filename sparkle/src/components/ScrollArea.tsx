@@ -1,7 +1,18 @@
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import * as React from "react";
+import styled from "styled-components";
 
 import { cn } from "@sparkle/lib/utils";
+
+const StyledViewport = styled(ScrollAreaPrimitive.Viewport)`
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+
+  &[data-radix-scroll-area-viewport] > :first-of-type {
+    display: block !important;
+  }
+`;
 
 const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
@@ -12,9 +23,9 @@ const ScrollArea = React.forwardRef<
     className={cn("s-relative s-z-20 -s-mt-2 s-overflow-hidden", className)}
     {...props}
   >
-    <ScrollAreaPrimitive.Viewport className="s-h-full s-w-full s-rounded-[inherit]">
+    <StyledViewport className="s-h-full s-w-full s-rounded-[inherit]">
       {children}
-    </ScrollAreaPrimitive.Viewport>
+    </StyledViewport>
     <ScrollBar />
     <ScrollAreaPrimitive.Corner />
   </ScrollAreaPrimitive.Root>
