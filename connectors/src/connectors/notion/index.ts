@@ -429,9 +429,9 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       }),
     ]);
 
-    const childrenCount = await hasChildren(pages, this.connectorId);
+    const hasChildrenByPageId = await hasChildren(pages, this.connectorId);
     const getPageNode = async (page: NotionPage): Promise<ContentNode> => {
-      const expandable = Boolean(childrenCount[page.notionPageId]);
+      const expandable = Boolean(hasChildrenByPageId[page.notionPageId]);
 
       return {
         provider: c.type,
@@ -539,7 +539,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       }),
     ]);
 
-    const childrenCount = await hasChildren(pages, this.connectorId);
+    const hasChildrenByPageId = await hasChildren(pages, this.connectorId);
     const pageNodes: ContentNode[] = await Promise.all(
       pages.map(async (page) => ({
         provider: "notion",
@@ -551,7 +551,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         type: "file",
         title: page.title || "",
         sourceUrl: page.notionUrl || null,
-        expandable: Boolean(childrenCount[page.notionPageId]),
+        expandable: Boolean(hasChildrenByPageId[page.notionPageId]),
         permission: "read",
         dustDocumentId: `notion-${page.notionPageId}`,
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
