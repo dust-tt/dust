@@ -162,43 +162,54 @@ export const fetchSyncedChildren = async ({
   connectorId: ModelId;
   parentInternalId: string | null;
 }): Promise<Result<ContentNode[], Error>> => {
-  const [availableDatabases, availableSchemas, availableTables] =
-    await Promise.all([
-      RemoteDatabaseModel.findAll({ where: { connectorId } }),
-      RemoteSchemaModel.findAll({ where: { connectorId } }),
-      RemoteTableModel.findAll({ where: { connectorId } }),
-    ]);
-
-  // We want to fetch all the databases for which we have access to at least one table.
   if (parentInternalId === null) {
-    const databases = availableDatabases.map((db) =>
-      getContentNodeFromInternalId(db.internalId, "read")
-    );
-    availableSchemas.forEach((schema) => {
-      if (!databases.find((db) => db.internalId === schema.databaseName)) {
-        databases.push(
-          getContentNodeFromInternalId(schema.databaseName, "none")
-        );
-      }
-    });
-    availableTables.forEach((table) => {
-      if (!databases.find((db) => db.internalId === table.databaseName)) {
-        databases.push(
-          getContentNodeFromInternalId(table.databaseName, "none")
-        );
-      }
-    });
-    return new Ok(databases);
+    throw new Error("Should not be called with parentInternalId null.");
   }
 
   const parentType = getContentNodeTypeFromInternalId(parentInternalId);
 
+  // We want to fetch all the schemas for which we have access to at least one table.
   if (parentType === "database") {
-    // We want to fetch all the schemas for which we have access to at least one table.
-    const schemas = availableSchemas
-      .filter((schema) => schema.databaseName === parentInternalId)
-      .map((schema) => getContentNodeFromInternalId(schema.internalId, "read"));
+    // If the database is in db we have full access to it (it means the user selected this node).
+    // That means we have access to all schemas and tables.
+    // In that case we can just loop on all tables and get the schemas.
+    const availableDatabase = await RemoteDatabaseModel.findOne({
+      where: { connectorId, internalId: parentInternalId },
+    });
+    if (availableDatabase) {
+      const availableTables = await RemoteTableModel.findAll({
+        where: {
+          connectorId,
+          databaseName: parentInternalId,
+        },
+      });
+      const schemas: ContentNode[] = [];
+      availableTables.forEach((table) => {
+        const schemaToAdd = `${table.databaseName}.${table.schemaName}`;
+        if (!schemas.find((s) => s.internalId === schemaToAdd)) {
+          schemas.push(getContentNodeFromInternalId(schemaToAdd, "read"));
+        }
+      });
+      return new Ok(schemas);
+    }
 
+    // Otherwise we will fetch all the schemas we have full access to (the one in db),
+    // + the schemas for the tables that was explicitly selected.
+    const [availableSchemas, availableTables] = await Promise.all([
+      RemoteSchemaModel.findAll({
+        where: { connectorId, databaseName: parentInternalId },
+      }),
+      RemoteTableModel.findAll({
+        where: {
+          connectorId,
+          databaseName: parentInternalId,
+          permission: "selected",
+        },
+      }),
+    ]);
+    const schemas = availableSchemas.map((schema) =>
+      getContentNodeFromInternalId(schema.internalId, "read")
+    );
     availableTables.forEach((table) => {
       const schemaToAdd = `${table.databaseName}.${table.schemaName}`;
       if (!schemas.find((s) => s.internalId === schemaToAdd)) {
@@ -208,12 +219,19 @@ export const fetchSyncedChildren = async ({
     return new Ok(schemas);
   }
 
-  // Since we have all tables in the database, we can just return the tables for the schema.
+  // Since we have all tables in the database, we can just return all the tables we have for this schema.
   if (parentType === "schema") {
-    const tables = availableTables
-      .filter((table) => table.internalId.startsWith(parentInternalId))
-      .map((table) => getContentNodeFromInternalId(table.internalId, "read"));
-
+    const [databaseName, schemaName] = parentInternalId.split(".");
+    const availableTables = await RemoteTableModel.findAll({
+      where: {
+        connectorId,
+        databaseName,
+        schemaName,
+      },
+    });
+    const tables = availableTables.map((table) =>
+      getContentNodeFromInternalId(table.internalId, "read")
+    );
     return new Ok(tables);
   }
 
