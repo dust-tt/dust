@@ -22,6 +22,7 @@ import {
 } from "@connectors/connectors/intercom/lib/help_center_permissions";
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import { fetchIntercomWorkspace } from "@connectors/connectors/intercom/lib/intercom_api";
+import { retrieveSelectedNodes } from "@connectors/connectors/intercom/lib/permissions";
 import {
   getHelpCenterArticleIdFromInternalId,
   getHelpCenterArticleInternalId,
@@ -32,7 +33,7 @@ import {
   getTeamIdFromInternalId,
   getTeamInternalId,
   getTeamsInternalId,
-  isInternalIdForAllConversations,
+  isInternalIdForAllTeams,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
   launchIntercomSyncWorkflow,
@@ -329,6 +330,14 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
+    if (filterPermission === "read" && parentInternalId === null) {
+      // We want all selected nodes despite the hierarchy
+      const selectedNodes = await retrieveSelectedNodes({
+        connectorId: this.connectorId,
+      });
+      return new Ok(selectedNodes);
+    }
+
     try {
       const helpCenterNodes = await retrieveIntercomHelpCentersPermissions({
         connectorId: this.connectorId,
@@ -400,7 +409,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           this.connectorId,
           id
         );
-        const isAllConversations = isInternalIdForAllConversations(
+        const isAllConversations = isInternalIdForAllTeams(
           this.connectorId,
           id
         );
@@ -560,7 +569,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       }
       if (
         !isAllConversations &&
-        isInternalIdForAllConversations(this.connectorId, internalId)
+        isInternalIdForAllTeams(this.connectorId, internalId)
       ) {
         isAllConversations = true;
       }
