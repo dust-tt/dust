@@ -67,7 +67,7 @@ export function useMultipleDataSourceViewsContentNodes({
 } {
   const urlsAndOptions = dataSourceViewsAndInternalIds.map(
     ({ dataSourceView, internalIds }) => {
-      const url = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes?xx`;
+      const url = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`;
       const body = JSON.stringify({
         internalIds,
         viewType,
