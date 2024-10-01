@@ -12,10 +12,9 @@ import {
 import { Workspace } from "@app/lib/models/workspace";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
 
-// Ranking of agents is done over a 7 days period.
-const rankingTimeframeSec = 60 * 60 * 24 * 7; // 7 days
+// Ranking of agents is done over a 30 days period.
+const rankingTimeframeSec = 60 * 60 * 24 * 30; // 30 days
 
-//
 const MENTION_COUNT_TTL = 60 * 60 * 24 * 7; // 7 days
 
 // Computing agent mention count over a 4h period
@@ -133,6 +132,8 @@ export async function getAgentUsage(
 export async function agentMentionsCount(
   workspaceId: number
 ): Promise<mentionCount[]> {
+  const rankingTimeframeDays = (rankingTimeframeSec / 60) * 60 * 24;
+
   // We retrieve mentions from conversations in order to optimize the query
   // Since we need to filter out by workspace id, retrieving mentions first
   // would lead to retrieve every single messages
@@ -157,7 +158,7 @@ export async function agentMentionsCount(
         attributes: [],
         where: {
           createdAt: {
-            [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
+            [Op.gt]: literal(`NOW() - INTERVAL '${rankingTimeframeDays} days'`),
           },
         },
         include: [
