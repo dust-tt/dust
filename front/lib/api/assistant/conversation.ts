@@ -37,6 +37,7 @@ import {
   getSmallWhitelistedModel,
   isProviderWhitelisted,
   md5,
+  removeNulls,
 } from "@dust-tt/types";
 import {
   Err,
@@ -158,7 +159,7 @@ export async function updateConversation(
     throw new Error(`Conversation ${conversationId} not found`);
   }
 
-  if (!(await canAccessConversation(auth, conversation))) {
+  if (!canAccessConversation(auth, conversation)) {
     throw new Error("Conversation access denied");
   }
 
@@ -207,7 +208,7 @@ export async function deleteConversation(
     throw new Error(`Conversation ${conversationId} not found`);
   }
 
-  if (!(await canAccessConversation(auth, conversation))) {
+  if (!canAccessConversation(auth, conversation)) {
     throw new Error("Conversation access denied");
   }
 
@@ -427,7 +428,7 @@ export async function getConversationWithoutContent(
     return new Err(new ConversationNotFoundError());
   }
 
-  if (!(await canAccessConversation(auth, conversation))) {
+  if (!canAccessConversation(auth, conversation)) {
     return new Err(new ConversationPermissionError());
   }
 
@@ -697,6 +698,19 @@ export async function* postUserMessage(
     };
     return;
   }
+
+  if (!canAccessConversation(auth, conversation)) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "conversation_access_denied",
+        message: "Conversation cannot be accessed.",
+      },
+    };
+    return;
+  }
+
   // Check plan and rate limit
   const messageLimit = await isMessagesLimitReached({
     owner,
@@ -727,21 +741,7 @@ export async function* postUserMessage(
     createOrUpdateParticipation({ user, conversation }),
   ]);
 
-  if (results[0].some((a) => a === null)) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "missing_agent_configuration",
-        message: "One or more agent configurations were not found.",
-      },
-    };
-    return;
-  }
-
-  // casting non-null is ok here because we check right above that there's no
-  // nulls and err if there is
-  const agentConfigurations = results[0] as LightAgentConfigurationType[];
+  const agentConfigurations = removeNulls(results[0]);
 
   for (const agentConfig of agentConfigurations) {
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
@@ -1106,6 +1106,19 @@ export async function* editUserMessage(
     };
     return;
   }
+
+  if (!canAccessConversation(auth, conversation)) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "conversation_access_denied",
+        message: "Conversation cannot be accessed.",
+      },
+    };
+    return;
+  }
+
   if (auth.user()?.id !== message.user?.id) {
     yield {
       type: "user_message_error",
@@ -1156,29 +1169,15 @@ export async function* editUserMessage(
   let agentMessageRows: AgentMessage[] = [];
 
   const results = await Promise.all([
-    await Promise.all(
+    Promise.all(
       mentions.filter(isAgentMention).map((mention) => {
         return getLightAgentConfiguration(auth, mention.configurationId);
       })
     ),
-    await createOrUpdateParticipation({ user, conversation }),
+    createOrUpdateParticipation({ user, conversation }),
   ]);
 
-  if (results[0].some((a) => a === null)) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "missing_agent_configuration",
-        message: "One or more agent configurations were not found.",
-      },
-    };
-    return;
-  }
-
-  // casting non-null is ok here because we check right above that there's no
-  // nulls and err if there is
-  const agentConfigurations = results[0] as LightAgentConfigurationType[];
+  const agentConfigurations = removeNulls(results[0]);
 
   for (const agentConfig of agentConfigurations) {
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
@@ -1721,7 +1720,7 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
-  if (!(await canAccessConversation(auth, conversation))) {
+  if (!canAccessConversation(auth, conversation)) {
     return new Err(new ConversationPermissionError());
   }
 
