@@ -19,7 +19,7 @@ import VaultSideBarMenu from "@app/components/vaults/VaultSideBarMenu";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useVaultsAsAdmin } from "@app/lib/swr/vaults";
-import { getVaultIcon } from "@app/lib/vaults";
+import { getVaultIcon, isPrivateVaultsLimitReached } from "@app/lib/vaults";
 
 export interface VaultLayoutProps {
   owner: WorkspaceType;
@@ -61,10 +61,7 @@ export function VaultLayout({
     "private_data_vaults_feature"
   );
 
-  const isLimitReached =
-    plan.limits.vaults.maxVaults !== -1 &&
-    vaults.filter((v) => v.kind === "regular" || v.kind === "public").length >=
-      plan.limits.vaults.maxVaults;
+  const isLimitReached = isPrivateVaultsLimitReached(vaults, plan);
 
   return (
     <RootLayout>
@@ -103,10 +100,13 @@ export function VaultLayout({
           <Dialog
             alertDialog={true}
             isOpen={isLimitReached && showVaultCreationModal}
-            title="Alert Dialog title"
+            title="Max privates vaults reached"
             onValidate={() => setShowVaultCreationModal(false)}
           >
-            <div>You can't create more vaults. Please upgrade to add more.</div>
+            <div>
+              You can't create more vaults. Please upgrade to add more. Reach
+              out to us at support@dust.tt to learn more.
+            </div>
           </Dialog>
         )}
       </AppLayout>
