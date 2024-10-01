@@ -2,7 +2,6 @@ import type {
   AdminSuccessResponseType,
   SlackCommandType,
 } from "@dust-tt/types";
-import { isSlackbotWhitelistType } from "@dust-tt/types";
 
 import {
   launchSlackSyncOneThreadWorkflow,
@@ -173,7 +172,7 @@ export const slack = async ({
     }
 
     case "whitelist-bot": {
-      const { wId, botName, groupId, whitelistType } = args;
+      const { wId, botName, groupId } = args;
       if (!wId) {
         throw new Error("Missing --wId argument");
       }
@@ -183,12 +182,6 @@ export const slack = async ({
 
       if (!groupId) {
         throw new Error("Missing --groupId argument");
-      }
-
-      if (!whitelistType || !isSlackbotWhitelistType(whitelistType)) {
-        throw new Error(
-          "--whitelistType argument must be set to 'summon_agent' or 'index_messages'"
-        );
       }
 
       const connector = await ConnectorModel.findOne({
@@ -207,9 +200,8 @@ export const slack = async ({
       const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
         connector.id
       );
-
       if (slackConfig) {
-        await slackConfig.whitelistBot(botName, [groupId], whitelistType);
+        await slackConfig.whitelistBot(botName, [groupId]);
       }
 
       return { success: true };

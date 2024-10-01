@@ -14,7 +14,6 @@ import type {
   GroupType,
   NotionCheckUrlResponseType,
   NotionFindUrlResponseType,
-  SlackbotWhitelistType,
 } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { ConnectorType } from "@dust-tt/types";
@@ -576,17 +575,11 @@ async function handleCheckOrFindNotionUrl(
   return res.json();
 }
 
-async function handleWhitelistBot({
-  botName,
-  wId,
-  groupId,
-  whitelistType,
-}: {
-  botName: string;
-  wId: string;
-  groupId: string;
-  whitelistType: SlackbotWhitelistType;
-}): Promise<void> {
+async function handleWhitelistBot(
+  botName: string,
+  wId: string,
+  groupId: string
+): Promise<void> {
   const res = await fetch(`/api/poke/admin`, {
     method: "POST",
     headers: {
@@ -599,7 +592,6 @@ async function handleWhitelistBot({
         botName,
         wId,
         groupId,
-        whitelistType,
       },
     }),
   });
@@ -888,12 +880,7 @@ function SlackWhitelistBot({
               alert("Please select a group");
               return;
             }
-            await handleWhitelistBot({
-              botName,
-              wId: owner.sId,
-              groupId: selectedGroup,
-              whitelistType: "summon_agent",
-            });
+            await handleWhitelistBot(botName, owner.sId, selectedGroup);
             setBotName("");
           }}
         />
