@@ -11,8 +11,8 @@ use tracing::info;
 use crate::{
     databases::{
         database::QueryResult,
-        table::{Row, Table},
-        transient_database::get_unique_table_names_for_transient_database,
+        table::{LocalTable, Row, Table},
+        transient_database::get_transient_database_unique_table_names,
     },
     databases_store::store::DatabasesStore,
     utils,
@@ -58,7 +58,7 @@ impl SqliteDatabase {
 
     pub async fn init(
         &mut self,
-        tables: Vec<Table>,
+        tables: Vec<LocalTable>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
     ) -> Result<()> {
         match &self.conn {
@@ -190,17 +190,17 @@ impl SqliteDatabase {
 
 async fn create_in_memory_sqlite_db(
     databases_store: Box<dyn DatabasesStore + Sync + Send>,
-    tables: Vec<Table>,
+    tables: Vec<LocalTable>,
 ) -> Result<Connection> {
     let time_get_rows_start = utils::now();
 
-    let tables_with_rows: Vec<(Table, Vec<Row>)> = try_join_all(tables.iter().map(|table| {
+    let tables_with_rows: Vec<(Table, Vec<Row>)> = try_join_all(tables.iter().map(|lt| {
         let databases_store = databases_store.clone();
         async move {
             let (rows, _) = databases_store
-                .list_table_rows(&table.unique_id(), None)
+                .list_table_rows(&lt.table.unique_id(), None)
                 .await?;
-            Ok::<_, anyhow::Error>((table.clone(), rows))
+            Ok::<_, anyhow::Error>((lt.table.clone(), rows))
         }
     }))
     .await?;
@@ -212,16 +212,16 @@ async fn create_in_memory_sqlite_db(
     // Create the in-memory database in a blocking thread (in-memory rusqlite is CPU).
     task::spawn_blocking(move || {
         let generate_create_table_sql_start = utils::now();
-        let unique_table_names = get_unique_table_names_for_transient_database(&tables);
+        let unique_table_names = get_transient_database_unique_table_names(&tables);
         let create_tables_sql: String = tables
             .into_iter()
-            .filter_map(|t| match t.schema_cached() {
+            .filter_map(|lt| match lt.table.schema_cached() {
                 Some(s) => {
                     if s.is_empty() {
                         None
                     } else {
                         let table_name = unique_table_names
-                            .get(&t.unique_id())
+                            .get(&lt.table.unique_id())
                             .expect("Unreachable: table name not found in unique_table_names");
                         Some(s.get_create_table_sql_string(table_name))
                     }

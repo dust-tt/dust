@@ -6,7 +6,13 @@ import {
   Modal,
   Page,
 } from "@dust-tt/sparkle";
-import type { SnowflakeCredentials, WorkspaceType } from "@dust-tt/types";
+import type {
+  ConnectorProvider,
+  ConnectorType,
+  DataSourceType,
+  SnowflakeCredentials,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { useState } from "react";
 
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
@@ -16,6 +22,16 @@ type CreateConnectionSnowflakeModalProps = {
   connectorProviderConfiguration: ConnectorProviderConfiguration;
   isOpen: boolean;
   onClose: () => void;
+  onSubmit: ({
+    connectionId,
+    provider,
+    suffix,
+  }: {
+    connectionId: string;
+    provider: ConnectorProvider;
+    suffix: string | null;
+  }) => Promise<Response>;
+  onCreated: (dataSource: DataSourceType) => void;
 };
 
 export function CreateConnectionSnowflakeModal({
@@ -23,6 +39,8 @@ export function CreateConnectionSnowflakeModal({
   connectorProviderConfiguration,
   isOpen,
   onClose,
+  onSubmit,
+  onCreated,
 }: CreateConnectionSnowflakeModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,10 +62,10 @@ export function CreateConnectionSnowflakeModal({
   };
 
   const createSnowflakeConnection = async () => {
-    setIsLoading(false);
+    setIsLoading(true);
 
     // First we post the credentials to OAuth service.
-    const res = await fetch(`/api/w/${owner.sId}/credentials`, {
+    const getCredentialsRes = await fetch(`/api/w/${owner.sId}/credentials`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -58,16 +76,33 @@ export function CreateConnectionSnowflakeModal({
       }),
     });
 
-    if (!res.ok) {
+    if (!getCredentialsRes.ok) {
       setError("Failed to create connection: cannot verify those credentials.");
+      setIsLoading(false);
       return;
     }
 
     // Then we can try to create the connector.
-    // TODO(SNOWFLAKE): Create the connector.
-    const data = await res.json();
-    console.log({ data });
-    alert("Credential posted. Todo - create connector.");
+    const data = await getCredentialsRes.json();
+    const createDataSourceRes = await onSubmit({
+      provider: "snowflake",
+      connectionId: data.credentials.id,
+      suffix: null, // TODO(SNOWFLAKE): Manage suffix.
+    });
+
+    if (!createDataSourceRes.ok) {
+      const err = await createDataSourceRes.json();
+      setError(`Failed to create connection: ${err.error.message}`);
+      setIsLoading(false);
+      return;
+    }
+
+    const createdManagedDataSource: {
+      dataSource: DataSourceType;
+      connector: ConnectorType;
+    } = await createDataSourceRes.json();
+    onCreated(createdManagedDataSource.dataSource);
+    setIsLoading(false);
   };
 
   return (

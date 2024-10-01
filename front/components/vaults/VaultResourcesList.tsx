@@ -58,6 +58,7 @@ const REDIRECT_TO_EDIT_PERMISSIONS = [
   "microsoft",
   "slack",
   "intercom",
+  "snowflake",
 ];
 
 type RowData = {
