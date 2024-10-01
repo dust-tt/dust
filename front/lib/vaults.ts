@@ -1,5 +1,10 @@
 import { CompanyIcon, LockIcon, PlanetIcon } from "@dust-tt/sparkle";
-import type { VaultKind, VaultType, WorkspaceType } from "@dust-tt/types";
+import type {
+  PlanType,
+  VaultKind,
+  VaultType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { groupBy } from "lodash";
 import type React from "react";
 
@@ -41,3 +46,11 @@ export const groupVaults = (vaults: VaultType[]) => {
     vaults: groupedVaults[kind] || [],
   }));
 };
+
+export const isPrivateVaultsLimitReached = (
+  vaults: VaultType[],
+  plan: PlanType
+) =>
+  plan.limits.vaults.maxVaults !== -1 &&
+  vaults.filter((v) => v.kind === "regular" || v.kind === "public").length >=
+    plan.limits.vaults.maxVaults;

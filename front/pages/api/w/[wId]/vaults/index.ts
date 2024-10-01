@@ -9,6 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
+import { isPrivateVaultsLimitReached } from "@app/lib/vaults";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -100,10 +101,12 @@ async function handler(
 
       const plan = auth.getNonNullablePlan();
       const all = await VaultResource.listWorkspaceVaults(auth);
-      if (
-        all.filter((v) => v.kind === "regular" || v.kind === "public").length >=
-        plan.limits.vaults.maxVaults
-      ) {
+      const isLimitReached = isPrivateVaultsLimitReached(
+        all.map((v) => v.toJSON()),
+        plan
+      );
+
+      if (isLimitReached) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
