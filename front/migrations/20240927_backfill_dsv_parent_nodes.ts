@@ -58,9 +58,10 @@ makeScript({}, async ({ execute }, logger) => {
     );
 
     if (contentNodesDocumentsRes.isErr() || contentNodesTablesRes.isErr()) {
-      throw new Error(
+      logger.error(
         `Error fetching content nodes for data source view ${dataSourceView.id}`
       );
+      continue;
     }
 
     const rootNodesDocuments = contentNodesDocumentsRes.value.nodes.filter(
