@@ -20,9 +20,11 @@ export const testConnection = async ({
   const connection = snowflake.createConnection({
     ...credentials,
 
-    // Use proxy to have all requests coming from the same IP.
-    proxyHost: "proxy-service.default.svc.clusterset.local",
-    proxyPort: 80,
+    // Use proxy if defined to have all requests coming from the same IP.
+    proxyHost: process.env.PROXY_HOST,
+    proxyPort: process.env.PROXY_PORT
+      ? parseInt(process.env.PROXY_PORT)
+      : undefined,
     proxyUser: process.env.PROXY_USER_NAME,
     proxyPassword: process.env.PROXY_USER_PASSWORD,
   });
@@ -105,9 +107,11 @@ async function _fetchRows({
   const connection = snowflake.createConnection({
     ...credentials,
 
-    // Use proxy to have all requests coming from the same IP.
-    proxyHost: "proxy-service.default.svc.clusterset.local",
-    proxyPort: 80,
+    // Use proxy if defined to have all requests coming from the same IP.
+    proxyHost: process.env.PROXY_HOST,
+    proxyPort: process.env.PROXY_PORT
+      ? parseInt(process.env.PROXY_PORT)
+      : undefined,
     proxyUser: process.env.PROXY_USER_NAME,
     proxyPassword: process.env.PROXY_USER_PASSWORD,
   });
