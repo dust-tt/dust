@@ -114,21 +114,28 @@ async function handler(
     });
   }
 
-  // Handling the case where vId is undefined to keep support for the legacy endpoint (not under
-  // vault, global vault assumed for the auth (the authenticator associated with the app, not the
-  // user)).
-  // Legacy endpoint still relied on by connectors.
-  let { vId } = req.query;
-  if (typeof vId !== "string") {
-    vId = (await VaultResource.fetchWorkspaceGlobalVault(auth)).sId;
-  }
-
   const dataSource = await DataSourceResource.fetchByNameOrId(
     auth,
     dsId,
     // TODO(DATASOURCE_SID): Clean-up
     { origin: "v1_data_sources_tables" }
   );
+
+  // Handling the case where vId is undefined to keep support for the legacy endpoint (not under
+  // vault, global vault assumed for the auth (the authenticator associated with the app, not the
+  // user)).
+  let { vId } = req.query;
+  if (typeof vId !== "string") {
+    if (auth.isSystemKey()) {
+      // We also handle the legacy usage of connectors that taps into connected data sources which
+      // are not in the global vault. If this is a system key we trust it and set the vId to the
+      // dataSource.vault.sId.
+      vId = dataSource?.vault.sId;
+    } else {
+      vId = (await VaultResource.fetchWorkspaceGlobalVault(auth)).sId;
+    }
+  }
+
   if (!dataSource || dataSource.vault.sId !== vId) {
     return apiError(req, res, {
       status_code: 404,
