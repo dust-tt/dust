@@ -137,7 +137,9 @@ export const fetchReadNodes = async ({
     await Promise.all([
       RemoteDatabaseModel.findAll({ where: { connectorId } }),
       RemoteSchemaModel.findAll({ where: { connectorId } }),
-      RemoteTableModel.findAll({ where: { connectorId } }),
+      RemoteTableModel.findAll({
+        where: { connectorId, permission: "selected" },
+      }),
     ]);
 
   return new Ok([
