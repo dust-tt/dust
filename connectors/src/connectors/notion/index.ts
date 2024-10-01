@@ -29,7 +29,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { BaseConnectorManager } from "../interface";
-import { getParents, hasChildren } from "./lib/parents";
+import { getOrphanedCount, getParents, hasChildren } from "./lib/parents";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -476,22 +476,8 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
     const folderNodes: ContentNode[] = [];
     if (!parentInternalId) {
-      const [orphanedPagesCount, orphanedDbsCount] = await Promise.all([
-        NotionPage.count({
-          where: {
-            connectorId: this.connectorId,
-            parentId: "unknown",
-          },
-        }),
-        NotionDatabase.count({
-          where: {
-            connectorId: this.connectorId,
-            parentId: "unknown",
-          },
-        }),
-      ]);
-
-      if (orphanedPagesCount + orphanedDbsCount > 0) {
+      const orphanedCount = await getOrphanedCount(this.connectorId);
+      if (orphanedCount > 0) {
         // We also need to return a "fake" top-level folder call "Orphaned" to include resources
         // we haven't been able to find a parent for.
         folderNodes.push({
@@ -576,6 +562,24 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
     const contentNodes = pageNodes.concat(dbNodes);
 
+    if (internalIds.indexOf("unknown") !== -1) {
+      const orphanedCount = await getOrphanedCount(this.connectorId);
+      if (orphanedCount > 0) {
+        contentNodes.push({
+          provider: "notion",
+          // Orphaned resources in the database will have "unknown" as their parentId.
+          internalId: "unknown",
+          parentInternalId: null,
+          type: "folder",
+          title: "Orphaned Resources",
+          sourceUrl: null,
+          expandable: true,
+          permission: "read",
+          dustDocumentId: null,
+          lastUpdatedAt: null,
+        });
+      }
+    }
     return new Ok(contentNodes);
   }
 
