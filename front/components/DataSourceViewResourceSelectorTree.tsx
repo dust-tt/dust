@@ -58,7 +58,9 @@ export default function DataSourceViewResourceSelectorTree({
         readonly={readonly}
         selectedResourceIds={selectedResourceIds}
         selectedParents={selectedParents}
-        onSelectChange={onSelectChange}
+        onSelectChange={(resource, parents, selected) => {
+          onSelectChange(resource, parents, selected);
+        }}
         useContentNodes={useContentNodes}
         viewType={viewType}
       />
@@ -71,7 +73,6 @@ type DataSourceResourceSelectorChildrenProps =
     parentId?: string;
     parents: string[];
     selectedParents: string[];
-    parentIsSelected?: boolean;
   };
 
 function DataSourceViewResourceSelectorChildren({
