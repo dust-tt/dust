@@ -25,9 +25,9 @@ async function handler(
   // Handling the case where vId is undefined to keep support for the legacy endpoint (not under
   // vault, global vault assumed).
   const vault =
-    vId === undefined
+    typeof vId !== "string"
       ? await VaultResource.fetchWorkspaceGlobalVault(auth)
-      : await VaultResource.fetchById(auth, req.query.vId as string);
+      : await VaultResource.fetchById(auth, vId);
 
   if (!vault) {
     return apiError(req, res, {
