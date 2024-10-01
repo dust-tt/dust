@@ -248,34 +248,19 @@ export const getBatchContentNodes = async ({
   connectorId: ModelId;
   internalIds: string[];
 }): Promise<Result<ContentNode[], Error>> => {
-  const [availableDatabases, availableSchemas, availableTables] =
-    await Promise.all([
-      RemoteDatabaseModel.findAll({
-        where: { connectorId, internalId: internalIds },
-      }),
-      RemoteSchemaModel.findAll({
-        where: { connectorId, internalId: internalIds },
-      }),
-      RemoteTableModel.findAll({
-        where: { connectorId, internalId: internalIds },
-      }),
-    ]);
+  const tables = await RemoteTableModel.findAll({
+    where: { connectorId },
+  });
 
-  const databases = availableDatabases.map((db) =>
-    getContentNodeFromInternalId(db.internalId, "read")
-  );
-  const databasesFromSchemas = availableSchemas.map((schema) =>
-    getContentNodeFromInternalId(schema.databaseName, "none")
-  );
-  const databasesFromTables = availableTables.map((table) =>
-    getContentNodeFromInternalId(table.databaseName, "none")
-  );
+  const nodes: ContentNode[] = [];
+  for (const internalId of internalIds) {
+    if (tables.find((table) => table.internalId.startsWith(internalId))) {
+      const node = getContentNodeFromInternalId(internalId, "read");
+      nodes.push(node);
+    }
+  }
 
-  return new Ok([
-    ...databases,
-    ...databasesFromSchemas,
-    ...databasesFromTables,
-  ]);
+  return new Ok(nodes);
 };
 
 /**
