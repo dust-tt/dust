@@ -320,31 +320,7 @@ export const VaultDataSourceViewContentList = ({
     ]
   );
 
-  const emptyVaultContent =
-    isManaged(dataSourceView.dataSource) && vault.kind !== "system" ? (
-      isAdmin ? (
-        <Button
-          label="Manage Data"
-          icon={Cog6ToothIcon}
-          onClick={() => {
-            if (systemVault) {
-              void router.push(
-                `/w/${owner.sId}/vaults/${systemVault.sId}/categories/${dataSourceView.category}`
-              );
-            }
-          }}
-        />
-      ) : (
-        <RequestDataSourceModal
-          dataSources={[dataSourceView.dataSource]}
-          owner={owner}
-        />
-      )
-    ) : (
-      <></>
-    );
-
-  const emptyContent = parentId ? <div>No content</div> : emptyVaultContent;
+  const emptyContent = <div>No content</div>;
   const isEmpty = rows.length === 0 && !isNodesLoading;
 
   return (
