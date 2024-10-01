@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import { cacheWithRedis } from "@dust-tt/types";
 import PQueue from "p-queue";
+import { Sequelize } from "sequelize";
 
 import {
   getDatabaseChildrenOf,
@@ -240,21 +241,40 @@ function notionPageOrDbId(pageOrDb: NotionPage | NotionDatabase): string {
   );
 }
 
-export const hasChildren = async (page: NotionPage, connectorId: number) => {
-  const [childPage, childDB] = await Promise.all([
-    NotionPage.findOne({
+export const hasChildren = async (pages: NotionPage[], connectorId: number) => {
+  const hasChildrenPage = (
+    await NotionPage.findAll({
+      attributes: [
+        "parentId",
+        [Sequelize.fn("COUNT", Sequelize.col("*")), "count"],
+      ],
       where: {
         connectorId,
-        parentId: page.notionPageId,
+        parentId: pages.map((p) => p.notionPageId),
       },
-    }),
-    NotionDatabase.findOne({
-      where: {
-        connectorId,
-        parentId: page.notionPageId,
-      },
-    }),
-  ]);
+      group: ["parentId"],
+    })
+  ).reduce<Record<string, boolean>>(
+    (acc, d) => (d.parentId ? { ...acc, [d.parentId]: true } : acc),
+    {}
+  );
 
-  return childPage || childDB ? true : false;
+  const hasChildrenDb = (
+    await NotionDatabase.findAll({
+      attributes: [
+        "parentId",
+        [Sequelize.fn("COUNT", Sequelize.col("*")), "count"],
+      ],
+      where: {
+        connectorId,
+        parentId: pages.map((p) => p.notionPageId),
+      },
+      group: ["parentId"],
+    })
+  ).reduce<Record<string, boolean>>(
+    (acc, d) => (d.parentId ? { ...acc, [d.parentId]: true } : acc),
+    {}
+  );
+
+  return { ...hasChildrenPage, ...hasChildrenDb };
 };
