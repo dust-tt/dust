@@ -10,6 +10,7 @@ import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   let revertScript = "";
+  let revertScriptFailingConnectors = "";
 
   const dataSourceViews = await DataSourceViewModel.findAll({
     where: {
@@ -44,63 +45,69 @@ makeScript({}, async ({ execute }, logger) => {
       continue;
     }
 
-    const contentNodesDocumentsRes = await getContentNodesForDataSourceView(
-      dataSourceViewResource,
-      {
-        viewType: "documents",
-      }
-    );
-    const contentNodesTablesRes = await getContentNodesForDataSourceView(
-      dataSourceViewResource,
-      {
-        viewType: "tables",
-      }
-    );
+    let rootNodeIds: string[] = [];
 
-    if (contentNodesDocumentsRes.isErr() || contentNodesTablesRes.isErr()) {
-      throw new Error(
-        `Error fetching content nodes for data source view ${dataSourceView.id}`
+    try {
+      const contentNodesDocumentsRes = await getContentNodesForDataSourceView(
+        dataSourceViewResource,
+        {
+          viewType: "documents",
+        }
+      );
+      const contentNodesTablesRes = await getContentNodesForDataSourceView(
+        dataSourceViewResource,
+        {
+          viewType: "tables",
+        }
+      );
+
+      if (contentNodesDocumentsRes.isOk() && contentNodesTablesRes.isOk()) {
+        const rootNodesDocuments = contentNodesDocumentsRes.value.nodes.filter(
+          (node) => node.parentInternalId === null
+        );
+        const rootNodesTables = contentNodesTablesRes.value.nodes.filter(
+          (node) => node.parentInternalId === null
+        );
+
+        const rootNodes = _.uniqBy(
+          [...rootNodesDocuments, ...rootNodesTables],
+          "internalId"
+        );
+
+        rootNodeIds = rootNodes.map((node) => node.internalId);
+      }
+    } catch (err) {
+      logger.error(
+        `Error fetching content nodes for data source view ${dataSourceView.id}: ${err}`
       );
     }
 
-    const rootNodesDocuments = contentNodesDocumentsRes.value.nodes.filter(
-      (node) => node.parentInternalId === null
-    );
-    const rootNodesTables = contentNodesTablesRes.value.nodes.filter(
-      (node) => node.parentInternalId === null
-    );
-
-    const rootNodes = _.uniqBy(
-      [...rootNodesDocuments, ...rootNodesTables],
-      "internalId"
-    );
-
-    if (rootNodes.length > 0) {
-      const rootNodeIds = rootNodes.map((node) => node.internalId);
-
-      const revertQuery = `UPDATE data_source_views SET "parentsIn"=${JSON.stringify(dataSourceView.parentsIn)} WHERE id=${dataSourceView.id};`;
+    const revertQuery = `UPDATE data_source_views SET "parentsIn"=${JSON.stringify(dataSourceView.parentsIn)} WHERE id=${dataSourceView.id};`;
+    if (rootNodeIds.length > 0) {
       revertScript += revertQuery + "\n";
+    } else {
+      revertScriptFailingConnectors += revertQuery + "\n";
+    }
 
-      if (execute) {
-        await dataSourceView.update({
-          parentsIn: rootNodeIds,
-        });
-        logger.info(
-          `Updated data source view ${dataSourceView.id} with ${rootNodeIds.length} root nodes`
-        );
-      } else {
-        logger.info(
-          `Would update data source view ${dataSourceView.id} with ${rootNodeIds.length} root nodes`
-        );
-      }
+    if (execute) {
+      await dataSourceView.update({
+        parentsIn: rootNodeIds,
+      });
+      logger.info(
+        `Updated data source view ${dataSourceView.id} with ${rootNodeIds.length} root nodes`
+      );
     } else {
       logger.info(
-        `No root nodes found for data source view ${dataSourceView.id}`
+        `Would update data source view ${dataSourceView.id} with ${rootNodeIds.length} root nodes`
       );
     }
   }
   fs.writeFileSync(
     "revert_20240927_backfill_dsv_parent_nodes.sql",
     revertScript
+  );
+  fs.writeFileSync(
+    "revert_20240927_backfill_dsv_parent_nodes_failed_connectors.sql",
+    revertScriptFailingConnectors
   );
 });
