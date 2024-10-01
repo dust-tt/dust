@@ -45,8 +45,8 @@ export async function launchSnowflakeSyncWorkflow(
       memo: {
         connectorId,
       },
-      // Every 6 hours.
-      cronSchedule: "0 */6 * * *",
+      // Every 10 minutes.
+      cronSchedule: "*/10 * * * *",
     });
   } catch (err) {
     return new Err(err as Error);
