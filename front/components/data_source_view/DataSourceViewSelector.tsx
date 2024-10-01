@@ -337,17 +337,35 @@ export function DataSourceViewSelector({
       ? "partial"
       : "unchecked";
 
-  const handleSelectAll = () => {
-    document
-      .querySelectorAll<HTMLInputElement>(
-        `#dataSourceViewsSelector-${dataSourceView.dataSource.name} .tree-depth-0 input[type="checkbox"]:first-child`
-      )
-      .forEach((el) => {
-        if (el.checked === isSelectedAll) {
-          el.click();
-        }
+  const handleSelectAll = (value: boolean) => {
+    if (isRootSelectable) {
+      setSelectionConfigurations((prevState) => {
+        const prevSelectionConfiguration =
+          prevState[dataSourceView.sId] ??
+          defaultSelectionConfiguration(dataSourceView);
+        const udpatedConfig = {
+          ...prevSelectionConfiguration,
+          selectedResources: [],
+          isSelectAll: value,
+        };
+
+        return {
+          ...prevState,
+          [dataSourceView.sId]: udpatedConfig,
+        };
       });
-    setIsSelectedAll(!isSelectedAll);
+    } else {
+      document
+        .querySelectorAll<HTMLInputElement>(
+          `#dataSourceViewsSelector-${dataSourceView.dataSource.name} .tree-depth-0 input[type="checkbox"]:first-child`
+        )
+        .forEach((el) => {
+          if (el.checked !== value) {
+            el.click();
+          }
+        });
+    }
+    setIsSelectedAll(value);
   };
 
   // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
@@ -435,21 +453,7 @@ export function DataSourceViewSelector({
             : {
                 checked: checkedStatus,
                 onChange: () => {
-                  setSelectionConfigurations((prevState) => {
-                    const prevSelectionConfiguration =
-                      prevState[dataSourceView.sId] ??
-                      defaultSelectionConfiguration(dataSourceView);
-                    const udpatedConfig = {
-                      ...prevSelectionConfiguration,
-                      selectedResources: [],
-                      isSelectAll: checkedStatus !== "checked",
-                    };
-
-                    return {
-                      ...prevState,
-                      [dataSourceView.sId]: udpatedConfig,
-                    };
-                  });
+                  handleSelectAll(checkedStatus !== "checked");
                 },
               }
         }
@@ -461,7 +465,7 @@ export function DataSourceViewSelector({
               className="mr-4 h-5 text-xs"
               label={isSelectedAll ? "Unselect All" : "Select All"}
               icon={ListCheckIcon}
-              onClick={handleSelectAll}
+              onClick={() => handleSelectAll(!isSelectedAll)}
             />
           )
         }
