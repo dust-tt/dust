@@ -158,6 +158,10 @@ function ContentNodeTreeChildren({
 
   const tree = (
     <Tree isLoading={isResourcesLoading}>
+      {filteredNodes && filteredNodes.length === 0 && (
+        <Tree.Empty label="No documents" />
+      )}
+
       {filteredNodes.map((n, i) => {
         const checkedState = getCheckedState(n);
 
