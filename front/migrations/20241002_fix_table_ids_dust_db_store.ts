@@ -175,8 +175,8 @@ async function main() {
                 await sequelize.query(
                   `UPDATE tables_rows
                 SET table_id = '${targetTableId}' 
-                  AND row_id = '${rowId}' 
-                  AND content = '${targetContent}' 
+                  , row_id = '${rowId}' 
+                  , content = '${targetContent}' 
                 WHERE id = ${latestRow.id}`
                 );
               }
