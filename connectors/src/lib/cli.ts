@@ -253,6 +253,7 @@ export const batch = async ({
         "intercom",
         "confluence",
         "github",
+        "snowflake",
       ];
       if (!PROVIDERS_ALLOWING_RESTART.includes(args.provider)) {
         throw new Error(
