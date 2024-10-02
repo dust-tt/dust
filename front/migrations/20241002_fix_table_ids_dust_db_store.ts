@@ -176,7 +176,7 @@ async function main() {
                   `UPDATE tables_rows
                 SET table_id = '${targetTableId}' 
                   , row_id = '${rowId}'
-                  , content = :content' 
+                  , content = :content
                 WHERE id = ${latestRow.id}`,
                   {
                     replacements: {
