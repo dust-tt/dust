@@ -81,12 +81,12 @@ const logger = mainLogger.child({ provider: "notion" });
 const GARBAGE_COLLECTION_INTERVAL_HOURS = 12;
 const DATABASE_TO_CSV_MAX_SIZE = 256 * 1024 * 1024; // 256MB
 
-const ignoreInvalidRowsRequestError = (
+const ignoreInvalidRowsRequestError = async (
   fn: () => Promise<void>,
   logger: Logger
 ) => {
   try {
-    return fn();
+    return await fn();
   } catch (err) {
     if (err instanceof InvalidRowsRequestError) {
       logger.warn(
