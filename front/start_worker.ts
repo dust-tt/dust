@@ -11,6 +11,7 @@ import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worke
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
 import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
 import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
+import { runUpsertTableQueueWorker } from "@app/temporal/upsert_tables/worker";
 import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker";
 
 setupGlobalErrorHandler(logger);
@@ -37,7 +38,7 @@ const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   scrub_workspace_queue: runScrubWorkspaceQueueWorker,
   update_workspace_usage: runUpdateWorkspaceUsageWorker,
   upsert_queue: runUpsertQueueWorker,
-  upsert_table_queue: runUpsertQueueWorker,
+  upsert_table_queue: runUpsertTableQueueWorker,
 };
 const ALL_WORKERS = Object.keys(workerFunctions);
 
