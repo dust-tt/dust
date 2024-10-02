@@ -18,6 +18,7 @@ const CONNECTORS_ERROR_TYPES = [
   "oauth_token_revoked",
   "third_party_internal_error",
   "webcrawling_error",
+  "remote_database_connection_not_readonly",
 ] as const;
 
 export type ConnectorErrorType = (typeof CONNECTORS_ERROR_TYPES)[number];

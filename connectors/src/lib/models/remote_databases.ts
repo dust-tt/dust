@@ -126,7 +126,7 @@ export class RemoteTableModel extends Model<
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-  declare lastUpsertedAt: CreationOptional<Date>;
+  declare lastUpsertedAt: CreationOptional<Date> | null;
 
   declare internalId: string;
   declare name: string;
