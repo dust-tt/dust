@@ -57,7 +57,8 @@ async function main() {
     > = {};
 
     for (const tUniqueId of allTableIds) {
-      const [, dsNameOrId, tId] = tUniqueId.split("__");
+      const [, dsNameOrId, ...rest] = tUniqueId.split("__");
+      const tId = rest.join("__");
       const isNewUniqueId = dsNameOrId === data_source_id;
       const globalId = `${project_id}__${tId}`;
       const tableRecord = tablesRecord[globalId] || {
@@ -136,7 +137,8 @@ async function main() {
             if (!tableId) {
               throw new Error(`Unreachable: no tableId`);
             }
-            const [, , tId] = tableId.split("__");
+            const [, , ...rest] = tableId.split("__");
+            const tId = rest.join("__");
             const targetTableId = `${project_id}__${data_source_id}__${tId}`;
 
             // Iterate over the groups
@@ -198,7 +200,8 @@ async function main() {
             if (oldUniqueId && !newUniqueId) {
               // We only have old IDs, so we just rename them
               const tableId = oldUniqueId;
-              const [, , tId] = tableId.split("__");
+              const [, , ...rest] = tableId.split("__");
+              const tId = rest.join("__");
               const targetTableId = `${project_id}__${data_source_id}__${tId}`;
               console.log(`Renaming table ${tableId} to ${targetTableId}`);
               if (LIVE) {
