@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: upsert-table-worker-deployment
+  name: front-upsert-table-worker-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: upsert-table-worker
+      app: front-upsert-table-worker
   template:
     metadata:
       labels:
-        app: upsert-table-worker
-        name: upsert-table-worker-pod
+        app: front-upsert-table-worker
+        name: front-upsert-table-worker-pod
         admission.datadoghq.com/enabled: "true"
       annotations:
-        ad.datadoghq.com/web.logs: '[{"source": "upsert-table-worker","service": "upsert-table-worker","tags": ["env:prod"]}]'
+        ad.datadoghq.com/web.logs: '[{"source": "front-upsert-table-worker","service": "front-upsert-table-worker","tags": ["env:prod"]}]'
     spec:
       containers:
         - name: web
