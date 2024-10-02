@@ -150,13 +150,17 @@ async function main() {
               const rowsToDelete = rowGroup.filter(
                 (r) => r.id !== latestRow.id
               );
-              console.log(`Deleting ${rowsToDelete.length} stale notion rows`);
-              if (LIVE) {
-                await sequelize.query(
-                  `DELETE FROM tables_rows WHERE id IN (${rowsToDelete
-                    .map((r) => r.id)
-                    .join(",")})`
+              if (rowsToDelete.length) {
+                console.log(
+                  `Deleting ${rowsToDelete.length} stale notion rows`
                 );
+                if (LIVE) {
+                  await sequelize.query(
+                    `DELETE FROM tables_rows WHERE id IN (${rowsToDelete
+                      .map((r) => r.id)
+                      .join(",")})`
+                  );
+                }
               }
 
               // Create the target `content` object by removing the `_dust_id` and `__dust_id` fields
