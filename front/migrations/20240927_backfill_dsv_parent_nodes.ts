@@ -62,12 +62,8 @@ makeScript({}, async ({ execute }, logger) => {
       );
 
       if (contentNodesDocumentsRes.isOk() && contentNodesTablesRes.isOk()) {
-        const rootNodesDocuments = contentNodesDocumentsRes.value.nodes.filter(
-          (node) => node.parentInternalId === null
-        );
-        const rootNodesTables = contentNodesTablesRes.value.nodes.filter(
-          (node) => node.parentInternalId === null
-        );
+        const rootNodesDocuments = contentNodesDocumentsRes.value.nodes;
+        const rootNodesTables = contentNodesTablesRes.value.nodes;
 
         const rootNodes = _.uniqBy(
           [...rootNodesDocuments, ...rootNodesTables],
