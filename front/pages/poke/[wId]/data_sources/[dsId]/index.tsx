@@ -598,7 +598,6 @@ async function handleWhitelistBot({
       majorCommand: "slack",
       command: "whitelist-bot",
       args: {
-        botNameOrId,
         ...(selectedBotIdentifierType === "name"
           ? { botName: botNameOrId }
           : { botId: botNameOrId }),
