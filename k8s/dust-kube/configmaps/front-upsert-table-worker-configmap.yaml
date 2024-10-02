@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: front-upsert-table-config
+data:
+  DD_ENV: "prod"
+  DD_SERVICE: "front-upsert-table-worker"
+  NODE_OPTIONS: "-r dd-trace/init --max-old-space-size=4200"
+  DD_LOGS_INJECTION: "true"
+  DD_RUNTIME_METRICS_ENABLED: "true"
+  NODE_ENV: "production"

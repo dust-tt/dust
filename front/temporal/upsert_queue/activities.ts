@@ -154,6 +154,7 @@ export async function upsertDocumentActivity(
   });
 }
 
+// TODO(2024-10-02 flav) Removed once all the upsert tables have been processed from this queue.
 export async function upsertTableActivity(
   upsertQueueId: string,
   enqueueTimestamp: number

@@ -5,9 +5,9 @@ import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 
 import { QUEUE_NAME } from "./config";
-import { upsertDocumentWorkflow } from "./workflows";
+import { upsertTableWorkflow } from "./workflows";
 
-export async function launchUpsertDocumentWorkflow({
+export async function launchUpsertTableWorkflow({
   workspaceId,
   dataSourceId,
   upsertQueueId,
@@ -20,10 +20,10 @@ export async function launchUpsertDocumentWorkflow({
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
-  const workflowId = `upsert-queue-document-${workspaceId}-${dataSourceId}-${upsertQueueId}`;
+  const workflowId = `upsert-table-queue-${workspaceId}-${dataSourceId}-${upsertQueueId}`;
 
   try {
-    await client.workflow.start(upsertDocumentWorkflow, {
+    await client.workflow.start(upsertTableWorkflow, {
       args: [upsertQueueId, enqueueTimestamp],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
