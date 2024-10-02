@@ -577,12 +577,14 @@ async function handleCheckOrFindNotionUrl(
 }
 
 async function handleWhitelistBot({
-  botName,
+  botNameOrId,
+  selectedBotIdentifierType,
   wId,
   groupId,
   whitelistType,
 }: {
-  botName: string;
+  botNameOrId: string;
+  selectedBotIdentifierType: "name" | "id";
   wId: string;
   groupId: string;
   whitelistType: SlackbotWhitelistType;
@@ -596,7 +598,10 @@ async function handleWhitelistBot({
       majorCommand: "slack",
       command: "whitelist-bot",
       args: {
-        botName,
+        botNameOrId,
+        ...(selectedBotIdentifierType === "name"
+          ? { botName: botNameOrId }
+          : { botId: botNameOrId }),
         wId,
         groupId,
         whitelistType,
@@ -839,7 +844,10 @@ function SlackWhitelistBot({
   connectorId?: string;
   groups: GroupType[];
 }) {
-  const [botName, setBotName] = useState("");
+  const [botNameOrId, setBotNameOrId] = useState("");
+  const [selectedBotIdentifierType, setSelectedBotIdentifierType] = useState<
+    "name" | "id"
+  >("name");
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
   const selectedGroupName = groups.find(
@@ -849,12 +857,31 @@ function SlackWhitelistBot({
   return (
     <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
       <div className="flex items-center gap-2">
-        <div>Whitelist slack bot or workflow</div>
+        <div>Whitelist slack bot or workflow by</div>
+        <DropdownMenu>
+          <DropdownMenu.Button
+            label={selectedBotIdentifierType ?? "Whitelist type"}
+          />
+          <DropdownMenu.Items width={220}>
+            <DropdownMenu.Item
+              selected={selectedBotIdentifierType === "name"}
+              label="Workflow Name"
+              onClick={() => setSelectedBotIdentifierType("name")}
+            />
+            <DropdownMenu.Item
+              selected={selectedBotIdentifierType === "id"}
+              label="Workflow Id"
+              onClick={() => setSelectedBotIdentifierType("id")}
+            />
+          </DropdownMenu.Items>
+        </DropdownMenu>
+      </div>
+      <div className="flex items-center gap-2">
         <div className="grow">
           <Input
-            placeholder="Bot or workflow name"
-            onChange={setBotName}
-            value={botName}
+            placeholder={`Bot or workflow ${selectedBotIdentifierType}`}
+            onChange={setBotNameOrId}
+            value={botNameOrId}
             name={""}
           />
         </div>
@@ -880,7 +907,7 @@ function SlackWhitelistBot({
           variant="secondary"
           label="Whitelist"
           onClick={async () => {
-            if (!botName) {
+            if (!botNameOrId) {
               alert("Please enter a bot name");
               return;
             }
@@ -889,12 +916,13 @@ function SlackWhitelistBot({
               return;
             }
             await handleWhitelistBot({
-              botName,
+              botNameOrId,
+              selectedBotIdentifierType,
               wId: owner.sId,
               groupId: selectedGroup,
               whitelistType: "summon_agent",
             });
-            setBotName("");
+            setBotNameOrId("");
           }}
         />
       </div>
