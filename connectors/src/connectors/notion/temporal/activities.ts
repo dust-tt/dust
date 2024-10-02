@@ -59,6 +59,7 @@ import {
   upsertTableFromCsv,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
+import { InvalidRowsRequestError } from "@connectors/lib/error";
 import {
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
@@ -1836,17 +1837,33 @@ export async function renderAndUpsertPageFromCache({
           runTimestamp.toString()
         );
 
-        await upsertTableFromCsv({
-          dataSourceConfig: dataSourceConfigFromConnector(connector),
-          tableId,
-          tableName,
-          tableDescription,
-          tableCsv: csv,
-          loggerArgs,
-          // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
-          truncate: false,
-          parents,
-        });
+        try {
+          await upsertTableFromCsv({
+            dataSourceConfig: dataSourceConfigFromConnector(connector),
+            tableId,
+            tableName,
+            tableDescription,
+            tableCsv: csv,
+            loggerArgs,
+            // We only update the rowId of for the page without truncating the rest of the table (incremental sync).
+            truncate: false,
+            parents,
+          });
+        } catch (err) {
+          if (err instanceof InvalidRowsRequestError) {
+            logger.warn(
+              { ...loggerArgs, error: err },
+              "[Notion table] Invalid rows detected - skipping (but not failing)."
+            );
+            return false;
+          } else {
+            logger.error(
+              { ...loggerArgs, error: err },
+              "[Notion table] Failed to upsert table."
+            );
+            throw err;
+          }
+        }
       } else {
         localLogger.info(
           "notionRenderAndUpsertPageFromCache: Skipping page as parent database has not been synced as structured data."
@@ -2535,17 +2552,33 @@ export async function upsertDatabaseStructuredDataFromCache({
   );
 
   localLogger.info("Upserting Notion Database as Table.");
-  await upsertTableFromCsv({
-    dataSourceConfig,
-    tableId,
-    tableName,
-    tableDescription,
-    tableCsv: csv,
-    loggerArgs,
-    // We overwrite the whole table since we just fetched all child pages.
-    truncate: true,
-    parents,
-  });
+  try {
+    await upsertTableFromCsv({
+      dataSourceConfig,
+      tableId,
+      tableName,
+      tableDescription,
+      tableCsv: csv,
+      loggerArgs,
+      // We overwrite the whole table since we just fetched all child pages.
+      truncate: true,
+      parents,
+    });
+  } catch (err) {
+    if (err instanceof InvalidRowsRequestError) {
+      logger.warn(
+        { ...loggerArgs, error: err },
+        "[Notion table] Invalid rows detected - skipping (but not failing)."
+      );
+    } else {
+      logger.error(
+        { ...loggerArgs, error: err },
+        "[Notion table] Failed to upsert table."
+      );
+      throw err;
+    }
+  }
+
   // Same as above, but without the `dustId` column
   const { csv: csvForDocument, originalHeader: headerForDocument } =
     await renderDatabaseFromPages({
