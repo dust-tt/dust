@@ -44,7 +44,7 @@ async function updateConversationsForWorkspace(
   logger: Logger
 ) {
   const conversations = await Conversation.findAll({
-    attributes: ["sId", "groupIds"],
+    attributes: ["id", "sId", "groupIds"],
     where: { workspaceId },
   });
 
@@ -128,7 +128,7 @@ async function updateConversation(
         conversationId: conversation.sId,
         execute,
       },
-      "Updated agent"
+      "Updated convo"
     );
   } else {
     logger.info(
@@ -136,7 +136,7 @@ async function updateConversation(
         conversationId: conversation.sId,
         execute,
       },
-      "Would have updated agent"
+      "Would have updated convo"
     );
   }
 }
