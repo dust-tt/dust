@@ -20,7 +20,7 @@ export async function launchUpsertTableWorkflow({
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
-  const workflowId = `upsert-queue-table-${workspaceId}-${dataSourceId}-${upsertQueueId}`;
+  const workflowId = `upsert-table-queue-${workspaceId}-${dataSourceId}-${upsertQueueId}`;
 
   try {
     await client.workflow.start(upsertTableWorkflow, {
