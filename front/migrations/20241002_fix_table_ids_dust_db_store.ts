@@ -22,25 +22,35 @@ async function main() {
     .split("\n")
     .map((l) => JSON.parse(l)) as Array<{
     data_source_id: string;
-    project: string;
+    project: number;
     is_notion: boolean;
   }>;
+
+  const tableIdsByProjectId = _.groupBy(
+    file_tables_rows_unique_table_ids,
+    (t) => t.split("__")[0]
+  );
 
   // For each datasource...
   for (const [
     i,
     { data_source_id, project: project_id, is_notion },
   ] of file_core_project_id_data_source_ids.entries()) {
+    const allTableIds = tableIdsByProjectId[project_id.toString()] || [];
+    if (allTableIds.length === 0) {
+      console.log(
+        `No table IDs found for data source (ds_id=${data_source_id}, project_id=${project_id}, is_notion=${is_notion})`
+      );
+      continue;
+    }
+
     console.log(
       `\n\n------------\n` +
         `Processing data source (ds_id=${data_source_id}, project_id=${project_id}, is_notion=${is_notion})` +
-        ` -- ${i + 1}/${file_core_project_id_data_source_ids.length}` +
+        ` -- (${i + 1}/${file_core_project_id_data_source_ids.length}): ${allTableIds.length} unique table IDs found` +
         `\n------------\n`
     );
 
-    const allTableIds = file_tables_rows_unique_table_ids.filter((tId) =>
-      tId.startsWith(`${project_id}__`)
-    );
     const tablesRecord: Record<
       string,
       { oldUniqueId: string | null; newUniqueId: string | null }
@@ -57,6 +67,11 @@ async function main() {
       if (isNewUniqueId) {
         tableRecord.newUniqueId = tUniqueId;
       } else {
+        if (tableRecord.oldUniqueId && tableRecord.oldUniqueId !== tUniqueId) {
+          throw new Error(
+            `Inconsistent old unique IDs for table ${globalId}: ${tableRecord.oldUniqueId} vs ${tUniqueId}`
+          );
+        }
         tableRecord.oldUniqueId = tUniqueId;
       }
       tablesRecord[globalId] = tableRecord;
