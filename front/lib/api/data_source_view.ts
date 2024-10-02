@@ -71,7 +71,7 @@ interface GetContentNodesForDataSourceViewResult {
   total: number;
 }
 
-export async function getContentNodesForManagedDataSourceView(
+async function getContentNodesForManagedDataSourceView(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   { internalIds, parentId, viewType }: GetContentNodesForDataSourceViewParams
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
@@ -140,7 +140,7 @@ export async function getContentNodesForManagedDataSourceView(
 
 // Static data sources are data sources that are not managed by a connector.
 // They are flat and do not have a hierarchy.
-export async function getContentNodesForStaticDataSourceView(
+async function getContentNodesForStaticDataSourceView(
   dataSourceView: DataSourceViewResource,
   { internalIds, pagination, viewType }: GetContentNodesForDataSourceViewParams
 ): Promise<
