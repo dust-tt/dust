@@ -244,7 +244,7 @@ export async function upsertTableFromCsv({
   }
 
   if (csvRows) {
-    const now = Date.now();
+    const now = performance.now();
     const rowsRes = await coreAPI.upsertTableRows({
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
@@ -255,7 +255,7 @@ export async function upsertTableFromCsv({
 
     logger.info(
       {
-        durationMs: Date.now() - now,
+        durationMs: performance.now() - now,
         csvRowsLength: csvRows.length,
         csvColsLength: Object.keys(csvRows[0]?.value)?.length,
         workspaceId: owner.id,
