@@ -120,6 +120,7 @@ export async function getSlackClient(
 }
 
 export type SlackUserInfo = {
+  id: string | null;
   email: string | null;
   is_bot: boolean;
   display_name?: string;
@@ -153,6 +154,7 @@ export async function getSlackUserInfo(
     // For example, slack workflows are bots, and the Zapier Slack bot is a user bot.
     // Not clear why Slack has these two concepts.
     // From our perspective, a Slack user bot is a bot.
+    id: res.user?.id || null,
     is_bot: res.user?.is_bot || false,
     email: res.user?.profile?.email || null,
     display_name: res.user?.profile?.display_name,
@@ -179,6 +181,7 @@ export async function getSlackBotInfo(
   }
 
   return {
+    id: slackBot.bot?.id || null,
     display_name: slackBot.bot?.name,
     real_name: slackBot.bot.name,
     email: null,

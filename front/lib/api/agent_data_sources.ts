@@ -5,12 +5,13 @@ import type {
   ModelId,
   Result,
 } from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
+import { assertNever, CONNECTOR_PROVIDERS, Err, Ok } from "@dust-tt/types";
 import { sortBy, uniq } from "lodash";
 import type { WhereAttributeHashValue } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { isManagedConnectorProvider } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
@@ -64,17 +65,8 @@ export async function getDataSourceViewsUsageByCategory({
       connectorProvider = "webcrawler";
       break;
     case "managed":
-      const managedConnectorProvider: ConnectorProvider[] = [
-        "confluence",
-        "github",
-        "google_drive",
-        "intercom",
-        "notion",
-        "slack",
-        "microsoft",
-      ];
       connectorProvider = {
-        [Op.in]: managedConnectorProvider,
+        [Op.in]: CONNECTOR_PROVIDERS.filter(isManagedConnectorProvider),
       };
       break;
     case "apps":
@@ -297,18 +289,8 @@ export async function getDataSourcesUsageByCategory({
   } else if (category === "website") {
     connectorProvider = "webcrawler";
   } else if (category === "managed") {
-    const managedConnectorProvider: ConnectorProvider[] = [
-      "confluence",
-      "github",
-      "google_drive",
-      "intercom",
-      "notion",
-      "slack",
-      "microsoft",
-    ];
-
     connectorProvider = {
-      [Op.in]: managedConnectorProvider,
+      [Op.in]: CONNECTOR_PROVIDERS.filter(isManagedConnectorProvider),
     };
   }
 

@@ -113,8 +113,12 @@ export function DataSourceViewsSelector({
       }
     }
   }
+  const orderDatasourceViews = useMemo(
+    () => orderDatasourceViewByImportance(dataSourceViews),
+    [dataSourceViews]
+  );
 
-  const filteredDSVs = dataSourceViews.filter(
+  const filteredDSVs = orderDatasourceViews.filter(
     (dsv) =>
       !dsv.dataSource.connectorId ||
       (dsv.dataSource.connectorId &&
@@ -125,15 +129,8 @@ export function DataSourceViewsSelector({
   );
 
   const managedDsv = filteredDSVs.filter((dsv) => isManaged(dsv.dataSource));
-
   const folders = filteredDSVs.filter((dsv) => isFolder(dsv.dataSource));
-
   const websites = filteredDSVs.filter((dsv) => isWebsite(dsv.dataSource));
-
-  const orderDatasourceViews = useMemo(
-    () => orderDatasourceViewByImportance(filteredDSVs),
-    [filteredDSVs]
-  );
 
   const defaultVault = useMemo(() => {
     const firstKey = Object.keys(selectionConfigurations)[0] ?? null;
@@ -297,6 +294,7 @@ export function DataSourceViewSelector({
   const [isSelectedAll, setIsSelectedAll] = useState(
     selectionConfiguration.selectedResources.length > 0
   );
+
   const dataSourceView = selectionConfiguration.dataSourceView;
 
   const LogoComponent = getConnectorProviderLogoWithFallback(
@@ -329,47 +327,32 @@ export function DataSourceViewSelector({
     [dataSourceView]
   );
 
-  const isTableView = viewType === "tables";
+  const handleSelectAll = () => {
+    document
+      .querySelectorAll<HTMLInputElement>(
+        `#dataSourceViewsSelector-${dataSourceView.dataSource.name} .tree-depth-0 input[type="checkbox"]:first-child`
+      )
+      .forEach((el) => {
+        if (el.checked === isSelectedAll) {
+          el.click();
+        }
+      });
+    setIsSelectedAll(!isSelectedAll);
+  };
+
   const isPartiallyChecked = internalIds.length > 0;
+
   const checkedStatus = selectionConfiguration.isSelectAll
     ? "checked"
     : isPartiallyChecked
       ? "partial"
       : "unchecked";
 
-  const handleSelectAll = (value: boolean) => {
-    if (isRootSelectable) {
-      setSelectionConfigurations((prevState) => {
-        const prevSelectionConfiguration =
-          prevState[dataSourceView.sId] ??
-          defaultSelectionConfiguration(dataSourceView);
-        const udpatedConfig = {
-          ...prevSelectionConfiguration,
-          selectedResources: [],
-          isSelectAll: value,
-        };
-
-        return {
-          ...prevState,
-          [dataSourceView.sId]: udpatedConfig,
-        };
-      });
-    } else {
-      document
-        .querySelectorAll<HTMLInputElement>(
-          `#dataSourceViewsSelector-${dataSourceView.dataSource.name} .tree-depth-0 input[type="checkbox"]:first-child`
-        )
-        .forEach((el) => {
-          if (el.checked !== value) {
-            el.click();
-          }
-        });
-    }
-    setIsSelectedAll(value);
-  };
+  const isTableView = viewType === "tables";
 
   // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
   const hideCheckbox = readonly || (isTableView && !isPartiallyChecked);
+
   const getNodesFromConfig = (
     selectionConfiguration: DataSourceViewSelectionConfiguration
   ) =>
@@ -453,19 +436,33 @@ export function DataSourceViewSelector({
             : {
                 checked: checkedStatus,
                 onChange: () => {
-                  handleSelectAll(checkedStatus !== "checked");
+                  setSelectionConfigurations((prevState) => {
+                    const prevSelectionConfiguration =
+                      prevState[dataSourceView.sId] ??
+                      defaultSelectionConfiguration(dataSourceView);
+                    const udpatedConfig = {
+                      ...prevSelectionConfiguration,
+                      selectedResources: [],
+                      isSelectAll: checkedStatus !== "checked",
+                    };
+
+                    return {
+                      ...prevState,
+                      [dataSourceView.sId]: udpatedConfig,
+                    };
+                  });
                 },
               }
         }
         actions={
-          isManaged(dataSourceView.dataSource) && (
+          !isRootSelectable && (
             <Button
               variant="tertiary"
               size="xs"
               className="mr-4 h-5 text-xs"
               label={isSelectedAll ? "Unselect All" : "Select All"}
               icon={ListCheckIcon}
-              onClick={() => handleSelectAll(!isSelectedAll)}
+              onClick={handleSelectAll}
             />
           )
         }

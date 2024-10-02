@@ -20,6 +20,20 @@ spec:
         - name: web
           image: gcr.io/or1g1n-186209/front-image:latest
           command: ["npm", "run", "start:worker"]
+          args:
+            [
+              "--",
+              "--workers",
+              "hard_delete",
+              "labs",
+              "mentions_count",
+              "poke",
+              "post_upsert_hooks",
+              "production_checks",
+              "scrub_workspace_queue",
+              "update_workspace_usage",
+              "upsert_queue",
+            ]
           imagePullPolicy: Always
 
           envFrom:

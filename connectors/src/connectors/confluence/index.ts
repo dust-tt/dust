@@ -474,9 +474,12 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    const confluenceId = getIdFromConfluenceInternalId(internalId);
+    if (isConfluenceInternalSpaceId(internalId)) {
+      return new Ok([internalId]);
+    }
 
     if (isConfluenceInternalPageId(internalId)) {
+      const confluenceId = getIdFromConfluenceInternalId(internalId);
       const currentPage = await ConfluencePage.findOne({
         attributes: ["pageId", "parentId", "spaceId"],
         where: {
@@ -491,7 +494,10 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
 
       // If the page does not have a parentId, return only the spaceId.
       if (!currentPage.parentId) {
-        return new Ok([makeConfluenceInternalSpaceId(currentPage.spaceId)]);
+        return new Ok([
+          internalId,
+          makeConfluenceInternalSpaceId(currentPage.spaceId),
+        ]);
       }
 
       const parentIds = await getConfluencePageParentIds(

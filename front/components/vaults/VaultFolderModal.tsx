@@ -169,9 +169,9 @@ export default function VaultFolderModal({
               <div className="w-full">
                 <TextArea
                   placeholder="Folder description"
-                  value={description}
-                  onChange={(value) => {
-                    setDescription(value);
+                  value={description ?? ""}
+                  onChange={(e) => {
+                    setDescription(e.target.value);
                   }}
                   showErrorLabel
                   minRows={2}

@@ -85,21 +85,16 @@ export default function AssistantBuilderDataSourceModal({
         id="dataSourceViewsSelector"
         className="overflow-y-auto scrollbar-hide"
       >
-        <div
-          id="dataSourceViewsSelector"
-          className="overflow-y-auto scrollbar-hide"
-        >
-          <DataSourceViewsSelector
-            useCase="assistantBuilder"
-            dataSourceViews={supportedDataSourceViewsForViewType}
-            allowedVaults={allowedVaults}
-            owner={owner}
-            selectionConfigurations={selectionConfigurations}
-            setSelectionConfigurations={setSelectionConfigurationsCallback}
-            viewType={viewType}
-            isRootSelectable={true}
-          />
-        </div>
+        <DataSourceViewsSelector
+          useCase="assistantBuilder"
+          dataSourceViews={supportedDataSourceViewsForViewType}
+          allowedVaults={allowedVaults}
+          owner={owner}
+          selectionConfigurations={selectionConfigurations}
+          setSelectionConfigurations={setSelectionConfigurationsCallback}
+          viewType={viewType}
+          isRootSelectable={true}
+        />
       </div>
     </Modal>
   );

@@ -50,6 +50,7 @@ jobs:
           chmod +x ./k8s/deploy-image.sh
           ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.short_sha.outputs.short_sha }} front-deployment
           ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.short_sha.outputs.short_sha }} front-worker-deployment
+          ./k8s/deploy-image.sh gcr.io/$GCLOUD_PROJECT_ID/front-image:${{ steps.short_sha.outputs.short_sha }} front-upsert-table-worker-deployment
 
       - name: Wait for rollout to complete
         run: |
@@ -57,3 +58,5 @@ jobs:
           kubectl rollout status deployment/front-deployment --timeout=10m
           echo "Waiting for rollout to complete (worker)"
           kubectl rollout status deployment/front-worker-deployment --timeout=10m
+          echo "Waiting for rollout to complete (upsert table worker)"
+          kubectl rollout status deployment/front-upsert-table-worker-deployment --timeout=10m

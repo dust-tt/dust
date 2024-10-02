@@ -12,10 +12,10 @@ import {
 import { Workspace } from "@app/lib/models/workspace";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
 
-// Ranking of agents is done over a 7 days period.
-const rankingTimeframeSec = 60 * 60 * 24 * 7; // 7 days
+// Ranking of agents is done over a 30 days period.
+const rankingUsageDays = 30;
+const rankingTimeframeSec = 60 * 60 * 24 * rankingUsageDays;
 
-//
 const MENTION_COUNT_TTL = 60 * 60 * 24 * 7; // 7 days
 
 // Computing agent mention count over a 4h period
@@ -157,7 +157,7 @@ export async function agentMentionsCount(
         attributes: [],
         where: {
           createdAt: {
-            [Op.gt]: literal("NOW() - INTERVAL '30 days'"),
+            [Op.gt]: literal(`NOW() - INTERVAL '${rankingUsageDays} days'`),
           },
         },
         include: [

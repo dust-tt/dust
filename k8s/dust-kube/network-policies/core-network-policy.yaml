@@ -18,6 +18,9 @@ spec:
               app: front-worker
         - podSelector:
             matchLabels:
+              app: front-upsert-table-worker
+        - podSelector:
+            matchLabels:
               app: front-edge
         - podSelector:
             matchLabels:

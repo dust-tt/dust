@@ -4,7 +4,7 @@ import { ContentNodeType } from "../../lib/connectors_api";
 
 export const ContentSchema = t.type({
   dataSourceId: t.string,
-  parentsIn:t.array(t.string),
+  parentsIn: t.array(t.string),
 });
 
 export const PostDataSourceViewSchema = t.type({

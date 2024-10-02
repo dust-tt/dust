@@ -66,11 +66,7 @@ const DataSourcePage = ({
                     </div>
                     <div className="ml-4 text-sm text-element-700">
                       <div className="font-bold">Instructions:</div>
-                      <TextArea
-                        placeholder=""
-                        value={a.instructions}
-                        onChange={() => {}}
-                      />
+                      <TextArea placeholder="" value={a.instructions ?? ""} />
                     </div>
                     <div className="ml-4 text-sm text-element-700">
                       <div className="font-bold">

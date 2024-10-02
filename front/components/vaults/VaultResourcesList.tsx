@@ -3,6 +3,7 @@ import {
   Chip,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
+  CubeIcon,
   DataTable,
   FolderIcon,
   PencilSquareIcon,
@@ -52,6 +53,8 @@ import {
   useVaultDataSourceViewsWithDetails,
 } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
+
+import { ViewFolderAPIModal } from "../ViewFolderAPIModal";
 
 const REDIRECT_TO_EDIT_PERMISSIONS = [
   "confluence",
@@ -265,6 +268,7 @@ export const VaultResourcesList = ({
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [showFolderOrWebsiteModal, setShowFolderOrWebsiteModal] =
     useState(false);
+  const [showViewFolderAPIModal, setShowViewFolderAPIModal] = useState(false);
   const [isNewConnectorLoading, setIsNewConnectorLoading] = useState(false);
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "name", desc: false },
@@ -277,6 +281,7 @@ export const VaultResourcesList = ({
   const isSystemVault = systemVault.sId === vault.sId;
   const isManagedCategory = category === "managed";
   const isWebsite = category === "website";
+  const isFolder = category === "folder";
   const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
@@ -318,6 +323,17 @@ export const VaultResourcesList = ({
               setShowFolderOrWebsiteModal(true);
             },
           });
+          if (isFolder) {
+            moreMenuItems.push({
+              label: "API",
+              icon: CubeIcon,
+              onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+                e.stopPropagation();
+                setSelectedDataSourceView(dataSourceView);
+                setShowViewFolderAPIModal(true);
+              },
+            });
+          }
           moreMenuItems.push({
             label: "Delete",
             icon: TrashIcon,
@@ -353,6 +369,7 @@ export const VaultResourcesList = ({
       owner,
       vaultDataSourceViews,
       isAdmin,
+      isFolder,
       isWebsiteOrFolder,
       canWriteInVault,
     ]
@@ -457,6 +474,15 @@ export const VaultResourcesList = ({
             vault={vault}
             systemVault={systemVault}
             isAdmin={isAdmin}
+          />
+        )}
+        {isFolder && selectedDataSourceView && (
+          <ViewFolderAPIModal
+            isOpen={showViewFolderAPIModal}
+            owner={owner}
+            vault={vault}
+            dataSource={selectedDataSourceView?.dataSource}
+            onClose={() => setShowViewFolderAPIModal(false)}
           />
         )}
         {isWebsiteOrFolder && (

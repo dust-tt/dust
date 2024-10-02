@@ -1,0 +1,1 @@
+DELETE FROM data_sources_documents WHERE status = 'soft-hard-deleted';

@@ -1,4 +1,4 @@
-import { Input, Page } from "@dust-tt/sparkle";
+import { Input, Page, TextArea } from "@dust-tt/sparkle";
 import type { CoreAPIDocument } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -85,7 +85,7 @@ export default function DataSourceUpsert({
             <div className="pt-4">
               <Page.SectionHeader title="Text content" />
               <div className="pt-4">
-                <textarea
+                <TextArea
                   name="text"
                   id="text"
                   rows={20}
