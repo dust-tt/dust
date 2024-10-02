@@ -19,6 +19,7 @@ echo "-----------------------------------"
 kubectl apply -f "$(dirname "$0")/configmaps/apache-tika-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-worker-configmap.yaml"
+kubectl apply -f "$(dirname "$0")/configmaps/front-upsert-table-worker-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-edge-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/front-qa-configmap.yaml"
 kubectl apply -f "$(dirname "$0")/configmaps/connectors-configmap.yaml"
@@ -68,6 +69,7 @@ echo "-----------------------------------"
 apply_deployment apache-tika-deployment
 apply_deployment front-deployment
 apply_deployment front-worker-deployment
+apply_deployment front-upsert-table-deployment
 apply_deployment front-edge-deployment
 apply_deployment front-qa-deployment
 apply_deployment connectors-deployment
