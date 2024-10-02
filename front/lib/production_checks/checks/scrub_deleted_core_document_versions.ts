@@ -213,9 +213,9 @@ async function scrubDocument({
   );
 
   if (moreRecentSameHash[0].length > 0) {
-    // mark the row as 'soft-hard-deleted'
+    // delete the row
     await corePrimary.query(
-      `UPDATE data_sources_documents SET status = 'soft-hard-deleted' WHERE id = :id`,
+      `DELETE FROM data_sources_documents WHERE id = :id`,
       {
         replacements: {
           id: id,
