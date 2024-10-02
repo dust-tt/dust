@@ -57,8 +57,17 @@ export function isWebsite(
   return ds.connectorProvider === "webcrawler";
 }
 
+export function isManagedConnectorProvider(
+  connectorProvider: ConnectorProvider
+) {
+  return connectorProvider !== "webcrawler";
+}
+
 export function isManaged(ds: DataSource): ds is DataSource & WithConnector {
-  return ds.connectorProvider !== null && !isWebsite(ds);
+  return (
+    ds.connectorProvider !== null &&
+    isManagedConnectorProvider(ds.connectorProvider)
+  );
 }
 
 export function isRemoteDatabase(
