@@ -936,11 +936,11 @@ function ActionEditor({
               isDataSourceAction ? "This data contains…" : "This tool is about…"
             }
             value={action.description}
-            onChange={(v) => {
-              if (v.length < 800) {
+            onChange={(e) => {
+              if (e.target.value.length < 800) {
                 updateAction({
                   actionName: action.name,
-                  actionDescription: v,
+                  actionDescription: e.target.value,
                   getNewActionConfig: (old) => old,
                 });
                 setShowInvalidActionDescError(null);

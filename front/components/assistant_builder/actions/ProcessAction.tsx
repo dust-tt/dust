@@ -524,7 +524,7 @@ export function ActionProcess({
           <TextArea
             placeholder={"Extract the list of…"}
             value={description}
-            onChange={onDescriptionChange}
+            onChange={(e) => onDescriptionChange(e.target.value)}
           />
         </div>
       )}

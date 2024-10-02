@@ -329,11 +329,11 @@ const DocumentUploadOrEditModal = ({
                   minRows={10}
                   placeholder="Your document content..."
                   value={documentState.text}
-                  onChange={(value) => {
+                  onChange={(e) => {
                     setEditionStatus((prev) => ({ ...prev, content: true }));
                     setDocumentState((prev) => ({
                       ...prev,
-                      text: value,
+                      text: e.target.value,
                     }));
                   }}
                   error={
@@ -632,14 +632,14 @@ const TableUploadOrEditModal = ({
                 <TextArea
                   placeholder="This table contains..."
                   value={tableState.description}
-                  onChange={(value) => {
+                  onChange={(e) => {
                     setEditionStatus((prev) => ({
                       ...prev,
                       description: true,
                     }));
                     setTableState((prev) => ({
                       ...prev,
-                      description: value,
+                      description: e.target.value,
                     }));
                   }}
                   error={
