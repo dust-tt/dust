@@ -271,7 +271,7 @@ export async function getContentNodesForDataSourceView(
     contentNodesResult.nodes,
     useFullParentIds
   );
-  console.log("contentNodesInView", contentNodesInView);
+
   return new Ok({
     nodes: contentNodesInView,
     total: contentNodesResult.total,
