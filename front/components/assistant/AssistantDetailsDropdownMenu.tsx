@@ -17,6 +17,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, isBuilder } from "@dust-tt/types";
+import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
@@ -24,13 +25,14 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
+import { setQueryParam } from "@app/lib/utils/router";
 
 interface AssistantDetailsDropdownMenuProps {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
   variant?: "button" | "plain";
   canDelete?: boolean;
-  showAssistantDetails?: () => void;
+  isMoreInfoVisible?: boolean;
   showAddRemoveToList?: boolean;
 }
 
@@ -39,7 +41,7 @@ export function AssistantDetailsDropdownMenu({
   owner,
   variant = "plain",
   canDelete,
-  showAssistantDetails,
+  isMoreInfoVisible,
   showAddRemoveToList = false,
 }: AssistantDetailsDropdownMenuProps) {
   const [isUpdatingList, setIsUpdatingList] = useState(false);
@@ -50,7 +52,7 @@ export function AssistantDetailsDropdownMenu({
     agentConfigurationId: agentConfiguration.sId,
     disabled: true,
   });
-
+  const router = useRouter();
   const [showDeletionModal, setShowDeletionModal] =
     useState<LightAgentConfigurationType | null>(null);
 
@@ -153,14 +155,16 @@ export function AssistantDetailsDropdownMenu({
                   close();
                 }}
               />
-              {showAssistantDetails ? (
+              {isMoreInfoVisible ? (
                 <DropdownMenu.Item
-                  label={`More info`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    close();
-                    showAssistantDetails();
-                  }}
+                  label="More info"
+                  onClick={() =>
+                    setQueryParam(
+                      router,
+                      "assistantDetails",
+                      agentConfiguration.sId
+                    )
+                  }
                   icon={EyeIcon}
                 />
               ) : (
