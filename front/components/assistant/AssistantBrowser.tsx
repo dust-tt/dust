@@ -24,9 +24,9 @@ import { AssistantDetailsDropdownMenu } from "@app/components/assistant/Assistan
 import { subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 
-const isValidTab = (tab: string, visibleTabs: string[]): tab is TabId => {
-  return visibleTabs.includes(tab);
-};
+function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
+  return visibleTabs.includes(tab as TabId);
+}
 
 interface AssistantListProps {
   owner: WorkspaceType;

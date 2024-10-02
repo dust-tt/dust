@@ -157,7 +157,7 @@ export function AssistantDetailsDropdownMenu({
               />
               {isMoreInfoVisible ? (
                 <DropdownMenu.Item
-                  label={`More info`}
+                  label="More info"
                   onClick={() =>
                     setQueryParam(
                       router,
