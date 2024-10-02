@@ -26,11 +26,17 @@ async fn test_oauth_connexion_flow_success() {
     });
     let api_response = do_api_call(create_url, HttpMethod::POST, &create_body).await;
 
-    assert_eq!(api_response.error, None);
-    assert_eq!(api_response.response.contains_key("connection"), true);
+    assert_eq!(api_response.error.is_none(), true);
 
-    let connection: ConnectionExpectedResponse =
-        serde_json::from_value(api_response.response.get("connection").unwrap().clone()).unwrap();
+    let connection: ConnectionExpectedResponse = serde_json::from_value(
+        api_response
+            .response
+            .unwrap()
+            .get("connection")
+            .unwrap()
+            .clone(),
+    )
+    .unwrap();
 
     // check that created is within the last 2 seconds of now
     assert_eq!(
@@ -60,15 +66,12 @@ async fn test_oauth_connexion_flow_success() {
     });
     let finalize_api_response = do_api_call(finalize_url, HttpMethod::POST, &finalize_body).await;
 
-    assert_eq!(finalize_api_response.error, None);
-    assert_eq!(
-        finalize_api_response.response.contains_key("connection"),
-        true
-    );
+    assert_eq!(finalize_api_response.error.is_none(), true);
 
     let finalized_connection: ConnectionExpectedResponse = serde_json::from_value(
         finalize_api_response
             .response
+            .unwrap()
             .get("connection")
             .unwrap()
             .clone(),
@@ -93,10 +96,11 @@ async fn test_oauth_connexion_flow_success() {
         do_api_call(access_token_url, HttpMethod::POST, &access_token_body).await;
 
     // Check that the response contains the access token
-    assert_eq!(access_token_api_response.error, None);
+    assert_eq!(access_token_api_response.error.is_none(), true);
     assert_eq!(
         access_token_api_response
             .response
+            .unwrap()
             .get("access_token")
             .unwrap(),
         "mock_access_token"
@@ -132,11 +136,17 @@ async fn test_oauth_connexion_flow_switching_provider() {
 
     let api_response = do_api_call(create_url, HttpMethod::POST, &create_body).await;
 
-    assert_eq!(api_response.error, None);
-    assert_eq!(api_response.response.contains_key("connection"), true);
+    assert_eq!(api_response.error.is_none(), true);
 
-    let connection: ConnectionExpectedResponse =
-        serde_json::from_value(api_response.response.get("connection").unwrap().clone()).unwrap();
+    let connection: ConnectionExpectedResponse = serde_json::from_value(
+        api_response
+            .response
+            .unwrap()
+            .get("connection")
+            .unwrap()
+            .clone(),
+    )
+    .unwrap();
 
     // Now finalize the connection
 

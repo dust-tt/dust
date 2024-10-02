@@ -12,7 +12,7 @@ use axum::{
     extract::{Path, State},
     middleware::from_fn,
     response::Json,
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use hyper::StatusCode;
@@ -276,6 +276,27 @@ async fn credentials_retrieve(
     }
 }
 
+async fn credentials_delete(
+    State(state): State<Arc<OAuthState>>,
+    Path(credential_id): Path<String>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state.store.delete_credential(&credential_id).await {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to delete credential",
+            Some(e),
+        ),
+        Ok(_) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: None,
+            }),
+        ),
+    }
+}
+
 pub async fn create_app() -> Result<Router> {
     let store: Box<dyn store::OAuthStore + Sync + Send> = match std::env::var("OAUTH_DATABASE_URI")
     {
@@ -302,6 +323,7 @@ pub async fn create_app() -> Result<Router> {
         )
         .route("/credentials", post(credentials_create))
         .route("/credentials/:credential_id", get(credentials_retrieve))
+        .route("/credentials/:credential_id", delete(credentials_delete))
         // Extensions
         .layer(
             TraceLayer::new_for_http()
