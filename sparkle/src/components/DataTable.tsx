@@ -22,7 +22,13 @@ import {
 import { IconButton } from "@sparkle/components/IconButton";
 import { Pagination } from "@sparkle/components/Pagination";
 import { Tooltip } from "@sparkle/components/Tooltip";
-import { ArrowDownIcon, ArrowUpIcon, MoreIcon } from "@sparkle/icons";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  MoreIcon,
+} from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
@@ -472,6 +478,46 @@ DataTable.CellContent = function CellContent({
           </span>
         )}
       </div>
+    </div>
+  );
+};
+
+interface CellContentWithCopyProps {
+  children: React.ReactNode;
+  textToCopy?: string;
+  className?: string;
+}
+
+DataTable.CellContentWithCopy = function CellContentWithCopy({
+  children,
+  textToCopy,
+  className,
+}: CellContentWithCopyProps) {
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(textToCopy ?? String(children));
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  return (
+    <div
+      className={classNames(
+        "s-flex s-items-center s-space-x-2",
+        className || ""
+      )}
+    >
+      <span className="s-truncate">{children}</span>
+      <IconButton
+        icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+        variant="tertiary"
+        onClick={async (e) => {
+          e.stopPropagation();
+          await handleCopy();
+        }}
+        size="xs"
+      />
     </div>
   );
 };
