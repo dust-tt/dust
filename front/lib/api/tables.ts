@@ -259,7 +259,9 @@ export async function upsertTableFromCsv({
       {
         durationMs: performance.now() - now,
         csvRowsLength: csvRows.length,
-        csvColsLength: Object.keys(csvRows[0]?.value)?.length,
+        csvColsLength: csvRows[0]?.value
+          ? Object.keys(csvRows[0].value).length
+          : 0,
         workspaceId: owner.id,
         tableId,
         tableName,
