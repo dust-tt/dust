@@ -69,7 +69,7 @@ echo "-----------------------------------"
 apply_deployment apache-tika-deployment
 apply_deployment front-deployment
 apply_deployment front-worker-deployment
-apply_deployment front-upsert-table-deployment
+apply_deployment front-upsert-table-worker-deployment
 apply_deployment front-edge-deployment
 apply_deployment front-qa-deployment
 apply_deployment connectors-deployment
