@@ -18,9 +18,9 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { runAction } from "@app/lib/actions/server";
+import { filterSuggestedNames } from "@app/lib/api/assistant/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { apiError } from "@app/logger/withlogging";
 
@@ -126,19 +126,9 @@ async function handler(
         suggestions: string[] | null | undefined;
       };
       if (suggestionsType === "name") {
-        // Filter out suggested names that are already in use in the workspace.
-        const existingNames = (
-          await AgentConfiguration.findAll({
-            where: {
-              workspaceId: owner.id,
-              status: "active",
-            },
-            attributes: ["name"],
-          })
-        ).map((ac) => ac.name.toLowerCase());
-
-        suggestions.suggestions = suggestions.suggestions?.filter(
-          (s: string) => !existingNames.includes(s.toLowerCase())
+        suggestions.suggestions = await filterSuggestedNames(
+          owner,
+          suggestions.suggestions
         );
       }
 
