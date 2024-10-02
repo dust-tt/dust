@@ -128,7 +128,7 @@ export function RequestDataSourceModal({
               <TextArea
                 placeholder={`Hello ${selectedDataSource.editedByUser?.fullName},`}
                 value={message}
-                onChange={setMessage}
+                onChange={(e) => setMessage(e.target.value)}
                 className="s-mb-2"
               />
               <Button
