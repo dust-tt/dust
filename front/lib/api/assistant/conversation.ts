@@ -866,7 +866,7 @@ export async function* postUserMessage(
       }[];
 
       await updateConversationGroups({
-        mentionedAgents: agentMessages.map((a) => a.configuration),
+        mentionedAgents: nonNullResults.map(({ m }) => m.configuration),
         conversation,
         t,
       });
@@ -1356,7 +1356,7 @@ export async function* editUserMessage(
       // updateConversationGroups is purely additive, this will not remove any
       // group from the conversation (see function description)
       await updateConversationGroups({
-        mentionedAgents: agentMessages.map((a) => a.configuration),
+        mentionedAgents: nonNullResults.map(({ m }) => m.configuration),
         conversation,
         t,
       });
