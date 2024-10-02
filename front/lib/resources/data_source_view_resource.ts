@@ -123,7 +123,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
         vault,
         transaction
       );
-      return this.createViewInVaultFromDataSourceIncludingAllDocuments(
+      return this.createDefaultViewInVaultFromDataSourceIncludingAllDocuments(
         auth,
         dataSource.vault,
         dataSource,
@@ -152,7 +152,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   }
 
   // This view has access to all documents, which is represented by null.
-  private static async createViewInVaultFromDataSourceIncludingAllDocuments(
+  private static async createDefaultViewInVaultFromDataSourceIncludingAllDocuments(
     auth: Authenticator,
     vault: VaultResource,
     dataSource: DataSourceResource,

@@ -432,7 +432,7 @@ export function DataSourceViewSelector({
               }
         }
         actions={
-          isManaged(dataSourceView.dataSource) && (
+          !isRootSelectable && (
             <Button
               variant="tertiary"
               size="xs"
