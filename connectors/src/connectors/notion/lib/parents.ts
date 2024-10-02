@@ -53,6 +53,9 @@ async function _getParents(
     //    (see https://dust4ai.slack.com/archives/C050SM8NSPK/p1693241129921369)
     case null:
     case "unknown":
+      // If parentType is unknown, consider it as the parent page id.
+      return [...parents, "unknown"];
+
     case "block":
     case "workspace":
       // workspace -> root level pages, with no parents other than themselves
