@@ -23,6 +23,7 @@ spec:
           args:
             [
               "--",
+              "--workers",
               "hard_delete",
               "labs",
               "mentions_count",
