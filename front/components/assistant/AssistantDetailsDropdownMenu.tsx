@@ -25,13 +25,14 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
+import { setQueryParam } from "@app/lib/utils/router";
 
 interface AssistantDetailsDropdownMenuProps {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
   variant?: "button" | "plain";
   canDelete?: boolean;
-  isShowAssistantDetails?: boolean;
+  isMoreInfoVisible?: boolean;
   showAddRemoveToList?: boolean;
 }
 
@@ -40,7 +41,7 @@ export function AssistantDetailsDropdownMenu({
   owner,
   variant = "plain",
   canDelete,
-  isShowAssistantDetails,
+  isMoreInfoVisible,
   showAddRemoveToList = false,
 }: AssistantDetailsDropdownMenuProps) {
   const [isUpdatingList, setIsUpdatingList] = useState(false);
@@ -154,21 +155,16 @@ export function AssistantDetailsDropdownMenu({
                   close();
                 }}
               />
-              {isShowAssistantDetails ? (
+              {isMoreInfoVisible ? (
                 <DropdownMenu.Item
                   label={`More info`}
-                  onClick={() => {
-                    const q = router.query;
-                    q.assistantDetails = agentConfiguration.sId;
-                    void router.push(
-                      {
-                        pathname: router.pathname,
-                        query: q,
-                      },
-                      undefined,
-                      { shallow: true }
-                    );
-                  }}
+                  onClick={() =>
+                    setQueryParam(
+                      router,
+                      "assistantDetails",
+                      agentConfiguration.sId
+                    )
+                  }
                   icon={EyeIcon}
                 />
               ) : (

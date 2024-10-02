@@ -22,6 +22,11 @@ import React, { useMemo, useState } from "react";
 
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import { subFilter } from "@app/lib/utils";
+import { setQueryParam } from "@app/lib/utils/router";
+
+const isValidTab = (tab: string, visibleTabs: string[]): tab is TabId => {
+  return visibleTabs.includes(tab);
+};
 
 interface AssistantListProps {
   owner: WorkspaceType;
@@ -91,11 +96,15 @@ export function AssistantBrowser({
     return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
   }, [agentsByTab]);
 
-  // check the query string for the tab to show, the query param to look for is called "defaultTab"
+  // check the query string for the tab to show, the query param to look for is called "selectedTab"
   // if it's not found, show the first tab with agents
   const selectedTab = useMemo(() => {
-    const selectedTab = router.query.selectedTab as TabId | null;
-    return visibleTabs.find((tab) => tab.id === selectedTab)
+    const selectedTab = router.query.selectedTab;
+    return typeof selectedTab === "string" &&
+      isValidTab(
+        selectedTab,
+        visibleTabs.map((tab) => tab.id)
+      )
       ? selectedTab
       : visibleTabs[0]?.id;
   }, [router.query.selectedTab, visibleTabs]);
@@ -171,18 +180,7 @@ export function AssistantBrowser({
             ...tab,
             current: tab.id === displayedTab,
           }))}
-          setCurrentTab={(t) => {
-            const q = router.query;
-            q.selectedTab = t;
-            void router.push(
-              {
-                pathname: router.pathname,
-                query: q,
-              },
-              undefined,
-              { shallow: true }
-            );
-          }}
+          setCurrentTab={(t) => setQueryParam(router, "selectedTab", t)}
         />
       </div>
       {!displayedTab && (
@@ -212,7 +210,7 @@ export function AssistantBrowser({
                       agentConfiguration={agent}
                       owner={owner}
                       variant="button"
-                      isShowAssistantDetails
+                      isMoreInfoVisible
                       canDelete
                     />
                   </div>

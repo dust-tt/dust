@@ -333,7 +333,7 @@ export default function AssistantBuilder({
         // Redirect to the assistant list once saved.
         if (flow === "personal_assistants") {
           await router.push(
-            `/w/${owner.sId}/assistant/new?defaultTab=personal`
+            `/w/${owner.sId}/assistant/new?selectedTab=personal`
           );
         } else {
           await router.push(`/w/${owner.sId}/builder/assistants`);

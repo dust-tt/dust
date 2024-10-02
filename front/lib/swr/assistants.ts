@@ -139,8 +139,10 @@ export function useAgentConfigurations({
 
 export function useProgressiveAgentConfigurations({
   workspaceId,
+  disabled,
 }: {
   workspaceId: string;
+  disabled?: boolean;
 }) {
   const {
     agentConfigurations: initialAgentConfigurations,
@@ -150,6 +152,7 @@ export function useProgressiveAgentConfigurations({
     agentsGetView: "assistants-search",
     limit: 24,
     includes: ["usage"],
+    disabled,
   });
 
   const {

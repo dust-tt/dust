@@ -88,6 +88,7 @@ export function AssistantDetails({
   const { mutate: mutateAgentConfigurations } =
     useProgressiveAgentConfigurations({
       workspaceId: owner.sId,
+      disabled: true,
     });
 
   const { dataSourceViews } = useDataSourceViews(owner);
