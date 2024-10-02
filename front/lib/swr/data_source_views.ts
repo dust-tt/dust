@@ -54,12 +54,10 @@ export function useMultipleDataSourceViewsContentNodes({
   dataSourceViewsAndInternalIds,
   owner,
   viewType,
-  useFullParentIds,
 }: {
   dataSourceViewsAndInternalIds: DataSourceViewsAndInternalIds[];
   owner: LightWorkspaceType;
   viewType: ContentNodesViewType;
-  useFullParentIds?: boolean;
 }): {
   dataSourceViewsAndNodes: DataSourceViewsAndNodes[];
   isNodesLoading: boolean;
@@ -71,7 +69,6 @@ export function useMultipleDataSourceViewsContentNodes({
       const body = JSON.stringify({
         internalIds,
         viewType,
-        useFullParentIds,
       });
       const options = {
         method: "POST",

@@ -19,7 +19,6 @@ const GetContentNodesOrChildrenRequestBody = t.type({
   internalIds: t.union([t.array(t.union([t.string, t.null])), t.undefined]),
   parentId: t.union([t.string, t.undefined]),
   viewType: ContentNodesViewTypeCodec,
-  useFullParentIds: t.union([t.boolean, t.undefined]),
 });
 
 export type GetDataSourceViewContentNodes = {
@@ -86,8 +85,7 @@ async function handler(
     });
   }
 
-  const { internalIds, parentId, viewType, useFullParentIds } =
-    bodyValidation.right;
+  const { internalIds, parentId, viewType } = bodyValidation.right;
 
   if (parentId && internalIds) {
     return apiError(req, res, {
@@ -117,7 +115,6 @@ async function handler(
       parentId,
       pagination: paginationRes.value,
       viewType,
-      useFullParentIds,
     }
   );
 

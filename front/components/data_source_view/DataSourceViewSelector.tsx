@@ -62,6 +62,23 @@ const getUseResourceHook =
     };
   };
 
+const getNodesFromConfig = (
+  selectionConfiguration: DataSourceViewSelectionConfiguration
+) =>
+  selectionConfiguration.selectedResources.reduce<
+    Record<string, ContentNodeTreeItemStatus>
+  >(
+    (acc, r) => ({
+      [r.internalId]: {
+        isSelected: true,
+        node: r,
+        parents: r.parentInternalIds || [],
+      },
+      ...acc,
+    }),
+    {}
+  );
+
 interface DataSourceViewsSelectorProps {
   owner: WorkspaceType;
   useCase: "vaultDatasourceManagement" | "assistantBuilder";
@@ -353,24 +370,10 @@ export function DataSourceViewSelector({
   // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
   const hideCheckbox = readonly || (isTableView && !isPartiallyChecked);
 
-  const getNodesFromConfig = (
-    selectionConfiguration: DataSourceViewSelectionConfiguration
-  ) =>
-    selectionConfiguration.selectedResources.reduce<
-      Record<string, ContentNodeTreeItemStatus>
-    >(
-      (acc, r) => ({
-        [r.internalId]: {
-          isSelected: true,
-          node: r,
-          parents: r.parentInternalIds || [],
-        },
-        ...acc,
-      }),
-      {}
-    );
-
-  const selectedNodes = getNodesFromConfig(selectionConfiguration);
+  const selectedNodes = useMemo(
+    () => getNodesFromConfig(selectionConfiguration),
+    [selectionConfiguration]
+  );
 
   const setSelectedNodes = useCallback(
     (updater: TreeSelectionModelUpdater) => {
