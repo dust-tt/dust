@@ -175,9 +175,14 @@ async function main() {
                 await sequelize.query(
                   `UPDATE tables_rows
                 SET table_id = '${targetTableId}' 
-                  , row_id = '${rowId}' 
-                  , content = '${targetContent}' 
-                WHERE id = ${latestRow.id}`
+                  , row_id = '${rowId}'
+                  , content = :content' 
+                WHERE id = ${latestRow.id}`,
+                  {
+                    replacements: {
+                      content: targetContent,
+                    },
+                  }
                 );
               }
             }
