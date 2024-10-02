@@ -20,7 +20,14 @@ async function main() {
   )
     .toString()
     .split("\n")
-    .map((l) => JSON.parse(l)) as Array<{
+    .map((l) => {
+      try {
+        return JSON.parse(l);
+      } catch (e) {
+        return null;
+      }
+    })
+    .filter((x) => !!x) as Array<{
     data_source_id: string;
     project: number;
     is_notion: boolean;
