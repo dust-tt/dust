@@ -114,15 +114,21 @@ async function main() {
             // For each row, determine the right "row_id". Group rows by that ID.
             const rowsByRowId = _.groupBy(rows, (r) => {
               const content = JSON.parse(r.content);
+              let id: string | null = null;
               if (content._dust_id || content.__dust_id) {
-                return content._dust_id || content.__dust_id;
+                id = content._dust_id || content.__dust_id;
+              } else if (r.row_id && r.row_id.length > 16) {
+                id = r.row_id;
               }
-              if (r.row_id && r.row_id.length > 16) {
-                return r.row_id;
+              if (!id) {
+                throw new Error(
+                  `Invalid row (table_id=${r.table_id} row_id=${r.row_id}): ${JSON.stringify(content)}`
+                );
               }
-              throw new Error(
-                `Invalid row (table_id=${r.table_id} row_id=${r.row_id}): ${JSON.stringify(content)}`
-              );
+              if (id?.startsWith("notion-")) {
+                id = id.slice(7);
+              }
+              return id;
             });
 
             // Determine the target table ID
