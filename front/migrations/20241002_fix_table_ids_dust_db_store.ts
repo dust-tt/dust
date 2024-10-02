@@ -53,7 +53,7 @@ async function main() {
 
     const tablesRecord: Record<
       string,
-      { oldUniqueId: string | null; newUniqueId: string | null }
+      { oldUniqueIds: string[]; newUniqueId: string | null }
     > = {};
 
     for (const tUniqueId of allTableIds) {
@@ -62,18 +62,13 @@ async function main() {
       const isNewUniqueId = dsNameOrId === data_source_id;
       const globalId = `${project_id}__${tId}`;
       const tableRecord = tablesRecord[globalId] || {
-        oldUniqueId: null,
+        oldUniqueIds: [],
         newUniqueId: null,
       };
       if (isNewUniqueId) {
         tableRecord.newUniqueId = tUniqueId;
       } else {
-        if (tableRecord.oldUniqueId && tableRecord.oldUniqueId !== tUniqueId) {
-          throw new Error(
-            `Inconsistent old unique IDs for table ${globalId}: ${tableRecord.oldUniqueId} vs ${tUniqueId}`
-          );
-        }
-        tableRecord.oldUniqueId = tUniqueId;
+        tableRecord.oldUniqueIds.push(tUniqueId);
       }
       tablesRecord[globalId] = tableRecord;
     }
@@ -94,7 +89,7 @@ async function main() {
       const chunks = _.chunk(Object.values(tablesRecord), chunkSize);
       for (const c of chunks) {
         await Promise.all(
-          c.map(async ({ oldUniqueId, newUniqueId }) => {
+          c.map(async ({ oldUniqueIds, newUniqueId }) => {
             // Fetch all rows for the table, based on both old and new unique IDs
             const rows = (
               await sequelize.query(
@@ -102,7 +97,9 @@ async function main() {
               SELECT
                 id, table_id, row_id, content, created
               FROM tables_rows 
-              WHERE table_id = '${oldUniqueId}' OR table_id = '${newUniqueId}'`
+              WHERE table_id IN (
+              ${[...oldUniqueIds, newUniqueId].map((id) => `'${id}'`)}
+              )`
               )
             )[0] as {
               id: number;
@@ -133,7 +130,7 @@ async function main() {
             });
 
             // Determine the target table ID
-            const tableId = newUniqueId || oldUniqueId;
+            const tableId = newUniqueId || oldUniqueIds[0];
             if (!tableId) {
               throw new Error(`Unreachable: no tableId`);
             }
@@ -191,31 +188,35 @@ async function main() {
 
       for (const c of chunks) {
         await Promise.all(
-          c.map(async ({ oldUniqueId, newUniqueId }) => {
-            if (!oldUniqueId && newUniqueId) {
+          c.map(async ({ oldUniqueIds, newUniqueId }) => {
+            if (!oldUniqueIds.length && newUniqueId) {
               // No need to rename anything, everything is already correct
               return;
             }
 
-            if (oldUniqueId && !newUniqueId) {
+            if (oldUniqueIds.length && !newUniqueId) {
               // We only have old IDs, so we just rename them
-              const tableId = oldUniqueId;
-              const [, , ...rest] = tableId.split("__");
+              const [, , ...rest] = oldUniqueIds[0].split("__");
               const tId = rest.join("__");
               const targetTableId = `${project_id}__${data_source_id}__${tId}`;
-              console.log(`Renaming table ${tableId} to ${targetTableId}`);
+              console.log(
+                `Renaming tables ${oldUniqueIds} to ${targetTableId}`
+              );
               if (LIVE) {
                 await sequelize.query(
-                  `UPDATE tables_rows SET table_id = '${targetTableId}' WHERE table_id = '${tableId}'`
+                  `UPDATE tables_rows SET table_id = '${targetTableId}' WHERE table_id IN (
+                  ${oldUniqueIds.map((id) => `'${id}'`).join(",")}
+                  )`
                 );
               }
             } else {
               // We have a mix of old and new IDs -- we can just delete the old ones
-              const tableId = oldUniqueId;
-              console.log(`Deleting table ${tableId}`);
+              console.log(`Deleting tables ${oldUniqueIds}`);
               if (LIVE) {
                 await sequelize.query(
-                  `DELETE FROM tables_rows WHERE table_id = '${tableId}'`
+                  `DELETE FROM tables_rows WHERE table_id IN (
+                  ${oldUniqueIds.map((id) => `'${id}'`).join(",")}
+                  )`
                 );
               }
             }
