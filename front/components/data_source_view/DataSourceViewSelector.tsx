@@ -381,7 +381,7 @@ export function DataSourceViewSelector({
         const selectedNodes = updater(
           getNodesFromConfig(prevSelectionConfiguration)
         );
-        const udpatedConfig = {
+        const updatedConfig = {
           ...prevSelectionConfiguration,
           selectedResources: Object.values(selectedNodes)
             .filter((v) => v.isSelected)
@@ -392,10 +392,7 @@ export function DataSourceViewSelector({
           isSelectAll: false,
         };
 
-        if (
-          udpatedConfig.selectedResources.length === 0 &&
-          !udpatedConfig.isSelectAll
-        ) {
+        if (updatedConfig.selectedResources.length === 0) {
           // Nothing is selected at all, remove from the list
           return _.omit(prevState, dataSourceView.sId);
         }
@@ -403,7 +400,7 @@ export function DataSourceViewSelector({
         // Return a new object to trigger a re-render
         return keepOnlyOneVaultIfApplicable({
           ...prevState,
-          [dataSourceView.sId]: udpatedConfig,
+          [dataSourceView.sId]: updatedConfig,
         });
       });
     },
