@@ -1,5 +1,5 @@
 import PokeNavbar from "@app/components/poke/PokeNavbar";
-import { TemplatesDataTable } from "@app/components/poke/templates/table";
+import { TemplatesDataTable } from "@app/components/poke/templates/TemplatesDataTable";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
