@@ -190,7 +190,6 @@ export default function VaultFolderModal({
                   />
                   <Button
                     size="sm"
-                    n
                     label="Delete Folder"
                     variant="primaryWarning"
                     onClick={() => setShowDeleteConfirmDialog(true)}
