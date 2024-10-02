@@ -64,10 +64,10 @@ export async function getConfluencePageParentIds(
   }
 
   return [
-    // Add the space id at the beginning.
-    makeConfluenceInternalSpaceId(page.spaceId),
-    ...parentIds.map((p) => makeConfluenceInternalPageId(p)),
     // Add the current page.
     makeConfluenceInternalPageId(page.pageId),
+    ...parentIds.map((p) => makeConfluenceInternalPageId(p)),
+    // Add the space id at the end.
+    makeConfluenceInternalSpaceId(page.spaceId),
   ];
 }
