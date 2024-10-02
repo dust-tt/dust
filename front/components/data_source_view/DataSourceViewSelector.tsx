@@ -1,7 +1,9 @@
 import {
+  Button,
   CloudArrowLeftRightIcon,
   FolderIcon,
   GlobeAltIcon,
+  ListCheckIcon,
   Spinner,
   Tree,
 } from "@dust-tt/sparkle";
@@ -17,6 +19,7 @@ import type {
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
+import { useState } from "react";
 import { useCallback, useMemo } from "react";
 
 import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
@@ -38,8 +41,6 @@ import {
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useVaults } from "@app/lib/swr/vaults";
 
-const MIN_TOTAL_DATA_SOURCES_TO_GROUP = 12;
-const MIN_DATA_SOURCES_PER_KIND_TO_GROUP = 3;
 const ONLY_ONE_VAULT_PER_SELECTION = true;
 
 interface DataSourceViewsSelectorProps {
@@ -52,6 +53,7 @@ interface DataSourceViewsSelectorProps {
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
   viewType: ContentNodesViewType;
+  isRootSelectable: boolean;
 }
 
 export function DataSourceViewsSelector({
@@ -62,6 +64,7 @@ export function DataSourceViewsSelector({
   selectionConfigurations,
   setSelectionConfigurations,
   viewType,
+  isRootSelectable,
 }: DataSourceViewsSelectorProps) {
   const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
 
@@ -91,8 +94,12 @@ export function DataSourceViewsSelector({
       }
     }
   }
+  const orderDatasourceViews = useMemo(
+    () => orderDatasourceViewByImportance(dataSourceViews),
+    [dataSourceViews]
+  );
 
-  const filteredDSVs = dataSourceViews.filter(
+  const filteredDSVs = orderDatasourceViews.filter(
     (dsv) =>
       !dsv.dataSource.connectorId ||
       (dsv.dataSource.connectorId &&
@@ -102,29 +109,9 @@ export function DataSourceViewsSelector({
           !excludesConnectorIDs.includes(dsv.dataSource.connectorId)))
   );
 
-  // Apply grouping if there are many data sources, and there are enough of each kind
-  // So we don't show a long list of data sources to the user
-  const applyGrouping = filteredDSVs.length >= MIN_TOTAL_DATA_SOURCES_TO_GROUP;
-
-  const groupManaged =
-    applyGrouping &&
-    filteredDSVs.filter((dsv) => isManaged(dsv.dataSource)).length >=
-      MIN_DATA_SOURCES_PER_KIND_TO_GROUP;
-
-  const groupFolders =
-    applyGrouping &&
-    filteredDSVs.filter((dsv) => isFolder(dsv.dataSource)).length >=
-      MIN_DATA_SOURCES_PER_KIND_TO_GROUP;
-
-  const groupWebsites =
-    applyGrouping &&
-    filteredDSVs.filter((dsv) => isWebsite(dsv.dataSource)).length >=
-      MIN_DATA_SOURCES_PER_KIND_TO_GROUP;
-
-  const orderDatasourceViews = useMemo(
-    () => orderDatasourceViewByImportance(filteredDSVs),
-    [filteredDSVs]
-  );
+  const managedDsv = filteredDSVs.filter((dsv) => isManaged(dsv.dataSource));
+  const folders = filteredDSVs.filter((dsv) => isFolder(dsv.dataSource));
+  const websites = filteredDSVs.filter((dsv) => isWebsite(dsv.dataSource));
 
   const defaultVault = useMemo(() => {
     const firstKey = Object.keys(selectionConfigurations)[0] ?? null;
@@ -165,6 +152,7 @@ export function DataSourceViewsSelector({
               selectionConfigurations={selectionConfigurations}
               setSelectionConfigurations={setSelectionConfigurations}
               viewType={viewType}
+              isRootSelectable={isRootSelectable}
             />
           );
         }}
@@ -173,7 +161,7 @@ export function DataSourceViewsSelector({
   } else {
     return (
       <Tree isLoading={false}>
-        {groupManaged && (
+        {managedDsv.length > 0 && useCase === "assistantBuilder" && (
           <Tree.Item
             key="connected"
             label="Connected Data"
@@ -192,19 +180,14 @@ export function DataSourceViewsSelector({
                   }
                   setSelectionConfigurations={setSelectionConfigurations}
                   viewType={viewType}
+                  isRootSelectable={isRootSelectable}
                 />
               ))}
           </Tree.Item>
         )}
-
-        {orderDatasourceViews
-          .filter(
-            (dsv) =>
-              (!groupFolders && isFolder(dsv.dataSource)) ||
-              (!groupWebsites && isWebsite(dsv.dataSource)) ||
-              (!groupManaged && isManaged(dsv.dataSource))
-          )
-          .map((dataSourceView) => (
+        {managedDsv.length > 0 &&
+          useCase === "vaultDatasourceManagement" &&
+          managedDsv.map((dataSourceView) => (
             <DataSourceViewSelector
               key={dataSourceView.sId}
               owner={owner}
@@ -214,54 +197,53 @@ export function DataSourceViewsSelector({
               }
               setSelectionConfigurations={setSelectionConfigurations}
               viewType={viewType}
+              isRootSelectable={false}
             />
           ))}
 
-        {groupFolders && (
+        {folders.length > 0 && (
           <Tree.Item
             key="folders"
             label="Folders"
             visual={FolderIcon}
             type="node"
           >
-            {dataSourceViews
-              .filter((dsv) => isFolder(dsv.dataSource))
-              .map((dataSourceView) => (
-                <DataSourceViewSelector
-                  key={dataSourceView.sId}
-                  owner={owner}
-                  selectionConfiguration={
-                    selectionConfigurations[dataSourceView.sId] ??
-                    defaultSelectionConfiguration(dataSourceView)
-                  }
-                  setSelectionConfigurations={setSelectionConfigurations}
-                  viewType={viewType}
-                />
-              ))}
+            {folders.map((dataSourceView) => (
+              <DataSourceViewSelector
+                key={dataSourceView.sId}
+                owner={owner}
+                selectionConfiguration={
+                  selectionConfigurations[dataSourceView.sId] ??
+                  defaultSelectionConfiguration(dataSourceView)
+                }
+                setSelectionConfigurations={setSelectionConfigurations}
+                viewType={viewType}
+                isRootSelectable={isRootSelectable}
+              />
+            ))}
           </Tree.Item>
         )}
 
-        {groupWebsites && (
+        {websites.length > 0 && (
           <Tree.Item
             key="websites"
             label="Websites"
             visual={GlobeAltIcon}
             type="node"
           >
-            {dataSourceViews
-              .filter((dsv) => isWebsite(dsv.dataSource))
-              .map((dataSourceView) => (
-                <DataSourceViewSelector
-                  key={dataSourceView.sId}
-                  owner={owner}
-                  selectionConfiguration={
-                    selectionConfigurations[dataSourceView.sId] ??
-                    defaultSelectionConfiguration(dataSourceView)
-                  }
-                  setSelectionConfigurations={setSelectionConfigurations}
-                  viewType={viewType}
-                />
-              ))}
+            {websites.map((dataSourceView) => (
+              <DataSourceViewSelector
+                key={dataSourceView.sId}
+                owner={owner}
+                selectionConfiguration={
+                  selectionConfigurations[dataSourceView.sId] ??
+                  defaultSelectionConfiguration(dataSourceView)
+                }
+                setSelectionConfigurations={setSelectionConfigurations}
+                viewType={viewType}
+                isRootSelectable={isRootSelectable}
+              />
+            ))}
           </Tree.Item>
         )}
       </Tree>
@@ -278,6 +260,7 @@ interface DataSourceViewSelectorProps {
   >;
   useContentNodes?: typeof useDataSourceViewContentNodes;
   viewType: ContentNodesViewType;
+  isRootSelectable: boolean;
 }
 
 export function DataSourceViewSelector({
@@ -287,7 +270,15 @@ export function DataSourceViewSelector({
   setSelectionConfigurations,
   useContentNodes = useDataSourceViewContentNodes,
   viewType,
+  isRootSelectable,
 }: DataSourceViewSelectorProps) {
+  const [isSelectedAll, setIsSelectedAll] = useState(
+    selectionConfiguration.selectedResources.length > 0
+  );
+  const { parentsById, setParentsById } = useParentResourcesById({
+    selectedResources: selectionConfiguration.selectedResources,
+  });
+
   const dataSourceView = selectionConfiguration.dataSourceView;
   const config = dataSourceView.dataSource.connectorProvider
     ? CONNECTOR_CONFIGURATIONS[dataSourceView.dataSource.connectorProvider]
@@ -301,21 +292,9 @@ export function DataSourceViewSelector({
     (r) => r.internalId
   );
 
-  const { parentsById, setParentsById } = useParentResourcesById({
-    selectedResources: selectionConfiguration.selectedResources,
-  });
-
   const selectedParents = [
     ...new Set(Object.values(parentsById).flatMap((c) => [...c])),
   ];
-
-  const isPartiallyChecked = internalIds.length > 0;
-
-  const checkedStatus = selectionConfiguration.isSelectAll
-    ? "checked"
-    : isPartiallyChecked
-      ? "partial"
-      : "unchecked";
 
   // When users have multiple vaults, they can opt to select only one vault per tool.
   // This is enforced in the UI via a radio button, ensuring single selection at a time.
@@ -336,42 +315,6 @@ export function DataSourceViewSelector({
       );
     },
     [dataSourceView]
-  );
-
-  const onToggleSelectAll = useCallback(
-    (checked: boolean) => {
-      // Setting parentsById
-      setParentsById({});
-
-      // Setting selectedResources
-      setSelectionConfigurations(
-        (prevState: DataSourceViewSelectionConfigurations) => {
-          if (!checked) {
-            // Nothing is selected at all, remove from the list
-            return _.omit(prevState, dataSourceView.sId);
-          }
-
-          const config =
-            prevState[dataSourceView.sId] ??
-            defaultSelectionConfiguration(dataSourceView);
-
-          config.isSelectAll = checked;
-          config.selectedResources = [];
-
-          // Return a new object to trigger a re-render
-          return keepOnlyOneVaultIfApplicable({
-            ...prevState,
-            [dataSourceView.sId]: config,
-          });
-        }
-      );
-    },
-    [
-      dataSourceView,
-      keepOnlyOneVaultIfApplicable,
-      setParentsById,
-      setSelectionConfigurations,
-    ]
   );
 
   const onSelectChange = useCallback(
@@ -428,40 +371,91 @@ export function DataSourceViewSelector({
     ]
   );
 
+  const handleSelectAll = () => {
+    document
+      .querySelectorAll<HTMLInputElement>(
+        `#dataSourceViewsSelector-${dataSourceView.dataSource.name} input[type="checkbox"]:first-child`
+      )
+      .forEach((el) => {
+        if (el.checked === isSelectedAll) {
+          el.click();
+        }
+      });
+    setIsSelectedAll(!isSelectedAll);
+  };
+
+  const isPartiallyChecked = internalIds.length > 0;
+
+  const checkedStatus = selectionConfiguration.isSelectAll
+    ? "checked"
+    : isPartiallyChecked
+      ? "partial"
+      : "unchecked";
+
   const isTableView = viewType === "tables";
 
   // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
   const hideCheckbox = readonly || (isTableView && !isPartiallyChecked);
 
   return (
-    <Tree.Item
-      key={dataSourceView.dataSource.id}
-      label={getDisplayNameForDataSource(dataSourceView.dataSource)}
-      visual={LogoComponent}
-      type={
-        canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
-      }
-      checkbox={
-        hideCheckbox
-          ? undefined
-          : {
-              checked: checkedStatus,
-              onChange: onToggleSelectAll,
-            }
-      }
-    >
-      <DataSourceViewResourceSelectorTree
-        dataSourceView={dataSourceView}
-        onSelectChange={onSelectChange}
-        owner={owner}
-        parentIsSelected={selectionConfiguration.isSelectAll}
-        readonly={readonly}
-        selectedParents={selectedParents}
-        selectedResourceIds={internalIds}
-        showExpand={config?.isNested ?? true}
-        useContentNodes={useContentNodes}
-        viewType={viewType}
-      />
-    </Tree.Item>
+    <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.name}`}>
+      <Tree.Item
+        key={dataSourceView.dataSource.id}
+        label={getDisplayNameForDataSource(dataSourceView.dataSource)}
+        visual={LogoComponent}
+        type={
+          canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
+        }
+        checkbox={
+          hideCheckbox || !isRootSelectable
+            ? undefined
+            : {
+                checked: checkedStatus,
+                onChange: () => {
+                  setSelectionConfigurations((prevState) => {
+                    const prevSelectionConfiguration =
+                      prevState[dataSourceView.sId] ??
+                      defaultSelectionConfiguration(dataSourceView);
+                    const udpatedConfig = {
+                      ...prevSelectionConfiguration,
+                      selectedResources: [],
+                      isSelectAll: checkedStatus !== "checked",
+                    };
+
+                    return {
+                      ...prevState,
+                      [dataSourceView.sId]: udpatedConfig,
+                    };
+                  });
+                },
+              }
+        }
+        actions={
+          !isRootSelectable && (
+            <Button
+              variant="tertiary"
+              size="xs"
+              className="mr-4 h-5 text-xs"
+              label={isSelectedAll ? "Unselect All" : "Select All"}
+              icon={ListCheckIcon}
+              onClick={handleSelectAll}
+            />
+          )
+        }
+      >
+        <DataSourceViewResourceSelectorTree
+          dataSourceView={dataSourceView}
+          onSelectChange={onSelectChange}
+          owner={owner}
+          parentIsSelected={selectionConfiguration.isSelectAll}
+          readonly={readonly}
+          selectedParents={selectedParents}
+          selectedResourceIds={internalIds}
+          showExpand={config?.isNested ?? true}
+          useContentNodes={useContentNodes}
+          viewType={viewType}
+        />
+      </Tree.Item>
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Button, ListCheckIcon, Modal } from "@dust-tt/sparkle";
+import { Modal } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
@@ -82,40 +82,19 @@ export default function AssistantBuilderDataSourceModal({
       className="flex flex-col overflow-hidden"
     >
       <div
-        className="flex shrink flex-col overflow-hidden px-2" // Otherwise, padding do not match figma and we can't alter Page's padding
+        id="dataSourceViewsSelector"
+        className="overflow-y-auto scrollbar-hide"
       >
-        <div className="flex w-full justify-end py-4">
-          <Button
-            variant="tertiary"
-            label="Select all visible"
-            icon={ListCheckIcon}
-            onClick={() => {
-              document
-                .querySelectorAll<HTMLInputElement>(
-                  '#dataSourceViewsSelector div.is-collapsed label > input[type="checkbox"]:first-child'
-                )
-                .forEach((el) => {
-                  if (!el.checked) {
-                    el.click();
-                  }
-                });
-            }}
-          />
-        </div>
-        <div
-          id="dataSourceViewsSelector"
-          className="overflow-y-auto scrollbar-hide"
-        >
-          <DataSourceViewsSelector
-            useCase="assistantBuilder"
-            dataSourceViews={supportedDataSourceViewsForViewType}
-            allowedVaults={allowedVaults}
-            owner={owner}
-            selectionConfigurations={selectionConfigurations}
-            setSelectionConfigurations={setSelectionConfigurationsCallback}
-            viewType={viewType}
-          />
-        </div>
+        <DataSourceViewsSelector
+          useCase="assistantBuilder"
+          dataSourceViews={supportedDataSourceViewsForViewType}
+          allowedVaults={allowedVaults}
+          owner={owner}
+          selectionConfigurations={selectionConfigurations}
+          setSelectionConfigurations={setSelectionConfigurationsCallback}
+          viewType={viewType}
+          isRootSelectable={true}
+        />
       </div>
     </Modal>
   );
