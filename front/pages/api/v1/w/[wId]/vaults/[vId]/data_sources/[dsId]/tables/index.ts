@@ -90,6 +90,12 @@ type UpsertTableResponseBody = {
  *         schema:
  *           type: string
  *       - in: path
+ *         name: vId
+ *         required: true
+ *         description: ID of the vault
+ *         schema:
+ *           type: string
+ *       - in: path
  *         name: dsId
  *         required: true
  *         description: ID of the data source
