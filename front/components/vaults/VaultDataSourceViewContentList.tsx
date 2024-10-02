@@ -1,5 +1,6 @@
 import {
   Button,
+  Cog6ToothIcon,
   DataTable,
   DropdownMenu,
   Searchbar,
@@ -23,10 +24,12 @@ import type {
   ColumnDef,
   SortingState,
 } from "@tanstack/react-table";
+import { useRouter } from "next/router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
+import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import type {
   ContentActionKey,
   ContentActionsRef,
@@ -43,7 +46,7 @@ import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
-import { useVaults } from "@app/lib/swr/vaults";
+import { useSystemVault, useVaults } from "@app/lib/swr/vaults";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 type RowData = DataSourceViewContentNode & {
@@ -179,6 +182,7 @@ export const VaultDataSourceViewContentList = ({
     initialPageSize: 25,
   });
   const [viewType, setViewType] = useHashParam("viewType", "documents");
+  const router = useRouter();
   const showVaultUsage =
     dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource);
   const { vaults } = useVaults({
@@ -187,6 +191,10 @@ export const VaultDataSourceViewContentList = ({
   });
   const { dataSourceViews } = useDataSourceViews(owner, {
     disabled: !showVaultUsage,
+  });
+  const { systemVault } = useSystemVault({
+    workspaceId: owner.sId,
+    disabled: !isAdmin,
   });
 
   const handleViewTypeChange = useCallback(
@@ -312,7 +320,31 @@ export const VaultDataSourceViewContentList = ({
     ]
   );
 
-  const emptyContent = <div>No content</div>;
+  const emptyVaultContent =
+    isManaged(dataSourceView.dataSource) && vault.kind !== "system" ? (
+      isAdmin ? (
+        <Button
+          label="Manage Data"
+          icon={Cog6ToothIcon}
+          onClick={() => {
+            if (systemVault) {
+              void router.push(
+                `/w/${owner.sId}/vaults/${systemVault.sId}/categories/${dataSourceView.category}`
+              );
+            }
+          }}
+        />
+      ) : (
+        <RequestDataSourceModal
+          dataSources={[dataSourceView.dataSource]}
+          owner={owner}
+        />
+      )
+    ) : (
+      <></>
+    );
+
+  const emptyContent = parentId ? <div>No content</div> : emptyVaultContent;
   const isEmpty = rows.length === 0 && !isNodesLoading;
 
   return (
