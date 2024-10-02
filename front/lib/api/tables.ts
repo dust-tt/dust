@@ -26,6 +26,8 @@ import logger from "@app/logger/logger";
 
 import type { DataSourceResource } from "../resources/data_source_resource";
 
+const MAX_TABLE_COLUMNS = 512;
+
 type CsvParsingError = {
   type:
     | "invalid_delimiter"
@@ -519,6 +521,10 @@ async function detectHeaders(
     }
 
     const record = anyRecord as string[];
+
+    if (record.length > MAX_TABLE_COLUMNS) {
+      return new Err({ type: "invalid_header", message: "Too many columns" });
+    }
 
     if (!useAppForHeaderDetection) {
       return staticHeaderDetection(record);
