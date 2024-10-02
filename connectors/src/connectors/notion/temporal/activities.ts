@@ -83,21 +83,18 @@ const DATABASE_TO_CSV_MAX_SIZE = 256 * 1024 * 1024; // 256MB
 
 const ignoreInvalidRowsRequestError = (
   fn: () => Promise<void>,
-  loggerArgs: Record<string, string | number>
+  logger: Logger
 ) => {
   try {
     return fn();
   } catch (err) {
     if (err instanceof InvalidRowsRequestError) {
       logger.warn(
-        { ...loggerArgs, error: err },
+        { error: err },
         "[Notion table] Invalid rows detected - skipping (but not failing)."
       );
     } else {
-      logger.error(
-        { ...loggerArgs, error: err },
-        "[Notion table] Failed to upsert table."
-      );
+      logger.error({ error: err }, "[Notion table] Failed to upsert table.");
       throw err;
     }
   }
@@ -1872,7 +1869,7 @@ export async function renderAndUpsertPageFromCache({
               truncate: false,
               parents,
             }),
-          loggerArgs
+          localLogger
         );
       } else {
         localLogger.info(
@@ -2575,7 +2572,7 @@ export async function upsertDatabaseStructuredDataFromCache({
         truncate: true,
         parents,
       }),
-    loggerArgs
+    localLogger
   );
 
   // Same as above, but without the `dustId` column
