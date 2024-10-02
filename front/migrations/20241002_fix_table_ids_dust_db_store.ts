@@ -1,32 +1,35 @@
+import { promises as fs } from "fs";
+import * as _ from "lodash";
 import { Sequelize } from "sequelize";
 
 const { DATABASES_STORE_DATABASE_URI, LIVE = false } = process.env;
-import * as _ from "lodash";
-
-const file_tables_rows_unique_table_ids = [
-  "10002__test__b00442bd9f",
-  "10073__managed-notion__notion-774291cb-c1ac-4674-ae0a-7b45d708512c",
-  // ...
-];
-
-const file_core_project_id_data_source_ids = [
-  {
-    data_source_id: "0ecf4b1b-0b1b-4b1b-8b1b-0b1b4b1b4b1b",
-    project_id: "0ecf4b1b-0b1b-4b1b-8b1b-0b1b4b1b4b1b",
-    is_notion: true,
-  },
-  //   ...
-];
 
 async function main() {
   const sequelize = new Sequelize(DATABASES_STORE_DATABASE_URI as string, {
     logging: false,
   });
 
+  const file_tables_rows_unique_table_ids = (
+    await fs.readFile("./tables_rows_unique_table_ids.csv")
+  )
+    .toString()
+    .split("\n");
+
+  const file_core_project_id_data_source_ids = (
+    await fs.readFile("./data_sources_project_data_source_ids.jsonl")
+  )
+    .toString()
+    .split("\n")
+    .map((l) => JSON.parse(l)) as Array<{
+    data_source_id: string;
+    project: string;
+    is_notion: boolean;
+  }>;
+
   // For each datasource...
   for (const [
     i,
-    { data_source_id, project_id, is_notion },
+    { data_source_id, project: project_id, is_notion },
   ] of file_core_project_id_data_source_ids.entries()) {
     console.log(
       `\n\n------------\n` +
