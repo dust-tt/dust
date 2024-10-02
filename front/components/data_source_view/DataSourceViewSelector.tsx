@@ -94,8 +94,12 @@ export function DataSourceViewsSelector({
       }
     }
   }
+  const orderDatasourceViews = useMemo(
+    () => orderDatasourceViewByImportance(dataSourceViews),
+    [dataSourceViews]
+  );
 
-  const filteredDSVs = dataSourceViews.filter(
+  const filteredDSVs = orderDatasourceViews.filter(
     (dsv) =>
       !dsv.dataSource.connectorId ||
       (dsv.dataSource.connectorId &&
@@ -108,11 +112,6 @@ export function DataSourceViewsSelector({
   const managedDsv = filteredDSVs.filter((dsv) => isManaged(dsv.dataSource));
   const folders = filteredDSVs.filter((dsv) => isFolder(dsv.dataSource));
   const websites = filteredDSVs.filter((dsv) => isWebsite(dsv.dataSource));
-
-  const orderDatasourceViews = useMemo(
-    () => orderDatasourceViewByImportance(filteredDSVs),
-    [filteredDSVs]
-  );
 
   const defaultVault = useMemo(() => {
     const firstKey = Object.keys(selectionConfigurations)[0] ?? null;
