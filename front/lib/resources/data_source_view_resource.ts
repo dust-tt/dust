@@ -128,7 +128,6 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
         auth,
         dataSource.vault,
         dataSource,
-        "default",
         transaction
       );
     });
