@@ -173,12 +173,12 @@ export const slack = async ({
     }
 
     case "whitelist-bot": {
-      const { wId, botName, botId, groupId, whitelistType } = args;
+      const { wId, botName, groupId, whitelistType } = args;
       if (!wId) {
         throw new Error("Missing --wId argument");
       }
-      if (!botName && !botId) {
-        throw new Error("Missing --botName or --botId argument");
+      if (!botName) {
+        throw new Error("Missing --botName argument");
       }
 
       if (!groupId) {
@@ -202,22 +202,14 @@ export const slack = async ({
         throw new Error(`Could not find connector for workspace ${args.wId}`);
       }
 
-      logger.info(
-        `[Admin] Whitelisting following bot for slack: ${botName || botId}`
-      );
+      logger.info(`[Admin] Whitelisting following bot for slack: ${botName}`);
 
       const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
         connector.id
       );
 
-      const botIdentifier = botName || botId;
-      if (slackConfig && botIdentifier) {
-        await slackConfig.whitelistBot(
-          botIdentifier,
-          botName ? "name" : "id",
-          [groupId],
-          whitelistType
-        );
+      if (slackConfig) {
+        await slackConfig.whitelistBot(botName, [groupId], whitelistType);
       }
 
       return { success: true };
