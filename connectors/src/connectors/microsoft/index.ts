@@ -8,6 +8,7 @@ import type {
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import { Client } from "@microsoft/microsoft-graph-client";
 
+import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import {
   getChannelAsContentNode,
@@ -61,7 +62,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, Error>> {
+  }): Promise<Result<string, ConnectorManagerError>> {
     const client = await getClient(connectionId);
 
     try {
@@ -75,7 +76,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         },
         "Error creating Microsoft connector"
       );
-      return new Err(new Error("Error creating Microsoft connector"));
+      throw new Error("Error creating Microsoft connector");
     }
 
     const microsoftConfigurationBlob = {
@@ -99,7 +100,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     const res = await launchMicrosoftIncrementalSyncWorkflow(connector.id);
     if (res.isErr()) {
-      return res;
+      throw res.error;
     }
 
     return new Ok(connector.id.toString());

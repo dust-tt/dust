@@ -36,6 +36,28 @@ const snowflakeGrantCodec = t.type({
 });
 type SnowflakeGrant = t.TypeOf<typeof snowflakeGrantCodec>;
 
+type TestConnectionErrorCode =
+  | "INVALID_CREDENTIALS"
+  | "NOT_READONLY"
+  | "NO_TABLES"
+  | "UNKNOWN";
+
+class TestConnectionError extends Error {
+  code: TestConnectionErrorCode;
+
+  constructor(code: TestConnectionErrorCode, message: string) {
+    super(message);
+    this.name = "TestSnowflakeConnectionError";
+    this.code = code;
+  }
+}
+
+export function isTestConnectionError(
+  error: Error
+): error is TestConnectionError {
+  return error.name === "TestSnowflakeConnectionError";
+}
+
 /**
  * Test the connection to Snowflake with the provided credentials.
  * Used to check if the credentials are valid and the connection is successful.
@@ -44,26 +66,40 @@ export const testConnection = async ({
   credentials,
 }: {
   credentials: SnowflakeCredentials;
-}): Promise<Result<string, Error>> => {
+}): Promise<Result<string, TestConnectionError>> => {
   // Connect to snowflake, fetch tables and grants, and close the connection.
   const connectionRes = await connectToSnowflake(credentials);
   if (connectionRes.isErr()) {
-    return connectionRes;
+    if (connectionRes.error.name === "OperationFailedError") {
+      return new Err(
+        new TestConnectionError(
+          "INVALID_CREDENTIALS",
+          connectionRes.error.message
+        )
+      );
+    }
+
+    return new Err(
+      new TestConnectionError("UNKNOWN", connectionRes.error.message)
+    );
   }
+
   const connection = connectionRes.value;
   const tablesRes = await fetchTables({ credentials, connection });
   const grantsRes = await isConnectionReadonly({ credentials, connection });
 
   const closeConnectionRes = await _closeConnection(connection);
   if (closeConnectionRes.isErr()) {
-    return closeConnectionRes;
+    return new Err(
+      new TestConnectionError("UNKNOWN", closeConnectionRes.error.message)
+    );
   }
 
   if (grantsRes.isErr()) {
     return grantsRes;
   }
   if (tablesRes.isErr()) {
-    return tablesRes;
+    return new Err(new TestConnectionError("UNKNOWN", tablesRes.error.message));
   }
 
   const tables = tablesRes.value.filter(
@@ -72,7 +108,7 @@ export const testConnection = async ({
       !EXCLUDE_SCHEMAS.includes(t.schema_name)
   );
   if (tables.length === 0) {
-    return new Err(new Error("No tables found or no access to any table."));
+    return new Err(new TestConnectionError("NO_TABLES", "No tables found."));
   }
 
   return new Ok("Connection successful");
@@ -190,7 +226,7 @@ export const isConnectionReadonly = async ({
 }: {
   credentials: SnowflakeCredentials;
   connection: Connection;
-}): Promise<Result<Array<SnowflakeGrant>, Error>> => {
+}): Promise<Result<Array<SnowflakeGrant>, TestConnectionError>> => {
   const currentGrantsRes = await _fetchRows<SnowflakeGrant>({
     credentials,
     query: `SHOW GRANTS TO ROLE ${credentials.role}`,
@@ -198,7 +234,9 @@ export const isConnectionReadonly = async ({
     connection,
   });
   if (currentGrantsRes.isErr()) {
-    return currentGrantsRes;
+    return new Err(
+      new TestConnectionError("UNKNOWN", currentGrantsRes.error.message)
+    );
   }
 
   const futureGrantsRes = await _fetchRows<SnowflakeGrant>({
@@ -208,7 +246,9 @@ export const isConnectionReadonly = async ({
     connection,
   });
   if (futureGrantsRes.isErr()) {
-    return futureGrantsRes;
+    return new Err(
+      new TestConnectionError("UNKNOWN", futureGrantsRes.error.message)
+    );
   }
 
   const allGrantsRows = [...currentGrantsRes.value, ...futureGrantsRes.value];
@@ -218,7 +258,8 @@ export const isConnectionReadonly = async ({
     const decoded = snowflakeGrantCodec.decode(row);
     if (isLeft(decoded)) {
       const pathError = reporter.formatValidationErrors(decoded.left);
-      return new Err(new Error(`Could not parse row: ${pathError}`));
+      // Fine to throw here, as it is un-expected and non-recoverable.
+      throw new Error(`Could not parse row: ${pathError}`);
     }
 
     grants.push(decoded.right);
@@ -230,7 +271,8 @@ export const isConnectionReadonly = async ({
       // We only allow SELECT grants on tables.
       if (g.privilege !== "SELECT") {
         return new Err(
-          new Error(
+          new TestConnectionError(
+            "NOT_READONLY",
             `Non-select grant found on ${g.grant_on} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
           )
         );
@@ -239,7 +281,8 @@ export const isConnectionReadonly = async ({
       // We only allow USAGE grants on schemas / databases / warehouses.
       if (g.privilege !== "USAGE") {
         return new Err(
-          new Error(
+          new TestConnectionError(
+            "NOT_READONLY",
             `Non-usage grant found on ${g.grant_on} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
           )
         );
@@ -247,7 +290,8 @@ export const isConnectionReadonly = async ({
     } else {
       // We don't allow any other grants.
       return new Err(
-        new Error(
+        new TestConnectionError(
+          "NOT_READONLY",
           `Unsupported grant found on ${g.grant_on} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
         )
       );

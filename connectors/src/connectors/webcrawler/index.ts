@@ -30,6 +30,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
+import type { ConnectorManagerError } from "../interface";
 import { BaseConnectorManager } from "../interface";
 import {
   launchCrawlWebsiteWorkflow,
@@ -44,18 +45,16 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
     configuration: WebCrawlerConfigurationType;
-  }): Promise<Result<string, Error>> {
+  }): Promise<Result<string, ConnectorManagerError>> {
     if (!configuration) {
       throw new Error("Configuration is required");
     }
     const depth = configuration.depth;
     if (!isDepthOption(depth)) {
-      return new Err(new Error("Invalid depth option"));
+      throw new Error("Invalid depth option");
     }
     if (configuration.maxPageToCrawl > WEBCRAWLER_MAX_PAGES) {
-      return new Err(
-        new Error(`Maximum value for Max Page is ${WEBCRAWLER_MAX_PAGES}`)
-      );
+      throw new Error(`Maximum value for Max Page is ${WEBCRAWLER_MAX_PAGES}`);
     }
     const url = configuration.url.trim();
     const webCrawlerConfigurationBlob = {
@@ -81,7 +80,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
 
     const workflowRes = await launchCrawlWebsiteWorkflow(connector.id);
     if (workflowRes.isErr()) {
-      return workflowRes;
+      throw workflowRes.error;
     }
     logger.info(
       { connectorId: connector.id },

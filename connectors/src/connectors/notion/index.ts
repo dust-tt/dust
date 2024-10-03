@@ -28,6 +28,7 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
+import type { ConnectorManagerError } from "../interface";
 import { BaseConnectorManager } from "../interface";
 import { getOrphanedCount, getParents, hasChildren } from "./lib/parents";
 
@@ -56,7 +57,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, Error>> {
+  }): Promise<Result<string, ConnectorManagerError>> {
     const tokRes = await getOAuthConnectionAccessToken({
       config: apiConfig.getOAuthAPIConfig(),
       logger,
@@ -64,32 +65,24 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       connectionId,
     });
     if (tokRes.isErr()) {
-      return new Err(
-        new Error("Error retrieving access token: " + tokRes.error.message)
-      );
+      throw new Error("Error retrieving access token: " + tokRes.error.message);
     }
 
     const isValidToken = await validateAccessToken(tokRes.value.access_token);
     if (!isValidToken) {
-      return new Err(new Error("Notion access token is invalid"));
+      throw new Error("Notion access token is invalid");
     }
 
-    let connector: ConnectorResource;
-    try {
-      connector = await ConnectorResource.makeNew(
-        "notion",
-        {
-          connectionId,
-          workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-          workspaceId: dataSourceConfig.workspaceId,
-          dataSourceId: dataSourceConfig.dataSourceId,
-        },
-        {}
-      );
-    } catch (e) {
-      logger.error({ error: e }, "Error creating notion connector.");
-      return new Err(e as Error);
-    }
+    const connector = await ConnectorResource.makeNew(
+      "notion",
+      {
+        connectionId,
+        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+      },
+      {}
+    );
 
     try {
       await launchNotionSyncWorkflow(connector.id);
@@ -103,7 +96,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         "Error launching notion sync workflow."
       );
       await connector.delete();
-      return new Err(e as Error);
+      throw e;
     }
 
     return new Ok(connector.id.toString());

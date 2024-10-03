@@ -5,8 +5,9 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 
+import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import {
   fetchAvailableChildrenInSnowflake,
@@ -43,20 +44,34 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, Error>> {
+  }): Promise<Result<string, ConnectorManagerError>> {
     const credentialsRes = await getCredentials({
       credentialsId: connectionId,
       logger,
     });
     if (credentialsRes.isErr()) {
-      return credentialsRes;
+      throw credentialsRes.error;
     }
     const credentials = credentialsRes.value.credentials;
 
     // Then we test the connection is successful.
-    const connection = await testConnection({ credentials });
-    if (connection.isErr()) {
-      return new Err(connection.error);
+    const connectionRes = await testConnection({ credentials });
+    if (connectionRes.isErr()) {
+      switch (connectionRes.error.code) {
+        case "INVALID_CREDENTIALS":
+        case "NOT_READONLY":
+        case "NO_TABLES":
+          return new Err(
+            new ConnectorManagerError(
+              "INVALID_CONFIGURATION",
+              connectionRes.error.message
+            )
+          );
+        case "UNKNOWN":
+          throw connectionRes.error;
+        default:
+          assertNever(connectionRes.error.code);
+      }
     }
 
     // We can create the connector.
@@ -74,7 +89,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
 
     const launchRes = await launchSnowflakeSyncWorkflow(connector.id);
     if (launchRes.isErr()) {
-      return launchRes;
+      throw launchRes.error;
     }
 
     // TODO(SNOWFLAKE): Launch Sync Workflow.

@@ -39,6 +39,7 @@ import {
   getAuthObject,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
+import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
@@ -68,50 +69,40 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, Error>> {
-    try {
-      const driveClient = await getDriveClient(connectionId);
+  }): Promise<Result<string, ConnectorManagerError>> {
+    const driveClient = await getDriveClient(connectionId);
 
-      // Sanity checks to confirm we have sufficient permissions.
-      const [sanityCheckAbout, sanityCheckFilesGet, sanityCheckFilesList] =
-        await Promise.all([
-          driveClient.about.get({ fields: "*" }),
-          driveClient.files.get({ fileId: "root" }),
-          driveClient.drives.list({
-            pageSize: 10,
-            fields: "nextPageToken, drives(id, name)",
-          }),
-        ]);
+    // Sanity checks to confirm we have sufficient permissions.
+    const [sanityCheckAbout, sanityCheckFilesGet, sanityCheckFilesList] =
+      await Promise.all([
+        driveClient.about.get({ fields: "*" }),
+        driveClient.files.get({ fileId: "root" }),
+        driveClient.drives.list({
+          pageSize: 10,
+          fields: "nextPageToken, drives(id, name)",
+        }),
+      ]);
 
-      if (sanityCheckAbout.status !== 200) {
-        throw new Error(
-          `Could not get google drive info. Error message: ${
-            sanityCheckAbout.statusText || "unknown"
-          }`
-        );
-      }
-      if (sanityCheckFilesGet.status !== 200) {
-        throw new Error(
-          `Could not call google drive files get. Error message: ${
-            sanityCheckFilesGet.statusText || "unknown"
-          }`
-        );
-      }
-      if (sanityCheckFilesList.status !== 200) {
-        throw new Error(
-          `Could not call google drive files list. Error message: ${
-            sanityCheckFilesList.statusText || "unknown"
-          }`
-        );
-      }
-    } catch (err) {
-      logger.error(
-        {
-          err,
-        },
-        "Error creating Google Drive connector"
+    if (sanityCheckAbout.status !== 200) {
+      throw new Error(
+        `Could not get google drive info. Error message: ${
+          sanityCheckAbout.statusText || "unknown"
+        }`
       );
-      return new Err(new Error("Error creating Google Drive connector"));
+    }
+    if (sanityCheckFilesGet.status !== 200) {
+      throw new Error(
+        `Could not call google drive files get. Error message: ${
+          sanityCheckFilesGet.statusText || "unknown"
+        }`
+      );
+    }
+    if (sanityCheckFilesList.status !== 200) {
+      throw new Error(
+        `Could not call google drive files list. Error message: ${
+          sanityCheckFilesList.statusText || "unknown"
+        }`
+      );
     }
 
     const googleDriveConfigurationBlob = {
@@ -137,7 +128,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     // We nonetheless launch the incremental sync.
     const res = await launchGoogleDriveIncrementalSyncWorkflow(connector.id);
     if (res.isErr()) {
-      return res;
+      throw res.error;
     }
 
     return new Ok(connector.id.toString());

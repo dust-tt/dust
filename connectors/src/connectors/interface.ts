@@ -10,6 +10,18 @@ import type { ConnectorConfiguration } from "@dust-tt/types";
 
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
+type ConnectorManagerErrorCode = "INVALID_CONFIGURATION" | "PERMISSION_REVOKED";
+
+export class ConnectorManagerError extends Error {
+  code: ConnectorManagerErrorCode;
+
+  constructor(code: ConnectorManagerErrorCode, message: string) {
+    super(message);
+    this.name = "ConnectorManagerError";
+    this.code = code;
+  }
+}
+
 export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
   readonly connectorId: ModelId;
 
@@ -22,7 +34,7 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
     configuration: ConnectorConfiguration;
-  }): Promise<Result<string, Error>> {
+  }): Promise<Result<string, ConnectorManagerError>> {
     throw new Error("Method not implemented.");
   }
 
