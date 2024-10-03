@@ -232,7 +232,7 @@ export async function renderConversationForModelMultiActions({
 
   // We initialize `tokensUsed` to the prompt tokens + a bit of buffer for message rendering
   // approximations, 64 tokens seems small enough and ample enough.
-  const tokensMargin = 64;
+  const tokensMargin = 1024;
   let tokensUsed = promptCount + tokensMargin;
 
   // Go backward and accumulate as much as we can within allowedTokenCount.
