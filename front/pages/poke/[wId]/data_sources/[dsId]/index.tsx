@@ -598,6 +598,7 @@ async function handleWhitelistBot({
       majorCommand: "slack",
       command: "whitelist-bot",
       args: {
+        botNameOrId,
         ...(selectedBotIdentifierType === "name"
           ? { botName: botNameOrId }
           : { botId: botNameOrId }),
@@ -845,8 +846,8 @@ function SlackWhitelistBot({
 }) {
   const [botNameOrId, setBotNameOrId] = useState("");
   const [selectedBotIdentifierType, setSelectedBotIdentifierType] = useState<
-    "name" | "id" | null
-  >(null);
+    "name" | "id"
+  >("name");
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
   const selectedGroupName = groups.find(
@@ -859,17 +860,17 @@ function SlackWhitelistBot({
         <div>Whitelist slack bot or workflow by</div>
         <DropdownMenu>
           <DropdownMenu.Button
-            label={selectedBotIdentifierType ?? "PLEASE PICK"}
+            label={selectedBotIdentifierType ?? "Whitelist type"}
           />
           <DropdownMenu.Items width={220}>
             <DropdownMenu.Item
               selected={selectedBotIdentifierType === "name"}
-              label="name"
+              label="Workflow Name"
               onClick={() => setSelectedBotIdentifierType("name")}
             />
             <DropdownMenu.Item
               selected={selectedBotIdentifierType === "id"}
-              label="id"
+              label="Workflow Id"
               onClick={() => setSelectedBotIdentifierType("id")}
             />
           </DropdownMenu.Items>
@@ -906,10 +907,6 @@ function SlackWhitelistBot({
           variant="secondary"
           label="Whitelist"
           onClick={async () => {
-            if (!selectedBotIdentifierType) {
-              alert("Please select a bot identifier type (name or id)");
-              return;
-            }
             if (!botNameOrId) {
               alert("Please enter a bot name");
               return;
