@@ -8,7 +8,7 @@ import type {
   PokeDataSourceViewType,
   Result,
 } from "@dust-tt/types";
-import { Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
+import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -54,6 +54,7 @@ const getDataSourceCategory = (
 };
 
 export type FetchDataSourceViewOptions = {
+  includeDeleted?: boolean;
   includeEditedBy?: boolean;
   limit?: number;
   order?: [string, "ASC" | "DESC"][];
@@ -204,9 +205,12 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions,
     options?: ResourceFindOptions<DataSourceViewModel>
   ) {
+    const { includeDeleted } = fetchDataSourceViewOptions ?? {};
+
     const dataSourceViews = await this.baseFetchWithAuthorization(auth, {
       ...this.getOptions(fetchDataSourceViewOptions),
       ...options,
+      includeDeleted,
     });
 
     const dataSourceIds = removeNulls(
@@ -387,36 +391,51 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
 
   // Deletion.
 
-  async delete(
+  protected async softDelete(
     auth: Authenticator,
     transaction?: Transaction
-  ): Promise<Result<undefined, Error>> {
-    try {
-      // Delete agent configurations elements pointing to this data source view.
-      await AgentDataSourceConfiguration.destroy({
-        where: {
-          dataSourceViewId: this.id,
-        },
-        transaction,
-      });
-      await AgentTablesQueryConfigurationTable.destroy({
-        where: {
-          dataSourceViewId: this.id,
-        },
-      });
+  ): Promise<Result<number, Error>> {
+    const deletedCount = await DataSourceViewModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: this.id,
+      },
+      transaction,
+      hardDelete: false,
+    });
 
-      await this.model.destroy({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          id: this.id,
-        },
-        transaction,
-      });
+    return new Ok(deletedCount);
+  }
 
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
+  async hardDelete(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<Result<number, Error>> {
+    // Delete agent configurations elements pointing to this data source view.
+    await AgentDataSourceConfiguration.destroy({
+      where: {
+        dataSourceViewId: this.id,
+      },
+      transaction,
+    });
+    await AgentTablesQueryConfigurationTable.destroy({
+      where: {
+        dataSourceViewId: this.id,
+      },
+    });
+
+    const deletedCount = await DataSourceViewModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: this.id,
+      },
+      transaction,
+      // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
+      // bypassing the soft deletion in place.
+      hardDelete: true,
+    });
+
+    return new Ok(deletedCount);
   }
 
   // This method can only be used once all agent configurations have been deleted. Otherwise use the
@@ -425,11 +444,14 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     auth: Authenticator,
     transaction?: Transaction
   ) {
-    return this.model.destroy({
+    return DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       transaction,
+      // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
+      // bypassing the soft deletion in place.
+      hardDelete: true,
     });
   }
 

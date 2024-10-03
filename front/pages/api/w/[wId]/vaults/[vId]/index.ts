@@ -189,7 +189,9 @@ async function handler(
         for (const dataSourceId of Object.keys(viewByDataSourceId)) {
           if (!content.map((c) => c.dataSourceId).includes(dataSourceId)) {
             const view = viewByDataSourceId[dataSourceId];
-            await view.delete(auth);
+
+            // Hard delete previous views.
+            await view.delete(auth, { hardDelete: true });
           }
         }
       }

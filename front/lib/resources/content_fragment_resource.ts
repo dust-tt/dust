@@ -104,12 +104,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
    * Temporary workaround until we can call this method from the MessageResource.
    * @deprecated use the destroy method.
    */
-  delete(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    auth: Authenticator,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    transaction?: Transaction
-  ): Promise<Result<undefined, Error>> {
+  delete(): Promise<Result<undefined, Error>> {
     throw new Error("Method not implemented.");
   }
 

@@ -8,7 +8,10 @@ import {
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import config from "@app/lib/api/config";
-import { deleteDataSource, getDataSources } from "@app/lib/api/data_sources";
+import {
+  getDataSources,
+  softDeleteDataSourceAndLaunchScrubWorkflow,
+} from "@app/lib/api/data_sources";
 import { sendAdminDataDeletionEmail } from "@app/lib/api/email";
 import {
   getMembers,
@@ -153,7 +156,8 @@ async function deleteDatasources(auth: Authenticator) {
   // First, we delete all the data source views.
   const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
   for (const dataSourceView of dataSourceViews) {
-    const r = await dataSourceView.delete(auth);
+    // Soft delete the data source view.
+    const r = await dataSourceView.delete(auth, { hardDelete: false });
     if (r.isErr()) {
       throw new Error(`Failed to delete data source view: ${r.error.message}`);
     }
@@ -162,7 +166,10 @@ async function deleteDatasources(auth: Authenticator) {
   // Then, we delete all the data sources.
   const dataSources = await getDataSources(auth);
   for (const dataSource of dataSources) {
-    const r = await deleteDataSource(auth, dataSource);
+    const r = await softDeleteDataSourceAndLaunchScrubWorkflow(
+      auth,
+      dataSource
+    );
     if (r.isErr()) {
       throw new Error(`Failed to delete data source: ${r.error.message}`);
     }

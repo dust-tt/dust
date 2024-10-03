@@ -1,23 +1,15 @@
 import type { DataSourceViewKind } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
-export class DataSourceViewModel extends Model<
-  InferAttributes<DataSourceViewModel>,
-  InferCreationAttributes<DataSourceViewModel>
-> {
+export class DataSourceViewModel extends SoftDeletableModel<DataSourceViewModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -50,6 +42,9 @@ DataSourceViewModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    deletedAt: {
+      type: DataTypes.DATE,
+    },
     editedAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -75,7 +70,10 @@ DataSourceViewModel.init(
     indexes: [
       { fields: ["workspaceId", "id"] },
       { fields: ["workspaceId", "vaultId"] },
-      { fields: ["workspaceId", "dataSourceId", "vaultId"], unique: true },
+      {
+        fields: ["workspaceId", "dataSourceId", "vaultId", "deletedAt"],
+        unique: true,
+      },
     ],
   }
 );

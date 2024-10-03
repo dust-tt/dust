@@ -120,7 +120,7 @@ export class RunResource extends BaseResource<RunModel> {
 
   async delete(
     auth: Authenticator,
-    transaction?: Transaction
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
       // Delete the run usage entry.

@@ -11,11 +11,9 @@ import { DataTypes, Model } from "sequelize";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
-export class App extends Model<
-  InferAttributes<App>,
-  InferCreationAttributes<App>
-> {
+export class App extends SoftDeletableModel<App> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -46,6 +44,9 @@ App.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    deletedAt: {
+      type: DataTypes.DATE,
     },
     updatedAt: {
       type: DataTypes.DATE,

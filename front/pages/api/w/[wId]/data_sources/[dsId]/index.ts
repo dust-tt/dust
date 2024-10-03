@@ -2,7 +2,7 @@ import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
 import { MANAGED_DS_DELETABLE } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { deleteDataSource } from "@app/lib/api/data_sources";
+import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -138,7 +138,10 @@ async function handler(
         });
       }
 
-      const dRes = await deleteDataSource(auth, dataSource);
+      const dRes = await softDeleteDataSourceAndLaunchScrubWorkflow(
+        auth,
+        dataSource
+      );
       if (dRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,

@@ -3,7 +3,7 @@ import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { deleteDataSource } from "@app/lib/api/data_sources";
+import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -98,7 +98,10 @@ async function handler(
         });
       }
 
-      const delRes = await deleteDataSource(auth, dataSource);
+      const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(
+        auth,
+        dataSource
+      );
       if (delRes.isErr()) {
         switch (delRes.error.code) {
           case "unauthorized_deletion":
