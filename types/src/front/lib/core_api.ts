@@ -980,6 +980,7 @@ export class CoreAPI {
       headers: {
         "Content-Type": "application/json",
       },
+      keepalive: false,
       body: JSON.stringify({
         text,
         model_id: modelId,
@@ -1006,6 +1007,7 @@ export class CoreAPI {
       headers: {
         "Content-Type": "application/json",
       },
+      keepalive: false,
       body: JSON.stringify({
         texts,
         model_id: modelId,
