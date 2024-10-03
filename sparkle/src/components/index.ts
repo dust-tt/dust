@@ -43,6 +43,6 @@ export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
 export { Tab } from "./Tab";
 export { TextArea } from "./TextArea";
-export { Tooltip } from "./Tooltip";
+export { TooltipContent, TooltipProvider, TooltipRoot, TooltipTrigger } from "./Tooltip"
 export { Tree } from "./Tree";
 export { ZoomableImageCitationWrapper } from "./ZoomableImageCitationWrapper";
