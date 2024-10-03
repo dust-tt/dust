@@ -1,12 +1,40 @@
 import type { Result } from "@dust-tt/types";
 import type { SnowflakeCredentials } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, EXCLUDE_DATABASES, EXCLUDE_SCHEMAS, Ok } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { Connection, RowStatement, SnowflakeError } from "snowflake-sdk";
 import snowflake from "snowflake-sdk";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type SnowflakeRow = Record<string, any>;
 export type SnowflakeRows = Array<SnowflakeRow>;
+
+const snowflakeDatabaseCodec = t.type({
+  name: t.string,
+});
+type SnowflakeDatabase = t.TypeOf<typeof snowflakeDatabaseCodec>;
+
+const snowflakeSchemaCodec = t.type({
+  name: t.string,
+  database_name: t.string,
+});
+type SnowflakeSchema = t.TypeOf<typeof snowflakeSchemaCodec>;
+
+const snowflakeTableCodec = t.type({
+  name: t.string,
+  database_name: t.string,
+  schema_name: t.string,
+});
+type SnowflakeTable = t.TypeOf<typeof snowflakeTableCodec>;
+
+const snowflakeGrantCodec = t.type({
+  privilege: t.string,
+  grant_on: t.string,
+  name: t.string,
+});
+type SnowflakeGrant = t.TypeOf<typeof snowflakeGrantCodec>;
 
 /**
  * Test the connection to Snowflake with the provided credentials.
@@ -17,44 +45,92 @@ export const testConnection = async ({
 }: {
   credentials: SnowflakeCredentials;
 }): Promise<Result<string, Error>> => {
-  const connection = snowflake.createConnection({
-    ...credentials,
+  // Connect to snowflake, fetch tables and grants, and close the connection.
+  const connectionRes = await connectToSnowflake(credentials);
+  if (connectionRes.isErr()) {
+    return connectionRes;
+  }
+  const connection = connectionRes.value;
+  const tablesRes = await fetchTables({ credentials, connection });
+  const grantsRes = await isConnectionReadonly({ credentials, connection });
 
-    // Use proxy if defined to have all requests coming from the same IP.
-    proxyHost: process.env.PROXY_HOST,
-    proxyPort: process.env.PROXY_PORT
-      ? parseInt(process.env.PROXY_PORT)
-      : undefined,
-    proxyUser: process.env.PROXY_USER_NAME,
-    proxyPassword: process.env.PROXY_USER_PASSWORD,
+  const closeConnectionRes = await _closeConnection(connection);
+  if (closeConnectionRes.isErr()) {
+    return closeConnectionRes;
+  }
+
+  if (grantsRes.isErr()) {
+    return grantsRes;
+  }
+  if (tablesRes.isErr()) {
+    return tablesRes;
+  }
+
+  const tables = tablesRes.value.filter(
+    (t) =>
+      !EXCLUDE_DATABASES.includes(t.database_name) &&
+      !EXCLUDE_SCHEMAS.includes(t.schema_name)
+  );
+  if (tables.length === 0) {
+    return new Err(new Error("No tables found or no access to any table."));
+  }
+
+  return new Ok("Connection successful");
+};
+
+export async function connectToSnowflake(
+  credentials: SnowflakeCredentials
+): Promise<Result<Connection, Error>> {
+  snowflake.configure({
+    // @ts-expect-error OFF is not in the types but it's a valid value.
+    logLevel: "OFF",
   });
-
   try {
-    const conn = await _connectToSnowflake(connection);
-    // TODO(SNOWFLAKE): Improve checks: we want to make sure we have read and read-only access.
-    const rows = await _executeQuery(conn, "SHOW TABLES");
+    const connection = await new Promise<Connection>((resolve, reject) => {
+      snowflake
+        .createConnection({
+          ...credentials,
 
-    if (!rows || rows.length === 0) {
-      throw new Error("No tables found or no access to any tables");
-    }
+          // Use proxy if defined to have all requests coming from the same IP.
+          proxyHost: process.env.PROXY_HOST,
+          proxyPort: process.env.PROXY_PORT
+            ? parseInt(process.env.PROXY_PORT)
+            : undefined,
+          proxyUser: process.env.PROXY_USER_NAME,
+          proxyPassword: process.env.PROXY_USER_PASSWORD,
+        })
+        .connect((err: SnowflakeError | undefined, conn: Connection) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(conn);
+          }
+        });
+    });
 
-    await _closeConnection(conn);
-    return new Ok("Connection successful");
+    return new Ok(connection);
   } catch (error) {
     return new Err(error instanceof Error ? error : new Error(String(error)));
   }
-};
+}
 
 /**
  * Fetch the tables available in the Snowflake account.
  */
 export const fetchDatabases = async ({
   credentials,
+  connection,
 }: {
   credentials: SnowflakeCredentials;
-}): Promise<Result<SnowflakeRows, Error>> => {
+  connection?: Connection;
+}): Promise<Result<Array<SnowflakeDatabase>, Error>> => {
   const query = "SHOW DATABASES";
-  return _fetchRows({ credentials, query });
+  return _fetchRows<SnowflakeDatabase>({
+    credentials,
+    query,
+    codec: snowflakeDatabaseCodec,
+    connection,
+  });
 };
 
 /**
@@ -63,14 +139,21 @@ export const fetchDatabases = async ({
 export const fetchSchemas = async ({
   credentials,
   fromDatabase,
+  connection,
 }: {
   credentials: SnowflakeCredentials;
   fromDatabase?: string;
-}): Promise<Result<SnowflakeRows, Error>> => {
+  connection?: Connection;
+}): Promise<Result<Array<SnowflakeSchema>, Error>> => {
   const query = fromDatabase
     ? `SHOW SCHEMAS IN DATABASE ${fromDatabase}`
     : "SHOW SCHEMAS";
-  return _fetchRows({ credentials, query });
+  return _fetchRows<SnowflakeSchema>({
+    credentials,
+    query,
+    codec: snowflakeSchemaCodec,
+    connection,
+  });
 };
 
 /**
@@ -79,112 +162,201 @@ export const fetchSchemas = async ({
 export const fetchTables = async ({
   credentials,
   fromSchema,
+  connection,
 }: {
   credentials: SnowflakeCredentials;
   fromSchema?: string;
-}): Promise<Result<SnowflakeRows, Error>> => {
+  connection?: Connection;
+}): Promise<Result<Array<SnowflakeTable>, Error>> => {
   const query = fromSchema
     ? `SHOW TABLES IN SCHEMA ${fromSchema}`
     : "SHOW TABLES";
 
-  return _fetchRows({ credentials, query });
+  return _fetchRows<SnowflakeTable>({
+    credentials,
+    query,
+    codec: snowflakeTableCodec,
+    connection,
+  });
+};
+
+/**
+ * Fetch the grants available for the Snowflake role,
+ * including future grants, then check if the connection is read-only.
+ */
+export const isConnectionReadonly = async ({
+  credentials,
+  connection,
+}: {
+  credentials: SnowflakeCredentials;
+  connection: Connection;
+}): Promise<Result<Array<SnowflakeGrant>, Error>> => {
+  const currentGrantsRes = await _fetchRows<SnowflakeGrant>({
+    credentials,
+    query: `SHOW GRANTS TO ROLE ${credentials.role}`,
+    codec: snowflakeGrantCodec,
+    connection,
+  });
+  if (currentGrantsRes.isErr()) {
+    return currentGrantsRes;
+  }
+
+  const futureGrantsRes = await _fetchRows<SnowflakeGrant>({
+    credentials,
+    query: `SHOW FUTURE GRANTS TO ROLE ${credentials.role}`,
+    codec: snowflakeGrantCodec,
+    connection,
+  });
+  if (futureGrantsRes.isErr()) {
+    return futureGrantsRes;
+  }
+
+  const allGrantsRows = [...currentGrantsRes.value, ...futureGrantsRes.value];
+
+  const grants: Array<SnowflakeGrant> = [];
+  for (const row of allGrantsRows) {
+    const decoded = snowflakeGrantCodec.decode(row);
+    if (isLeft(decoded)) {
+      const pathError = reporter.formatValidationErrors(decoded.left);
+      return new Err(new Error(`Could not parse row: ${pathError}`));
+    }
+
+    grants.push(decoded.right);
+  }
+
+  // We go ove each grant to greenlight them.
+  for (const g of grants) {
+    if (g.grant_on === "TABLE") {
+      // We only allow SELECT grants on tables.
+      if (g.privilege !== "SELECT") {
+        return new Err(
+          new Error(
+            `Non-select grant found on ${g.grant_on} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+          )
+        );
+      }
+    } else if (["SCHEMA", "DATABASE", "WAREHOUSE"].includes(g.grant_on)) {
+      // We only allow USAGE grants on schemas / databases / warehouses.
+      if (g.privilege !== "USAGE") {
+        return new Err(
+          new Error(
+            `Non-usage grant found on ${g.grant_on} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+          )
+        );
+      }
+    } else {
+      // We don't allow any other grants.
+      return new Err(
+        new Error(
+          `Unsupported grant found on ${g.grant_on} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+        )
+      );
+    }
+  }
+
+  return new Ok(grants);
 };
 
 // UTILS
 
-async function _fetchRows({
+async function _fetchRows<T>({
   credentials,
   query,
+  codec,
+  connection,
 }: {
   credentials: SnowflakeCredentials;
   query: string;
-}): Promise<Result<SnowflakeRows, Error>> {
-  snowflake.configure({
-    // @ts-expect-error OFF is not in the types but it's a valid value.
-    logLevel: "OFF",
-  });
+  codec: t.Type<T>;
+  connection?: Connection;
+}): Promise<Result<Array<T>, Error>> {
+  const connRes = await (() =>
+    connection ? new Ok(connection) : connectToSnowflake(credentials))();
+  if (connRes.isErr()) {
+    return connRes;
+  }
+  const conn = connRes.value;
 
-  const connection = snowflake.createConnection({
-    ...credentials,
+  const rowsRes = await _executeQuery(conn, query);
+  if (rowsRes.isErr()) {
+    return rowsRes;
+  }
+  const rows = rowsRes.value;
 
-    // Use proxy if defined to have all requests coming from the same IP.
-    proxyHost: process.env.PROXY_HOST,
-    proxyPort: process.env.PROXY_PORT
-      ? parseInt(process.env.PROXY_PORT)
-      : undefined,
-    proxyUser: process.env.PROXY_USER_NAME,
-    proxyPassword: process.env.PROXY_USER_PASSWORD,
-  });
-
-  try {
-    const conn = await _connectToSnowflake(connection);
-    const rows = await _executeQuery(conn, query);
+  // We close the connection if we created it.
+  if (!connection) {
     await _closeConnection(conn);
+  }
 
-    if (!rows) {
-      throw new Error("No tables found or no access to any table.");
+  if (!rows) {
+    return new Err(new Error("No tables found or no access to any table."));
+  }
+
+  const parsedRows: Array<T> = [];
+  for (const row of rows) {
+    const decoded = codec.decode(row);
+    if (isLeft(decoded)) {
+      const pathError = reporter.formatValidationErrors(decoded.left);
+      return new Err(new Error(`Could not parse row: ${pathError}`));
     }
 
-    return new Ok(rows);
+    parsedRows.push(decoded.right);
+  }
+
+  return new Ok(parsedRows);
+}
+
+/**
+ * Util: Close the Snowflake connection.
+ */
+async function _closeConnection(
+  conn: Connection
+): Promise<Result<void, Error>> {
+  try {
+    await new Promise<void>((resolve, reject) => {
+      conn.destroy((err: SnowflakeError | undefined) => {
+        if (err) {
+          console.error("Error closing connection:", err);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+    return new Ok(undefined);
   } catch (error) {
     return new Err(error instanceof Error ? error : new Error(String(error)));
   }
 }
 
 /**
- * Util: Connect to Snowflake.
- */
-function _connectToSnowflake(
-  connection: snowflake.Connection
-): Promise<Connection> {
-  return new Promise((resolve, reject) => {
-    connection.connect((err: SnowflakeError | undefined, conn: Connection) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(conn);
-      }
-    });
-  });
-}
-
-/**
  * Util: Execute a query on the Snowflake connection.
  */
-function _executeQuery(
+async function _executeQuery(
   conn: Connection,
   sqlText: string
-): Promise<SnowflakeRows | undefined> {
-  return new Promise((resolve, reject) => {
-    conn.execute({
-      sqlText,
-      complete: (
-        err: SnowflakeError | undefined,
-        stmt: RowStatement,
-        rows: SnowflakeRows | undefined
-      ) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows);
-        }
-      },
-    });
-  });
-}
-
-/**
- * Util: Close the Snowflake connection.
- */
-function _closeConnection(conn: Connection): Promise<void> {
-  return new Promise((resolve, reject) => {
-    conn.destroy((err: SnowflakeError | undefined) => {
-      if (err) {
-        console.error("Error closing connection:", err);
-        reject(err);
-      } else {
-        resolve();
+): Promise<Result<SnowflakeRows | undefined, Error>> {
+  try {
+    const r = await new Promise<SnowflakeRows | undefined>(
+      (resolve, reject) => {
+        conn.execute({
+          sqlText,
+          complete: (
+            err: SnowflakeError | undefined,
+            stmt: RowStatement,
+            rows: SnowflakeRows | undefined
+          ) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve(rows);
+            }
+          },
+        });
       }
-    });
-  });
+    );
+    return new Ok(r);
+  } catch (error) {
+    return new Err(error instanceof Error ? error : new Error(String(error)));
+  }
 }

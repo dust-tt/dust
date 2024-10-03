@@ -166,11 +166,11 @@ async function handler(
         for (const dataSourceConfig of content) {
           const view = viewByDataSourceId[dataSourceConfig.dataSourceId];
           if (view) {
-            // Update existing view
+            // Update existing view.
             await view.updateParents(dataSourceConfig.parentsIn);
             await view.setEditedBy(auth);
           } else {
-            // Create a new view
+            // Create a new view.
             const dataSource = await DataSourceResource.fetchById(
               auth,
               dataSourceConfig.dataSourceId

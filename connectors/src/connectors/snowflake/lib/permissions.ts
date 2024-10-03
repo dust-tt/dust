@@ -4,11 +4,9 @@ import type {
   Result,
   SnowflakeCredentials,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, EXCLUDE_DATABASES, EXCLUDE_SCHEMAS, Ok } from "@dust-tt/types";
 
 import {
-  EXCLUDE_DATABASES,
-  EXCLUDE_SCHEMAS,
   getContentNodeFromInternalId,
   getContentNodeTypeFromInternalId,
 } from "@connectors/connectors/snowflake/lib/content_nodes";

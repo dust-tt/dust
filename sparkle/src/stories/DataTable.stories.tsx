@@ -161,7 +161,7 @@ const columns: ColumnDef<Data>[] = [
       width: "100px",
     },
     cell: (info) => (
-      <DataTable.CellContent>{info.row.original.addedBy}</DataTable.CellContent>
+      <DataTable.CellContentWithCopy>{info.row.original.addedBy}</DataTable.CellContentWithCopy>
     ),
   },
   {

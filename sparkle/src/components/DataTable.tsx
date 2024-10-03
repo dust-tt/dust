@@ -22,8 +22,14 @@ import {
 import { IconButton } from "@sparkle/components/IconButton";
 import { Pagination } from "@sparkle/components/Pagination";
 import { Tooltip } from "@sparkle/components/Tooltip";
-import { ArrowDownIcon, ArrowUpIcon, MoreIcon } from "@sparkle/icons";
-import { classNames } from "@sparkle/lib/utils";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  MoreIcon,
+} from "@sparkle/icons";
+import { classNames, useCopyToClipboard } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { breakpoints, useWindowSize } from "./WindowUtility";
@@ -472,6 +478,50 @@ DataTable.CellContent = function CellContent({
           </span>
         )}
       </div>
+    </div>
+  );
+};
+
+interface CellContentWithCopyProps {
+  children: React.ReactNode;
+  textToCopy?: string;
+  className?: string;
+}
+
+DataTable.CellContentWithCopy = function CellContentWithCopy({
+  children,
+  textToCopy,
+  className,
+}: CellContentWithCopyProps) {
+  const [isCopied, copyToClipboard] = useCopyToClipboard();
+
+  const handleCopy = async () => {
+    void copyToClipboard(
+      new ClipboardItem({
+        "text/plain": new Blob([textToCopy ?? String(children)], {
+          type: "text/plain",
+        }),
+      })
+    );
+  };
+
+  return (
+    <div
+      className={classNames(
+        "s-flex s-items-center s-space-x-2",
+        className || ""
+      )}
+    >
+      <span className="s-truncate">{children}</span>
+      <IconButton
+        icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+        variant="tertiary"
+        onClick={async (e) => {
+          e.stopPropagation();
+          await handleCopy();
+        }}
+        size="xs"
+      />
     </div>
   );
 };

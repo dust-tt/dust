@@ -187,7 +187,6 @@ const SYSTEM_VAULTS_ITEMS = [
     tailwindIconTextColor: "text-brand",
     category: "managed" as DataSourceViewCategory,
   },
-  // TODO(GROUPS_UI) Add support for Dust apps.
 ];
 
 const SystemVaultMenu = ({
