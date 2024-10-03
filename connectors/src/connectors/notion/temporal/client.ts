@@ -1,4 +1,4 @@
-import type { ModelId, NotionGarbageCollectionMode } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 import { getNotionWorkflowId } from "@dust-tt/types";
 import type {
   WorkflowExecutionDescription,
@@ -10,7 +10,10 @@ import {
   GARBAGE_COLLECT_QUEUE_NAME,
   QUEUE_NAME,
 } from "@connectors/connectors/notion/temporal/config";
-import { notionSyncWorkflow } from "@connectors/connectors/notion/temporal/workflows";
+import {
+  notionGarbageCollectionWorkflow,
+  notionSyncWorkflow,
+} from "@connectors/connectors/notion/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { NotionConnectorState } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
@@ -42,7 +45,7 @@ export async function launchNotionSyncWorkflow(
     );
   }
 
-  const workflow = await getNotionWorkflow(connectorId, "never");
+  const workflow = await getNotionWorkflow(connectorId, false);
 
   if (workflow && workflow.executionDescription.status.name === "RUNNING") {
     logger.warn(
@@ -60,11 +63,10 @@ export async function launchNotionSyncWorkflow(
         connectorId,
         startFromTs,
         forceResync,
-        garbageCollectionMode: "never",
       },
     ],
     taskQueue: QUEUE_NAME,
-    workflowId: getNotionWorkflowId(connectorId, "never"),
+    workflowId: getNotionWorkflowId(connectorId, false),
     searchAttributes: {
       connectorId: [connectorId],
     },
@@ -91,7 +93,7 @@ export async function launchNotionGarbageCollectorWorkflow(
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const workflow = await getNotionWorkflow(connectorId, "always");
+  const workflow = await getNotionWorkflow(connectorId, true);
 
   if (workflow && workflow.executionDescription.status.name === "RUNNING") {
     logger.warn(
@@ -103,17 +105,14 @@ export async function launchNotionGarbageCollectorWorkflow(
     return;
   }
 
-  await client.workflow.start(notionSyncWorkflow, {
+  await client.workflow.start(notionGarbageCollectionWorkflow, {
     args: [
       {
         connectorId,
-        startFromTs: null,
-        forceResync: false,
-        garbageCollectionMode: "always",
       },
     ],
     taskQueue: GARBAGE_COLLECT_QUEUE_NAME,
-    workflowId: getNotionWorkflowId(connectorId, "always"),
+    workflowId: getNotionWorkflowId(connectorId, true),
     searchAttributes: {
       connectorId: [connectorId],
     },
@@ -148,7 +147,7 @@ export async function stopNotionSyncWorkflow(
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const workflow = await getNotionWorkflow(connectorId, "never");
+  const workflow = await getNotionWorkflow(connectorId, false);
 
   if (!workflow) {
     logger.warn(
@@ -195,7 +194,7 @@ export async function stopNotionGarbageCollectorWorkflow(
     throw new Error(`Connector not found. ConnectorId: ${connectorId}`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const workflow = await getNotionWorkflow(connectorId, "always");
+  const workflow = await getNotionWorkflow(connectorId, true);
 
   if (!workflow) {
     logger.warn(
@@ -234,17 +233,20 @@ export async function stopNotionGarbageCollectorWorkflow(
 
 async function getNotionWorkflow(
   connectorId: ModelId,
-  gargbageCollectionMode: NotionGarbageCollectionMode
+  isGarbageCollectorRun: boolean
 ): Promise<{
   executionDescription: WorkflowExecutionDescription;
   handle: WorkflowHandle;
 } | null> {
   const client = await getTemporalClient();
 
-  const handle: WorkflowHandle<typeof notionSyncWorkflow> =
+  const handle:
+    | WorkflowHandle<typeof notionSyncWorkflow>
+    | WorkflowHandle<typeof notionGarbageCollectionWorkflow> =
     client.workflow.getHandle(
-      getNotionWorkflowId(connectorId, gargbageCollectionMode)
+      getNotionWorkflowId(connectorId, isGarbageCollectorRun)
     );
+
   try {
     return { executionDescription: await handle.describe(), handle };
   } catch (e) {

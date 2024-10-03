@@ -21,10 +21,9 @@ import logger from "./logger/logger";
 
 setupGlobalErrorHandler(logger);
 
-const workerFunctions: Record<
-  ConnectorProvider | "notion_garbage_collector",
-  () => Promise<void>
-> = {
+type WorkerType = ConnectorProvider | "notion_garbage_collector";
+
+const workerFunctions: Record<WorkerType, () => Promise<void>> = {
   confluence: runConfluenceWorker,
   github: runGithubWorker,
   google_drive: runGoogleWorkers,
@@ -37,9 +36,9 @@ const workerFunctions: Record<
   snowflake: runSnowflakeWorker,
 };
 
-const ALL_WORKERS = Object.keys(workerFunctions) as ConnectorProvider[];
+const ALL_WORKERS = Object.keys(workerFunctions) as WorkerType[];
 
-async function runWorkers(workers: ConnectorProvider[]) {
+async function runWorkers(workers: WorkerType[]) {
   for (const worker of workers) {
     workerFunctions[worker]().catch((err) =>
       logger.error(errorFromAny(err), `Error running ${worker} worker.`)
@@ -59,7 +58,7 @@ yargs(hideBin(process.argv))
   .help()
   .alias("help", "h")
   .parseAsync()
-  .then(async (args) => runWorkers(args.workers as ConnectorProvider[]))
+  .then(async (args) => runWorkers(args.workers as WorkerType[]))
   .catch((err) => {
     logger.error(errorFromAny(err), "Error running workers");
     process.exit(1);

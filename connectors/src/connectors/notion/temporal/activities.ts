@@ -1,8 +1,4 @@
-import type {
-  CoreAPIDataSourceDocumentSection,
-  ModelId,
-  NotionGarbageCollectionMode,
-} from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import type { PageObjectProperties, ParsedNotionBlock } from "@dust-tt/types";
 import { assertNever, getNotionDatabaseTableId, slugify } from "@dust-tt/types";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
@@ -18,10 +14,6 @@ import {
   upsertNotionDatabaseInConnectorsDb,
   upsertNotionPageInConnectorsDb,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
-import {
-  GARBAGE_COLLECT_MAX_DURATION_MS,
-  isDuringGarbageCollectStartWindow,
-} from "@connectors/connectors/notion/lib/garbage_collect";
 import {
   getBlockParentMemoized,
   getPageOrBlockParent,
@@ -41,6 +33,10 @@ import {
   updateAllParentsFields,
 } from "@connectors/connectors/notion/lib/parents";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
+import {
+  DATABASE_TO_CSV_MAX_SIZE,
+  GARBAGE_COLLECT_MAX_DURATION_MS,
+} from "@connectors/connectors/notion/temporal/config";
 import {
   dataSourceConfigFromConnector,
   dataSourceInfoFromConnector,
@@ -77,9 +73,6 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({ provider: "notion" });
-
-const GARBAGE_COLLECTION_INTERVAL_HOURS = 12;
-const DATABASE_TO_CSV_MAX_SIZE = 256 * 1024 * 1024; // 256MB
 
 const ignoreInvalidRowsRequestError = async (
   fn: () => Promise<void>,
@@ -583,10 +576,8 @@ export async function getNotionAccessToken(
 
 export async function shouldGarbageCollect({
   connectorId,
-  garbageCollectionMode,
 }: {
   connectorId: ModelId;
-  garbageCollectionMode: NotionGarbageCollectionMode;
 }): Promise<boolean> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -608,47 +599,12 @@ export async function shouldGarbageCollect({
     return false;
   }
 
-  if (
+  // If we are currently doing a full resync, we should not garbage collect
+  const isDoingAFullResync =
     notionConnectorState.fullResyncStartTime &&
     connector.lastSyncFinishTime &&
-    notionConnectorState.fullResyncStartTime > connector.lastSyncFinishTime
-  ) {
-    // If we are currently doing a full resync, we should not garbage collect
-    return false;
-  }
-
-  if (garbageCollectionMode === "never") {
-    return false;
-  }
-
-  if (garbageCollectionMode === "always") {
-    return true;
-  }
-
-  if (!isDuringGarbageCollectStartWindow()) {
-    // Never garbage collect if we are not in the start window
-    return false;
-  }
-
-  const now = new Date().getTime();
-
-  // If we have never done a garbage collection, we should start one
-  // if it has been more than GARBAGE_COLLECTION_INTERVAL_HOURS since the first successful sync
-  if (!notionConnectorState.lastGarbageCollectionFinishTime) {
-    return (
-      now - firstSuccessfulSyncTime.getTime() >=
-      GARBAGE_COLLECTION_INTERVAL_HOURS * 60 * 60 * 1000
-    );
-  }
-
-  const lastGarbageCollectionFinishTime =
-    notionConnectorState.lastGarbageCollectionFinishTime.getTime();
-
-  // if we garbage collected less than GARBAGE_COLLECTION_INTERVAL_HOURS ago, we should not start another one
-  if (
-    now - lastGarbageCollectionFinishTime <=
-    GARBAGE_COLLECTION_INTERVAL_HOURS * 60 * 60 * 1000
-  ) {
+    notionConnectorState.fullResyncStartTime > connector.lastSyncFinishTime;
+  if (isDoingAFullResync) {
     return false;
   }
 
