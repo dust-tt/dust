@@ -28,8 +28,9 @@ export function DeleteAssistantDialog({
   const doDelete = useDeleteAgentConfiguration({ owner, agentConfiguration });
 
   const agentUsage = useAgentUsage({
-    workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration.sId,
+    disabled: !isOpen,
+    workspaceId: owner.sId,
   });
 
   return (
