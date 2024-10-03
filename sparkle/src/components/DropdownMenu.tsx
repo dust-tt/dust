@@ -1,4 +1,5 @@
 import { Menu, Transition } from "@headlessui/react";
+import {SIDE_OPTIONS} from "@radix-ui/react-popper";
 import React, {
   ComponentType,
   forwardRef,
@@ -22,7 +23,7 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { Item as StandardItem, LinkProps } from "./Item";
-import { Tooltip, TooltipProps } from "./Tooltip";
+import { TooltipContent, TooltipProvider, TooltipRoot, TooltipTrigger } from "./Tooltip";
 
 const ButtonRefContext =
   React.createContext<MutableRefObject<HTMLButtonElement | null> | null>(null);
@@ -98,7 +99,7 @@ export interface DropdownButtonProps {
   type?: "menu" | "submenu" | "select";
   size?: "sm" | "md";
   tooltip?: string;
-  tooltipPosition?: TooltipProps["position"];
+  tooltipPosition?: typeof SIDE_OPTIONS[number];
   icon?: ComponentType;
   className?: string;
   disabled?: boolean;
@@ -116,7 +117,7 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
       tooltip,
       icon,
       children,
-      tooltipPosition = "above",
+      tooltipPosition = "top",
       className = "",
       disabled = false,
       onClick,
@@ -178,9 +179,16 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
           onClick={(e) => e.stopPropagation()}
         >
           {tooltip ? (
-            <Tooltip position={tooltipPosition} label={tooltip}>
-              {children}
-            </Tooltip>
+            <TooltipProvider>
+              <TooltipRoot>
+                <TooltipTrigger>
+                  {children}
+                </TooltipTrigger>
+                <TooltipContent side={tooltipPosition}>
+                  <p>{tooltip}</p>
+                </TooltipContent>
+              </TooltipRoot>
+            </TooltipProvider>
           ) : (
             children
           )}
@@ -198,31 +206,38 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
     return (
       <>
         {tooltip ? (
-          <Tooltip label={tooltip} position={tooltipPosition}>
-            <Menu.Button
-              disabled={disabled}
-              ref={aggregatedRef}
-              className={classNames(
-                disabled ? "s-cursor-default" : "s-cursor-pointer",
-                className,
-                "s-group/dm s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
-                label ? (size === "md" ? "s-gap-2" : "s-gap-1.5") : "s-gap-0.5"
-              )}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onClick) {
-                  onClick();
-                }
-              }}
-            >
-              <Icon visual={icon} size={size} className={finalIconClasses} />
-              <Icon
-                visual={chevronIcon}
-                size={size === "sm" ? "xs" : "sm"}
-                className={finalChevronClasses}
-              />
-            </Menu.Button>
-          </Tooltip>
+          <TooltipProvider>
+            <TooltipRoot>
+              <TooltipTrigger>
+                <Menu.Button
+                  disabled={disabled}
+                  ref={aggregatedRef}
+                  className={classNames(
+                    disabled ? "s-cursor-default" : "s-cursor-pointer",
+                    className,
+                    "s-group/dm s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
+                    label ? (size === "md" ? "s-gap-2" : "s-gap-1.5") : "s-gap-0.5"
+                  )}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onClick) {
+                      onClick();
+                    }
+                  }}
+                >
+                  <Icon visual={icon} size={size} className={finalIconClasses} />
+                  <Icon
+                    visual={chevronIcon}
+                    size={size === "sm" ? "xs" : "sm"}
+                    className={finalChevronClasses}
+                  />
+                </Menu.Button>
+              </TooltipTrigger>
+              <TooltipContent side={tooltipPosition}>
+                <p>{tooltip}</p>
+              </TooltipContent>
+            </TooltipRoot>
+          </TooltipProvider>
         ) : (
           <Menu.Button
             disabled={disabled}

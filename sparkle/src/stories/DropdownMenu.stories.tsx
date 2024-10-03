@@ -311,7 +311,7 @@ export const DropdownExample = () => {
           <DropdownMenu.Button
             icon={ChatBubbleBottomCenterTextIcon}
             tooltip="Moonlab"
-            tooltipPosition="below"
+            tooltipPosition="bottom"
           />
           <DropdownMenu.Items origin="topLeft" width={120}>
             <DropdownMenu.Item label="item 1 is longish" link={{ href: "#" }} />
@@ -355,7 +355,7 @@ export const DropdownExample = () => {
           <DropdownMenu.Button
             icon={ChatBubbleBottomCenterTextIcon}
             tooltip="Moonlab"
-            tooltipPosition="below"
+            tooltipPosition="bottom"
           />
           <DropdownMenu.Items origin="topLeft">
             <DropdownMenu.Item label="item 1" link={{ href: "#" }} />
