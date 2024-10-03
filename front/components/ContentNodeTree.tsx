@@ -9,10 +9,8 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type { BaseContentNode } from "@dust-tt/types";
-import { empty } from "fp-ts/lib/ReadonlyRecord";
 import type { ReactNode } from "react";
-import { useCallback, useContext, useState } from "react";
-import React from "react";
+import React, { useCallback, useContext, useState } from "react";
 
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { classNames, timeAgoFrom } from "@app/lib/utils";

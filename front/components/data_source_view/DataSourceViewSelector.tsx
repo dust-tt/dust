@@ -12,8 +12,8 @@ import type {
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
+  LightWorkspaceType,
   VaultType,
-  WorkspaceType,
 } from "@dust-tt/types";
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
@@ -43,7 +43,7 @@ const ONLY_ONE_VAULT_PER_SELECTION = true;
 
 const getUseResourceHook =
   (
-    owner: WorkspaceType,
+    owner: LightWorkspaceType,
     dataSourceView: DataSourceViewType,
     viewType: ContentNodesViewType,
     useContentNodes: typeof useDataSourceViewContentNodes
@@ -85,7 +85,7 @@ const getNodesFromConfig = (
   );
 
 interface DataSourceViewsSelectorProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   useCase: "vaultDatasourceManagement" | "assistantBuilder";
   dataSourceViews: DataSourceViewType[];
   allowedVaults?: VaultType[];
@@ -293,7 +293,7 @@ export function DataSourceViewsSelector({
 }
 
 interface DataSourceViewSelectorProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   readonly?: boolean;
   selectionConfiguration: DataSourceViewSelectionConfiguration;
   setSelectionConfigurations: Dispatch<

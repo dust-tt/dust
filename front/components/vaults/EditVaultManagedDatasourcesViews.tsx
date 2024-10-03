@@ -12,6 +12,7 @@ import React, { useMemo, useState } from "react";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import VaultManagedDataSourcesViewsModal from "@app/components/vaults/VaultManagedDatasourcesViewsModal";
+import { isManaged } from "@app/lib/data_sources";
 import {
   useVaultDataSourceViews,
   useVaultDataSourceViewsWithDetails,
@@ -58,12 +59,7 @@ export function EditVaultManagedDataSourcesViews({
     disabled: !isAdmin,
   });
   const filteredSystemVaultDataSourceViews = useMemo(
-    () =>
-      systemVaultDataSourceViews.filter(
-        (dsv) =>
-          dsv.dataSource.connectorProvider &&
-          dsv.dataSource.connectorProvider !== "webcrawler"
-      ),
+    () => systemVaultDataSourceViews.filter((dsv) => isManaged(dsv.dataSource)),
     [systemVaultDataSourceViews]
   );
   const updateVaultDataSourceViews = async (
