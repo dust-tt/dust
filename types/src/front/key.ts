@@ -8,4 +8,5 @@ export type KeyType = {
   secret: string;
   status: string;
   name: string | null;
+  groupId?: ModelId;
 };

@@ -2,7 +2,8 @@ import {
   BookOpenIcon,
   Button,
   ClipboardIcon,
-  Dialog, DropdownMenu,
+  Dialog,
+  DropdownMenu,
   IconButton,
   Input,
   Modal,
@@ -10,8 +11,15 @@ import {
   PlusIcon,
   ShapesIcon,
 } from "@dust-tt/sparkle";
-import type { GroupType, KeyType, SubscriptionType,UserType, WorkspaceType } from "@dust-tt/types";
-import { prettifyGroupName } from "@dust-tt/types"
+import type {
+  GroupType,
+  KeyType,
+  ModelId,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
+import { prettifyGroupName } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import React from "react";
 import { useState } from "react";
@@ -57,13 +65,24 @@ export function APIKeys({
   groups: GroupType[];
 }) {
   const { mutate } = useSWRConfig();
-  const nonGlobalGroups = groups.filter((g) => g.kind != "global")
+  const nonGlobalGroups = groups.filter((g) => g.kind != "global");
   const [newApiKeyName, setNewApiKeyName] = useState("");
-  const [newApiKeyGroup, setNewApiKeyGroup] = useState<GroupType>(nonGlobalGroups[0]);
+  const [newApiKeyGroup, setNewApiKeyGroup] = useState<GroupType>(
+    nonGlobalGroups[0]
+  );
   const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
 
   const { keys } = useKeys(owner);
+
+  const groupsById = groups.reduce(
+    (acc, group) => {
+      acc[group.id] = group;
+      return acc;
+    },
+    {} as Record<ModelId, GroupType>
+  );
+
   const { submit: handleGenerate, isSubmitting: isGenerating } =
     useSubmitFunction(
       async ({ name, group }: { name: string; group?: GroupType }) => {
@@ -158,7 +177,10 @@ export function APIKeys({
             Assign permissions to group:{" "}
           </span>
           <DropdownMenu>
-            <DropdownMenu.Button type="select" label={prettifyGroupName(newApiKeyGroup)} />
+            <DropdownMenu.Button
+              type="select"
+              label={prettifyGroupName(newApiKeyGroup)}
+            />
             <DropdownMenu.Items width={220}>
               {nonGlobalGroups.map((group: GroupType) => (
                 <DropdownMenu.Item
@@ -217,7 +239,18 @@ export function APIKeys({
                               "font-mono truncate text-sm text-slate-700"
                             )}
                           >
+                            Name:{" "}
                             <strong>{key.name ? key.name : "Unnamed"}</strong>
+                          </p>
+                          <p
+                            className={classNames(
+                              "font-mono truncate text-sm text-slate-700"
+                            )}
+                          >
+                            Scoped to vault:{" "}
+                            <strong>
+                              {prettifyGroupName(groupsById[key.groupId])}
+                            </strong>
                           </p>
                           <pre className="text-sm">{key.secret}</pre>
                           <p className="front-normal text-xs text-element-700">
