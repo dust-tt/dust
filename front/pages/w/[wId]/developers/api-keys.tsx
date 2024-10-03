@@ -21,7 +21,7 @@ import type {
 } from "@dust-tt/types";
 import { prettifyGroupName } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
-import React from "react";
+import React, { useMemo } from "react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 
@@ -75,13 +75,15 @@ export function APIKeys({
 
   const { keys } = useKeys(owner);
 
-  const groupsById = groups.reduce(
-    (acc, group) => {
-      acc[group.id] = group;
-      return acc;
-    },
-    {} as Record<ModelId, GroupType>
-  );
+  const groupsById = useMemo(() => {
+    return groups.reduce(
+      (acc, group) => {
+        acc[group.id] = group;
+        return acc;
+      },
+      {} as Record<ModelId, GroupType>
+    );
+  }, [groups]);
 
   const { submit: handleGenerate, isSubmitting: isGenerating } =
     useSubmitFunction(
