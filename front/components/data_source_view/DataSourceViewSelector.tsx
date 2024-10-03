@@ -56,7 +56,12 @@ const getUseResourceHook =
       viewType,
     });
     return {
-      resources: nodes,
+      resources: nodes.map((n) => ({
+        ...n,
+        preventSelection:
+          n.preventSelection ||
+          (viewType === "tables" && n.type !== "database"),
+      })),
       isResourcesLoading: isNodesLoading,
       isResourcesError: isNodesError,
     };

@@ -1,3 +1,4 @@
+import { Tree } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
   DataSourceViewType,
@@ -23,7 +24,12 @@ const getUseResourceHook =
       viewType,
     });
     return {
-      resources: res.nodes,
+      resources: res.nodes.map((n) => ({
+        ...n,
+        preventSelection:
+          n.preventSelection ||
+          (viewType === "tables" && n.type !== "database"),
+      })),
       isResourcesLoading: res.isNodesLoading,
       isResourcesError: res.isNodesError,
     };
@@ -77,6 +83,13 @@ export function DataSourceViewPermissionTree({
       useResourcesHook={useResourcesHook}
       selectedNodes={selectedNodes}
       setSelectedNodes={setSelectedNodes}
+      emptyComponent={
+        viewType === "tables" ? (
+          <Tree.Empty label="No tables" />
+        ) : (
+          <Tree.Empty label="No documents" />
+        )
+      }
     />
   );
 }
