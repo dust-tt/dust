@@ -1,3 +1,4 @@
+import {SIDE_OPTIONS} from "@radix-ui/react-popper";
 import React, {
   Children,
   cloneElement,
@@ -6,12 +7,15 @@ import React, {
   ReactNode,
 } from "react";
 
+import { TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger } from "@sparkle/components/Tooltip";
 import { ChevronDownIcon, ChevronUpDownIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Avatar } from "./Avatar";
 import { Icon, IconProps } from "./Icon";
-import { Tooltip, TooltipProps } from "./Tooltip";
 
 export type ButtonProps = {
   variant?:
@@ -32,7 +36,7 @@ export type ButtonProps = {
   icon?: ComponentType;
   avatar?: string;
   className?: string;
-  tooltipPosition?: TooltipProps["position"];
+  tooltipPosition?: typeof SIDE_OPTIONS[number];
   disabledTooltip?: boolean;
 };
 
@@ -173,7 +177,7 @@ export function Button({
   label,
   icon,
   className = "",
-  tooltipPosition = "above",
+  tooltipPosition = "top",
   hasMagnifying = true,
   disabledTooltip = false,
   avatar,
@@ -242,9 +246,16 @@ export function Button({
   return labelVisible || disabledTooltip ? (
     buttonBase
   ) : (
-    <Tooltip label={label} position={tooltipPosition}>
-      {buttonBase}
-    </Tooltip>
+    <TooltipProvider>
+      <TooltipRoot>
+        <TooltipTrigger>
+          {buttonBase}
+        </TooltipTrigger>
+        <TooltipContent side={tooltipPosition}>
+          <p>{label}</p>
+        </TooltipContent>
+      </TooltipRoot>
+    </TooltipProvider>
   );
 }
 

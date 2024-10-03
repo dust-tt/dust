@@ -622,7 +622,7 @@ export const IconOnlyPlusTooltip: Story = {
     labelVisible: false,
     icon: Cog6ToothIcon,
     disabled: false,
-    tooltipPosition: "below",
+    tooltipPosition: "bottom",
   },
 };
 
@@ -634,7 +634,7 @@ export const IconOnlyNoTooltip: Story = {
     labelVisible: false,
     icon: Cog6ToothIcon,
     disabled: false,
-    tooltipPosition: "below",
+    tooltipPosition: "bottom",
     disabledTooltip: true,
   },
 };
