@@ -362,6 +362,7 @@ const DataSourcePage = ({
                 <SlackChannelPatternInput
                   initialValue={features.autoReadChannelPattern || ""}
                   owner={owner}
+                  dataSource={dataSource}
                 />
               </div>
             </>
