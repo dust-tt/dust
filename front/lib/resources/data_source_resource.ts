@@ -3,8 +3,9 @@ import type {
   DataSourceType,
   ModelId,
   PokeDataSourceType,
+  Result,
 } from "@dust-tt/types";
-import { formatUserFullName, removeNulls } from "@dust-tt/types";
+import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -364,7 +365,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
   protected async softDelete(
     auth: Authenticator,
     transaction?: Transaction
-  ): Promise<number> {
+  ): Promise<Result<number, Error>> {
     // Directly delete the DataSourceViewModel here to avoid a circular dependency.
     await DataSourceViewModel.destroy({
       where: {
@@ -375,18 +376,20 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       hardDelete: false,
     });
 
-    return this.model.destroy({
+    const deletedCount = await this.model.destroy({
       where: {
         id: this.id,
       },
       transaction,
     });
+
+    return new Ok(deletedCount);
   }
 
   protected async hardDelete(
     auth: Authenticator,
     transaction?: Transaction
-  ): Promise<number> {
+  ): Promise<Result<number, Error>> {
     await AgentDataSourceConfiguration.destroy({
       where: {
         dataSourceId: this.id,
@@ -413,7 +416,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       hardDelete: true,
     });
 
-    return DataSourceModel.destroy({
+    const deletedCount = await DataSourceModel.destroy({
       where: {
         id: this.id,
       },
@@ -422,6 +425,8 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       // bypassing the soft deletion in place.
       hardDelete: true,
     });
+
+    return new Ok(deletedCount);
   }
 
   // Updating.

@@ -10,7 +10,7 @@ import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import config from "@app/lib/api/config";
 import {
   getDataSources,
-  softDeleteDataSource,
+  softDeleteDataSourceAndLaunchScrubWorkflow,
 } from "@app/lib/api/data_sources";
 import { sendAdminDataDeletionEmail } from "@app/lib/api/email";
 import {
@@ -166,7 +166,10 @@ async function deleteDatasources(auth: Authenticator) {
   // Then, we delete all the data sources.
   const dataSources = await getDataSources(auth);
   for (const dataSource of dataSources) {
-    const r = await softDeleteDataSource(auth, dataSource);
+    const r = await softDeleteDataSourceAndLaunchScrubWorkflow(
+      auth,
+      dataSource
+    );
     if (r.isErr()) {
       throw new Error(`Failed to delete data source: ${r.error.message}`);
     }

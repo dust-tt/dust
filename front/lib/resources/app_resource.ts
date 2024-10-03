@@ -150,8 +150,10 @@ export class AppResource extends ResourceWithVault<App> {
 
   // Deletion.
 
-  protected async hardDelete(auth: Authenticator): Promise<number> {
-    return frontSequelize.transaction(async (t) => {
+  protected async hardDelete(
+    auth: Authenticator
+  ): Promise<Result<number, Error>> {
+    const deletedCount = await frontSequelize.transaction(async (t) => {
       await RunResource.deleteAllByAppId(this.id, t);
 
       await Clone.destroy({
@@ -177,10 +179,12 @@ export class AppResource extends ResourceWithVault<App> {
         hardDelete: true,
       });
     });
+
+    return new Ok(deletedCount);
   }
 
   // TODO(2024-09-27 flav): Implement soft delete of apps.
-  protected softDelete(): Promise<number> {
+  protected softDelete(): Promise<Result<number, Error>> {
     throw new Error("Method not implemented.");
   }
 

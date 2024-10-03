@@ -91,5 +91,5 @@ export abstract class BaseResource<M extends Model & ResourceWithId> {
   abstract delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
-  ): Promise<Result<undefined, Error>>;
+  ): Promise<Result<undefined | number, Error>>;
 }

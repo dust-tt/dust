@@ -132,30 +132,24 @@ export abstract class ResourceWithVault<
   protected abstract hardDelete(
     auth: Authenticator,
     transaction?: Transaction
-  ): Promise<number>;
+  ): Promise<Result<number, Error>>;
 
   protected abstract softDelete(
     auth: Authenticator,
     transaction?: Transaction
-  ): Promise<number>;
+  ): Promise<Result<number, Error>>;
 
   async delete(
     auth: Authenticator,
     options: { hardDelete: boolean; transaction?: Transaction }
-  ): Promise<Result<undefined, Error>> {
+  ): Promise<Result<undefined | number, Error>> {
     const { hardDelete, transaction } = options;
 
-    try {
-      if (hardDelete) {
-        await this.hardDelete(auth, transaction);
-      }
-
-      await this.softDelete(auth, transaction);
-
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
+    if (hardDelete) {
+      return this.hardDelete(auth, transaction);
     }
+
+    return this.softDelete(auth, transaction);
   }
 
   // Permissions.

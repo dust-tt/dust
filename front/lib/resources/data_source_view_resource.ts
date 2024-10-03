@@ -397,8 +397,8 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   protected async softDelete(
     auth: Authenticator,
     transaction?: Transaction
-  ): Promise<number> {
-    return DataSourceViewModel.destroy({
+  ): Promise<Result<number, Error>> {
+    const deletedCount = await DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         id: this.id,
@@ -406,12 +406,14 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       transaction,
       hardDelete: false,
     });
+
+    return new Ok(deletedCount);
   }
 
   async hardDelete(
     auth: Authenticator,
     transaction?: Transaction
-  ): Promise<number> {
+  ): Promise<Result<number, Error>> {
     // Delete agent configurations elements pointing to this data source view.
     await AgentDataSourceConfiguration.destroy({
       where: {
@@ -425,7 +427,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       },
     });
 
-    return DataSourceViewModel.destroy({
+    const deletedCount = await DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         id: this.id,
@@ -435,6 +437,8 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       // bypassing the soft deletion in place.
       hardDelete: true,
     });
+
+    return new Ok(deletedCount);
   }
 
   // This method can only be used once all agent configurations have been deleted. Otherwise use the
