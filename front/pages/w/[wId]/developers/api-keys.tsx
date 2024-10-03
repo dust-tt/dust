@@ -66,22 +66,17 @@ export function APIKeys({
 }) {
   const { mutate } = useSWRConfig();
   const [newApiKeyName, setNewApiKeyName] = useState("");
-  const [newApiKeyGroup, setNewApiKeyGroup] = useState<GroupType>(
-    groups[0]
-  );
+  const [newApiKeyGroup, setNewApiKeyGroup] = useState<GroupType>(groups[0]);
   const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
 
   const { keys } = useKeys(owner);
 
   const groupsById = useMemo(() => {
-    return groups.reduce<Record<ModelId, GroupType>>(
-      (acc, group) => {
-        acc[group.id] = group;
-        return acc;
-      },
-      {}
-    );
+    return groups.reduce<Record<ModelId, GroupType>>((acc, group) => {
+      acc[group.id] = group;
+      return acc;
+    }, {});
   }, [groups]);
 
   const { submit: handleGenerate, isSubmitting: isGenerating } =
