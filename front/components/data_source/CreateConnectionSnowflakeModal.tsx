@@ -13,6 +13,7 @@ import type {
   SnowflakeCredentials,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isConnectorsAPIError } from "@dust-tt/types";
 import { useState } from "react";
 
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
@@ -92,7 +93,19 @@ export function CreateConnectionSnowflakeModal({
 
     if (!createDataSourceRes.ok) {
       const err = await createDataSourceRes.json();
-      setError(`Failed to create connection: ${err.error.message}`);
+      const maybeConnectorsError = "error" in err && err.error.connectors_error;
+
+      if (
+        isConnectorsAPIError(maybeConnectorsError) &&
+        maybeConnectorsError.type === "invalid_request_error"
+      ) {
+        setError(
+          `Failed to create Snowflake connection: ${maybeConnectorsError.message}`
+        );
+      } else {
+        setError(`Failed to create Snowflake connection: ${err.error.message}`);
+      }
+
       setIsLoading(false);
       return;
     }

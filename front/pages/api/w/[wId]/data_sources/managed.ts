@@ -353,14 +353,27 @@ async function handler(
             "Failed to delete the data source"
           );
         }
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to create the connector.",
-            connectors_error: connectorsRes.error,
-          },
-        });
+        switch (connectorsRes.error.type) {
+          case "authorization_error":
+          case "invalid_request_error":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "Failed to create the connector.",
+                connectors_error: connectorsRes.error,
+              },
+            });
+          default:
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "Failed to create the connector.",
+                connectors_error: connectorsRes.error,
+              },
+            });
+        }
       }
       const email = auth.user()?.email;
       if (email && !isDisposableEmailDomain(email)) {
