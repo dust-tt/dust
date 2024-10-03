@@ -10,7 +10,6 @@ import { EnqueueUpsertTable } from "@app/lib/upsert_queue";
 import mainLogger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
 import config from "@app/temporal/config";
-import { table } from "console";
 
 export async function upsertTableActivity(
   upsertQueueId: string,
