@@ -20,7 +20,7 @@ import { assertNever, isBuilder } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
-import { DeleteAssistantDialog } from "@app/components/assistant/AssistantActions";
+import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
@@ -53,8 +53,7 @@ export function AssistantDetailsDropdownMenu({
     disabled: true,
   });
   const router = useRouter();
-  const [showDeletionModal, setShowDeletionModal] =
-    useState<LightAgentConfigurationType | null>(null);
+  const [showDeletionModal, setShowDeletionModal] = useState(false);
 
   if (
     !agentConfiguration ||
@@ -128,15 +127,15 @@ export function AssistantDetailsDropdownMenu({
 
   return (
     <>
-      {allowDeletion && showDeletionModal && (
-        <DeleteAssistantDialog
-          owner={owner}
-          agentConfiguration={showDeletionModal}
-          show={!!showDeletionModal}
-          onClose={() => setShowDeletionModal(null)}
-          isPrivateAssistant={showDeletionModal.scope === "private"}
-        />
-      )}
+      <DeleteAssistantDialog
+        owner={owner}
+        isOpen={showDeletionModal}
+        agentConfiguration={agentConfiguration}
+        onClose={() => {
+          setShowDeletionModal(false);
+        }}
+        isPrivateAssistant={agentConfiguration.scope === "private"}
+      />
 
       <DropdownMenu className="text-element-700">
         {({ close }) => (
@@ -214,12 +213,14 @@ export function AssistantDetailsDropdownMenu({
                       close();
                     }}
                   />
-                  {canDelete && (
+                  {allowDeletion && (
                     <DropdownMenu.Item
                       label="Delete"
                       icon={TrashIcon}
                       variant="warning"
-                      onClick={() => setShowDeletionModal(agentConfiguration)}
+                      onClick={() => {
+                        setShowDeletionModal(true);
+                      }}
                     />
                   )}
 
