@@ -32,18 +32,30 @@ export default function VaultManagedDataSourcesViewsModal({
   systemVaultDataSourceViews,
   vault,
 }: VaultManagedDataSourcesViewsModalProps) {
+  const [systemDataSourceViews, vaultDataSourceViews] = useMemo(() => {
+    const [systemDataSourceViews, vaultDataSourceViews]: Record<
+      string,
+      DataSourceViewType
+    >[] = [{}, {}];
+    initialSelectedDataSources.forEach((dsv) => {
+      systemDataSourceViews[dsv.dataSource.sId] =
+        systemVaultDataSourceViews.find(
+          (sdsv) => sdsv.dataSource.sId === dsv.dataSource.sId
+        ) ?? dsv;
+      vaultDataSourceViews[dsv.dataSource.sId] = dsv;
+    });
+    return [systemDataSourceViews, vaultDataSourceViews];
+  }, [initialSelectedDataSources, systemVaultDataSourceViews]);
+
   const dataSourceViewsAndInternalIds = useMemo(
     () =>
       initialSelectedDataSources.map((dsv) => ({
         // We are selecting from the system dataSourceView and fetching the nodes from there,
         // so we need to find the corresponding one in the systemVaultDataSourceViews
-        dataSourceView:
-          systemVaultDataSourceViews.find(
-            (sdsv) => sdsv.dataSource.sId === dsv.dataSource.sId
-          ) ?? dsv,
+        dataSourceView: systemDataSourceViews[dsv.dataSource.sId],
         internalIds: dsv.parentsIn ?? [],
       })),
-    [initialSelectedDataSources, systemVaultDataSourceViews]
+    [initialSelectedDataSources, systemDataSourceViews]
   );
 
   const initialConfigurations = useMultipleDataSourceViewsContentNodes({
@@ -65,10 +77,7 @@ export default function VaultManagedDataSourcesViewsModal({
           // config.dataSourceView is the system dataSourceView,
           // searching back the original dataSourceView from initialSelectedDataSources
           const dataSourceView =
-            initialSelectedDataSources.find(
-              (dsv) =>
-                dsv.dataSource.sId === config.dataSourceView.dataSource.sId
-            ) || config.dataSourceView;
+            vaultDataSourceViews[config.dataSourceView.dataSource.sId];
 
           const isSelectAll = dataSourceView.parentsIn === null;
           const selectedResources = isSelectAll ? [] : config.nodes;
@@ -84,7 +93,7 @@ export default function VaultManagedDataSourcesViewsModal({
       );
       setSelectionConfigurations(converted);
     }
-  }, [initialConfigurations, initialSelectedDataSources]);
+  }, [initialConfigurations, vaultDataSourceViews]);
 
   const setSelectionConfigurationsCallback = useCallback(
     (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
