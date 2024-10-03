@@ -119,13 +119,6 @@ export default function VaultManagedDataSourcesViewsModal({
     }
   }, [initialConfigurations, vaultDataSourceViews]);
 
-  useEffect(() => {
-    console.log("vaultDataSourceViews", vaultDataSourceViews);
-  }, [vaultDataSourceViews]);
-  useEffect(() => {
-    console.log("initialConfigurations", initialConfigurations);
-  }, [initialConfigurations]);
-
   const setSelectionConfigurationsCallback = useCallback(
     (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
       setHasChanged(true);
