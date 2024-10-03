@@ -425,7 +425,7 @@ export function DataSourceViewSelector({
                       ),
                     };
 
-                    // If nothing is selected or selectAll is false, remove the entry from the state.
+                    // If nothing is selected and selectAll is false, remove the entry from the state.
                     if (
                       !updatedConfig.selectedResources.length &&
                       !updatedConfig.isSelectAll
