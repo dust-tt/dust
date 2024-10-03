@@ -38,7 +38,7 @@ export function ViewFolderAPIModal({
       "source_url": "https://acme.com"
     }'`;
       case "search":
-        return `curl "${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSource.sId}/search?search=foo+bar&top_k=16&full_text=false" \\
+        return `curl "${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSource.sId}/search?query=foo+bar&top_k=16&full_text=false" \\
     -H "Authorization: Bearer YOUR_API_KEY"`;
       default:
         assertNever(type);
