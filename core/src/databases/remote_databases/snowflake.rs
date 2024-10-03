@@ -50,6 +50,9 @@ pub const MAX_QUERY_RESULT_SIZE_BYTES: usize = 128 * 1024 * 1024; // 128MB
 // TODO(SNOWFLAKE) make sure we're not missing any
 pub const FORBIDDEN_OPERATIONS: [&str; 3] = ["UPDATE", "DELETE", "INSERT"];
 
+// TODO(SNOWFLAKE) revisit
+pub const GET_SESSION_MAX_TRIES: usize = 3;
+
 impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
     type Error = anyhow::Error;
 
@@ -175,7 +178,7 @@ impl SnowflakeRemoteDatabase {
         })
     }
 
-    async fn get_session(&self) -> Result<SnowflakeSession> {
+    async fn try_get_session(&self) -> Result<SnowflakeSession> {
         let session = self.client.create_session().await.map_err(|e| {
             QueryDatabaseError::ExecutionError(anyhow!("Error creating session: {}", e).to_string())
         })?;
@@ -190,6 +193,25 @@ impl SnowflakeRemoteDatabase {
             })?;
 
         Ok(session)
+    }
+
+    async fn get_session(&self) -> Result<SnowflakeSession> {
+        let mut tries = 0;
+        let mut backoff = tokio::time::Duration::from_millis(100);
+
+        loop {
+            match self.try_get_session().await {
+                Ok(session) => return Ok(session),
+                Err(e) => {
+                    tries += 1;
+                    if tries >= GET_SESSION_MAX_TRIES {
+                        return Err(e);
+                    }
+                    tokio::time::sleep(backoff).await;
+                    backoff *= 2;
+                }
+            }
+        }
     }
 
     async fn execute_query(
