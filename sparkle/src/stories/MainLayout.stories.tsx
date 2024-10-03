@@ -88,7 +88,7 @@ export const LayoutDemo = () => {
   return (
     <div className="s-h-[98vh] s-w-[98vw] s-border">
       <ResizablePanelGroup direction="horizontal" className="s-h-full s-w-full">
-        <ResizablePanel defaultSize={30} maxSize={32} minSize={20}>
+        <ResizablePanel defaultSize={20} maxSize={32} minSize={20}>
           <div
             id="NavigationPrimary"
             className="s-flex s-h-full s-w-full s-flex-col s-bg-structure-50"
