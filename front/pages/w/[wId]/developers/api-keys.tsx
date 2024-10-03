@@ -75,12 +75,12 @@ export function APIKeys({
   const { keys } = useKeys(owner);
 
   const groupsById = useMemo(() => {
-    return groups.reduce(
+    return groups.reduce<Record<ModelId, GroupType>>(
       (acc, group) => {
         acc[group.id] = group;
         return acc;
       },
-      {} as Record<ModelId, GroupType>
+      {}
     );
   }, [groups]);
 
