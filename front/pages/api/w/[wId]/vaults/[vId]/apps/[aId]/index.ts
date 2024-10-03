@@ -1,8 +1,8 @@
 import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
-import type { NextApiRequest, NextApiResponse } from "next";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
