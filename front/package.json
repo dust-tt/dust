@@ -120,7 +120,7 @@
     "remark-math": "^5.1.1",
     "sanitize-html": "^2.13.0",
     "sequelize": "^6.31.0",
-    "sharp": "^0.33.4",
+    "sharp": "^0.33.5",
     "showdown": "^2.1.0",
     "slick-carousel": "^1.8.1",
     "sqids": "^0.3.0",
