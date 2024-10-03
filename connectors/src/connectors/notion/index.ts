@@ -29,7 +29,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 import { BaseConnectorManager } from "../interface";
-import { getParents } from "./lib/parents";
+import { getOrphanedCount, getParents, hasChildren } from "./lib/parents";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -429,23 +429,9 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       }),
     ]);
 
-    const getPageNodes = async (page: NotionPage): Promise<ContentNode> => {
-      const [childPage, childDB] = await Promise.all([
-        NotionPage.findOne({
-          where: {
-            connectorId: this.connectorId,
-            parentId: page.notionPageId,
-          },
-        }),
-        NotionDatabase.findOne({
-          where: {
-            connectorId: this.connectorId,
-            parentId: page.notionPageId,
-          },
-        }),
-      ]);
-
-      const expandable = childPage || childDB ? true : false;
+    const hasChildrenByPageId = await hasChildren(pages, this.connectorId);
+    const getPageNode = async (page: NotionPage): Promise<ContentNode> => {
+      const expandable = Boolean(hasChildrenByPageId[page.notionPageId]);
 
       return {
         provider: c.type,
@@ -464,7 +450,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       };
     };
 
-    let pageNodes = await Promise.all(pages.map((p) => getPageNodes(p)));
+    let pageNodes = await Promise.all(pages.map((p) => getPageNode(p)));
     // In structured data mode, we remove leaf node pages
     if (viewType === "tables") {
       pageNodes = pageNodes.filter((p) => p.expandable);
@@ -490,22 +476,8 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
     const folderNodes: ContentNode[] = [];
     if (!parentInternalId) {
-      const [orphanedPagesCount, orphanedDbsCount] = await Promise.all([
-        NotionPage.count({
-          where: {
-            connectorId: this.connectorId,
-            parentId: "unknown",
-          },
-        }),
-        NotionDatabase.count({
-          where: {
-            connectorId: this.connectorId,
-            parentId: "unknown",
-          },
-        }),
-      ]);
-
-      if (orphanedPagesCount + orphanedDbsCount > 0) {
+      const orphanedCount = await getOrphanedCount(this.connectorId);
+      if (orphanedCount > 0) {
         // We also need to return a "fake" top-level folder call "Orphaned" to include resources
         // we haven't been able to find a parent for.
         folderNodes.push({
@@ -553,20 +525,25 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       }),
     ]);
 
-    const pageNodes: ContentNode[] = pages.map((page) => ({
-      provider: "notion",
-      internalId: page.notionPageId,
-      parentInternalId:
-        !page.parentId || page.parentId === "workspace" ? null : page.parentId,
-      type: "file",
-      title: page.title || "",
-      sourceUrl: page.notionUrl || null,
-      expandable: false,
-      permission: "read",
-      dustDocumentId: `notion-${page.notionPageId}`,
-      lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
-      dustTableId: null,
-    }));
+    const hasChildrenByPageId = await hasChildren(pages, this.connectorId);
+    const pageNodes: ContentNode[] = await Promise.all(
+      pages.map(async (page) => ({
+        provider: "notion",
+        internalId: page.notionPageId,
+        parentInternalId:
+          !page.parentId || page.parentId === "workspace"
+            ? null
+            : page.parentId,
+        type: "file",
+        title: page.title || "",
+        sourceUrl: page.notionUrl || null,
+        expandable: Boolean(hasChildrenByPageId[page.notionPageId]),
+        permission: "read",
+        dustDocumentId: `notion-${page.notionPageId}`,
+        lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
+        dustTableId: null,
+      }))
+    );
 
     const dbNodes: ContentNode[] = dbs.map((db) => ({
       provider: "notion",
@@ -585,6 +562,24 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
     const contentNodes = pageNodes.concat(dbNodes);
 
+    if (internalIds.indexOf("unknown") !== -1) {
+      const orphanedCount = await getOrphanedCount(this.connectorId);
+      if (orphanedCount > 0) {
+        contentNodes.push({
+          provider: "notion",
+          // Orphaned resources in the database will have "unknown" as their parentId.
+          internalId: "unknown",
+          parentInternalId: null,
+          type: "folder",
+          title: "Orphaned Resources",
+          sourceUrl: null,
+          expandable: true,
+          permission: "read",
+          dustDocumentId: null,
+          lastUpdatedAt: null,
+        });
+      }
+    }
     return new Ok(contentNodes);
   }
 

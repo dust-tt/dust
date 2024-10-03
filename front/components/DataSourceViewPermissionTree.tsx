@@ -1,5 +1,4 @@
 import type {
-  ConnectorPermission,
   ContentNodesViewType,
   DataSourceViewType,
   LightWorkspaceType,
@@ -32,37 +31,41 @@ const getUseResourceHook =
 
 interface DataSourceViewPermissionTreeProps {
   dataSourceView: DataSourceViewType;
-  onDocumentViewClick: (documentId: string) => void;
-  isSearchEnabled?: boolean;
   isRoundedBackground?: boolean;
+  isSearchEnabled?: boolean;
+  onDocumentViewClick: (documentId: string) => void;
   owner: LightWorkspaceType;
   parentId?: string | null;
-  permissionFilter?: ConnectorPermission;
-  showExpand?: boolean;
-  viewType: ContentNodesViewType;
   selectedNodes?: Record<string, ContentNodeTreeItemStatus>;
   setSelectedNodes?: (
     updater: (
       prev: Record<string, ContentNodeTreeItemStatus>
     ) => Record<string, ContentNodeTreeItemStatus>
   ) => void;
+  showExpand?: boolean;
+  viewType: ContentNodesViewType;
 }
 
 export function DataSourceViewPermissionTree({
   dataSourceView,
-  isSearchEnabled,
   isRoundedBackground,
-  owner,
+  isSearchEnabled,
   onDocumentViewClick,
-  showExpand,
-  viewType,
+  owner,
+  parentId,
   selectedNodes,
   setSelectedNodes,
+  showExpand,
+  viewType,
 }: DataSourceViewPermissionTreeProps) {
   const useResourcesHook = useCallback(
-    (parentId: string | null) =>
-      getUseResourceHook(owner, dataSourceView, viewType)(parentId),
-    [owner, dataSourceView, viewType]
+    (selectedParentId: string | null) =>
+      getUseResourceHook(
+        owner,
+        dataSourceView,
+        viewType
+      )(selectedParentId || parentId || null),
+    [owner, dataSourceView, viewType, parentId]
   );
 
   return (

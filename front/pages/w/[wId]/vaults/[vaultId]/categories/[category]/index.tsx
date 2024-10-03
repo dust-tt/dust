@@ -3,7 +3,6 @@ import type {
   ConnectorProvider,
   DataSourceViewCategory,
   DataSourceWithConnectorDetailsType,
-  PlanType,
   VaultType,
 } from "@dust-tt/types";
 import {
@@ -35,7 +34,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     canWriteInVault: boolean;
     vault: VaultType;
     systemVault: VaultType;
-    plan: PlanType;
     integrations: DataSourceIntegration[];
   }
 >(async (context, auth) => {

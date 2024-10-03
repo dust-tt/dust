@@ -1,4 +1,6 @@
 import { setupGlobalErrorHandler } from "@dust-tt/types";
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
 
 import logger from "@app/logger/logger";
 import { runPokeWorker } from "@app/poke/temporal/worker";
@@ -9,41 +11,59 @@ import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worke
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
 import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
 import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
+import { runUpsertTableQueueWorker } from "@app/temporal/upsert_tables/worker";
 import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker";
 
 setupGlobalErrorHandler(logger);
 
-runPostUpsertHooksWorker().catch((err) =>
-  logger.error({ error: err }, "Error running post upsert hooks worker.")
-);
-runPokeWorker().catch((err) =>
-  logger.error({ error: err }, "Error running poke worker.")
-);
+type WorkerName =
+  | "hard_delete"
+  | "labs"
+  | "mentions_count"
+  | "poke"
+  | "post_upsert_hooks"
+  | "production_checks"
+  | "scrub_workspace_queue"
+  | "update_workspace_usage"
+  | "upsert_queue"
+  | "upsert_table_queue";
 
-runProductionChecksWorker().catch((err) =>
-  logger.error({ error: err }, "Error running production checks worker.")
-);
+const workerFunctions: Record<WorkerName, () => Promise<void>> = {
+  hard_delete: runHardDeleteWorker,
+  labs: runLabsWorker,
+  mentions_count: runMentionsCountWorker,
+  poke: runPokeWorker,
+  post_upsert_hooks: runPostUpsertHooksWorker,
+  production_checks: runProductionChecksWorker,
+  scrub_workspace_queue: runScrubWorkspaceQueueWorker,
+  update_workspace_usage: runUpdateWorkspaceUsageWorker,
+  upsert_queue: runUpsertQueueWorker,
+  upsert_table_queue: runUpsertTableQueueWorker,
+};
+const ALL_WORKERS = Object.keys(workerFunctions);
 
-runUpsertQueueWorker().catch((err) =>
-  logger.error({ error: err }, "Error running upsert queue worker.")
-);
+async function runWorkers(workers: WorkerName[]) {
+  for (const worker of workers) {
+    workerFunctions[worker]().catch((err) =>
+      logger.error({ error: err }, `Error running ${worker} worker.`)
+    );
+  }
+}
 
-runUpdateWorkspaceUsageWorker().catch((err) =>
-  logger.error({ error: err }, "Error running usage queue worker.")
-);
-
-runScrubWorkspaceQueueWorker().catch((err) =>
-  logger.error({ error: err }, "Error running scrub workspace queue worker.")
-);
-
-runLabsWorker().catch((err) =>
-  logger.error({ error: err }, "Error running labs worker.")
-);
-
-runHardDeleteWorker().catch((err) =>
-  logger.error({ error: err }, "Error running hard delete worker.")
-);
-
-runMentionsCountWorker().catch((err) =>
-  logger.error({ error: err }, "Error running mentions count worker.")
-);
+yargs(hideBin(process.argv))
+  .option("workers", {
+    alias: "w",
+    type: "array",
+    choices: ALL_WORKERS,
+    default: ALL_WORKERS,
+    demandOption: true,
+    description: "Choose one or multiple workers to run.",
+  })
+  .help()
+  .alias("help", "h")
+  .parseAsync()
+  .then(async (args) => runWorkers(args.workers as WorkerName[]))
+  .catch((err) => {
+    logger.error({ error: err }, "Error running workers");
+    process.exit(1);
+  });

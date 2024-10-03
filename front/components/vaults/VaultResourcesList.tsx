@@ -3,6 +3,7 @@ import {
   Chip,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
+  CubeIcon,
   DataTable,
   FolderIcon,
   PencilSquareIcon,
@@ -41,6 +42,7 @@ import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import type { DataSourceIntegration } from "@app/components/vaults/AddConnectionMenu";
 import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
+import { ConnectorCreatedModal } from "@app/components/vaults/ConnectorCreatedModal";
 import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -52,12 +54,15 @@ import {
 } from "@app/lib/swr/vaults";
 import { classNames } from "@app/lib/utils";
 
+import { ViewFolderAPIModal } from "../ViewFolderAPIModal";
+
 const REDIRECT_TO_EDIT_PERMISSIONS = [
   "confluence",
   "google_drive",
   "microsoft",
   "slack",
   "intercom",
+  "snowflake",
 ];
 
 type RowData = {
@@ -86,11 +91,11 @@ type VaultResourcesListProps = {
 const getTableColumns = ({
   isManaged,
   isWebsite,
-  isSystemVault,
+  vault,
 }: {
   isManaged: boolean;
   isWebsite: boolean;
-  isSystemVault: boolean;
+  vault: VaultType;
 }) => {
   const nameColumn: ColumnDef<RowData, string> = {
     header: "Name",
@@ -104,12 +109,14 @@ const getTableColumns = ({
     ),
   };
 
+  const isGlobalOrSystemVault = ["global", "system"].includes(vault.kind);
+
   const managedByColumn = {
     header: "Managed by",
     accessorFn: (row: RowData) =>
-      (row.dataSourceView.kind === "default"
+      isGlobalOrSystemVault
         ? row.dataSourceView.dataSource.editedByUser?.imageUrl
-        : row.dataSourceView.editedByUser?.imageUrl) ?? "",
+        : row.dataSourceView.editedByUser?.imageUrl,
     meta: {
       width: "6rem",
     },
@@ -117,7 +124,9 @@ const getTableColumns = ({
     accessorKey: "managedBy",
     cell: (info: CellContext<RowData, string>) => {
       const dsv = info.row.original.dataSourceView;
-      const editedByUser = dsv.dataSource.editedByUser ?? dsv.editedByUser;
+      const editedByUser = isGlobalOrSystemVault
+        ? dsv.dataSource.editedByUser
+        : dsv.editedByUser;
 
       return (
         <DataTable.CellContent
@@ -224,7 +233,7 @@ const getTableColumns = ({
     },
   };
 
-  if (isSystemVault && isManaged) {
+  if (vault.kind === "system" && isManaged) {
     return [
       nameColumn,
       usedByColumn,
@@ -254,9 +263,12 @@ export const VaultResourcesList = ({
     useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
     useState<DataSourceViewsWithDetails | null>(null);
+  const [showSelectionModal, setShowSelectionModal] = useState(false);
+
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [showFolderOrWebsiteModal, setShowFolderOrWebsiteModal] =
     useState(false);
+  const [showViewFolderAPIModal, setShowViewFolderAPIModal] = useState(false);
   const [isNewConnectorLoading, setIsNewConnectorLoading] = useState(false);
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: "name", desc: false },
@@ -269,6 +281,7 @@ export const VaultResourcesList = ({
   const isSystemVault = systemVault.sId === vault.sId;
   const isManagedCategory = category === "managed";
   const isWebsite = category === "website";
+  const isFolder = category === "folder";
   const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
 
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
@@ -310,6 +323,17 @@ export const VaultResourcesList = ({
               setShowFolderOrWebsiteModal(true);
             },
           });
+          if (isFolder) {
+            moreMenuItems.push({
+              label: "API",
+              icon: CubeIcon,
+              onClick: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+                e.stopPropagation();
+                setSelectedDataSourceView(dataSourceView);
+                setShowViewFolderAPIModal(true);
+              },
+            });
+          }
           moreMenuItems.push({
             label: "Delete",
             icon: TrashIcon,
@@ -345,6 +369,7 @@ export const VaultResourcesList = ({
       owner,
       vaultDataSourceViews,
       isAdmin,
+      isFolder,
       isWebsiteOrFolder,
       canWriteInVault,
     ]
@@ -417,20 +442,23 @@ export const VaultResourcesList = ({
               onCreated={async (dataSource) => {
                 const updateDataSourceViews =
                   await mutateVaultDataSourceViews();
-                if (
-                  dataSource.connectorProvider &&
-                  REDIRECT_TO_EDIT_PERMISSIONS.includes(
-                    dataSource.connectorProvider
-                  )
-                ) {
-                  if (updateDataSourceViews) {
-                    const view = updateDataSourceViews.dataSourceViews.find(
-                      (v: DataSourceViewType) =>
-                        v.dataSource.sId === dataSource.sId
-                    );
-                    if (view) {
-                      setSelectedDataSourceView(view);
+                if (updateDataSourceViews) {
+                  const view = updateDataSourceViews.dataSourceViews.find(
+                    (v: DataSourceViewType) =>
+                      v.dataSource.sId === dataSource.sId
+                  );
+                  if (view) {
+                    setSelectedDataSourceView(view);
+                    if (
+                      dataSource.connectorProvider &&
+                      REDIRECT_TO_EDIT_PERMISSIONS.includes(
+                        dataSource.connectorProvider
+                      )
+                    ) {
                       setShowConnectorPermissionsModal(true);
+                      setShowSelectionModal(true);
+                    } else {
+                      setShowSelectionModal(true);
                     }
                   }
                 }
@@ -446,6 +474,15 @@ export const VaultResourcesList = ({
             vault={vault}
             systemVault={systemVault}
             isAdmin={isAdmin}
+          />
+        )}
+        {isFolder && selectedDataSourceView && (
+          <ViewFolderAPIModal
+            isOpen={showViewFolderAPIModal}
+            owner={owner}
+            vault={vault}
+            dataSource={selectedDataSourceView?.dataSource}
+            onClose={() => setShowViewFolderAPIModal(false)}
           />
         )}
         {isWebsiteOrFolder && (
@@ -485,7 +522,7 @@ export const VaultResourcesList = ({
           columns={getTableColumns({
             isManaged: isManagedCategory,
             isWebsite: isWebsite,
-            isSystemVault,
+            vault,
           })}
           filter={dataSourceSearch}
           filterColumn="name"
@@ -501,17 +538,27 @@ export const VaultResourcesList = ({
       )}
       {selectedDataSourceView &&
         selectedDataSourceView.dataSource.connector && (
-          <ConnectorPermissionsModal
-            owner={owner}
-            connector={selectedDataSourceView.dataSource.connector}
-            dataSource={selectedDataSourceView.dataSource}
-            isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
-            onClose={() => {
-              setShowConnectorPermissionsModal(false);
-            }}
-            readOnly={false}
-            isAdmin={isAdmin}
-          />
+          <>
+            <ConnectorPermissionsModal
+              owner={owner}
+              connector={selectedDataSourceView.dataSource.connector}
+              dataSource={selectedDataSourceView.dataSource}
+              isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
+              onClose={() => {
+                setShowConnectorPermissionsModal(false);
+              }}
+              readOnly={false}
+              isAdmin={isAdmin}
+            />
+            <ConnectorCreatedModal
+              owner={owner}
+              dataSource={selectedDataSourceView.dataSource}
+              isOpen={showSelectionModal && !showConnectorPermissionsModal}
+              onClose={() => {
+                setShowSelectionModal(false);
+              }}
+            />
+          </>
         )}
     </>
   );

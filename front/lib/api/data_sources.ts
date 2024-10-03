@@ -15,6 +15,7 @@ import {
   CoreAPI,
   dustManagedCredentials,
   Err,
+  MANAGED_DS_DELETABLE,
   Ok,
   sectionFullText,
 } from "@dust-tt/types";
@@ -32,10 +33,6 @@ import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import { validateUrl } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
-
-export const MANAGED_DS_DELETABLE_AS_BUILDER: ConnectorProvider[] = [
-  "webcrawler",
-];
 
 export async function getDataSources(
   auth: Authenticator,
@@ -102,7 +99,7 @@ export async function hardDeleteDataSource(
   const { dustAPIProjectId } = dataSource;
   if (dataSource.connectorId && dataSource.connectorProvider) {
     if (
-      !MANAGED_DS_DELETABLE_AS_BUILDER.includes(dataSource.connectorProvider) &&
+      !MANAGED_DS_DELETABLE.includes(dataSource.connectorProvider) &&
       !auth.isAdmin()
     ) {
       return new Err({

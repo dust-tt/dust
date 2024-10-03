@@ -33,6 +33,7 @@ export class Plan extends Model<
   declare maxMessages: number;
   declare maxMessagesTimeframe: MaxMessagesTimeframeType;
   declare maxUsersInWorkspace: number;
+  declare maxVaultsInWorkspace: number;
   declare isSlackbotAllowed: boolean;
   declare isManagedConfluenceAllowed: boolean;
   declare isManagedSlackAllowed: boolean;
@@ -89,6 +90,10 @@ Plan.init(
       allowNull: false,
     },
     maxUsersInWorkspace: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    maxVaultsInWorkspace: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },

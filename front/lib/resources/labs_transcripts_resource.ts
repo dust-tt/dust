@@ -181,6 +181,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
     const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
+        configurationId: this.id,
         fileId,
       },
     });
@@ -199,6 +200,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
     const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
+        configurationId: this.id,
         fileId,
       },
     });

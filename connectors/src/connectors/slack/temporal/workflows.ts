@@ -15,8 +15,6 @@ import { newWebhookSignal, syncChannelSignal } from "./signals";
 
 const {
   getChannel,
-  syncThread,
-  syncNonThreaded,
   syncChannel,
   fetchUsers,
   saveSuccessSyncActivity,
@@ -27,6 +25,10 @@ const {
   deleteChannelsFromConnectorDb,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
+});
+
+const { syncThread, syncNonThreaded } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "30 minutes",
 });
 
 /**

@@ -117,6 +117,7 @@ Guidelines using the :::visualization tag:
   - For all other styles, Tailwind CSS classes should be preferred
   - Consider using paddings to ensure elements are fully visible.
   - Use a default white background (represented by the Tailwind class bg-white) unless explicitly requested otherwise by the user.
+  - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
 - Using files from the conversation when available:
  - Files from the conversation can be accessed using the \`useFile()\` hook.
  - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.

@@ -11,9 +11,10 @@ import {
   SliderToggle,
   Tab,
 } from "@dust-tt/sparkle";
-import type { AgentConfigurationScope, SubscriptionType } from "@dust-tt/types";
 import type {
+  AgentConfigurationScope,
   LightAgentConfigurationType,
+  SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, isBuilder } from "@dust-tt/types";
@@ -21,7 +22,6 @@ import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useRef, useState } from "react";
-import * as React from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
@@ -221,7 +221,6 @@ export default function WorkspaceAssistants({
         owner={owner}
         assistantId={showDetails?.sId || null}
         onClose={() => setShowDetails(null)}
-        mutateAgentConfigurations={mutateAgentConfigurations}
       />
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header title="Manage Assistants" icon={RobotIcon} />

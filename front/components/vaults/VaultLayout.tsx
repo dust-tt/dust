@@ -1,11 +1,13 @@
-import { Breadcrumbs } from "@dust-tt/sparkle";
+import { Breadcrumbs, Dialog } from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
   DataSourceViewType,
+  PlanType,
   SubscriptionType,
   VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import React, { useMemo, useState } from "react";
 
@@ -16,10 +18,12 @@ import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
 import VaultSideBarMenu from "@app/components/vaults/VaultSideBarMenu";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { getVaultIcon } from "@app/lib/vaults";
+import { useVaultsAsAdmin } from "@app/lib/swr/vaults";
+import { getVaultIcon, isPrivateVaultsLimitReached } from "@app/lib/vaults";
 
 export interface VaultLayoutProps {
   owner: WorkspaceType;
+  plan: PlanType;
   isAdmin: boolean;
   subscription: SubscriptionType;
   vault: VaultType;
@@ -38,6 +42,7 @@ export function VaultLayout({
   const [showVaultCreationModal, setShowVaultCreationModal] = useState(false);
   const {
     owner,
+    plan,
     isAdmin,
     subscription,
     vault,
@@ -45,10 +50,18 @@ export function VaultLayout({
     dataSourceView,
     parentId,
   } = pageProps;
+  const router = useRouter();
+
+  const { vaults } = useVaultsAsAdmin({
+    workspaceId: owner.sId,
+    disabled: plan.limits.vaults.maxVaults === 0,
+  });
 
   const isPrivateVaultsEnabled = owner.flags.includes(
     "private_data_vaults_feature"
   );
+
+  const isLimitReached = isPrivateVaultsLimitReached(vaults, plan);
 
   return (
     <RootLayout>
@@ -72,13 +85,29 @@ export function VaultLayout({
           parentId={parentId ?? undefined}
         />
         {children}
-        {isAdmin && isPrivateVaultsEnabled && (
+        {isAdmin && isPrivateVaultsEnabled && !isLimitReached && (
           <CreateOrEditVaultModal
             isAdmin={isAdmin}
             owner={owner}
-            isOpen={showVaultCreationModal}
+            isOpen={!isLimitReached && showVaultCreationModal}
             onClose={() => setShowVaultCreationModal(false)}
+            onCreated={(vault) => {
+              void router.push(`/w/${owner.sId}/vaults/${vault.sId}`);
+            }}
           />
+        )}
+        {isAdmin && isPrivateVaultsEnabled && isLimitReached && (
+          <Dialog
+            alertDialog={true}
+            isOpen={isLimitReached && showVaultCreationModal}
+            title="Max privates vaults reached"
+            onValidate={() => setShowVaultCreationModal(false)}
+          >
+            <div>
+              You can't create more vaults. Please upgrade to add more. Reach
+              out to us at support@dust.tt to learn more.
+            </div>
+          </Dialog>
         )}
       </AppLayout>
     </RootLayout>

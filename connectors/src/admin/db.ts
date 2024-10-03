@@ -43,6 +43,11 @@ import {
   NotionPage,
 } from "@connectors/lib/models/notion";
 import {
+  RemoteDatabaseModel,
+  RemoteSchemaModel,
+  RemoteTableModel,
+} from "@connectors/lib/models/remote_databases";
+import {
   SlackBotWhitelistModel,
   SlackChannel,
   SlackChatBotMessage,
@@ -105,6 +110,9 @@ async function main(): Promise<void> {
   await WebCrawlerPage.sync({ alter: true });
   await WebCrawlerConfigurationHeader.sync({ alter: true });
   await SnowflakeConfigurationModel.sync({ alter: true });
+  await RemoteDatabaseModel.sync({ alter: true });
+  await RemoteSchemaModel.sync({ alter: true });
+  await RemoteTableModel.sync({ alter: true });
 
   // enable the `unaccent` extension
   await sequelizeConnection.query("CREATE EXTENSION IF NOT EXISTS unaccent;");

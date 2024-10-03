@@ -142,9 +142,9 @@ export const VaultCreateAppModal = ({
               <TextArea
                 placeholder="This description guides assistants in understanding how to use
                 your app effectively and determines its relevance in responding to user inquiries."
-                value={description}
-                onChange={(value) => {
-                  setDescription(value);
+                value={description ?? ""}
+                onChange={(e) => {
+                  setDescription(e.target.value);
                   if (errors.description) {
                     setErrors({ ...errors, description: null });
                   }

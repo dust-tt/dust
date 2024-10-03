@@ -4,6 +4,7 @@ import {
   DropdownMenu,
   EmojiPicker,
   Markdown,
+  TextArea,
 } from "@dust-tt/sparkle";
 import type {
   CreateTemplateFormType,
@@ -54,7 +55,6 @@ import {
   PokeSelectTrigger,
   PokeSelectValue,
 } from "@app/components/poke/shadcn/ui/select";
-import { PokeTextarea } from "@app/components/poke/shadcn/ui/textarea";
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -216,7 +216,7 @@ function TextareaField({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <PokeFormControl>
-                    <PokeTextarea
+                    <TextArea
                       placeholder={placeholder ?? name}
                       rows={rows}
                       {...field} // Ensure `value` is a string
@@ -230,7 +230,7 @@ function TextareaField({
               </div>
             ) : (
               <PokeFormControl>
-                <PokeTextarea
+                <TextArea
                   placeholder={placeholder ?? name}
                   rows={rows}
                   {...field} // Ensure `value` is a string

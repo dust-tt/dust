@@ -3,7 +3,6 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
-import React from "react";
 
 import { ConversationContainer } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
@@ -68,13 +67,12 @@ export default function AssistantConversation({
   const [conversationKey, setConversationKey] = useState<string | null>(null);
   const [agentIdToMention, setAgentIdToMention] = useState<string | null>(null);
   const router = useRouter();
-
+  const { cId, assistant } = router.query;
   // This useEffect handles whether to change the key of the ConversationContainer
   // or not. Altering the key forces a re-render of the component. A random number
   // is used in the key to maintain the component during the transition from new
   // to the conversation view. The key is reset when navigating to a new conversation.
   useEffect(() => {
-    const { cId } = router.query;
     const conversationId = getValidConversationId(cId);
 
     if (conversationId && initialConversationId) {
@@ -94,13 +92,13 @@ export default function AssistantConversation({
       }
     }
 
-    const agentId = router.query.assistant ?? null;
+    const agentId = assistant ?? null;
     if (agentId && typeof agentId === "string") {
       setAgentIdToMention(agentId);
     } else {
       setAgentIdToMention(null);
     }
-  }, [router.query, setConversationKey, initialConversationId]);
+  }, [cId, assistant, setConversationKey, initialConversationId]);
 
   useEffect(() => {
     function handleNewConvoShortcut(event: KeyboardEvent) {

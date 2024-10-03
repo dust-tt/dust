@@ -7,8 +7,10 @@ import {
   LockIcon,
   Modal,
   Page,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
+  APIError,
   ConnectorPermission,
   ConnectorProvider,
   ConnectorType,
@@ -17,7 +19,12 @@ import type {
   UpdateConnectorRequestBody,
   WorkspaceType,
 } from "@dust-tt/types";
-import { assertNever, CONNECTOR_TYPE_TO_MISMATCH_ERROR } from "@dust-tt/types";
+import {
+  assertNever,
+  CONNECTOR_TYPE_TO_MISMATCH_ERROR,
+  isOAuthProvider,
+  MANAGED_DS_DELETABLE,
+} from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -28,6 +35,7 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDataSourceName } from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import { useUser } from "@app/lib/swr/user";
+import { useSystemVault, useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
@@ -42,6 +50,7 @@ const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "google_drive",
   "microsoft",
   "intercom",
+  "snowflake",
 ]);
 
 const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
@@ -256,16 +265,19 @@ function DataSourceEditionModal({
                 Assistants using them.
               </div>
 
-              <div className="pl-4 text-sm text-amber-800">
-                Read our{" "}
-                <a
-                  href="https://docs.dust.tt/docs/google-drive-connection"
-                  className="text-blue-600"
-                >
-                  Playbook
-                </a>
-                .
-              </div>
+              {connectorConfiguration.guideLink && (
+                <div className="pl-4 text-sm text-amber-800">
+                  Read our{" "}
+                  <a
+                    href={connectorConfiguration.guideLink}
+                    className="text-blue-600"
+                    target="_blank"
+                  >
+                    Playbook
+                  </a>
+                  .
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -310,16 +322,19 @@ function DataSourceEditionModal({
                 them.
               </div>
 
-              <div className="pl-4 text-sm text-amber-800">
-                Read our{" "}
-                <a
-                  href="https://docs.dust.tt/docs/google-drive-connection"
-                  className="text-blue-600"
-                >
-                  Playbook
-                </a>
-                .
-              </div>
+              {connectorConfiguration.guideLink && (
+                <div className="pl-4 text-sm text-amber-800">
+                  Read our{" "}
+                  <a
+                    href={connectorConfiguration.guideLink}
+                    className="text-blue-600"
+                    target="_blank"
+                  >
+                    Playbook
+                  </a>
+                  .
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-center">
               <Button
@@ -360,6 +375,134 @@ function DataSourceEditionModal({
           The changes you are about to make may break existing{" "}
           {connectorConfiguration.name} Data sources and the assistants using
           them. Are you sure you want to continue?
+        </Dialog>
+      </>
+    </DataSourceManagementModal>
+  );
+}
+
+interface DataSourceDeletionModalProps {
+  dataSource: DataSourceType;
+  isOpen: boolean;
+  onClose: () => void;
+  owner: LightWorkspaceType;
+}
+function DataSourceDeletionModal({
+  dataSource,
+  isOpen,
+  onClose,
+  owner,
+}: DataSourceDeletionModalProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const sendNotification = useContext(SendNotificationsContext);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const { user } = useUser();
+  const { systemVault } = useSystemVault({
+    workspaceId: owner.sId,
+  });
+  const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
+    useVaultDataSourceViews({
+      workspaceId: owner.sId,
+      vaultId: systemVault?.sId ?? "",
+      disabled: true,
+    });
+  const { connectorProvider, editedByUser } = dataSource;
+
+  if (!connectorProvider || !user || !systemVault) {
+    return null;
+  }
+
+  const isDataSourceOwner = editedByUser?.userId === user.sId;
+  const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
+
+  const handleDelete = async () => {
+    setIsLoading(true);
+    const res = await fetch(
+      `/api/w/${owner.sId}/vaults/${systemVault.sId}/data_sources/${dataSource.sId}`,
+      {
+        method: "DELETE",
+      }
+    );
+    if (res.ok) {
+      sendNotification({
+        title: "Successfully deleted connection",
+        type: "success",
+        description: "The connection has been successfully deleted.",
+      });
+      await mutateVaultDataSourceViews();
+      onClose();
+    } else {
+      const err = (await res.json()) as { error: APIError };
+      sendNotification({
+        title: "Error deleting connection",
+        type: "error",
+        description: err.error.message,
+      });
+    }
+    setIsLoading(false);
+  };
+
+  return (
+    <DataSourceManagementModal isOpen={isOpen} onClose={onClose}>
+      <>
+        <div className="mt-4 flex flex-col">
+          <div className="flex items-center gap-2">
+            <Icon visual={connectorConfiguration.logoComponent} size="md" />
+            <Page.SectionHeader
+              title={`Deleting ${connectorConfiguration.name} connection`}
+            />
+          </div>
+          <div className="mb-4 mt-8 w-full rounded-lg bg-amber-50 p-3">
+            <div className="flex items-center gap-2 font-medium text-amber-800">
+              <Icon visual={InformationCircleIcon} />
+              Important
+            </div>
+            <div className="p-4 text-sm text-amber-900">
+              <b>Deleting</b> will break Assistants using this data.
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 border-t pb-4 pt-4">
+          <Page.SectionHeader title="Connection Owner" />
+          <div className="flex items-center gap-2">
+            <Avatar visual={editedByUser?.imageUrl} size="sm" />
+            <div>
+              <span className="font-bold">
+                {isDataSourceOwner ? "You" : editedByUser?.fullName}
+              </span>{" "}
+              set it up
+              {editedByUser?.editedAt
+                ? ` on ${formatTimestampToFriendlyDate(editedByUser?.editedAt)}`
+                : "."}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-center">
+          <Button
+            label="Delete Connection"
+            icon={LockIcon}
+            variant="primaryWarning"
+            onClick={() => {
+              setShowConfirmDialog(true);
+            }}
+          />
+        </div>
+
+        <Dialog
+          title="Are you sure?"
+          isOpen={showConfirmDialog}
+          onCancel={() => setShowConfirmDialog(false)}
+          onValidate={() => {
+            void handleDelete();
+            setShowConfirmDialog(false);
+          }}
+          validateVariant="primaryWarning"
+          cancelLabel="Cancel"
+          validateLabel="Continue"
+          isSaving={isLoading}
+        >
+          The changes you are about to make will break existing assistants using{" "}
+          {connectorConfiguration.name}. Are you sure you want to continue?
         </Dialog>
       </>
     </DataSourceManagementModal>
@@ -446,7 +589,7 @@ export function ConnectorPermissionsModal({
   }, [initialTreeSelectionModel, isOpen]);
 
   const [modalToShow, setModalToShow] = useState<
-    "edition" | "selection" | null
+    "edition" | "selection" | "deletion" | null
   >(null);
   const { activeSubscription } = useWorkspaceActiveSubscription({
     workspaceId: owner.sId,
@@ -492,7 +635,7 @@ export function ConnectorPermissionsModal({
           const error: { error: { message: string } } = await r.json();
           window.alert(error.error.message);
         }
-        await mutate(
+        void mutate(
           (key) =>
             typeof key === "string" &&
             key.startsWith(
@@ -582,15 +725,28 @@ export function ConnectorPermissionsModal({
       >
         <div className="mx-auto mt-4 flex w-full max-w-4xl grow flex-col gap-4">
           <div className="flex">
-            <Button
-              className="ml-auto justify-self-end"
-              label="Edit permissions"
-              variant="tertiary"
-              icon={LockIcon}
-              onClick={() => {
-                setModalToShow("edition");
-              }}
-            />
+            {isOAuthProvider(connector.type) && (
+              <Button
+                className="ml-auto justify-self-end"
+                label="Edit permissions"
+                variant="tertiary"
+                icon={LockIcon}
+                onClick={() => {
+                  setModalToShow("edition");
+                }}
+              />
+            )}
+            {MANAGED_DS_DELETABLE.includes(connector.type) && (
+              <Button
+                className="ml-auto justify-self-end"
+                label="Delete connection"
+                variant="secondaryWarning"
+                icon={TrashIcon}
+                onClick={() => {
+                  setModalToShow("deletion");
+                }}
+              />
+            )}
           </div>
           {OptionsComponent && plan && (
             <>
@@ -639,6 +795,12 @@ export function ConnectorPermissionsModal({
             sendNotification
           );
         }}
+      />
+      <DataSourceDeletionModal
+        isOpen={modalToShow === "deletion"}
+        onClose={() => closeModal(false)}
+        dataSource={dataSource}
+        owner={owner}
       />
     </>
   );

@@ -205,8 +205,8 @@ export function InviteEmailModal({
                 <TextArea
                   placeholder="Email addresses, comma or newline separated"
                   value={inviteEmails}
-                  onChange={(value) => {
-                    setInviteEmails(value);
+                  onChange={(e) => {
+                    setInviteEmails(e.target.value);
                     setEmailError("");
                   }}
                   error={emailError}

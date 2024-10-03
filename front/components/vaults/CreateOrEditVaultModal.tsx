@@ -46,6 +46,7 @@ interface CreateOrEditVaultModalProps {
   owner: LightWorkspaceType;
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: (vault: VaultType) => void;
   isAdmin: boolean;
   vault?: VaultType;
 }
@@ -63,6 +64,7 @@ export function CreateOrEditVaultModal({
   owner,
   isOpen,
   onClose,
+  onCreated,
   isAdmin,
   vault,
 }: CreateOrEditVaultModalProps) {
@@ -216,20 +218,17 @@ export function CreateOrEditVaultModal({
       await doUpdate(vault, selectedMembers, vaultName);
     } else if (!vault) {
       const createdVault = await doCreate(vaultName, selectedMembers);
-      if (createdVault) {
-        await router.push(`/w/${owner.sId}/vaults/${createdVault.sId}`);
-      } else {
-        setIsSaving(false);
-        return;
+      setIsSaving(false);
+      if (createdVault && onCreated) {
+        onCreated(createdVault);
       }
     }
     handleClose();
   }, [
     doCreate,
     doUpdate,
+    onCreated,
     handleClose,
-    owner.sId,
-    router,
     selectedMembers,
     vault,
     vaultName,

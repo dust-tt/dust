@@ -554,6 +554,148 @@ export function sectionLength(
   );
 }
 
+export async function upsertTable({
+  dataSourceConfig,
+  tableId,
+  tableName,
+  tableDescription,
+  remoteDatabaseTableId,
+  remoteDatabaseSecretId,
+  loggerArgs,
+  parents,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  tableId: string;
+  tableName: string;
+  tableDescription: string;
+  remoteDatabaseTableId: string | null;
+  remoteDatabaseSecretId: string | null;
+  loggerArgs?: Record<string, string | number>;
+  parents: string[];
+}) {
+  const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
+  const statsDTags = [
+    `data_source_id:${dataSourceConfig.dataSourceId}`,
+    `workspace_id:${dataSourceConfig.workspaceId}`,
+  ];
+
+  localLogger.info("Attempting to upsert table to Dust.");
+  statsDClient.increment(
+    "data_source_table_upserts_attempt.count",
+    1,
+    statsDTags
+  );
+
+  const now = new Date();
+
+  const endpoint =
+    `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/tables`;
+  const dustRequestPayload = {
+    name: tableName,
+    parents,
+    description: tableDescription,
+    table_id: tableId,
+    remote_database_table_id: remoteDatabaseTableId,
+    remote_database_secret_id: remoteDatabaseSecretId,
+  };
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+    validateStatus: null,
+  };
+
+  let dustRequestResult: AxiosResponse;
+  try {
+    dustRequestResult = await axiosWithTimeout.post(
+      endpoint,
+      dustRequestPayload,
+      dustRequestConfig
+    );
+  } catch (e) {
+    const elapsed = new Date().getTime() - now.getTime();
+    statsDClient.increment(
+      "data_source_table_upserts_error.count",
+      1,
+      statsDTags
+    );
+    statsDClient.distribution(
+      "data_source_table_upserts_error.duration.distribution",
+      elapsed,
+      statsDTags
+    );
+    if (axios.isAxiosError(e)) {
+      const sanitizedError = {
+        ...e,
+        config: { ...e.config, data: undefined },
+      };
+      localLogger.error(
+        {
+          error: sanitizedError,
+          payload: {
+            ...dustRequestPayload,
+          },
+        },
+        "Axios error upserting table to Dust."
+      );
+    } else if (e instanceof Error) {
+      localLogger.error(
+        {
+          error: e.message,
+          payload: {
+            ...dustRequestPayload,
+          },
+        },
+        "Error upserting table to Dust."
+      );
+    } else {
+      localLogger.error("Unknown error upserting table to Dust.");
+    }
+
+    throw new Error("Error upserting table to Dust.");
+  }
+
+  const elapsed = new Date().getTime() - now.getTime();
+
+  if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
+    statsDClient.increment(
+      "data_source_table_upserts_success.count",
+      1,
+      statsDTags
+    );
+    statsDClient.distribution(
+      "data_source_table_upserts_success.duration.distribution",
+      elapsed,
+      statsDTags
+    );
+    localLogger.info("Successfully uploaded table to Dust.");
+  } else {
+    statsDClient.increment(
+      "data_source_table_upserts_error.count",
+      1,
+      statsDTags
+    );
+    statsDClient.distribution(
+      "data_source_table_upserts_error.duration.distribution",
+      elapsed,
+      statsDTags
+    );
+    localLogger.error(
+      {
+        status: dustRequestResult.status,
+        elapsed,
+      },
+      "Error upserting table to Dust."
+    );
+    throw new Error(
+      `Error uploading to dust, got ${
+        dustRequestResult.status
+      }: ${JSON.stringify(dustRequestResult.data, null, 2)}`
+    );
+  }
+}
+
 export async function upsertTableFromCsv({
   dataSourceConfig,
   tableId,

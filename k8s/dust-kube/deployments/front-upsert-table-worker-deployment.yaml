@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front-upsert-table-worker-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: front-upsert-table-worker
+  template:
+    metadata:
+      labels:
+        app: front-upsert-table-worker
+        name: front-upsert-table-worker-pod
+        admission.datadoghq.com/enabled: "true"
+      annotations:
+        ad.datadoghq.com/web.logs: '[{"source": "front-upsert-table-worker","service": "front-upsert-table-worker","tags": ["env:prod"]}]'
+    spec:
+      containers:
+        - name: web
+          image: gcr.io/or1g1n-186209/front-image:latest
+          command: ["npm", "run", "start:worker"]
+          args: ["--", "--workers", "upsert_table_queue"]
+          imagePullPolicy: Always
+
+          envFrom:
+            - configMapRef:
+                name: front-worker-config
+            - secretRef:
+                name: front-secrets
+            - secretRef:
+                name: front-worker-secrets
+
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+
+          volumeMounts:
+            - name: cert-volume
+              mountPath: /etc/certs
+            - name: service-account-volume
+              mountPath: /etc/service-accounts
+
+          resources:
+            requests:
+              cpu: 2000m
+              memory: 10Gi
+
+            limits:
+              cpu: 2000m
+              memory: 10Gi
+
+      volumes:
+        - name: cert-volume
+          secret:
+            secretName: temporal-front-cert
+        - name: service-account-volume
+          secret:
+            secretName: gcp-service-account-secret

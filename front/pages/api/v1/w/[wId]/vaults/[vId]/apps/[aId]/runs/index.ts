@@ -81,25 +81,15 @@ async function handler(
   auth: Authenticator,
   keyAuth: Authenticator
 ): Promise<void> {
+  const owner = auth.getNonNullableWorkspace();
   const keyWorkspaceId = keyAuth.getNonNullableWorkspace().id;
 
-  const owner = auth.workspace();
-  if (!owner) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
-      },
-    });
-  }
-
-  let vaultId = req.query.vId;
-  // Handling the case where vId is undefined to keep support
-  // for the legacy endpoint (not under vault, global vault assumed).
-  if (vaultId === undefined) {
-    const globalVault = await VaultResource.fetchWorkspaceGlobalVault(keyAuth);
-    vaultId = globalVault.sId;
+  // Handling the case where vId is undefined to keep support for the legacy endpoint (not under
+  // vault, global vault assumed for the auth (the authenticator associated with the app, not the
+  // user)).
+  let { vId } = req.query;
+  if (vId === undefined) {
+    vId = (await VaultResource.fetchWorkspaceGlobalVault(auth)).sId;
   }
 
   const [app, providers, secrets] = await Promise.all([
@@ -112,7 +102,7 @@ async function handler(
     getDustAppSecrets(auth, true),
   ]);
 
-  if (!app || app.vault.sId !== vaultId) {
+  if (!app || app.vault.sId !== vId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -407,8 +397,8 @@ async function handler(
         default:
           assertNever(runFlavor);
       }
-
       return;
+
     default:
       return apiError(req, res, {
         status_code: 405,

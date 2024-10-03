@@ -26,6 +26,8 @@ import logger from "@app/logger/logger";
 
 import type { DataSourceResource } from "../resources/data_source_resource";
 
+const MAX_TABLE_COLUMNS = 512;
+
 type CsvParsingError = {
   type:
     | "invalid_delimiter"
@@ -244,6 +246,7 @@ export async function upsertTableFromCsv({
   }
 
   if (csvRows) {
+    const now = performance.now();
     const rowsRes = await coreAPI.upsertTableRows({
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
@@ -251,6 +254,20 @@ export async function upsertTableFromCsv({
       rows: csvRows,
       truncate,
     });
+
+    logger.info(
+      {
+        durationMs: performance.now() - now,
+        csvRowsLength: csvRows.length,
+        csvColsLength: csvRows[0]?.value
+          ? Object.keys(csvRows[0].value).length
+          : 0,
+        workspaceId: owner.id,
+        tableId,
+        tableName,
+      },
+      "Upserting table rows"
+    );
 
     if (rowsRes.isErr()) {
       const errorDetails = {
@@ -506,6 +523,10 @@ async function detectHeaders(
     }
 
     const record = anyRecord as string[];
+
+    if (record.length > MAX_TABLE_COLUMNS) {
+      return new Err({ type: "invalid_header", message: "Too many columns" });
+    }
 
     if (!useAppForHeaderDetection) {
       return staticHeaderDetection(record);

@@ -38,6 +38,9 @@ export const PlanTypeSchema = t.type({
     users: t.type({
       maxUsers: t.number,
     }),
+    vaults: t.type({
+      maxVaults: t.number,
+    }),
     canUseProduct: t.boolean,
   }),
   trialPeriodDays: t.number,
@@ -114,6 +117,7 @@ async function handler(
         maxDataSourcesDocumentsCount: body.limits.dataSources.documents.count,
         maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,
         maxUsersInWorkspace: body.limits.users.maxUsers,
+        maxVaultsInWorkspace: body.limits.vaults.maxVaults,
         trialPeriodDays: body.trialPeriodDays,
         canUseProduct: body.limits.canUseProduct,
       });

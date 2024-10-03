@@ -3,6 +3,7 @@ import minimist from "minimist";
 import { startServer } from "@connectors/api_server";
 import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
 import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/worker";
+import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/worker";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runGoogleWorkers } from "./connectors/google_drive/temporal/worker";
@@ -44,4 +45,7 @@ runWebCrawlerWorker().catch((err) =>
 );
 runMicrosoftWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running microsoft worker")
+);
+runSnowflakeWorker().catch((err) =>
+  logger.error(errorFromAny(err), "Error running snowflake worker")
 );

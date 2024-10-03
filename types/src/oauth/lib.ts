@@ -82,3 +82,16 @@ export type OauthAPIPostCredentialsResponse = {
     created: number;
   };
 };
+
+export type OauthAPIGetCredentialsResponse = {
+  credential: {
+    credential_id: string;
+    created: number;
+    provider: CredentialsProvider;
+    metadata: {
+      workspace_id: string;
+      user_id: string;
+    };
+    content: ConnectionCredentials;
+  };
+};

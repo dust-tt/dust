@@ -5,32 +5,136 @@ import type { Connection, RowStatement, SnowflakeError } from "snowflake-sdk";
 import snowflake from "snowflake-sdk";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type SnowflakeRows = Array<any> | undefined;
+export type SnowflakeRow = Record<string, any>;
+export type SnowflakeRows = Array<SnowflakeRow>;
 
+/**
+ * Test the connection to Snowflake with the provided credentials.
+ * Used to check if the credentials are valid and the connection is successful.
+ */
 export const testConnection = async ({
   credentials,
 }: {
   credentials: SnowflakeCredentials;
 }): Promise<Result<string, Error>> => {
-  const connection = snowflake.createConnection(credentials);
+  const connection = snowflake.createConnection({
+    ...credentials,
+
+    // Use proxy if defined to have all requests coming from the same IP.
+    proxyHost: process.env.PROXY_HOST,
+    proxyPort: process.env.PROXY_PORT
+      ? parseInt(process.env.PROXY_PORT)
+      : undefined,
+    proxyUser: process.env.PROXY_USER_NAME,
+    proxyPassword: process.env.PROXY_USER_PASSWORD,
+  });
 
   try {
-    const conn = await connectToSnowflake(connection);
+    const conn = await _connectToSnowflake(connection);
     // TODO(SNOWFLAKE): Improve checks: we want to make sure we have read and read-only access.
-    const rows = await executeQuery(conn, "SHOW DATABASES");
+    const rows = await _executeQuery(conn, "SHOW TABLES");
 
     if (!rows || rows.length === 0) {
-      throw new Error("No databases found or no access to any database");
+      throw new Error("No tables found or no access to any tables");
     }
 
-    await closeConnection(conn);
+    await _closeConnection(conn);
     return new Ok("Connection successful");
   } catch (error) {
     return new Err(error instanceof Error ? error : new Error(String(error)));
   }
 };
 
-function connectToSnowflake(
+/**
+ * Fetch the tables available in the Snowflake account.
+ */
+export const fetchDatabases = async ({
+  credentials,
+}: {
+  credentials: SnowflakeCredentials;
+}): Promise<Result<SnowflakeRows, Error>> => {
+  const query = "SHOW DATABASES";
+  return _fetchRows({ credentials, query });
+};
+
+/**
+ * Fetch the tables available in the Snowflake account.
+ */
+export const fetchSchemas = async ({
+  credentials,
+  fromDatabase,
+}: {
+  credentials: SnowflakeCredentials;
+  fromDatabase?: string;
+}): Promise<Result<SnowflakeRows, Error>> => {
+  const query = fromDatabase
+    ? `SHOW SCHEMAS IN DATABASE ${fromDatabase}`
+    : "SHOW SCHEMAS";
+  return _fetchRows({ credentials, query });
+};
+
+/**
+ * Fetch the tables available in the Snowflake account.
+ */
+export const fetchTables = async ({
+  credentials,
+  fromSchema,
+}: {
+  credentials: SnowflakeCredentials;
+  fromSchema?: string;
+}): Promise<Result<SnowflakeRows, Error>> => {
+  const query = fromSchema
+    ? `SHOW TABLES IN SCHEMA ${fromSchema}`
+    : "SHOW TABLES";
+
+  return _fetchRows({ credentials, query });
+};
+
+// UTILS
+
+async function _fetchRows({
+  credentials,
+  query,
+}: {
+  credentials: SnowflakeCredentials;
+  query: string;
+}): Promise<Result<SnowflakeRows, Error>> {
+  snowflake.configure({
+    // @ts-expect-error OFF is not in the types but it's a valid value.
+    logLevel: "OFF",
+  });
+
+  const connection = snowflake.createConnection({
+    ...credentials,
+
+    // Use proxy if defined to have all requests coming from the same IP.
+    proxyHost: process.env.PROXY_HOST,
+    proxyPort: process.env.PROXY_PORT
+      ? parseInt(process.env.PROXY_PORT)
+      : undefined,
+    proxyUser: process.env.PROXY_USER_NAME,
+    proxyPassword: process.env.PROXY_USER_PASSWORD,
+  });
+
+  try {
+    const conn = await _connectToSnowflake(connection);
+    const rows = await _executeQuery(conn, query);
+    await _closeConnection(conn);
+
+    if (!rows) {
+      throw new Error("No tables found or no access to any table.");
+    }
+
+    return new Ok(rows);
+  } catch (error) {
+    return new Err(error instanceof Error ? error : new Error(String(error)));
+  }
+}
+
+/**
+ * Util: Connect to Snowflake.
+ */
+function _connectToSnowflake(
   connection: snowflake.Connection
 ): Promise<Connection> {
   return new Promise((resolve, reject) => {
@@ -44,7 +148,10 @@ function connectToSnowflake(
   });
 }
 
-function executeQuery(
+/**
+ * Util: Execute a query on the Snowflake connection.
+ */
+function _executeQuery(
   conn: Connection,
   sqlText: string
 ): Promise<SnowflakeRows | undefined> {
@@ -66,7 +173,10 @@ function executeQuery(
   });
 }
 
-function closeConnection(conn: Connection): Promise<void> {
+/**
+ * Util: Close the Snowflake connection.
+ */
+function _closeConnection(conn: Connection): Promise<void> {
   return new Promise((resolve, reject) => {
     conn.destroy((err: SnowflakeError | undefined) => {
       if (err) {

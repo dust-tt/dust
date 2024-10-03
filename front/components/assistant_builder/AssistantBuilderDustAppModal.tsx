@@ -1,9 +1,11 @@
-import { CommandLineIcon, Item, Modal, Page } from "@dust-tt/sparkle";
+import { CommandLineIcon, Item, Modal, Page, Spinner } from "@dust-tt/sparkle";
 import type { AppType, LightWorkspaceType, VaultType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import { sortBy } from "lodash";
+import { useMemo } from "react";
 
 import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
+import { useVaults } from "@app/lib/swr/vaults";
 
 interface AssistantBuilderDustAppModalProps {
   allowedVaults: VaultType[];
@@ -65,6 +67,16 @@ function PickDustApp({
   show,
   onPick,
 }: PickDustAppProps) {
+  const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
+
+  const filteredVaults = useMemo(
+    () =>
+      vaults.filter((vault) =>
+        dustApps.some((app) => app.vault.sId === vault.sId)
+      ),
+    [vaults, dustApps]
+  );
+
   const hasSomeUnselectableApps = dustApps.some(
     (app) => !app.description || app.description.length === 0
   );
@@ -79,44 +91,48 @@ function PickDustApp({
             App selectable, edit it and add a description.
           </Page.P>
         )}
-        <VaultSelector
-          owner={owner}
-          allowedVaults={allowedVaults}
-          defaultVault={allowedVaults[0].sId}
-          renderChildren={(vault) => {
-            const allowedDustApps = vault
-              ? dustApps.filter((app) => app.vault.sId === vault.sId)
-              : dustApps;
+        {isVaultsLoading ? (
+          <Spinner />
+        ) : (
+          <VaultSelector
+            vaults={filteredVaults}
+            allowedVaults={allowedVaults}
+            defaultVault={allowedVaults[0].sId}
+            renderChildren={(vault) => {
+              const allowedDustApps = vault
+                ? dustApps.filter((app) => app.vault.sId === vault.sId)
+                : dustApps;
 
-            if (allowedDustApps.length === 0) {
-              return <>No Dust Apps available.</>;
-            }
+              if (allowedDustApps.length === 0) {
+                return <>No Dust Apps available.</>;
+              }
 
-            return (
-              <>
-                {sortBy(
-                  allowedDustApps,
-                  (a) => !a.description || a.description.length === 0,
-                  "name"
-                ).map((app) => {
-                  const disabled =
-                    !app.description || app.description.length === 0;
-                  return (
-                    <Item.Navigation
-                      label={app.name + (disabled ? " (No description)" : "")}
-                      icon={CommandLineIcon}
-                      disabled={disabled}
-                      key={app.sId}
-                      onClick={() => {
-                        onPick(app);
-                      }}
-                    />
-                  );
-                })}
-              </>
-            );
-          }}
-        />
+              return (
+                <>
+                  {sortBy(
+                    allowedDustApps,
+                    (a) => !a.description || a.description.length === 0,
+                    "name"
+                  ).map((app) => {
+                    const disabled =
+                      !app.description || app.description.length === 0;
+                    return (
+                      <Item.Navigation
+                        label={app.name + (disabled ? " (No description)" : "")}
+                        icon={CommandLineIcon}
+                        disabled={disabled}
+                        key={app.sId}
+                        onClick={() => {
+                          onPick(app);
+                        }}
+                      />
+                    );
+                  })}
+                </>
+              );
+            }}
+          />
+        )}
       </Page>
     </Transition>
   );

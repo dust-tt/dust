@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import { cacheWithRedis } from "@dust-tt/types";
 import PQueue from "p-queue";
+import { Sequelize } from "sequelize";
 
 import {
   getDatabaseChildrenOf,
@@ -10,7 +11,7 @@ import {
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { updateDocumentParentsField } from "@connectors/lib/data_sources";
-import type { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -52,6 +53,9 @@ async function _getParents(
     //    (see https://dust4ai.slack.com/archives/C050SM8NSPK/p1693241129921369)
     case null:
     case "unknown":
+      // If parentType is unknown, consider it as the parent page id.
+      return [...parents, "unknown"];
+
     case "block":
     case "workspace":
       // workspace -> root level pages, with no parents other than themselves
@@ -239,3 +243,60 @@ function notionPageOrDbId(pageOrDb: NotionPage | NotionDatabase): string {
     (pageOrDb as NotionDatabase).notionDatabaseId
   );
 }
+
+export const hasChildren = async (pages: NotionPage[], connectorId: number) => {
+  const hasChildrenPage = (
+    await NotionPage.findAll({
+      attributes: [
+        "parentId",
+        [Sequelize.fn("COUNT", Sequelize.col("*")), "count"],
+      ],
+      where: {
+        connectorId,
+        parentId: pages.map((p) => p.notionPageId),
+      },
+      group: ["parentId"],
+    })
+  ).reduce<Record<string, boolean>>(
+    (acc, d) => (d.parentId ? { ...acc, [d.parentId]: true } : acc),
+    {}
+  );
+
+  const hasChildrenDb = (
+    await NotionDatabase.findAll({
+      attributes: [
+        "parentId",
+        [Sequelize.fn("COUNT", Sequelize.col("*")), "count"],
+      ],
+      where: {
+        connectorId,
+        parentId: pages.map((p) => p.notionPageId),
+      },
+      group: ["parentId"],
+    })
+  ).reduce<Record<string, boolean>>(
+    (acc, d) => (d.parentId ? { ...acc, [d.parentId]: true } : acc),
+    {}
+  );
+
+  return { ...hasChildrenPage, ...hasChildrenDb };
+};
+
+export const getOrphanedCount = async (connectorId: number) => {
+  const [orphanedPagesCount, orphanedDbsCount] = await Promise.all([
+    NotionPage.count({
+      where: {
+        connectorId: connectorId,
+        parentId: "unknown",
+      },
+    }),
+    NotionDatabase.count({
+      where: {
+        connectorId: connectorId,
+        parentId: "unknown",
+      },
+    }),
+  ]);
+
+  return orphanedDbsCount + orphanedPagesCount;
+};

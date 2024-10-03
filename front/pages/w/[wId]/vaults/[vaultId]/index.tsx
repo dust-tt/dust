@@ -19,6 +19,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
   const isAdmin = auth.isAdmin();
+  const plan = auth.getNonNullablePlan();
 
   if (!subscription) {
     return {
@@ -50,6 +51,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     props: {
       isAdmin,
       owner,
+      plan,
       subscription,
       vault: vault.toJSON(),
       userId: auth.user()?.sId,

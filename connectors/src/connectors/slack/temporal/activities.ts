@@ -216,10 +216,12 @@ export async function syncChannel(
   for (const message of messages.messages) {
     if (
       !message.user &&
-      message.bot_profile?.name &&
-      !(await slackConfiguration.isBotWhitelistedToIndexMessages(
-        message.bot_profile.name
-      ))
+      !(
+        message.bot_profile?.name &&
+        (await slackConfiguration.isBotWhitelistedToIndexMessages(
+          message.bot_profile.name
+        ))
+      )
     ) {
       // We do not support messages not posted by users for now, unless it's a whitelisted bot
       continue;
@@ -445,10 +447,12 @@ export async function syncNonThreaded(
       }
       if (
         !message.user &&
-        message.bot_profile?.name &&
-        !(await slackConfiguration.isBotWhitelistedToIndexMessages(
-          message.bot_profile.name
-        ))
+        !(
+          message.bot_profile?.name &&
+          (await slackConfiguration.isBotWhitelistedToIndexMessages(
+            message.bot_profile.name
+          ))
+        )
       ) {
         // We do not support messages not posted by users for now, unless it's a whitelisted bot
         continue;
@@ -641,8 +645,17 @@ export async function syncThread(
     const slackError = e as CodedError;
     if (slackError.code === ErrorCode.PlatformError) {
       const platformError = slackError as WebAPIPlatformError;
+
       if (platformError.data.error === "thread_not_found") {
         // If the thread is not found we just return and don't upsert anything.
+        return;
+      }
+
+      if (
+        platformError.code === "slack_webapi_platform_error" &&
+        platformError.data?.error === "not_in_channel"
+      ) {
+        // If the bot is no longer in the channel, we don't upsert anything.
         return;
       }
     }
