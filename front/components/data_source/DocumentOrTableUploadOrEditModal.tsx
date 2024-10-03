@@ -22,7 +22,10 @@ import type {
   PlanType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { parseAndStringifyCsv } from "@dust-tt/types";
+import {
+  maxFileSizeToHumanReadable,
+  parseAndStringifyCsv,
+} from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import { BIG_FILE_SIZE, isSlugified, MAX_FILE_SIZES } from "@dust-tt/types";
 import React, { useContext, useEffect, useRef, useState } from "react";
@@ -217,7 +220,7 @@ const DocumentUploadOrEditModal = ({
         sendNotification({
           type: "error",
           title: "File too large",
-          description: "Please upload a file smaller than 30MB.",
+          description: `Please upload a file smaller than ${maxFileSizeToHumanReadable(MAX_FILE_SIZES.plainText)}.`,
         });
         setUploading(false);
         return;
@@ -561,7 +564,7 @@ const TableUploadOrEditModal = ({
         sendNotification({
           type: "error",
           title: "File too large",
-          description: "Please upload a file smaller than 30MB.",
+          description: `Please upload a file smaller than ${maxFileSizeToHumanReadable(MAX_FILE_SIZES.plainText)}.`,
         });
         setUploading(false);
         return;
@@ -655,7 +658,7 @@ const TableUploadOrEditModal = ({
               <div>
                 <Page.SectionHeader
                   title="CSV File"
-                  description="Select the CSV file for data extraction. The maximum file size allowed is 50MB."
+                  description={`Select the CSV file for data extraction. The maximum file size allowed is ${maxFileSizeToHumanReadable(MAX_FILE_SIZES.plainText)}.`}
                   action={{
                     label: uploading
                       ? "Uploading..."

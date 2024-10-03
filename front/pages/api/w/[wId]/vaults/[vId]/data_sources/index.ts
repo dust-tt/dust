@@ -396,18 +396,7 @@ const handleDataSourceWithProvider = async ({
       vault
     );
 
-  const dataSource = dataSourceView.dataSource;
-
-  // If the data source resides in the system vault, we also create a custom view in the global vault until vault are released.
-  if (dataSource.vault.isSystem()) {
-    const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
-    await DataSourceViewResource.createViewInVaultFromDataSource(
-      auth,
-      globalVault,
-      dataSource,
-      []
-    );
-  }
+  const { dataSource } = dataSourceView;
 
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
