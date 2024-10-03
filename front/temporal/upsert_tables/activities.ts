@@ -114,7 +114,8 @@ export async function upsertTableActivity(
     };
     if (
       "csvParsingError" in tableRes.error &&
-      tableRes.error.csvParsingError.type === "too_many_columns"
+      (tableRes.error.csvParsingError.type === "too_many_columns" ||
+        tableRes.error.csvParsingError.type === "invalid_header")
     ) {
       logger.error(
         {
@@ -124,7 +125,7 @@ export async function upsertTableActivity(
           csvSize: upsertQueueItem.csv?.length || 0,
           panic: true,
         },
-        "[UpsertQueue] Too many columns -- skipping, this should have been caught prior to enqueuing"
+        "[UpsertQueue] Invalid table (headers or columns) -- skipping, this should have been caught prior to enqueuing"
       );
       return;
     }
