@@ -1,10 +1,9 @@
 import type { ModelId } from "@dust-tt/types";
 
 import {
-  areGrantsAreReadonly,
   connectToSnowflake,
-  fetchGrants,
   fetchTables,
+  isConnectionReadonly,
 } from "@connectors/connectors/snowflake/lib/snowflake_api";
 import { getConnectorAndCredentials } from "@connectors/connectors/snowflake/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -52,12 +51,11 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     }),
   ]);
 
-  const grantsRes = await fetchGrants({ credentials, connection });
-  if (grantsRes.isErr()) {
-    throw grantsRes.error;
-  }
-  const grantsCheck = areGrantsAreReadonly(grantsRes.value);
-  if (grantsCheck.isErr()) {
+  const readonlyConnectionCheck = await isConnectionReadonly({
+    credentials,
+    connection,
+  });
+  if (readonlyConnectionCheck.isErr()) {
     // The connection is not read-only.
     // We mark the connector as errored, and garbage collect all the tables that were synced.
     await syncFailed(connectorId, "remote_database_connection_not_readonly");
