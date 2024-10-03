@@ -83,6 +83,10 @@ const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
   "snowflake",
 ];
 
+export function supportsDocumentsData(ds: DataSource): boolean {
+  return !isRemoteDatabase(ds);
+}
+
 export function supportsStructuredData(ds: DataSource): boolean {
   return Boolean(
     isFolder(ds) ||

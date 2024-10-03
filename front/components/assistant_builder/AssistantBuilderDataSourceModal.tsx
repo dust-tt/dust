@@ -11,7 +11,10 @@ import { useCallback, useContext, useMemo, useState } from "react";
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
-import { supportsStructuredData } from "@app/lib/data_sources";
+import {
+  supportsDocumentsData,
+  supportsStructuredData,
+} from "@app/lib/data_sources";
 
 interface AssistantBuilderDataSourceModalProps {
   initialDataSourceConfigurations: DataSourceViewSelectionConfigurations;
@@ -58,7 +61,7 @@ export default function AssistantBuilderDataSourceModal({
   const supportedDataSourceViewsForViewType = useMemo(
     () =>
       viewType === "documents"
-        ? dataSourceViews
+        ? dataSourceViews.filter((dsv) => supportsDocumentsData(dsv.dataSource))
         : dataSourceViews.filter((dsv) =>
             supportsStructuredData(dsv.dataSource)
           ),
