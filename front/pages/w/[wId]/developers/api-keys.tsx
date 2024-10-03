@@ -244,16 +244,18 @@ export function APIKeys({
                             Name:{" "}
                             <strong>{key.name ? key.name : "Unnamed"}</strong>
                           </p>
-                          <p
-                            className={classNames(
-                              "font-mono truncate text-sm text-slate-700"
-                            )}
-                          >
-                            Scoped to vault:{" "}
-                            <strong>
-                              {prettifyGroupName(groupsById[key.groupId])}
-                            </strong>
-                          </p>
+                          {key.groupId && (
+                            <p
+                              className={classNames(
+                                "font-mono truncate text-sm text-slate-700"
+                              )}
+                            >
+                              Scoped to vault:{" "}
+                              <strong>
+                                {prettifyGroupName(groupsById[key.groupId])}
+                              </strong>
+                            </p>
+                          )}
                           <pre className="text-sm">{key.secret}</pre>
                           <p className="front-normal text-xs text-element-700">
                             Created {key.creator ? `by ${key.creator} ` : ""}
