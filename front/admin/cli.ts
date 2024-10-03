@@ -4,9 +4,7 @@ import {
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
-import { Storage } from "@google-cloud/storage";
 import parseArgs from "minimist";
-import readline from "readline";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import {
@@ -265,114 +263,6 @@ const user = async (command: string, args: parseArgs.ParsedArgs) => {
 
 const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
-    case "delete": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.dsId) {
-        throw new Error("Missing --dsId argument");
-      }
-
-      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
-
-      const dataSource = await DataSourceResource.fetchById(auth, args.dsId);
-      if (!dataSource) {
-        throw new Error(
-          `DataSource not found: wId='${args.wId}' dsId='${args.dsId}'`
-        );
-      }
-
-      const dustAPIProjectId = dataSource.dustAPIProjectId;
-
-      await new Promise((resolve) => {
-        const rl = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout,
-        });
-        rl.question(
-          `Are you sure you want to definitely delete the following data source and all associated data: wId='${args.wId}' dsId='${args.dsId}' provider='${dataSource.connectorProvider}'? (y/N) `,
-          (answer: string) => {
-            rl.close();
-            if (answer !== "y") {
-              throw new Error("Aborting");
-            }
-            resolve(null);
-          }
-        );
-      });
-
-      if (dataSource.connectorId) {
-        console.log(`Deleting connectorId=${dataSource.connectorId}}`);
-        const connDeleteRes = await new ConnectorsAPI(
-          config.getConnectorsAPIConfig(),
-          logger
-        ).deleteConnector(dataSource.connectorId.toString(), true);
-        if (connDeleteRes.isErr()) {
-          throw new Error(connDeleteRes.error.message);
-        }
-      }
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-      const coreDeleteRes = await coreAPI.deleteDataSource({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-      });
-      if (coreDeleteRes.isErr()) {
-        throw new Error(coreDeleteRes.error.message);
-      }
-
-      await dataSource.delete(auth);
-
-      console.log("Data source deleted. Make sure to run: \n\n");
-      console.log(
-        "\x1b[32m%s\x1b[0m",
-        `./admin/cli.sh data-source scrub --dustAPIProjectId ${dustAPIProjectId}`
-      );
-      console.log(
-        "\n\n...to fully scrub the customer data from our infra (GCS clean-up)."
-      );
-      console.log(`WARNING: For Github datasource, the user may want to uninstall the app from Github
-      to revoke the authorization. If needed, send an email (cf template in lib/email.ts) `);
-      return;
-    }
-
-    case "scrub": {
-      if (!args.dustAPIProjectId) {
-        throw new Error("Missing --dustAPIProjectId argument");
-      }
-
-      const storage = new Storage({ keyFilename: config.getServiceAccount() });
-
-      const [files] = await storage
-        .bucket(config.getDustDataSourcesBucket())
-        .getFiles({ prefix: `${args.dustAPIProjectId}` });
-
-      console.log(`Chunking ${files.length} files...`);
-      const chunkSize = 32;
-      const chunks = [];
-      for (let i = 0; i < files.length; i += chunkSize) {
-        chunks.push(files.slice(i, i + chunkSize));
-      }
-
-      for (let i = 0; i < chunks.length; i++) {
-        console.log(`Processing chunk ${i}/${chunks.length}...`);
-        const chunk = chunks[i];
-        if (!chunk) {
-          continue;
-        }
-        await Promise.all(
-          chunk.map((f) => {
-            return (async () => {
-              console.log(`Deleting file: ${f.name}`);
-              await f.delete();
-            })();
-          })
-        );
-      }
-
-      return;
-    }
-
     case "delete-document": {
       if (!args.wId) {
         throw new Error("Missing --wId argument");

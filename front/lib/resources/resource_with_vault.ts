@@ -1,9 +1,10 @@
+import type { Result } from "@dust-tt/types";
 import type {
   Attributes,
   ForeignKey,
   Includeable,
-  ModelStatic,
   NonAttribute,
+  Transaction,
   WhereOptions,
 } from "sequelize";
 import { Model } from "sequelize";
@@ -15,6 +16,10 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import type {
+  ModelStaticSoftDeletable,
+  SoftDeletableModel,
+} from "@app/lib/resources/storage/wrappers";
 import type {
   InferIncludeType,
   ResourceFindOptions,
@@ -29,12 +34,12 @@ interface ModelWithVault extends ResourceWithId {
 }
 
 export abstract class ResourceWithVault<
-  M extends Model & ModelWithVault,
+  M extends SoftDeletableModel & ModelWithVault,
 > extends BaseResource<M> {
   readonly workspaceId: ModelWithVault["workspaceId"];
 
   protected constructor(
-    model: ModelStatic<M>,
+    model: ModelStaticSoftDeletable<M>,
     blob: Attributes<M>,
     public readonly vault: VaultResource
   ) {
@@ -45,19 +50,25 @@ export abstract class ResourceWithVault<
 
   protected static async baseFetchWithAuthorization<
     T extends ResourceWithVault<M>,
-    M extends Model & ModelWithVault,
+    M extends SoftDeletableModel & ModelWithVault,
     IncludeType extends Partial<InferIncludeType<M>>,
   >(
     this: {
       new (
-        model: ModelStatic<M>,
+        model: ModelStaticSoftDeletable<M>,
         blob: Attributes<M>,
         vault: VaultResource,
         includes?: IncludeType
       ): T;
-    } & { model: ModelStatic<M> },
+    } & { model: ModelStaticSoftDeletable<M> },
     auth: Authenticator,
-    { includes, limit, order, where }: ResourceFindOptions<M> = {}
+    {
+      includes,
+      limit,
+      order,
+      where,
+      includeDeleted,
+    }: ResourceFindOptions<M> = {}
   ): Promise<T[]> {
     const includeClauses: Includeable[] = [
       {
@@ -73,6 +84,7 @@ export abstract class ResourceWithVault<
       include: includeClauses,
       limit,
       order,
+      includeDeleted,
     });
 
     return (
@@ -112,6 +124,31 @@ export abstract class ResourceWithVault<
         // Filter out resources that the user cannot fetch.
         .filter((cls) => cls.canFetch(auth))
     );
+  }
+
+  // Delete.
+
+  protected abstract hardDelete(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<Result<number, Error>>;
+
+  protected abstract softDelete(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<Result<number, Error>>;
+
+  async delete(
+    auth: Authenticator,
+    options: { hardDelete: boolean; transaction?: Transaction }
+  ): Promise<Result<undefined | number, Error>> {
+    const { hardDelete, transaction } = options;
+
+    if (hardDelete) {
+      return this.hardDelete(auth, transaction);
+    }
+
+    return this.softDelete(auth, transaction);
   }
 
   // Permissions.

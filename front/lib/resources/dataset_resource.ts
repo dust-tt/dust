@@ -41,14 +41,14 @@ export class DatasetResource extends BaseResource<Dataset> {
 
   async delete(
     auth: Authenticator,
-    t?: Transaction
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     await Dataset.destroy({
       where: {
         id: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
-      transaction: t,
+      transaction,
     });
     return new Ok(undefined);
   }

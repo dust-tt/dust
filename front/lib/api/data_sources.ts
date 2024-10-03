@@ -54,7 +54,10 @@ export async function getDataSources(
   });
 }
 
-export async function deleteDataSource(
+/**
+ * Soft delete a data source. This will mark the data source as deleted and will trigger a scrubbing.
+ */
+export async function softDeleteDataSourceAndLaunchScrubWorkflow(
   auth: Authenticator,
   dataSource: DataSourceResource,
   transaction?: Transaction
@@ -70,8 +73,30 @@ export async function deleteDataSource(
     });
   }
 
-  const dustAPIProjectId = dataSource.dustAPIProjectId;
+  await dataSource.delete(auth, { transaction, hardDelete: false });
 
+  // The scrubbing workflow will delete associated resources and hard delete the data source.
+  await launchScrubDataSourceWorkflow(owner, dataSource);
+
+  return new Ok(dataSource.toJSON());
+}
+
+/**
+ * Performs a hard deletion of the specified data source, ensuring complete removal of the data
+ * source and all its associated resources, including any existing connectors.
+ */
+export async function hardDeleteDataSource(
+  auth: Authenticator,
+  dataSource: DataSourceResource
+) {
+  if (!auth.isBuilder()) {
+    return new Err({
+      code: "unauthorized_deletion",
+      message: "Only builders can destroy data sources.",
+    });
+  }
+
+  const { dustAPIProjectId } = dataSource;
   if (dataSource.connectorId && dataSource.connectorProvider) {
     if (
       !MANAGED_DS_DELETABLE.includes(dataSource.connectorProvider) &&
@@ -119,12 +144,8 @@ export async function deleteDataSource(
     }
   }
 
-  await dataSource.delete(auth, transaction);
+  await dataSource.delete(auth, { hardDelete: true });
 
-  await launchScrubDataSourceWorkflow({
-    wId: owner.sId,
-    dustAPIProjectId,
-  });
   if (dataSource.connectorProvider) {
     await warnPostDeletion(auth, dataSource.connectorProvider);
   }

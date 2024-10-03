@@ -4,6 +4,7 @@ import { chunk } from "lodash";
 import { Op } from "sequelize";
 
 import config from "@app/lib/api/config";
+import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -59,9 +60,11 @@ import logger from "@app/logger/logger";
 const { DUST_DATA_SOURCES_BUCKET, SERVICE_ACCOUNT } = process.env;
 
 export async function scrubDataSourceActivity({
-  dustAPIProjectId,
+  dataSourceId,
+  workspaceId,
 }: {
-  dustAPIProjectId: string;
+  dataSourceId: string;
+  workspaceId: string;
 }) {
   if (!SERVICE_ACCOUNT) {
     throw new Error("SERVICE_ACCOUNT is not set.");
@@ -69,6 +72,30 @@ export async function scrubDataSourceActivity({
   if (!DUST_DATA_SOURCES_BUCKET) {
     throw new Error("DUST_DATA_SOURCES_BUCKET is not set.");
   }
+
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const dataSource = await DataSourceResource.fetchById(auth, dataSourceId, {
+    includeDeleted: true,
+  });
+  if (!dataSource) {
+    logger.info(
+      { dataSource: { sId: dataSourceId } },
+      "Data source not found."
+    );
+
+    throw new Error("Data source not found.");
+  }
+
+  // Ensure the data source has been soft deleted.
+  if (!dataSource.deletedAt) {
+    logger.info(
+      { dataSource: { sId: dataSourceId } },
+      "Data source is not soft deleted."
+    );
+    throw new Error("Data source is not soft deleted.");
+  }
+
+  const { dustAPIProjectId } = dataSource;
 
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
 
@@ -95,6 +122,8 @@ export async function scrubDataSourceActivity({
       })
     );
   }
+
+  return hardDeleteDataSource(auth, dataSource);
 }
 
 export async function isWorkflowDeletableActivity({
@@ -396,7 +425,7 @@ export async function deleteAppsActivity({
       throw new Error(`Error deleting Project from Core: ${res.error.message}`);
     }
 
-    const delRes = await app.delete(auth);
+    const delRes = await app.delete(auth, { hardDelete: true });
     if (delRes.isErr()) {
       throw new Error(`Error deleting App ${app.sId}: ${delRes.error.message}`);
     }
@@ -505,12 +534,12 @@ export async function deleteMembersActivity({
           );
           // Delete the user's files
           await FileResource.deleteAllForUser(user.toJSON(), t);
-          await membership.delete(auth, t);
-          await user.delete(auth, t);
+          await membership.delete(auth, { transaction: t });
+          await user.delete(auth, { transaction: t });
         }
       } else {
         logger.info(`[Workspace delete] Deleting Membership ${membership.id}`);
-        await membership.delete(auth, t);
+        await membership.delete(auth, { transaction: t });
       }
     }
   });

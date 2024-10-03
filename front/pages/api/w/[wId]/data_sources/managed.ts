@@ -337,7 +337,10 @@ async function handler(
           },
           "Failed to create the connector"
         );
-        await dataSource.delete(auth);
+
+        // If the connector creation fails, we delete the data source and the project.
+        await dataSource.delete(auth, { hardDelete: true });
+
         const deleteRes = await coreAPI.deleteDataSource({
           projectId: dustProject.value.project.project_id.toString(),
           dataSourceId: dustDataSource.value.data_source.data_source_id,

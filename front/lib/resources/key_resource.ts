@@ -176,6 +176,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       name: this.name,
       secret,
       status: this.status,
+      groupId: this.groupId,
     };
   }
 

@@ -3,6 +3,7 @@ import {
   Button,
   ClipboardIcon,
   Dialog,
+  DropdownMenu,
   IconButton,
   Input,
   Modal,
@@ -10,11 +11,17 @@ import {
   PlusIcon,
   ShapesIcon,
 } from "@dust-tt/sparkle";
-import type { GroupType, UserType, WorkspaceType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
-import type { KeyType } from "@dust-tt/types";
+import type {
+  GroupType,
+  KeyType,
+  ModelId,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@dust-tt/types";
+import { prettifyGroupName } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
-import React from "react";
+import React, { useMemo } from "react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 
@@ -58,13 +65,20 @@ export function APIKeys({
   groups: GroupType[];
 }) {
   const { mutate } = useSWRConfig();
-  const globalGroup = groups.find((group) => group.kind === "global");
   const [newApiKeyName, setNewApiKeyName] = useState("");
-  const [newApiKeyGroup] = useState(globalGroup);
+  const [newApiKeyGroup, setNewApiKeyGroup] = useState<GroupType>(groups[0]);
   const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
 
   const { keys } = useKeys(owner);
+
+  const groupsById = useMemo(() => {
+    return groups.reduce<Record<ModelId, GroupType>>((acc, group) => {
+      acc[group.id] = group;
+      return acc;
+    }, {});
+  }, [groups]);
+
   const { submit: handleGenerate, isSubmitting: isGenerating } =
     useSubmitFunction(
       async ({ name, group }: { name: string; group?: GroupType }) => {
@@ -154,26 +168,26 @@ export function APIKeys({
           value={newApiKeyName}
           onChange={(e) => setNewApiKeyName(e)}
         />
-        {/* TODO(20240731 thomas) Enable group selection }
-        {/* <div className="align-center flex flex-row items-center gap-2 p-2">
+        <div className="align-center flex flex-row items-center gap-2 p-2">
           <span className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
-            Assign group permissions:{" "}
+            Assign permissions to vault:{" "}
           </span>
           <DropdownMenu>
-            <DropdownMenu.Button type="select" label={newApiKeyGroup?.name} />
+            <DropdownMenu.Button
+              type="select"
+              label={prettifyGroupName(newApiKeyGroup)}
+            />
             <DropdownMenu.Items width={220}>
               {groups.map((group: GroupType) => (
-                <>
-                  <DropdownMenu.Item
-                    key={group.id}
-                    label={group.name}
-                    onClick={() => setNewApiKeyGroup(group)}
-                  />
-                </>
+                <DropdownMenu.Item
+                  key={group.id}
+                  label={prettifyGroupName(group)}
+                  onClick={() => setNewApiKeyGroup(group)}
+                />
               ))}
             </DropdownMenu.Items>
           </DropdownMenu>
-        </div> */}
+        </div>
       </Dialog>
       <Page.Horizontal align="stretch">
         <div className="w-full" />
@@ -221,8 +235,21 @@ export function APIKeys({
                               "font-mono truncate text-sm text-slate-700"
                             )}
                           >
+                            Name:{" "}
                             <strong>{key.name ? key.name : "Unnamed"}</strong>
                           </p>
+                          {key.groupId && (
+                            <p
+                              className={classNames(
+                                "font-mono truncate text-sm text-slate-700"
+                              )}
+                            >
+                              Scoped to vault:{" "}
+                              <strong>
+                                {prettifyGroupName(groupsById[key.groupId])}
+                              </strong>
+                            </p>
+                          )}
                           <pre className="text-sm">{key.secret}</pre>
                           <p className="front-normal text-xs text-element-700">
                             Created {key.creator ? `by ${key.creator} ` : ""}
