@@ -1,4 +1,4 @@
-use std::{collections::HashSet, mem};
+use std::{collections::HashSet, env, mem};
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -123,7 +123,7 @@ impl SnowflakeRemoteDatabase {
         let connection_details: SnowflakeConnectionDetails =
             serde_json::from_value(serde_json::Value::Object(credentials))?;
 
-        let client = SnowflakeClient::new(
+        let mut client = SnowflakeClient::new(
             &connection_details.username,
             SnowflakeAuthMethod::Password(connection_details.password),
             SnowflakeClientConfig {
@@ -135,6 +135,21 @@ impl SnowflakeRemoteDatabase {
                 timeout: Some(std::time::Duration::from_secs(30)),
             },
         )?;
+
+        if let (Ok(proxy_host), Ok(proxy_port), Ok(proxy_user_name), Ok(proxy_user_password)) = (
+            env::var("PROXY_HOST"),
+            env::var("PROXY_PORT"),
+            env::var("PROXY_USER_NAME"),
+            env::var("PROXY_USER_PASSWORD"),
+        ) {
+            let proxy_port = proxy_port.parse::<u16>()?;
+            client = client.with_proxy(
+                &proxy_host,
+                proxy_port,
+                &proxy_user_name,
+                &proxy_user_password,
+            )?;
+        }
 
         Ok(Self {
             client,

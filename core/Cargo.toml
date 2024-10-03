@@ -93,5 +93,5 @@ sqids = "0.4.1"
 ring = "0.17.8"
 jsonwebtoken = "9.3.0"
 rslock = { version = "0.4.0", default-features = false, features = ["tokio-comp"] }
-snowflake-connector-rs = "0.6.1"
+snowflake-connector-rs = { git = "https://github.com/dust-tt/snowflake-connector-rs", rev = "5a16356" }
 axum-test = "16.0.0"
