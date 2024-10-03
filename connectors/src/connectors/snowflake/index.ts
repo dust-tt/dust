@@ -5,7 +5,7 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import {
@@ -49,14 +49,23 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       logger,
     });
     if (credentialsRes.isErr()) {
-      return credentialsRes;
+      throw credentialsRes.error;
     }
     const credentials = credentialsRes.value.credentials;
 
     // Then we test the connection is successful.
-    const connection = await testConnection({ credentials });
-    if (connection.isErr()) {
-      return new Err(connection.error);
+    const connectionRes = await testConnection({ credentials });
+    if (connectionRes.isErr()) {
+      switch (connectionRes.error.code) {
+        case "INVALID_CREDENTIALS":
+        case "NOT_READONLY":
+        case "NO_TABLES":
+          return connectionRes;
+        case "UNKNOWN":
+          throw connectionRes.error;
+        default:
+          assertNever(connectionRes.error.code);
+      }
     }
 
     // We can create the connector.
@@ -74,7 +83,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
 
     const launchRes = await launchSnowflakeSyncWorkflow(connector.id);
     if (launchRes.isErr()) {
-      return launchRes;
+      throw launchRes.error;
     }
 
     // TODO(SNOWFLAKE): Launch Sync Workflow.

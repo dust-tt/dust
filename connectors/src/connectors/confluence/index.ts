@@ -60,7 +60,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     const confluenceAccessTokenRes =
       await getConfluenceAccessToken(connectionId);
     if (confluenceAccessTokenRes.isErr()) {
-      return new Err(confluenceAccessTokenRes.error);
+      throw confluenceAccessTokenRes.error;
     }
 
     const confluenceAccessToken = confluenceAccessTokenRes.value;
@@ -69,7 +69,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
       confluenceAccessToken
     );
     if (!confluenceCloudInformation) {
-      return new Err(new Error("Confluence access token is invalid"));
+      throw new Error("Confluence access token is invalid");
     }
 
     const userAccountId = await getConfluenceUserAccountId(
@@ -77,39 +77,35 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     );
 
     const { id: cloudId, url: cloudUrl } = confluenceCloudInformation;
-    try {
-      const confluenceConfigurationBlob = {
-        cloudId,
-        url: cloudUrl,
-        userAccountId,
-      };
 
-      const connector = await ConnectorResource.makeNew(
-        "confluence",
-        {
-          connectionId,
-          workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-          workspaceId: dataSourceConfig.workspaceId,
-          dataSourceId: dataSourceConfig.dataSourceId,
-        },
-        confluenceConfigurationBlob
-      );
+    const confluenceConfigurationBlob = {
+      cloudId,
+      url: cloudUrl,
+      userAccountId,
+    };
 
-      const workflowStarted = await launchConfluenceSyncWorkflow(
-        connector.id,
-        null
-      );
-      if (workflowStarted.isErr()) {
-        return new Err(workflowStarted.error);
-      }
+    const connector = await ConnectorResource.makeNew(
+      "confluence",
+      {
+        connectionId,
+        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+      },
+      confluenceConfigurationBlob
+    );
 
-      await launchConfluencePersonalDataReportingSchedule();
-
-      return new Ok(connector.id.toString());
-    } catch (e) {
-      logger.error({ error: e }, "Error creating confluence connector.");
-      return new Err(e as Error);
+    const workflowStarted = await launchConfluenceSyncWorkflow(
+      connector.id,
+      null
+    );
+    if (workflowStarted.isErr()) {
+      throw workflowStarted.error;
     }
+
+    await launchConfluencePersonalDataReportingSchedule();
+
+    return new Ok(connector.id.toString());
   }
 
   async update({

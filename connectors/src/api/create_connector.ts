@@ -60,6 +60,7 @@ const _createConnectorAPIHandler = async (
     } = bodyValidation.right;
 
     let connectorRes: Result<string, Error> | null = null;
+
     switch (req.params.connector_provider) {
       case "webcrawler": {
         const configurationRes = ioTsParsePayload(
@@ -145,10 +146,13 @@ const _createConnectorAPIHandler = async (
     }
 
     if (connectorRes.isErr()) {
+      // Error result means this is an "expected" error, so not
+      // an internal server error.
+      // We return a 400 status code for expected errors.
       return apiError(req, res, {
-        status_code: 500,
+        status_code: 400,
         api_error: {
-          type: "internal_server_error",
+          type: "invalid_request_error",
           message: connectorRes.error.message,
         },
       });
@@ -169,11 +173,18 @@ const _createConnectorAPIHandler = async (
     return res.status(200).json(connector.toJSON());
   } catch (e) {
     logger.error(errorFromAny(e), "Error in createConnectorAPIHandler");
+    let errorMessage = `An unexpected error occured while creating the ${req.params.connector_provider} connector`;
+    const maybeInnerErrorMessage = (e as Error).message;
+    if (maybeInnerErrorMessage) {
+      errorMessage += `: ${maybeInnerErrorMessage}`;
+    } else {
+      errorMessage += ".";
+    }
     return apiError(req, res, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
-        message: "An unexpected error occured while creating the connector.",
+        message: errorMessage,
       },
     });
   }

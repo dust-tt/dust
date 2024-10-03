@@ -75,7 +75,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         },
         "Error creating Microsoft connector"
       );
-      return new Err(new Error("Error creating Microsoft connector"));
+      throw new Error("Error creating Microsoft connector");
     }
 
     const microsoftConfigurationBlob = {
@@ -99,7 +99,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     const res = await launchMicrosoftIncrementalSyncWorkflow(connector.id);
     if (res.isErr()) {
-      return res;
+      throw res.error;
     }
 
     return new Ok(connector.id.toString());

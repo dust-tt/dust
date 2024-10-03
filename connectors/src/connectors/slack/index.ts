@@ -46,21 +46,17 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
     const teamInfo = await client.team.info();
     if (teamInfo.ok !== true) {
-      return new Err(
-        new Error(
-          `Could not get slack team info. Error message: ${
-            teamInfo.error || "unknown"
-          }`
-        )
+      throw new Error(
+        `Could not get slack team info. Error message: ${
+          teamInfo.error || "unknown"
+        }`
       );
     }
     if (!teamInfo.team?.id) {
-      return new Err(
-        new Error(
-          `Could not get slack team id. Error message: ${
-            teamInfo.error || "unknown"
-          }`
-        )
+      throw new Error(
+        `Could not get slack team id. Error message: ${
+          teamInfo.error || "unknown"
+        }`
       );
     }
     const connector = await ConnectorResource.makeNew(

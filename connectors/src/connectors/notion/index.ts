@@ -64,32 +64,24 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       connectionId,
     });
     if (tokRes.isErr()) {
-      return new Err(
-        new Error("Error retrieving access token: " + tokRes.error.message)
-      );
+      throw new Error("Error retrieving access token: " + tokRes.error.message);
     }
 
     const isValidToken = await validateAccessToken(tokRes.value.access_token);
     if (!isValidToken) {
-      return new Err(new Error("Notion access token is invalid"));
+      throw new Error("Notion access token is invalid");
     }
 
-    let connector: ConnectorResource;
-    try {
-      connector = await ConnectorResource.makeNew(
-        "notion",
-        {
-          connectionId,
-          workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-          workspaceId: dataSourceConfig.workspaceId,
-          dataSourceId: dataSourceConfig.dataSourceId,
-        },
-        {}
-      );
-    } catch (e) {
-      logger.error({ error: e }, "Error creating notion connector.");
-      return new Err(e as Error);
-    }
+    const connector = await ConnectorResource.makeNew(
+      "notion",
+      {
+        connectionId,
+        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+      },
+      {}
+    );
 
     try {
       await launchNotionSyncWorkflow(connector.id);
@@ -103,7 +95,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         "Error launching notion sync workflow."
       );
       await connector.delete();
-      return new Err(e as Error);
+      throw e;
     }
 
     return new Ok(connector.id.toString());

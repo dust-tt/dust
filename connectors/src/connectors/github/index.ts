@@ -38,37 +38,31 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<string, Error>> {
     const installationId = await installationIdFromConnectionId(connectionId);
     if (!installationId) {
-      return new Err(new Error("Github: received connectionId is invalid"));
+      throw new Error("Github: received connectionId is invalid");
     }
 
-    try {
-      const githubConfigurationBlob = {
-        webhooksEnabledAt: new Date(),
-        codeSyncEnabled: false,
-        installationId,
-      };
+    const githubConfigurationBlob = {
+      webhooksEnabledAt: new Date(),
+      codeSyncEnabled: false,
+      installationId,
+    };
 
-      const connector = await ConnectorResource.makeNew(
-        "github",
-        {
-          connectionId,
-          workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
-          workspaceId: dataSourceConfig.workspaceId,
-          dataSourceId: dataSourceConfig.dataSourceId,
-        },
-        githubConfigurationBlob
-      );
+    const connector = await ConnectorResource.makeNew(
+      "github",
+      {
+        connectionId,
+        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+      },
+      githubConfigurationBlob
+    );
 
-      await launchGithubFullSyncWorkflow({
-        connectorId: connector.id,
-        syncCodeOnly: false,
-      });
-      return new Ok(connector.id.toString());
-    } catch (err) {
-      logger.error({ error: err }, "Error creating github connector");
-
-      return new Err(err as Error);
-    }
+    await launchGithubFullSyncWorkflow({
+      connectorId: connector.id,
+      syncCodeOnly: false,
+    });
+    return new Ok(connector.id.toString());
   }
 
   async update({
