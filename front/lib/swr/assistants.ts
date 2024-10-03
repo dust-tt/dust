@@ -213,9 +213,11 @@ export function useAgentConfiguration({
 export function useAgentUsage({
   workspaceId,
   agentConfigurationId,
+  disabled,
 }: {
   workspaceId: string;
   agentConfigurationId: string | null;
+  disabled?: boolean;
 }) {
   const agentUsageFetcher: Fetcher<GetAgentUsageResponseBody> = fetcher;
   const fetchUrl = agentConfigurationId
@@ -223,7 +225,8 @@ export function useAgentUsage({
     : null;
   const { data, error, mutate } = useSWRWithDefaults(
     fetchUrl,
-    agentUsageFetcher
+    agentUsageFetcher,
+    { disabled }
   );
 
   return {
