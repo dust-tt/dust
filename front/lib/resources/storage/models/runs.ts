@@ -9,7 +9,7 @@ import { DataTypes, Model } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { App } from "@app/lib/resources/storage/models/apps";
+import { AppModel } from "@app/lib/resources/storage/models/apps";
 
 export class RunModel extends Model<
   InferAttributes<RunModel>,
@@ -22,10 +22,10 @@ export class RunModel extends Model<
   declare dustRunId: string;
   declare runType: string;
 
-  declare appId: ForeignKey<App["id"]>;
+  declare appId: ForeignKey<AppModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
-  declare app: NonAttribute<App>;
+  declare app: NonAttribute<AppModel>;
 }
 
 RunModel.init(
@@ -64,11 +64,11 @@ RunModel.init(
     ],
   }
 );
-App.hasMany(RunModel, {
+AppModel.hasMany(RunModel, {
   foreignKey: { allowNull: false },
   onDelete: "CASCADE",
 });
-RunModel.belongsTo(App, {
+RunModel.belongsTo(AppModel, {
   as: "app",
   foreignKey: { name: "appId", allowNull: false },
 });

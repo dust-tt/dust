@@ -73,7 +73,6 @@ export const VaultCreateAppModal = ({
         body: JSON.stringify({
           name: name.slice(0, MODELS_STRING_MAX_LENGTH),
           description: description.slice(0, MODELS_STRING_MAX_LENGTH),
-          visibility: "private",
         }),
       });
       if (res.ok) {

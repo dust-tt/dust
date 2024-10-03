@@ -13,7 +13,6 @@ export type AppType = {
   sId: string;
   name: string;
   description: string | null;
-  visibility: AppVisibility;
   savedSpecification: string | null;
   savedConfig: string | null;
   savedRun: string | null;

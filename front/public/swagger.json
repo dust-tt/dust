@@ -251,10 +251,6 @@
                             "type": "string",
                             "description": "Description of the app"
                           },
-                          "visibility": {
-                            "type": "string",
-                            "description": "Visibility setting of the app"
-                          },
                           "savedSpecification": {
                             "type": "string",
                             "description": "Saved specification of the app"

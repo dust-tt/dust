@@ -133,7 +133,6 @@ export default function SettingsView({
         body: JSON.stringify({
           name: appName.slice(0, MODELS_STRING_MAX_LENGTH),
           description: appDescription.slice(0, MODELS_STRING_MAX_LENGTH),
-          visibility: "private",
         }),
       }
     );

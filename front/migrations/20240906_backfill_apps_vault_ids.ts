@@ -2,12 +2,12 @@ import assert from "assert";
 
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
-import { App } from "@app/lib/resources/storage/models/apps";
+import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
-  const apps = await App.findAll();
+  const apps = await AppModel.findAll();
 
   for (const app of apps) {
     const workspace = await Workspace.findOne({

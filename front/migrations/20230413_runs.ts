@@ -1,6 +1,6 @@
 import { Sequelize } from "sequelize";
 
-import { App } from "@app/lib/resources/storage/models/apps";
+import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { RunModel } from "@app/lib/resources/storage/models/runs";
 
 const { CORE_DATABASE_URI } = process.env;
@@ -42,14 +42,14 @@ async function main() {
   );
 
   console.log("Retrieving apps to backfill");
-  const appsToBackfill = await App.findAll({
+  const appsToBackfill = await AppModel.findAll({
     where: {
       dustAPIProjectId: projectIdsToBackfill,
     },
   });
 
   console.log("Generating appByProjectId");
-  const appByProjectId = {} as { [key: number]: App };
+  const appByProjectId = {} as { [key: number]: AppModel };
   appsToBackfill.forEach((a) => {
     appByProjectId[(a as any).dustAPIProjectId] = a as any;
   });
