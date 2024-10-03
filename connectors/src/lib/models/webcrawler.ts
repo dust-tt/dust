@@ -44,7 +44,7 @@ WebCrawlerConfigurationModel.init(
       defaultValue: DataTypes.NOW,
     },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(512),
       allowNull: false,
     },
     maxPageToCrawl: {
