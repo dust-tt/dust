@@ -81,6 +81,10 @@ export const testConnection = async ({
 export async function connectToSnowflake(
   credentials: SnowflakeCredentials
 ): Promise<Result<Connection, Error>> {
+  snowflake.configure({
+    // @ts-expect-error OFF is not in the types but it's a valid value.
+    logLevel: "OFF",
+  });
   try {
     const connection = await new Promise<Connection>((resolve, reject) => {
       snowflake
@@ -266,11 +270,6 @@ async function _fetchRows<T>({
   codec: t.Type<T>;
   connection?: Connection;
 }): Promise<Result<Array<T>, Error>> {
-  snowflake.configure({
-    // @ts-expect-error OFF is not in the types but it's a valid value.
-    logLevel: "OFF",
-  });
-
   const connRes = await (() =>
     connection ? new Ok(connection) : connectToSnowflake(credentials))();
   if (connRes.isErr()) {
