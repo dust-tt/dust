@@ -15,9 +15,9 @@ import type {
 import { useContext, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
+import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import ManagedDataSourceDocumentModal from "@app/components/ManagedDataSourceDocumentModal";
 import { orderDatasourceViewSelectionConfigurationByImportance } from "@app/lib/assistant";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
@@ -51,16 +51,12 @@ export default function DataSourceSelectionSection({
 
   return (
     <>
-      <ManagedDataSourceDocumentModal
+      <DataSourceViewDocumentModal
         owner={owner}
-        dataSource={dataSourceViewToDisplay?.dataSource ?? null}
+        dataSourceView={dataSourceViewToDisplay}
         documentId={documentToDisplay}
         isOpen={!!documentToDisplay}
-        setOpen={(open) => {
-          if (!open) {
-            setDocumentToDisplay(null);
-          }
-        }}
+        onClose={() => setDocumentToDisplay(null)}
       />
 
       <div className="overflow-hidden pt-4">
