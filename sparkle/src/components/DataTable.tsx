@@ -22,6 +22,12 @@ import {
 import { IconButton } from "@sparkle/components/IconButton";
 import { Pagination } from "@sparkle/components/Pagination";
 import {
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+} from "@sparkle/components/Tooltip";
+import {
   ArrowDownIcon,
   ArrowUpIcon,
   ClipboardCheckIcon,
@@ -29,12 +35,6 @@ import {
   MoreIcon,
 } from "@sparkle/icons";
 import { classNames, useCopyToClipboard } from "@sparkle/lib/utils";
-import {
-  TooltipContent,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from "@sparkle/components/Tooltip";
 
 import { Icon } from "./Icon";
 import { breakpoints, useWindowSize } from "./WindowUtility";
