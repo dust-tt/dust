@@ -2,7 +2,7 @@ import {
   BookOpenIcon,
   Button,
   ClipboardIcon,
-  Dialog,
+  Dialog, DropdownMenu,
   IconButton,
   Input,
   Modal,
@@ -10,9 +10,8 @@ import {
   PlusIcon,
   ShapesIcon,
 } from "@dust-tt/sparkle";
-import type { GroupType, UserType, WorkspaceType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
-import type { KeyType } from "@dust-tt/types";
+import type { GroupType, KeyType, SubscriptionType,UserType, WorkspaceType } from "@dust-tt/types";
+import { prettifyGroupName } from "@dust-tt/types"
 import type { InferGetServerSidePropsType } from "next";
 import React from "react";
 import { useState } from "react";
@@ -58,9 +57,9 @@ export function APIKeys({
   groups: GroupType[];
 }) {
   const { mutate } = useSWRConfig();
-  const globalGroup = groups.find((group) => group.kind === "global");
+  const nonGlobalGroups = groups.filter((g) => g.kind != "global")
   const [newApiKeyName, setNewApiKeyName] = useState("");
-  const [newApiKeyGroup] = useState(globalGroup);
+  const [newApiKeyGroup, setNewApiKeyGroup] = useState<GroupType>(nonGlobalGroups[0]);
   const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
 
@@ -154,26 +153,23 @@ export function APIKeys({
           value={newApiKeyName}
           onChange={(e) => setNewApiKeyName(e)}
         />
-        {/* TODO(20240731 thomas) Enable group selection }
-        {/* <div className="align-center flex flex-row items-center gap-2 p-2">
+        <div className="align-center flex flex-row items-center gap-2 p-2">
           <span className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
-            Assign group permissions:{" "}
+            Assign permissions to group:{" "}
           </span>
           <DropdownMenu>
-            <DropdownMenu.Button type="select" label={newApiKeyGroup?.name} />
+            <DropdownMenu.Button type="select" label={prettifyGroupName(newApiKeyGroup)} />
             <DropdownMenu.Items width={220}>
-              {groups.map((group: GroupType) => (
-                <>
-                  <DropdownMenu.Item
-                    key={group.id}
-                    label={group.name}
-                    onClick={() => setNewApiKeyGroup(group)}
-                  />
-                </>
+              {nonGlobalGroups.map((group: GroupType) => (
+                <DropdownMenu.Item
+                  key={group.id}
+                  label={prettifyGroupName(group)}
+                  onClick={() => setNewApiKeyGroup(group)}
+                />
               ))}
             </DropdownMenu.Items>
           </DropdownMenu>
-        </div> */}
+        </div>
       </Dialog>
       <Page.Horizontal align="stretch">
         <div className="w-full" />
