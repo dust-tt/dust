@@ -68,8 +68,8 @@ export function DataSourceViewsSelector({
 }: DataSourceViewsSelectorProps) {
   const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
 
-  const includesConnectorIDs: string[] = [];
-  const excludesConnectorIDs: string[] = [];
+  const includesConnectorIDs: (string | null)[] = [];
+  const excludesConnectorIDs: (string | null)[] = [];
 
   // If view type is tables
   // You can either select tables from the same remote database (as the query will be executed live on the database)
@@ -101,12 +101,10 @@ export function DataSourceViewsSelector({
 
   const filteredDSVs = orderDatasourceViews.filter(
     (dsv) =>
-      !dsv.dataSource.connectorId ||
-      (dsv.dataSource.connectorId &&
-        (!includesConnectorIDs.length ||
-          includesConnectorIDs.includes(dsv.dataSource.connectorId)) &&
-        (!excludesConnectorIDs.length ||
-          !excludesConnectorIDs.includes(dsv.dataSource.connectorId)))
+      (!includesConnectorIDs.length ||
+        includesConnectorIDs.includes(dsv.dataSource.connectorId)) &&
+      (!excludesConnectorIDs.length ||
+        !excludesConnectorIDs.includes(dsv.dataSource.connectorId))
   );
 
   const managedDsv = filteredDSVs.filter((dsv) => isManaged(dsv.dataSource));
