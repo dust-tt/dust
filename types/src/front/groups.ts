@@ -28,7 +28,7 @@ export function isGlobalGroupKind(value: GroupKind): boolean {
 
 export function prettifyGroupName(group: GroupType) {
   if (group.kind === "global") {
-    return "Company Data"
+    return "Company Data";
   }
   return group.name.replace("Group for vault ", "");
 }
