@@ -26,6 +26,7 @@ import {
   launchSnowflakeSyncWorkflow,
   stopSnowflakeSyncWorkflow,
 } from "@connectors/connectors/snowflake/temporal/client";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -117,7 +118,44 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    throw new Error("Method resume not implemented.");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+
+    if (!connector) {
+      logger.error(
+        {
+          connectorId: this.connectorId,
+        },
+        "Snowflake connector not found."
+      );
+      return new Err(new Error("Connector not found"));
+    }
+
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    try {
+      const launchRes = await launchSnowflakeSyncWorkflow(connector.id);
+      if (launchRes.isErr()) {
+        logger.error(
+          {
+            workspaceId: dataSourceConfig.workspaceId,
+            dataSourceId: dataSourceConfig.dataSourceId,
+            error: launchRes.error,
+          },
+          "Error launching snowflake sync workflow."
+        );
+        return launchRes;
+      }
+    } catch (e) {
+      logger.error(
+        {
+          workspaceId: dataSourceConfig.workspaceId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          error: e,
+        },
+        "Error launching snowflake sync workflow."
+      );
+    }
+
+    return new Ok(undefined);
   }
 
   async sync({

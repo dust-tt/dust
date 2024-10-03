@@ -1,9 +1,10 @@
 import type { ModelId } from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 
-import { fetchTables } from "@connectors/connectors/snowflake/lib/snowflake_api";
+import {
+  connectToSnowflake,
+  fetchTables,
+  isConnectionReadonly,
+} from "@connectors/connectors/snowflake/lib/snowflake_api";
 import { getConnectorAndCredentials } from "@connectors/connectors/snowflake/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { deleteTable, upsertTable } from "@connectors/lib/data_sources";
@@ -12,14 +13,8 @@ import {
   RemoteSchemaModel,
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
-import { syncSucceeded } from "@connectors/lib/sync_status";
+import { syncFailed, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
-
-const snowflakeTableCodec = t.type({
-  name: t.string,
-  database_name: t.string,
-  schema_name: t.string,
-});
 
 export async function syncSnowflakeConnection(connectorId: ModelId) {
   const getConnectorAndCredentialsRes = await getConnectorAndCredentials({
@@ -32,21 +27,11 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
 
   const { credentials, connector } = getConnectorAndCredentialsRes.value;
 
-  const tablesRes = await fetchTables({ credentials });
-  if (tablesRes.isErr()) {
-    throw tablesRes.error;
+  const connectionRes = await connectToSnowflake(credentials);
+  if (connectionRes.isErr()) {
+    throw connectionRes.error;
   }
-  const tablesValidation = t.array(snowflakeTableCodec).decode(tablesRes.value);
-  if (isLeft(tablesValidation)) {
-    const pathError = reporter.formatValidationErrors(tablesValidation.left);
-    throw new Error(`Invalid tables response: ${pathError}`);
-  }
-  const tablesOnSnowflake = tablesValidation.right;
-  const internalIdsOnSnowflake = new Set(
-    tablesOnSnowflake.map(
-      (t) => `${t.database_name}.${t.schema_name}.${t.name}`
-    )
-  );
+  const connection = connectionRes.value;
 
   const [allDatabases, allSchemas, allTables] = await Promise.all([
     RemoteDatabaseModel.findAll({
@@ -65,6 +50,41 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
       },
     }),
   ]);
+
+  const readonlyConnectionCheck = await isConnectionReadonly({
+    credentials,
+    connection,
+  });
+  if (readonlyConnectionCheck.isErr()) {
+    // The connection is not read-only.
+    // We mark the connector as errored, and garbage collect all the tables that were synced.
+    await syncFailed(connectorId, "remote_database_connection_not_readonly");
+    for (const t of allTables) {
+      await deleteTable({
+        dataSourceConfig: dataSourceConfigFromConnector(connector),
+        tableId: t.internalId,
+      });
+      if (t.permission === "inherited") {
+        await t.destroy();
+      } else {
+        await t.update({
+          lastUpsertedAt: null,
+        });
+      }
+    }
+    return;
+  }
+
+  const tablesOnSnowflakeRes = await fetchTables({ credentials, connection });
+  if (tablesOnSnowflakeRes.isErr()) {
+    throw tablesOnSnowflakeRes.error;
+  }
+  const tablesOnSnowflake = tablesOnSnowflakeRes.value;
+  const internalIdsOnSnowflake = new Set(
+    tablesOnSnowflake.map(
+      (t) => `${t.database_name}.${t.schema_name}.${t.name}`
+    )
+  );
 
   const readGrantedInternalIds = new Set([
     ...allDatabases.map((db) => db.internalId),

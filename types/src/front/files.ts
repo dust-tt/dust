@@ -27,6 +27,18 @@ export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
   image: 5 * 1024 * 1024, // 5 MB
 };
 
+export function maxFileSizeToHumanReadable(size: number) {
+  if (size < 1024) {
+    return `${size} B`;
+  }
+
+  if (size < 1024 * 1024) {
+    return `${size / 1024} KB`;
+  }
+
+  return `${size / (1024 * 1024)} MB`;
+}
+
 export const MAX_FILE_LENGTH = 50_000_000;
 export const BIG_FILE_SIZE = 5_000_000;
 

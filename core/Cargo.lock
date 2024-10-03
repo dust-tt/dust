@@ -3828,9 +3828,8 @@ checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 
 [[package]]
 name = "snowflake-connector-rs"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc20ac34805fb7acfa7420dc6891ff43f1e64f09f7f1216b8a2011afc49080db"
+version = "0.6.2"
+source = "git+https://github.com/dust-tt/snowflake-connector-rs?rev=5a16356#5a16356d78bf242b93cdb9a009b80c1725a71c6b"
 dependencies = [
  "base64 0.21.7",
  "chrono",

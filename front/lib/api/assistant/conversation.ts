@@ -17,6 +17,7 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
   GenerationTokensEvent,
+  LightAgentConfigurationType,
   MentionType,
   PlanType,
   Result,
@@ -68,10 +69,14 @@ import {
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
+import {
+  generateLegacyModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid } from "@app/lib/utils";
@@ -102,6 +107,7 @@ export async function createConversation(
     workspaceId: owner.id,
     title: title,
     visibility: visibility,
+    groupIds: [],
   });
 
   return {
@@ -112,6 +118,7 @@ export async function createConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content: [],
+    groupIds: getConversationGroupIdsFromModel(owner, conversation),
   };
 }
 
@@ -251,6 +258,7 @@ export async function getUserConversations(
         owner,
         title: p.conversation.title,
         visibility: p.conversation.visibility,
+        groupIds: getConversationGroupIdsFromModel(owner, p.conversation),
       };
 
       return [...acc, conversation];
@@ -371,6 +379,7 @@ export async function getConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content,
+    groupIds: getConversationGroupIdsFromModel(owner, conversation),
   };
 }
 
@@ -403,6 +412,7 @@ export async function getConversationWithoutContent(
     owner,
     title: conversation.title,
     visibility: conversation.visibility,
+    groupIds: getConversationGroupIdsFromModel(owner, conversation),
   };
 }
 
@@ -854,6 +864,12 @@ export async function* postUserMessage(
         row: AgentMessage;
         m: AgentMessageWithRankType;
       }[];
+
+      await updateConversationGroups({
+        mentionedAgents: nonNullResults.map(({ m }) => m.configuration),
+        conversation,
+        t,
+      });
 
       return {
         userMessage,
@@ -1336,6 +1352,15 @@ export async function* editUserMessage(
         row: AgentMessage;
         m: AgentMessageWithRankType;
       }[];
+
+      // updateConversationGroups is purely additive, this will not remove any
+      // group from the conversation (see function description)
+      await updateConversationGroups({
+        mentionedAgents: nonNullResults.map(({ m }) => m.configuration),
+        conversation,
+        t,
+      });
+
       return {
         userMessage,
         agentMessages: nonNullResults.map(({ m }) => m),
@@ -1524,6 +1549,13 @@ export async function* retryAgentMessage(
           transaction: t,
         }
       );
+
+      await updateConversationGroups({
+        mentionedAgents: [message.configuration],
+        conversation,
+        t,
+      });
+
       const agentMessage: AgentMessageWithRankType = {
         id: m.id,
         agentMessageId: agentMessageRow.id,
@@ -1881,4 +1913,71 @@ export function normalizeContentFragmentType({
     return "text/plain";
   }
   return contentType;
+}
+
+/**
+ *  Update the conversation groupIds based on the mentioned agents. This
+ *  function is purely additive, groupIds will never be removed from the
+ *  conversation.
+ *
+ *  At time of writing, this is a no brainer, because messages can't be deleted
+ *  from a conversation
+ *
+ *  Even considering message deletion, the purely additive model is simpler in
+ *  code and less risky permission-wise. Considering that we version messages,
+ *  and that deleting a message would likely keep its previous version in
+ *  conversation, the additive model is appropriate.
+ *
+ */
+async function updateConversationGroups({
+  mentionedAgents,
+  conversation,
+  t,
+}: {
+  mentionedAgents: LightAgentConfigurationType[];
+  conversation: ConversationType;
+  t: Transaction;
+}): Promise<void> {
+  const newGroupIds = mentionedAgents.flatMap((agent) => agent.groupIds);
+
+  const currentGroupIds = new Set(conversation.groupIds);
+
+  // no need to update if  newGroupIds is a subset of currentGroupIds
+  if (newGroupIds.every((g) => currentGroupIds.has(g))) {
+    return;
+  }
+
+  newGroupIds.forEach((g) => currentGroupIds.add(g));
+
+  const groupIds = Array.from(currentGroupIds).map((g) => {
+    const id = getResourceIdFromSId(g);
+    if (id === null) {
+      throw new Error("Unexpected: invalid group id");
+    }
+    return id;
+  });
+
+  await Conversation.update(
+    {
+      groupIds,
+    },
+    {
+      where: {
+        id: conversation.id,
+      },
+      transaction: t,
+    }
+  );
+}
+
+function getConversationGroupIdsFromModel(
+  owner: WorkspaceType,
+  conversation: Conversation
+): string[] {
+  return conversation.groupIds.map((g) =>
+    GroupResource.modelIdToSId({
+      id: g,
+      workspaceId: owner.id,
+    })
+  );
 }

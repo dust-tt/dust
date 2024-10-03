@@ -32,6 +32,8 @@ export class Conversation extends Model<
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
 
+  declare groupIds: number[];
+
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
 
@@ -64,6 +66,11 @@ Conversation.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "unlisted",
+    },
+    groupIds: {
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
+      allowNull: false,
+      defaultValue: [],
     },
   },
   {

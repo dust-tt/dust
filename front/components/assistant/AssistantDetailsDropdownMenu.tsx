@@ -144,6 +144,7 @@ export function AssistantDetailsDropdownMenu({
             <DropdownMenu.Button>{dropdownButton}</DropdownMenu.Button>
             {/* TODO: get rid of the hardcoded value */}
             <DropdownMenu.Items width={230}>
+              <DropdownMenu.SectionHeader label={agentConfiguration.name} />
               <DropdownMenu.Item
                 label="Start new conversation"
                 link={{

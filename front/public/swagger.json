@@ -1675,6 +1675,15 @@
           },
           {
             "in": "path",
+            "name": "vId",
+            "required": true,
+            "description": "ID of the vault",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
             "name": "dsId",
             "required": true,
             "description": "ID of the data source",
@@ -1812,6 +1821,15 @@
             "name": "wId",
             "required": true,
             "description": "Unique string identifier for the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "vId",
+            "required": true,
+            "description": "ID of the vault",
             "schema": {
               "type": "string"
             }
@@ -1990,6 +2008,15 @@
             "name": "wId",
             "required": true,
             "description": "Unique string identifier for the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "vId",
+            "required": true,
+            "description": "ID of the vault",
             "schema": {
               "type": "string"
             }

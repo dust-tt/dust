@@ -109,8 +109,8 @@ export function DataSourceViewsSelector({
 }: DataSourceViewsSelectorProps) {
   const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
 
-  const includesConnectorIDs: string[] = [];
-  const excludesConnectorIDs: string[] = [];
+  const includesConnectorIDs: (string | null)[] = [];
+  const excludesConnectorIDs: (string | null)[] = [];
 
   // If view type is tables
   // You can either select tables from the same remote database (as the query will be executed live on the database)
@@ -142,12 +142,10 @@ export function DataSourceViewsSelector({
 
   const filteredDSVs = orderDatasourceViews.filter(
     (dsv) =>
-      !dsv.dataSource.connectorId ||
-      (dsv.dataSource.connectorId &&
-        (!includesConnectorIDs.length ||
-          includesConnectorIDs.includes(dsv.dataSource.connectorId)) &&
-        (!excludesConnectorIDs.length ||
-          !excludesConnectorIDs.includes(dsv.dataSource.connectorId)))
+      (!includesConnectorIDs.length ||
+        includesConnectorIDs.includes(dsv.dataSource.connectorId)) &&
+      (!excludesConnectorIDs.length ||
+        !excludesConnectorIDs.includes(dsv.dataSource.connectorId))
   );
 
   const managedDsv = filteredDSVs.filter((dsv) => isManaged(dsv.dataSource));
@@ -442,18 +440,28 @@ export function DataSourceViewSelector({
                 checked: checkedStatus,
                 onChange: () => {
                   setSelectionConfigurations((prevState) => {
-                    const prevSelectionConfiguration =
-                      prevState[dataSourceView.sId] ??
+                    const { sId } = dataSourceView;
+                    const defaultConfig =
                       defaultSelectionConfiguration(dataSourceView);
-                    const udpatedConfig = {
-                      ...prevSelectionConfiguration,
+                    const prevConfig = prevState[sId] || defaultConfig;
+
+                    const updatedConfig = {
+                      ...prevConfig,
                       selectedResources: [],
-                      isSelectAll: checkedStatus !== "checked",
+                      isSelectAll: checkedStatus === "unchecked",
                     };
+
+                    // If nothing is selected and selectAll is false, remove the entry from the state.
+                    if (
+                      !updatedConfig.selectedResources.length &&
+                      !updatedConfig.isSelectAll
+                    ) {
+                      return _.omit(prevState, sId);
+                    }
 
                     return {
                       ...prevState,
-                      [dataSourceView.sId]: udpatedConfig,
+                      [sId]: updatedConfig,
                     };
                   });
                 },

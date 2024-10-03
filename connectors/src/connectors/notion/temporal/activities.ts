@@ -1836,7 +1836,7 @@ export async function renderAndUpsertPageFromCache({
         );
         const { tableId, tableName, tableDescription } =
           getTableInfoFromDatabase(parentDb);
-        const rowId = `notion-${pageId}`;
+
         const { csv } = await renderDatabaseFromPages({
           databaseTitle: null,
           pagesProperties: [
@@ -1844,7 +1844,7 @@ export async function renderAndUpsertPageFromCache({
               pageCacheEntry.pagePropertiesText
             ) as PageObjectProperties,
           ],
-          dustIdColumn: [rowId],
+          dustIdColumn: [pageId],
           cellSeparator: ",",
           rowBoundary: "",
         });

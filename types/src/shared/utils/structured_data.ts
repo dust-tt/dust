@@ -12,7 +12,9 @@ export function getSanitizedHeaders(
 ): Result<string[], Error> {
   try {
     const value = rawHeaders.reduce<string[]>((acc, curr) => {
-      const slugifiedName = slugify(curr);
+      // Special case for __dust_id, which is a reserved header name that we use
+      // to assign unique row_id to make incremental row updates possible.
+      const slugifiedName = curr === "__dust_id" ? curr : slugify(curr);
 
       if (!acc.includes(slugifiedName) || !slugifiedName.length) {
         acc.push(slugifiedName);

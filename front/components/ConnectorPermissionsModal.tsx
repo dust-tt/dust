@@ -20,7 +20,6 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  assertNever,
   CONNECTOR_TYPE_TO_MISMATCH_ERROR,
   isOAuthProvider,
   MANAGED_DS_DELETABLE,
@@ -183,27 +182,6 @@ async function updateConnectorConnectionId(
     success: false,
     error: `Failed to update the permissions of the Data Source: (contact support@dust.tt for assistance)`,
   };
-}
-
-export function showAddDataModal(
-  connectorProvider: ConnectorProvider
-): boolean {
-  switch (connectorProvider) {
-    case "confluence":
-    case "google_drive":
-    case "microsoft":
-    case "webcrawler":
-    case "slack":
-    case "intercom":
-    case "snowflake":
-      return true;
-    case "notion":
-    case "github":
-      // TODO(GROUPS_INFRA): Revert back to `true` once the new connection management is released.
-      return true;
-    default:
-      assertNever(connectorProvider);
-  }
 }
 
 function DataSourceManagementModal({
@@ -675,11 +653,7 @@ export function ConnectorPermissionsModal({
 
   useEffect(() => {
     if (isOpen) {
-      if (showAddDataModal(connector.type)) {
-        setModalToShow("selection");
-      } else {
-        setModalToShow("edition");
-      }
+      setModalToShow("selection");
     } else {
       setModalToShow(null);
     }
@@ -702,11 +676,7 @@ export function ConnectorPermissionsModal({
           variant="primary"
           disabled={readOnly || !isAdmin}
           onClick={() => {
-            if (showAddDataModal(connector.type)) {
-              setModalToShow("selection");
-            } else {
-              setModalToShow("edition");
-            }
+            setModalToShow("selection");
             onManageButtonClick();
           }}
         />
