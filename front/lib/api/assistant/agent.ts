@@ -1140,6 +1140,9 @@ export const filterSuggestedNames = async (
   owner: WorkspaceType,
   suggestions: string[] | undefined | null
 ) => {
+  if (!suggestions || suggestions.length === 0) {
+    return [];
+  }
   // Filter out suggested names that are already in use in the workspace.
   const existingNames = (
     await AgentConfiguration.findAll({
