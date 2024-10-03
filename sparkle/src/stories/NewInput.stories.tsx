@@ -33,7 +33,12 @@ export function NewInputDemo() {
       </div>
       <NewButtonBar>
         <NewInput type="email" placeholder="Email" />
-        <NewButton type="submit" label="Subscribe" variant="highlight" />
+        <NewButton
+          type="submit"
+          label="Subscribe"
+          variant="highlight"
+          isPulsing
+        />
       </NewButtonBar>
     </>
   );

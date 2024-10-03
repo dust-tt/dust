@@ -73,6 +73,14 @@ module.exports = {
         ...theme("spacing"),
       }),
       keyframes: {
+        pulse: {
+          "0%, 100%": { boxShadow: "0 0 0 0 var(--pulse-color)" },
+          "50%": { boxShadow: "0 0 0 6px var(--pulse-color)" },
+        },
+        "background-position-spin": {
+          "0%": { backgroundPosition: "top center" },
+          "100%": { backgroundPosition: "bottom center" },
+        },
         "move-square": {
           "0%": {
             paddingLeft: "0",
@@ -149,6 +157,9 @@ module.exports = {
         },
       },
       animation: {
+        pulse: "pulse var(--duration) ease-out infinite",
+        "background-position-spin":
+          "background-position-spin 2000ms infinite alternate",
         breathing: "breathing 3s infinite ease-in-out",
         "breathing-scale": "breathing-scale 3s infinite ease-in-out",
         "move-square": "move-square 3s ease-out infinite",

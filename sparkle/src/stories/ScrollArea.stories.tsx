@@ -1,8 +1,15 @@
 import type { Meta } from "@storybook/react";
-import * as React from "react";
+import React, { useEffect, useState } from "react";
 
 import { ScrollBar } from "@sparkle/components/ScrollArea";
-import { ScrollArea, Separator } from "@sparkle/index_with_tw_base";
+import {
+  ScrollArea,
+  Separator,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@sparkle/index_with_tw_base";
 
 const meta = {
   title: "NewPrimitives/ScrollArea",
@@ -16,18 +23,63 @@ const tags = Array.from({ length: 50 }).map(
 );
 
 export function ScrollAreaDemo() {
+  const [computedSize, setComputedSize] = useState(0);
+
+  const updateComputedSize = () => {
+    const mainDiv = document.getElementById("maindiv");
+    const bottomBar = document.getElementById("bottombar");
+
+    if (mainDiv && bottomBar) {
+      const offset = bottomBar.offsetHeight; // Get the height of the bottombar
+      const newSize = mainDiv.offsetHeight - offset; // Subtract the offset
+      setComputedSize(newSize);
+    }
+  };
+
+  useEffect(() => {
+    updateComputedSize();
+    window.addEventListener("resize", updateComputedSize);
+    return () => {
+      window.removeEventListener("resize", updateComputedSize);
+    };
+  }, []);
+
   return (
-    <ScrollArea className="s-border-border s-h-72 s-w-48 s-border-b s-border-t">
-      <div className="s-p-4">
-        <h4 className="s-mb-4 s-text-sm s-font-medium s-leading-none">Tags</h4>
-        {tags.map((tag) => (
-          <React.Fragment key={tag}>
-            <div className="s-text-sm">{tag}</div>
-            <Separator className="s-my-2" />
-          </React.Fragment>
-        ))}
+    <div className="s-h-[400px]">
+      <div id="maindiv" className="s-flex s-h-full s-w-48 s-flex-col">
+        <Tabs
+          defaultValue="account"
+          id="tabs"
+          className="s-flex s-w-full s-flex-col"
+          style={{ height: `${computedSize}px` }}
+        >
+          <TabsList className="s-h-10">
+            <TabsTrigger value="account" label="Hello" />
+            <TabsTrigger value="password" label="World" />
+            <TabsTrigger value="settings" />
+          </TabsList>
+          <TabsContent id="heyyou" className="s-w-full" value="account">
+            <ScrollArea className="s-h-full s-w-full s-border-b s-border-t s-border-border">
+              <div className="s-p-4">
+                <h4 className="s-mb-4 s-text-sm s-font-medium s-leading-none">
+                  Tags
+                </h4>
+                {tags.map((tag) => (
+                  <React.Fragment key={tag}>
+                    <div className="s-text-sm">{tag}</div>
+                    <Separator className="s-my-2" />
+                  </React.Fragment>
+                ))}
+              </div>
+            </ScrollArea>
+          </TabsContent>
+          <TabsContent value="password">World</TabsContent>
+          <TabsContent value="settings">Settings</TabsContent>
+        </Tabs>
+
+        <div id="bottombar" className="s-h-12 s-w-full s-bg-action-100" />
       </div>
-    </ScrollArea>
+    </div>
   );
 }
 
@@ -65,9 +117,9 @@ export function ScrollAreaHorizontalDemo() {
                 height={400}
               />
             </div>
-            <figcaption className="s-text-muted-foreground s-pt-2 s-text-xs">
+            <figcaption className="s-pt-2 s-text-xs s-text-muted-foreground">
               Photo by{" "}
-              <span className="s-text-foreground s-font-semibold">
+              <span className="s-font-semibold s-text-foreground">
                 {artwork.artist}
               </span>
             </figcaption>

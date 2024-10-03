@@ -14,7 +14,7 @@ export const ButtonExamples = () => (
   <div className="s-flex s-flex-col s-gap-4">
     IconButton
     <div className="s-flex s-items-center s-gap-4">
-      <NewButton size="xs" icon={PlusIcon} />
+      <NewButton size="xs" icon={PlusIcon} isPulsing />
       <NewButton size="xs" variant="highlight" icon={PlusIcon} />
       <NewButton size="xs" variant="secondary" icon={PlusIcon} />
       <NewButton size="xs" variant="warning" icon={PlusIcon} />

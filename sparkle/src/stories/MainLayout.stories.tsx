@@ -65,37 +65,64 @@ const getRandomTitles = (count: number) => {
 };
 
 export const LayoutDemo = () => {
+  const [computedSize, setComputedSize] = useState(0);
+
+  const updateComputedSize = () => {
+    const mainDiv = document.getElementById("NavigationPrimary");
+    const bottomBar = document.getElementById("NavigationSecondary");
+
+    if (mainDiv && bottomBar) {
+      const offset = bottomBar.offsetHeight; // Get the height of the bottombar
+      const newSize = mainDiv.offsetHeight - offset; // Subtract the offset
+      setComputedSize(newSize);
+    }
+  };
+
+  useEffect(() => {
+    updateComputedSize();
+    window.addEventListener("resize", updateComputedSize);
+    return () => {
+      window.removeEventListener("resize", updateComputedSize);
+    };
+  }, []);
   return (
-    <div className="s-h-[800px] s-w-[1000px] s-border">
+    <div className="s-h-[98vh] s-w-[98vw] s-border">
       <ResizablePanelGroup direction="horizontal" className="s-h-full s-w-full">
         <ResizablePanel defaultSize={30} maxSize={32} minSize={20}>
-          <div className="s-border-box s-h-full s-max-h-full s-w-full s-justify-between s-bg-structure-50">
-            <Tabs defaultValue="account" className="s-h-full s-w-full">
+          <div
+            id="NavigationPrimary"
+            className="s-flex s-h-full s-w-full s-flex-col s-bg-structure-50"
+          >
+            <Tabs
+              defaultValue="conversations"
+              className="s-flex s-w-full s-flex-col"
+              style={{ height: `${computedSize}px` }}
+            >
               <TabsList className="s-mt-2 s-w-full s-px-2">
                 <TabsTrigger
-                  value="account"
+                  value="conversations"
                   label="Chat"
                   icon={ChatBubbleLeftRightIcon}
                 />
                 <TabsTrigger
-                  value="password"
+                  value="knowledge"
                   label="Knowledge"
                   icon={BookOpenIcon}
                 />
                 <div className="s-grow" />
                 <TabsTrigger value="settings" icon={Cog6ToothIcon} />
               </TabsList>
-              <TabsContent value="account" className="s-h-full s-w-full">
+              <TabsContent value="conversations" className="s-h-full s-w-full">
                 <ChatTab />
               </TabsContent>
-              <TabsContent value="password" className="s-h-full s-w-full">
+              <TabsContent value="Knowledge" className="s-h-full s-w-full">
                 <KnowledgeNav />
               </TabsContent>
               <TabsContent value="settings" className="s-h-full s-w-full">
                 Settings
               </TabsContent>
             </Tabs>
-            <BottomNav className="-s-mt-14 s-h-14 s-shrink-0" />
+            <BottomNav id="NavigationSecondary" className="s-h-14 s-w-full" />
           </div>
         </ResizablePanel>
         <ResizableHandle />
@@ -186,13 +213,14 @@ export const ChatTab = () => {
   );
 };
 interface BottomNavProps {
+  id?: string; // Optional prop for additional classes
   className?: string; // Optional prop for additional classes
 }
 
-export const BottomNav: React.FC<BottomNavProps> = ({ className = "" }) => {
+export const BottomNav: React.FC<BottomNavProps> = ({ className = "", id }) => {
   return (
     <div
-      id="SecondaryNav"
+      id={id}
       className={cn(
         "s-flex s-flex-row s-items-center s-gap-2 s-border-t s-border-structure-200 s-bg-white s-p-2",
         className

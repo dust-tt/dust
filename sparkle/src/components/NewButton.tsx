@@ -74,6 +74,7 @@ interface NewButtonProps extends MetaButtonProps {
   icon?: React.ComponentType;
   isSelect?: boolean;
   isLoading?: boolean;
+  isPulsing?: boolean;
   tooltip?: string; // Added tooltip prop
 }
 
@@ -86,6 +87,7 @@ export const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
       variant = "primary",
       tooltip,
       isSelect = false,
+      isPulsing = false,
       ...props
     },
     ref
@@ -138,6 +140,13 @@ export const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
         disabled={isLoading || props.disabled}
         hasVisual={hasIcon || isLoading ? true : false}
         {...props}
+        className={isPulsing ? "s-animate-pulse" : ""}
+        style={
+          {
+            "--pulse-color": "#93C5FD",
+            "--duration": "1.5s",
+          } as React.CSSProperties
+        }
       >
         {content}
       </MetaButton>
