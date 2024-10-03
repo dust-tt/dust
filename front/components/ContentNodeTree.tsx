@@ -9,6 +9,8 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type { BaseContentNode } from "@dust-tt/types";
+import { empty } from "fp-ts/lib/ReadonlyRecord";
+import type { ReactNode } from "react";
 import { useCallback, useContext, useState } from "react";
 import React from "react";
 
@@ -53,6 +55,7 @@ type ContextType = {
   setSelectedNodes?: (updater: TreeSelectionModelUpdater) => void;
   showExpand?: boolean;
   useResourcesHook: UseResourcesHook;
+  emptyComponent: ReactNode;
 };
 
 const ContentNodeTreeContext = React.createContext<ContextType | undefined>(
@@ -109,7 +112,7 @@ function ContentNodeTreeChildren({
   // But if the user types in the search bar, we want to reset the button to "select all".
   const [selectAllClicked, setSelectAllClicked] = useState(false);
 
-  const { useResourcesHook } = useContentNodeTreeContext();
+  const { useResourcesHook, emptyComponent } = useContentNodeTreeContext();
 
   const { resources, isResourcesLoading, isResourcesError } =
     useResourcesHook(parentId);
@@ -158,9 +161,9 @@ function ContentNodeTreeChildren({
 
   const tree = (
     <Tree isLoading={isResourcesLoading}>
-      {filteredNodes && filteredNodes.length === 0 && (
-        <Tree.Empty label="No documents" />
-      )}
+      {filteredNodes &&
+        filteredNodes.length === 0 &&
+        (emptyComponent || <Tree.Empty label="No documents" />)}
 
       {filteredNodes.map((n, i) => {
         const checkedState = getCheckedState(n);
@@ -357,6 +360,10 @@ interface ContentNodeTreeProps {
    * The hook to fetch the resources under a given parent.
    */
   useResourcesHook: UseResourcesHook;
+  /**
+   * The component to display when an item is expanded and it has no children.
+   */
+  emptyComponent?: ReactNode;
 }
 
 export function ContentNodeTree({
@@ -368,6 +375,7 @@ export function ContentNodeTree({
   setSelectedNodes,
   showExpand,
   useResourcesHook,
+  emptyComponent,
 }: ContentNodeTreeProps) {
   return (
     <ContentNodeTreeContextProvider
@@ -377,6 +385,7 @@ export function ContentNodeTree({
         setSelectedNodes,
         showExpand,
         useResourcesHook,
+        emptyComponent,
       }}
     >
       <ContentNodeTreeChildren

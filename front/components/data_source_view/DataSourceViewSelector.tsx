@@ -472,6 +472,13 @@ export function DataSourceViewSelector({
           setSelectedNodes={readonly ? undefined : setSelectedNodes}
           parentIsSelected={selectionConfiguration.isSelectAll}
           useResourcesHook={useResourcesHook}
+          emptyComponent={
+            viewType === "tables" ? (
+              <Tree.Empty label="No tables" />
+            ) : (
+              <Tree.Empty label="No documents" />
+            )
+          }
         />
       </Tree.Item>
     </div>
