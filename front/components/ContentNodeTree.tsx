@@ -9,8 +9,8 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type { BaseContentNode } from "@dust-tt/types";
-import { useCallback, useContext, useState } from "react";
-import React from "react";
+import type { ReactNode } from "react";
+import React, { useCallback, useContext, useState } from "react";
 
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
@@ -43,7 +43,7 @@ export type ContentNodeTreeItemStatus = {
   parents: string[];
 };
 
-type TreeSelectionModelUpdater = (
+export type TreeSelectionModelUpdater = (
   prev: Record<string, ContentNodeTreeItemStatus>
 ) => Record<string, ContentNodeTreeItemStatus>;
 
@@ -53,6 +53,7 @@ type ContextType = {
   setSelectedNodes?: (updater: TreeSelectionModelUpdater) => void;
   showExpand?: boolean;
   useResourcesHook: UseResourcesHook;
+  emptyComponent: ReactNode;
 };
 
 const ContentNodeTreeContext = React.createContext<ContextType | undefined>(
@@ -84,6 +85,7 @@ const useContentNodeTreeContext = () => {
 };
 
 interface ContentNodeTreeChildrenProps {
+  depth: number;
   isRoundedBackground?: boolean;
   isSearchEnabled?: boolean;
   parentId: string | null;
@@ -92,6 +94,7 @@ interface ContentNodeTreeChildrenProps {
 }
 
 function ContentNodeTreeChildren({
+  depth,
   isRoundedBackground,
   isSearchEnabled,
   parentId,
@@ -107,7 +110,7 @@ function ContentNodeTreeChildren({
   // But if the user types in the search bar, we want to reset the button to "select all".
   const [selectAllClicked, setSelectAllClicked] = useState(false);
 
-  const { useResourcesHook } = useContentNodeTreeContext();
+  const { useResourcesHook, emptyComponent } = useContentNodeTreeContext();
 
   const { resources, isResourcesLoading, isResourcesError } =
     useResourcesHook(parentId);
@@ -156,6 +159,10 @@ function ContentNodeTreeChildren({
 
   const tree = (
     <Tree isLoading={isResourcesLoading}>
+      {filteredNodes &&
+        filteredNodes.length === 0 &&
+        (emptyComponent || <Tree.Empty label="No documents" />)}
+
       {filteredNodes.map((n, i) => {
         const checkedState = getCheckedState(n);
 
@@ -165,9 +172,10 @@ function ContentNodeTreeChildren({
             type={n.expandable ? "node" : "leaf"}
             label={n.title}
             visual={getVisualForContentNode(n)}
-            className="whitespace-nowrap"
+            className={`whitespace-nowrap tree-depth-${depth}`}
             checkbox={
-              n.preventSelection !== true && selectedNodes
+              (n.preventSelection !== true || checkedState === "partial") &&
+              selectedNodes
                 ? {
                     disabled: parentIsSelected || !setSelectedNodes,
                     checked: checkedState,
@@ -175,16 +183,9 @@ function ContentNodeTreeChildren({
                       if (setSelectedNodes) {
                         if (checkedState === "partial") {
                           // Handle clicking on partial : unselect all selected children
-                          setSelectedNodes((prev) => {
-                            return {
-                              ...unselectedChildren(prev, n),
-                              [n.internalId]: {
-                                isSelected: true,
-                                node: n,
-                                parents: parentIds,
-                              },
-                            };
-                          });
+                          setSelectedNodes((prev) =>
+                            unselectedChildren(prev, n)
+                          );
                         } else {
                           setSelectedNodes((prev) => ({
                             ...prev,
@@ -248,6 +249,7 @@ function ContentNodeTreeChildren({
             }
             renderTreeItems={() => (
               <ContentNodeTreeChildren
+                depth={depth + 1}
                 parentId={n.internalId}
                 parentIds={[n.internalId, ...parentIds]}
                 parentIsSelected={getCheckedState(n) === "checked"}
@@ -324,6 +326,10 @@ interface ContentNodeTreeProps {
    */
   isSearchEnabled?: boolean;
   /**
+   * Whole tree will be considered selected and disabled.
+   */
+  parentIsSelected?: boolean;
+  /**
    * Callback when the user clicks on the "view document" action
    * If undefined, the action will not be displayed.
    */
@@ -346,16 +352,22 @@ interface ContentNodeTreeProps {
    * The hook to fetch the resources under a given parent.
    */
   useResourcesHook: UseResourcesHook;
+  /**
+   * The component to display when an item is expanded and it has no children.
+   */
+  emptyComponent?: ReactNode;
 }
 
 export function ContentNodeTree({
   isRoundedBackground,
   isSearchEnabled,
   onDocumentViewClick,
+  parentIsSelected,
   selectedNodes,
   setSelectedNodes,
   showExpand,
   useResourcesHook,
+  emptyComponent,
 }: ContentNodeTreeProps) {
   return (
     <ContentNodeTreeContextProvider
@@ -365,14 +377,16 @@ export function ContentNodeTree({
         setSelectedNodes,
         showExpand,
         useResourcesHook,
+        emptyComponent,
       }}
     >
       <ContentNodeTreeChildren
+        depth={0}
         isRoundedBackground={isRoundedBackground}
         isSearchEnabled={isSearchEnabled}
         parentId={null}
         parentIds={[]}
-        parentIsSelected={false}
+        parentIsSelected={parentIsSelected ?? false}
       />
     </ContentNodeTreeContextProvider>
   );

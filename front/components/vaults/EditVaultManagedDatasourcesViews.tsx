@@ -7,11 +7,12 @@ import type {
 } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import VaultManagedDataSourcesViewsModal from "@app/components/vaults/VaultManagedDatasourcesViewsModal";
+import { isManaged } from "@app/lib/data_sources";
 import {
   useVaultDataSourceViews,
   useVaultDataSourceViewsWithDetails,
@@ -57,7 +58,10 @@ export function EditVaultManagedDataSourcesViews({
     category: "managed",
     disabled: !isAdmin,
   });
-
+  const filteredSystemVaultDataSourceViews = useMemo(
+    () => systemVaultDataSourceViews.filter((dsv) => isManaged(dsv.dataSource)),
+    [systemVaultDataSourceViews]
+  );
   const updateVaultDataSourceViews = async (
     selectionConfigurations: DataSourceViewSelectionConfigurations
   ) => {
@@ -196,11 +200,7 @@ export function EditVaultManagedDataSourcesViews({
           setShowDataSourcesModal(false);
         }}
         owner={owner}
-        systemVaultDataSourceViews={systemVaultDataSourceViews.filter(
-          (dsv) =>
-            dsv.dataSource.connectorProvider &&
-            dsv.dataSource.connectorProvider !== "webcrawler"
-        )}
+        systemVaultDataSourceViews={filteredSystemVaultDataSourceViews}
         onSave={async (selectionConfigurations) => {
           await updateVaultDataSourceViews(selectionConfigurations);
         }}
