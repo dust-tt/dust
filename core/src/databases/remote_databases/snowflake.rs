@@ -37,8 +37,18 @@ struct SnowflakeSchemaColumn {
     r#type: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
+struct SnowflakeQueryPlanEntry {
+    objects: Option<String>,
+    operation: Option<String>,
+}
+
 // TODO(SNOWFLAKE) actual limit TBD
 pub const MAX_QUERY_RESULT_SIZE_BYTES: usize = 128 * 1024 * 1024; // 128MB
+
+// TODO(SNOWFLAKE) make sure we're not missing any
+pub const FORBIDDEN_OPERATIONS: [&str; 3] = ["UPDATE", "DELETE", "INSERT"];
 
 impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
     type Error = anyhow::Error;
@@ -115,6 +125,14 @@ impl TryFrom<SnowflakeRow> for QueryResult {
         Ok(QueryResult {
             value: serde_json::Value::Object(map),
         })
+    }
+}
+
+impl TryFrom<QueryResult> for SnowflakeQueryPlanEntry {
+    type Error = anyhow::Error;
+
+    fn try_from(result: QueryResult) -> Result<Self> {
+        serde_json::from_value(result.value).map_err(|e| anyhow!("Error deserializing row: {}", e))
     }
 }
 
@@ -232,23 +250,52 @@ impl SnowflakeRemoteDatabase {
         Ok((all_rows, schema))
     }
 
-    async fn get_tables_used_by_query(
+    async fn get_query_plan(
         &self,
         session: &SnowflakeSession,
         query: &str,
-    ) -> Result<Vec<String>> {
-        let explain_query = format!("EXPLAIN {}", query);
-        let used_tables = session
-            .query(explain_query.clone())
-            .await?
-            .iter()
-            .filter_map(|row| match row.get::<String>("objects") {
-                Ok(objects) => Some(objects),
-                _ => None,
-            })
-            .collect();
+    ) -> Result<Vec<SnowflakeQueryPlanEntry>, QueryDatabaseError> {
+        let plan_query = format!("EXPLAIN {}", query);
+        let (res, _) = self.execute_query(session, &plan_query).await?;
 
-        Ok(used_tables)
+        Ok(res
+            .into_iter()
+            .map(|r| r.try_into())
+            .collect::<Result<Vec<_>>>()?)
+    }
+
+    async fn authorize_query(
+        &self,
+        session: &SnowflakeSession,
+        tables: &Vec<Table>,
+        query: &str,
+    ) -> Result<()> {
+        // Ensure that query only uses tables that are allowed.
+        let plan = self.get_query_plan(&session, query).await?;
+        let used_tables: HashSet<String> = plan
+            .iter()
+            .filter_map(|entry| entry.objects.clone())
+            .collect();
+        let allowed_tables: HashSet<&str> = tables.iter().map(|table| table.name()).collect();
+
+        if used_tables
+            .iter()
+            .any(|table| !allowed_tables.contains(table.as_str()))
+        {
+            Err(anyhow!("Query uses tables not allowed by the query plan"))?
+        }
+
+        // Ensure that query does not contain forbidden operations.
+        for operation in plan.iter().filter_map(|entry| entry.operation.clone()) {
+            if FORBIDDEN_OPERATIONS
+                .iter()
+                .any(|op| operation.to_lowercase() == *op)
+            {
+                Err(anyhow!("Query contains forbidden operations"))?
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -265,18 +312,9 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
     ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
         let session = self.get_session().await?;
 
-        // Ensure that query only uses tables that are allowed.
-        let used_tables = self.get_tables_used_by_query(&session, query).await?;
-        let allowed_tables: HashSet<&str> = tables.iter().map(|table| table.name()).collect();
-
-        if used_tables
-            .iter()
-            .any(|table| !allowed_tables.contains(table.as_str()))
-        {
-            Err(QueryDatabaseError::ExecutionError(
-                "Query uses tables not allowed by the query plan".to_string(),
-            ))?
-        }
+        // Authorize the query based on allowed tables, query plan,
+        // and forbidden operations.
+        let _ = self.authorize_query(&session, tables, query).await?;
 
         self.execute_query(&session, query).await
     }
