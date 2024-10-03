@@ -10,6 +10,7 @@ import { EnqueueUpsertTable } from "@app/lib/upsert_queue";
 import mainLogger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
 import config from "@app/temporal/config";
+import { table } from "console";
 
 export async function upsertTableActivity(
   upsertQueueId: string,
@@ -112,6 +113,22 @@ export async function upsertTableActivity(
       message: `Upsert error: ${JSON.stringify(tableRes.error)}`,
       type: "upsert_queue_upsert_table_error",
     };
+    if (
+      "csvParsingError" in tableRes.error &&
+      tableRes.error.csvParsingError.type === "too_many_columns"
+    ) {
+      logger.error(
+        {
+          error: tableRes.error,
+          latencyMs: Date.now() - upsertTimestamp,
+          delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+          csvSize: upsertQueueItem.csv?.length || 0,
+          panic: true,
+        },
+        "[UpsertQueue] Too many columns -- skipping, this should have been caught prior to enqueuing"
+      );
+      return;
+    }
 
     throw error;
   }
