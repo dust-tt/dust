@@ -174,7 +174,8 @@ function ContentNodeTreeChildren({
             visual={getVisualForContentNode(n)}
             className={`whitespace-nowrap tree-depth-${depth}`}
             checkbox={
-              n.preventSelection !== true && selectedNodes
+              (n.preventSelection !== true || checkedState === "partial") &&
+              selectedNodes
                 ? {
                     disabled: parentIsSelected || !setSelectedNodes,
                     checked: checkedState,
@@ -182,16 +183,9 @@ function ContentNodeTreeChildren({
                       if (setSelectedNodes) {
                         if (checkedState === "partial") {
                           // Handle clicking on partial : unselect all selected children
-                          setSelectedNodes((prev) => {
-                            return {
-                              ...unselectedChildren(prev, n),
-                              [n.internalId]: {
-                                isSelected: true,
-                                node: n,
-                                parents: parentIds,
-                              },
-                            };
-                          });
+                          setSelectedNodes((prev) =>
+                            unselectedChildren(prev, n)
+                          );
                         } else {
                           setSelectedNodes((prev) => ({
                             ...prev,
