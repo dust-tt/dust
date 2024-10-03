@@ -77,6 +77,17 @@ export default function ConnectorSyncingChip({
             <Chip color="warning">Synchronization failed</Chip>
           </Tooltip>
         );
+      case "remote_database_connection_not_readonly":
+        return (
+          <Tooltip
+            label={
+              "We need read-only access to your database to synchronize data." +
+              " Please update the permissions and try again."
+            }
+          >
+            <Chip color="warning">Synchronization failed</Chip>
+          </Tooltip>
+        );
       default:
         assertNever(connector.errorType);
     }
