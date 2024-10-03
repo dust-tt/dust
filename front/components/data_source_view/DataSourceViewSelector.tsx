@@ -411,18 +411,31 @@ export function DataSourceViewSelector({
                 checked: checkedStatus,
                 onChange: () => {
                   setSelectionConfigurations((prevState) => {
-                    const prevSelectionConfiguration =
-                      prevState[dataSourceView.sId] ??
+                    const { sId } = dataSourceView;
+                    const defaultConfig =
                       defaultSelectionConfiguration(dataSourceView);
-                    const udpatedConfig = {
-                      ...prevSelectionConfiguration,
+                    const prevConfig = prevState[sId] || defaultConfig;
+
+                    const updatedConfig = {
+                      ...prevConfig,
                       selectedResources: [],
-                      isSelectAll: checkedStatus !== "checked",
+                      // Partial and checked are treated as checked.
+                      isSelectAll: !["checked", "partial"].includes(
+                        checkedStatus
+                      ),
                     };
+
+                    // If nothing is selected or selectAll is false, remove the entry from the state.
+                    if (
+                      !updatedConfig.selectedResources.length &&
+                      !updatedConfig.isSelectAll
+                    ) {
+                      return _.omit(prevState, sId);
+                    }
 
                     return {
                       ...prevState,
-                      [dataSourceView.sId]: udpatedConfig,
+                      [sId]: updatedConfig,
                     };
                   });
                 },
