@@ -132,7 +132,18 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
 
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     try {
-      await launchSnowflakeSyncWorkflow(connector.id);
+      const launchRes = await launchSnowflakeSyncWorkflow(connector.id);
+      if (launchRes.isErr()) {
+        logger.error(
+          {
+            workspaceId: dataSourceConfig.workspaceId,
+            dataSourceId: dataSourceConfig.dataSourceId,
+            error: launchRes.error,
+          },
+          "Error launching snowflake sync workflow."
+        );
+        return launchRes;
+      }
     } catch (e) {
       logger.error(
         {
