@@ -174,7 +174,7 @@ export function APIKeys({
         />
         <div className="align-center flex flex-row items-center gap-2 p-2">
           <span className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
-            Assign permissions to group:{" "}
+            Assign permissions to vault:{" "}
           </span>
           <DropdownMenu>
             <DropdownMenu.Button
