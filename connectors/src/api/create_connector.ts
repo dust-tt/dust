@@ -188,7 +188,11 @@ const _createConnectorAPIHandler = async (
   } catch (e) {
     logger.error(errorFromAny(e), "Error in createConnectorAPIHandler");
     let errorMessage = `An unexpected error occured while creating the ${req.params.connector_provider} connector`;
-    const maybeInnerErrorMessage = (e as Error).message;
+    const maybeInnerErrorMessage = (
+      e as {
+        message?: string;
+      }
+    ).message;
     if (maybeInnerErrorMessage) {
       errorMessage += `: ${maybeInnerErrorMessage}`;
     } else {
