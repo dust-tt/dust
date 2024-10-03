@@ -212,7 +212,6 @@ export function Tab<E>({
                   </TooltipContent>
                 </TooltipRoot>
               </TooltipProvider>
-              <Tooltip label={tab.label}>{content}</Tooltip>
             </div>
             {tab.hasSeparator && (
               <div className="s-flex s-h-full s-grow" key={`sep-${i}`} />
