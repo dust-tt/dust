@@ -35,6 +35,7 @@ type CsvParsingError = {
     | "duplicate_header"
     | "invalid_record_length"
     | "empty_csv"
+    | "too_many_columns"
     | "invalid_row_id";
   message: string;
 };
@@ -525,7 +526,7 @@ async function detectHeaders(
     const record = anyRecord as string[];
 
     if (record.length > MAX_TABLE_COLUMNS) {
-      return new Err({ type: "invalid_header", message: "Too many columns" });
+      return new Err({ type: "too_many_columns", message: "Too many columns" });
     }
 
     if (!useAppForHeaderDetection) {
