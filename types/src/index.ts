@@ -11,6 +11,7 @@ export * from "./connectors/intercom";
 export * from "./connectors/microsoft";
 export * from "./connectors/notion";
 export * from "./connectors/slack";
+export * from "./connectors/snowflake";
 export * from "./connectors/webcrawler";
 export * from "./core/data_source";
 export * from "./front/acl";
