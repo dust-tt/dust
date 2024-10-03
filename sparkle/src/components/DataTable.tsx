@@ -29,7 +29,7 @@ import {
   ClipboardIcon,
   MoreIcon,
 } from "@sparkle/icons";
-import { classNames } from "@sparkle/lib/utils";
+import { classNames, useCopyToClipboard } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { breakpoints, useWindowSize } from "./WindowUtility";
@@ -493,12 +493,16 @@ DataTable.CellContentWithCopy = function CellContentWithCopy({
   textToCopy,
   className,
 }: CellContentWithCopyProps) {
-  const [isCopied, setIsCopied] = useState(false);
+  const [isCopied, copyToClipboard] = useCopyToClipboard();
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(textToCopy ?? String(children));
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
+    void copyToClipboard(
+      new ClipboardItem({
+        "text/plain": new Blob([textToCopy ?? String(children)], {
+          type: "text/plain",
+        }),
+      })
+    );
   };
 
   return (
