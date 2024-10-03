@@ -419,10 +419,7 @@ export function DataSourceViewSelector({
                     const updatedConfig = {
                       ...prevConfig,
                       selectedResources: [],
-                      // Partial and checked are treated as checked.
-                      isSelectAll: !["checked", "partial"].includes(
-                        checkedStatus
-                      ),
+                      isSelectAll: checkedStatus === "unchecked",
                     };
 
                     // If nothing is selected and selectAll is false, remove the entry from the state.
