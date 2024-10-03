@@ -33,6 +33,7 @@ pub trait OAuthStore {
         encrypted_content: Vec<u8>,
     ) -> Result<Credential>;
     async fn retrieve_credential(&self, credential_id: &str) -> Result<Credential>;
+    async fn delete_credential(&self, credential_id: &str) -> Result<()>;
 
     fn clone_box(&self) -> Box<dyn OAuthStore + Sync + Send>;
 }
@@ -313,6 +314,22 @@ impl OAuthStore for PostgresOAuthStore {
             metadata,
             encrypted_content,
         ))
+    }
+
+    async fn delete_credential(&self, credential_id: &str) -> Result<()> {
+        let (row_id, secret) = Credential::row_id_and_secret_from_credential_id(credential_id)?;
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        c.execute(
+            "DELETE FROM credentials
+              WHERE id = $1 AND secret = $2",
+            &[&row_id, &secret],
+        )
+        .await?;
+
+        Ok(())
     }
 
     fn clone_box(&self) -> Box<dyn OAuthStore + Sync + Send> {
