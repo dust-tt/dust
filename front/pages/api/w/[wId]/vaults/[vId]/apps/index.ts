@@ -102,6 +102,7 @@ async function handler(
           description,
           dustAPIProjectId: p.value.project.project_id.toString(),
           workspaceId: owner.id,
+          visibility: "private",
         },
         vault
       );
