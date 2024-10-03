@@ -17,6 +17,7 @@ import type {
   GenerationTokensEvent,
   LightAgentConfigurationType,
   UserMessageType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -43,6 +44,7 @@ import {
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 import logger from "@app/logger/logger";
@@ -1133,3 +1135,26 @@ async function* runAction(
     assertNever(actionConfiguration);
   }
 }
+
+export const filterSuggestedNames = async (
+  owner: WorkspaceType,
+  suggestions: string[] | undefined | null
+) => {
+  if (!suggestions || suggestions.length === 0) {
+    return [];
+  }
+  // Filter out suggested names that are already in use in the workspace.
+  const existingNames = (
+    await AgentConfiguration.findAll({
+      where: {
+        workspaceId: owner.id,
+        status: "active",
+      },
+      attributes: ["name"],
+    })
+  ).map((ac) => ac.name.toLowerCase());
+
+  return suggestions?.filter(
+    (s: string) => !existingNames.includes(s.toLowerCase())
+  );
+};
