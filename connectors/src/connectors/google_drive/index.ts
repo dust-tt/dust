@@ -39,6 +39,7 @@ import {
   getAuthObject,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
+import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
@@ -68,7 +69,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, Error>> {
+  }): Promise<Result<string, ConnectorManagerError>> {
     const driveClient = await getDriveClient(connectionId);
 
     // Sanity checks to confirm we have sufficient permissions.

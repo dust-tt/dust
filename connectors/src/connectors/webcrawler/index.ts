@@ -30,6 +30,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
+import type { ConnectorManagerError } from "../interface";
 import { BaseConnectorManager } from "../interface";
 import {
   launchCrawlWebsiteWorkflow,
@@ -44,7 +45,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
     configuration: WebCrawlerConfigurationType;
-  }): Promise<Result<string, Error>> {
+  }): Promise<Result<string, ConnectorManagerError>> {
     if (!configuration) {
       throw new Error("Configuration is required");
     }

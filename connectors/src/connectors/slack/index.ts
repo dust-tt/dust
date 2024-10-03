@@ -11,6 +11,7 @@ import { Err, Ok } from "@dust-tt/types";
 import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 
+import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { getChannels } from "@connectors/connectors/slack//temporal/activities";
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
@@ -39,7 +40,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
     configuration: SlackConfigurationType;
-  }): Promise<Result<string, Error>> {
+  }): Promise<Result<string, ConnectorManagerError>> {
     const slackAccessToken = await getSlackAccessToken(connectionId);
 
     const client = new WebClient(slackAccessToken);

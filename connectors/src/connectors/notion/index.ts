@@ -28,6 +28,7 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
+import type { ConnectorManagerError } from "../interface";
 import { BaseConnectorManager } from "../interface";
 import { getOrphanedCount, getParents, hasChildren } from "./lib/parents";
 
@@ -56,7 +57,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, Error>> {
+  }): Promise<Result<string, ConnectorManagerError>> {
     const tokRes = await getOAuthConnectionAccessToken({
       config: apiConfig.getOAuthAPIConfig(),
       logger,

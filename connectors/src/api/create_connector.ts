@@ -16,6 +16,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
 import { createConnector } from "@connectors/connectors";
+import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
@@ -59,7 +60,7 @@ const _createConnectorAPIHandler = async (
       configuration,
     } = bodyValidation.right;
 
-    let connectorRes: Result<string, Error> | null = null;
+    let connectorRes: Result<string, ConnectorManagerError> | null = null;
 
     switch (req.params.connector_provider) {
       case "webcrawler": {
@@ -148,14 +149,27 @@ const _createConnectorAPIHandler = async (
     if (connectorRes.isErr()) {
       // Error result means this is an "expected" error, so not
       // an internal server error.
-      // We return a 400 status code for expected errors.
-      return apiError(req, res, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: connectorRes.error.message,
-        },
-      });
+      // We return a 4xx status code for expected errors.
+      switch (connectorRes.error.code) {
+        case "INVALID_CONFIGURATION":
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: connectorRes.error.message,
+            },
+          });
+        case "PERMISSION_REVOKED":
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "authorization_error",
+              message: connectorRes.error.message,
+            },
+          });
+        default:
+          assertNever(connectorRes.error.code);
+      }
     }
 
     const connector = await ConnectorResource.fetchById(connectorRes.value);

@@ -34,6 +34,7 @@ import {
   launchConfluenceSyncWorkflow,
   stopConfluenceSyncWorkflow,
 } from "@connectors/connectors/confluence/temporal/client";
+import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -56,7 +57,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, Error>> {
+  }): Promise<Result<string, ConnectorManagerError>> {
     const confluenceAccessTokenRes =
       await getConfluenceAccessToken(connectionId);
     if (confluenceAccessTokenRes.isErr()) {

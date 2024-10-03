@@ -7,6 +7,7 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 
+import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import {
   fetchAvailableChildrenInSnowflake,
@@ -43,7 +44,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, Error>> {
+  }): Promise<Result<string, ConnectorManagerError>> {
     const credentialsRes = await getCredentials({
       credentialsId: connectionId,
       logger,
@@ -60,7 +61,12 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
         case "INVALID_CREDENTIALS":
         case "NOT_READONLY":
         case "NO_TABLES":
-          return connectionRes;
+          return new Err(
+            new ConnectorManagerError(
+              "INVALID_CONFIGURATION",
+              connectionRes.error.message
+            )
+          );
         case "UNKNOWN":
           throw connectionRes.error;
         default:

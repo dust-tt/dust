@@ -11,6 +11,7 @@ import {
 import { getGithubCodeOrDirectoryParentIds } from "@connectors/connectors/github/lib/hierarchy";
 import { matchGithubInternalIdType } from "@connectors/connectors/github/lib/utils";
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
+import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
@@ -35,7 +36,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
   }: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
-  }): Promise<Result<string, Error>> {
+  }): Promise<Result<string, ConnectorManagerError>> {
     const installationId = await installationIdFromConnectionId(connectionId);
     if (!installationId) {
       throw new Error("Github: received connectionId is invalid");
