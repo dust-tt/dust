@@ -26,6 +26,7 @@ export const DialogExample = () => {
           cancelLabel="Cancel"
           onValidate={() => setisOpen1(false)}
           onCancel={() => setisOpen1(false)}
+          validateVariant="primary"
         >
           <div>I'm the modal content</div>
         </Dialog>
@@ -41,7 +42,7 @@ export const DialogExample = () => {
           cancelLabel="Cancel"
           onValidate={() => setisOpen2(false)}
           onCancel={() => setisOpen2(false)}
-          validateVariant="primaryWarning"
+          validateVariant="warning"
         >
           <div>I'm the modal content</div>
         </Dialog>
@@ -58,6 +59,7 @@ export const DialogExample = () => {
           onValidate={() => setisOpen3(false)}
           onCancel={() => setisOpen3(false)}
           backgroundType="snow"
+          validateVariant="outline"
         >
           <div>I'm the modal content</div>
         </Dialog>
@@ -74,6 +76,7 @@ export const DialogExample = () => {
           cancelLabel="Cancel"
           onValidate={() => setisOpen4(false)}
           onCancel={() => setisOpen4(false)}
+          validateVariant="ghost"
         >
           <div>I'm the modal content</div>
         </Dialog>
@@ -85,6 +88,7 @@ export const DialogExample = () => {
           isOpen={isOpen5}
           title="Alert Dialog title"
           onValidate={() => setisOpen5(false)}
+          validateVariant="highlight"
         >
           <div>I'm the modal content</div>
         </Dialog>
