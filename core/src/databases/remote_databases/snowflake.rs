@@ -136,16 +136,18 @@ impl SnowflakeRemoteDatabase {
             },
         )?;
 
-        if env::var("PROXY_HOST").is_ok()
-            && env::var("PROXY_PORT").is_ok()
-            && env::var("PROXY_USER_NAME").is_ok()
-            && env::var("PROXY_USER_PASSWORD").is_ok()
-        {
+        if let (Ok(proxy_host), Ok(proxy_port), Ok(proxy_user_name), Ok(proxy_user_password)) = (
+            env::var("PROXY_HOST"),
+            env::var("PROXY_PORT"),
+            env::var("PROXY_USER_NAME"),
+            env::var("PROXY_USER_PASSWORD"),
+        ) {
+            let proxy_port = proxy_port.parse::<u16>()?;
             client = client.with_proxy(
-                env::var("PROXY_HOST").as_ref().unwrap(),
-                env::var("PROXY_PORT").as_ref().unwrap().parse::<u16>()?,
-                env::var("PROXY_USER_NAME").as_ref().unwrap(),
-                env::var("PROXY_USER_PASSWORD").as_ref().unwrap(),
+                &proxy_host,
+                proxy_port,
+                &proxy_user_name,
+                &proxy_user_password,
             )?;
         }
 
