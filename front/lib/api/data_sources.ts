@@ -60,7 +60,7 @@ export async function getDataSources(
 /**
  * Soft delete a data source. This will mark the data source as deleted and will trigger a scrubbing.
  */
-export async function softDeleteDataSource(
+export async function softDeleteDataSourceAndLaunchScrubWorkflow(
   auth: Authenticator,
   dataSource: DataSourceResource,
   transaction?: Transaction
