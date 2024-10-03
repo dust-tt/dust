@@ -48,7 +48,10 @@ export const DropdownExample = () => {
       <div className="s-flex s-gap-6">
         <div className="s-text-sm">Action</div>
         <DropdownMenu>
-          <DropdownMenu.Button label="Action" onClick={() => console.log("CLICK")}/>
+          <DropdownMenu.Button
+            label="Action"
+            onClick={() => console.log("CLICK")}
+          />
           <DropdownMenu.Items width={220}>
             <DropdownMenu.SectionHeader label="Edition" />
             <DropdownMenu.Item

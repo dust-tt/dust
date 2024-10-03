@@ -1,5 +1,5 @@
 import { Menu, Transition } from "@headlessui/react";
-import {SIDE_OPTIONS} from "@radix-ui/react-popper";
+import { SIDE_OPTIONS } from "@radix-ui/react-popper";
 import React, {
   ComponentType,
   forwardRef,
@@ -23,7 +23,12 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { Item as StandardItem, LinkProps } from "./Item";
-import { TooltipContent, TooltipProvider, TooltipRoot, TooltipTrigger } from "./Tooltip";
+import {
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+} from "./Tooltip";
 
 const ButtonRefContext =
   React.createContext<MutableRefObject<HTMLButtonElement | null> | null>(null);
@@ -99,7 +104,7 @@ export interface DropdownButtonProps {
   type?: "menu" | "submenu" | "select";
   size?: "sm" | "md";
   tooltip?: string;
-  tooltipPosition?: typeof SIDE_OPTIONS[number];
+  tooltipPosition?: (typeof SIDE_OPTIONS)[number];
   icon?: ComponentType;
   className?: string;
   disabled?: boolean;
@@ -181,9 +186,7 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
           {tooltip ? (
             <TooltipProvider>
               <TooltipRoot>
-                <TooltipTrigger>
-                  {children}
-                </TooltipTrigger>
+                <TooltipTrigger>{children}</TooltipTrigger>
                 <TooltipContent side={tooltipPosition}>
                   <p>{tooltip}</p>
                 </TooltipContent>
@@ -216,7 +219,11 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
                     disabled ? "s-cursor-default" : "s-cursor-pointer",
                     className,
                     "s-group/dm s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
-                    label ? (size === "md" ? "s-gap-2" : "s-gap-1.5") : "s-gap-0.5"
+                    label
+                      ? size === "md"
+                        ? "s-gap-2"
+                        : "s-gap-1.5"
+                      : "s-gap-0.5"
                   )}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -225,7 +232,11 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
                     }
                   }}
                 >
-                  <Icon visual={icon} size={size} className={finalIconClasses} />
+                  <Icon
+                    visual={icon}
+                    size={size}
+                    className={finalIconClasses}
+                  />
                   <Icon
                     visual={chevronIcon}
                     size={size === "sm" ? "xs" : "sm"}

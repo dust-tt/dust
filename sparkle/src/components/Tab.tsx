@@ -9,7 +9,13 @@ import { ChevronRightIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
-import { Tooltip } from "./Tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+} from "./Tooltip";
 
 type TabType<E> = {
   current: boolean;
@@ -199,6 +205,14 @@ export function Tab<E>({
         tab.label ? (
           <React.Fragment key={`tab-${i}`}>
             <div className={tabSizingClasses[tab.sizing ?? "hug"]}>
+              <TooltipProvider>
+                <TooltipRoot>
+                  <TooltipTrigger>{content}</TooltipTrigger>
+                  <TooltipContent>
+                    <p>{tab.label}</p>
+                  </TooltipContent>
+                </TooltipRoot>
+              </TooltipProvider>
               <Tooltip label={tab.label}>{content}</Tooltip>
             </div>
             {tab.hasSeparator && (

@@ -1,16 +1,22 @@
+import { SIDE_OPTIONS } from "@radix-ui/react-popper";
 import React, { ComponentType, MouseEventHandler } from "react";
 
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
-import { Tooltip, TooltipProps } from "./Tooltip";
+import {
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+} from "./Tooltip";
 
 type IconButtonProps = {
   variant?: "primary" | "warning" | "secondary" | "tertiary" | "white";
   onClick?: MouseEventHandler<HTMLButtonElement>;
   size?: "xs" | "sm" | "md";
   tooltip?: string;
-  tooltipPosition?: TooltipProps["position"];
+  tooltipPosition?: (typeof SIDE_OPTIONS)[number];
   icon?: ComponentType;
   className?: string;
   disabled?: boolean;
@@ -87,7 +93,7 @@ export function IconButton({
   onClick,
   disabled = false,
   tooltip,
-  tooltipPosition = "above",
+  tooltipPosition = "top",
   icon,
   className = "",
   size = "sm",
@@ -117,9 +123,14 @@ export function IconButton({
   );
 
   return tooltip ? (
-    <Tooltip label={tooltip} position={tooltipPosition}>
-      {IconButtonContent}
-    </Tooltip>
+    <TooltipProvider>
+      <TooltipRoot>
+        <TooltipTrigger>{IconButtonContent}</TooltipTrigger>
+        <TooltipContent side={tooltipPosition}>
+          <p>{tooltip}</p>
+        </TooltipContent>
+      </TooltipRoot>
+    </TooltipProvider>
   ) : (
     IconButtonContent
   );

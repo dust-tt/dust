@@ -23,12 +23,12 @@ export type BaseDialogProps = {
 export type DialogProps = BaseDialogProps & {
   alertDialog?: false;
   onCancel: () => void;
-}
+};
 
 export type AlertDialogProps = BaseDialogProps & {
   alertDialog: true;
   onCancel?: () => void;
-}
+};
 
 export function Dialog({
   backgroundType = "none",

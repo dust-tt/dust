@@ -1,16 +1,22 @@
+import { SIDE_OPTIONS } from "@radix-ui/react-popper";
 import React, { ComponentType, MouseEventHandler } from "react";
 
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
-import { Tooltip, TooltipProps } from "./Tooltip";
+import {
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+} from "./Tooltip";
 
 type IconToggleButtonProps = {
   variant?: "secondary" | "tertiary";
   onClick?: MouseEventHandler<HTMLButtonElement>;
   size?: "xs" | "sm" | "md";
   tooltip?: string;
-  tooltipPosition?: TooltipProps["position"];
+  tooltipPosition?: (typeof SIDE_OPTIONS)[number];
   icon: ComponentType;
   iconSelected?: ComponentType;
   className?: string;
@@ -57,7 +63,7 @@ export function IconToggleButton({
   onClick,
   disabled = false,
   tooltip,
-  tooltipPosition = "above",
+  tooltipPosition = "top",
   icon,
   iconSelected,
   className = "",
@@ -105,9 +111,14 @@ export function IconToggleButton({
   );
 
   return tooltip ? (
-    <Tooltip label={tooltip} position={tooltipPosition}>
-      {IconButtonToggleContent}
-    </Tooltip>
+    <TooltipProvider>
+      <TooltipRoot>
+        <TooltipTrigger>{IconButtonToggleContent}</TooltipTrigger>
+        <TooltipContent side={tooltipPosition}>
+          <p>{tooltip}</p>
+        </TooltipContent>
+      </TooltipRoot>
+    </TooltipProvider>
   ) : (
     IconButtonToggleContent
   );

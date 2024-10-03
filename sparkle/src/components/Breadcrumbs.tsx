@@ -3,10 +3,12 @@ import React from "react";
 
 import { DropdownMenu } from "@sparkle/components/DropdownMenu";
 import { Icon } from "@sparkle/components/Icon";
-import { TooltipContent,
+import {
+  TooltipContent,
   TooltipProvider,
   TooltipRoot,
-  TooltipTrigger } from "@sparkle/components/Tooltip";
+  TooltipTrigger,
+} from "@sparkle/components/Tooltip";
 import { SparkleContext, SparkleContextLinkType } from "@sparkle/context";
 import { ChevronRightIcon } from "@sparkle/icons";
 
@@ -110,9 +112,7 @@ function truncateWithTooltip(text: string, length: number) {
   return text.length > length ? (
     <TooltipProvider>
       <TooltipRoot>
-        <TooltipTrigger>
-          {`${text.substring(0, length - 1)}…`}
-        </TooltipTrigger>
+        <TooltipTrigger>{`${text.substring(0, length - 1)}…`}</TooltipTrigger>
         <TooltipContent side="bottom">
           <p>{text}</p>
         </TooltipContent>
@@ -120,5 +120,5 @@ function truncateWithTooltip(text: string, length: number) {
     </TooltipProvider>
   ) : (
     text
-  )
+  );
 }
