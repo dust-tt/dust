@@ -65,10 +65,9 @@ export function APIKeys({
   groups: GroupType[];
 }) {
   const { mutate } = useSWRConfig();
-  const nonGlobalGroups = groups.filter((g) => g.kind != "global");
   const [newApiKeyName, setNewApiKeyName] = useState("");
   const [newApiKeyGroup, setNewApiKeyGroup] = useState<GroupType>(
-    nonGlobalGroups[0]
+    groups[0]
   );
   const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
@@ -184,7 +183,7 @@ export function APIKeys({
               label={prettifyGroupName(newApiKeyGroup)}
             />
             <DropdownMenu.Items width={220}>
-              {nonGlobalGroups.map((group: GroupType) => (
+              {groups.map((group: GroupType) => (
                 <DropdownMenu.Item
                   key={group.id}
                   label={prettifyGroupName(group)}
