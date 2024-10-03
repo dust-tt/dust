@@ -752,6 +752,10 @@ export class Authenticator {
   canWrite(acls: ACLType[]): boolean {
     return this.hasPermission(acls, "write");
   }
+
+  key(): KeyAuthType | null {
+    return this._key ?? null;
+  }
 }
 
 /**
