@@ -10,7 +10,6 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import {
-  Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipRoot,
