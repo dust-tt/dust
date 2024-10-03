@@ -343,7 +343,7 @@ export function DataSourceViewSelector({
     [dataSourceView]
   );
 
-  const { nodes: rootNodes, isNodesLoading } = useContentNodes({
+  const { nodes: rootNodes } = useContentNodes({
     owner,
     dataSourceView,
     viewType,
@@ -458,11 +458,11 @@ export function DataSourceViewSelector({
           canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
         }
         checkbox={
-          hideCheckbox
+          hideCheckbox || (!isRootSelectable && !isSomethingSelected)
             ? undefined
             : {
                 checked: checkedStatus,
-                disabled: !isRootSelectable && rootNodes.length === 0,
+                disabled: !isRootSelectable,
                 onChange: handleSelectAll,
               }
         }
@@ -471,7 +471,7 @@ export function DataSourceViewSelector({
             <Button
               variant="tertiary"
               size="xs"
-              disabled={isNodesLoading}
+              disabled={rootNodes.length === 0}
               className="mr-4 h-5 text-xs"
               label={isSomethingSelected ? "Unselect All" : "Select All"}
               icon={ListCheckIcon}
