@@ -3,7 +3,10 @@ import React from "react";
 
 import { DropdownMenu } from "@sparkle/components/DropdownMenu";
 import { Icon } from "@sparkle/components/Icon";
-import { Tooltip } from "@sparkle/components/Tooltip";
+import { TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger } from "@sparkle/components/Tooltip";
 import { SparkleContext, SparkleContextLinkType } from "@sparkle/context";
 import { ChevronRightIcon } from "@sparkle/icons";
 
@@ -105,11 +108,17 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
 
 function truncateWithTooltip(text: string, length: number) {
   return text.length > length ? (
-    <Tooltip
-      label={text}
-      position="below"
-    >{`${text.substring(0, length - 1)}…`}</Tooltip>
+    <TooltipProvider>
+      <TooltipRoot>
+        <TooltipTrigger>
+          {`${text.substring(0, length - 1)}…`}
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          <p>{text}</p>
+        </TooltipContent>
+      </TooltipRoot>
+    </TooltipProvider>
   ) : (
     text
-  );
+  )
 }
