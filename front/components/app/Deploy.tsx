@@ -177,7 +177,7 @@ export function ViewAppAPIModal({
               to the{" "}
               <Link
                 href={
-                  "https://docs.dust.tt/reference/post_api-v1-w-wid-apps-aid-runs"
+                  "https://docs.dust.tt/reference/post_api-v1-w-wid-vaults-vid-apps-aid-runs"
                 }
                 className="py-1 font-bold text-action-600"
               >

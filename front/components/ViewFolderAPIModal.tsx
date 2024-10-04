@@ -193,7 +193,7 @@ export function ViewFolderAPIModal({
               to the{" "}
               <Link
                 href={
-                  "https://docs.dust.tt/reference/get_api-v1-w-wid-data-sources-dsid-documents-documentid"
+                  "https://docs.dust.tt/reference/get_api-v1-w-wid-vaults-vid-data-sources-dsid-documents-documentid"
                 }
                 className="py-1 font-bold text-action-600"
               >
