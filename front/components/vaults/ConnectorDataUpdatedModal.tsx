@@ -41,7 +41,7 @@ export const ConnectorDataUpdatedModal = ({
             <div className="flex flex-col gap-2">
               <p>
                 Once synchronized, data will appear under{" "}
-                <em>"Connection Management"</em>.
+                <em>"Connection Administration"</em>.
               </p>
               <p>
                 Add data to <em>"Company Data"</em> for team-wide access or to a

@@ -1,4 +1,4 @@
-import { Button, Input, Page, PlanetIcon } from "@dust-tt/sparkle";
+import { Button, CompanyIcon, Input, Page } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -187,7 +187,7 @@ export default function WorkspaceAdmin({
         <Page.Vertical align="stretch" gap="xl">
           <Page.Header
             title="Workspace"
-            icon={PlanetIcon}
+            icon={CompanyIcon}
             description="Manage your workspace"
           />
           <Page.Vertical align="stretch" gap="md">

@@ -5,7 +5,7 @@ import {
   FolderIcon,
   GlobeAltIcon,
   Item,
-  LockIcon,
+  PlusIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -111,7 +111,7 @@ export default function VaultSideBarMenu({
                     label={sectionLabel}
                     variant="secondary"
                   />
-                  {sectionLabel === "PRIVATE" &&
+                  {sectionLabel === "VAULTS" &&
                     isAdmin &&
                     setShowVaultCreationModal && (
                       <Button
@@ -119,7 +119,7 @@ export default function VaultSideBarMenu({
                         size="xs"
                         variant="tertiary"
                         label="Create Vault"
-                        icon={LockIcon}
+                        icon={PlusIcon}
                         onClick={() => setShowVaultCreationModal(true)}
                       />
                     )}
@@ -165,10 +165,10 @@ const getSectionLabel = (kind: VaultKind) => {
       return "SHARED";
 
     case "regular":
-      return "PRIVATE";
+      return "VAULTS";
 
     case "system":
-      return "SYSTEM";
+      return "";
 
     case "public":
       return "PUBLIC";
@@ -182,7 +182,7 @@ const getSectionLabel = (kind: VaultKind) => {
 
 const SYSTEM_VAULTS_ITEMS = [
   {
-    label: "Connection Management",
+    label: "Connection Administration",
     visual: CloudArrowLeftRightIcon,
     tailwindIconTextColor: "text-brand",
     category: "managed" as DataSourceViewCategory,
