@@ -35,6 +35,12 @@ const snowflakeGrantCodec = t.type({
   name: t.string,
 });
 type SnowflakeGrant = t.TypeOf<typeof snowflakeGrantCodec>;
+const snowflakeFutureGrantCodec = t.type({
+  privilege: t.string,
+  grant_on: t.string,
+  name: t.string,
+});
+type SnowflakeFutureGrant = t.TypeOf<typeof snowflakeFutureGrantCodec>;
 
 type TestConnectionErrorCode =
   | "INVALID_CREDENTIALS"
@@ -226,7 +232,7 @@ export const isConnectionReadonly = async ({
 }: {
   credentials: SnowflakeCredentials;
   connection: Connection;
-}): Promise<Result<Array<SnowflakeGrant>, TestConnectionError>> => {
+}): Promise<Result<void, TestConnectionError>> => {
   const currentGrantsRes = await _fetchRows<SnowflakeGrant>({
     credentials,
     query: `SHOW GRANTS TO ROLE ${credentials.role}`,
@@ -239,10 +245,10 @@ export const isConnectionReadonly = async ({
     );
   }
 
-  const futureGrantsRes = await _fetchRows<SnowflakeGrant>({
+  const futureGrantsRes = await _fetchRows<SnowflakeFutureGrant>({
     credentials,
     query: `SHOW FUTURE GRANTS TO ROLE ${credentials.role}`,
-    codec: snowflakeGrantCodec,
+    codec: snowflakeFutureGrantCodec,
     connection,
   });
   if (futureGrantsRes.isErr()) {
@@ -251,39 +257,27 @@ export const isConnectionReadonly = async ({
     );
   }
 
-  const allGrantsRows = [...currentGrantsRes.value, ...futureGrantsRes.value];
-
-  const grants: Array<SnowflakeGrant> = [];
-  for (const row of allGrantsRows) {
-    const decoded = snowflakeGrantCodec.decode(row);
-    if (isLeft(decoded)) {
-      const pathError = reporter.formatValidationErrors(decoded.left);
-      // Fine to throw here, as it is un-expected and non-recoverable.
-      throw new Error(`Could not parse row: ${pathError}`);
-    }
-
-    grants.push(decoded.right);
-  }
-
   // We go ove each grant to greenlight them.
-  for (const g of grants) {
-    if (g.granted_on === "TABLE") {
+  for (const g of [...currentGrantsRes.value, ...futureGrantsRes.value]) {
+    const grantOn = "granted_on" in g ? g.granted_on : g.grant_on;
+
+    if (grantOn === "TABLE") {
       // We only allow SELECT grants on tables.
       if (g.privilege !== "SELECT") {
         return new Err(
           new TestConnectionError(
             "NOT_READONLY",
-            `Non-select grant found on ${g.granted_on} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+            `Non-select grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
           )
         );
       }
-    } else if (["SCHEMA", "DATABASE", "WAREHOUSE"].includes(g.granted_on)) {
+    } else if (["SCHEMA", "DATABASE", "WAREHOUSE"].includes(grantOn)) {
       // We only allow USAGE grants on schemas / databases / warehouses.
       if (g.privilege !== "USAGE") {
         return new Err(
           new TestConnectionError(
             "NOT_READONLY",
-            `Non-usage grant found on ${g.granted_on} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+            `Non-usage grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
           )
         );
       }
@@ -292,13 +286,13 @@ export const isConnectionReadonly = async ({
       return new Err(
         new TestConnectionError(
           "NOT_READONLY",
-          `Unsupported grant found on ${g.granted_on} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+          `Unsupported grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
         )
       );
     }
   }
 
-  return new Ok(grants);
+  return new Ok(undefined);
 };
 
 // UTILS
