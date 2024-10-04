@@ -152,6 +152,7 @@ export default function AssistantBuilder({
     selectedSlackChannels,
     slackChannelsLinkedWithAgent,
     setSelectedSlackChannels,
+    mutateSlackChannels,
   } = useSlackChannel({
     initialChannels: [],
     workspaceId: owner.sId,
@@ -321,9 +322,7 @@ export default function AssistantBuilder({
         });
       } else {
         if (slackDataSource) {
-          await mutate(
-            `/api/w/${owner.sId}/assistant/slack/channels_linked_with_agent`
-          );
+          await mutateSlackChannels();
         }
         // Redirect to the assistant list once saved.
         if (flow === "personal_assistants") {

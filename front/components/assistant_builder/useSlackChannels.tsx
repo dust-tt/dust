@@ -27,11 +27,14 @@ export function useSlackChannel({
     useState(false);
 
   // Retrieve all the slack channels that are linked with an agent.
-  const { slackChannels: slackChannelsLinkedWithAgent, slackDataSource } =
-    useSlackChannelsLinkedWithAgent({
-      workspaceId,
-      disabled: !isBuilder,
-    });
+  const {
+    slackChannels: slackChannelsLinkedWithAgent,
+    slackDataSource,
+    mutateSlackChannels,
+  } = useSlackChannelsLinkedWithAgent({
+    workspaceId,
+    disabled: !isBuilder,
+  });
 
   // This effect is used to initially set the selectedSlackChannels state using the data retrieved from the API.
   useEffect(() => {
@@ -66,5 +69,6 @@ export function useSlackChannel({
     selectedSlackChannels,
     slackChannelsLinkedWithAgent,
     setSelectedSlackChannels,
+    mutateSlackChannels,
   };
 }
