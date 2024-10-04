@@ -45,10 +45,10 @@ export { Tab } from "./Tab";
 export { TextArea } from "./TextArea";
 export {
   TooltipContent,
+  TooltipPortal,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
-  TooltipPortal,
 } from "./Tooltip";
 export { Tree } from "./Tree";
 export { ZoomableImageCitationWrapper } from "./ZoomableImageCitationWrapper";

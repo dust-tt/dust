@@ -113,7 +113,7 @@ function truncateWithTooltip(text: string, length: number) {
     <TooltipProvider>
       <TooltipRoot>
         <TooltipTrigger>{`${text.substring(0, length - 1)}…`}</TooltipTrigger>
-        <TooltipContent side="bottom">
+        <TooltipContent>
           <p>{text}</p>
         </TooltipContent>
       </TooltipRoot>
