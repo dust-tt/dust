@@ -634,7 +634,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     }
 
     // We are done, store documents and chunks in database and yield the final events.
-    const documents = await RetrievalDocumentResource.makeNewBatch(auth, blobs);
+    const documents = await RetrievalDocumentResource.makeNewBatch(blobs);
 
     logger.info(
       {
