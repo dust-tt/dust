@@ -31,7 +31,7 @@ type SnowflakeTable = t.TypeOf<typeof snowflakeTableCodec>;
 
 const snowflakeGrantCodec = t.type({
   privilege: t.string,
-  grant_on: t.string,
+  granted_on: t.string,
   name: t.string,
 });
 type SnowflakeGrant = t.TypeOf<typeof snowflakeGrantCodec>;
@@ -267,23 +267,23 @@ export const isConnectionReadonly = async ({
 
   // We go ove each grant to greenlight them.
   for (const g of grants) {
-    if (g.grant_on === "TABLE") {
+    if (g.granted_on === "TABLE") {
       // We only allow SELECT grants on tables.
       if (g.privilege !== "SELECT") {
         return new Err(
           new TestConnectionError(
             "NOT_READONLY",
-            `Non-select grant found on ${g.grant_on} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+            `Non-select grant found on ${g.granted_on} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
           )
         );
       }
-    } else if (["SCHEMA", "DATABASE", "WAREHOUSE"].includes(g.grant_on)) {
+    } else if (["SCHEMA", "DATABASE", "WAREHOUSE"].includes(g.granted_on)) {
       // We only allow USAGE grants on schemas / databases / warehouses.
       if (g.privilege !== "USAGE") {
         return new Err(
           new TestConnectionError(
             "NOT_READONLY",
-            `Non-usage grant found on ${g.grant_on} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+            `Non-usage grant found on ${g.granted_on} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
           )
         );
       }
@@ -292,7 +292,7 @@ export const isConnectionReadonly = async ({
       return new Err(
         new TestConnectionError(
           "NOT_READONLY",
-          `Unsupported grant found on ${g.grant_on} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+          `Unsupported grant found on ${g.granted_on} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
         )
       );
     }
