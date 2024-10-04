@@ -62,9 +62,14 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     connection,
   });
   if (readonlyConnectionCheck.isErr()) {
+    if (readonlyConnectionCheck.error.code !== "NOT_READONLY") {
+      // Any other error here is "unexpected".
+      throw readonlyConnectionCheck.error;
+    }
     // The connection is not read-only.
     // We mark the connector as errored, and garbage collect all the tables that were synced.
     await syncFailed(connectorId, "remote_database_connection_not_readonly");
+
     for (const t of allTables) {
       await deleteTable({
         dataSourceConfig: dataSourceConfigFromConnector(connector),
