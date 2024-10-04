@@ -61,35 +61,37 @@ const modalStyles = {
 };
 
 export type ModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
   action?: ButtonProps;
+  alertModal?: boolean;
   children: React.ReactNode;
+  className?: string;
   hasChanged: boolean;
+  isOpen: boolean;
+  isSaving?: boolean;
+  onClose: () => void;
   onSave?: () => void;
   saveLabel?: string;
-  isSaving?: boolean;
   savingLabel?: string;
   title?: string;
   variant?: "full-screen" | "side-sm" | "side-md" | "dialogue";
-  className?: string;
 };
 
 const getModalClasses = (type: ModalType) => modalStyles[type] || {};
 
 export function Modal({
-  isOpen,
-  onClose,
   action,
+  alertModal,
   children,
+  className,
   hasChanged,
+  isOpen,
+  isSaving,
+  onClose,
   onSave,
   saveLabel = "Save",
-  isSaving,
   savingLabel,
   title,
   variant = "side-sm",
-  className,
 }: ModalProps) {
   const type = variantToType[variant];
 
@@ -129,8 +131,8 @@ export function Modal({
         as="div"
         className="s-fixed s-absolute s-inset-0 s-z-50 s-overflow-hidden"
         onClose={() => {
-          // We allow closing the modal by clicking outside of it only if there are no changes
-          if (!hasChanged) {
+          // Close modal on outside click if no changes or not an alert.
+          if (!hasChanged && !alertModal) {
             onClose();
           }
         }}
@@ -169,7 +171,11 @@ export function Modal({
               <BarHeader
                 title={title || ""}
                 leftActions={action ? <Button {...action} /> : undefined}
-                rightActions={<BarHeader.ButtonBar {...buttonBarProps} />}
+                rightActions={
+                  alertModal ? undefined : (
+                    <BarHeader.ButtonBar {...buttonBarProps} />
+                  )
+                }
               />
               <div
                 className={classNames(
