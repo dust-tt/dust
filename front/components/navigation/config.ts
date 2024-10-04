@@ -3,10 +3,10 @@ import {
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
+  CompanyIcon,
   DocumentTextIcon,
   FolderOpenIcon,
   LockIcon,
-  PlanetIcon,
   ShapesIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
@@ -117,7 +117,7 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
 
   nav.push({
     id: "data_sources",
-    label: "Data sources",
+    label: "Knowledge",
     icon: BookOpenIcon,
     href: `/w/${owner.sId}/vaults`,
     isCurrent: (currentRoute: string) =>
@@ -180,7 +180,7 @@ export const subNavigationAdmin = ({
         {
           id: "workspace",
           label: "Workspace",
-          icon: PlanetIcon,
+          icon: CompanyIcon,
           href: `/w/${owner.sId}/workspace`,
           current: current === "workspace",
           subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
