@@ -19,15 +19,19 @@ import { classNames } from "@sparkle/lib/utils";
 import { Avatar } from "./Avatar";
 import { Icon, IconProps } from "./Icon";
 
-export type ButtonProps = {
-  variant?:
-    | "primary"
-    | "primaryWarning"
-    | "secondary"
-    | "secondaryWarning"
-    | "tertiary"
-    | "avatar";
+const BUTTON_VARIANTS = [
+  "primary",
+  "primaryWarning",
+  "secondary",
+  "secondaryWarning",
+  "tertiary",
+  "avatar",
+] as const;
 
+export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
+
+export type ButtonProps = {
+  variant?: ButtonVariantType;
   type?: "button" | "menu" | "select";
   size?: "xs" | "sm" | "md" | "lg";
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;

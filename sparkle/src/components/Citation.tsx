@@ -182,7 +182,7 @@ export function Citation({
       <TooltipRoot>
         <TooltipTrigger>{cardButton}</TooltipTrigger>
         <TooltipContent side="top">
-          <p>{title}</p>
+          <p>{description}</p>
         </TooltipContent>
       </TooltipRoot>
     </TooltipProvider>
