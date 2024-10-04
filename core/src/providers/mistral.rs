@@ -110,7 +110,7 @@ fn sanitize_tool_call_id(id: &str) -> String {
         .collect::<String>();
 
     if s.len() > 9 {
-        s = id[0..9].to_string();
+        s = s[0..9].to_string();
     }
     if s.len() < 9 {
         s = format!("{:0>9}", s);
