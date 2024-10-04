@@ -142,7 +142,7 @@ export class ActivityInboundLogInterceptor
           });
 
           if (connectorManager) {
-            await connectorManager.stop();
+            await connectorManager.pause();
           } else {
             this.logger.error(
               {
