@@ -158,7 +158,8 @@ impl TableSchema {
     }
 
     pub fn from_rows<T: HasValue>(rows: &Vec<T>) -> Result<Self> {
-        let mut schema: HashMap<String, TableSchemaColumn> = HashMap::new();
+        let mut schema_order: Vec<String> = Vec::new();
+        let mut schema_map: HashMap<String, TableSchemaColumn> = HashMap::new();
 
         for (row_index, row) in rows.iter().enumerate() {
             let object = match row.value().as_object() {
@@ -200,7 +201,7 @@ impl TableSchema {
                     Value::Null => unreachable!(),
                 };
 
-                match schema.get_mut(k) {
+                match schema_map.get_mut(k) {
                     Some(column) => {
                         if column.value_type != value_type {
                             use TableSchemaFieldType::*;
@@ -224,13 +225,19 @@ impl TableSchema {
                             possible_values: Some(vec![]),
                         };
                         Self::accumulate_value(&mut column, v);
-                        schema.insert(k.clone(), column);
+                        schema_map.insert(k.clone(), column);
+                        schema_order.push(k.clone());
                     }
                 }
             }
         }
 
-        Ok(Self(schema.into_values().collect()))
+        let schema = schema_order
+            .iter()
+            .map(|k| schema_map.get(k).unwrap().clone())
+            .collect();
+
+        Ok(Self(schema))
     }
 
     pub fn get_create_table_sql_string(&self, table_name: &str) -> String {
