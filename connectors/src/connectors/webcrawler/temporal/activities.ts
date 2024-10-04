@@ -33,6 +33,7 @@ import {
 import {
   reportInitialSyncProgress,
   syncFailed,
+  syncStarted,
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
@@ -79,6 +80,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   // Immediately marking the config as crawled to avoid having the scheduler seeing it as a candidate for crawling
   // in case of the crawling takes too long or fails.
   await webCrawlerConfig.markedAsCrawled();
+
+  await syncStarted(connectorId);
 
   const customHeaders = webCrawlerConfig.getCustomHeaders();
 
