@@ -548,7 +548,6 @@ export class Authenticator {
    * @param param1
    * @returns
    */
-  // TODO(2024-08-05 flav) Use user-id instead of email to avoid ambiguity.
   async exchangeSystemKeyForUserAuthByEmail(
     auth: Authenticator,
     { userEmail }: { userEmail: string }

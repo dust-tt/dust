@@ -16,9 +16,8 @@ export async function runUpsertTableQueueWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities,
     taskQueue: QUEUE_NAME,
-    // At the time of edit we have 1 upsert-table-worker. We target 10 overall concurrency.
-    // TODO(2024-10-02 flav) Revisit once we have better understanding of the load.
-    maxConcurrentActivityTaskExecutions: 10,
+    // At the time of edit we have 1 upsert-table-worker. We target 20 overall concurrency.
+    maxConcurrentActivityTaskExecutions: 20,
     connection,
     namespace,
     interceptors: {
