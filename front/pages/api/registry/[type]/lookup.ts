@@ -232,7 +232,7 @@ async function handleDataSource(
   }
 
   // Until we pass the data source view id for managed data sources, we need to fetch it here.
-  // TODO(2024-08-02 flav) Remove once dust apps rely on the data source view id for managed data sources.
+  // TODO(DATASOURCE_SID) Clean-up Remove once dust apps rely on the data source view id for managed data sources.
   if (isManaged(dataSource)) {
     const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
     const dataSourceView =
