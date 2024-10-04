@@ -158,6 +158,8 @@ impl TableSchema {
     }
 
     pub fn from_rows<T: HasValue>(rows: &Vec<T>) -> Result<Self> {
+        // We store the ordering and the column in an hashmap to avoid a quadratic complexity in
+        // column count.
         let mut schema_order: Vec<String> = Vec::new();
         let mut schema_map: HashMap<String, TableSchemaColumn> = HashMap::new();
 
@@ -232,6 +234,8 @@ impl TableSchema {
             }
         }
 
+        // The unwrap below is guaranteed to work as we insert in both schema_map and schema_order
+        // at the same time.
         let schema = schema_order
             .iter()
             .map(|k| schema_map.get(k).unwrap().clone())
