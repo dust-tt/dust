@@ -183,7 +183,7 @@ export function Button({
   label,
   icon,
   className = "",
-  tooltipPosition = "top",
+  tooltipPosition,
   hasMagnifying = true,
   disabledTooltip = false,
   avatar,
