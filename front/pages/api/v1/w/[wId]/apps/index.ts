@@ -42,9 +42,6 @@ import handler from "@app/pages/api/v1/w/[wId]/vaults/[vId]/apps";
  *                       description:
  *                         type: string
  *                         description: Description of the app
- *                       visibility:
- *                         type: string
- *                         description: Visibility setting of the app
  *                       savedSpecification:
  *                         type: string
  *                         description: Saved specification of the app

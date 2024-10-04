@@ -62,7 +62,7 @@ import {
   WorkspaceHasDomain,
 } from "@app/lib/models/workspace";
 import {
-  App,
+  AppModel,
   Clone,
   Dataset,
   Provider,
@@ -104,7 +104,7 @@ async function main() {
   await GroupMembershipModel.sync({ alter: true });
 
   await VaultModel.sync({ alter: true });
-  await App.sync({ alter: true });
+  await AppModel.sync({ alter: true });
   await Dataset.sync({ alter: true });
   await Provider.sync({ alter: true });
   await Clone.sync({ alter: true });

@@ -68,15 +68,14 @@ async function handler(
       if (
         !req.body ||
         !(typeof req.body.name == "string") ||
-        !(typeof req.body.description == "string") ||
-        !["private"].includes(req.body.visibility)
+        !(typeof req.body.description == "string")
       ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
             message:
-              "The request body is invalid, expects { name: string, description: string, visibility }.",
+              "The request body is invalid, expects { name: string, description: string }.",
           },
         });
       }
@@ -101,9 +100,9 @@ async function handler(
           sId: generateLegacyModelSId(),
           name: req.body.name,
           description,
-          visibility: req.body.visibility,
           dustAPIProjectId: p.value.project.project_id.toString(),
           workspaceId: owner.id,
+          visibility: "private",
         },
         vault
       );

@@ -1,4 +1,7 @@
 import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
@@ -9,6 +12,11 @@ import { apiError } from "@app/logger/withlogging";
 export type GetOrPostAppResponseBody = {
   app: AppType;
 };
+
+const PatchAppBodySchema = t.type({
+  name: t.string,
+  description: t.string,
+});
 
 async function handler(
   req: NextApiRequest,
@@ -43,6 +51,7 @@ async function handler(
         app: app.toJSON(),
       });
       break;
+
     case "POST":
       if (!app.canWrite(auth)) {
         return apiError(req, res, {
@@ -55,28 +64,24 @@ async function handler(
         });
       }
 
-      if (
-        !req.body ||
-        !(typeof req.body.name == "string") ||
-        !(typeof req.body.description == "string") ||
-        !["private", "deleted"].includes(req.body.visibility)
-      ) {
+      const bodyValidation = PatchAppBodySchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message:
-              "The request body is invalid, expects { name: string, description: string, visibility }.",
+            message: `The request body is invalid: ${pathError}`,
           },
         });
       }
 
-      const description = req.body.description ? req.body.description : null;
+      const { name, description } = bodyValidation.right;
 
       await app.updateSettings(auth, {
-        name: req.body.name,
+        name,
         description,
-        visibility: req.body.visibility,
       });
 
       return res.status(200).json({
@@ -95,7 +100,7 @@ async function handler(
         });
       }
 
-      await app.markAsDeleted(auth);
+      await app.delete(auth, { hardDelete: false });
 
       res.status(204).end();
       return;
