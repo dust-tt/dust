@@ -24,7 +24,6 @@ import {
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useSWRConfig } from "swr";
 
 import ActionsScreen, {
   hasActionError,
@@ -78,7 +77,6 @@ export default function AssistantBuilder({
   isAdmin,
 }: AssistantBuilderProps) {
   const router = useRouter();
-  const { mutate } = useSWRConfig();
   const sendNotification = React.useContext(SendNotificationsContext);
 
   const defaultScope =
