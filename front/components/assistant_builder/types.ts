@@ -330,7 +330,6 @@ export type AssistantBuilderProps = {
   owner: WorkspaceType;
   plan: PlanType;
   subscription: SubscriptionType;
-  slackDataSource: DataSourceType | null;
 };
 
 export const BUILDER_SCREENS = {

@@ -38,7 +38,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   isAdmin: boolean;
   owner: WorkspaceType;
   plan: PlanType;
-  slackDataSource: DataSourceType | null;
   subscription: SubscriptionType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -86,11 +85,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     configuration,
   });
 
-  const [slackDataSource] = await DataSourceResource.listByConnectorProvider(
-    auth,
-    "slack"
-  );
-
   return {
     props: {
       actions,
@@ -103,7 +97,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       plan,
       subscription,
-      slackDataSource: slackDataSource ? slackDataSource.toJSON() : null,
       vaults: vaults.map((v) => v.toJSON()),
     },
   };
@@ -120,7 +113,6 @@ export default function EditAssistant({
   isAdmin,
   owner,
   plan,
-  slackDataSource,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   throwIfInvalidAgentConfiguration(agentConfiguration);
@@ -166,7 +158,6 @@ export default function EditAssistant({
         baseUrl={baseUrl}
         isAdmin={isAdmin}
         defaultTemplate={null}
-        slackDataSource={slackDataSource}
       />
     </AssistantBuilderProvider>
   );

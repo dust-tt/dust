@@ -56,7 +56,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     | null;
   flow: BuilderFlow;
   baseUrl: string;
-  slackDataSource: DataSourceType | null;
   templateId: string | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -115,11 +114,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       })
     : [];
 
-  const [slackDataSource] = await DataSourceResource.listByConnectorProvider(
-    auth,
-    "slack"
-  );
-
   return {
     props: {
       actions,
@@ -131,7 +125,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       isAdmin: auth.isAdmin(),
       owner,
       plan,
-      slackDataSource: slackDataSource ? slackDataSource.toJSON() : null,
       subscription,
       templateId,
       vaults: vaults.map((v) => v.toJSON()),
@@ -150,7 +143,6 @@ export default function CreateAssistant({
   isAdmin,
   owner,
   plan,
-  slackDataSource,
   subscription,
   templateId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -213,7 +205,6 @@ export default function CreateAssistant({
         defaultIsEdited={false}
         baseUrl={baseUrl}
         defaultTemplate={assistantTemplate}
-        slackDataSource={slackDataSource}
       />
     </AssistantBuilderProvider>
   );

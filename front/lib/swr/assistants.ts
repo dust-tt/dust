@@ -18,7 +18,7 @@ import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
-import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/slack/channels_linked_with_agent";
+import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/slack/channels_linked_with_agent";
 
 export function useAssistantTemplates({
   workspaceId,
@@ -239,26 +239,25 @@ export function useAgentUsage({
 
 export function useSlackChannelsLinkedWithAgent({
   workspaceId,
-  dataSource,
   disabled,
 }: {
   workspaceId: string;
-  dataSource?: DataSourceType;
   disabled?: boolean;
 }) {
   const slackChannelsLinkedWithAgentFetcher: Fetcher<GetSlackChannelsLinkedWithAgentResponseBody> =
     fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/data_sources/${dataSource?.sId}/managed/slack/channels_linked_with_agent`,
+    `/api/w/${workspaceId}/assistant/slack/channels_linked_with_agent`,
     slackChannelsLinkedWithAgentFetcher,
     {
-      disabled: !!disabled || !dataSource,
+      disabled: !!disabled,
     }
   );
 
   return {
     slackChannels: useMemo(() => (data ? data.slackChannels : []), [data]),
+    slackDataSource: data?.slackDataSource,
     isSlackChannelsLoading: !error && !data,
     isSlackChannelsError: error,
     mutateSlackChannels: mutate,

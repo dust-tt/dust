@@ -77,7 +77,6 @@ export default function AssistantBuilder({
   baseUrl,
   defaultTemplate,
   isAdmin,
-  slackDataSource,
 }: AssistantBuilderProps) {
   const router = useRouter();
   const { mutate } = useSWRConfig();
@@ -148,12 +147,12 @@ export default function AssistantBuilder({
   } = useTemplate(defaultTemplate);
 
   const {
+    slackDataSource,
     showSlackIntegration,
     selectedSlackChannels,
     slackChannelsLinkedWithAgent,
     setSelectedSlackChannels,
   } = useSlackChannel({
-    slackDataSource,
     initialChannels: [],
     workspaceId: owner.sId,
     isPrivateAssistant: builderState.scope === "private",
@@ -323,7 +322,7 @@ export default function AssistantBuilder({
       } else {
         if (slackDataSource) {
           await mutate(
-            `/api/w/${owner.sId}/data_sources/${slackDataSource.sId}/managed/slack/channels_linked_with_agent`
+            `/api/w/${owner.sId}/assistant/slack/channels_linked_with_agent`
           );
         }
         // Redirect to the assistant list once saved.
