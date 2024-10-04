@@ -19,11 +19,8 @@ import { WorkspaceDomain } from "../../front/workspace";
 import { WhitelistableFeature } from "../../shared/feature_flags";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
-import { ProcessActionType } from "../assistant/actions/process";
-import { RetrievalActionType } from "../assistant/actions/retrieval";
 import { ContentFragmentType } from "../content_fragment";
 import {
-  AgentActionsEvent,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
