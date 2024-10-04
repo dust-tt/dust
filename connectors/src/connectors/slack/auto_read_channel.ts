@@ -10,6 +10,11 @@ import {
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
+const { DUST_FRONT_API } = process.env;
+if (!DUST_FRONT_API) {
+  throw new Error("FRONT_API not set");
+}
+
 export function isChannelNameWhitelisted(
   remoteChannelName: string,
   autoReadChannelPattern?: string | null
@@ -68,12 +73,34 @@ export async function autoReadChannel(
     if (joinChannelRes.isErr()) {
       return joinChannelRes;
     }
-    await SlackChannel.create({
+    const createdChannel = await SlackChannel.create({
       connectorId,
       slackChannelId,
       slackChannelName: remoteChannelName,
       permission: "read_write",
     });
+    const joinSlackRes = await fetch(
+      `${DUST_FRONT_API}/api/v1/w/${connector.workspaceId}/data_sources/${connector.dataSourceId}/join-slack`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${connector.workspaceAPIKey}`,
+        },
+        body: JSON.stringify({
+          newChannelId: createdChannel.slackChannelId,
+        }),
+      }
+    );
+
+    if (!joinSlackRes.ok) {
+      logger.error({
+        connectorId,
+        channelId: slackChannelId,
+        error: await joinSlackRes.text(),
+      });
+      return new Err(new Error("Failed to join Slack channel in Dust."));
+    }
   }
   return new Ok(undefined);
 }

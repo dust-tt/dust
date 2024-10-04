@@ -135,7 +135,7 @@ async function handler(
     if (!dataSourceView) {
       // slack wasn't added to the global vault so no need to add the channel
     } else {
-      if (dataSourceView.dataSource.connectorProvider !== "slack"){
+      if (dataSourceView.dataSource.connectorProvider !== "slack") {
         return apiError(req, res, {
           status_code: 500,
           api_error: {
