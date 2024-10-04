@@ -18,7 +18,7 @@ import type {
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 
 import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
 import type {
@@ -311,10 +311,6 @@ export function DataSourceViewSelector({
   viewType,
   isRootSelectable,
 }: DataSourceViewSelectorProps) {
-  const [isSelectedAll, setIsSelectedAll] = useState(
-    selectionConfiguration.selectedResources.length > 0
-  );
-
   const dataSourceView = selectionConfiguration.dataSourceView;
 
   const LogoComponent = getConnectorProviderLogoWithFallback(
@@ -347,17 +343,45 @@ export function DataSourceViewSelector({
     [dataSourceView]
   );
 
+  const { nodes: rootNodes } = useContentNodes({
+    owner,
+    dataSourceView,
+    viewType,
+  });
+
+  const hasActiveSelection =
+    selectionConfiguration.selectedResources.length > 0 ||
+    selectionConfiguration.isSelectAll;
+
   const handleSelectAll = () => {
-    document
-      .querySelectorAll<HTMLInputElement>(
-        `#dataSourceViewsSelector-${dataSourceView.dataSource.name} .tree-depth-0 input[type="checkbox"]:first-child`
-      )
-      .forEach((el) => {
-        if (el.checked === isSelectedAll) {
-          el.click();
-        }
-      });
-    setIsSelectedAll(!isSelectedAll);
+    setSelectionConfigurations((prevState) => {
+      if (hasActiveSelection) {
+        // remove the whole dataSourceView from the list
+        return _.omit(prevState, dataSourceView.sId);
+      } else {
+        const { sId } = dataSourceView;
+        const defaultConfig = defaultSelectionConfiguration(dataSourceView);
+        const prevConfig = prevState[sId] || defaultConfig;
+
+        const updatedConfig = isRootSelectable
+          ? {
+              ...prevConfig,
+              selectedResources: [],
+              isSelectAll: true,
+            }
+          : {
+              ...prevConfig,
+              selectedResources: rootNodes,
+              isSelectAll: false,
+            };
+
+        // Return a new object to trigger a re-render
+        return keepOnlyOneVaultIfApplicable({
+          ...prevState,
+          [dataSourceView.sId]: updatedConfig,
+        });
+      }
+    });
   };
 
   const isPartiallyChecked = internalIds.length > 0;
@@ -434,37 +458,12 @@ export function DataSourceViewSelector({
           canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
         }
         checkbox={
-          hideCheckbox || !isRootSelectable
+          hideCheckbox || (!isRootSelectable && !hasActiveSelection)
             ? undefined
             : {
                 checked: checkedStatus,
-                onChange: () => {
-                  setSelectionConfigurations((prevState) => {
-                    const { sId } = dataSourceView;
-                    const defaultConfig =
-                      defaultSelectionConfiguration(dataSourceView);
-                    const prevConfig = prevState[sId] || defaultConfig;
-
-                    const updatedConfig = {
-                      ...prevConfig,
-                      selectedResources: [],
-                      isSelectAll: checkedStatus === "unchecked",
-                    };
-
-                    // If nothing is selected and selectAll is false, remove the entry from the state.
-                    if (
-                      !updatedConfig.selectedResources.length &&
-                      !updatedConfig.isSelectAll
-                    ) {
-                      return _.omit(prevState, sId);
-                    }
-
-                    return {
-                      ...prevState,
-                      [sId]: updatedConfig,
-                    };
-                  });
-                },
+                disabled: !isRootSelectable,
+                onChange: handleSelectAll,
               }
         }
         actions={
@@ -472,8 +471,9 @@ export function DataSourceViewSelector({
             <Button
               variant="tertiary"
               size="xs"
+              disabled={rootNodes.length === 0}
               className="mr-4 h-5 text-xs"
-              label={isSelectedAll ? "Unselect All" : "Select All"}
+              label={hasActiveSelection ? "Unselect All" : "Select All"}
               icon={ListCheckIcon}
               onClick={handleSelectAll}
             />

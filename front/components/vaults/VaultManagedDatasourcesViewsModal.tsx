@@ -23,6 +23,24 @@ interface VaultManagedDataSourcesViewsModalProps {
   vault: VaultType;
 }
 
+// We need to stabilize the initial state of the selection configurations,
+// to avoid resetting state when swr revalidates initialSelectedDataSources
+function useStabilizedValue<T>(
+  initialValue: T,
+  isOpen: boolean,
+  defaultValue: T
+): T {
+  const [value, setValue] = useState<T | undefined>();
+  useEffect(() => {
+    if (isOpen && !value) {
+      setValue(initialValue);
+    } else if (!isOpen) {
+      setValue(undefined);
+    }
+  }, [isOpen, initialValue, value]);
+  return value ?? defaultValue;
+}
+
 export default function VaultManagedDataSourcesViewsModal({
   initialSelectedDataSources,
   isOpen,
@@ -32,12 +50,18 @@ export default function VaultManagedDataSourcesViewsModal({
   systemVaultDataSourceViews,
   vault,
 }: VaultManagedDataSourcesViewsModalProps) {
+  const defaultSelectedDataSources = useStabilizedValue(
+    initialSelectedDataSources,
+    isOpen,
+    []
+  );
+
   const [systemDataSourceViews, vaultDataSourceViews] = useMemo(() => {
     const [systemDataSourceViews, vaultDataSourceViews]: Record<
       string,
       DataSourceViewType
     >[] = [{}, {}];
-    initialSelectedDataSources.forEach((dsv) => {
+    defaultSelectedDataSources.forEach((dsv) => {
       systemDataSourceViews[dsv.dataSource.sId] =
         systemVaultDataSourceViews.find(
           (sdsv) => sdsv.dataSource.sId === dsv.dataSource.sId
@@ -45,17 +69,17 @@ export default function VaultManagedDataSourcesViewsModal({
       vaultDataSourceViews[dsv.dataSource.sId] = dsv;
     });
     return [systemDataSourceViews, vaultDataSourceViews];
-  }, [initialSelectedDataSources, systemVaultDataSourceViews]);
+  }, [defaultSelectedDataSources, systemVaultDataSourceViews]);
 
   const dataSourceViewsAndInternalIds = useMemo(
     () =>
-      initialSelectedDataSources.map((dsv) => ({
+      defaultSelectedDataSources.map((dsv) => ({
         // We are selecting from the system dataSourceView and fetching the nodes from there,
         // so we need to find the corresponding one in the systemVaultDataSourceViews
         dataSourceView: systemDataSourceViews[dsv.dataSource.sId],
         internalIds: dsv.parentsIn ?? [],
       })),
-    [initialSelectedDataSources, systemDataSourceViews]
+    [defaultSelectedDataSources, systemDataSourceViews]
   );
 
   const initialConfigurations = useMultipleDataSourceViewsContentNodes({
