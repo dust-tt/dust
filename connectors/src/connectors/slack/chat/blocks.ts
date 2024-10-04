@@ -23,13 +23,13 @@ function makeConversationLinkContextBlock(conversationUrl: string) {
   };
 }
 
-export function makeThinkingBlock(action?: string) {
+export function makeThinkingBlock(thinkingText: string) {
   return {
     type: "context",
     elements: [
       {
         type: "mrkdwn",
-        text: action ? `_Thinking... (${action})_` : "_Thinking..._",
+        text: `_${thinkingText}_`,
       },
     ],
   };
@@ -119,15 +119,17 @@ export function makeMessageUpdateBlocksAndText(
     ],
   };
 
+  const thinkingText = action ? `Thinking... (${action})` : "Thinking...";
+
   return {
     blocks: [
       header,
-      isThinking ? makeThinkingBlock(action) : makeMarkdownBlock(text),
+      isThinking ? makeThinkingBlock(thinkingText) : makeMarkdownBlock(text),
       ...makeContextSectionBlocks(conversationUrl, footnotes),
     ],
     // TODO(2024-06-17 flav) We should not return markdown here.
     // Provide plain text for places where the content cannot be rendered (e.g push notifications).
-    text: isThinking ? "Thinking..." : truncate(text, MAX_SLACK_MESSAGE_LENGTH),
+    text: isThinking ? thinkingText : truncate(text, MAX_SLACK_MESSAGE_LENGTH),
     mrkdwn: true,
   };
 }
