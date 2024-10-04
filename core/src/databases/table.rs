@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::info;
 
 use crate::{
     databases::{database::HasValue, table_schema::TableSchema},
@@ -10,6 +13,7 @@ use crate::{
     search_filter::{Filterable, SearchFilter},
     sqlite_workers::client::HEARTBEAT_INTERVAL_MS,
     stores::store::Store,
+    utils,
 };
 
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize)]
@@ -228,41 +232,63 @@ impl LocalTable {
         &self,
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
-        rows: &Vec<Row>,
+        rows: Vec<Row>,
         truncate: bool,
     ) -> Result<()> {
-        // Validate that all rows keys are lowercase.
-        for (row_index, row) in rows.iter().enumerate() {
-            let object = match row.value().as_object() {
-                Some(object) => object,
-                None => Err(anyhow!("Row {} is not an object", row_index,))?,
-            };
-            match object.keys().find(|key| match key.chars().next() {
-                Some(c) => c.is_ascii_uppercase(),
-                None => false,
-            }) {
-                Some(key) => Err(anyhow!(
-                    "Row {} has a key '{}' that contains uppercase characters",
-                    row_index,
-                    key
-                ))?,
-                None => (),
-            }
-        }
+        let rows = Arc::new(rows);
 
+        let mut now = utils::now();
+        // Validate that all rows keys are lowercase. We run it in a spawn_blocking since it is CPU
+        // bound (even if running fast for resaonably sized tables);
+        {
+            let rows = rows.clone();
+            tokio::task::spawn_blocking(move || {
+                for (row_index, row) in rows.iter().enumerate() {
+                    let object = match row.value().as_object() {
+                        Some(object) => object,
+                        None => Err(anyhow!("Row {} is not an object", row_index,))?,
+                    };
+                    match object.keys().find(|key| match key.chars().next() {
+                        Some(c) => c.is_ascii_uppercase(),
+                        None => false,
+                    }) {
+                        Some(key) => Err(anyhow!(
+                            "Row {} has a key '{}' that contains uppercase characters",
+                            row_index,
+                            key
+                        ))?,
+                        None => (),
+                    }
+                }
+                Ok::<_, anyhow::Error>(())
+            })
+            .await??;
+        }
+        info!(
+            duration = utils::now() - now,
+            "DSSTRUCTSTAT Upsert rows validation"
+        );
+
+        now = utils::now();
         let new_table_schema = match truncate {
             // If the new rows replace existing ones, we need to clear the schema cache.
-            true => TableSchema::from_rows(&rows)?,
+            true => TableSchema::from_rows_async(rows.clone()).await?,
             false => match self.table.schema_cached() {
                 // If there is no existing schema cache, simply use the new schema.
-                None => TableSchema::from_rows(&rows)?,
+                None => TableSchema::from_rows_async(rows.clone()).await?,
                 Some(existing_table_schema) => {
                     // If there is an existing schema cache, merge it with the new schema.
-                    existing_table_schema.merge(&TableSchema::from_rows(&rows)?)?
+                    existing_table_schema
+                        .merge(&TableSchema::from_rows_async(rows.clone()).await?)?
                 }
             },
         };
+        info!(
+            duration = utils::now() - now,
+            "DSSTRUCTSTAT [upsert_rows] table schema"
+        );
 
+        now = utils::now();
         store
             .update_table_schema(
                 &self.table.project,
@@ -271,12 +297,20 @@ impl LocalTable {
                 &new_table_schema,
             )
             .await?;
+        info!(
+            duration = utils::now() - now,
+            "DSSTRUCTSTAT [upsert_rows] update table_schema"
+        );
 
+        now = utils::now();
         if !truncate {
             // When doing incremental updates to a table's rows, the schema may become too wide.
-            // For example, if a column has only integers, it's an integer column. If a new row has a string in that column, the column becomes a string column.
-            // However, if that row is later updated to have an integer, the column should become an integer column again, but we cannot know that without looking at all the rows.
-            // This is why we invalidate the schema when doing incremental updates, and next time the schema is requested, it will be recomputed from all the rows.
+            // For example, if a column has only integers, it's an integer column. If a new row has
+            // a string in that column, the column becomes a string column.
+            // However, if that row is later updated to have an integer, the column should become
+            // an integer column again, but we cannot know that without looking at all the rows.
+            // This is why we invalidate the schema when doing incremental updates, and next time
+            // the schema is requested, it will be recomputed from all the rows.
             store
                 .invalidate_table_schema(
                     &self.table.project,
@@ -285,16 +319,26 @@ impl LocalTable {
                 )
                 .await?;
         }
+        info!(
+            duration = utils::now() - now,
+            "DSSTRUCTSTAT [upsert_rows] invalidate table schema"
+        );
 
+        now = utils::now();
         // Upsert the rows in the table.
-        // Note: if this fails, the Table will still contain the new schema, but the rows will not be updated.
-        // This isn't too bad, because the merged schema is necessarily backward-compatible with the previous one.
-        // The other way around would not be true -- old schema doesn't necessarily work with the new rows.
-        // This is why we cannot `try_join_all`.
+        // Note: if this fails, the Table will still contain the new schema, but the rows will not
+        // be updated. This isn't too bad, because the merged schema is necessarily
+        // backward-compatible with the previous one. The other way around would not be true -- old
+        // schema doesn't necessarily work with the new rows. This is why we cannot `try_join_all`.
         databases_store
-            .batch_upsert_table_rows(&self.table.unique_id(), rows, truncate)
+            .batch_upsert_table_rows(&self.table.unique_id(), &rows, truncate)
             .await?;
+        info!(
+            duration = utils::now() - now,
+            "DSSTRUCTSTAT [upsert_rows] rows upsert"
+        );
 
+        now = utils::now();
         // Invalidate the databases that use the table.
         try_join_all(
             (store
@@ -315,6 +359,10 @@ impl LocalTable {
                 }),
         )
         .await?;
+        info!(
+            duration = utils::now() - now,
+            "DSSTRUCTSTAT [upsert_rows] invalidate dbs"
+        );
 
         Ok(())
     }
@@ -386,10 +434,11 @@ impl LocalTable {
                 .list_rows(databases_store.clone(), Some((limit, offset)))
                 .await?;
 
+            let rows = Arc::new(rows);
             if offset == 0 {
-                schema = TableSchema::from_rows(&rows)?;
+                schema = TableSchema::from_rows_async(rows.clone()).await?;
             } else {
-                schema = schema.merge(&TableSchema::from_rows(&rows)?)?;
+                schema = schema.merge(&TableSchema::from_rows_async(rows.clone()).await?)?;
             }
 
             offset += limit;
@@ -454,8 +503,8 @@ mod tests {
     use crate::utils;
     use serde_json::json;
 
-    #[test]
-    fn test_local_table_to_dbml() -> anyhow::Result<()> {
+    #[tokio::test]
+    async fn test_local_table_to_dbml() -> anyhow::Result<()> {
         let row_1 = json!({
             "user_id": 1,
             "temperature": 1.2,
@@ -469,12 +518,12 @@ mod tests {
             "ready": false,
             "description": "not null anymore and prety long so that it's not shown in note",
         });
-        let rows = &vec![
+        let rows = Arc::new(vec![
             Row::new("1".to_string(), row_1),
             Row::new("2".to_string(), row_2),
-        ];
+        ]);
 
-        let schema = TableSchema::from_rows(rows)?;
+        let schema = TableSchema::from_rows_async(rows).await?;
         let table = Table::new(
             &Project::new_from_id(42),
             "data_source_id",

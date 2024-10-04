@@ -52,7 +52,7 @@ impl From<serde_json::Error> for SqliteWorkerError {
 impl SqliteWorker {
     pub fn new(url: String, last_heartbeat: u64) -> Self {
         Self {
-            last_heartbeat: last_heartbeat,
+            last_heartbeat,
             url,
         }
     }

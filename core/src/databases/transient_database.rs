@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
@@ -94,13 +94,15 @@ pub async fn execute_query_on_transient_database(
         ))?,
     };
 
+    let result_rows = Arc::new(result_rows);
+
     info!(
         duration = utils::now() - time_query_start,
         "DSSTRUCTSTAT Finished executing user query on worker"
     );
 
     let infer_result_schema_start = utils::now();
-    let table_schema = TableSchema::from_rows(&result_rows)?;
+    let table_schema = TableSchema::from_rows_async(result_rows.clone()).await?;
 
     info!(
         duration = utils::now() - infer_result_schema_start,
@@ -110,6 +112,14 @@ pub async fn execute_query_on_transient_database(
         duration = utils::now() - time_query_start,
         "DSSTRUCTSTAT Finished query database"
     );
+
+    let result_rows = match Arc::try_unwrap(result_rows) {
+        Ok(result_rows) => result_rows,
+        Err(_) => Err(anyhow!(
+            "Unexpected error: could not unwrap Arc result_rows for database {}",
+            database.unique_id()
+        ))?,
+    };
 
     Ok((result_rows, table_schema))
 }

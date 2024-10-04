@@ -2302,7 +2302,7 @@ async fn tables_rows_upsert(
                     .upsert_rows(
                         state.store.clone(),
                         state.databases_store.clone(),
-                        &payload.rows,
+                        payload.rows,
                         match payload.truncate {
                             Some(v) => v,
                             None => false,

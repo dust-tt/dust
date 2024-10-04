@@ -186,10 +186,11 @@ pub async fn encode_async(bpe: Arc<RwLock<CoreBPE>>, text: &str) -> Result<Vec<u
     Ok(r)
 }
 
-// We use the Rayon thread pool to parallelize the tokenization of multiple texts (which is a CPU bound task)
-// Rayon is a better fit than Tokio spawn_blocking because it is optimized for CPU-bound tasks (Tokio's blocking pool has a large number
-// of threads, making it less efficient for CPU-bound tasks).
-// We still need to use spawn_blocking at the top level to avoid blocking the Tokio event loop.
+// We use the Rayon thread pool to parallelize the tokenization of multiple texts (which is a CPU
+// bound task) Rayon is a better fit than Tokio spawn_blocking because it is optimized for
+// CPU-bound tasks (Tokio's blocking pool has a large number of threads, making it less efficient
+// for CPU-bound tasks). We still need to use spawn_blocking at the top level to avoid blocking
+// the Tokio event loop.
 pub async fn batch_tokenize_async(
     bpe: Arc<RwLock<CoreBPE>>,
     texts: Vec<String>,
