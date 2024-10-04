@@ -349,13 +349,13 @@ export function DataSourceViewSelector({
     viewType,
   });
 
-  const isSomethingSelected =
+  const hasActiveSelection =
     selectionConfiguration.selectedResources.length > 0 ||
     selectionConfiguration.isSelectAll;
 
   const handleSelectAll = () => {
     setSelectionConfigurations((prevState) => {
-      if (isSomethingSelected) {
+      if (hasActiveSelection) {
         // remove the whole dataSourceView from the list
         return _.omit(prevState, dataSourceView.sId);
       } else {
@@ -458,7 +458,7 @@ export function DataSourceViewSelector({
           canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
         }
         checkbox={
-          hideCheckbox || (!isRootSelectable && !isSomethingSelected)
+          hideCheckbox || (!isRootSelectable && !hasActiveSelection)
             ? undefined
             : {
                 checked: checkedStatus,
@@ -473,7 +473,7 @@ export function DataSourceViewSelector({
               size="xs"
               disabled={rootNodes.length === 0}
               className="mr-4 h-5 text-xs"
-              label={isSomethingSelected ? "Unselect All" : "Select All"}
+              label={hasActiveSelection ? "Unselect All" : "Select All"}
               icon={ListCheckIcon}
               onClick={handleSelectAll}
             />
