@@ -37,9 +37,14 @@ export function withLogging<T>(
     const sessionId = session?.user.sid || "unknown";
 
     let route = req.url;
+    let workspaceId: string | null = null;
     if (route) {
       route = route.split("?")[0];
       for (const key in req.query) {
+        if (key === "wId") {
+          workspaceId = req.query[key] as string;
+        }
+
         const value = req.query[key];
         if (typeof value === "string" && value.length > 0) {
           route = route.replaceAll(value, `[${key}]`);
@@ -66,6 +71,7 @@ export function withLogging<T>(
           url: req.url,
           // @ts-expect-error best effort to get err.stack if it exists
           error_stack: err?.stack,
+          workspaceId,
         },
         "Unhandled API Error"
       );
@@ -111,6 +117,7 @@ export function withLogging<T>(
         statusCode: res.statusCode,
         streaming,
         url: req.url,
+        workspaceId,
       },
       "Processed request"
     );
