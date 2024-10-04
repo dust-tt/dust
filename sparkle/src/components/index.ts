@@ -48,7 +48,7 @@ export {
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
-  TooltipPortal
+  TooltipPortal,
 } from "./Tooltip";
 export { Tree } from "./Tree";
 export { ZoomableImageCitationWrapper } from "./ZoomableImageCitationWrapper";
