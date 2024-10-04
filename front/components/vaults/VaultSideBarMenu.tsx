@@ -182,7 +182,7 @@ const getSectionLabel = (kind: VaultKind) => {
 
 const SYSTEM_VAULTS_ITEMS = [
   {
-    label: "Connection Administration",
+    label: "Connection Admin",
     visual: CloudArrowLeftRightIcon,
     tailwindIconTextColor: "text-brand",
     category: "managed" as DataSourceViewCategory,
