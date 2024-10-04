@@ -535,8 +535,7 @@ const handleDataSourceWithoutProvider = async ({
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message:
-          "Data source names must only contain letters, numbers, and the characters `._-`, and cannot be empty.",
+        message: "Data source names cannot be empty.",
       },
     });
   }
