@@ -67,7 +67,7 @@ export const AddToVaultDialog = ({
     );
 
     const body = {
-      name: dataSource.name,
+      dataSourceId: dataSource.sId,
       parentsIn:
         existingViewForVault && existingViewForVault.parentsIn
           ? [...existingViewForVault.parentsIn, contentNode.internalId]

@@ -3,7 +3,7 @@ import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
 import { makeColumnsForDataSourceViews } from "@app/components/poke/data_source_views/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import { getDataSourceName } from "@app/lib/data_sources";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { usePokeDataSourceViews } from "@app/poke/swr/data_source_views";
 
 interface DataSourceViewsDataTableProps {
@@ -18,7 +18,7 @@ function prepareDataSourceViewsForDisplay(
     return {
       ...dsv,
       dataSourceLink: `/poke/${owner.sId}/data_sources/${dsv.dataSource.sId}`,
-      dataSourceName: getDataSourceName(dsv.dataSource),
+      dataSourceName: getDisplayNameForDataSource(dsv.dataSource),
       dataSourceViewLink: `/poke/${owner.sId}/vaults/${dsv.vaultId}/data_source_views/${dsv.sId}`,
       editedAt: dsv.editedByUser?.editedAt ?? undefined,
       editedBy: dsv.editedByUser?.fullName ?? undefined,

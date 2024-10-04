@@ -23,7 +23,7 @@ import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDoc
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { AddToVaultDialog } from "@app/components/vaults/AddToVaultDialog";
 import {
-  getDataSourceName,
+  getDisplayNameForDataSource,
   isFolder,
   isManaged,
   isWebsite,
@@ -243,7 +243,7 @@ const makeViewSourceUrlContentAction = (
   const label =
     isFolder(dataSource) || isWebsite(dataSource)
       ? "View associated URL"
-      : `View in ${capitalize(getDataSourceName(dataSource))}`;
+      : `View in ${capitalize(getDisplayNameForDataSource(dataSource))}`;
 
   return {
     label,

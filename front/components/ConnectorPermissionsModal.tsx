@@ -31,7 +31,7 @@ import { useSWRConfig } from "swr";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { getDataSourceName } from "@app/lib/data_sources";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import { useUser } from "@app/lib/swr/user";
 import { useSystemVault, useVaultDataSourceViews } from "@app/lib/swr/vaults";
@@ -671,7 +671,7 @@ export function ConnectorPermissionsModal({
       {onManageButtonClick && (
         <Button
           size="sm"
-          label={`Manage ${getDataSourceName(dataSource)}`}
+          label={`Manage ${getDisplayNameForDataSource(dataSource)}`}
           icon={CloudArrowLeftRightIcon}
           variant="primary"
           disabled={readOnly || !isAdmin}
@@ -682,7 +682,7 @@ export function ConnectorPermissionsModal({
         />
       )}
       <Modal
-        title={`Manage ${getDataSourceName(dataSource)} connection`}
+        title={`Manage ${getDisplayNameForDataSource(dataSource)} connection`}
         isOpen={modalToShow === "selection"}
         onClose={() => closeModal(false)}
         onSave={save}

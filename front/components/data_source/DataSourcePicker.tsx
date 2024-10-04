@@ -49,11 +49,13 @@ export default function DataSourcePicker({
   const [filteredDataSourceViews, setFilteredDataSourceViews] =
     useState(vaultDataSourceViews);
 
-  // Look for the selected data source view in the list - data_source_id can contain either dsv sId or dataSource name, try to find a match
+  // Look for the selected data source view in the list - data_source_id can is dsv sId or
+  // dataSource name, try to find a match
   const selectedDataSourceView = hasDataSourceView
     ? vaultDataSourceViews.find(
         (dsv) =>
           dsv.sId === currentDataSources[0].data_source_id ||
+          // Legacy behavior
           dsv.dataSource.name === currentDataSources[0].data_source_id
       )
     : undefined;

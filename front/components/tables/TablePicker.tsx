@@ -37,10 +37,12 @@ export default function TablePicker({
     workspaceId: owner.sId,
   });
 
-  // Look for the selected data source view in the list - data_source_id can contain either dsv sId or dataSource name, try to find a match
+  // Look for the selected data source view in the list - data_source_id can contain either dsv sId
+  // or dataSource name, try to find a match
   const selectedDataSourceView = vaultDataSourceViews.find(
     (dsv) =>
       dsv.sId === dataSource.data_source_id ||
+      // Legacy behavior
       dsv.dataSource.name === dataSource.data_source_id
   );
 

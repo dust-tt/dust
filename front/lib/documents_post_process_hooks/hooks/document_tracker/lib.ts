@@ -36,6 +36,8 @@ export async function getTrackableDataSources(owner: WorkspaceType): Promise<
 
   return trackableDataSources.map((ds) => ({
     workspace_id: prodAPI.workspaceId(),
-    data_source_id: ds.name,
+    // TODO(GROUPS_INFRA): this should pull the data source views from the global vaults (we need an
+    // API for that).
+    data_source_id: ds.sId,
   }));
 }

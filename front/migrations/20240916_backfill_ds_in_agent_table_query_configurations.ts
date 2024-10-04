@@ -39,8 +39,7 @@ async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
   const agentTablesQueryConfigurationsCount: GroupedCountResultItem[] =
     await AgentTablesQueryConfigurationTable.count({
       where: {
-        // /!\ `dataSourceId` is the data source's name, not the id.
-        dataSourceId: dataSources.map((ds) => ds.name),
+        dataSourceId: dataSources.map((ds) => ds.sId),
         // @ts-expect-error `dataSourceIdNew` has been removed.
         dataSourceIdNew: {
           [Op.is]: null,
@@ -75,7 +74,7 @@ async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
       {
         where: {
           // /!\ `dataSourceId` is the data source's name, not the id.
-          dataSourceId: ds.name,
+          dataSourceId: ds.sId,
           dataSourceIdNew: {
             [Op.is]: null,
           },
