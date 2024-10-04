@@ -1,4 +1,4 @@
-import type { DataSourceViewType } from "@dust-tt/types";
+import type { DataSourceType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
@@ -6,7 +6,7 @@ import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 
 interface useSlackChannelProps {
   agentConfigurationId: string | null;
-  dataSourceViews: DataSourceViewType[];
+  slackDataSource: DataSourceType | null;
   initialChannels: SlackChannel[];
   isBuilder: boolean;
   isEdited: boolean;
@@ -16,7 +16,7 @@ interface useSlackChannelProps {
 
 export function useSlackChannel({
   agentConfigurationId,
-  dataSourceViews,
+  slackDataSource,
   initialChannels,
   isBuilder,
   isEdited,
@@ -29,15 +29,11 @@ export function useSlackChannel({
   const [slackChannelsInitialized, setSlackChannelsInitialized] =
     useState(false);
 
-  const slackDataSource = dataSourceViews.find(
-    (ds) => ds.dataSource.connectorProvider === "slack"
-  );
-
   // Retrieve all the slack channels that are linked with an agent.
   const { slackChannels: slackChannelsLinkedWithAgent } =
     useSlackChannelsLinkedWithAgent({
       workspaceId,
-      dataSource: slackDataSource?.dataSource ?? undefined,
+      dataSource: slackDataSource ?? undefined,
       disabled: !isBuilder,
     });
 

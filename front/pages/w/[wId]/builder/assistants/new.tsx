@@ -1,6 +1,7 @@
 import type {
   AgentConfigurationType,
   AppType,
+  DataSourceType,
   DataSourceViewType,
   PlanType,
   SubscriptionType,
@@ -27,6 +28,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
@@ -54,6 +56,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     | null;
   flow: BuilderFlow;
   baseUrl: string;
+  slackDataSource: DataSourceType | null;
   templateId: string | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -112,6 +115,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       })
     : [];
 
+  const [slackDataSource] = await DataSourceResource.listByConnectorProvider(
+    auth,
+    "slack"
+  );
+
   return {
     props: {
       actions,
@@ -123,6 +131,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       isAdmin: auth.isAdmin(),
       owner,
       plan,
+      slackDataSource: slackDataSource ? slackDataSource.toJSON() : null,
       subscription,
       templateId,
       vaults: vaults.map((v) => v.toJSON()),
@@ -141,6 +150,7 @@ export default function CreateAssistant({
   isAdmin,
   owner,
   plan,
+  slackDataSource,
   subscription,
   templateId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -203,6 +213,7 @@ export default function CreateAssistant({
         defaultIsEdited={false}
         baseUrl={baseUrl}
         defaultTemplate={assistantTemplate}
+        slackDataSource={slackDataSource}
       />
     </AssistantBuilderProvider>
   );

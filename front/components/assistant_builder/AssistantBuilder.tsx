@@ -23,14 +23,13 @@ import {
 } from "@dust-tt/types";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import React from "react";
 import { useSWRConfig } from "swr";
 
 import ActionsScreen, {
   hasActionError,
 } from "@app/components/assistant_builder/ActionsScreen";
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import AssistantBuilderRightPanel from "@app/components/assistant_builder/AssistantBuilderPreviewDrawer";
 import { BuilderLayout } from "@app/components/assistant_builder/BuilderLayout";
 import {
@@ -78,16 +77,12 @@ export default function AssistantBuilder({
   baseUrl,
   defaultTemplate,
   isAdmin,
+  slackDataSource,
 }: AssistantBuilderProps) {
-  const { dataSourceViews } = useContext(AssistantBuilderContext);
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const sendNotification = React.useContext(SendNotificationsContext);
 
-  // TODO(GROUPS_INFRA) We should find the slack data source view from the system vault!
-  const slackDataSourceView = dataSourceViews.find(
-    (dsv) => dsv.dataSource.connectorProvider === "slack"
-  );
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
 
@@ -158,7 +153,7 @@ export default function AssistantBuilder({
     slackChannelsLinkedWithAgent,
     setSelectedSlackChannels,
   } = useSlackChannel({
-    dataSourceViews,
+    slackDataSource,
     initialChannels: [],
     workspaceId: owner.sId,
     isPrivateAssistant: builderState.scope === "private",
@@ -326,10 +321,11 @@ export default function AssistantBuilder({
           type: "error",
         });
       } else {
-        await mutate(
-          `/api/w/${owner.sId}/data_sources/${slackDataSourceView?.dataSource.sId}/managed/slack/channels_linked_with_agent`
-        );
-
+        if (slackDataSource) {
+          await mutate(
+            `/api/w/${owner.sId}/data_sources/${slackDataSource.sId}/managed/slack/channels_linked_with_agent`
+          );
+        }
         // Redirect to the assistant list once saved.
         if (flow === "personal_assistants") {
           await router.push(
@@ -435,7 +431,7 @@ export default function AssistantBuilder({
                     owner={owner}
                     showSlackIntegration={showSlackIntegration}
                     slackChannelSelected={selectedSlackChannels || []}
-                    slackDataSourceView={slackDataSourceView || null}
+                    slackDataSource={slackDataSource}
                     setNewScope={(
                       scope: Exclude<AgentConfigurationScope, "global">
                     ) => {

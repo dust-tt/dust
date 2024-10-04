@@ -1,11 +1,10 @@
 import { ContentMessage, Modal, Page, SlackLogo } from "@dust-tt/sparkle";
 import type {
   BaseContentNode,
-  DataSourceViewType,
+  DataSourceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useCallback, useEffect, useState } from "react";
-import React from "react";
 
 import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
@@ -15,31 +14,30 @@ export type SlackChannel = { slackChannelId: string; slackChannelName: string };
 
 // The "write" permission filter is applied to retrieve all available channels on Slack,
 const getUseResourceHook =
-  (owner: WorkspaceType, slackDataSourceView: DataSourceViewType) =>
+  (owner: WorkspaceType, slackDataSource: DataSourceType) =>
   (parentId: string | null) =>
     useConnectorPermissions({
-      dataSource: slackDataSourceView.dataSource,
+      dataSource: slackDataSource,
       filterPermission: "write",
       owner,
       parentId,
       viewType: "documents",
     });
 
-interface SlacIntegrationProps {
+interface SlackIntegrationProps {
   existingSelection: SlackChannel[];
   onSelectionChange: (channels: SlackChannel[]) => void;
   owner: WorkspaceType;
-  slackDataSourceView: DataSourceViewType;
+  slackDataSource: DataSourceType;
 }
 
 export function SlackIntegration({
   existingSelection,
   onSelectionChange,
   owner,
-  slackDataSourceView,
-}: SlacIntegrationProps) {
+  slackDataSource,
+}: SlackIntegrationProps) {
   const [newSelection, setNewSelection] = useState<SlackChannel[]>([]);
-
   useEffect(() => {
     if (existingSelection.length > 0 && newSelection.length === 0) {
       setNewSelection(existingSelection);
@@ -64,8 +62,8 @@ export function SlackIntegration({
 
   const useResourcesHook = useCallback(
     (parentId: string | null) =>
-      getUseResourceHook(owner, slackDataSourceView)(parentId),
-    [owner, slackDataSourceView]
+      getUseResourceHook(owner, slackDataSource)(parentId),
+    [owner, slackDataSource]
   );
 
   const { resources } = useResourcesHook(null);
@@ -128,7 +126,7 @@ interface SlackAssistantDefaultManagerProps {
   onSave: (channels: SlackChannel[]) => void;
   owner: WorkspaceType;
   show: boolean;
-  slackDataSourceView: DataSourceViewType;
+  slackDataSource: DataSourceType;
 }
 
 export function SlackAssistantDefaultManager({
@@ -139,7 +137,7 @@ export function SlackAssistantDefaultManager({
   onSave,
   owner,
   show,
-  slackDataSourceView,
+  slackDataSource,
 }: SlackAssistantDefaultManagerProps) {
   const [selectedChannels, setSelectedChannels] =
     useState<SlackChannel[]>(existingSelection);
@@ -198,7 +196,7 @@ export function SlackAssistantDefaultManager({
                   existingSelection={existingSelection}
                   onSelectionChange={handleSelectionChange}
                   owner={owner}
-                  slackDataSourceView={slackDataSourceView}
+                  slackDataSource={slackDataSource}
                 />
               )}
             </div>

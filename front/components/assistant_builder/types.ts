@@ -2,6 +2,7 @@ import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
   AppType,
+  DataSourceType,
   DataSourceViewSelectionConfigurations,
   PlanType,
   ProcessSchemaPropertyType,
@@ -329,6 +330,7 @@ export type AssistantBuilderProps = {
   owner: WorkspaceType;
   plan: PlanType;
   subscription: SubscriptionType;
+  slackDataSource: DataSourceType | null;
 };
 
 export const BUILDER_SCREENS = {
