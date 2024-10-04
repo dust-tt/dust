@@ -9,7 +9,7 @@ import {
 
 type DataSourceViewSelectionModalProps = {
   isOpen: boolean;
-  onClose: (shouldRefresh: boolean) => void;
+  onClose: () => void;
 };
 
 export const ConnectorDataUpdatedModal = ({
@@ -51,7 +51,7 @@ export const ConnectorDataUpdatedModal = ({
             </div>
           </ContentMessage>
           <div className="flex w-full justify-end">
-            <Button label="Ok" onClick={() => onClose(true)} />
+            <Button label="Ok" onClick={() => onClose()} />
           </div>
         </Page.Vertical>
       </Page>
