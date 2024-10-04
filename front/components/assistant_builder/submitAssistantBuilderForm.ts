@@ -129,7 +129,6 @@ export async function submitAssistantBuilderForm({
                     dataSourceView.dataSource,
                     resource
                   ),
-                  internalId: resource.internalId,
                 }));
               }
             ),

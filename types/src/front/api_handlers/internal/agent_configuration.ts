@@ -88,7 +88,6 @@ const TablesQueryActionConfigurationSchema = t.type({
     t.type({
       dataSourceViewId: t.string,
       tableId: t.string,
-      internalId: t.string,
       workspaceId: t.string,
     })
   ),
