@@ -44,8 +44,8 @@ export { default as Spinner } from "./Spinner";
 export { Tab } from "./Tab";
 export { TextArea } from "./TextArea";
 export {
+  Tooltip,
   TooltipContent,
-  TooltipPortal,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,

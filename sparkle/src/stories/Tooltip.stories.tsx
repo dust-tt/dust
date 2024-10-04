@@ -4,11 +4,11 @@ import React from "react";
 import {
   Icon,
   RobotIcon,
+  Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipRoot,
-  TooltipTrigger,
-} from "../index_with_tw_base";
+  TooltipTrigger} from "../index_with_tw_base";
 
 const meta = {
   title: "Primitives/Tooltip",
@@ -17,18 +17,14 @@ const meta = {
 
 export default meta;
 
-export const Tooltip = () => (
-  <TooltipProvider>
-    <TooltipRoot>
-      <TooltipTrigger>Hover</TooltipTrigger>
-      <TooltipContent side="bottom">
-        <p>Add to library</p>
-      </TooltipContent>
-    </TooltipRoot>
-  </TooltipProvider>
+export const TooltipExample = () => (
+  <Tooltip
+    trigger={<div>Hover</div>}
+    label={<p>Add to library</p>}
+  />
 );
 
-export const TooltipWithChildren = () => (
+export const TooltipWithManual = () => (
   <TooltipProvider delayDuration={800} skipDelayDuration={500}>
     <TooltipRoot
       onOpenChange={(open: boolean) => {
