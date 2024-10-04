@@ -1,5 +1,6 @@
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import * as activities from "@connectors/connectors/notion/temporal/activities";
 import { NotionCastKnownErrorsInterceptor } from "@connectors/connectors/notion/temporal/cast_known_errors";
@@ -14,7 +15,7 @@ import logger from "@connectors/logger/logger";
 export async function runNotionWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
-    workflowsPath: require.resolve("./workflows"),
+    workflowsPath: require.resolve("./workflows/index"),
     activities,
     taskQueue: QUEUE_NAME,
     connection,
@@ -30,6 +31,15 @@ export async function runNotionWorker() {
         () => new NotionCastKnownErrorsInterceptor(),
       ],
     },
+    bundlerOptions: {
+      // Update the webpack config to use aliases from our tsconfig.json.
+      webpackConfigHook: (config) => {
+        const plugins = config.resolve?.plugins ?? [];
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
+        return config;
+      },
+    },
   });
 
   await worker.run();
@@ -38,7 +48,7 @@ export async function runNotionWorker() {
 export async function runNotionGarbageCollectWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
-    workflowsPath: require.resolve("./workflows"),
+    workflowsPath: require.resolve("./workflows/index"),
     activities,
     taskQueue: GARBAGE_COLLECT_QUEUE_NAME,
     connection,
@@ -53,6 +63,15 @@ export async function runNotionGarbageCollectWorker() {
         },
         () => new NotionCastKnownErrorsInterceptor(),
       ],
+    },
+    bundlerOptions: {
+      // Update the webpack config to use aliases from our tsconfig.json.
+      webpackConfigHook: (config) => {
+        const plugins = config.resolve?.plugins ?? [];
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
+        return config;
+      },
     },
   });
 

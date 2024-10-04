@@ -1,5 +1,5 @@
 import { getNotionWorkflowId } from "@dust-tt/types";
-import type { Client, WorkflowHandle } from "@temporalio/client";
+import type { Client } from "@temporalio/client";
 import { QueryTypes } from "sequelize";
 
 import type { CheckFunction } from "@app/lib/production_checks/types";
@@ -34,11 +34,11 @@ async function getDescriptionsAndHistories({
   client: Client;
   notionConnector: NotionConnector;
 }) {
-  const incrementalSyncHandle: WorkflowHandle = client.workflow.getHandle(
-    getNotionWorkflowId(notionConnector.id, "never")
+  const incrementalSyncHandle = client.workflow.getHandle(
+    getNotionWorkflowId(notionConnector.id, false)
   );
-  const garbageCollectorHandle: WorkflowHandle = client.workflow.getHandle(
-    getNotionWorkflowId(notionConnector.id, "always")
+  const garbageCollectorHandle = client.workflow.getHandle(
+    getNotionWorkflowId(notionConnector.id, true)
   );
 
   const descriptions = await Promise.all([

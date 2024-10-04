@@ -10,14 +10,13 @@ import { ModelId } from "../shared/model_id";
 export type PageObjectProperties = PageObjectResponse["properties"];
 export type PropertyKeys = keyof PageObjectProperties;
 export type PropertyTypes = PageObjectProperties[PropertyKeys]["type"];
-export type NotionGarbageCollectionMode = "always" | "never";
 
 export function getNotionWorkflowId(
   connectorId: ModelId,
-  gargbageCollectionMode: NotionGarbageCollectionMode
+  isGarbageCollectionRun: boolean
 ) {
   let wfName = `workflow-notion-${connectorId}`;
-  if (gargbageCollectionMode === "always") {
+  if (isGarbageCollectionRun) {
     wfName += "-garbage-collector";
   }
   return wfName;

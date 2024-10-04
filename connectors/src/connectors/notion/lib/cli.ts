@@ -17,7 +17,7 @@ import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import {
   upsertDatabaseWorkflow,
   upsertPageWorkflow,
-} from "@connectors/connectors/notion/temporal/workflows";
+} from "@connectors/connectors/notion/temporal/workflows/admins";
 import { getConnectorOrThrow } from "@connectors/lib/cli";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
