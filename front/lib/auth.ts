@@ -339,11 +339,6 @@ export class Authenticator {
     const getSubscriptionForWorkspace = (workspace: Workspace) =>
       subscriptionForWorkspace(renderLightWorkspaceType({ workspace }));
 
-    const getFeatureFlags = async (workspace: Workspace) =>
-      (await FeatureFlag.findAll({ where: { workspaceId: workspace.id } })).map(
-        (flag) => flag.name
-      );
-
     let keyGroups: GroupResource[] = [];
     let requestedGroups: GroupResource[] = [];
     let keyFlags: WhitelistableFeature[] = [];
@@ -447,7 +442,7 @@ export class Authenticator {
     );
 
     return new Authenticator({
-      flags: [],
+      flags: await getFeatureFlags(workspace),
       groups,
       role: "builder",
       subscription: null,
@@ -902,3 +897,8 @@ export async function prodAPICredentialsForOwner(
     workspaceId: owner.sId,
   };
 }
+
+const getFeatureFlags = async (workspace: Workspace) =>
+  (await FeatureFlag.findAll({ where: { workspaceId: workspace.id } })).map(
+    (flag) => flag.name
+  );
