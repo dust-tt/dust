@@ -23,8 +23,7 @@ import {
 } from "@dust-tt/types";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import React from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import ActionsScreen, {
