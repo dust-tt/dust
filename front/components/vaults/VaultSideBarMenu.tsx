@@ -98,8 +98,12 @@ export default function VaultSideBarMenu({
             if (kind === "public" && !vaults.length) {
               return null;
             }
-            if (kind === "regular" && !isPrivateVaultsEnabled) {
-              return null;
+            if (kind === "regular") {
+              if (!isPrivateVaultsEnabled) {
+                return null;
+              } else if (!vaults.length && !isAdmin) {
+                return null;
+              }
             }
 
             const sectionLabel = getSectionLabel(kind);
