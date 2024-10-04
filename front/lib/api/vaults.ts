@@ -6,7 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import type { VaultResource } from "@app/lib/resources/vault_resource";
+import { VaultResource } from "@app/lib/resources/vault_resource";
 
 export const deleteVault = async (
   auth: Authenticator,
@@ -83,3 +83,9 @@ export const deleteVault = async (
     }
   });
 };
+
+export async function getGlobalVault(
+  auth: Authenticator
+): Promise<VaultResource> {
+  return VaultResource.fetchWorkspaceGlobalVault(auth);
+}

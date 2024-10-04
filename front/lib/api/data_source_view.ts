@@ -11,7 +11,9 @@ import assert from "assert";
 import config from "@app/lib/api/config";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import type { OffsetPaginationParams } from "@app/lib/api/pagination";
-import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { Authenticator } from "@app/lib/auth";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 
 export function filterAndCropContentNodesByView(
@@ -272,4 +274,23 @@ export async function getContentNodesForDataSourceView(
     nodes: contentNodesInView,
     total: contentNodesResult.total,
   });
+}
+
+export async function getDataSourceViewFromVaultAndDataSourceId(
+  auth: Authenticator,
+  vault: VaultResource,
+  dataSourceId: string
+) {
+  const vaultDataSourceViews = await DataSourceViewResource.listByVault(
+    auth,
+    vault
+  );
+
+  const dataSourceView = vaultDataSourceViews.filter(
+    (dsv) => dsv.dataSource.sId === dataSourceId
+  );
+  if (dataSourceView.length > 1) {
+    return new Err("Error retrieving data source view");
+  }
+  return new Ok(dataSourceView.length == 1 ? dataSourceView[0] : null);
 }
