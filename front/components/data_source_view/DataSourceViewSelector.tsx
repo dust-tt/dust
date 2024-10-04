@@ -449,7 +449,7 @@ export function DataSourceViewSelector({
   );
 
   return (
-    <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.name}`}>
+    <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.sId}`}>
       <Tree.Item
         key={dataSourceView.dataSource.id}
         label={getDisplayNameForDataSource(dataSourceView.dataSource)}

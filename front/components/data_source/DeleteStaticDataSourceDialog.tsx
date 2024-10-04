@@ -2,13 +2,13 @@ import { Dialog } from "@dust-tt/sparkle";
 import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
 import { useMemo, useState } from "react";
 
-import { getDataSourceName, isManaged } from "@app/lib/data_sources";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useDataSourceUsage } from "@app/lib/swr/data_sources";
 
 interface DeleteStaticDataSourceDialogProps {
   owner: LightWorkspaceType;
   dataSource: DataSourceType;
-  handleDelete: () => void;
+  handleDelete: () => Promise<void>;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -32,9 +32,7 @@ export function DeleteStaticDataSourceDialog({
     setIsLoading(false);
     onClose();
   };
-  const name = !isManaged(dataSource)
-    ? dataSource.name
-    : getDataSourceName(dataSource);
+  const name = getDisplayNameForDataSource(dataSource);
 
   const message = useMemo(() => {
     if (isUsageLoading) {

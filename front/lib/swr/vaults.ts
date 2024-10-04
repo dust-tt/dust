@@ -8,7 +8,7 @@ import { useContext, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { getDataSourceName } from "@app/lib/data_sources";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import {
   fetcher,
   getErrorFromResponse,
@@ -355,7 +355,7 @@ export function useDeleteFolderOrWebsite({
       sendNotification({
         type: "success",
         title: `Successfully deleted ${category}`,
-        description: `${getDataSourceName(dataSourceView.dataSource)} was successfully deleted.`,
+        description: `${getDisplayNameForDataSource(dataSourceView.dataSource)} was successfully deleted.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);

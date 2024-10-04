@@ -65,12 +65,12 @@ export function EditVaultManagedDataSourcesViews({
   const updateVaultDataSourceViews = async (
     selectionConfigurations: DataSourceViewSelectionConfigurations
   ) => {
-    // Check if a data source view in the vault is no longer in the selection configurations by comparing the data source.
-    // If so, delete it.
+    // Check if a data source view in the vault is no longer in the selection configurations by
+    // comparing the data source.  If so, delete it.
     const deletedViews = vaultDataSourceViews.filter(
       (dsv) =>
         !Object.values(selectionConfigurations).find(
-          (sc) => sc.dataSourceView.dataSource.name === dsv.dataSource.name
+          (sc) => sc.dataSourceView.dataSource.sId === dsv.dataSource.sId
         )
     );
 

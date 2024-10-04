@@ -108,13 +108,5 @@ export function canBeExpanded(
 }
 
 export function getDataSourceNameFromView(dsv: DataSourceViewType): string {
-  return getDataSourceName(dsv.dataSource);
-}
-
-export function getDataSourceName(ds: DataSourceType): string {
-  if (isManaged(ds)) {
-    return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
-  }
-
-  return ds.name;
+  return getDisplayNameForDataSource(dsv.dataSource);
 }

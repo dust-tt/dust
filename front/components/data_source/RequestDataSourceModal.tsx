@@ -11,7 +11,7 @@ import { useContext, useEffect, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { getDataSourceName, isManaged } from "@app/lib/data_sources";
+import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { sendRequestDataSourceEmail } from "@app/lib/email";
 import logger from "@app/logger/logger";
 
@@ -81,7 +81,7 @@ export function RequestDataSourceModal({
                     {selectedDataSource && isManaged(selectedDataSource) ? (
                       <Button
                         variant="tertiary"
-                        label={getDataSourceName(selectedDataSource)}
+                        label={getDisplayNameForDataSource(selectedDataSource)}
                         icon={getConnectorProviderLogoWithFallback(
                           selectedDataSource.connectorProvider
                         )}
@@ -101,7 +101,7 @@ export function RequestDataSourceModal({
                         dataSource.connectorProvider && (
                           <DropdownMenu.Item
                             key={dataSource.sId}
-                            label={getDataSourceName(dataSource)}
+                            label={getDisplayNameForDataSource(dataSource)}
                             onClick={() => setSelectedDataSource(dataSource)}
                             icon={getConnectorProviderLogoWithFallback(
                               dataSource.connectorProvider
@@ -120,8 +120,8 @@ export function RequestDataSourceModal({
               <p className="s-mb-2 s-text-sm s-text-element-700">
                 {_.capitalize(selectedDataSource.editedByUser?.fullName ?? "")}{" "}
                 is the administrator for the{" "}
-                {getDataSourceName(selectedDataSource)} connection within Dust.
-                Send an email to{" "}
+                {getDisplayNameForDataSource(selectedDataSource)} connection
+                within Dust. Send an email to{" "}
                 {_.capitalize(selectedDataSource.editedByUser?.fullName ?? "")},
                 explaining your request.
               </p>

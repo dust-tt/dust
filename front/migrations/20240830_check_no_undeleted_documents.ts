@@ -12,6 +12,7 @@ type DataSource = {
   id: number;
   connectorId: string;
   dustAPIProjectId: number;
+  dustAPIDataSourceId: string;
   name: string;
 };
 
@@ -28,7 +29,7 @@ async function checkCoreDeleted(
     {
       replacements: {
         dustAPIProjectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.name,
+        dataSourceId: dataSource.dustAPIDataSourceId,
       },
       type: QueryTypes.SELECT,
     }
@@ -75,7 +76,7 @@ async function checkGoogleDriveDeleted(logger: Logger) {
   const frontReplica = getFrontReplicaDbConnection();
 
   const gDriveDataSources: DataSource[] = await frontReplica.query(
-    `SELECT id, "connectorId", "dustAPIProjectId", "name" FROM data_sources WHERE "connectorProvider" = 'google_drive'`,
+    `SELECT id, "connectorId", "dustAPIProjectId", "dustAPIDataSourceId", "name" FROM data_sources WHERE "connectorProvider" = 'google_drive'`,
     { type: QueryTypes.SELECT }
   );
 
@@ -108,9 +109,10 @@ async function checkNotionDeleted(logger: Logger) {
     id: number;
     connectorId: string;
     dustAPIProjectId: number;
+    dustAPIDataSourceId: string;
     name: string;
   }[] = await frontReplica.query(
-    `SELECT id, "connectorId", "dustAPIProjectId", "name" FROM data_sources WHERE "connectorProvider" = 'notion'`,
+    `SELECT id, "connectorId", "dustAPIProjectId", "dustAPIDataSourceId", "name" FROM data_sources WHERE "connectorProvider" = 'notion'`,
     { type: QueryTypes.SELECT }
   );
 

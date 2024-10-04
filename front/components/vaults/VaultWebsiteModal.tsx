@@ -356,7 +356,6 @@ export default function VaultWebsiteModal({
         description: err.error.message,
       });
     }
-    return true;
   };
 
   return (
