@@ -30,6 +30,7 @@ import { useSWRConfig } from "swr";
 
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
+import { ConnectorDataUpdatedModal } from "@app/components/vaults/ConnectorDataUpdatedModal";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
@@ -567,7 +568,7 @@ export function ConnectorPermissionsModal({
   }, [initialTreeSelectionModel, isOpen]);
 
   const [modalToShow, setModalToShow] = useState<
-    "edition" | "selection" | "deletion" | null
+    "data_updated" | "edition" | "selection" | "deletion" | null
   >(null);
   const { activeSubscription } = useWorkspaceActiveSubscription({
     workspaceId: owner.sId,
@@ -621,7 +622,8 @@ export function ConnectorPermissionsModal({
             )
         );
 
-        closeModal(true);
+        // Display the data updated modal.
+        setModalToShow("data_updated");
       } else {
         closeModal(false);
       }
@@ -771,6 +773,12 @@ export function ConnectorPermissionsModal({
         onClose={() => closeModal(false)}
         dataSource={dataSource}
         owner={owner}
+      />
+      <ConnectorDataUpdatedModal
+        isOpen={modalToShow === "data_updated"}
+        onClose={() => {
+          closeModal(false);
+        }}
       />
     </>
   );
