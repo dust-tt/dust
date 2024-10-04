@@ -30,9 +30,9 @@ const snowflakeTableCodec = t.type({
 type SnowflakeTable = t.TypeOf<typeof snowflakeTableCodec>;
 
 const snowflakeGrantCodec = t.type({
-  privilege: t.string,
-  grant_on: t.string,
-  name: t.string,
+  privilege: t.union([t.string, t.undefined]),
+  grant_on: t.union([t.string, t.undefined]),
+  name: t.union([t.string, t.undefined]),
 });
 type SnowflakeGrant = t.TypeOf<typeof snowflakeGrantCodec>;
 
@@ -267,6 +267,10 @@ export const isConnectionReadonly = async ({
 
   // We go ove each grant to greenlight them.
   for (const g of grants) {
+    if (!g.grant_on || !g.privilege) {
+      continue;
+    }
+
     if (g.grant_on === "TABLE") {
       // We only allow SELECT grants on tables.
       if (g.privilege !== "SELECT") {
