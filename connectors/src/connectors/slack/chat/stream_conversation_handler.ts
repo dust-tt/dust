@@ -20,6 +20,15 @@ import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
+const actionRunningLabels = {
+  dust_app_run_action: "Running App",
+  process_action: "Extracting data",
+  retrieval_action: "Searching data",
+  tables_query_action: "Querying tables",
+  websearch_action: "Searching the web",
+  browse_action: "Browsing page",
+};
+
 interface StreamConversationToSlackParams {
   assistantName: string | undefined;
   connector: ConnectorResource;
@@ -132,6 +141,24 @@ export async function streamConversationToSlack(
   const actions: AgentActionType[] = [];
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
+      case "retrieval_params":
+      case "dust_app_run_params":
+      case "dust_app_run_block":
+      case "tables_query_params":
+      case "tables_query_output":
+      case "process_params":
+      case "websearch_params":
+      case "browse_params":
+        await postSlackMessageUpdate(
+          {
+            isThinking: true,
+            action: actionRunningLabels[event.action.type],
+          },
+          { adhereToRateLimit: false }
+        );
+
+        break;
+
       case "user_message_error": {
         return new Err(
           new Error(

@@ -23,13 +23,13 @@ function makeConversationLinkContextBlock(conversationUrl: string) {
   };
 }
 
-export function makeThinkingBlock() {
+export function makeThinkingBlock(action?: string) {
   return {
     type: "context",
     elements: [
       {
-        type: "plain_text",
-        text: "Thinking...",
+        type: "mrkdwn",
+        text: action ? `_Thinking... (${action})_` : "_Thinking..._",
       },
     ],
   };
@@ -93,18 +93,36 @@ function makeContextSectionBlocks(
 }
 
 export type SlackMessageUpdate =
-  | { isThinking: true; text?: never; footnotes?: never }
-  | { isThinking?: never; text: string; footnotes: SlackMessageFootnotes };
+  | { isThinking: true; text?: never; action?: string; footnotes?: never }
+  | {
+      isThinking?: never;
+      text: string;
+      action?: never;
+      footnotes: SlackMessageFootnotes;
+    };
 
 export function makeMessageUpdateBlocksAndText(
   conversationUrl: string | null,
   messageUpdate: SlackMessageUpdate
 ) {
-  const { isThinking, text, footnotes } = messageUpdate;
+  const { isThinking, text, footnotes, action } = messageUpdate;
+
+  const header = {
+    type: "context",
+    elements: [
+      {
+        type: "mrkdwn",
+        text: conversationUrl
+          ? `<${conversationUrl}|Full conversation on Dust> | <https://dust.tt|More about Dust>`
+          : `<https://dust.tt|More about Dust>`,
+      },
+    ],
+  };
 
   return {
     blocks: [
-      isThinking ? makeThinkingBlock() : makeMarkdownBlock(text),
+      header,
+      isThinking ? makeThinkingBlock(action) : makeMarkdownBlock(text),
       ...makeContextSectionBlocks(conversationUrl, footnotes),
     ],
     // TODO(2024-06-17 flav) We should not return markdown here.
