@@ -16,7 +16,7 @@ import {
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
-  DataSourceViewType,
+  DataSourceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { isBuilder } from "@dust-tt/types";
@@ -109,7 +109,7 @@ interface SharingButtonProps {
   setNewScope: (scope: NonGlobalScope) => void;
   showSlackIntegration: boolean;
   slackChannelSelected: SlackChannel[];
-  slackDataSourceView: DataSourceViewType | null;
+  slackDataSource: DataSourceType | undefined;
 }
 
 export function SharingButton({
@@ -123,7 +123,7 @@ export function SharingButton({
   setNewScope,
   showSlackIntegration,
   slackChannelSelected,
-  slackDataSourceView,
+  slackDataSource,
 }: SharingButtonProps) {
   const { agentUsage, isAgentUsageLoading, isAgentUsageError } = useAgentUsage({
     workspaceId: owner.sId,
@@ -151,10 +151,9 @@ export function SharingButton({
 
   return (
     <>
-      {slackDataSourceView && (
+      {slackDataSource && (
         <SlackAssistantDefaultManager
           existingSelection={slackChannelSelected}
-          slackDataSourceView={slackDataSourceView}
           owner={owner}
           onSave={(slackChannels: SlackChannel[]) => {
             setNewLinkedSlackChannels(slackChannels);
@@ -162,6 +161,7 @@ export function SharingButton({
           assistantHandle="@Dust"
           isAdmin={isAdmin}
           show={slackDrawerOpened}
+          slackDataSource={slackDataSource}
           onClose={() => setSlackDrawerOpened(false)}
         />
       )}
@@ -236,7 +236,10 @@ export function SharingButton({
                         <SliderToggle
                           selected={slackChannelSelected.length > 0}
                           // If not admins, but there are channels selected, prevent from removing.
-                          disabled={slackChannelSelected.length > 0 && !isAdmin}
+                          disabled={
+                            !slackDataSource ||
+                            (slackChannelSelected.length > 0 && !isAdmin)
+                          }
                           onClick={() => {
                             if (slackChannelSelected.length > 0) {
                               setNewLinkedSlackChannels([]);

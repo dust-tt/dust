@@ -1,4 +1,4 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -15,6 +15,7 @@ export type GetSlackChannelsLinkedWithAgentResponseBody = {
     slackChannelName: string;
     agentConfigurationId: string;
   }[];
+  slackDataSource?: DataSourceType;
 };
 
 async function handler(
@@ -35,25 +36,15 @@ async function handler(
     });
   }
 
-  const { dsId } = req.query;
-  if (typeof dsId !== "string") {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid path parameters.",
-      },
-    });
-  }
+  const [dataSource] = await DataSourceResource.listByConnectorProvider(
+    auth,
+    "slack"
+  );
 
-  const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
+    return res.status(200).json({
+      slackChannels: [],
+      slackDataSource: undefined,
     });
   }
 
@@ -102,9 +93,10 @@ async function handler(
         });
       }
 
-      res
-        .status(200)
-        .json({ slackChannels: linkedSlackChannelsRes.value.slackChannels });
+      res.status(200).json({
+        slackChannels: linkedSlackChannelsRes.value.slackChannels,
+        slackDataSource: dataSource.toJSON(),
+      });
 
       break;
 
