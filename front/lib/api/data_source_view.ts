@@ -211,7 +211,10 @@ async function getContentNodesForStaticDataSourceView(
       tablesRes.value.tables.map((table) => ({
         dustDocumentId: table.table_id,
         expandable: false,
-        internalId: getContentNodeInternalIdFromTableId(dataSourceView, table),
+        internalId: getContentNodeInternalIdFromTableId(
+          dataSourceView,
+          table.table_id
+        ),
         lastUpdatedAt: table.timestamp,
         parentInternalId: null,
         parentInternalIds: table.parents,
