@@ -1,7 +1,6 @@
 import type {
   AgentConfigurationType,
   AppType,
-  DataSourceType,
   DataSourceViewType,
   PlanType,
   SubscriptionType,
@@ -25,7 +24,6 @@ import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   actions: AssistantBuilderInitialState["actions"];

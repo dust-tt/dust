@@ -109,7 +109,7 @@ interface SharingButtonProps {
   setNewScope: (scope: NonGlobalScope) => void;
   showSlackIntegration: boolean;
   slackChannelSelected: SlackChannel[];
-  slackDataSource: DataSourceType | null;
+  slackDataSource: DataSourceType | undefined;
 }
 
 export function SharingButton({

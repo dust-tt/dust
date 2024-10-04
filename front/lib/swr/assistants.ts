@@ -1,7 +1,6 @@
 import type {
   AgentConfigurationType,
   AgentsGetViewType,
-  DataSourceType,
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@dust-tt/types";

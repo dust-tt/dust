@@ -2,7 +2,6 @@ import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
   AppType,
-  DataSourceType,
   DataSourceViewSelectionConfigurations,
   PlanType,
   ProcessSchemaPropertyType,

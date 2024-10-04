@@ -1,7 +1,6 @@
 import type {
   AgentConfigurationType,
   AppType,
-  DataSourceType,
   DataSourceViewType,
   PlanType,
   SubscriptionType,
@@ -28,7 +27,6 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
