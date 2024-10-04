@@ -43,6 +43,10 @@ async function main() {
     i,
     { data_source_id, project: project_id, is_notion },
   ] of file_core_project_id_data_source_ids.entries()) {
+    // 20241004 -- running migration again for notion only, skip all others
+    if (!is_notion) {
+      continue;
+    }
     const allTableIds = tableIdsByProjectId[project_id.toString()] || [];
     if (allTableIds.length === 0) {
       console.log(
