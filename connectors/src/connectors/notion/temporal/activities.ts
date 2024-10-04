@@ -33,10 +33,7 @@ import {
   updateAllParentsFields,
 } from "@connectors/connectors/notion/lib/parents";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
-import {
-  DATABASE_TO_CSV_MAX_SIZE,
-  GARBAGE_COLLECT_MAX_DURATION_MS,
-} from "@connectors/connectors/notion/temporal/config";
+import { DATABASE_TO_CSV_MAX_SIZE } from "@connectors/connectors/notion/temporal/config";
 import {
   dataSourceConfigFromConnector,
   dataSourceInfoFromConnector,
@@ -574,7 +571,7 @@ export async function getNotionAccessToken(
   return token.access_token;
 }
 
-export async function shouldGarbageCollect({
+export async function isFullSyncPendingOrOngoing({
   connectorId,
 }: {
   connectorId: ModelId;
@@ -596,7 +593,7 @@ export async function shouldGarbageCollect({
   // If we have never finished a full sync, we should not garbage collect
   const firstSuccessfulSyncTime = connector.firstSuccessfulSyncTime;
   if (!firstSuccessfulSyncTime) {
-    return false;
+    return true;
   }
 
   // If we are currently doing a full resync, we should not garbage collect
@@ -605,10 +602,10 @@ export async function shouldGarbageCollect({
     connector.lastSyncFinishTime &&
     notionConnectorState.fullResyncStartTime > connector.lastSyncFinishTime;
   if (isDoingAFullResync) {
-    return false;
+    return true;
   }
 
-  return true;
+  return false;
 }
 
 // marks all the pageIds and databaseIds as seen in the database (so we know we don't need
@@ -763,17 +760,14 @@ export async function deleteDatabase({
 //   - query notion API and check if we can access the resource
 //   - if the resource is not accessible, delete it from the database (and from the data source if it's a page)
 // - update the lastGarbageCollectionFinishTime
-// - will give up after `GARBAGE_COLLECT_MAX_DURATION_MS` milliseconds (including retries if any)
 export async function garbageCollectBatch({
   connectorId,
   batchIndex,
   runTimestamp,
-  startTs,
 }: {
   connectorId: ModelId;
   batchIndex: number;
   runTimestamp: number;
-  startTs: number;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -915,19 +909,6 @@ export async function garbageCollectBatch({
         });
         deletedDatabasesCount++;
       }
-    }
-
-    if (new Date().getTime() - startTs > GARBAGE_COLLECT_MAX_DURATION_MS) {
-      localLogger.warn(
-        {
-          batchCount: batch.length,
-          deletedPagesCount,
-          deletedDatabasesCount,
-          stillAccessiblePagesCount,
-          stillAccessibleDatabasesCount,
-        },
-        "Garbage collection is taking too long, giving up."
-      );
     }
   }
 }

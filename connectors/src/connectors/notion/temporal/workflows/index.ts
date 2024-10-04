@@ -16,7 +16,11 @@ import {
   PROCESS_ALL_DISCOVERED_RESOURCES,
   SYNC_PERIOD_DURATION_MS,
 } from "@connectors/connectors/notion/temporal/config";
-import { performUpserts } from "@connectors/connectors/notion/temporal/upserts";
+import { performUpserts } from "@connectors/connectors/notion/temporal/workflows/upserts";
+
+// re-export all the workflows to make temporal happy
+export * from "./admins";
+export * from "./children";
 
 const { garbageCollectBatch } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minute",
@@ -38,7 +42,7 @@ const {
   startToCloseTimeout: "10 minute",
 });
 
-const { saveSuccessSync, saveStartSync, shouldGarbageCollect } =
+const { saveSuccessSync, saveStartSync, isFullSyncPendingOrOngoing } =
   proxyActivities<typeof activities>({
     startToCloseTimeout: "1 minute",
   });
@@ -189,9 +193,9 @@ export async function notionGarbageCollectionWorkflow({
 }) {
   const topLevelWorkflowId = workflowInfo().workflowId;
 
-  const canGarbageCollect = await shouldGarbageCollect({ connectorId });
+  const res = await isFullSyncPendingOrOngoing({ connectorId });
 
-  if (!canGarbageCollect) {
+  if (res) {
     // If we cannot garbage collect (eg, we have never completed a full sync, or there is a full resync in progress)
     // We wait until we can garbage collect (and check every 5 minute).
 
@@ -312,7 +316,6 @@ export async function notionGarbageCollectionWorkflow({
           connectorId,
           runTimestamp,
           batchIndex,
-          startTs: new Date().getTime(),
         })
       )
     );

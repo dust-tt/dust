@@ -10,9 +10,9 @@ import PQueue from "p-queue";
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
 import {
   MAX_CONCURRENT_CHILD_WORKFLOWS,
-  MAX_PENDING_UPSERT_ACTIVITIES,
+  MAX_PENDING_UPSERT_ACTIVITIES_PER_CHILD_WORKFLOW,
 } from "@connectors/connectors/notion/temporal/config";
-import { upsertDatabase } from "@connectors/connectors/notion/temporal/upserts";
+import { upsertDatabase } from "@connectors/connectors/notion/temporal/workflows/upserts";
 
 const {
   cachePage,
@@ -162,7 +162,7 @@ export async function syncResultPageChildWorkflow({
   topLevelWorkflowId: string;
 }): Promise<void> {
   const upsertQueue = new PQueue({
-    concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
+    concurrency: MAX_PENDING_UPSERT_ACTIVITIES_PER_CHILD_WORKFLOW,
   });
 
   const promises: Promise<unknown>[] = [];
@@ -213,7 +213,7 @@ export async function syncResultPageDatabaseChildWorkflow({
   forceResync: boolean;
 }): Promise<void> {
   const upsertQueue = new PQueue({
-    concurrency: MAX_PENDING_UPSERT_ACTIVITIES,
+    concurrency: MAX_PENDING_UPSERT_ACTIVITIES_PER_CHILD_WORKFLOW,
   });
   const workflowQueue = new PQueue({
     concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,

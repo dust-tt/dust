@@ -8,12 +8,12 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
-import { upsertPageChildWorkflow } from "@connectors/connectors/notion/temporal/child_workflows";
 import { MAX_CONCURRENT_CHILD_WORKFLOWS } from "@connectors/connectors/notion/temporal/config";
+import { upsertPageChildWorkflow } from "@connectors/connectors/notion/temporal/workflows/children";
 import {
   performUpserts,
   upsertDatabase,
-} from "@connectors/connectors/notion/temporal/upserts";
+} from "@connectors/connectors/notion/temporal/workflows/upserts";
 
 const {
   clearWorkflowCache,

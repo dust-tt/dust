@@ -8,11 +8,11 @@ import {
 import type PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
+import { MAX_PAGE_IDS_PER_CHILD_WORKFLOW } from "@connectors/connectors/notion/temporal/config";
 import {
   syncResultPageChildWorkflow,
   syncResultPageDatabaseChildWorkflow,
-} from "@connectors/connectors/notion/temporal/child_workflows";
-import { MAX_PAGE_IDS_PER_CHILD_WORKFLOW } from "@connectors/connectors/notion/temporal/config";
+} from "@connectors/connectors/notion/temporal/workflows/children";
 
 const {
   garbageCollectorMarkAsSeenAndReturnNewEntities,
