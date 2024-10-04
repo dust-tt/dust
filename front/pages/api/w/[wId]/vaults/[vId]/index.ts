@@ -215,7 +215,16 @@ async function handler(
       }
 
       try {
-        await deleteVault(auth, vault);
+        const deleteRes = await deleteVault(auth, vault);
+        if (deleteRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: deleteRes.error.message,
+            },
+          });
+        }
       } catch (e: any) {
         return apiError(req, res, {
           status_code: 500,
