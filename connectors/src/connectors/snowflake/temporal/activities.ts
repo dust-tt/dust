@@ -13,7 +13,11 @@ import {
   RemoteSchemaModel,
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
-import { syncFailed, syncSucceeded } from "@connectors/lib/sync_status";
+import {
+  syncFailed,
+  syncStarted,
+  syncSucceeded,
+} from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 
 export async function syncSnowflakeConnection(connectorId: ModelId) {
@@ -24,6 +28,8 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
   if (getConnectorAndCredentialsRes.isErr()) {
     throw getConnectorAndCredentialsRes.error;
   }
+
+  await syncStarted(connectorId);
 
   const { credentials, connector } = getConnectorAndCredentialsRes.value;
 
