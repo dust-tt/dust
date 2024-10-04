@@ -42,7 +42,6 @@ import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { updateAgentScope } from "@app/lib/client/dust_api";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -310,15 +309,6 @@ export function AssistantDetails({
                       (dsv) => dsv.sId == t.dataSourceViewId
                     );
 
-                    const parentsIn = dataSourceView
-                      ? [
-                          getContentNodeInternalIdFromTableId(
-                            dataSourceView,
-                            t.tableId
-                          ),
-                        ]
-                      : [];
-
                     return {
                       workspaceId: t.workspaceId,
                       dataSourceViewId: t.dataSourceViewId,
@@ -326,7 +316,7 @@ export function AssistantDetails({
                         parents:
                           dataSourceView && isFolder(dataSourceView.dataSource)
                             ? null
-                            : { in: parentsIn, not: [] },
+                            : { in: [t.internalId], not: [] },
                       },
                     };
                   })}
@@ -438,7 +428,7 @@ function DataSourceViewsSection({
 
           return (
             <Tree.Item
-              key={dsConfig.dataSourceViewId}
+              key={dsConfig.dataSourceViewId + JSON.stringify(dsConfig.filter)}
               type={
                 canBeExpanded(viewType, dataSourceView?.dataSource)
                   ? "node"

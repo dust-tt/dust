@@ -15,6 +15,7 @@ export type TableDataSourceConfiguration = {
   workspaceId: string;
   dataSourceViewId: string;
   tableId: string;
+  internalId: string;
 };
 
 export interface TablesQueryActionType extends BaseAction {

@@ -9,6 +9,7 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentTablesQueryConfiguration,
@@ -16,6 +17,7 @@ import {
 } from "@app/lib/models/assistant/actions/tables_query";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export async function fetchTableQueryActionConfigurations({
@@ -55,6 +57,10 @@ export async function fetchTableQueryActionConfigurations({
               model: Workspace,
               as: "workspace",
             },
+            {
+              model: DataSourceModel,
+              as: "dataSourceForView",
+            },
           ],
         },
       ],
@@ -82,15 +88,18 @@ export async function fetchTableQueryActionConfigurations({
 
       const tables: TableDataSourceConfiguration[] =
         tablesQueryConfigTables.map((table) => {
-          const { dataSourceView } = table;
-
+          const { dataSourceView, tableId } = table;
           return {
             dataSourceViewId: DataSourceViewResource.modelIdToSId({
               id: dataSourceView.id,
               workspaceId: dataSourceView.workspaceId,
             }),
             workspaceId: dataSourceView.workspace.sId,
-            tableId: table.tableId,
+            tableId: tableId,
+            internalId: getContentNodeInternalIdFromTableId(
+              dataSourceView.dataSourceForView.connectorProvider,
+              tableId
+            ),
           };
         });
 

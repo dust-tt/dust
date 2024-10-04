@@ -1,4 +1,4 @@
-import type { DataSourceViewType } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/types";
 import {
   assertNever,
   getGoogleSheetContentNodeInternalIdFromTableId,
@@ -6,15 +6,11 @@ import {
   getNotionDatabaseContentNodeInternalIdFromTableId,
 } from "@dust-tt/types";
 
-import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-
 export function getContentNodeInternalIdFromTableId(
-  dataSourceView: DataSourceViewResource | DataSourceViewType,
+  connectorProvider: ConnectorProvider | null,
   tableId: string
 ): string {
-  const { dataSource } = dataSourceView;
-
-  switch (dataSource.connectorProvider) {
+  switch (connectorProvider) {
     case "google_drive":
       return getGoogleSheetContentNodeInternalIdFromTableId(tableId);
 
@@ -34,11 +30,9 @@ export function getContentNodeInternalIdFromTableId(
     case "github":
     case "slack":
     case "webcrawler":
-      throw new Error(
-        `Provider ${dataSource.connectorProvider} is not supported`
-      );
+      throw new Error(`Provider ${connectorProvider} is not supported`);
 
     default:
-      assertNever(dataSource.connectorProvider);
+      assertNever(connectorProvider);
   }
 }

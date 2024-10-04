@@ -212,7 +212,7 @@ async function getContentNodesForStaticDataSourceView(
         dustDocumentId: table.table_id,
         expandable: false,
         internalId: getContentNodeInternalIdFromTableId(
-          dataSourceView,
+          dataSourceView.dataSource.connectorProvider,
           table.table_id
         ),
         lastUpdatedAt: table.timestamp,
