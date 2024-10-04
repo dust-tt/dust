@@ -5,12 +5,7 @@ import { CardButton } from "@sparkle/components/CardButton";
 import { Icon } from "@sparkle/components/Icon";
 import { IconButton } from "@sparkle/components/IconButton";
 import Spinner from "@sparkle/components/Spinner";
-import {
-  TooltipContent,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from "@sparkle/components/Tooltip";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { XCircleIcon } from "@sparkle/icons";
 import { DocumentTextStrokeIcon, ImageStrokeIcon } from "@sparkle/icons/stroke";
 import { classNames } from "@sparkle/lib/utils";
@@ -177,16 +172,5 @@ export function Citation({
       <div className={isLoading ? "s-opacity-50" : ""}>{cardContent}</div>
     </CardButton>
   );
-  return href ? (
-    <TooltipProvider>
-      <TooltipRoot>
-        <TooltipTrigger>{cardButton}</TooltipTrigger>
-        <TooltipContent>
-          <p>{title}</p>
-        </TooltipContent>
-      </TooltipRoot>
-    </TooltipProvider>
-  ) : (
-    cardButton
-  );
+  return href ? <Tooltip trigger={cardButton} label={title} /> : cardButton;
 }

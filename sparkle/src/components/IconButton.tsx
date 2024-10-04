@@ -4,12 +4,7 @@ import React, { ComponentType, MouseEventHandler } from "react";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
-import {
-  TooltipContent,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from "./Tooltip";
+import { Tooltip } from "./Tooltip";
 
 type IconButtonProps = {
   variant?: "primary" | "warning" | "secondary" | "tertiary" | "white";
@@ -123,14 +118,11 @@ export function IconButton({
   );
 
   return tooltip ? (
-    <TooltipProvider>
-      <TooltipRoot>
-        <TooltipTrigger>{IconButtonContent}</TooltipTrigger>
-        <TooltipContent side={tooltipPosition}>
-          <p>{tooltip}</p>
-        </TooltipContent>
-      </TooltipRoot>
-    </TooltipProvider>
+    <Tooltip
+      trigger={IconButtonContent}
+      label={tooltip}
+      side={tooltipPosition}
+    />
   ) : (
     IconButtonContent
   );

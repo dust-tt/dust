@@ -7,12 +7,7 @@ import React, {
   ReactNode,
 } from "react";
 
-import {
-  TooltipContent,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from "@sparkle/components/Tooltip";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { ChevronDownIcon, ChevronUpDownIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
@@ -252,14 +247,7 @@ export function Button({
   return labelVisible || disabledTooltip ? (
     buttonBase
   ) : (
-    <TooltipProvider>
-      <TooltipRoot>
-        <TooltipTrigger>{buttonBase}</TooltipTrigger>
-        <TooltipContent side={tooltipPosition}>
-          <p>{label}</p>
-        </TooltipContent>
-      </TooltipRoot>
-    </TooltipProvider>
+    <Tooltip trigger={buttonBase} label={label} side={tooltipPosition} />
   );
 }
 

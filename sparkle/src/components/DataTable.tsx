@@ -21,12 +21,7 @@ import {
 } from "@sparkle/components/DropdownMenu";
 import { IconButton } from "@sparkle/components/IconButton";
 import { Pagination } from "@sparkle/components/Pagination";
-import {
-  TooltipContent,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from "@sparkle/components/Tooltip";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -446,21 +441,17 @@ DataTable.CellContent = function CellContent({
       {...props}
     >
       {avatarUrl && avatarTooltipLabel && (
-        <TooltipProvider>
-          <TooltipRoot>
-            <TooltipTrigger>
-              <Avatar
-                visual={avatarUrl}
-                size="xs"
-                className="s-mr-2"
-                isRounded={roundedAvatar ?? false}
-              />
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              <p>{avatarTooltipLabel}</p>
-            </TooltipContent>
-          </TooltipRoot>
-        </TooltipProvider>
+        <Tooltip
+          trigger={
+            <Avatar
+              visual={avatarUrl}
+              size="xs"
+              className="s-mr-2"
+              isRounded={roundedAvatar ?? false}
+            />
+          }
+          label={avatarTooltipLabel}
+        />
       )}
       {avatarUrl && !avatarTooltipLabel && (
         <Avatar

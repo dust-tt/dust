@@ -8,7 +8,8 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipRoot,
-  TooltipTrigger} from "../index_with_tw_base";
+  TooltipTrigger,
+} from "../index_with_tw_base";
 
 const meta = {
   title: "Primitives/Tooltip",
@@ -18,10 +19,7 @@ const meta = {
 export default meta;
 
 export const TooltipExample = () => (
-  <Tooltip
-    trigger={<div>Hover</div>}
-    label={<p>Add to library</p>}
-  />
+  <Tooltip trigger={<div>Hover</div>} label={<p>Add to library</p>} />
 );
 
 export const TooltipWithManual = () => (

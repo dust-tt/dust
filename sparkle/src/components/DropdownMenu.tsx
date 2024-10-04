@@ -23,12 +23,7 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { Item as StandardItem, LinkProps } from "./Item";
-import {
-  TooltipContent,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
-} from "./Tooltip";
+import { Tooltip } from "./Tooltip";
 
 const ButtonRefContext =
   React.createContext<MutableRefObject<HTMLButtonElement | null> | null>(null);
@@ -184,14 +179,11 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
           onClick={(e) => e.stopPropagation()}
         >
           {tooltip ? (
-            <TooltipProvider>
-              <TooltipRoot>
-                <TooltipTrigger>{children}</TooltipTrigger>
-                <TooltipContent side={tooltipPosition}>
-                  <p>{tooltip}</p>
-                </TooltipContent>
-              </TooltipRoot>
-            </TooltipProvider>
+            <Tooltip
+              trigger={children}
+              label={tooltip}
+              side={tooltipPosition}
+            />
           ) : (
             children
           )}
@@ -209,46 +201,39 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
     return (
       <>
         {tooltip ? (
-          <TooltipProvider>
-            <TooltipRoot>
-              <TooltipTrigger>
-                <Menu.Button
-                  disabled={disabled}
-                  ref={aggregatedRef}
-                  className={classNames(
-                    disabled ? "s-cursor-default" : "s-cursor-pointer",
-                    className,
-                    "s-group/dm s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
-                    label
-                      ? size === "md"
-                        ? "s-gap-2"
-                        : "s-gap-1.5"
-                      : "s-gap-0.5"
-                  )}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onClick) {
-                      onClick();
-                    }
-                  }}
-                >
-                  <Icon
-                    visual={icon}
-                    size={size}
-                    className={finalIconClasses}
-                  />
-                  <Icon
-                    visual={chevronIcon}
-                    size={size === "sm" ? "xs" : "sm"}
-                    className={finalChevronClasses}
-                  />
-                </Menu.Button>
-              </TooltipTrigger>
-              <TooltipContent side={tooltipPosition}>
-                <p>{tooltip}</p>
-              </TooltipContent>
-            </TooltipRoot>
-          </TooltipProvider>
+          <Tooltip
+            trigger={
+              <Menu.Button
+                disabled={disabled}
+                ref={aggregatedRef}
+                className={classNames(
+                  disabled ? "s-cursor-default" : "s-cursor-pointer",
+                  className,
+                  "s-group/dm s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
+                  label
+                    ? size === "md"
+                      ? "s-gap-2"
+                      : "s-gap-1.5"
+                    : "s-gap-0.5"
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onClick) {
+                    onClick();
+                  }
+                }}
+              >
+                <Icon visual={icon} size={size} className={finalIconClasses} />
+                <Icon
+                  visual={chevronIcon}
+                  size={size === "sm" ? "xs" : "sm"}
+                  className={finalChevronClasses}
+                />
+              </Menu.Button>
+            }
+            label={tooltip}
+            side={tooltipPosition}
+          />
         ) : (
           <Menu.Button
             disabled={disabled}
