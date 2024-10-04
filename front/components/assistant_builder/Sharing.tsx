@@ -3,13 +3,13 @@ import {
   Button,
   ChevronDownIcon,
   Chip,
+  CompanyIcon,
   Dialog,
   DropdownMenu,
   DustIcon,
   IconButton,
   LockIcon,
   Page,
-  PlanetIcon,
   SliderToggle,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
@@ -41,7 +41,7 @@ export const SCOPE_INFO: Record<
     shortLabel: string;
     label: string;
     color: "pink" | "amber" | "sky" | "slate";
-    icon: typeof UserGroupIcon | typeof PlanetIcon | typeof LockIcon;
+    icon: typeof UserGroupIcon | typeof CompanyIcon | typeof LockIcon;
     text: string;
     confirmationModalData: ConfirmationModalDataType | null;
   }
@@ -50,7 +50,7 @@ export const SCOPE_INFO: Record<
     shortLabel: "Company",
     label: "Company Assistant",
     color: "amber",
-    icon: PlanetIcon,
+    icon: CompanyIcon,
     text: "Activated by default for all members of the workspace.",
     confirmationModalData: {
       title: "Moving to Company Assistants",

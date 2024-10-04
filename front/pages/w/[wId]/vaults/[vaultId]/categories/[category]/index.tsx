@@ -149,8 +149,8 @@ export default function Vault({
     <Page.Vertical gap="xl" align="stretch">
       {vault.kind === "system" && (
         <Page.Header
-          title="Connection Management"
-          description="Manage the applications data Dust has access to."
+          title="Connection Administration"
+          description="Manage the applications and data Dust has access to."
           icon={CloudArrowLeftRightIcon}
         />
       )}

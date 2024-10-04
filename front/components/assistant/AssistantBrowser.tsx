@@ -1,9 +1,9 @@
 import {
   AssistantPreview,
   Button,
+  CompanyIcon,
   ListAddIcon,
   LockIcon,
-  PlanetIcon,
   PlusIcon,
   RobotIcon,
   RocketIcon,
@@ -39,7 +39,7 @@ interface AssistantListProps {
 const ALL_AGENTS_TABS = [
   // default shown tab = earliest in this list with non-empty agents
   { label: "Most popular", icon: RocketIcon, id: "most_popular" },
-  { label: "Company", icon: PlanetIcon, id: "workspace" },
+  { label: "Company", icon: CompanyIcon, id: "workspace" },
   { label: "Shared", icon: UserGroupIcon, id: "published" },
   { label: "Personal", icon: LockIcon, id: "personal" },
   { label: "In my list", icon: ListAddIcon, id: "list" },
