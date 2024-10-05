@@ -1,7 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { Button, Cog6ToothIcon } from "../index_with_tw_base";
+import {
+  Button,
+  Cog6ToothIcon,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipRoot,
+  TooltipProvider,
+  Tooltip,
+} from "../index_with_tw_base";
 
 const meta = {
   title: "Primitives/Button",
@@ -563,6 +571,41 @@ export const ButtonSelectExamples = () => (
     </div>
   </div>
 );
+
+export const ButtonWithTooltipManualInstantiation = () => {
+  return (
+    <TooltipProvider>
+      <TooltipRoot>
+        <TooltipTrigger>
+          <Button
+            labelVisible={true}
+            label="New conversation"
+            icon={Cog6ToothIcon}
+            hasMagnifying={false}
+          />
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Hello</p>
+        </TooltipContent>
+      </TooltipRoot>
+  </TooltipProvider>
+)}
+
+export const ButtonWithTooltip = () => {
+  return (
+    <Tooltip
+      trigger={
+        <Button
+          labelVisible={true}
+          label="New conversation"
+          icon={Cog6ToothIcon}
+          hasMagnifying={false}
+        />
+      }
+      label={"Hello"}
+    />
+  )
+}
 
 export const Primary: Story = {
   args: {
