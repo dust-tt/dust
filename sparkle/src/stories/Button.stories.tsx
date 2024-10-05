@@ -4,11 +4,11 @@ import React from "react";
 import {
   Button,
   Cog6ToothIcon,
-  TooltipContent,
-  TooltipTrigger,
-  TooltipRoot,
-  TooltipProvider,
   Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
 } from "../index_with_tw_base";
 
 const meta = {
