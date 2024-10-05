@@ -59,17 +59,20 @@ export default function CopyRun({
         onClose={() => setShowViewAppAPIModal(false)}
         inputs={inputs}
       />
-      <Tooltip label="Copy run specifications.">
-        <Button
-          label="API"
-          variant="primary"
-          onClick={() => {
-            setShowViewAppAPIModal(true);
-          }}
-          disabled={disabled}
-          icon={CubeIcon}
-        />
-      </Tooltip>
+      <Tooltip
+        label="Copy run specifications."
+        trigger={
+          <Button
+            label="API"
+            variant="primary"
+            onClick={() => {
+              setShowViewAppAPIModal(true);
+            }}
+            disabled={disabled}
+            icon={CubeIcon}
+          />
+        }
+      />
     </div>
   );
 }

@@ -339,14 +339,17 @@ const JsonCopyLink = ({ value }: { value: string }) => {
       {copied ? (
         <div className="text-sm text-gray-400">Copied!</div>
       ) : (
-        <Tooltip label="Copy JSON to clipboard">
-          <Hoverable
-            className="cursor-pointer text-sm font-bold text-gray-400"
-            onClick={handleClick}
-          >
-            <ClipboardIcon />
-          </Hoverable>
-        </Tooltip>
+        <Tooltip
+          label="Copy JSON to clipboard"
+          trigger={
+            <Hoverable
+              className="cursor-pointer text-sm font-bold text-gray-400"
+              onClick={handleClick}
+            >
+              <ClipboardIcon />
+            </Hoverable>
+          }
+        />
       )}
     </div>
   );

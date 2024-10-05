@@ -191,21 +191,24 @@ export function ProviderManagementModal({
         <div className="s-text-sm font-semibold">Embedding Provider:</div>
         <DropdownMenu>
           <DropdownMenu.Button>
-            <Tooltip label="Please contact us if you are willing to change this setting.">
-              <Button
-                type="select"
-                labelVisible={true}
-                label={
-                  embeddingProvider
-                    ? prettyfiedProviderNames[embeddingProvider]
-                    : prettyfiedProviderNames["openai"]
-                }
-                variant="secondary"
-                hasMagnifying={false}
-                size="sm"
-                disabled={true}
-              />
-            </Tooltip>
+            <Tooltip
+              label="Please contact us if you are willing to change this setting."
+              trigger={
+                <Button
+                  type="select"
+                  labelVisible={true}
+                  label={
+                    embeddingProvider
+                      ? prettyfiedProviderNames[embeddingProvider]
+                      : prettyfiedProviderNames["openai"]
+                  }
+                  variant="secondary"
+                  hasMagnifying={false}
+                  size="sm"
+                  disabled={true}
+                />
+              }
+            />
           </DropdownMenu.Button>
           <DropdownMenu.Items origin="topRight">
             {EMBEDDING_PROVIDER_IDS.map((provider) => (

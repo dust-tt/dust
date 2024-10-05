@@ -50,9 +50,8 @@ export default function ConnectorSyncingChip({
             label={
               "Our access to your account has been revoked. Re-authorize to keep the connection up-to-date."
             }
-          >
-            <Chip color="warning">Re-authorization required</Chip>
-          </Tooltip>
+            trigger={<Chip color="warning">Re-authorization required</Chip>}
+          />
         );
       case "third_party_internal_error":
         return (
@@ -61,9 +60,8 @@ export default function ConnectorSyncingChip({
               `We have encountered an error with ${CONNECTOR_CONFIGURATIONS[connector.type].name}. ` +
               "We sent you an email to resolve the issue."
             }
-          >
-            <Chip color="warning">Synchronization failed</Chip>
-          </Tooltip>
+            trigger={<Chip color="warning">Synchronization failed</Chip>}
+          />
         );
       case "webcrawling_error":
         return (
@@ -73,9 +71,8 @@ export default function ConnectorSyncingChip({
               " This problem commonly occurs with JavaScript-based websites," +
               " as our current crawler cannot process JavaScript."
             }
-          >
-            <Chip color="warning">Synchronization failed</Chip>
-          </Tooltip>
+            trigger={<Chip color="warning">Synchronization failed</Chip>}
+          />
         );
       case "remote_database_connection_not_readonly":
         return (
@@ -84,9 +81,8 @@ export default function ConnectorSyncingChip({
               "We need read-only access to your database to synchronize data." +
               " Please update the permissions and try again."
             }
-          >
-            <Chip color="warning">Synchronization failed</Chip>
-          </Tooltip>
+            trigger={<Chip color="warning">Synchronization failed</Chip>}
+          />
         );
       default:
         assertNever(connector.errorType);

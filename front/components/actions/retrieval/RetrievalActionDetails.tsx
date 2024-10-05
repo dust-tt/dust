@@ -70,12 +70,13 @@ function RetrievalActionQuery({ action }: { action: RetrievalActionType }) {
       {tooManyChunks && (
         <Tooltip
           label={`Too much data to retrieve! Retrieved ${topK} excerpts from ${documents?.length} recent docs, up to ${retrievalDateLimitAsString}.`}
-        >
-          <Chip
-            color="warning"
-            label={`Limited retrieval (from now to ${retrievalDateLimitAsString})`}
-          />
-        </Tooltip>
+          trigger={
+            <Chip
+              color="warning"
+              label={`Limited retrieval (from now to ${retrievalDateLimitAsString})`}
+            />
+          }
+        />
       )}
     </div>
   );
