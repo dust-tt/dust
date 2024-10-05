@@ -102,6 +102,9 @@ export function makeColumnsForMembers({
       },
       cell: ({ row }) => {
         const member = row.original;
+        if (member.role === "none") {
+          return <span className="py-2 pl-3 italic">revoked</span>;
+        }
         return (
           <select
             className="rounded-lg border border-gray-300 bg-gray-50 text-sm text-gray-900"
@@ -127,7 +130,7 @@ export function makeColumnsForMembers({
       cell: ({ row }) => {
         const member = row.original;
 
-        return (
+        return member.role !== "none" ? (
           <IconButton
             icon={TrashIcon}
             size="xs"
@@ -136,7 +139,7 @@ export function makeColumnsForMembers({
               await onRevokeMember(member);
             }}
           />
-        );
+        ) : null;
       },
     },
   ];
