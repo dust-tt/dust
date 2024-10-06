@@ -338,6 +338,16 @@ async function botAnswerMessage(
     thread_ts: slackMessageTs,
   });
 
+  const buildSlackMessageError = (errRes: Err<Error | APIError>) => {
+    return new Err(
+      new SlackMessageError(
+        errRes.error.message,
+        slackChatBotMessage.get(),
+        mainMessage
+      )
+    );
+  };
+
   // Slack sends the message with user ids when someone is mentionned (bot or user).
   // Here we remove the bot id from the message and we replace user ids by their display names.
   // Example: <@U01J9JZQZ8Z> What is the command to upgrade a workspace in production (cc
@@ -376,13 +386,7 @@ async function botAnswerMessage(
 
   const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
   if (agentConfigurationsRes.isErr()) {
-    return new Err(
-      new SlackMessageError(
-        agentConfigurationsRes.error.message,
-        slackChatBotMessage.get(),
-        mainMessage
-      )
-    );
+    return buildSlackMessageError(agentConfigurationsRes);
   }
   const agentConfigurations = agentConfigurationsRes.value;
   if (mentionCandidates.length === 1) {
@@ -489,16 +493,6 @@ async function botAnswerMessage(
       profilePictureUrl: slackChatBotMessage.slackAvatar || null,
       origin: "slack" as const,
     },
-  };
-
-  const buildSlackMessageError = (errRes: Err<Error | APIError>) => {
-    return new Err(
-      new SlackMessageError(
-        errRes.error.message,
-        slackChatBotMessage.get(),
-        mainMessage
-      )
-    );
   };
 
   if (buildContentFragmentRes.isErr()) {
