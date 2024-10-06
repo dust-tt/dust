@@ -1,3 +1,4 @@
+import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { truncate } from "@dust-tt/types";
 
 import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
@@ -70,6 +71,7 @@ function makeFootnotesBlock(footnotes: SlackMessageFootnotes) {
 }
 
 function makeContextSectionBlocks(
+  isComplete: boolean,
   conversationUrl: string | null,
   footnotes: SlackMessageFootnotes | undefined
 ) {
@@ -83,7 +85,7 @@ function makeContextSectionBlocks(
   }
 
   // Bundle the conversation url in the context.
-  if (conversationUrl) {
+  if (conversationUrl && isComplete) {
     blocks.push(makeConversationLinkContextBlock(conversationUrl));
   }
 
@@ -92,13 +94,63 @@ function makeContextSectionBlocks(
   return resultBlocks;
 }
 
+function makeAssistantSelectionBlock(
+  agentConfigurations?: LightAgentConfigurationType[]
+) {
+  return agentConfigurations
+    ? [
+        {
+          type: "actions",
+          block_id: "agentConfigId",
+          elements: [
+            {
+              type: "static_select",
+              placeholder: {
+                type: "plain_text",
+                text: "Switch to another assistant",
+                emoji: true,
+              },
+              options: agentConfigurations.map((ac) => {
+                return {
+                  text: {
+                    type: "plain_text",
+                    text: ac.name,
+                  },
+                  value: ac.sId,
+                };
+              }),
+              action_id: "static_agent_config",
+            },
+          ],
+        },
+      ]
+    : [];
+}
+
 export type SlackMessageUpdate =
-  | { isThinking: true; text?: never; action?: string; footnotes?: never }
   | {
+      isComplete: false;
+      isThinking: true;
+      text?: never;
+      action?: string;
+      footnotes?: never;
+      agentConfigurations?: never;
+    }
+  | {
+      isComplete: false;
       isThinking?: never;
       text: string;
       action?: never;
       footnotes: SlackMessageFootnotes;
+      agentConfigurations?: never;
+    }
+  | {
+      isComplete: true;
+      isThinking?: never;
+      text: string;
+      action?: never;
+      footnotes: SlackMessageFootnotes;
+      agentConfigurations?: LightAgentConfigurationType[];
     };
 
 export function makeHeaderBlock(conversationUrl: string | null) {
@@ -119,14 +171,22 @@ export function makeMessageUpdateBlocksAndText(
   conversationUrl: string | null,
   messageUpdate: SlackMessageUpdate
 ) {
-  const { isThinking, text, footnotes, action } = messageUpdate;
+  const {
+    isComplete,
+    isThinking,
+    text,
+    footnotes,
+    action,
+    agentConfigurations,
+  } = messageUpdate;
   const thinkingText = action ? `Thinking... (${action})` : "Thinking...";
 
   return {
     blocks: [
       makeHeaderBlock(conversationUrl),
       isThinking ? makeThinkingBlock(thinkingText) : makeMarkdownBlock(text),
-      ...makeContextSectionBlocks(conversationUrl, footnotes),
+      ...makeContextSectionBlocks(isComplete, conversationUrl, footnotes),
+      ...makeAssistantSelectionBlock(agentConfigurations),
     ],
     // TODO(2024-06-17 flav) We should not return markdown here.
     // Provide plain text for places where the content cannot be rendered (e.g push notifications).

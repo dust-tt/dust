@@ -3,6 +3,7 @@ import type {
   AgentMessageType,
   ConversationType,
   DustAPI,
+  LightAgentConfigurationType,
   Result,
   UserMessageType,
 } from "@dust-tt/types";
@@ -40,6 +41,7 @@ interface StreamConversationToSlackParams {
     slackMessageTs: string;
   };
   userMessage: UserMessageType;
+  agentConfigurations?: LightAgentConfigurationType[];
 }
 
 // Adding linear backoff mechanism.
@@ -55,6 +57,7 @@ export async function streamConversationToSlack(
     mainMessage,
     slack,
     userMessage,
+    agentConfigurations,
   }: StreamConversationToSlackParams
 ): Promise<Result<undefined, Error>> {
   const { slackChannelId, slackClient, slackMessageTs } = slack;
@@ -106,7 +109,7 @@ export async function streamConversationToSlack(
 
   // Immediately post the conversation URL once available.
   await postSlackMessageUpdate(
-    { isThinking: true },
+    { isComplete: false, isThinking: true },
     { adhereToRateLimit: false }
   );
 
@@ -151,6 +154,7 @@ export async function streamConversationToSlack(
       case "browse_params":
         await postSlackMessageUpdate(
           {
+            isComplete: false,
             isThinking: true,
             action: actionRunningLabels[event.action.type],
           },
@@ -208,7 +212,11 @@ export async function streamConversationToSlack(
         if (slackContent.length > MAX_SLACK_MESSAGE_LENGTH) {
           break;
         }
-        await postSlackMessageUpdate({ text: slackContent, footnotes });
+        await postSlackMessageUpdate({
+          isComplete: false,
+          text: slackContent,
+          footnotes,
+        });
         break;
       }
 
@@ -224,7 +232,12 @@ export async function streamConversationToSlack(
         );
 
         await postSlackMessageUpdate(
-          { text: slackContent, footnotes },
+          {
+            isComplete: true,
+            text: slackContent,
+            footnotes,
+            agentConfigurations,
+          },
           { adhereToRateLimit: false }
         );
 

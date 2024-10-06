@@ -32,6 +32,7 @@ import {
   webhookIntercomUninstallAPIHandler,
 } from "@connectors/api/webhooks/webhook_intercom";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
+import { webhookSlackInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_interaction";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
 
@@ -89,6 +90,7 @@ export function startServer(port: number) {
   });
 
   app.use(authMiddleware);
+  app.use(express.urlencoded({ extended: true })); // support encoded bodies
 
   app.post("/connectors/create/:connector_provider", createConnectorAPIHandler);
   app.post("/connectors/update/:connector_id/", postConnectorUpdateAPIHandler);
@@ -129,7 +131,10 @@ export function startServer(port: number) {
   );
 
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
-
+  app.post(
+    "/webhooks/:webhook_secret/slack_interaction",
+    webhookSlackInteractionsAPIHandler
+  );
   app.post(
     "/webhooks/:webhooks_secret/github",
     bodyParser.raw({ type: "application/json" }),
