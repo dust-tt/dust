@@ -1,23 +1,30 @@
 import type {
   AgentMessageSuccessEvent,
+  APIError,
   ConversationType,
   LightAgentConfigurationType,
   ModelId,
+  PublicPostContentFragmentRequestBodySchema,
   Result,
   UserMessageType,
 } from "@dust-tt/types";
-import type { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/types";
-import { Err, Ok, sectionFullText } from "@dust-tt/types";
-import { DustAPI } from "@dust-tt/types";
+import { DustAPI, Err, Ok, sectionFullText } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import type * as t from "io-ts";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
-import { makeMessageUpdateBlocksAndText } from "@connectors/connectors/slack/chat/blocks";
+import {
+  makeHeaderBlock,
+  makeMessageUpdateBlocksAndText,
+} from "@connectors/connectors/slack/chat/blocks";
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
-import { SlackExternalUserError } from "@connectors/connectors/slack/lib/errors";
+import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
+import {
+  SlackExternalUserError,
+  SlackMessageError,
+} from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import {
   getSlackBotInfo,
@@ -47,15 +54,27 @@ import {
 
 const { DUST_FRONT_API } = process.env;
 
-export async function botAnswerMessageWithErrorHandling(
-  message: string,
-  slackTeamId: string,
-  slackChannel: string,
-  slackUserId: string | null,
-  slackBotId: string | null,
-  slackMessageTs: string,
-  slackThreadTs: string | null
-): Promise<Result<AgentMessageSuccessEvent | undefined, Error>> {
+type BotAnswerParams = {
+  message: string;
+  slackTeamId: string;
+  slackChannel: string;
+  slackUserId: string | null;
+  slackBotId: string | null;
+  slackMessageTs: string;
+  slackThreadTs: string | null;
+};
+
+export async function botAnswerMessageWithErrorHandling({
+  message,
+  slackTeamId,
+  slackChannel,
+  slackUserId,
+  slackBotId,
+  slackMessageTs,
+  slackThreadTs,
+}: BotAnswerParams): Promise<
+  Result<AgentMessageSuccessEvent | undefined, Error>
+> {
   const slackConfig =
     await SlackConfigurationResource.fetchByActiveBot(slackTeamId);
   if (!slackConfig) {
@@ -71,13 +90,15 @@ export async function botAnswerMessageWithErrorHandling(
   }
   try {
     const res = await botAnswerMessage(
-      message,
-      slackTeamId,
-      slackChannel,
-      slackUserId,
-      slackBotId,
-      slackMessageTs,
-      slackThreadTs,
+      {
+        message,
+        slackTeamId,
+        slackChannel,
+        slackUserId,
+        slackBotId,
+        slackMessageTs,
+        slackThreadTs,
+      },
       connector,
       slackConfig
     );
@@ -99,15 +120,47 @@ export async function botAnswerMessageWithErrorHandling(
       if (res.error instanceof SlackExternalUserError) {
         errorMessage = res.error.message;
       } else {
-        errorMessage = `An error occured. Our team has been notified and will work on it as soon as possible.`;
+        errorMessage = `An error occured : ${res.error.message}. Our team has been notified and will work on it as soon as possible.`;
       }
 
+      const { slackChatBotMessage, mainMessage } =
+        res.error instanceof SlackMessageError
+          ? res.error
+          : { mainMessage: undefined, slackChatBotMessage: undefined };
+
+      const conversationUrl = slackChatBotMessage?.conversationId
+        ? makeDustAppUrl(
+            `/w/${connector.workspaceId}/assistant/${slackChatBotMessage.conversationId}`
+          )
+        : null;
+
       const slackClient = await getSlackClient(connector.id);
-      await slackClient.chat.postMessage({
-        channel: slackChannel,
+
+      const errorPost = {
+        blocks: [
+          makeHeaderBlock(conversationUrl),
+          {
+            type: "section",
+            text: {
+              type: "plain_text",
+              text: errorMessage,
+            },
+          },
+        ],
+        mrkdwn: true,
+        unfurl_links: false,
         text: errorMessage,
+        channel: slackChannel,
         thread_ts: slackMessageTs,
-      });
+      };
+      if (mainMessage) {
+        await slackClient.chat.update({
+          ...errorPost,
+          ts: mainMessage.ts as string,
+        });
+      } else {
+        await slackClient.chat.postMessage(errorPost);
+      }
     } else {
       logger.info(
         {
@@ -144,13 +197,15 @@ export async function botAnswerMessageWithErrorHandling(
 }
 
 async function botAnswerMessage(
-  message: string,
-  slackTeamId: string,
-  slackChannel: string,
-  slackUserId: string | null,
-  slackBotId: string | null,
-  slackMessageTs: string,
-  slackThreadTs: string | null,
+  {
+    message,
+    slackTeamId,
+    slackChannel,
+    slackUserId,
+    slackBotId,
+    slackMessageTs,
+    slackThreadTs,
+  }: BotAnswerParams,
   connector: ConnectorResource,
   slackConfig: SlackConfigurationResource
 ): Promise<Result<AgentMessageSuccessEvent | undefined, Error>> {
@@ -243,7 +298,6 @@ async function botAnswerMessage(
     slackChannel,
     lastSlackChatBotMessage?.threadTs || slackThreadTs || slackMessageTs,
     lastSlackChatBotMessage?.messageTs || slackThreadTs || slackMessageTs,
-    slackChatBotMessage,
     connector
   );
 
@@ -322,7 +376,13 @@ async function botAnswerMessage(
 
   const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
   if (agentConfigurationsRes.isErr()) {
-    return new Err(new Error(agentConfigurationsRes.error.message));
+    return new Err(
+      new SlackMessageError(
+        agentConfigurationsRes.error.message,
+        slackChatBotMessage.get(),
+        mainMessage
+      )
+    );
   }
   const agentConfigurations = agentConfigurationsRes.value;
   if (mentionCandidates.length === 1) {
@@ -431,8 +491,18 @@ async function botAnswerMessage(
     },
   };
 
+  const buildSlackMessageError = (errRes: Err<Error | APIError>) => {
+    return new Err(
+      new SlackMessageError(
+        errRes.error.message,
+        slackChatBotMessage.get(),
+        mainMessage
+      )
+    );
+  };
+
   if (buildContentFragmentRes.isErr()) {
-    return new Err(new Error(buildContentFragmentRes.error.message));
+    return buildSlackMessageError(buildContentFragmentRes);
   }
   let conversation: ConversationType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
@@ -443,22 +513,22 @@ async function botAnswerMessage(
         contentFragment: buildContentFragmentRes.value,
       });
       if (contentFragmentRes.isErr()) {
-        return new Err(new Error(contentFragmentRes.error.message));
+        return buildSlackMessageError(contentFragmentRes);
       }
     }
-    const mesasgeRes = await dustAPI.postUserMessage({
+    const messageRes = await dustAPI.postUserMessage({
       conversationId: lastSlackChatBotMessage.conversationId,
       message: messageReqBody,
     });
-    if (mesasgeRes.isErr()) {
-      return new Err(new Error(mesasgeRes.error.message));
+    if (messageRes.isErr()) {
+      return buildSlackMessageError(messageRes);
     }
-    userMessage = mesasgeRes.value;
+    userMessage = messageRes.value;
     const conversationRes = await dustAPI.getConversation({
       conversationId: lastSlackChatBotMessage.conversationId,
     });
     if (conversationRes.isErr()) {
-      return new Err(new Error(conversationRes.error.message));
+      return buildSlackMessageError(conversationRes);
     }
     conversation = conversationRes.value;
   } else {
@@ -469,16 +539,17 @@ async function botAnswerMessage(
       contentFragment: buildContentFragmentRes.value || undefined,
     });
     if (convRes.isErr()) {
-      return new Err(new Error(convRes.error.message));
+      return buildSlackMessageError(convRes);
     }
 
     conversation = convRes.value.conversation;
     userMessage = convRes.value.message;
-  }
-  slackChatBotMessage.conversationId = conversation.sId;
-  await slackChatBotMessage.save();
 
-  return streamConversationToSlack(dustAPI, {
+    slackChatBotMessage.conversationId = conversation.sId;
+    await slackChatBotMessage.save();
+  }
+
+  const streamRes = await streamConversationToSlack(dustAPI, {
     assistantName: mentions[0]?.assistantName,
     connector,
     conversation,
@@ -486,6 +557,12 @@ async function botAnswerMessage(
     slack: { slackChannelId: slackChannel, slackClient, slackMessageTs },
     userMessage,
   });
+
+  if (streamRes.isErr()) {
+    return buildSlackMessageError(streamRes);
+  }
+
+  return streamRes;
 }
 
 export async function getBotEnabled(
@@ -509,7 +586,6 @@ async function makeContentFragment(
   channelId: string,
   threadTs: string,
   startingAtTs: string | null,
-  slackChatBotMessage: SlackChatBotMessage,
   connector: ConnectorResource
 ): Promise<
   Result<

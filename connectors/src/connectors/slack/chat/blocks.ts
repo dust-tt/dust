@@ -101,13 +101,8 @@ export type SlackMessageUpdate =
       footnotes: SlackMessageFootnotes;
     };
 
-export function makeMessageUpdateBlocksAndText(
-  conversationUrl: string | null,
-  messageUpdate: SlackMessageUpdate
-) {
-  const { isThinking, text, footnotes, action } = messageUpdate;
-
-  const header = {
+export function makeHeaderBlock(conversationUrl: string | null) {
+  return {
     type: "context",
     elements: [
       {
@@ -118,12 +113,18 @@ export function makeMessageUpdateBlocksAndText(
       },
     ],
   };
+}
 
+export function makeMessageUpdateBlocksAndText(
+  conversationUrl: string | null,
+  messageUpdate: SlackMessageUpdate
+) {
+  const { isThinking, text, footnotes, action } = messageUpdate;
   const thinkingText = action ? `Thinking... (${action})` : "Thinking...";
 
   return {
     blocks: [
-      header,
+      makeHeaderBlock(conversationUrl),
       isThinking ? makeThinkingBlock(thinkingText) : makeMarkdownBlock(text),
       ...makeContextSectionBlocks(conversationUrl, footnotes),
     ],
@@ -131,5 +132,6 @@ export function makeMessageUpdateBlocksAndText(
     // Provide plain text for places where the content cannot be rendered (e.g push notifications).
     text: isThinking ? thinkingText : truncate(text, MAX_SLACK_MESSAGE_LENGTH),
     mrkdwn: true,
+    unfurl_links: false,
   };
 }
