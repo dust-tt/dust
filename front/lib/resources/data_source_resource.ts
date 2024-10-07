@@ -342,12 +342,20 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     });
   }
 
-  static async listByVault(auth: Authenticator, vault: VaultResource) {
-    return this.listByVaults(auth, [vault]);
+  static async listByVault(
+    auth: Authenticator,
+    vault: VaultResource,
+    options?: FetchDataSourceOptions
+  ) {
+    return this.listByVaults(auth, [vault], options);
   }
 
-  static async listByVaults(auth: Authenticator, vaults: VaultResource[]) {
-    return this.baseFetch(auth, undefined, {
+  static async listByVaults(
+    auth: Authenticator,
+    vaults: VaultResource[],
+    options?: FetchDataSourceOptions
+  ) {
+    return this.baseFetch(auth, options, {
       where: {
         vaultId: vaults.map((v) => v.id),
       },

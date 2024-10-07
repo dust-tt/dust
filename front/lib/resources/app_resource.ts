@@ -85,11 +85,16 @@ export class AppResource extends ResourceWithVault<AppModel> {
     });
   }
 
-  static async listByVault(auth: Authenticator, vault: VaultResource) {
+  static async listByVault(
+    auth: Authenticator,
+    vault: VaultResource,
+    { includeDeleted }: { includeDeleted?: boolean } = {}
+  ) {
     return this.baseFetch(auth, {
       where: {
         vaultId: vault.id,
       },
+      includeDeleted,
     });
   }
 

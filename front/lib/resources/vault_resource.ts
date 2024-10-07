@@ -134,7 +134,13 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   private static async baseFetch(
     auth: Authenticator,
-    { includes, limit, order, where }: ResourceFindOptions<VaultModel> = {}
+    {
+      includes,
+      limit,
+      order,
+      where,
+      includeDeleted,
+    }: ResourceFindOptions<VaultModel> = {}
   ) {
     const includeClauses: Includeable[] = [
       {
@@ -151,6 +157,7 @@ export class VaultResource extends BaseResource<VaultModel> {
       include: includeClauses,
       limit,
       order,
+      includeDeleted,
     });
 
     return vaultModels.map(this.fromModel);

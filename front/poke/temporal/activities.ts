@@ -139,7 +139,9 @@ export async function scrubVaultActivity({
   assert(isDeletableVault, "Vault is not soft deleted.");
 
   // Delete all the data sources of the vaults.
-  const dataSources = await DataSourceResource.listByVault(auth, vault);
+  const dataSources = await DataSourceResource.listByVault(auth, vault, {
+    includeDeleted: true,
+  });
   for (const ds of dataSources) {
     await scrubDataSourceActivity({
       dataSourceId: ds.sId,

@@ -18,7 +18,7 @@ export async function softDeleteVaultAndLaunchScrubWorkflow(
   vault: VaultResource
 ) {
   assert(auth.isAdmin(), "Only admins can delete vaults.");
-  assert(!vault.isRegular(), "Cannot delete non regular vaults.");
+  assert(vault.isRegular(), "Cannot delete non regular vaults.");
 
   const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
 
@@ -76,14 +76,22 @@ export async function softDeleteVaultAndLaunchScrubWorkflow(
       }
     }
 
+    // Soft delete data sources they will be hard deleted in the scrubbing job.
+    for (const ds of dataSources) {
+      const res = await ds.delete(auth, { hardDelete: false, transaction: t });
+      if (res.isErr()) {
+        throw res.error;
+      }
+    }
+
     // Finally, soft delete the vault.
     const res = await vault.delete(auth, { hardDelete: false, transaction: t });
     if (res.isErr()) {
       throw res.error;
     }
-  });
 
-  await launchScrubVaultWorkflow(auth, vault);
+    await launchScrubVaultWorkflow(auth, vault);
+  });
 
   return new Ok(undefined);
 }
@@ -98,7 +106,11 @@ export async function hardDeleteVault(
     vault.isDeleted() || vault.isGlobal() || vault.isSystem();
   assert(isDeletableVault, "Vault is not soft deleted.");
 
-  const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
+  const dataSourceViews = await DataSourceViewResource.listByVault(
+    auth,
+    vault,
+    { includeDeleted: true }
+  );
   for (const dsv of dataSourceViews) {
     const res = await dsv.delete(auth, { hardDelete: true });
     if (res.isErr()) {
@@ -106,7 +118,9 @@ export async function hardDeleteVault(
     }
   }
 
-  const apps = await AppResource.listByVault(auth, vault);
+  const apps = await AppResource.listByVault(auth, vault, {
+    includeDeleted: true,
+  });
   for (const app of apps) {
     const res = await hardDeleteApp(auth, app);
     if (res.isErr()) {

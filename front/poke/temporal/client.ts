@@ -1,5 +1,5 @@
-import type { LightWorkspaceType, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { LightWorkspaceType } from "@dust-tt/types";
+import { Err } from "@dust-tt/types";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 import type { Authenticator } from "@app/lib/auth";
