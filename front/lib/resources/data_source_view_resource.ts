@@ -443,6 +443,13 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return new Ok(undefined);
   }
 
+  async setParents(
+    parentsIn: string[] | null
+  ): Promise<Result<undefined, Error>> {
+    await this.update({ parentsIn });
+    return new Ok(undefined);
+  }
+
   // Deletion.
 
   protected async softDelete(

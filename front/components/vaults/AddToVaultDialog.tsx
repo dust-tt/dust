@@ -66,14 +66,6 @@ export const AddToVaultDialog = ({
       (d) => d.vaultId === vault.sId
     );
 
-    const body = {
-      dataSourceId: dataSource.sId,
-      parentsIn:
-        existingViewForVault && existingViewForVault.parentsIn
-          ? [...existingViewForVault.parentsIn, contentNode.internalId]
-          : [contentNode.internalId],
-    };
-
     try {
       let res;
       if (existingViewForVault) {
@@ -84,7 +76,9 @@ export const AddToVaultDialog = ({
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(body),
+            body: JSON.stringify({
+              parentsToAdd: [contentNode.internalId],
+            }),
           }
         );
       } else {
@@ -95,7 +89,10 @@ export const AddToVaultDialog = ({
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(body),
+            body: JSON.stringify({
+              dataSourceId: dataSource.sId,
+              parentsIn: [contentNode.internalId],
+            }),
           }
         );
       }

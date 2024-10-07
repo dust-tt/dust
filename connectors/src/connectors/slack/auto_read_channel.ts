@@ -123,13 +123,13 @@ export async function autoReadChannel(
     const joinSlackRes = await fetch(
       `${DUST_FRONT_API}/api/v1/w/${connector.workspaceId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.id}`,
       {
-        method: "POST",
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${connector.workspaceAPIKey}`,
         },
         body: JSON.stringify({
-          parentsIn: [createdChannel.slackChannelId],
+          parentsToAdd: [createdChannel.slackChannelId],
         }),
       }
     );

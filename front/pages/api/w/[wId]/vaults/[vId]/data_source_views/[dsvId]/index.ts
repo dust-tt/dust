@@ -1,4 +1,8 @@
-import type { DataSourceViewType, WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  DataSourceViewType,
+  WithAPIErrorResponse,
+  Result,
+} from "@dust-tt/types";
 import { PatchDataSourceViewSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -69,13 +73,21 @@ async function handler(
         });
       }
 
-      const { parentsToAdd, parentsToRemove } = bodyValidation.right;
-      const updateResult = await dataSourceView.updateParents(
-        parentsToAdd ?? [],
-        parentsToRemove ?? []
-      );
+      const { right: body } = bodyValidation;
 
-      if (updateResult.isErr()) {
+      let updateResultRes: Result<undefined, Error>;
+      if ("parentsIn" in body) {
+        const { parentsIn } = body;
+        updateResultRes = await dataSourceView.setParents(parentsIn);
+      } else {
+        const { parentsToAdd, parentsToRemove } = body;
+        updateResultRes = await dataSourceView.updateParents(
+          parentsToAdd ?? [],
+          parentsToRemove ?? []
+        );
+      }
+
+      if (updateResultRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {

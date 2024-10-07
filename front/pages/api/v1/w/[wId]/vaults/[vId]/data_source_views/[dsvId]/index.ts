@@ -96,33 +96,6 @@ export type PatchDataSourceViewResponseBody = {
  *         description: Method not allowed
  *       '500':
  *         description: Internal server error
- *   delete:
- *     summary: Delete a data source view
- *     parameters:
- *       - name: wId
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *       - name: vId
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *       - name: dsvId
- *         in: path
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       '400':
- *         description: Invalid request body
- *       '404':
- *         description: Data source view not found
- *       '405':
- *         description: Method not allowed
- *       '500':
- *         description: Internal server error
  */
 
 async function handler(
