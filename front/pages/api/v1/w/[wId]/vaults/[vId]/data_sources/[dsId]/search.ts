@@ -1,51 +1,13 @@
-import type { DocumentType, WithAPIErrorResponse } from "@dust-tt/types";
-import { dustManagedCredentials } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
-import type { JSONSchemaType } from "ajv";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import config from "@app/lib/api/config";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { parse_payload } from "@app/lib/http_utils";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-
-export type DatasourceSearchQuery = {
-  query: string;
-  top_k: number;
-  full_text: boolean;
-  target_document_tokens?: number;
-  timestamp_gt?: number;
-  timestamp_lt?: number;
-  tags_in?: string[];
-  tags_not?: string[];
-  parents_in?: string[];
-  parents_not?: string[];
-};
-
-const searchQuerySchema: JSONSchemaType<DatasourceSearchQuery> = {
-  type: "object",
-  properties: {
-    query: { type: "string" },
-    top_k: { type: "number" },
-    full_text: { type: "boolean" },
-    target_document_tokens: { type: "number", nullable: true },
-    timestamp_gt: { type: "number", nullable: true },
-    timestamp_lt: { type: "number", nullable: true },
-    tags_in: { type: "array", items: { type: "string" }, nullable: true },
-    tags_not: { type: "array", items: { type: "string" }, nullable: true },
-    parents_in: { type: "array", items: { type: "string" }, nullable: true },
-    parents_not: { type: "array", items: { type: "string" }, nullable: true },
-  },
-  required: ["query", "top_k", "full_text"],
-};
-
-type DatasourceSearchResponseBody = {
-  documents: Array<DocumentType>;
-};
+import type { DatasourceSearchResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/search";
+import { handleDataSourceSearch } from "@app/pages/api/w/[wId]/data_sources/[dsId]/search";
 
 /**
  * @swagger
@@ -232,71 +194,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      if (req.query.tags_in && typeof req.query.tags_in === "string") {
-        req.query.tags_in = [req.query.tags_in];
-      }
-      if (req.query.tags_not && typeof req.query.tags_not === "string") {
-        req.query.tags_not = [req.query.tags_not];
-      }
-
-      // Data source operations are performed with our credentials.
-      const credentials = dustManagedCredentials();
-
-      const queryRes = parse_payload(searchQuerySchema, req.query);
-      if (queryRes.isErr()) {
-        const err = queryRes.error;
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid body sent: ${err.message}`,
-          },
-        });
-      }
-      const query = queryRes.value;
-
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const data = await coreAPI.searchDataSource(
-        dataSource.dustAPIProjectId,
-        dataSource.dustAPIDataSourceId,
-        {
-          query: query.query,
-          topK: query.top_k,
-          fullText: query.full_text,
-          target_document_tokens: query.target_document_tokens,
-          filter: {
-            tags: {
-              in: query.tags_in ?? null,
-              not: query.tags_not ?? null,
-            },
-            parents: {
-              in: query.parents_in ?? null,
-              not: query.parents_not ?? null,
-            },
-            timestamp: {
-              gt: query.timestamp_gt ?? null,
-              lt: query.timestamp_lt ?? null,
-            },
-          },
-          credentials,
-        }
-      );
-
-      if (data.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "data_source_error",
-            message: "There was an error performing the data source search.",
-            data_source_error: data.error,
-          },
-        });
-      }
-
-      res.status(200).json({
-        documents: data.value.documents,
-      });
-      return;
+      return handleDataSourceSearch({ req, res, dataSource });
     }
 
     default:

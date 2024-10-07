@@ -26,11 +26,9 @@ type SearchbarProps = {
   size?: "xs" | "sm" | "md";
   disabled?: boolean;
   className?: string;
-}
+};
 
-export const Searchbar = forwardRef<
-  HTMLInputElement, SearchbarProps
->(
+export const Searchbar = forwardRef<HTMLInputElement, SearchbarProps>(
   (
     {
       placeholder,

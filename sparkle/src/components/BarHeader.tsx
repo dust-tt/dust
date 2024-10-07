@@ -85,7 +85,6 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
           icon={ChevronLeftIcon}
           variant="tertiary"
           label="Back"
-          tooltipPosition="below"
           labelVisible={false}
           onClick={props.onBack}
         />
@@ -97,7 +96,6 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
           icon={XMarkIcon}
           variant="tertiary"
           label="Close"
-          tooltipPosition="below"
           labelVisible={false}
           onClick={props.onClose}
         />
@@ -134,7 +132,6 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
             icon={TrashIcon}
             variant="tertiary"
             labelVisible={false}
-            tooltipPosition="below"
             onClick={props.onDelete}
           />
           <Button

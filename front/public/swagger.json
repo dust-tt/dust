@@ -851,6 +851,270 @@
         }
       }
     },
+    "/api/v1/w/{wId}/vaults/{vId}/data_source_views/{dsvId}/search": {
+      "get": {
+        "summary": "Search the data source",
+        "description": "Search the data source view identified by {dsvId} in the workspace identified by {wId}.",
+        "tags": ["DatasourceViews"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "vId",
+            "required": true,
+            "description": "ID of the vault",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "dsId",
+            "required": true,
+            "description": "ID of the data source",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": true,
+            "description": "The search query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "top_k",
+            "required": true,
+            "description": "The number of results to return",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "full_text",
+            "required": true,
+            "description": "Whether to perform a full text search",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target_document_tokens",
+            "required": false,
+            "description": "The number of tokens in the target document",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "timestamp_gt",
+            "required": false,
+            "description": "The timestamp to filter by",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "timestamp_lt",
+            "required": false,
+            "description": "The timestamp to filter by",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tags_in",
+            "required": false,
+            "description": "The tags to filter by",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tags_not",
+            "required": false,
+            "description": "The tags to filter by",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "parents_in",
+            "required": false,
+            "description": "The parents to filter by",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "parents_not",
+            "required": false,
+            "description": "The parents to filter by",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The documents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "documents": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "ID of the document"
+                          },
+                          "title": {
+                            "type": "string",
+                            "description": "Title of the document"
+                          },
+                          "content": {
+                            "type": "string",
+                            "description": "Content of the document"
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Tags of the document"
+                          },
+                          "parents": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Parents of the document"
+                          },
+                          "timestamp": {
+                            "type": "number",
+                            "description": "Timestamp of the document"
+                          },
+                          "data": {
+                            "type": "object",
+                            "description": "Data of the document"
+                          },
+                          "score": {
+                            "type": "number",
+                            "description": "Score of the document"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request error"
+          },
+          "405": {
+            "description": "Method not supported error"
+          }
+        }
+      }
+    },
+    "/api/w/{workspaceId}/vaults/{vId}/data_source_views": {
+      "get": {
+        "summary": "List Data Source Views",
+        "description": "Retrieves a list of data source views for the specified vault",
+        "tags": ["DataSourceViews"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspaceId",
+            "required": true,
+            "description": "Unique string identifier for the workspace",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "vId",
+            "required": true,
+            "description": "ID of the vault",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of data source views in the vault",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "dataSourceViews": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DataSourceView"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Workspace not found."
+          },
+          "405": {
+            "description": "Method not supported."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/documents/{documentId}": {
       "get": {
         "summary": "Retrieve a document from a data source",
@@ -2174,6 +2438,64 @@
         }
       }
     },
+    "/api/v1/w/{wId}/vaults": {
+      "get": {
+        "summary": "List Workspace Vaults",
+        "description": "Retrieves a list of vaults for the authenticated workspace.",
+        "tags": ["Vaults"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "Unique string identifier for the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vaults of the workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "vaults": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Vault"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "404": {
+            "description": "Workspace not found."
+          },
+          "405": {
+            "description": "Method not supported."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/workspace-usage": {
       "get": {
         "summary": "Get workspace usage data",
@@ -2730,6 +3052,31 @@
           }
         }
       },
+      "Vault": {
+        "type": "object",
+        "properties": {
+          "sId": {
+            "type": "string",
+            "description": "Unique string identifier for the vault"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the vault"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["regular", "global", "system", "public"],
+            "description": "The kind of the vault"
+          },
+          "groupIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of group IDs that have access to the vault"
+          }
+        }
+      },
       "Datasource": {
         "type": "object",
         "properties": {
@@ -2772,6 +3119,66 @@
             "type": "boolean",
             "description": "Whether this datasource is selected by default for assistants",
             "example": true
+          }
+        }
+      },
+      "DataSourceView": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": ["managed", "folder", "website", "apps"],
+            "description": "The category of the data source view"
+          },
+          "createdAt": {
+            "type": "number",
+            "description": "Timestamp of when the data source view was created"
+          },
+          "dataSource": {
+            "$ref": "#/components/schemas/Datasource"
+          },
+          "editedByUser": {
+            "type": "object",
+            "description": "The user who last edited the data source view",
+            "properties": {
+              "fullName": {
+                "type": "string",
+                "description": "Full name of the user"
+              },
+              "editedAt": {
+                "type": "number",
+                "description": "Timestamp of when the data source view was last edited by the user"
+              }
+            }
+          },
+          "id": {
+            "type": "number",
+            "description": "Unique identifier for the data source view"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["default", "custom"],
+            "description": "The kind of the data source view"
+          },
+          "parentsIn": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of IDs included in this view, null if complete data source is taken",
+            "nullable": true
+          },
+          "sId": {
+            "type": "string",
+            "description": "Unique string identifier for the data source view"
+          },
+          "updatedAt": {
+            "type": "number",
+            "description": "Timestamp of when the data source view was last updated"
+          },
+          "vaultId": {
+            "type": "string",
+            "description": "ID of the vault containing the data source view"
           }
         }
       },

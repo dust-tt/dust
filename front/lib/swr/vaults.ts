@@ -95,7 +95,7 @@ export function useVaultInfo({
   return {
     vaultInfo: data ? data.vault : null,
     mutateVaultInfo: mutate,
-    isVaultInfoLoading: !error && !data,
+    isVaultInfoLoading: !error && !data && !disabled,
     isVaultInfoError: error,
   };
 }
@@ -208,7 +208,7 @@ export function useVaultDataSourceViewsWithDetails({
     vaultDataSourceViews,
     mutate,
     mutateRegardlessOfQueryParams,
-    isVaultDataSourceViewsLoading: !error && !data,
+    isVaultDataSourceViewsLoading: !error && !data && !disabled,
     isVaultDataSourceViewsError: error,
   };
 }
@@ -230,7 +230,6 @@ export function useCreateFolder({
       disabled: true, // Needed just to mutate
     });
 
-  // TODO(GROUPS_INFRA) - Ideally, it should be a DataSourceViewType
   const doCreate = async (name: string | null, description: string | null) => {
     if (!name) {
       return null;

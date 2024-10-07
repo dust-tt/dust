@@ -172,11 +172,5 @@ export function Citation({
       <div className={isLoading ? "s-opacity-50" : ""}>{cardContent}</div>
     </CardButton>
   );
-  return href ? (
-    <Tooltip label={title} position="above">
-      {cardButton}
-    </Tooltip>
-  ) : (
-    cardButton
-  );
+  return href ? <Tooltip trigger={cardButton} label={title} /> : cardButton;
 }

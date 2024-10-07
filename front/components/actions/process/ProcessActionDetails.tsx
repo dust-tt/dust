@@ -61,12 +61,13 @@ function ProcessActionQuery({ action }: { action: ProcessActionType }) {
       {overflow && (
         <Tooltip
           label={`Too much data to process over time frame. Processed ${action.outputs?.total_documents} documents (for a total of ${action.outputs?.total_tokens} tokens) up to to ${minProcessingDateAsString}.`}
-        >
-          <Chip
-            color="warning"
-            label={`Limited processing (up to ${minProcessingDateAsString})`}
-          />
-        </Tooltip>
+          trigger={
+            <Chip
+              color="warning"
+              label={`Limited processing (up to ${minProcessingDateAsString})`}
+            />
+          }
+        />
       )}
     </div>
   );

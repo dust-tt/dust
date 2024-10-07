@@ -1,17 +1,19 @@
-import type { DataSourceWithAgentsUsageType } from "@dust-tt/types";
+import type { DataSourceWithAgentsUsageType, Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 import { uniq } from "lodash";
 
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 
 export const deleteVault = async (
   auth: Authenticator,
   vault: VaultResource
-) => {
+): Promise<Result<undefined, Error>> => {
   if (!auth.isAdmin()) {
     throw new Error("Only admins can delete vaults.");
   }
@@ -43,8 +45,22 @@ export const deleteVault = async (
 
   if (usages.length > 0) {
     const agentNames = uniq(usages.map((u) => u.agentNames).flat());
-    throw new Error(
-      `Cannot delete vault with data source in use by assistant(s): ${agentNames.join(", ")}.`
+    return new Err(
+      new Error(
+        `Cannot delete vault with data source in use by assistant(s): ${agentNames.join(", ")}.`
+      )
+    );
+  }
+
+  const groupHasKeys = await KeyResource.countActiveForGroups(
+    auth,
+    vault.groups
+  );
+  if (groupHasKeys > 0) {
+    return new Err(
+      new Error(
+        "Canno't delete group with active API Keys. Please revoke all keys before."
+      )
     );
   }
 
@@ -82,4 +98,6 @@ export const deleteVault = async (
       throw res.error;
     }
   });
+
+  return new Ok(undefined);
 };

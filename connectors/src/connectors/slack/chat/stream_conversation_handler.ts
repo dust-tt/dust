@@ -88,7 +88,8 @@ export async function streamConversationToSlack(
       ...makeMessageUpdateBlocksAndText(
         conversationUrl,
         connector.workspaceId,
-        messageUpdate
+        messageUpdate,
+        assistantName
       ),
       channel: slackChannelId,
       thread_ts: slackMessageTs,

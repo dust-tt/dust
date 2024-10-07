@@ -81,6 +81,7 @@ interface TreeItemProps {
   collapsed?: boolean;
   defaultCollapsed?: boolean;
   className?: string;
+  labelClassName?: string;
   actions?: React.ReactNode;
   areActionsFading?: boolean;
   isNavigatable?: boolean;
@@ -102,6 +103,7 @@ Tree.Item = function ({
   label,
   type = "node",
   className = "",
+  labelClassName = "",
   size = "sm",
   tailwindIconTextColor = "s-text-element-800",
   visual,
@@ -188,7 +190,7 @@ Tree.Item = function ({
 
         <div
           className={classNames(
-            "s-truncate s-font-medium s-text-element-900",
+            `s-truncate s-font-medium s-text-element-900 ${labelClassName}`,
             size === "sm" ? "s-ml-1 s-text-sm" : "s-ml-1 s-text-base"
           )}
         >
@@ -220,5 +222,9 @@ interface TreeEmptyProps {
 }
 
 Tree.Empty = function ({ label }: TreeEmptyProps) {
-  return <div className="s-pl-4 s-text-sm s-text-element-600">{label}</div>;
+  return (
+    <div className="s-py-1 s-pl-6 s-text-sm s-font-medium s-text-element-700">
+      {label}
+    </div>
+  );
 };

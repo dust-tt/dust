@@ -199,7 +199,7 @@ export function Tab<E>({
         tab.label ? (
           <React.Fragment key={`tab-${i}`}>
             <div className={tabSizingClasses[tab.sizing ?? "hug"]}>
-              <Tooltip label={tab.label}>{content}</Tooltip>
+              <Tooltip trigger={content} label={tab.label} />
             </div>
             {tab.hasSeparator && (
               <div className="s-flex s-h-full s-grow" key={`sep-${i}`} />

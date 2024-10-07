@@ -1,7 +1,6 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { DustIcon } from "@sparkle/icons/solid";
 import {
   DriveLogo,
   IntercomLogo,
@@ -15,6 +14,7 @@ import {
   CloudArrowDownIcon,
   Cog6ToothIcon,
   DocumentIcon,
+  DustIcon,
   EyeIcon,
   FolderIcon,
   IconButton,
@@ -89,7 +89,17 @@ export const TreeExample = () => {
                     visual={FolderIcon}
                     collapsed={false}
                   >
-                    <Tree.Empty label="No documents"/>
+                    <Tree.Item
+                      label="Item 3"
+                      type="leaf"
+                      visual={DocumentIcon}
+                    />
+                    <Tree.Item
+                      label="Item 3"
+                      type="leaf"
+                      visual={DocumentIcon}
+                    />
+                    <Tree.Empty label="(+ 4 items)" />
                   </Tree.Item>
                 </Tree>
               </Tree.Item>

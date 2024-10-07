@@ -11,8 +11,10 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
+import type { Authenticator } from "@app/lib/auth";
 import { User } from "@app/lib/models/user";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
@@ -119,18 +121,6 @@ export class KeyResource extends BaseResource<KeyModel> {
     return keys.map((key) => new this(KeyResource.model, key.get()));
   }
 
-  static async deleteAllForWorkspace(
-    workspace: LightWorkspaceType,
-    transaction?: Transaction
-  ) {
-    return this.model.destroy({
-      where: {
-        workspaceId: workspace.id,
-      },
-      transaction,
-    });
-  }
-
   async markAsUsed() {
     return this.model.update(
       { lastUsedAt: new Date() },
@@ -153,8 +143,37 @@ export class KeyResource extends BaseResource<KeyModel> {
     );
   }
 
+  static async countActiveForGroups(
+    auth: Authenticator,
+    groups: GroupResource[]
+  ) {
+    return this.model.count({
+      where: {
+        groupId: {
+          [Op.in]: groups.map((g) => g.id),
+        },
+        status: "active",
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  }
+
+  // Deletion.
+
   delete(): Promise<Result<undefined, Error>> {
     throw new Error("Method not implemented.");
+  }
+
+  static async deleteAllForWorkspace(
+    workspace: LightWorkspaceType,
+    transaction?: Transaction
+  ) {
+    return this.model.destroy({
+      where: {
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
   }
 
   toJSON(): KeyType {

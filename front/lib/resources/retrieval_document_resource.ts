@@ -44,27 +44,22 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
   }
 
   static async makeNew(
-    auth: Authenticator,
     blob: RetrievalDocumentBlob,
     chunks: RetrievalDocumentChunkType[],
     dataSourceView: DataSourceViewResource
   ) {
-    const [doc] = await this.makeNewBatch(auth, [
-      { blob, chunks, dataSourceView },
-    ]);
+    const [doc] = await this.makeNewBatch([{ blob, chunks, dataSourceView }]);
 
     return doc;
   }
 
   static async makeNewBatch(
-    auth: Authenticator,
     blobs: {
       blob: RetrievalDocumentBlob;
       chunks: RetrievalDocumentChunkType[];
       dataSourceView: DataSourceViewResource;
     }[]
   ) {
-    // TODO(GROUPS_INFRA) Use auth.workspaceId.
     const results = await frontSequelize.transaction(async (transaction) => {
       const createdDocuments = [];
 

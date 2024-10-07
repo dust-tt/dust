@@ -220,17 +220,18 @@ export default function Deploy({
             ? "You need to run this app at least once successfully to view the endpoint"
             : "View how to run this app programmatically"
         }
-      >
-        <Button
-          label="API"
-          variant="primary"
-          onClick={() => {
-            setShowViewAppAPIModal(true);
-          }}
-          disabled={disabled}
-          icon={CubeIcon}
-        />
-      </Tooltip>
+        trigger={
+          <Button
+            label="API"
+            variant="primary"
+            onClick={() => {
+              setShowViewAppAPIModal(true);
+            }}
+            disabled={disabled}
+            icon={CubeIcon}
+          />
+        }
+      />
     </div>
   );
 }

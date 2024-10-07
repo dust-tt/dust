@@ -102,15 +102,16 @@ export function EditVaultStaticDatasourcesViews({
               ? `Only builders of the workspace can add a ${category} in the Company data Vault.`
               : `Only members of the vault can add a ${category}.`
           }
-          position="above"
-        >
-          <Button
-            label={`Add ${category}`}
-            onClick={checkLimitsAndOpenModal}
-            icon={PlusIcon}
-            disabled={!canWriteInVault}
-          />
-        </Tooltip>
+          side="top"
+          trigger={
+            <Button
+              label={`Add ${category}`}
+              onClick={checkLimitsAndOpenModal}
+              icon={PlusIcon}
+              disabled={!canWriteInVault}
+            />
+          }
+        />
       )}
     </>
   );

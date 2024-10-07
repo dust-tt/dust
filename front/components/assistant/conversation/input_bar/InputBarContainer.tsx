@@ -145,7 +145,7 @@ const InputBarContainer = ({
                 icon={AttachmentIcon}
                 size="sm"
                 tooltip={`Add a document to the conversation (${supportedFileExtensions.join(", ")}).`}
-                tooltipPosition="above"
+                tooltipPosition="top"
                 className="flex"
                 onClick={() => {
                   fileInputRef.current?.click();

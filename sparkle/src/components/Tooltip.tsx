@@ -1,86 +1,56 @@
-import React, { useEffect, useState } from "react";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
+import * as React from "react";
 
 import { classNames } from "@sparkle/lib/utils";
 
-export interface TooltipProps {
-  children: React.ReactNode;
-  label?: string;
-  position?: "above" | "below";
-  contentChildren?: React.ReactNode;
+const TooltipProvider = TooltipPrimitive.Provider;
+
+const TooltipRoot = TooltipPrimitive.Root;
+
+const TooltipTrigger = TooltipPrimitive.Trigger;
+
+interface TooltipContentProps
+  extends React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content> {}
+
+const TooltipContent = React.forwardRef<
+  React.ElementRef<typeof TooltipPrimitive.Content>,
+  TooltipContentProps
+>(({ className, sideOffset = 4, ...props }, ref) => (
+  <TooltipPrimitive.Content
+    ref={ref}
+    sideOffset={sideOffset}
+    className={classNames(
+      "s-bg-primary-50 s-text-primary-700 s-z-50 s-max-w-xs s-overflow-hidden s-rounded-md s-border s-bg-white s-px-3 s-py-1.5 s-text-sm s-shadow-md",
+      "s-animate-in s-fade-in-0 s-zoom-in-95",
+      "data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=closed]:s-zoom-out-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2",
+      className || ""
+    )}
+    {...props}
+  />
+));
+
+interface TooltipProps extends TooltipContentProps {
+  trigger: React.ReactNode;
+  label: React.ReactNode;
 }
 
-export function Tooltip({
-  children,
-  label,
-  position = "above",
-  contentChildren,
-}: TooltipProps) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [timerId, setTimerId] = useState<number | null>(null);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
-
-  const handleMouseOver = () => {
-    const id = window.setTimeout(() => {
-      setIsHovered(true);
-    }, 600);
-    setTimerId(id);
-  };
-
-  const handleMouseLeave = () => {
-    if (timerId !== null) {
-      clearTimeout(timerId);
-    }
-    setIsHovered(false);
-  };
-
-  useEffect(() => {
-    setIsTouchDevice("ontouchstart" in window || navigator.maxTouchPoints > 0);
-    return () => {
-      if (timerId) {
-        window.clearTimeout(timerId);
-      }
-    };
-  }, [timerId]);
-
-  if (isTouchDevice) {
-    return <>{children}</>;
-  }
-
-  const baseClasses = classNames(
-    "s-absolute s-z-10 s-px-3 s-py-2 s-text-sm s-rounded-xl s-border s-shadow-md s-transition-all s-duration-500 s-ease-out s-transform",
-    "s-border-structure-100 dark:s-border-structure-50-dark s-bg-structure-0 dark:s-bg-structure-100-dark s-text-element-700 dark:s-text-element-600-dark"
-  );
-  const hiddenClasses = "s-translate-y-2 s-opacity-0 s-pointer-events-none"; // Added s-pointer-events-none
-  const visibleClasses = "-s-translate-y-0 s-opacity-100";
-  const hiddenOnMobileClasses = "s-hidden sm:s-block";
-  const tooltipCenterClasses = "s-left-1/2 -s-translate-x-1/2";
-  const tooltipPositionClasses =
-    position === "above" ? "s-bottom-full s-mb-2" : "s-top-full s-mt-2";
-
-  // if tooltip text is too long we need to wrap it
-  const labelLength = label?.length || 0;
-  const labelClasses = labelLength > 80 ? "s-w-[38em]" : "s-whitespace-nowrap";
-
+function Tooltip({ trigger, label, ...props }: TooltipProps) {
   return (
-    <div
-      onMouseEnter={handleMouseOver}
-      onMouseLeave={handleMouseLeave}
-      className="s-relative s-inline-block"
-    >
-      {children}
-      <div
-        className={classNames(
-          `${isHovered ? visibleClasses : hiddenClasses}`,
-          baseClasses,
-          hiddenOnMobileClasses,
-          tooltipPositionClasses,
-          tooltipCenterClasses,
-          contentChildren ? "" : labelClasses
-        )}
-        onAnimationEnd={() => setIsHovered(false)}
-      >
-        {contentChildren || label}
-      </div>
-    </div>
+    <TooltipProvider>
+      <TooltipRoot>
+        <TooltipTrigger>{trigger}</TooltipTrigger>
+        <TooltipContent {...props}>{label}</TooltipContent>
+      </TooltipRoot>
+    </TooltipProvider>
   );
 }
+
+TooltipContent.displayName = TooltipPrimitive.Content.displayName;
+
+export {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+};

@@ -25,6 +25,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vaults";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
@@ -120,15 +121,29 @@ export class GroupResource extends BaseResource<GroupModel> {
   static async listWorkspaceGroupsFromKey(
     key: KeyResource
   ): Promise<GroupResource[]> {
-    // TODO(GROUPS_INFRA): we need to pull the groups associated with the key once that's built.
-    const groups = await this.model.findAll({
-      where: {
-        workspaceId: key.workspaceId,
+    let whereCondition: WhereOptions<GroupModel> = {
+      workspaceId: key.workspaceId,
+    };
+
+    // If the key is a system key, we also include the global group.
+    if (key.isSystem) {
+      whereCondition = {
+        ...whereCondition,
         [Op.or]: [
-          { kind: key.isSystem ? ["system", "global"] : "global" },
+          { kind: { [Op.in]: ["system", "global"] } },
           { id: key.groupId },
         ],
-      },
+      };
+    } else {
+      // If it's not a system key, we only fetch the associated group.
+      whereCondition = {
+        ...whereCondition,
+        id: key.groupId,
+      };
+    }
+
+    const groups = await this.model.findAll({
+      where: whereCondition,
     });
 
     if (groups.length === 0) {
@@ -310,12 +325,16 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(group);
   }
 
-  static async listWorkspaceGroups(
-    auth: Authenticator
+  static async listAllWorkspaceGroups(
+    auth: Authenticator,
+    options: { includeSystem?: boolean } = {}
   ): Promise<GroupResource[]> {
+    const { includeSystem } = options;
     const groups = await this.baseFetch(auth, {});
 
-    return groups.filter((group) => group.canRead(auth));
+    return groups
+      .filter((group) => group.canRead(auth))
+      .filter((group) => includeSystem || !group.isSystem());
   }
 
   static async listUserGroupsInWorkspace({
@@ -374,7 +393,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     let memberships: GroupMembershipModel[] | MembershipResource[];
 
     // The global group does not have a DB entry for each workspace member.
-    // TODO(GROUPS_INFRA): Remove this once we consolidate memberships with group memberships.
     if (this.isGlobal()) {
       const { memberships: m } = await MembershipResource.getActiveMemberships({
         workspace: auth.getNonNullableWorkspace(),
@@ -621,6 +639,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
+      await KeyModel.destroy({
+        where: {
+          groupId: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      });
+
       await GroupVaultModel.destroy({
         where: {
           groupId: this.id,

@@ -1,0 +1,31 @@
+{
+  "name": "cli",
+  "version": "0.0.1",
+  "description": "Dust command-line client",
+  "bin": {
+    "dust": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@dust-tt/types": "file:../../../types",
+    "commander": "^12.1.0",
+    "talisman": "^1.1.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "@typescript-eslint/eslint-plugin": "^7.9.0",
+    "@typescript-eslint/parser": "^7.9.0",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.2.3",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-jsdoc": "^48.4.0",
+    "eslint-plugin-simple-import-sort": "^12.1.0",
+    "eslint-plugin-unused-imports": "^3.2.0",
+    "prettier": "^3.0",
+    "typescript": "^5.6.2"
+  }
+}

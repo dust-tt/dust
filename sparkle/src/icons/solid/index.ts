@@ -48,6 +48,7 @@ export { default as DocumentDuplicateIcon } from "./DocumentDuplicate";
 export { default as DocumentPileIcon } from "./DocumentPile";
 export { default as DocumentPlusIcon } from "./DocumentPlus";
 export { default as DocumentTextIcon } from "./DocumentText";
+export { default as DotIcon } from "./Dot";
 export { default as DustIcon } from "./Dust";
 export { default as EmotionLaughIcon } from "./EmotionLaugh";
 export { default as EqualizerIcon } from "./Equalizer";

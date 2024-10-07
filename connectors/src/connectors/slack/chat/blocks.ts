@@ -13,6 +13,9 @@ import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
  */
 export const MAX_SLACK_MESSAGE_LENGTH = 2950;
 
+export const SLACK_CHOOSE_BOT_HELP_URL =
+  "https://docs.dust.tt/docs/slack#calling-an-assistant-in-slack";
+
 function makeConversationLinkContextBlock(conversationUrl: string) {
   return {
     type: "context",
@@ -159,14 +162,15 @@ export function makeHeaderBlock(
   workspaceId: string
 ) {
   const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/assistant/new`);
+  const baseHeader = `<${assistantsUrl}|Dust assistants> | <https://dust.tt/home|More about Dust> | <${SLACK_CHOOSE_BOT_HELP_URL}| Select which assistant replies>`;
   return {
     type: "context",
     elements: [
       {
         type: "mrkdwn",
         text: conversationUrl
-          ? `<${conversationUrl}|Full conversation on Dust> | <${assistantsUrl}|Dust assistants> | <https://dust.tt/home|More about Dust>`
-          : `<https://dust.tt/home|More about Dust>`,
+          ? `<${conversationUrl}|Full conversation on Dust> | ${baseHeader}`
+          : baseHeader,
       },
     ],
   };
@@ -175,7 +179,8 @@ export function makeHeaderBlock(
 export function makeMessageUpdateBlocksAndText(
   conversationUrl: string | null,
   workspaceId: string,
-  messageUpdate: SlackMessageUpdate
+  messageUpdate: SlackMessageUpdate,
+  assistantName?: string
 ) {
   const {
     isComplete,
@@ -185,12 +190,19 @@ export function makeMessageUpdateBlocksAndText(
     action,
     agentConfigurations,
   } = messageUpdate;
-  const thinkingText = action ? `Thinking... (${action})` : "Thinking...";
+  const thinkingText = assistantName
+    ? `@${assistantName} is thinking...`
+    : "Thinking...";
+  const thinkingTextWithAction = action
+    ? `${thinkingText}... (${action})`
+    : thinkingText;
 
   return {
     blocks: [
       makeHeaderBlock(conversationUrl, workspaceId),
-      isThinking ? makeThinkingBlock(thinkingText) : makeMarkdownBlock(text),
+      isThinking
+        ? makeThinkingBlock(thinkingTextWithAction)
+        : makeMarkdownBlock(text),
       ...makeContextSectionBlocks(isComplete, conversationUrl, footnotes),
       ...makeAssistantSelectionBlock(agentConfigurations),
     ],

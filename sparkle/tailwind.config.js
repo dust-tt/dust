@@ -231,7 +231,11 @@ module.exports = {
       backgroundColor: ["dark"],
     },
   },
-  plugins: [require("@tailwindcss/forms"), require("tailwind-scrollbar-hide")],
+  plugins: [
+    require("@tailwindcss/forms"),
+    require("tailwind-scrollbar-hide"),
+    require("tailwindcss-animate"),
+  ],
   prefix: "s-",
   content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
   safelist: [

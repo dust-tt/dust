@@ -24,6 +24,7 @@ import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useApps } from "@app/lib/swr/apps";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
@@ -98,15 +99,19 @@ export default function VaultSideBarMenu({
             if (kind === "public" && !vaults.length) {
               return null;
             }
-            if (kind === "regular" && !isPrivateVaultsEnabled) {
-              return null;
+            if (kind === "regular") {
+              if (!isPrivateVaultsEnabled) {
+                return null;
+              } else if (!vaults.length && !isAdmin) {
+                return null;
+              }
             }
 
             const sectionLabel = getSectionLabel(kind);
 
             return (
               <Fragment key={`vault-section-${index}`}>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between pr-1">
                   <Item.SectionHeader
                     label={sectionLabel}
                     variant="secondary"
@@ -182,7 +187,7 @@ const getSectionLabel = (kind: VaultKind) => {
 
 const SYSTEM_VAULTS_ITEMS = [
   {
-    label: "Connection Administration",
+    label: "Connection Admin",
     visual: CloudArrowLeftRightIcon,
     tailwindIconTextColor: "text-brand",
     category: "managed" as DataSourceViewCategory,
@@ -454,7 +459,7 @@ const VaultDataSourceViewItem = ({
   }, [isAncestorToCurrentPage]);
 
   const LogoComponent = node
-    ? undefined
+    ? getVisualForContentNode(node)
     : getConnectorProviderLogoWithFallback(
         item.dataSource.connectorProvider,
         FolderIcon
@@ -464,8 +469,11 @@ const VaultDataSourceViewItem = ({
     ? `${basePath}?parentId=${node?.internalId}`
     : basePath;
 
+  const isEmpty = isExpanded && !isNodesLoading && nodes.length === 0;
   const folders = nodes.filter((node) => node.expandable);
-  const isEmpty = isExpanded && !isNodesLoading && folders.length === 0;
+  const notFolders = nodes.filter((node) => !node.expandable);
+  const itemsLabel = notFolders.length === 1 ? "item" : "items";
+
   return (
     <Tree.Item
       isNavigatable
@@ -489,6 +497,15 @@ const VaultDataSourceViewItem = ({
               node={node}
             />
           ))}
+          {notFolders.length > 0 && (
+            <Tree.Item
+              type="leaf"
+              visual={PlusIcon}
+              tailwindIconTextColor="text-slate-500 w-4 h-4"
+              labelClassName="italic text-element-500 text-slate-500"
+              label={`${notFolders.length} ${folders.length > 0 ? "other " : ""} ${itemsLabel}`}
+            />
+          )}
         </Tree>
       )}
     </Tree.Item>

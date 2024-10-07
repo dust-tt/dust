@@ -56,8 +56,8 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     id: string
   ): Promise<FileResource | null> {
-    // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
     const res = await FileResource.fetchByIds(auth, [id]);
+
     return res.length > 0 ? res[0] : null;
   }
 
@@ -182,13 +182,12 @@ export class FileResource extends BaseResource<FileModel> {
   // Cloud storage logic.
 
   getPublicUrl(auth: Authenticator): string {
-    // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
     const owner = auth.getNonNullableWorkspace();
+
     return `${config.getClientFacingUrl()}/api/w/${owner.sId}/files/${this.sId}`;
   }
 
   getCloudStoragePath(auth: Authenticator, version: FileVersion): string {
-    // TODO(2024-07-01 flav) Remove once we introduce AuthenticatorWithWorkspace.
     const owner = auth.getNonNullableWorkspace();
 
     return FileResource.getCloudStoragePathForId({

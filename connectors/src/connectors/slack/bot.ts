@@ -376,35 +376,11 @@ async function answerMessage(
     }
   );
 
-  const mainMessage = await slackClient.chat.postMessage({
-    ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
-      isComplete: false,
-      isThinking: true,
-    }),
-    channel: slackChannel,
-    thread_ts: slackMessageTs,
-    metadata: {
-      event_type: "user_message",
-      event_payload: {
-        message_id: slackChatBotMessage.id,
-      },
-    },
-  });
-
-  const buildSlackMessageError = (errRes: Err<Error | APIError>) => {
-    return new Err(
-      new SlackMessageError(
-        errRes.error.message,
-        slackChatBotMessage.get(),
-        mainMessage
-      )
-    );
-  };
-
   const agentConfigurationsRes = await dustAPI.getAgentConfigurations();
   if (agentConfigurationsRes.isErr()) {
-    return buildSlackMessageError(agentConfigurationsRes);
+    return new Err(new Error(agentConfigurationsRes.error.message));
   }
+
   const agentConfigurations = agentConfigurationsRes.value.filter(
     (ac) => ac.status === "active"
   );
@@ -557,6 +533,31 @@ async function answerMessage(
       };
     }
   }
+
+  const mainMessage = await slackClient.chat.postMessage({
+    ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
+      isComplete: false,
+      isThinking: true,
+    }),
+    channel: slackChannel,
+    thread_ts: slackMessageTs,
+    metadata: {
+      event_type: "user_message",
+      event_payload: {
+        message_id: slackChatBotMessage.id,
+      },
+    },
+  });
+
+  const buildSlackMessageError = (errRes: Err<Error | APIError>) => {
+    return new Err(
+      new SlackMessageError(
+        errRes.error.message,
+        slackChatBotMessage.get(),
+        mainMessage
+      )
+    );
+  };
 
   if (!message.includes(":mention")) {
     // if the message does not contain the mention, we add it as a prefix.

@@ -92,4 +92,4 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   }
 );
 
-Input.displayName = "Input"
+Input.displayName = "Input";

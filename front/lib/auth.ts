@@ -471,7 +471,6 @@ export class Authenticator {
     let subscription: SubscriptionType | null = null;
     let flags: WhitelistableFeature[] = [];
 
-    // TODO(GROUPS_INFRA): this should be refactored to use the new groups infra.
     [globalGroup, subscription, flags] = await Promise.all([
       GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
       subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
@@ -512,8 +511,6 @@ export class Authenticator {
     let subscription: SubscriptionType | null = null;
     let flags: WhitelistableFeature[] = [];
 
-    // TODO(GROUPS_INFRA): maybe this group should access not only to the global group
-    // but all groups? To be answered while moving forward with this new infra.
     [globalGroup, subscription, flags] = await Promise.all([
       GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
       subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
@@ -546,7 +543,6 @@ export class Authenticator {
    * @param param1
    * @returns
    */
-  // TODO(2024-08-05 flav) Use user-id instead of email to avoid ambiguity.
   async exchangeSystemKeyForUserAuthByEmail(
     auth: Authenticator,
     { userEmail }: { userEmail: string }

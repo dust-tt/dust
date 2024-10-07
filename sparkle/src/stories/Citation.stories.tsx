@@ -133,7 +133,7 @@ export const CitationsExample = () => (
         type="google_drive"
         index="3"
         href="https://www.google.com"
-        description="Write a 120 character description of the citation here to be displayed in the citation list."
+        description="Write a 120 character description of the citation here to be displayed in the citation list. Write a 120 character description of the citation here to be displayed in the citation list. Write a 120 character description of the citation here to be displayed in the citation list."
         isBlinking={true}
       />
       <Citation

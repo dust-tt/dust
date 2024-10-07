@@ -26,6 +26,7 @@ export const DialogExample = () => {
           cancelLabel="Cancel"
           onValidate={() => setisOpen1(false)}
           onCancel={() => setisOpen1(false)}
+          validateVariant="primary"
         >
           <div>I'm the modal content</div>
         </Dialog>
