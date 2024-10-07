@@ -30,6 +30,7 @@ import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -39,7 +40,6 @@ import {
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 import { getWorkspaceByModelId } from "@app/lib/workspace";
-import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
@@ -385,10 +385,12 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
       {
         where: whereClause,
         order: [["updatedAt", "DESC"]],
-        includes: [{
-          model: VaultModel,
-          as: "vault"
-        }],
+        includes: [
+          {
+            model: VaultModel,
+            as: "vault",
+          },
+        ],
       }
     );
   }

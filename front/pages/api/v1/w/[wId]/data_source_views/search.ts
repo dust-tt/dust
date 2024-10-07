@@ -62,7 +62,7 @@ async function handler(
         vaultId,
         dataSourceId,
         kind,
-        vaultKind
+        vaultKind,
       });
 
       res.status(200).json({
