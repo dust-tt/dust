@@ -19,6 +19,7 @@ import {
   Ok,
   sectionFullText,
 } from "@dust-tt/types";
+import assert from "assert";
 import type { Transaction } from "sequelize";
 
 import { default as apiConfig, default as config } from "@app/lib/api/config";
@@ -89,12 +90,7 @@ export async function hardDeleteDataSource(
   auth: Authenticator,
   dataSource: DataSourceResource
 ) {
-  if (!auth.isBuilder()) {
-    return new Err({
-      code: "unauthorized_deletion",
-      message: "Only builders can destroy data sources.",
-    });
-  }
+  assert(auth.isBuilder(), "Only builders can delete data sources.");
 
   const { dustAPIProjectId } = dataSource;
   if (dataSource.connectorId && dataSource.connectorProvider) {
@@ -149,8 +145,6 @@ export async function hardDeleteDataSource(
   if (dataSource.connectorProvider) {
     await warnPostDeletion(auth, dataSource.connectorProvider);
   }
-
-  return new Ok(dataSource.toJSON());
 }
 
 async function warnPostDeletion(
@@ -168,6 +162,7 @@ async function warnPostDeletion(
         await sendGithubDeletionEmail(email);
       }
       break;
+
     default:
       break;
   }

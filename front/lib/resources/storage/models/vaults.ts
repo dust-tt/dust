@@ -1,21 +1,13 @@
 import type { VaultKind } from "@dust-tt/types";
-import type {
-  CreationOptional,
-  ForeignKey,
-  InferAttributes,
-  InferCreationAttributes,
-  NonAttribute,
-} from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
-export class VaultModel extends Model<
-  InferAttributes<VaultModel>,
-  InferCreationAttributes<VaultModel>
-> {
+export class VaultModel extends SoftDeletableModel<VaultModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -43,6 +35,9 @@ VaultModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    deletedAt: {
+      type: DataTypes.DATE,
+    },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -56,7 +51,7 @@ VaultModel.init(
     modelName: "vaults",
     sequelize: frontSequelize,
     indexes: [
-      { unique: true, fields: ["workspaceId", "name"] },
+      { unique: true, fields: ["workspaceId", "name", "deletedAt"] },
       { unique: false, fields: ["workspaceId", "kind"] },
     ],
   }

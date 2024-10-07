@@ -12,7 +12,6 @@ import type {
   Attributes,
   CreationAttributes,
   Includeable,
-  ModelStatic,
   Transaction,
   WhereOptions,
 } from "sequelize";
@@ -26,6 +25,7 @@ import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vaults"
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 
@@ -35,10 +35,10 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 export interface VaultResource extends ReadonlyAttributesType<VaultModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class VaultResource extends BaseResource<VaultModel> {
-  static model: ModelStatic<VaultModel> = VaultModel;
+  static model: ModelStaticSoftDeletable<VaultModel> = VaultModel;
 
   constructor(
-    model: ModelStatic<VaultModel>,
+    model: ModelStaticSoftDeletable<VaultModel>,
     blob: Attributes<VaultModel>,
     readonly groups: GroupResource[]
   ) {
@@ -134,7 +134,13 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   private static async baseFetch(
     auth: Authenticator,
-    { includes, limit, order, where }: ResourceFindOptions<VaultModel> = {}
+    {
+      includes,
+      limit,
+      order,
+      where,
+      includeDeleted,
+    }: ResourceFindOptions<VaultModel> = {}
   ) {
     const includeClauses: Includeable[] = [
       {
@@ -151,6 +157,7 @@ export class VaultResource extends BaseResource<VaultModel> {
       include: includeClauses,
       limit,
       order,
+      includeDeleted,
     });
 
     return vaultModels.map(this.fromModel);
@@ -206,14 +213,18 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   static async fetchById(
     auth: Authenticator,
-    sId: string
+    sId: string,
+    { includeDeleted }: { includeDeleted?: boolean } = {}
   ): Promise<VaultResource | null> {
     const vaultModelId = getResourceIdFromSId(sId);
     if (!vaultModelId) {
       return null;
     }
 
-    const [vault] = await this.baseFetch(auth, { where: { id: vaultModelId } });
+    const [vault] = await this.baseFetch(auth, {
+      where: { id: vaultModelId },
+      includeDeleted,
+    });
 
     return vault;
   }
@@ -236,68 +247,19 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   async delete(
     auth: Authenticator,
-    { transaction }: { transaction?: Transaction }
+    options: { hardDelete: boolean; transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
-    await GroupVaultModel.destroy({
-      where: {
-        vaultId: this.id,
-      },
-      transaction,
-    });
+    const { hardDelete, transaction } = options;
 
-    await this.model.destroy({
+    await VaultModel.destroy({
       where: {
         id: this.id,
       },
       transaction,
+      hardDelete,
     });
 
     return new Ok(undefined);
-  }
-
-  static async deleteAllForWorkspace(
-    auth: Authenticator,
-    transaction?: Transaction
-  ) {
-    const owner = auth.getNonNullableWorkspace();
-
-    const vaults = await this.model.findAll({
-      attributes: ["id"],
-      where: { workspaceId: owner.id },
-      transaction,
-    });
-
-    const vaultIds = vaults.map((vault) => vault.id);
-
-    await GroupVaultModel.destroy({
-      where: {
-        vaultId: {
-          [Op.in]: vaultIds,
-        },
-      },
-      transaction,
-    });
-
-    await this.model.destroy({
-      where: {
-        id: {
-          [Op.in]: vaultIds,
-        },
-      },
-      transaction,
-    });
-  }
-
-  static async deleteAllForWorkspaceExceptDefaults(auth: Authenticator) {
-    const owner = auth.getNonNullableWorkspace();
-    await this.model.destroy({
-      where: {
-        workspaceId: owner.id,
-        kind: {
-          [Op.notIn]: ["system", "global"],
-        },
-      },
-    });
   }
 
   async updateName(
@@ -417,6 +379,12 @@ export class VaultResource extends BaseResource<VaultModel> {
   isPublic() {
     return this.kind === "public";
   }
+
+  isDeleted() {
+    return this.deletedAt !== null;
+  }
+
+  // Seriliazation.
 
   toJSON(): VaultType {
     return {

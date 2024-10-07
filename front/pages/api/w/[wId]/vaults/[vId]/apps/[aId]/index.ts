@@ -4,6 +4,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { softDeleteApp } from "@app/lib/api/apps";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -100,7 +101,7 @@ async function handler(
         });
       }
 
-      await app.delete(auth, { hardDelete: false });
+      await softDeleteApp(auth, app);
 
       res.status(204).end();
       return;
