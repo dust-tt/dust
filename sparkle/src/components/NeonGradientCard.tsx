@@ -141,9 +141,21 @@ const NeonGradientCard: React.FC<NeonGradientCardProps> = ({
         )}
       >
         {children}
+        <RainbowButton />
       </div>
     </div>
   );
 };
 
 export { NeonGradientCard };
+
+export function RainbowButton() {
+  return (
+    <div className="s-relative">
+      <div className="s-absolute s--inset-2 s-rounded-lg s-bg-gradient-to-r s-from-yellow-600 s-via-orange-600 s-to-red-600 s-opacity-75 s-blur"></div>
+      <div className="s-relative s-flex s-h-64 s-w-64 s-items-center s-justify-center s-rounded-lg s-bg-slate-900 s-text-slate-300">
+        Gradient shadow
+      </div>
+    </div>
+  );
+}

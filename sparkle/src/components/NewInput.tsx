@@ -5,7 +5,7 @@ import { classNames, cn } from "@sparkle/lib/utils";
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {}
 
-const inputClasses = classNames(
+const inputStyleClasses = classNames(
   "s-text-sm s-bg-background s-rounded-xl s-border s-border-border-dark",
   "s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
   "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
@@ -20,7 +20,7 @@ const NewInput = React.forwardRef<HTMLInputElement, InputProps>(
       <input
         type={type}
         className={cn(
-          inputClasses,
+          inputStyleClasses,
           className,
           type === "file" || disabled
             ? "s-text-muted-foreground"

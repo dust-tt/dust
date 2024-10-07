@@ -1,10 +1,10 @@
 import React, { forwardRef } from "react";
 
 import { Icon } from "@sparkle/components/Icon";
-import { MagnifyingGlassStrokeIcon, XMarkIcon } from "@sparkle/icons";
+import { MagnifyingGlassIcon, XMarkIcon } from "@sparkle/icons";
+import { NewButton } from "@sparkle/index_with_tw_base";
 import { classNames, cn } from "@sparkle/lib/utils";
 
-import { IconButton } from "./IconButton";
 import { NewInput } from "./NewInput";
 
 interface NewSearchInputProps {
@@ -50,23 +50,28 @@ export const NewSearchInput = forwardRef<HTMLInputElement, NewSearchInputProps>(
         />
         <div
           className={classNames(
-            "s-absolute s-inset-y-0 s-right-0 s-flex s-items-center s-pr-3"
+            "s-absolute s-inset-y-0 s-right-0 s-flex s-items-center s-pr-1"
           )}
         >
           {value && onChange ? (
-            <IconButton
+            <NewButton
               icon={XMarkIcon}
-              variant="secondary"
-              size="sm"
+              variant="ghost-secondary"
+              size="xs"
               onClick={clearInputField}
             />
           ) : (
             <div
               className={classNames(
+                "s-px-2",
                 disabled ? "s-text-element-600" : "s-text-element-900"
               )}
             >
-              <Icon visual={MagnifyingGlassStrokeIcon} size="sm" />
+              <Icon
+                visual={MagnifyingGlassIcon}
+                size="xs"
+                className="s-text-muted-foreground"
+              />
             </div>
           )}
         </div>

@@ -15,7 +15,7 @@ export const listStyleClasses = {
   "item-active": "s-bg-primary-200 s-border-border",
   "item-selected": "s-text-primary-950 s-bg-white s-ring-1 s-ring-primary-200",
   label:
-    "s-font-semibold s-px-2 s-pt-6 s-pb-2 s-text-xs s-text-foreground s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
+    "s-font-semibold s-px-2 s-pt-6 s-pb-2 s-text-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
 };
 
 const NewNavigationList = React.forwardRef<
@@ -76,7 +76,7 @@ const NewNavigationListItem = React.forwardRef<
         {isHovered && (
           <div className="-s-mr-1 s-flex s-h-4 s-items-center">
             <NewButton
-              variant="ghost"
+              variant="ghost-secondary"
               icon={MoreIcon}
               size="xs"
               onClick={(e) => e.stopPropagation()}
@@ -92,12 +92,34 @@ const NewNavigationListItem = React.forwardRef<
 });
 NewNavigationListItem.displayName = "NewNavigationListItem";
 
+const variantClasses = {
+  primary: "s-text-foreground",
+  secondary: "s-text-muted-foreground",
+};
+
+interface NewNavigationListLabelProps
+  extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: keyof typeof variantClasses;
+  label: string;
+}
+
 const NewNavigationListLabel = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn(listStyleClasses.label, className)} {...props} />
-));
+  NewNavigationListLabelProps
+>(({ className, variant = "primary", label, ...props }, ref) => {
+  const variantClass = variantClasses[variant];
+
+  return (
+    <div
+      ref={ref}
+      className={cn(listStyleClasses.label, variantClass, className)}
+      {...props}
+    >
+      {label}
+    </div>
+  );
+});
+
 NewNavigationListLabel.displayName = "NewNavigationListLabel";
 
 export { NewNavigationList, NewNavigationListItem, NewNavigationListLabel };

@@ -8,6 +8,7 @@ import {
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
   ChevronDoubleLeftIcon,
+  ChevronDoubleRightIcon,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
   ContextMenu,
@@ -15,9 +16,9 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
   FolderIcon,
+  GlobeAltIcon,
   HandThumbUpIcon,
   HeartAltIcon,
-  HomeIcon,
   LockIcon,
   LogoutIcon,
   MoreIcon,
@@ -42,6 +43,7 @@ import {
   RobotIcon,
   ScrollArea,
   Separator,
+  ServerIcon,
   SlackLogo,
   Tabs,
   TabsContent,
@@ -66,15 +68,31 @@ const getRandomTitles = (count: number) => {
 
 export const LayoutDemo = () => {
   const [computedSize, setComputedSize] = useState(0);
+  const [isNavVisible, setIsNavVisible] = useState(false);
+  const [isFixed, setIsFixed] = useState(true);
 
   const updateComputedSize = () => {
     const mainDiv = document.getElementById("NavigationPrimary");
     const bottomBar = document.getElementById("NavigationSecondary");
 
     if (mainDiv && bottomBar) {
-      const offset = bottomBar.offsetHeight; // Get the height of the bottombar
-      const newSize = mainDiv.offsetHeight - offset; // Subtract the offset
+      const offset = bottomBar.offsetHeight;
+      const newSize = mainDiv.offsetHeight - offset;
       setComputedSize(newSize);
+    }
+  };
+
+  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    const { clientX } = event;
+
+    if (!isFixed && clientX < 50) {
+      setIsNavVisible(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isFixed) {
+      setIsNavVisible(false);
     }
   };
 
@@ -85,48 +103,96 @@ export const LayoutDemo = () => {
       window.removeEventListener("resize", updateComputedSize);
     };
   }, []);
+
+  useEffect(() => {
+    updateComputedSize();
+  }, [isFixed]);
+
+  const navigationPanel = (
+    <div
+      id="NavigationPrimary"
+      className="s-flex s-h-full s-w-full s-flex-col s-bg-structure-50"
+      onMouseLeave={handleMouseLeave}
+    >
+      <Tabs
+        defaultValue="conversations"
+        className="s-flex s-w-full s-flex-col"
+        style={{ height: `${computedSize}px` }}
+      >
+        <TabsList className="s-mt-2 s-w-full s-px-2">
+          <TabsTrigger
+            value="conversations"
+            label="Chat"
+            icon={ChatBubbleLeftRightIcon}
+          />
+          <TabsTrigger
+            value="knowledge"
+            label="Knowledge"
+            icon={BookOpenIcon}
+          />
+          <div className="s-grow" />
+          <TabsTrigger value="settings" icon={Cog6ToothIcon} />
+        </TabsList>
+        <TabsContent value="conversations" className="s-h-full s-w-full">
+          <ChatTab />
+        </TabsContent>
+        <TabsContent value="knowledge" className="s-h-full s-w-full">
+          <KnowledgeNav />
+        </TabsContent>
+        <TabsContent value="settings" className="s-h-full s-w-full">
+          Settings
+        </TabsContent>
+      </Tabs>
+      <BottomNav
+        id="NavigationSecondary"
+        className="s-h-14 s-w-full"
+        onHideNavigation={() => {
+          setIsFixed(false);
+          setIsNavVisible(false);
+        }}
+        isFixed={isFixed}
+        onPinNavigation={() => {
+          setIsFixed(true);
+          setIsNavVisible(true);
+        }}
+      />
+    </div>
+  );
+
   return (
-    <div className="s-h-[98vh] s-w-[98vw] s-border">
-      <ResizablePanelGroup direction="horizontal" className="s-h-full s-w-full">
-        <ResizablePanel defaultSize={20} maxSize={32} minSize={20}>
-          <div
-            id="NavigationPrimary"
-            className="s-flex s-h-full s-w-full s-flex-col s-bg-structure-50"
-          >
-            <Tabs
-              defaultValue="conversations"
-              className="s-flex s-w-full s-flex-col"
-              style={{ height: `${computedSize}px` }}
-            >
-              <TabsList className="s-mt-2 s-w-full s-px-2">
-                <TabsTrigger
-                  value="conversations"
-                  label="Chat"
-                  icon={ChatBubbleLeftRightIcon}
-                />
-                <TabsTrigger
-                  value="knowledge"
-                  label="Knowledge"
-                  icon={BookOpenIcon}
-                />
-                <div className="s-grow" />
-                <TabsTrigger value="settings" icon={Cog6ToothIcon} />
-              </TabsList>
-              <TabsContent value="conversations" className="s-h-full s-w-full">
-                <ChatTab />
-              </TabsContent>
-              <TabsContent value="Knowledge" className="s-h-full s-w-full">
-                <KnowledgeNav />
-              </TabsContent>
-              <TabsContent value="settings" className="s-h-full s-w-full">
-                Settings
-              </TabsContent>
-            </Tabs>
-            <BottomNav id="NavigationSecondary" className="s-h-14 s-w-full" />
+    <div
+      className="s-h-[96vh] s-w-[98vw] s-overflow-hidden s-border"
+      onMouseMove={handleMouseMove}
+    >
+      {!isFixed && (
+        <div
+          id="floatingNav"
+          className={cn(
+            "s-l-0 s-t-0 transition-transform s-absolute s-h-[100vh] s-w-[320px] s-p-3",
+            "s-transform s-transition-transform s-duration-300",
+            isNavVisible ? "s-transform-none" : "s--translate-x-full"
+          )}
+        >
+          <div className="s-rounded-lg s-border s-border-border s-shadow-sm">
+            {navigationPanel}
           </div>
-        </ResizablePanel>
+        </div>
+      )}
+
+      <ResizablePanelGroup direction="horizontal" className="s-h-full s-w-full">
+        {isFixed && (
+          <ResizablePanel
+            order={1}
+            id="fixedNav"
+            defaultSize={22}
+            maxSize={32}
+            minSize={20}
+          >
+            {navigationPanel}
+          </ResizablePanel>
+        )}
         <ResizableHandle />
-        <ResizablePanel defaultSize={70}>
+        <ResizablePanel order={2}>
           <div className="s-flex s-h-full s-items-center s-justify-center s-p-6">
             <span className="s-font-semibold">Content</span>
           </div>
@@ -186,7 +252,7 @@ export const ChatTab = () => {
       <NewNavigationList className="s-w-full">
         {conversationTitles.map((section, sectionIndex) => (
           <React.Fragment key={sectionIndex}>
-            <NewNavigationListLabel>{section.label}</NewNavigationListLabel>
+            <NewNavigationListLabel label={section.label} />
             {section.items.map((title, index) => {
               const itemIndex = allItems.indexOf(title);
               return (
@@ -212,12 +278,22 @@ export const ChatTab = () => {
     </ScrollArea>
   );
 };
+
 interface BottomNavProps {
-  id?: string; // Optional prop for additional classes
-  className?: string; // Optional prop for additional classes
+  id?: string;
+  className?: string;
+  onHideNavigation: () => void;
+  isFixed: boolean;
+  onPinNavigation: () => void;
 }
 
-export const BottomNav: React.FC<BottomNavProps> = ({ className = "", id }) => {
+export const BottomNav: React.FC<BottomNavProps> = ({
+  className = "",
+  id,
+  onHideNavigation,
+  isFixed,
+  onPinNavigation,
+}) => {
   return (
     <div
       id={id}
@@ -241,7 +317,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({ className = "", id }) => {
           <NewDropdownMenuItem icon={LogoutIcon} label="Log out" />
         </NewDropdownMenuContent>
       </NewDropdownMenu>
-
       <Separator orientation="vertical" />
       <NewDropdownMenu>
         <NewDropdownMenuTrigger>
@@ -261,12 +336,23 @@ export const BottomNav: React.FC<BottomNavProps> = ({ className = "", id }) => {
         </NewDropdownMenuContent>
       </NewDropdownMenu>
       <div className="s-grow" />
-      <NewButton
-        variant={"ghost-secondary"}
-        size="sm"
-        icon={ChevronDoubleLeftIcon}
-        tooltip="Hide the navigation panel"
-      />
+      {isFixed ? (
+        <NewButton
+          variant={"ghost-secondary"}
+          size="sm"
+          icon={ChevronDoubleLeftIcon}
+          tooltip="Hide the navigation panel"
+          onClick={onHideNavigation}
+        />
+      ) : (
+        <NewButton
+          variant={"ghost-secondary"}
+          size="sm"
+          icon={ChevronDoubleRightIcon}
+          tooltip="Pin the navigation panel"
+          onClick={onPinNavigation}
+        />
+      )}
     </div>
   );
 };
@@ -377,13 +463,13 @@ const fakeTitles = [
   "Business Continuity Planning",
 ];
 
-interface BottomNavProps {
-  className?: string; // Optional prop for additional classes
+interface NavTabProps {
+  className?: string;
 }
 
-export const KnowledgeNav: React.FC<BottomNavProps> = ({ className = "" }) => {
+export const KnowledgeNav: React.FC<NavTabProps> = ({ className = "" }) => {
   return (
-    <div className={cn("s-flex s-flex-col s-gap-2 s-px-2", className)}>
+    <div className={cn("s-flex s-flex-col s-gap-2 s-px-2 s-py-4", className)}>
       <Tree variant="navigator">
         <Tree.Item
           label="Connection Managment"
@@ -429,10 +515,70 @@ export const KnowledgeNav: React.FC<BottomNavProps> = ({ className = "" }) => {
           </Tree>
         </Tree.Item>
       </Tree>
+      <NewNavigationListLabel variant="secondary" label="Workspace" />
       <Tree variant="navigator">
         <Tree.Item
-          label="Share Data"
-          visual={HomeIcon}
+          label="Drive"
+          visual={ServerIcon}
+          onItemClick={() => console.log("Clickable")}
+          size="md"
+        >
+          <Tree variant="navigator">
+            <Tree.Item label="Notion" visual={NotionLogo}>
+              <Tree variant="navigator">
+                <Tree.Item
+                  label="item 1 with a very very very very very very very long text"
+                  visual={FolderIcon}
+                >
+                  <Tree variant="navigator">
+                    <Tree.Item
+                      label="item 1 with a very very very very very very very long text"
+                      visual={FolderIcon}
+                      type="leaf"
+                    />
+                    <Tree.Item label="item 2" visual={FolderIcon} />
+                    <Tree.Item label="item 3" visual={FolderIcon} />
+                  </Tree>
+                </Tree.Item>
+                <Tree.Item label="item 2" visual={FolderIcon}>
+                  <Tree variant="navigator">
+                    <Tree.Item label="item 1" visual={FolderIcon} />
+                    <Tree.Item label="item 2" visual={FolderIcon} />
+                    <Tree.Item label="item 3" visual={FolderIcon} />
+                  </Tree>
+                </Tree.Item>
+                <Tree.Item label="item 3" visual={FolderIcon}>
+                  <Tree variant="navigator">
+                    <Tree.Item label="item 1" visual={FolderIcon} />
+                    <Tree.Item label="item 2" visual={FolderIcon} />
+                    <Tree.Item label="item 3" visual={FolderIcon} />
+                  </Tree>
+                </Tree.Item>
+              </Tree>
+            </Tree.Item>
+            <Tree.Item label="Slack" visual={SlackLogo} />
+            <Tree.Item label="Folders" visual={FolderIcon}>
+              <Tree variant="navigator">
+                <Tree.Item label="item 1" visual={FolderIcon} />
+                <Tree.Item label="item 2" visual={FolderIcon} />
+                <Tree.Item label="item 3" visual={FolderIcon} />
+              </Tree>
+            </Tree.Item>
+            <Tree.Item label="Websites" visual={GlobeAltIcon}>
+              <Tree variant="navigator">
+                <Tree.Item label="item 1" visual={FolderIcon} />
+                <Tree.Item label="item 2" visual={FolderIcon} />
+                <Tree.Item label="item 3" visual={FolderIcon} />
+              </Tree>
+            </Tree.Item>
+          </Tree>
+        </Tree.Item>
+      </Tree>
+      <NewNavigationListLabel variant="secondary" label="Vaults" />
+      <Tree variant="navigator">
+        <Tree.Item
+          label="Finance"
+          visual={LockIcon}
           onItemClick={() => console.log("Clickable")}
           size="md"
         >
@@ -472,10 +618,50 @@ export const KnowledgeNav: React.FC<BottomNavProps> = ({ className = "" }) => {
             <Tree.Item label="Slack" visual={SlackLogo} />
           </Tree>
         </Tree.Item>
-      </Tree>
-      <Tree variant="navigator">
         <Tree.Item
-          label="Finance"
+          label="HR"
+          visual={LockIcon}
+          onItemClick={() => console.log("Clickable")}
+          size="md"
+        >
+          <Tree variant="navigator">
+            <Tree.Item label="Notion" visual={NotionLogo}>
+              <Tree variant="navigator">
+                <Tree.Item
+                  label="item 1 with a very very very very very very very long text"
+                  visual={FolderIcon}
+                >
+                  <Tree variant="navigator">
+                    <Tree.Item
+                      label="item 1 with a very very very very very very very long text"
+                      visual={FolderIcon}
+                      type="leaf"
+                    />
+                    <Tree.Item label="item 2" visual={FolderIcon} />
+                    <Tree.Item label="item 3" visual={FolderIcon} />
+                  </Tree>
+                </Tree.Item>
+                <Tree.Item label="item 2" visual={FolderIcon}>
+                  <Tree variant="navigator">
+                    <Tree.Item label="item 1" visual={FolderIcon} />
+                    <Tree.Item label="item 2" visual={FolderIcon} />
+                    <Tree.Item label="item 3" visual={FolderIcon} />
+                  </Tree>
+                </Tree.Item>
+                <Tree.Item label="item 3" visual={FolderIcon}>
+                  <Tree variant="navigator">
+                    <Tree.Item label="item 1" visual={FolderIcon} />
+                    <Tree.Item label="item 2" visual={FolderIcon} />
+                    <Tree.Item label="item 3" visual={FolderIcon} />
+                  </Tree>
+                </Tree.Item>
+              </Tree>
+            </Tree.Item>
+            <Tree.Item label="Slack" visual={SlackLogo} />
+          </Tree>
+        </Tree.Item>
+        <Tree.Item
+          label="SeriesA"
           visual={LockIcon}
           onItemClick={() => console.log("Clickable")}
           size="md"
