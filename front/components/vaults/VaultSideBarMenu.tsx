@@ -471,7 +471,7 @@ const VaultDataSourceViewItem = ({
   const isEmpty = isExpanded && !isNodesLoading && nodes.length === 0;
   const folders = nodes.filter((node) => node.expandable);
   const notFolders = nodes.filter((node) => !node.expandable);
-  const itemsLabel = notFolders.length === 1 ? "item here" : "items here";
+  const itemsLabel = notFolders.length === 1 ? "item" : "items";
 
   return (
     <Tree.Item
