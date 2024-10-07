@@ -360,7 +360,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   static async search(
     auth: Authenticator,
     searchParams: {
-      [key in AllowedSearchColumns]: string | number;
+      [key in AllowedSearchColumns]: string | number | undefined;
     }
   ): Promise<DataSourceViewResource[]> {
     const owner = auth.workspace();
@@ -373,7 +373,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     };
 
     for (const [key, value] of Object.entries(searchParams)) {
-      if (key !== "vaultKind") {
+      if (value && key !== "vaultKind") {
         whereClause[key] = value;
       } else {
         whereClause["$vault.kind$"] = searchParams.vaultKind;

@@ -1,7 +1,7 @@
 import type {
   DataSourceViewType,
-  WithAPIErrorResponse,
   Result,
+  WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { PatchDataSourceViewSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
