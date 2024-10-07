@@ -18,8 +18,111 @@ export type PatchDataSourceViewResponseBody = {
 };
 
 /**
- * @ignoreswagger
- * System API key only endpoint. Undocumented.
+ * @swagger
+ * /api/v1/w/{wId}/vaults/{vId}/data_source_views/{dsvId}:
+ *   get:
+ *     summary: Get a data source view
+ *     parameters:
+ *       - name: wId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: vId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: dsvId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Successful response
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 dataSourceView:
+ *                   $ref: '#/components/schemas/DataSourceViewType'
+ *       '404':
+ *         description: Data source view not found
+ *       '405':
+ *         description: Method not allowed
+ *   patch:
+ *     summary: Update a data source view
+ *     parameters:
+ *       - name: wId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: vId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: dsvId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/PatchDataSourceViewSchema'
+ *     responses:
+ *       '200':
+ *         description: Successful response
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 dataSourceView:
+ *                   $ref: '#/components/schemas/DataSourceViewType'
+ *       '400':
+ *         description: Invalid request body
+ *       '403':
+ *         description: Unauthorized
+ *       '404':
+ *         description: Data source view not found
+ *       '405':
+ *         description: Method not allowed
+ *       '500':
+ *         description: Internal server error
+ *   delete:
+ *     summary: Delete a data source view
+ *     parameters:
+ *       - name: wId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: vId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: dsvId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '400':
+ *         description: Invalid request body
+ *       '404':
+ *         description: Data source view not found
+ *       '405':
+ *         description: Method not allowed
+ *       '500':
+ *         description: Internal server error
  */
 
 async function handler(
@@ -31,16 +134,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isSystemKey()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_not_found",
-        message: "this endpoint is only available to system api keys.",
-      },
-    });
-  }
-
   const dataSourceView = await DataSourceViewResource.fetchById(
     auth,
     req.query.dsvId as string
