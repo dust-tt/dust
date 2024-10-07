@@ -1171,7 +1171,18 @@ impl DataSource {
                         .await?
                     {
                         Some(d) => d,
-                        None => Err(anyhow!("Document not found"))?,
+                        None => {
+                            // document not found should never happen
+                            // if it unexpectedly does, we skip it to let the search move forward
+                            // but we raise a panic log
+                            error!(
+                                data_source_id = %data_source_id,
+                                document_id = %document_id,
+                                panic = true,
+                                "Document not found in store"
+                            );
+                            Err(anyhow!("Document not found in store"))?
+                        }
                     };
 
                     if full_text {
@@ -1192,9 +1203,16 @@ impl DataSource {
             })
             .buffer_unordered(16)
             .map(|r| match r {
-                Err(e) => Err(anyhow!("Data source document retrieval error: {}", e))?,
-                Ok(r) => r,
+                Err(e) if e.to_string().contains("Document not found in store") => {
+                    // document not found should never happen
+                    // if it unexpectedly does, we skip it to let the search move forward
+                    // but we raise a panic log
+                    None
+                }
+                Err(e) => Err(anyhow!("Data source document retrieval error: {}", e)).ok(),
+                Ok(r) => Some(r),
             })
+            .filter_map(|opt| async { opt })
             .try_collect::<Vec<_>>()
             .await?;
 
