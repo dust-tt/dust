@@ -68,7 +68,7 @@ async function handler(
       }
 
       const { parentsIn } = patchBodyValidation.right;
-      const updateResult = await dataSourceView.updateParents(parentsIn);
+      const updateResult = await dataSourceView.addParents(parentsIn);
 
       if (updateResult.isErr()) {
         return apiError(req, res, {
