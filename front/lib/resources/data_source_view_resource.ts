@@ -431,6 +431,20 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return new Ok(undefined);
   }
 
+  async addParents(
+    parentsIn: string[] | null
+  ): Promise<Result<undefined, Error>> {
+    const currentParents = this.parentsIn || [];
+    const updatedParents = [
+      ...new Set([...currentParents, ...(parentsIn ?? [])]),
+    ];
+    await this.update({
+      parentsIn: updatedParents.length > 0 ? updatedParents : null,
+    });
+
+    return new Ok(undefined);
+  }
+
   // Deletion.
 
   protected async softDelete(

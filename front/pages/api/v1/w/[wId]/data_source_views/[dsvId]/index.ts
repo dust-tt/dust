@@ -90,7 +90,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "the method passed is not supported, GET, POST, or PATCH is expected.",
+            "the method passed is not supported, GET or PATCH is expected.",
         },
       });
   }
