@@ -48,6 +48,7 @@ export { default as DocumentDuplicateStrokeIcon } from "./DocumentDuplicate";
 export { default as DocumentPileStrokeIcon } from "./DocumentPile";
 export { default as DocumentPlusStrokeIcon } from "./DocumentPlus";
 export { default as DocumentTextStrokeIcon } from "./DocumentText";
+export { default as DotStrokeIcon } from "./Dot";
 export { default as DustStrokeIcon } from "./Dust";
 export { default as EmotionLaughStrokeIcon } from "./EmotionLaugh";
 export { default as EqualizerStrokeIcon } from "./Equalizer";
