@@ -27,15 +27,15 @@ function makeConversationLinkContextBlock(conversationUrl: string) {
 }
 
 export function makeThinkingBlock(assistantName: string | undefined) {
+  const thinkingText =
+    (assistantName ? `@${assistantName} is thinking...` : "Thinking...") +
+    `  <${SLACK_CHOOSE_BOT_HELP_URL}| Select which assistant replies>`;
   return {
     type: "context",
     elements: [
       {
         type: "mrkdwn",
-        text: assistantName
-          ? `@${assistantName} is thinking...`
-          : "Thinking..." +
-            `<${SLACK_CHOOSE_BOT_HELP_URL}| Select which assistant replies>`,
+        text: thinkingText,
       },
     ],
   };
