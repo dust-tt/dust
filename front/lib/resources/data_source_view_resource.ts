@@ -424,9 +424,20 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   }
 
   async updateParents(
-    parentsIn: string[] | null
+    parentsToAdd: string[] = [],
+    parentsToRemove: string[] = []
   ): Promise<Result<undefined, Error>> {
-    await this.update({ parentsIn });
+    const currentParents = this.parentsIn || [];
+
+    // add new parents
+    const newParents = [...new Set(currentParents), ...new Set(parentsToAdd)];
+
+    // remove specified parents
+    const updatedParents = newParents.filter(
+      (parent) => !parentsToRemove.includes(parent)
+    );
+
+    await this.update({ parentsIn: updatedParents });
 
     return new Ok(undefined);
   }

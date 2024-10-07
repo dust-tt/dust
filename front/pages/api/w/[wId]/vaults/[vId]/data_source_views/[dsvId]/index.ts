@@ -69,8 +69,11 @@ async function handler(
         });
       }
 
-      const { parentsIn } = bodyValidation.right;
-      const updateResult = await dataSourceView.updateParents(parentsIn);
+      const { parentsToAdd, parentsToRemove } = bodyValidation.right;
+      const updateResult = await dataSourceView.updateParents(
+        parentsToAdd ?? [],
+        parentsToRemove ?? []
+      );
 
       if (updateResult.isErr()) {
         return apiError(req, res, {
