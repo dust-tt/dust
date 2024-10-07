@@ -231,7 +231,7 @@ export function EditVaultManagedDataSourcesViews({
         <p>You have no connection set up.</p>
       </Dialog>
       <Button
-        label="Link data from connections"
+        label="Add data from connections"
         variant="primary"
         icon={PlusIcon}
         size="sm"
