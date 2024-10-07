@@ -3,20 +3,19 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { DatasourceSearchResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/search";
 import { handleDataSourceSearch } from "@app/pages/api/w/[wId]/data_sources/[dsId]/search";
 
 /**
  * @swagger
- * /api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/search:
+ * /api/v1/w/{wId}/vaults/{vId}/data_source_views/{dsvId}/search:
  *   get:
  *     summary: Search the data source
- *     description: Search the data source identified by {dsId} in the workspace identified by {wId}.
+ *     description: Search the data source view identified by {dsvId} in the workspace identified by {wId}.
  *     tags:
- *       - Datasources
+ *       - DatasourceViews
  *     security:
  *       - BearerAuth: []
  *     parameters:
@@ -149,8 +148,8 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<DatasourceSearchResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const { dsId } = req.query;
-  if (typeof dsId !== "string") {
+  const { vId, dsvId } = req.query;
+  if (typeof dsvId !== "string" || typeof vId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -160,29 +159,9 @@ async function handler(
     });
   }
 
-  const dataSource = await DataSourceResource.fetchByNameOrId(
-    auth,
-    dsId,
-    // TODO(DATASOURCE_SID): Clean-up
-    { origin: "v1_data_sources_search" }
-  );
+  const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId);
 
-  // Handling the case where vId is undefined to keep support for the legacy endpoint (not under
-  // vault, global vault assumed for the auth (the authenticator associated with the app, not the
-  // user)).
-  let { vId } = req.query;
-  if (typeof vId !== "string") {
-    if (auth.isSystemKey()) {
-      // We also handle the legacy usage of connectors that taps into connected data sources which
-      // are not in the global vault. If this is a system key we trust it and set the vId to the
-      // dataSource.vault.sId.
-      vId = dataSource?.vault.sId;
-    } else {
-      vId = (await VaultResource.fetchWorkspaceGlobalVault(auth)).sId;
-    }
-  }
-
-  if (!dataSource || dataSource.vault.sId !== vId) {
+  if (!dataSourceView || dataSourceView.vault.sId !== vId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -194,7 +173,11 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      return handleDataSourceSearch({ req, res, dataSource });
+      return handleDataSourceSearch({
+        req,
+        res,
+        dataSource: dataSourceView.dataSource,
+      });
     }
 
     default:
