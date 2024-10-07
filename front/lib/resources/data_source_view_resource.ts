@@ -62,6 +62,8 @@ export type FetchDataSourceViewOptions = {
   order?: [string, "ASC" | "DESC"][];
 };
 
+type AllowedSearchColumns = "vaultId" | "dataSourceId" | "kind" | "vaultKind";
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface DataSourceViewResource
   extends ReadonlyAttributesType<DataSourceViewModel> {}
@@ -358,7 +360,7 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   static async search(
     auth: Authenticator,
     searchParams: {
-      [key: string]: string | number | undefined;
+      [key in AllowedSearchColumns]: string | number;
     }
   ): Promise<DataSourceViewResource[]> {
     const owner = auth.workspace();
@@ -371,12 +373,11 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     };
 
     for (const [key, value] of Object.entries(searchParams)) {
-      if (value && key !== "vaultKind") {
+      if (key !== "vaultKind") {
         whereClause[key] = value;
+      } else {
+        whereClause["$vault.kind$"] = searchParams.vaultKind;
       }
-    }
-    if (searchParams.vaultKind) {
-      whereClause["$vault.kind$"] = searchParams.vaultKind;
     }
 
     return this.baseFetch(
@@ -438,20 +439,6 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     );
 
     await this.update({ parentsIn: updatedParents });
-
-    return new Ok(undefined);
-  }
-
-  async addParents(
-    parentsIn: string[] | null
-  ): Promise<Result<undefined, Error>> {
-    const currentParents = this.parentsIn || [];
-    const updatedParents = [
-      ...new Set([...currentParents, ...(parentsIn ?? [])]),
-    ];
-    await this.update({
-      parentsIn: updatedParents.length > 0 ? updatedParents : null,
-    });
 
     return new Ok(undefined);
   }
