@@ -57,8 +57,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 
-const { DUST_DATA_SOURCES_BUCKET, SERVICE_ACCOUNT } = process.env;
-
 export async function scrubDataSourceActivity({
   dataSourceId,
   workspaceId,
@@ -66,13 +64,6 @@ export async function scrubDataSourceActivity({
   dataSourceId: string;
   workspaceId: string;
 }) {
-  if (!SERVICE_ACCOUNT) {
-    throw new Error("SERVICE_ACCOUNT is not set.");
-  }
-  if (!DUST_DATA_SOURCES_BUCKET) {
-    throw new Error("DUST_DATA_SOURCES_BUCKET is not set.");
-  }
-
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const dataSource = await DataSourceResource.fetchById(auth, dataSourceId, {
     includeDeleted: true,
@@ -97,10 +88,10 @@ export async function scrubDataSourceActivity({
 
   const { dustAPIProjectId } = dataSource;
 
-  const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
+  const storage = new Storage({ keyFilename: config.getServiceAccount() });
 
   const [files] = await storage
-    .bucket(DUST_DATA_SOURCES_BUCKET)
+    .bucket(config.getDustDataSourcesBucket())
     .getFiles({ prefix: dustAPIProjectId });
 
   const chunkSize = 32;
@@ -124,6 +115,51 @@ export async function scrubDataSourceActivity({
   }
 
   return hardDeleteDataSource(auth, dataSource);
+}
+
+export async function scrubVaultActivity({
+  vaultId,
+  workspaceId,
+}: {
+  vaultId: string;
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const vault = await VaultResource.fetchById(auth, vaultId, {
+    includeDeleted: true,
+  });
+
+  if (!vault) {
+    throw new Error("Vault not found.");
+  }
+
+  if (!vault.isDeleted()) {
+    throw new Error("Vault is not soft deleted.");
+  }
+
+  // Delete all the data sources of the vaults.
+  const dataSources = await DataSourceResource.listByVault(auth, vault);
+  for (const ds of dataSources) {
+    await scrubDataSourceActivity({
+      dataSourceId: ds.sId,
+      workspaceId,
+    });
+  }
+
+  await frontSequelize.transaction(async (t) => {
+    // Delete all vaults groups.
+    for (const group of vault.groups) {
+      const res = await group.delete(auth, { transaction: t });
+      if (res.isErr()) {
+        throw res.error;
+      }
+    }
+
+    const res = await vault.delete(auth, { hardDelete: true, transaction: t });
+    if (res.isErr()) {
+      throw res.error;
+    }
+  });
 }
 
 export async function isWorkflowDeletableActivity({
@@ -545,17 +581,29 @@ export async function deleteMembersActivity({
   });
 }
 
+export async function deleteVaultsActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const vaults = await VaultResource.listWorkspaceVaults(auth);
+
+  for (const vault of vaults) {
+    await scrubVaultActivity({
+      vaultId: vault.sId,
+      workspaceId,
+    });
+  }
+}
+
 export async function deleteWorkspaceActivity({
   workspaceId,
 }: {
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const workspace = auth.workspace();
-
-  if (!workspace) {
-    throw new Error("Could not find the workspace.");
-  }
+  const workspace = auth.getNonNullableWorkspace();
 
   await frontSequelize.transaction(async (t) => {
     await Subscription.destroy({
@@ -565,9 +613,6 @@ export async function deleteWorkspaceActivity({
       transaction: t,
     });
     await FileResource.deleteAllForWorkspace(workspace, t);
-    await DataSourceViewResource.deleteAllForWorkspace(auth, t);
-    await VaultResource.deleteAllForWorkspace(auth, t);
-    await GroupResource.deleteAllForWorkspace(workspace, t);
     logger.info(`[Workspace delete] Deleting Worskpace ${workspace.sId}`);
     await Workspace.destroy({
       where: {

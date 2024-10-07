@@ -14,7 +14,7 @@ import { uniq } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
-import { deleteVault } from "@app/lib/api/vaults";
+import { softDeleteVaultAndLaunchScrubWorkflow } from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -215,7 +215,10 @@ async function handler(
       }
 
       try {
-        const deleteRes = await deleteVault(auth, vault);
+        const deleteRes = await softDeleteVaultAndLaunchScrubWorkflow(
+          auth,
+          vault
+        );
         if (deleteRes.isErr()) {
           return apiError(req, res, {
             status_code: 400,

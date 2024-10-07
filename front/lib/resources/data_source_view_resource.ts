@@ -438,23 +438,6 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return new Ok(deletedCount);
   }
 
-  // This method can only be used once all agent configurations have been deleted. Otherwise use the
-  // delete method on each data source view separately.
-  static async deleteAllForWorkspace(
-    auth: Authenticator,
-    transaction?: Transaction
-  ) {
-    return DataSourceViewModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      transaction,
-      // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
-      // bypassing the soft deletion in place.
-      hardDelete: true,
-    });
-  }
-
   // Getters.
 
   get dataSource(): DataSourceResource {
