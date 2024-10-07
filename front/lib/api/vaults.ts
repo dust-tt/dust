@@ -1,8 +1,11 @@
-import type { DataSourceWithAgentsUsageType } from "@dust-tt/types";
+import type { DataSourceWithAgentsUsageType, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import assert from "assert";
 import { uniq } from "lodash";
 
+import { hardDeleteApp } from "@app/lib/api/apps";
 import type { Authenticator } from "@app/lib/auth";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -59,7 +62,7 @@ export async function softDeleteVaultAndLaunchScrubWorkflow(
   if (groupHasKeys > 0) {
     return new Err(
       new Error(
-        "Canno't delete group with active API Keys. Please revoke all keys before."
+        "Can not delete group with active API Keys. Please revoke all keys before."
       )
     );
   }
@@ -85,6 +88,50 @@ export async function softDeleteVaultAndLaunchScrubWorkflow(
   });
 
   await launchScrubVaultWorkflow(auth, vault);
+
+  return new Ok(undefined);
+}
+
+export async function hardDeleteVault(
+  auth: Authenticator,
+  vault: VaultResource
+): Promise<Result<void, Error>> {
+  if (!auth.isAdmin()) {
+    throw new Error("Only admins can destroy vaults.");
+  }
+
+  assert(vault.isDeleted(), "Vault must be soft deleted to be destroyed.");
+
+  const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
+  for (const dsv of dataSourceViews) {
+    const res = await dsv.delete(auth, { hardDelete: true });
+    if (res.isErr()) {
+      return res;
+    }
+  }
+
+  const apps = await AppResource.listByVault(auth, vault);
+  for (const app of apps) {
+    const res = await hardDeleteApp(auth, app);
+    if (res.isErr()) {
+      return res;
+    }
+  }
+
+  await frontSequelize.transaction(async (t) => {
+    // Delete all vaults groups.
+    for (const group of vault.groups) {
+      const res = await group.delete(auth, { transaction: t });
+      if (res.isErr()) {
+        throw res.error;
+      }
+    }
+
+    const res = await vault.delete(auth, { hardDelete: true, transaction: t });
+    if (res.isErr()) {
+      throw res.error;
+    }
+  });
 
   return new Ok(undefined);
 }

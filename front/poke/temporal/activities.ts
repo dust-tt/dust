@@ -3,6 +3,7 @@ import { Storage } from "@google-cloud/storage";
 import { chunk } from "lodash";
 import { Op } from "sequelize";
 
+import { hardDeleteApp } from "@app/lib/api/apps";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
@@ -44,9 +45,7 @@ import { MembershipInvitation, Workspace } from "@app/lib/models/workspace";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
@@ -443,27 +442,15 @@ export async function deleteAppsActivity({
 }: {
   workspaceId: string;
 }) {
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const workspace = auth.workspace();
-
-  if (!workspace) {
-    throw new Error("Could not find the workspace.");
-  }
+  const workspace = auth.getNonNullableWorkspace();
 
   const apps = await AppResource.listByWorkspace(auth);
 
   for (const app of apps) {
-    const res = await coreAPI.deleteProject({
-      projectId: app.dustAPIProjectId,
-    });
+    const res = await hardDeleteApp(auth, app);
     if (res.isErr()) {
-      throw new Error(`Error deleting Project from Core: ${res.error.message}`);
-    }
-
-    const delRes = await app.delete(auth, { hardDelete: true });
-    if (delRes.isErr()) {
-      throw new Error(`Error deleting App ${app.sId}: ${delRes.error.message}`);
+      throw res.error;
     }
   }
 
