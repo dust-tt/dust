@@ -294,21 +294,24 @@ impl SnowflakeRemoteDatabase {
     ) -> Result<()> {
         // Ensure that query only uses tables that are allowed.
         let plan = self.get_query_plan(&session, query).await?;
-        let used_tables: HashSet<String> = plan
+        let used_tables: HashSet<&str> = plan
             .iter()
-            .filter_map(|entry| entry.objects.clone())
+            .filter_map(|entry| match &entry.objects {
+                Some(objects) => Some(objects.as_str()),
+                None => None,
+            })
             .collect();
         let allowed_tables: HashSet<&str> = tables.iter().map(|table| table.name()).collect();
 
         if used_tables
             .iter()
-            .any(|table| !allowed_tables.contains(table.as_str()))
+            .any(|table| !allowed_tables.contains(table))
         {
             Err(anyhow!("Query uses tables not allowed by the query plan"))?
         }
 
         // Ensure that query does not contain forbidden operations.
-        for operation in plan.iter().filter_map(|entry| entry.operation.clone()) {
+        for operation in plan.into_iter().filter_map(|entry| entry.operation) {
             if FORBIDDEN_OPERATIONS
                 .iter()
                 .any(|op| operation.to_lowercase() == *op)
