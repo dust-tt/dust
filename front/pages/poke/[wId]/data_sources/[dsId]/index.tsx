@@ -231,10 +231,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     owner.sId
   );
   const groupsForSlackBot = (
-    await GroupResource.listWorkspaceGroups(authForSlackBot)
-  )
-    .filter((g) => !g.isSystem())
-    .map((g) => g.toJSON());
+    await GroupResource.listAllWorkspaceGroups(authForSlackBot)
+  ).map((g) => g.toJSON());
 
   return {
     props: {

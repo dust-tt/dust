@@ -325,12 +325,16 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(group);
   }
 
-  static async listWorkspaceGroups(
-    auth: Authenticator
+  static async listAllWorkspaceGroups(
+    auth: Authenticator,
+    options: { includeSystem?: boolean } = {}
   ): Promise<GroupResource[]> {
+    const { includeSystem } = options;
     const groups = await this.baseFetch(auth, {});
 
-    return groups.filter((group) => group.canRead(auth));
+    return groups
+      .filter((group) => group.canRead(auth))
+      .filter((group) => includeSystem || !group.isSystem());
   }
 
   static async listUserGroupsInWorkspace({

@@ -30,6 +30,7 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { useKeys } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
@@ -48,10 +49,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
+  // Creating a key is an admin task, so return all groups for selection.
+  const groups = await GroupResource.listAllWorkspaceGroups(auth);
+
   return {
     props: {
       owner,
-      groups: auth.groups(),
+      groups: groups.map((group) => group.toJSON()),
       subscription,
       user,
     },
