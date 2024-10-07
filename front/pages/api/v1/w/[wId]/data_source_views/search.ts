@@ -10,9 +10,9 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { apiError } from "@app/logger/withlogging";
 
 const SearchDataSourceViewsQuerySchema = t.type({
-  dataSourceId: t.union([t.number, t.undefined]),
+  dataSourceId: t.union([t.string, t.undefined]),
   kind: t.union([t.string, t.undefined]),
-  vaultId: t.union([t.number, t.undefined]),
+  vaultId: t.union([t.string, t.undefined]),
 });
 
 export type SearchDataSourceViewsResponseBody = {
@@ -29,15 +29,15 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<SearchDataSourceViewsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  if (!auth.isSystemKey()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_view_not_found",
-        message: "The data source view was not found.",
-      },
-    });
-  }
+  // if (!auth.isSystemKey()) {
+  //   return apiError(req, res, {
+  //     status_code: 404,
+  //     api_error: {
+  //       type: "data_source_view_not_found",
+  //       message: "The data source view was not found.",
+  //     },
+  //   });
+  // }
 
   switch (req.method) {
     case "GET":
