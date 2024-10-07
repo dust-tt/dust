@@ -1,8 +1,10 @@
-import type { DataSourceViewType, Result } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
+import { DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import { apiConfig } from "@connectors/lib/api/config";
 import {
   SlackChannel,
   SlackConfigurationModel,
@@ -14,10 +16,6 @@ const { DUST_FRONT_API } = process.env;
 if (!DUST_FRONT_API) {
   throw new Error("FRONT_API not set");
 }
-
-type SearchDataSourceViewsResponse = {
-  data_source_views: DataSourceViewType[];
-};
 
 export function isChannelNameWhitelisted(
   remoteChannelName: string,
@@ -84,61 +82,63 @@ export async function autoReadChannel(
       permission: "read_write",
     });
 
-    const baseSearchUrl = `${DUST_FRONT_API}/api/v1/w/${connector.workspaceId}/data_source_views/search`;
-    const searchUrl =
-      baseSearchUrl +
-      `?kind=custom&vaultKind=global&dataSourceId=${connector.dataSourceId}`;
-    const searchRes = await fetch(searchUrl, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${connector.workspaceAPIKey}`,
+    const dustAPI = new DustAPI(
+      apiConfig.getDustAPIConfig(),
+      {
+        workspaceId: connector.workspaceId,
+        apiKey: connector.workspaceAPIKey,
       },
-    });
+      logger,
+      {
+        useLocalInDev: false,
+        urlOverride: DUST_FRONT_API,
+      }
+    );
 
-    if (!searchRes.ok) {
+    const searchParams = new URLSearchParams({
+      kind: "custom",
+      vaultKind: "global",
+      datasourceId: connector.dataSourceId,
+    });
+    const searchRes = await dustAPI.searchDataSourceViews(searchParams);
+
+    if (searchRes.isErr()) {
       logger.error({
         connectorId,
         channelId: slackChannelId,
-        searchUrl,
-        error: await searchRes.text(),
+        error: searchRes.error.message,
       });
       return new Err(new Error("Failed to join Slack channel in Dust."));
     }
 
-    const [dataSourceView] = (
-      (await searchRes.json()) as SearchDataSourceViewsResponse
-    ).data_source_views;
+    const [dataSourceView] = searchRes.value;
 
     if (!dataSourceView) {
       logger.error({
         connectorId,
         channelId: slackChannelId,
-        error: await searchRes.text(),
+        error:
+          "Failed to join Slack channel, there was an issue retrieving dataSourceViews",
       });
       return new Err(
         new Error("There was an issue retrieving dataSourceViews")
       );
     }
-    const joinSlackRes = await fetch(
-      `${DUST_FRONT_API}/api/v1/w/${connector.workspaceId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.id}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${connector.workspaceAPIKey}`,
-        },
-        body: JSON.stringify({
-          parentsToAdd: [createdChannel.slackChannelId],
-        }),
-      }
+
+    const patchData = {
+      parentsToAdd: [createdChannel.slackChannelId],
+      parentsToRemove: undefined,
+    };
+    const joinSlackRes = await dustAPI.patchDataSourceViews(
+      dataSourceView,
+      patchData
     );
 
-    if (!joinSlackRes.ok) {
+    if (joinSlackRes.isErr()) {
       logger.error({
         connectorId,
         channelId: slackChannelId,
-        error: await searchRes.text(),
+        error: joinSlackRes.error.message,
       });
       return new Err(new Error("Failed to join Slack channel in Dust."));
     }
