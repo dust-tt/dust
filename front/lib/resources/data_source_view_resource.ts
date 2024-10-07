@@ -39,6 +39,7 @@ import {
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 import { getWorkspaceByModelId } from "@app/lib/workspace";
+import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
@@ -370,16 +371,24 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     };
 
     for (const [key, value] of Object.entries(searchParams)) {
-      if (value) {
+      if (value && key !== "vaultKind") {
         whereClause[key] = value;
       }
     }
+    if (searchParams.vaultKind) {
+      whereClause["$vault.kind$"] = searchParams.vaultKind;
+    }
+
     return this.baseFetch(
       auth,
       {},
       {
         where: whereClause,
         order: [["updatedAt", "DESC"]],
+        includes: [{
+          model: VaultModel,
+          as: "vault"
+        }],
       }
     );
   }

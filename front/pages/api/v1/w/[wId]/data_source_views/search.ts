@@ -13,6 +13,7 @@ const SearchDataSourceViewsQuerySchema = t.type({
   dataSourceId: t.union([t.string, t.undefined]),
   kind: t.union([t.string, t.undefined]),
   vaultId: t.union([t.string, t.undefined]),
+  vaultKind: t.union([t.string, t.undefined]),
 });
 
 export type SearchDataSourceViewsResponseBody = {
@@ -33,8 +34,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "data_source_view_not_found",
-        message: "The data source view was not found.",
+        type: "workspace_not_found",
+        message: "This endpoint is only available to system api keys.",
       },
     });
   }
@@ -55,12 +56,13 @@ async function handler(
         });
       }
 
-      const { vaultId, dataSourceId, kind } = queryValidation.right;
+      const { vaultId, dataSourceId, kind, vaultKind } = queryValidation.right;
 
       const data_source_views = await DataSourceViewResource.search(auth, {
         vaultId,
         dataSourceId,
         kind,
+        vaultKind
       });
 
       res.status(200).json({

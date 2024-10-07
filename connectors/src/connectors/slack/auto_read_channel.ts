@@ -86,7 +86,8 @@ export async function autoReadChannel(
 
     const baseSearchUrl = `${DUST_FRONT_API}/api/v1/w/${connector.workspaceId}/data_source_views/search`;
     const searchUrl =
-      baseSearchUrl + `?kind=custom&dataSourceId=${connector.dataSourceId}`;
+      baseSearchUrl +
+      `?kind=custom&vaultKind=global&dataSourceId=${connector.dataSourceId}`;
     const searchRes = await fetch(searchUrl, {
       method: "GET",
       headers: {
