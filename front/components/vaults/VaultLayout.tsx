@@ -54,7 +54,7 @@ export function VaultLayout({
 
   const { vaults } = useVaultsAsAdmin({
     workspaceId: owner.sId,
-    disabled: plan.limits.vaults.maxVaults === 0,
+    disabled: plan.limits.vaults.maxVaults === 0 || !isAdmin,
   });
 
   const isPrivateVaultsEnabled = owner.flags.includes(

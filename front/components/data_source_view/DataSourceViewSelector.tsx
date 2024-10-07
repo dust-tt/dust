@@ -220,6 +220,7 @@ export function DataSourceViewsSelector({
                   setSelectionConfigurations={setSelectionConfigurations}
                   viewType={viewType}
                   isRootSelectable={isRootSelectable}
+                  defaultCollapsed={filteredDSVs.length > 1}
                 />
               ))}
           </Tree.Item>
@@ -237,9 +238,9 @@ export function DataSourceViewsSelector({
               setSelectionConfigurations={setSelectionConfigurations}
               viewType={viewType}
               isRootSelectable={false}
+              defaultCollapsed={filteredDSVs.length > 1}
             />
           ))}
-
         {folders.length > 0 && (
           <Tree.Item
             key="folders"
@@ -258,11 +259,11 @@ export function DataSourceViewsSelector({
                 setSelectionConfigurations={setSelectionConfigurations}
                 viewType={viewType}
                 isRootSelectable={isRootSelectable}
+                defaultCollapsed={filteredDSVs.length > 1}
               />
             ))}
           </Tree.Item>
         )}
-
         {websites.length > 0 && (
           <Tree.Item
             key="websites"
@@ -281,6 +282,7 @@ export function DataSourceViewsSelector({
                 setSelectionConfigurations={setSelectionConfigurations}
                 viewType={viewType}
                 isRootSelectable={isRootSelectable}
+                defaultCollapsed={filteredDSVs.length > 1}
               />
             ))}
           </Tree.Item>
@@ -300,6 +302,7 @@ interface DataSourceViewSelectorProps {
   useContentNodes?: typeof useDataSourceViewContentNodes;
   viewType: ContentNodesViewType;
   isRootSelectable: boolean;
+  defaultCollapsed?: boolean;
 }
 
 export function DataSourceViewSelector({
@@ -310,6 +313,7 @@ export function DataSourceViewSelector({
   useContentNodes = useDataSourceViewContentNodes,
   viewType,
   isRootSelectable,
+  defaultCollapsed = true,
 }: DataSourceViewSelectorProps) {
   const dataSourceView = selectionConfiguration.dataSourceView;
 
@@ -454,6 +458,7 @@ export function DataSourceViewSelector({
         key={dataSourceView.dataSource.id}
         label={getDisplayNameForDataSource(dataSourceView.dataSource)}
         visual={LogoComponent}
+        defaultCollapsed={defaultCollapsed}
         type={
           canBeExpanded(viewType, dataSourceView.dataSource) ? "node" : "leaf"
         }

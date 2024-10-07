@@ -38,6 +38,7 @@ import {
   ContentActions,
   getMenuItems,
 } from "@app/components/vaults/ContentActions";
+import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
 import { FoldersHeaderMenu } from "@app/components/vaults/FoldersHeaderMenu";
 import { WebsitesHeaderMenu } from "@app/components/vaults/WebsitesHeaderMenu";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
@@ -46,7 +47,7 @@ import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
-import { useSystemVault, useVaults } from "@app/lib/swr/vaults";
+import { useVaults } from "@app/lib/swr/vaults";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 type RowData = DataSourceViewContentNode & {
@@ -64,6 +65,7 @@ type VaultDataSourceViewContentListProps = {
   owner: WorkspaceType;
   parentId?: string;
   isAdmin: boolean;
+  systemVault: VaultType;
   connector: ConnectorType | null;
 };
 
@@ -169,6 +171,7 @@ export const VaultDataSourceViewContentList = ({
   onSelect,
   parentId,
   isAdmin,
+  systemVault,
   connector,
 }: VaultDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
@@ -192,11 +195,6 @@ export const VaultDataSourceViewContentList = ({
   const { dataSourceViews } = useDataSourceViews(owner, {
     disabled: !showVaultUsage,
   });
-  const { systemVault } = useSystemVault({
-    workspaceId: owner.sId,
-    disabled: !isAdmin,
-  });
-
   const handleViewTypeChange = useCallback(
     (newViewType?: ContentNodesViewType) => {
       if (newViewType !== viewType) {
@@ -417,6 +415,17 @@ export const VaultDataSourceViewContentList = ({
             dataSourceView={dataSourceView}
           />
         )}
+        {isManaged(dataSourceView.dataSource) &&
+          vault.kind !== "system" &&
+          !isEmpty && (
+            <EditVaultManagedDataSourcesViews
+              owner={owner}
+              vault={vault}
+              systemVault={systemVault}
+              isAdmin={isAdmin}
+              dataSourceView={dataSourceView}
+            />
+          )}
         {isManaged(dataSourceView.dataSource) &&
           connector &&
           !parentId &&

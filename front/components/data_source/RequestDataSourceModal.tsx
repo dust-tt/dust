@@ -116,8 +116,8 @@ export function RequestDataSourceModal({
           </div>
 
           {selectedDataSource && (
-            <div>
-              <p className="s-mb-2 s-text-sm s-text-element-700">
+            <div className="flex flex-col gap-2">
+              <p className="mb-2 text-sm text-element-700">
                 {_.capitalize(selectedDataSource.editedByUser?.fullName ?? "")}{" "}
                 is the administrator for the{" "}
                 {getDisplayNameForDataSource(selectedDataSource)} connection
@@ -131,52 +131,54 @@ export function RequestDataSourceModal({
                 onChange={(e) => setMessage(e.target.value)}
                 className="s-mb-2"
               />
-              <Button
-                label="Send"
-                variant="primary"
-                size="sm"
-                onClick={async () => {
-                  const userToId = selectedDataSource?.editedByUser?.userId;
-                  if (!userToId || !selectedDataSource) {
-                    sendNotification({
-                      type: "error",
-                      title: "Error sending email",
-                      description:
-                        "An unexpected error occurred while sending email.",
-                    });
-                  } else {
-                    try {
-                      await sendRequestDataSourceEmail({
-                        userTo: userToId,
-                        emailMessage: message,
-                        dataSourceName: selectedDataSource.name,
-                        owner,
-                      });
-                      sendNotification({
-                        type: "success",
-                        title: "Email sent!",
-                        description: `Your request was sent to ${selectedDataSource?.editedByUser?.fullName}.`,
-                      });
-                    } catch (e) {
+              <div>
+                <Button
+                  label="Send"
+                  variant="primary"
+                  size="sm"
+                  onClick={async () => {
+                    const userToId = selectedDataSource?.editedByUser?.userId;
+                    if (!userToId || !selectedDataSource) {
                       sendNotification({
                         type: "error",
                         title: "Error sending email",
                         description:
-                          "An unexpected error occurred while sending the request.",
+                          "An unexpected error occurred while sending email.",
                       });
-                      logger.error(
-                        {
-                          userToId,
+                    } else {
+                      try {
+                        await sendRequestDataSourceEmail({
+                          userTo: userToId,
+                          emailMessage: message,
                           dataSourceName: selectedDataSource.name,
-                          error: e,
-                        },
-                        "Error sending email"
-                      );
+                          owner,
+                        });
+                        sendNotification({
+                          type: "success",
+                          title: "Email sent!",
+                          description: `Your request was sent to ${selectedDataSource?.editedByUser?.fullName}.`,
+                        });
+                      } catch (e) {
+                        sendNotification({
+                          type: "error",
+                          title: "Error sending email",
+                          description:
+                            "An unexpected error occurred while sending the request.",
+                        });
+                        logger.error(
+                          {
+                            userToId,
+                            dataSourceName: selectedDataSource.name,
+                            error: e,
+                          },
+                          "Error sending email"
+                        );
+                      }
+                      onClose();
                     }
-                    onClose();
-                  }
-                }}
-              />
+                  }}
+                />
+              </div>
             </div>
           )}
         </div>
