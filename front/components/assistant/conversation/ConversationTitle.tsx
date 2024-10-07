@@ -183,7 +183,7 @@ export function ConversationTitle({
                 <Button
                   size="sm"
                   labelVisible={false}
-                  tooltipPosition="below"
+                  tooltipPosition="bottom"
                   variant="tertiary"
                   label="Delete Conversation"
                   icon={TrashIcon}

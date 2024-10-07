@@ -80,7 +80,7 @@ export function AssistantPicker({
                   setSearchText("");
                 }}
                 tooltip="Pick an assistant"
-                tooltipPosition="above"
+                tooltipPosition="top"
               />
             )}
           </div>

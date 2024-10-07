@@ -205,15 +205,16 @@ function ContentNodeTreeChildren({
               <div className="mr-8 flex flex-row gap-2">
                 {n.lastUpdatedAt ? (
                   <Tooltip
-                    contentChildren={
+                    label={
                       <span>{new Date(n.lastUpdatedAt).toLocaleString()}</span>
                     }
-                    position={i === 0 ? "below" : "above"}
-                  >
-                    <span className="text-xs text-gray-500">
-                      {timeAgoFrom(n.lastUpdatedAt)} ago
-                    </span>
-                  </Tooltip>
+                    side={i === 0 ? "bottom" : "top"}
+                    trigger={
+                      <span className="text-xs text-gray-500">
+                        {timeAgoFrom(n.lastUpdatedAt)} ago
+                      </span>
+                    }
+                  />
                 ) : null}
                 <IconButton
                   size="xs"
