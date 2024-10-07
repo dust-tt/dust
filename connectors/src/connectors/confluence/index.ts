@@ -6,6 +6,7 @@ import type {
   Result,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import { Mutex } from "async-mutex";
 
 import {
   getConfluenceAccessToken,
@@ -14,7 +15,10 @@ import {
   listConfluenceSpaces,
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
-import { getConfluencePageParentIds } from "@connectors/connectors/confluence/lib/hierarchy";
+import {
+  getConfluencePageParentIds,
+  getSpaceHierarchy,
+} from "@connectors/connectors/confluence/lib/hierarchy";
 import {
   getIdFromConfluenceInternalId,
   isConfluenceInternalPageId,
@@ -465,8 +469,33 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     return new Ok(contentNodes);
   }
 
+  private _cachedHierarchyMutex = new Mutex();
+  private _cachedHierarchy: Map<string, Map<string, string | null>> = new Map();
+
+  private async getCachedHierarchy(
+    memoizationKey: string,
+    spaceId: string
+  ): Promise<Map<string, string | null>> {
+    return this._cachedHierarchyMutex.runExclusive(async () => {
+      if (!this._cachedHierarchy.has(memoizationKey)) {
+        this._cachedHierarchy.set(
+          memoizationKey,
+          await getSpaceHierarchy(this.connectorId, spaceId)
+        );
+      }
+
+      // pleasing typescript
+      const cachedHierarchy = this._cachedHierarchy.get(memoizationKey);
+      if (!cachedHierarchy) {
+        throw new Error("Unreachable: Cached hierarchy is not set.");
+      }
+      return cachedHierarchy;
+    });
+  }
+
   async retrieveContentNodeParents({
     internalId,
+    memoizationKey,
   }: {
     internalId: string;
     memoizationKey?: string;
@@ -497,9 +526,16 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         ]);
       }
 
+      // if a memoization key is provided, use it to cache the hierarchy which
+      // is expensive to compute
+      const cachedHierarchy = memoizationKey
+        ? await this.getCachedHierarchy(memoizationKey, currentPage.spaceId)
+        : undefined;
+
       const parentIds = await getConfluencePageParentIds(
         this.connectorId,
-        currentPage
+        currentPage,
+        cachedHierarchy
       );
       return new Ok(parentIds);
     }

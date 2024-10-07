@@ -4,6 +4,7 @@ import type {
   Result,
 } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
+import { hash as blake3 } from "blake3";
 import { zip } from "fp-ts/lib/Array";
 
 import { getConnectorManager } from "@connectors/connectors";
@@ -27,9 +28,15 @@ export async function getParentIdsForContentNodes(
     connectorId: connector.id,
   });
 
+  const memoizationKey = `content-node-parents-${connector.id}-${blake3(internalIds.join("-"), { length: 256 }).toString()}`;
+
   const parentsResults = await concurrentExecutor(
     internalIds,
-    (internalId) => connectorManager.retrieveContentNodeParents({ internalId }),
+    (internalId) =>
+      connectorManager.retrieveContentNodeParents({
+        internalId,
+        memoizationKey,
+      }),
     { concurrency: 30 }
   );
 
