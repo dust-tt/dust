@@ -347,6 +347,24 @@
  *           example: "text/plain"
  *         context:
  *           $ref: '#/components/schemas/Context'
+ *     Vault:
+ *       type: object
+ *       properties:
+ *         sId:
+ *           type: string
+ *           description: Unique string identifier for the vault
+ *         name:
+ *           type: string
+ *           description: Name of the vault
+ *         kind:
+ *           type: string
+ *           enum: [regular, global, system, public]
+ *           description: The kind of the vault
+ *         groupIds:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: List of group IDs that have access to the vault
  *     Datasource:
  *       type: object
  *       properties:
@@ -382,6 +400,50 @@
  *           type: boolean
  *           description: Whether this datasource is selected by default for assistants
  *           example: true
+ *     DataSourceView:
+ *       type: object
+ *       properties:
+ *         category:
+ *           type: string
+ *           enum: [managed, folder, website, apps]
+ *           description: The category of the data source view
+ *         createdAt:
+ *           type: number
+ *           description: Timestamp of when the data source view was created
+ *         dataSource:
+ *           $ref: '#/components/schemas/Datasource'
+ *         editedByUser:
+ *           type: object
+ *           description: The user who last edited the data source view
+ *           properties:
+ *             fullName:
+ *               type: string
+ *               description: Full name of the user
+ *             editedAt:
+ *               type: number
+ *               description: Timestamp of when the data source view was last edited by the user
+ *         id:
+ *           type: number
+ *           description: Unique identifier for the data source view
+ *         kind:
+ *           type: string
+ *           enum: [default, custom]
+ *           description: The kind of the data source view
+ *         parentsIn:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: List of IDs included in this view, null if complete data source is taken
+ *           nullable: true
+ *         sId:
+ *           type: string
+ *           description: Unique string identifier for the data source view
+ *         updatedAt:
+ *           type: number
+ *           description: Timestamp of when the data source view was last updated
+ *         vaultId:
+ *           type: string
+ *           description: ID of the vault containing the data source view
  *     Run:
  *       type: object
  *       properties:

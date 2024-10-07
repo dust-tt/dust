@@ -276,14 +276,6 @@ async function botAnswerMessage(
     }
   );
 
-  const mainMessage = await slackClient.chat.postMessage({
-    ...makeMessageUpdateBlocksAndText(null, {
-      isThinking: true,
-    }),
-    channel: slackChannel,
-    thread_ts: slackMessageTs,
-  });
-
   // Slack sends the message with user ids when someone is mentionned (bot or user).
   // Here we remove the bot id from the message and we replace user ids by their display names.
   // Example: <@U01J9JZQZ8Z> What is the command to upgrade a workspace in production (cc
@@ -414,6 +406,18 @@ async function botAnswerMessage(
       message = `:mention[${mention.assistantName}]{sId=${mention.assistantId}} ${message}`;
     }
   }
+
+  const mainMessage = await slackClient.chat.postMessage({
+    ...makeMessageUpdateBlocksAndText(
+      null,
+      {
+        isThinking: true,
+      },
+      mention?.assistantName
+    ),
+    channel: slackChannel,
+    thread_ts: slackMessageTs,
+  });
 
   const messageReqBody = {
     content: message,

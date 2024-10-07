@@ -22,7 +22,7 @@ import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { Item as StandardItem, LinkProps } from "./Item";
-import { Tooltip, TooltipProps } from "./Tooltip";
+import { Tooltip } from "./Tooltip";
 
 const ButtonRefContext =
   React.createContext<MutableRefObject<HTMLButtonElement | null> | null>(null);
@@ -98,7 +98,7 @@ export interface DropdownButtonProps {
   type?: "menu" | "submenu" | "select";
   size?: "sm" | "md";
   tooltip?: string;
-  tooltipPosition?: TooltipProps["position"];
+  tooltipPosition?: React.ComponentProps<typeof Tooltip>["side"];
   icon?: ComponentType;
   className?: string;
   disabled?: boolean;
@@ -116,7 +116,7 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
       tooltip,
       icon,
       children,
-      tooltipPosition = "above",
+      tooltipPosition = "top",
       className = "",
       disabled = false,
       onClick,
@@ -178,9 +178,11 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
           onClick={(e) => e.stopPropagation()}
         >
           {tooltip ? (
-            <Tooltip position={tooltipPosition} label={tooltip}>
-              {children}
-            </Tooltip>
+            <Tooltip
+              trigger={children}
+              label={tooltip}
+              side={tooltipPosition}
+            />
           ) : (
             children
           )}
@@ -198,31 +200,39 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
     return (
       <>
         {tooltip ? (
-          <Tooltip label={tooltip} position={tooltipPosition}>
-            <Menu.Button
-              disabled={disabled}
-              ref={aggregatedRef}
-              className={classNames(
-                disabled ? "s-cursor-default" : "s-cursor-pointer",
-                className,
-                "s-group/dm s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
-                label ? (size === "md" ? "s-gap-2" : "s-gap-1.5") : "s-gap-0.5"
-              )}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onClick) {
-                  onClick();
-                }
-              }}
-            >
-              <Icon visual={icon} size={size} className={finalIconClasses} />
-              <Icon
-                visual={chevronIcon}
-                size={size === "sm" ? "xs" : "sm"}
-                className={finalChevronClasses}
-              />
-            </Menu.Button>
-          </Tooltip>
+          <Tooltip
+            trigger={
+              <Menu.Button
+                disabled={disabled}
+                ref={aggregatedRef}
+                className={classNames(
+                  disabled ? "s-cursor-default" : "s-cursor-pointer",
+                  className,
+                  "s-group/dm s-flex s-justify-items-center s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0",
+                  label
+                    ? size === "md"
+                      ? "s-gap-2"
+                      : "s-gap-1.5"
+                    : "s-gap-0.5"
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onClick) {
+                    onClick();
+                  }
+                }}
+              >
+                <Icon visual={icon} size={size} className={finalIconClasses} />
+                <Icon
+                  visual={chevronIcon}
+                  size={size === "sm" ? "xs" : "sm"}
+                  className={finalChevronClasses}
+                />
+              </Menu.Button>
+            }
+            label={tooltip}
+            side={tooltipPosition}
+          />
         ) : (
           <Menu.Button
             disabled={disabled}

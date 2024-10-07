@@ -11,6 +11,9 @@ import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/ci
  */
 export const MAX_SLACK_MESSAGE_LENGTH = 2950;
 
+export const SLACK_CHOOSE_BOT_HELP_URL =
+  "https://docs.dust.tt/docs/slack#calling-an-assistant-in-slack";
+
 function makeConversationLinkContextBlock(conversationUrl: string) {
   return {
     type: "context",
@@ -23,13 +26,16 @@ function makeConversationLinkContextBlock(conversationUrl: string) {
   };
 }
 
-export function makeThinkingBlock() {
+export function makeThinkingBlock(assistantName: string | undefined) {
+  const thinkingText =
+    (assistantName ? `@${assistantName} is thinking...` : "Thinking...") +
+    `  <${SLACK_CHOOSE_BOT_HELP_URL}| Select which assistant replies>`;
   return {
     type: "context",
     elements: [
       {
-        type: "plain_text",
-        text: "Thinking...",
+        type: "mrkdwn",
+        text: thinkingText,
       },
     ],
   };
@@ -98,13 +104,14 @@ export type SlackMessageUpdate =
 
 export function makeMessageUpdateBlocksAndText(
   conversationUrl: string | null,
-  messageUpdate: SlackMessageUpdate
+  messageUpdate: SlackMessageUpdate,
+  assistantName: string | undefined
 ) {
   const { isThinking, text, footnotes } = messageUpdate;
 
   return {
     blocks: [
-      isThinking ? makeThinkingBlock() : makeMarkdownBlock(text),
+      isThinking ? makeThinkingBlock(assistantName) : makeMarkdownBlock(text),
       ...makeContextSectionBlocks(conversationUrl, footnotes),
     ],
     // TODO(2024-06-17 flav) We should not return markdown here.

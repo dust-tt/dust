@@ -199,7 +199,7 @@ function PropertiesFields({
 
                 <div className="col-span-2">
                   <DropdownMenu>
-                    <DropdownMenu.Button tooltipPosition="above">
+                    <DropdownMenu.Button tooltipPosition="top">
                       <Button
                         type="select"
                         labelVisible={true}
@@ -558,7 +558,7 @@ export function ActionProcess({
           }}
         />
         <DropdownMenu>
-          <DropdownMenu.Button tooltipPosition="above">
+          <DropdownMenu.Button tooltipPosition="top">
             <Button
               type="select"
               labelVisible={true}
@@ -601,16 +601,17 @@ export function ActionProcess({
                 label={
                   "Automatically re-generate the extraction schema based on Instructions"
                 }
-              >
-                <Button
-                  label={"Re-generate from Instructions"}
-                  variant="tertiary"
-                  icon={SparklesIcon}
-                  size="xs"
-                  disabled={isGeneratingSchema}
-                  onClick={generateSchemaFromInstructions}
-                />
-              </Tooltip>
+                trigger={
+                  <Button
+                    label="Re-generate from Instructions"
+                    variant="tertiary"
+                    icon={SparklesIcon}
+                    size="xs"
+                    disabled={isGeneratingSchema}
+                    onClick={generateSchemaFromInstructions}
+                  />
+                }
+              />
             </div>
           )}
         </div>

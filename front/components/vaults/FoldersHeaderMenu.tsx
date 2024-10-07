@@ -49,13 +49,14 @@ export const FoldersHeaderMenu = ({
               ? `Only builders of the workspace can add data in the Company Data vault.`
               : `Only members of the vault can add data.`
           }
-          position="above"
-        >
-          <AddDataDropDownButton
-            contentActionsRef={contentActionsRef}
-            canWriteInVault={canWriteInVault}
-          />
-        </Tooltip>
+          side="top"
+          trigger={
+            <AddDataDropDownButton
+              contentActionsRef={contentActionsRef}
+              canWriteInVault={canWriteInVault}
+            />
+          }
+        />
       )}
       {canWriteInVault ? (
         <EditFolderButton
@@ -71,15 +72,16 @@ export const FoldersHeaderMenu = ({
               ? `Only builders of the workspace can edit a folder in the Company Data vault.`
               : `Only members of the vault can edit a folder.`
           }
-          position="above"
-        >
-          <EditFolderButton
-            owner={owner}
-            vault={vault}
-            folder={folder}
-            canWriteInVault={canWriteInVault}
-          />
-        </Tooltip>
+          side="top"
+          trigger={
+            <EditFolderButton
+              owner={owner}
+              vault={vault}
+              folder={folder}
+              canWriteInVault={canWriteInVault}
+            />
+          }
+        />
       )}
     </>
   );

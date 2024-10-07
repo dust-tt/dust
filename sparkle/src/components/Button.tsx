@@ -6,22 +6,26 @@ import React, {
   ReactNode,
 } from "react";
 
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { ChevronDownIcon, ChevronUpDownIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Avatar } from "./Avatar";
 import { Icon, IconProps } from "./Icon";
-import { Tooltip, TooltipProps } from "./Tooltip";
+
+const BUTTON_VARIANTS = [
+  "primary",
+  "primaryWarning",
+  "secondary",
+  "secondaryWarning",
+  "tertiary",
+  "avatar",
+] as const;
+
+export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
 export type ButtonProps = {
-  variant?:
-    | "primary"
-    | "primaryWarning"
-    | "secondary"
-    | "secondaryWarning"
-    | "tertiary"
-    | "avatar";
-
+  variant?: ButtonVariantType;
   type?: "button" | "menu" | "select";
   size?: "xs" | "sm" | "md" | "lg";
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -32,7 +36,7 @@ export type ButtonProps = {
   icon?: ComponentType;
   avatar?: string;
   className?: string;
-  tooltipPosition?: TooltipProps["position"];
+  tooltipPosition?: React.ComponentProps<typeof Tooltip>["side"];
   disabledTooltip?: boolean;
 };
 
@@ -173,7 +177,7 @@ export function Button({
   label,
   icon,
   className = "",
-  tooltipPosition = "above",
+  tooltipPosition,
   hasMagnifying = true,
   disabledTooltip = false,
   avatar,
@@ -242,9 +246,7 @@ export function Button({
   return labelVisible || disabledTooltip ? (
     buttonBase
   ) : (
-    <Tooltip label={label} position={tooltipPosition}>
-      {buttonBase}
-    </Tooltip>
+    <Tooltip trigger={buttonBase} label={label} side={tooltipPosition} />
   );
 }
 
