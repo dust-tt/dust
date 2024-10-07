@@ -14,6 +14,7 @@ import type {
   CreationAttributes,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
@@ -351,6 +352,36 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     );
 
     return dataSourceViews ?? null;
+  }
+
+  static async search(
+    auth: Authenticator,
+    searchParams: {
+      [key: string]: string | number | undefined;
+    }
+  ): Promise<DataSourceViewResource[]> {
+    const owner = auth.workspace();
+    if (!owner) {
+      return [];
+    }
+
+    const whereClause: WhereOptions = {
+      workspaceId: owner.id,
+    };
+
+    for (const [key, value] of Object.entries(searchParams)) {
+      if (value) {
+        whereClause[key] = value;
+      }
+    }
+    return this.baseFetch(
+      auth,
+      {},
+      {
+        where: whereClause,
+        order: [["updatedAt", "DESC"]],
+      }
+    );
   }
 
   // Updating.
