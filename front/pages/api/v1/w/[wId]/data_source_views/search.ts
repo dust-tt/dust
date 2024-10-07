@@ -29,15 +29,15 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<SearchDataSourceViewsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  // if (!auth.isSystemKey()) {
-  //   return apiError(req, res, {
-  //     status_code: 404,
-  //     api_error: {
-  //       type: "data_source_view_not_found",
-  //       message: "The data source view was not found.",
-  //     },
-  //   });
-  // }
+  if (!auth.isSystemKey()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_view_not_found",
+        message: "The data source view was not found.",
+      },
+    });
+  }
 
   switch (req.method) {
     case "GET":
