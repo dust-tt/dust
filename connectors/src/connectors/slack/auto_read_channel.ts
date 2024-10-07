@@ -106,11 +106,11 @@ export async function autoReadChannel(
       return new Err(new Error("Failed to join Slack channel in Dust."));
     }
 
-    const dataSourceViews = (
+    const [dataSourceView] = (
       (await searchRes.json()) as SearchDataSourceViewsResponse
     ).data_source_views;
 
-    if (dataSourceViews.length === 0 || !dataSourceViews[0]) {
+    if (!dataSourceView) {
       logger.error({
         connectorId,
         channelId: slackChannelId,
@@ -121,7 +121,7 @@ export async function autoReadChannel(
       );
     }
     const joinSlackRes = await fetch(
-      `${DUST_FRONT_API}/api/v1/w/${connector.workspaceId}/data_source_views/${dataSourceViews[0].id}`,
+      `${DUST_FRONT_API}/api/v1/w/${connector.workspaceId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.id}`,
       {
         method: "POST",
         headers: {
