@@ -51,7 +51,7 @@ VaultModel.init(
     modelName: "vaults",
     sequelize: frontSequelize,
     indexes: [
-      { unique: true, fields: ["workspaceId", "name"] },
+      { unique: true, fields: ["workspaceId", "name", "deletedAt"] },
       { unique: false, fields: ["workspaceId", "kind"] },
     ],
   }
