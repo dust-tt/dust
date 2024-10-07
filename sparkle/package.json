@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.255",
+  "version": "0.2.256",
   "scripts": {
     "build": "rm -rf dist && npm run tailwind && npm run build:esm && npm run build:cjs",
     "tailwind": "tailwindcss -i ./src/styles/tailwind.css -o dist/sparkle.css",
@@ -66,6 +66,7 @@
     "tailwindcss": "^3.2.4",
     "tsc-alias": "^1.8.10",
     "typescript": "^5.4.5",
+    "tailwindcss-animate": "^1.0.7",
     "typescript-transform-paths": "^3.4.7",
     "uuid": "^9.0.1"
   },
