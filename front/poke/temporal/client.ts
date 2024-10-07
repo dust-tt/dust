@@ -50,37 +50,20 @@ export async function launchScrubDataSourceWorkflow(
 export async function launchScrubVaultWorkflow(
   auth: Authenticator,
   vault: VaultResource
-): Promise<Result<void, Error>> {
+) {
   const client = await getTemporalClient();
   const owner = auth.getNonNullableWorkspace();
 
-  try {
-    await client.workflow.start(scrubVaultWorkflow, {
-      args: [
-        {
-          vaultId: vault.sId,
-          workspaceId: owner.sId,
-        },
-      ],
-      taskQueue: "poke-queue",
-      workflowId: `poke-${owner.sId}-scrub-vault-${vault.sId}`,
-    });
-
-    return new Ok(undefined);
-  } catch (e) {
-    if (!(e instanceof WorkflowExecutionAlreadyStartedError)) {
-      logger.error(
-        {
-          vault: {
-            sId: vault.sId,
-          },
-          error: e,
-        },
-        "Failed starting scrub vault workflow."
-      );
-    }
-    return new Err(e as Error);
-  }
+  await client.workflow.start(scrubVaultWorkflow, {
+    args: [
+      {
+        vaultId: vault.sId,
+        workspaceId: owner.sId,
+      },
+    ],
+    taskQueue: "poke-queue",
+    workflowId: `poke-${owner.sId}-scrub-vault-${vault.sId}`,
+  });
 }
 
 export async function launchDeleteWorkspaceWorkflow({

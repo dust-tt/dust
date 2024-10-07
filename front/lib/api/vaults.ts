@@ -17,12 +17,8 @@ export async function softDeleteVaultAndLaunchScrubWorkflow(
   auth: Authenticator,
   vault: VaultResource
 ) {
-  if (!auth.isAdmin()) {
-    throw new Error("Only admins can delete vaults.");
-  }
-  if (!vault.isRegular()) {
-    throw new Error("Cannot delete non regular vaults.");
-  }
+  assert(auth.isAdmin(), "Only admins can delete vaults.");
+  assert(!vault.isRegular(), "Cannot delete non regular vaults.");
 
   const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
 
@@ -96,11 +92,11 @@ export async function hardDeleteVault(
   auth: Authenticator,
   vault: VaultResource
 ): Promise<Result<void, Error>> {
-  if (!auth.isAdmin()) {
-    throw new Error("Only admins can destroy vaults.");
-  }
+  assert(auth.isAdmin(), "Only admins can delete vaults.");
 
-  assert(vault.isDeleted(), "Vault must be soft deleted to be destroyed.");
+  const isDeletableVault =
+    vault.isDeleted() || vault.isGlobal() || vault.isSystem();
+  assert(isDeletableVault, "Vault is not soft deleted.");
 
   const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
   for (const dsv of dataSourceViews) {

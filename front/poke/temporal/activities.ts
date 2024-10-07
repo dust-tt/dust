@@ -1,11 +1,13 @@
 import { CoreAPI } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
+import assert from "assert";
 import { chunk } from "lodash";
 import { Op } from "sequelize";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
+import { hardDeleteVault } from "@app/lib/api/vaults";
 import { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -132,9 +134,9 @@ export async function scrubVaultActivity({
     throw new Error("Vault not found.");
   }
 
-  if (!vault.isDeleted()) {
-    throw new Error("Vault is not soft deleted.");
-  }
+  const isDeletableVault =
+    vault.isDeleted() || vault.isGlobal() || vault.isSystem();
+  assert(isDeletableVault, "Vault is not soft deleted.");
 
   // Delete all the data sources of the vaults.
   const dataSources = await DataSourceResource.listByVault(auth, vault);
@@ -145,20 +147,7 @@ export async function scrubVaultActivity({
     });
   }
 
-  await frontSequelize.transaction(async (t) => {
-    // Delete all vaults groups.
-    for (const group of vault.groups) {
-      const res = await group.delete(auth, { transaction: t });
-      if (res.isErr()) {
-        throw res.error;
-      }
-    }
-
-    const res = await vault.delete(auth, { hardDelete: true, transaction: t });
-    if (res.isErr()) {
-      throw res.error;
-    }
-  });
+  await hardDeleteVault(auth, vault);
 }
 
 export async function isWorkflowDeletableActivity({

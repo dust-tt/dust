@@ -156,6 +156,7 @@ async function deleteDatasources(auth: Authenticator) {
     await VaultResource.listWorkspaceDefaultVaults(auth);
 
   // Retrieve and delete all data sources associated with the system and global vaults.
+  // Others will be deleted when deleting the vaults.
   const dataSources = await DataSourceResource.listByVaults(
     auth,
     globalAndSystemVaults
