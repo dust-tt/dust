@@ -73,7 +73,11 @@ export async function streamConversationToSlack(
     }
 
     const response = await slackClient.chat.update({
-      ...makeMessageUpdateBlocksAndText(conversationUrl, messageUpdate),
+      ...makeMessageUpdateBlocksAndText(
+        conversationUrl,
+        messageUpdate,
+        assistantName
+      ),
       channel: slackChannelId,
       thread_ts: slackMessageTs,
       ts: mainMessage.ts as string,
