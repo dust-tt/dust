@@ -208,7 +208,7 @@ async function processResult(
 
     const errorPost = {
       blocks: [
-        makeHeaderBlock(conversationUrl),
+        makeHeaderBlock(conversationUrl, connector.workspaceId),
         {
           type: "section",
           text: {
@@ -377,7 +377,7 @@ async function answerMessage(
   );
 
   const mainMessage = await slackClient.chat.postMessage({
-    ...makeMessageUpdateBlocksAndText(null, {
+    ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
       isComplete: false,
       isThinking: true,
     }),

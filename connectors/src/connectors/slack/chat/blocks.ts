@@ -2,6 +2,7 @@ import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { truncate } from "@dust-tt/types";
 
 import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
+import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
 
 /*
  * This length threshold is set to prevent the "msg_too_long" error
@@ -153,15 +154,19 @@ export type SlackMessageUpdate =
       agentConfigurations?: LightAgentConfigurationType[];
     };
 
-export function makeHeaderBlock(conversationUrl: string | null) {
+export function makeHeaderBlock(
+  conversationUrl: string | null,
+  workspaceId: string
+) {
+  const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/assistant/new`);
   return {
     type: "context",
     elements: [
       {
         type: "mrkdwn",
         text: conversationUrl
-          ? `<${conversationUrl}|Full conversation on Dust> | <https://dust.tt|More about Dust>`
-          : `<https://dust.tt|More about Dust>`,
+          ? `<${conversationUrl}|Full conversation on Dust> | <${assistantsUrl}|Dust assistants> | <https://dust.tt/home|More about Dust>`
+          : `<https://dust.tt/home|More about Dust>`,
       },
     ],
   };
@@ -169,6 +174,7 @@ export function makeHeaderBlock(conversationUrl: string | null) {
 
 export function makeMessageUpdateBlocksAndText(
   conversationUrl: string | null,
+  workspaceId: string,
   messageUpdate: SlackMessageUpdate
 ) {
   const {
@@ -183,7 +189,7 @@ export function makeMessageUpdateBlocksAndText(
 
   return {
     blocks: [
-      makeHeaderBlock(conversationUrl),
+      makeHeaderBlock(conversationUrl, workspaceId),
       isThinking ? makeThinkingBlock(thinkingText) : makeMarkdownBlock(text),
       ...makeContextSectionBlocks(isComplete, conversationUrl, footnotes),
       ...makeAssistantSelectionBlock(agentConfigurations),
