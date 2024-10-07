@@ -325,12 +325,17 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(group);
   }
 
-  static async listWorkspaceGroups(
-    auth: Authenticator
+  static async listAllWorkspaceGroups(
+    auth: Authenticator,
+    { includeSystem }: { includeSystem?: boolean } = {}
   ): Promise<GroupResource[]> {
     const groups = await this.baseFetch(auth, {});
 
-    return groups.filter((group) => group.canRead(auth));
+    if (includeSystem) {
+      return groups;
+    }
+
+    return groups.filter((group) => !group.isSystem());
   }
 
   static async listUserGroupsInWorkspace({
@@ -756,7 +761,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   canRead(auth: Authenticator): boolean {
-    return auth.isAdmin() || auth.canRead([this.acl()]);
+    return auth.canRead([this.acl()]);
   }
 
   canWrite(auth: Authenticator): boolean {
