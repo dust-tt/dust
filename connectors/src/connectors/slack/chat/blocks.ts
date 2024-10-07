@@ -46,14 +46,18 @@ function makeDividerBlock() {
   };
 }
 
-function makeMarkdownBlock(text: string) {
-  return {
-    type: "section",
-    text: {
-      type: "mrkdwn",
-      text: truncate(text, MAX_SLACK_MESSAGE_LENGTH),
-    },
-  };
+function makeMarkdownBlock(text?: string) {
+  return text
+    ? [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: truncate(text, MAX_SLACK_MESSAGE_LENGTH),
+          },
+        },
+      ]
+    : [];
 }
 
 function makeFootnotesBlock(footnotes: SlackMessageFootnotes) {
@@ -135,7 +139,7 @@ export type SlackMessageUpdate =
   | {
       isComplete: false;
       isThinking: true;
-      text?: never;
+      text?: string;
       action?: string;
       footnotes?: never;
       agentConfigurations?: never;
@@ -200,9 +204,8 @@ export function makeMessageUpdateBlocksAndText(
   return {
     blocks: [
       makeHeaderBlock(conversationUrl, workspaceId),
-      isThinking
-        ? makeThinkingBlock(thinkingTextWithAction)
-        : makeMarkdownBlock(text),
+      ...(isThinking ? [makeThinkingBlock(thinkingTextWithAction)] : []),
+      ...makeMarkdownBlock(text),
       ...makeContextSectionBlocks(isComplete, conversationUrl, footnotes),
       ...makeAssistantSelectionBlock(agentConfigurations),
     ],

@@ -161,6 +161,7 @@ export async function streamConversationToSlack(
           {
             isComplete: false,
             isThinking: true,
+            text: answer,
             action: actionRunningLabels[event.action.type],
           },
           { adhereToRateLimit: false }
