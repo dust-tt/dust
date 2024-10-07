@@ -468,8 +468,11 @@ const VaultDataSourceViewItem = ({
     ? `${basePath}?parentId=${node?.internalId}`
     : basePath;
 
+  const isEmpty = isExpanded && !isNodesLoading && nodes.length === 0;
   const folders = nodes.filter((node) => node.expandable);
-  const isEmpty = isExpanded && !isNodesLoading && folders.length === 0;
+  const notFolders = nodes.filter((node) => !node.expandable);
+  const itemsLabel = notFolders.length === 1 ? "item here" : "items here";
+
   return (
     <Tree.Item
       isNavigatable
@@ -484,6 +487,13 @@ const VaultDataSourceViewItem = ({
     >
       {isExpanded && (
         <Tree isLoading={isNodesLoading}>
+          {notFolders.length > 0 && (
+            <Tree.Item
+              type="leaf"
+              labelClassName="italic text-element-500 text-slate-500"
+              label={`(${notFolders.length} ${folders.length > 0 ? "other " : ""} ${itemsLabel})`}
+            />
+          )}
           {folders.map((node) => (
             <VaultDataSourceViewItem
               item={item}
