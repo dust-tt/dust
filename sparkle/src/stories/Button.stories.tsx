@@ -588,8 +588,9 @@ export const ButtonWithTooltipManualInstantiation = () => {
           <p>Hello</p>
         </TooltipContent>
       </TooltipRoot>
-  </TooltipProvider>
-)}
+    </TooltipProvider>
+  );
+};
 
 export const ButtonWithTooltip = () => {
   return (
@@ -604,8 +605,8 @@ export const ButtonWithTooltip = () => {
       }
       label={"Hello"}
     />
-  )
-}
+  );
+};
 
 export const Primary: Story = {
   args: {

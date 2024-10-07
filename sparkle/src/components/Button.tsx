@@ -1,4 +1,3 @@
-import { SIDE_OPTIONS } from "@radix-ui/react-popper";
 import React, {
   Children,
   cloneElement,
@@ -37,7 +36,7 @@ export type ButtonProps = {
   icon?: ComponentType;
   avatar?: string;
   className?: string;
-  tooltipPosition?: (typeof SIDE_OPTIONS)[number];
+  tooltipPosition?: React.ComponentProps<typeof Tooltip>["side"];
   disabledTooltip?: boolean;
 };
 

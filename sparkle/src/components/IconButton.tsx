@@ -1,4 +1,3 @@
-import { SIDE_OPTIONS } from "@radix-ui/react-popper";
 import React, { ComponentType, MouseEventHandler } from "react";
 
 import { classNames } from "@sparkle/lib/utils";
@@ -11,7 +10,7 @@ type IconButtonProps = {
   onClick?: MouseEventHandler<HTMLButtonElement>;
   size?: "xs" | "sm" | "md";
   tooltip?: string;
-  tooltipPosition?: (typeof SIDE_OPTIONS)[number];
+  tooltipPosition?: React.ComponentProps<typeof Tooltip>["side"];
   icon?: ComponentType;
   className?: string;
   disabled?: boolean;

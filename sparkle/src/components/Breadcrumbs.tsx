@@ -105,7 +105,10 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
 
 function truncateWithTooltip(text: string, length: number) {
   return text.length > length ? (
-    <Tooltip trigger={`${text.substring(0, length - 1)}…`} label={text} />
+    <Tooltip
+      trigger={`${text.substring(0, length - 1)}${ELLIPSIS_STRING}`}
+      label={text}
+    />
   ) : (
     text
   );

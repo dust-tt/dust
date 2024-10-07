@@ -1,5 +1,4 @@
 import { Menu, Transition } from "@headlessui/react";
-import { SIDE_OPTIONS } from "@radix-ui/react-popper";
 import React, {
   ComponentType,
   forwardRef,
@@ -99,7 +98,7 @@ export interface DropdownButtonProps {
   type?: "menu" | "submenu" | "select";
   size?: "sm" | "md";
   tooltip?: string;
-  tooltipPosition?: (typeof SIDE_OPTIONS)[number];
+  tooltipPosition?: React.ComponentProps<typeof Tooltip>["side"];
   icon?: ComponentType;
   className?: string;
   disabled?: boolean;
