@@ -188,8 +188,10 @@ export async function notionSyncWorkflow({
 // This is the garbage collector workflow that continuously runs for each notion connector.
 export async function notionGarbageCollectionWorkflow({
   connectorId,
+  cursors = [null, null],
 }: {
   connectorId: ModelId;
+  cursors?: (string | null)[];
 }) {
   const topLevelWorkflowId = workflowInfo().workflowId;
 
@@ -212,7 +214,6 @@ export async function notionGarbageCollectionWorkflow({
 
   const runTimestamp = Date.now();
 
-  let cursors: (string | null)[] = [null, null];
   let pageIndex = 0;
   const childWorkflowQueue = new PQueue({
     concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
@@ -258,6 +259,14 @@ export async function notionGarbageCollectionWorkflow({
         forceResync: false,
       })
     );
+
+    if (pageIndex > 512) {
+      await continueAsNew<typeof notionGarbageCollectionWorkflow>({
+        connectorId,
+        cursors,
+      });
+      return;
+    }
   } while (cursors[1]);
 
   // wait for all child workflows to finish
