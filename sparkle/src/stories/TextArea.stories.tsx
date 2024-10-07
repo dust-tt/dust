@@ -23,8 +23,13 @@ export const TextAreaExample = () => {
         <TextArea
           placeholder="placeholder"
           onChange={(e) => {
-            console.log(e.target.value)
-            setTextValues([e.target.value, textValues[1], textValues[2], textValues[3]])
+            console.log(e.target.value);
+            setTextValues([
+              e.target.value,
+              textValues[1],
+              textValues[2],
+              textValues[3],
+            ]);
           }}
           minRows={2}
           defaultValue={textValues[0]}
@@ -34,7 +39,12 @@ export const TextAreaExample = () => {
           defaultValue={textValues[1]}
           error={"errored because blah"}
           onChange={(e) =>
-            setTextValues([textValues[0], e.target.value, textValues[2], textValues[3]])
+            setTextValues([
+              textValues[0],
+              e.target.value,
+              textValues[2],
+              textValues[3],
+            ])
           }
           showErrorLabel
         />
@@ -42,7 +52,12 @@ export const TextAreaExample = () => {
           placeholder="placeholder"
           defaultValue={textValues[2]}
           onChange={(e) =>
-            setTextValues([textValues[0], textValues[1], e.target.value, textValues[3]])
+            setTextValues([
+              textValues[0],
+              textValues[1],
+              e.target.value,
+              textValues[3],
+            ])
           }
           error={"errored because blah"}
         />

@@ -48,7 +48,10 @@ export const DropdownExample = () => {
       <div className="s-flex s-gap-6">
         <div className="s-text-sm">Action</div>
         <DropdownMenu>
-          <DropdownMenu.Button label="Action" onClick={() => console.log("CLICK")}/>
+          <DropdownMenu.Button
+            label="Action"
+            onClick={() => console.log("CLICK")}
+          />
           <DropdownMenu.Items width={220}>
             <DropdownMenu.SectionHeader label="Edition" />
             <DropdownMenu.Item
@@ -311,7 +314,7 @@ export const DropdownExample = () => {
           <DropdownMenu.Button
             icon={ChatBubbleBottomCenterTextIcon}
             tooltip="Moonlab"
-            tooltipPosition="below"
+            tooltipPosition="bottom"
           />
           <DropdownMenu.Items origin="topLeft" width={120}>
             <DropdownMenu.Item label="item 1 is longish" link={{ href: "#" }} />
@@ -355,7 +358,7 @@ export const DropdownExample = () => {
           <DropdownMenu.Button
             icon={ChatBubbleBottomCenterTextIcon}
             tooltip="Moonlab"
-            tooltipPosition="below"
+            tooltipPosition="bottom"
           />
           <DropdownMenu.Items origin="topLeft">
             <DropdownMenu.Item label="item 1" link={{ href: "#" }} />

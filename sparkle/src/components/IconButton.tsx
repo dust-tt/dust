@@ -3,14 +3,14 @@ import React, { ComponentType, MouseEventHandler } from "react";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
-import { Tooltip, TooltipProps } from "./Tooltip";
+import { Tooltip } from "./Tooltip";
 
 type IconButtonProps = {
   variant?: "primary" | "warning" | "secondary" | "tertiary" | "white";
   onClick?: MouseEventHandler<HTMLButtonElement>;
   size?: "xs" | "sm" | "md";
   tooltip?: string;
-  tooltipPosition?: TooltipProps["position"];
+  tooltipPosition?: React.ComponentProps<typeof Tooltip>["side"];
   icon?: ComponentType;
   className?: string;
   disabled?: boolean;
@@ -87,7 +87,7 @@ export function IconButton({
   onClick,
   disabled = false,
   tooltip,
-  tooltipPosition = "above",
+  tooltipPosition = "top",
   icon,
   className = "",
   size = "sm",
@@ -117,9 +117,11 @@ export function IconButton({
   );
 
   return tooltip ? (
-    <Tooltip label={tooltip} position={tooltipPosition}>
-      {IconButtonContent}
-    </Tooltip>
+    <Tooltip
+      trigger={IconButtonContent}
+      label={tooltip}
+      side={tooltipPosition}
+    />
   ) : (
     IconButtonContent
   );

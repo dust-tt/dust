@@ -17,6 +17,7 @@ export function ElementDialog<T>({
   closeDialogFn,
   onValidate,
   onCancel,
+  children,
   ...props
 }: ElementDialogProps<T>) {
   const [isClosingTransition, setIsClosingTransition] = useState(false);
@@ -33,6 +34,8 @@ export function ElementDialog<T>({
       onCancel={() => onCancel(transitionOnClose)}
       onValidate={() => onValidate(transitionOnClose)}
       {...props}
-    />
+    >
+      {children}
+    </Dialog>
   );
 }

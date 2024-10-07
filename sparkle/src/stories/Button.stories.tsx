@@ -1,7 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { Button, Cog6ToothIcon } from "../index_with_tw_base";
+import {
+  Button,
+  Cog6ToothIcon,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+} from "../index_with_tw_base";
 
 const meta = {
   title: "Primitives/Button",
@@ -564,6 +572,42 @@ export const ButtonSelectExamples = () => (
   </div>
 );
 
+export const ButtonWithTooltipManualInstantiation = () => {
+  return (
+    <TooltipProvider>
+      <TooltipRoot>
+        <TooltipTrigger>
+          <Button
+            labelVisible={true}
+            label="New conversation"
+            icon={Cog6ToothIcon}
+            hasMagnifying={false}
+          />
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Hello</p>
+        </TooltipContent>
+      </TooltipRoot>
+    </TooltipProvider>
+  );
+};
+
+export const ButtonWithTooltip = () => {
+  return (
+    <Tooltip
+      trigger={
+        <Button
+          labelVisible={true}
+          label="New conversation"
+          icon={Cog6ToothIcon}
+          hasMagnifying={false}
+        />
+      }
+      label={"Hello"}
+    />
+  );
+};
+
 export const Primary: Story = {
   args: {
     variant: "primary",
@@ -622,7 +666,7 @@ export const IconOnlyPlusTooltip: Story = {
     labelVisible: false,
     icon: Cog6ToothIcon,
     disabled: false,
-    tooltipPosition: "below",
+    tooltipPosition: "bottom",
   },
 };
 
@@ -634,7 +678,7 @@ export const IconOnlyNoTooltip: Story = {
     labelVisible: false,
     icon: Cog6ToothIcon,
     disabled: false,
-    tooltipPosition: "below",
+    tooltipPosition: "bottom",
     disabledTooltip: true,
   },
 };

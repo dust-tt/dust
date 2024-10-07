@@ -441,14 +441,17 @@ DataTable.CellContent = function CellContent({
       {...props}
     >
       {avatarUrl && avatarTooltipLabel && (
-        <Tooltip label={avatarTooltipLabel} position="above">
-          <Avatar
-            visual={avatarUrl}
-            size="xs"
-            className="s-mr-2"
-            isRounded={roundedAvatar ?? false}
-          />
-        </Tooltip>
+        <Tooltip
+          trigger={
+            <Avatar
+              visual={avatarUrl}
+              size="xs"
+              className="s-mr-2"
+              isRounded={roundedAvatar ?? false}
+            />
+          }
+          label={avatarTooltipLabel}
+        />
       )}
       {avatarUrl && !avatarTooltipLabel && (
         <Avatar

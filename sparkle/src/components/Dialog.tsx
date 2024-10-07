@@ -5,7 +5,7 @@ import ConfettiBackground from "@sparkle/components/ConfettiBackground";
 import Spinner from "@sparkle/components/Spinner";
 import { classNames } from "@sparkle/lib/utils";
 
-import { Button } from "./Button";
+import { Button, ButtonVariantType } from "./Button";
 
 export type BaseDialogProps = {
   backgroundType?: "confetti" | "snow" | "none";
@@ -16,19 +16,19 @@ export type BaseDialogProps = {
   onValidate: () => void;
   title: string;
   validateLabel?: string;
-  validateVariant?: "primary" | "primaryWarning";
+  validateVariant?: ButtonVariantType;
   cancelLabel?: string;
 };
 
 export type DialogProps = BaseDialogProps & {
   alertDialog?: false;
   onCancel: () => void;
-}
+};
 
 export type AlertDialogProps = BaseDialogProps & {
   alertDialog: true;
   onCancel?: () => void;
-}
+};
 
 export function Dialog({
   backgroundType = "none",
