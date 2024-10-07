@@ -104,7 +104,8 @@ impl APIState {
             }
             tokio::time::sleep(std::time::Duration::from_millis(1024)).await;
         }
-    }
+    } 
+    
 
     async fn run_loop(&self) -> Result<()> {
         let mut loop_count = 0;
