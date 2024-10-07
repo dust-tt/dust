@@ -603,7 +603,7 @@ export function ActionProcess({
                 }
                 trigger={
                   <Button
-                    label={"Re-generate from Instructions"}
+                    label="Re-generate from Instructions"
                     variant="tertiary"
                     icon={SparklesIcon}
                     size="xs"
