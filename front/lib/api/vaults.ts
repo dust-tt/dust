@@ -96,6 +96,9 @@ export async function softDeleteVaultAndLaunchScrubWorkflow(
   return new Ok(undefined);
 }
 
+// This method is invoked as part of the workflow to permanently delete a vault.
+// It ensures that all data associated with the vault is irreversibly removed from the system,
+// EXCEPT for data sources that are handled and deleted directly within the workflow.
 export async function hardDeleteVault(
   auth: Authenticator,
   vault: VaultResource
