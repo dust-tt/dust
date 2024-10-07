@@ -251,27 +251,12 @@ export class VaultResource extends BaseResource<VaultModel> {
   ): Promise<Result<undefined, Error>> {
     const { hardDelete, transaction } = options;
 
-    if (hardDelete) {
-      await VaultModel.destroy({
-        where: {
-          id: this.id,
-        },
-        transaction,
-        // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
-        // bypassing the soft deletion in place.
-        hardDelete: true,
-      });
-
-      return new Ok(undefined);
-    }
-
     await VaultModel.destroy({
       where: {
         id: this.id,
       },
       transaction,
-      // Soft delete the vault.
-      hardDelete: false,
+      hardDelete,
     });
 
     return new Ok(undefined);

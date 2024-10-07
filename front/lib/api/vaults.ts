@@ -58,7 +58,7 @@ export async function softDeleteVaultAndLaunchScrubWorkflow(
   if (groupHasKeys > 0) {
     return new Err(
       new Error(
-        "Can not delete group with active API Keys. Please revoke all keys before."
+        "Cannot delete group with active API Keys. Please revoke all keys before."
       )
     );
   }

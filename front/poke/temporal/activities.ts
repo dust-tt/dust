@@ -115,7 +115,7 @@ export async function scrubDataSourceActivity({
     );
   }
 
-  return hardDeleteDataSource(auth, dataSource);
+  await hardDeleteDataSource(auth, dataSource);
 }
 
 export async function scrubVaultActivity({

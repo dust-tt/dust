@@ -145,8 +145,6 @@ export async function hardDeleteDataSource(
   if (dataSource.connectorProvider) {
     await warnPostDeletion(auth, dataSource.connectorProvider);
   }
-
-  return new Ok(dataSource.toJSON());
 }
 
 async function warnPostDeletion(
@@ -164,6 +162,7 @@ async function warnPostDeletion(
         await sendGithubDeletionEmail(email);
       }
       break;
+
     default:
       break;
   }
