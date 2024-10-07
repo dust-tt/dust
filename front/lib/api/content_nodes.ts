@@ -1,4 +1,4 @@
-import type { CoreAPITable } from "@dust-tt/types";
+import type { DataSourceViewType } from "@dust-tt/types";
 import {
   assertNever,
   getGoogleSheetContentNodeInternalIdFromTableId,
@@ -9,11 +9,10 @@ import {
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 
 export function getContentNodeInternalIdFromTableId(
-  dataSourceView: DataSourceViewResource,
-  table: CoreAPITable
+  dataSourceView: DataSourceViewResource | DataSourceViewType,
+  tableId: string
 ): string {
   const { dataSource } = dataSourceView;
-  const { table_id: tableId } = table;
 
   switch (dataSource.connectorProvider) {
     case "google_drive":
