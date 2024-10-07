@@ -92,7 +92,7 @@ User.hasMany(KeyModel, {
 });
 GroupModel.hasMany(KeyModel, {
   foreignKey: { allowNull: false },
-  onDelete: "SET NULL",
+  onDelete: "RESTRICT",
 });
 
 KeyModel.belongsTo(User);

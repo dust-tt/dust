@@ -174,14 +174,15 @@ export function useProviders({
 }
 export function useKeys(owner: LightWorkspaceType) {
   const keysFetcher: Fetcher<GetKeysResponseBody> = fetcher;
-  const { data, error } = useSWRWithDefaults(
+  const { data, error, isValidating } = useSWRWithDefaults(
     `/api/w/${owner.sId}/keys`,
     keysFetcher
   );
 
   return {
-    keys: useMemo(() => (data ? data.keys : []), [data]),
-    isKeysLoading: !error && !data,
     isKeysError: error,
+    isKeysLoading: !error && !data,
+    isValidating,
+    keys: useMemo(() => (data ? data.keys : []), [data]),
   };
 }

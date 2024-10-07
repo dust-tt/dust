@@ -10,6 +10,7 @@ import {
   Page,
   PlusIcon,
   ShapesIcon,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type {
   GroupType,
@@ -70,7 +71,7 @@ export function APIKeys({
   const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
 
-  const { keys } = useKeys(owner);
+  const { isValidating, keys } = useKeys(owner);
 
   const groupsById = useMemo(() => {
     return groups.reduce<Record<ModelId, GroupType>>((acc, group) => {
@@ -104,16 +105,20 @@ export function APIKeys({
           "Content-Type": "application/json",
         },
       });
-      // const data = await res.json();
       await mutate(`/api/w/${owner.sId}/keys`);
     }
   );
+
+  // Show a loading spinner while API keys are being fetched or refreshed.
+  if (isValidating) {
+    return <Spinner />;
+  }
 
   return (
     <>
       <Modal
         isOpen={isNewApiKeyCreatedOpen}
-        title={"API Key Created"}
+        title="API Key Created"
         onClose={() => {
           setIsNewApiKeyCreatedOpen(false);
         }}
