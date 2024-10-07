@@ -498,12 +498,8 @@ const VaultDataSourceViewItem = ({
             />
           ))}
           {notFolders.length > 0 && (
-            <Tree.Item
-              type="leaf"
-              visual={PlusIcon}
-              tailwindIconTextColor="text-slate-500 w-4 h-4"
-              labelClassName="italic text-element-500 text-slate-500"
-              label={`${notFolders.length} ${folders.length > 0 ? "other " : ""} ${itemsLabel}`}
+            <Tree.Empty
+              label={`+ ${notFolders.length} ${folders.length > 0 ? "other " : ""} ${itemsLabel}`}
             />
           )}
         </Tree>
