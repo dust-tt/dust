@@ -100,6 +100,7 @@ export async function autoReadChannel(
       logger.error({
         connectorId,
         channelId: slackChannelId,
+        searchUrl,
         error: await searchRes.text(),
       });
       return new Err(new Error("Failed to join Slack channel in Dust."));
@@ -110,6 +111,11 @@ export async function autoReadChannel(
     ).data_source_views;
 
     if (dataSourceViews.length === 0 || !dataSourceViews[0]) {
+      logger.error({
+        connectorId,
+        channelId: slackChannelId,
+        error: await searchRes.text(),
+      });
       return new Err(
         new Error("There was an issue retrieving dataSourceViews")
       );
