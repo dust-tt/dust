@@ -222,5 +222,9 @@ interface TreeEmptyProps {
 }
 
 Tree.Empty = function ({ label }: TreeEmptyProps) {
-  return <div className="s-pl-4 s-text-sm s-text-element-600">{label}</div>;
+  return (
+    <div className="s-py-1 s-pl-6 s-text-sm s-font-medium s-text-element-700">
+      {label}
+    </div>
+  );
 };
