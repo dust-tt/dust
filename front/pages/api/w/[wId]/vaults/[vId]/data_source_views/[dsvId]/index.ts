@@ -1,13 +1,8 @@
-import type {
-  DataSourceViewType,
-  Result,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { PatchDataSourceViewSchema } from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
+import type { DataSourceViewType, WithAPIErrorResponse } from "@dust-tt/types";
+import { Err } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -48,59 +43,21 @@ async function handler(
     }
 
     case "PATCH": {
-      if (!auth.isAdmin() || !auth.isBuilder()) {
-        // Only admins, or builders who have access to the vault, can patch
+      const result = await handlePatchDataSourceView(
+        req.body,
+        auth,
+        dataSourceView
+      );
+      if (result.isErr()) {
         return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "Only users that are `admins` or `builder` can administrate vaults.",
-          },
-        });
-      }
-
-      const bodyValidation = PatchDataSourceViewSchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
-        return apiError(req, res, {
-          status_code: 400,
+          status_code: result.error.status,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: result.error.message,
           },
         });
       }
-
-      const { right: body } = bodyValidation;
-
-      let updateResultRes: Result<undefined, Error>;
-      if ("parentsIn" in body) {
-        const { parentsIn } = body;
-        updateResultRes = await dataSourceView.setParents(parentsIn);
-      } else {
-        const { parentsToAdd, parentsToRemove } = body;
-        updateResultRes = await dataSourceView.updateParents(
-          parentsToAdd ?? [],
-          parentsToRemove ?? []
-        );
-      }
-
-      if (updateResultRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "The data source view cannot be updated.",
-          },
-        });
-      }
-
-      await dataSourceView.setEditedBy(auth);
-      return res.status(200).json({
-        dataSourceView: dataSourceView.toJSON(),
-      });
+      return res.status(200).json(result.value);
     }
 
     case "DELETE": {

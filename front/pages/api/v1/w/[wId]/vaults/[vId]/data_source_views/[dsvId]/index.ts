@@ -1,13 +1,7 @@
-import type {
-  DataSourceViewType,
-  Result,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { PatchDataSourceViewSchema } from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
+import type { DataSourceViewType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -123,47 +117,17 @@ async function handler(
       });
 
     case "PATCH":
-      const patchBodyValidation = PatchDataSourceViewSchema.decode(req.body);
-      if (isLeft(patchBodyValidation)) {
-        const pathError = reporter.formatValidationErrors(
-          patchBodyValidation.left
-        );
+      const result = await handlePatchDataSourceView(req, auth, dataSourceView);
+      if (result.isErr()) {
         return apiError(req, res, {
-          status_code: 400,
+          status_code: result.error.status,
           api_error: {
             type: "invalid_request_error",
-            message: `invalid request body: ${pathError}`,
+            message: result.error.message,
           },
         });
       }
-
-      const { right: body } = patchBodyValidation;
-
-      let updateResultRes: Result<undefined, Error>;
-      if ("parentsIn" in body) {
-        const { parentsIn } = body;
-        updateResultRes = await dataSourceView.setParents(parentsIn);
-      } else {
-        const { parentsToAdd, parentsToRemove } = body;
-        updateResultRes = await dataSourceView.updateParents(
-          parentsToAdd ?? [],
-          parentsToRemove ?? []
-        );
-      }
-
-      if (updateResultRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "The data source view cannot be updated.",
-          },
-        });
-      }
-
-      return res.status(200).json({
-        dataSourceView: dataSourceView.toJSON(),
-      });
+      return res.status(200).json(result.value);
 
     default:
       return apiError(req, res, {
