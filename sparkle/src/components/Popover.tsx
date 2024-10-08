@@ -27,7 +27,7 @@ const PopoverContent = React.forwardRef<
         "data-[side=right]:s-slide-in-from-left-2",
         "data-[side=top]:s-slide-in-from-bottom-2",
         "s-border-border s-text-primary-950 s-z-50 s-w-72 s-rounded-lg s-border s-bg-background s-p-4 s-shadow-md s-outline-none",
-        className ? className : ""
+        className ?? ""
       )}
       {...props}
     />
