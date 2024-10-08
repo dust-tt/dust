@@ -1,8 +1,13 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "API Documentation",
-    "version": "1.0"
+    "title": "DUST API Documentation",
+    "version": "1.0.2",
+    "description": "The OpenAPI specification for the Dust.tt API",
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
   },
   "servers": [
     {
@@ -605,6 +610,12 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Bad Request. Missing or invalid parameters."
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
           }
         }
       }
@@ -1089,7 +1100,7 @@
                     "dataSourceViews": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/DataSourceView"
+                        "$ref": "#/components/schemas/DatasourceView"
                       }
                     }
                   }
@@ -2277,6 +2288,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Invalid request"
           }
         }
       },
@@ -3122,7 +3136,7 @@
           }
         }
       },
-      "DataSourceView": {
+      "DatasourceView": {
         "type": "object",
         "properties": {
           "category": {

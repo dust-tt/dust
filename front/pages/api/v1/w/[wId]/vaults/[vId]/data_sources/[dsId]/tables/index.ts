@@ -75,6 +75,8 @@ type UpsertTableResponseBody = {
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Datasource'
+ *       400:
+ *         description: Invalid request
  *   post:
  *     summary: Upsert a table
  *     description: Upsert a table in the data source identified by {dsId} in the workspace identified by {wId}.
