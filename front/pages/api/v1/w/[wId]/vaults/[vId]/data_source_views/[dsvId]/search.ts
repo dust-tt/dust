@@ -12,7 +12,7 @@ import { handleDataSourceSearch } from "@app/pages/api/w/[wId]/data_sources/[dsI
  * @swagger
  * /api/v1/w/{wId}/vaults/{vId}/data_source_views/{dsvId}/search:
  *   get:
- *     summary: Search the data source
+ *     summary: Search the data source view
  *     description: Search the data source view identified by {dsvId} in the workspace identified by {wId}.
  *     tags:
  *       - DatasourceViews
