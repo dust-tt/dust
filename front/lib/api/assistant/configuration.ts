@@ -591,11 +591,13 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     throw new Error("Archived view is for dust superusers only.");
   }
 
-  if (agentsGetView === "list" && !user) {
-    throw new Error("`list` view is specific to a user.");
-  }
-  if (agentsGetView === "assistants-search" && !user) {
-    throw new Error("`assistant-search` view is specific to a user.");
+  if (
+    (agentsGetView === "list" || agentsGetView === "assistants-search") &&
+    !user
+  ) {
+    throw new Error(
+      "`list` or `assistants-search` view is specific to a user."
+    );
   }
 
   const applySortAndLimit = makeApplySortAndLimit(sort, limit);
