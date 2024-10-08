@@ -3,20 +3,14 @@ import type {
   CoreAPIError,
   DataSourceViewContentNode,
   DataSourceViewType,
-  Result} from "@dust-tt/types";
-import {
-  PatchDataSourceViewSchema
+  Result,
 } from "@dust-tt/types";
 import { ConnectorsAPI, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
-import { isLeft } from "fp-ts/Either";
-import * as reporter from "io-ts-reporters";
-import type { NextApiRequest } from "next";
 
 import config from "@app/lib/api/config";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import type { OffsetPaginationParams } from "@app/lib/api/pagination";
-import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
@@ -281,59 +275,4 @@ export async function getContentNodesForDataSourceView(
     nodes: contentNodesInView,
     total: contentNodesResult.total,
   });
-}
-
-type PatchDataSourceViewResult = Result<
-  { dataSourceView: ReturnType<DataSourceViewResource["toJSON"]> },
-  { status: number; message: string }
->;
-
-export async function handlePatchDataSourceView(
-  req: NextApiRequest,
-  auth: Authenticator,
-  dataSourceView: DataSourceViewResource
-): Promise<PatchDataSourceViewResult> {
-  if (!auth.isAdmin() && !auth.isBuilder()) {
-    return new Err({
-      status: 403,
-      message:
-        "Only users that are `admins` or `builder` can administrate vaults.",
-    });
-  }
-
-  const patchBodyValidation = PatchDataSourceViewSchema.decode(req.body);
-
-  if (isLeft(patchBodyValidation)) {
-    const pathError = reporter.formatValidationErrors(patchBodyValidation.left);
-    return new Err({
-      status: 400,
-      message: `invalid request body: ${pathError}`,
-    });
-  }
-
-  const { right: patchBody } = patchBodyValidation;
-
-  let updateResultRes;
-  if ("parentsIn" in patchBody) {
-    const { parentsIn } = patchBody;
-    updateResultRes = await dataSourceView.setParents(parentsIn);
-  } else {
-    const { parentsToAdd, parentsToRemove } = patchBody;
-    updateResultRes = await dataSourceView.updateParents(
-      parentsToAdd ?? [],
-      parentsToRemove ?? []
-    );
-  }
-
-  if (updateResultRes.isErr()) {
-    return new Err({
-      status: 500,
-      message: "The data source view cannot be updated.",
-    });
-  }
-
-  if (auth.user()) {
-    await dataSourceView.setEditedBy(auth);
-  }
-  return new Ok({ dataSourceView: dataSourceView.toJSON() });
 }

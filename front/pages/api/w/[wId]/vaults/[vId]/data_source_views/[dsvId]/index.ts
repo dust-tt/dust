@@ -1,11 +1,72 @@
-import type { DataSourceViewType, WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  DataSourceViewType,
+  Result,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
+import { Err, Ok, PatchDataSourceViewSchema } from "@dust-tt/types";
+import { isLeft } from "fp-ts/Either";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
+
+type PatchDataSourceViewResult = Result<
+  { dataSourceView: ReturnType<DataSourceViewResource["toJSON"]> },
+  { status: number; message: string }
+>;
+
+export async function handlePatchDataSourceView(
+  req: NextApiRequest,
+  auth: Authenticator,
+  dataSourceView: DataSourceViewResource
+): Promise<PatchDataSourceViewResult> {
+  if (!auth.isAdmin() && !auth.isBuilder()) {
+    return new Err({
+      status: 403,
+      message:
+        "Only users that are `admins` or `builder` can administrate vaults.",
+    });
+  }
+
+  const patchBodyValidation = PatchDataSourceViewSchema.decode(req.body);
+
+  if (isLeft(patchBodyValidation)) {
+    const pathError = reporter.formatValidationErrors(patchBodyValidation.left);
+    return new Err({
+      status: 400,
+      message: `invalid request body: ${pathError}`,
+    });
+  }
+
+  const { right: patchBody } = patchBodyValidation;
+
+  let updateResultRes;
+  if ("parentsIn" in patchBody) {
+    const { parentsIn } = patchBody;
+    updateResultRes = await dataSourceView.setParents(parentsIn);
+  } else {
+    const { parentsToAdd, parentsToRemove } = patchBody;
+    updateResultRes = await dataSourceView.updateParents(
+      parentsToAdd ?? [],
+      parentsToRemove ?? []
+    );
+  }
+
+  if (updateResultRes.isErr()) {
+    return new Err({
+      status: 500,
+      message: "The data source view cannot be updated.",
+    });
+  }
+
+  if (auth.user()) {
+    await dataSourceView.setEditedBy(auth);
+  }
+  return new Ok({ dataSourceView: dataSourceView.toJSON() });
+}
 
 export type GetDataSourceViewResponseBody = {
   dataSourceView: DataSourceViewType;
