@@ -39,13 +39,6 @@ type RowData = {
 
 type Info = CellContext<RowData, unknown>;
 
-type VaultCategoriesListProps = {
-  owner: WorkspaceType;
-  vault: VaultType;
-  onSelect: (category: string) => void;
-  onButtonClick?: () => void;
-};
-
 export const CATEGORY_DETAILS: {
   [key: string]: {
     label: string;
@@ -106,11 +99,20 @@ const getTableColumns = () => {
   ];
 };
 
+type VaultCategoriesListProps = {
+  isAdmin: boolean;
+  onButtonClick?: () => void;
+  onSelect: (category: string) => void;
+  owner: WorkspaceType;
+  vault: VaultType;
+};
+
 export const VaultCategoriesList = ({
+  isAdmin,
+  onButtonClick,
+  onSelect,
   owner,
   vault,
-  onSelect,
-  onButtonClick,
 }: VaultCategoriesListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
 
@@ -170,7 +172,7 @@ export const VaultCategoriesList = ({
                 setDataSourceSearch(s);
               }}
             />
-            {onButtonClick && vault.kind === "regular" && (
+            {isAdmin && onButtonClick && vault.kind === "regular" && (
               <Button
                 label="Settings and Members"
                 icon={Cog6ToothIcon}
@@ -222,7 +224,7 @@ export const VaultCategoriesList = ({
           columns={getTableColumns()}
           className="pb-4"
           filter={dataSourceSearch}
-          filterColumn={"name"}
+          filterColumn="name"
           columnsBreakpoints={{
             usage: "md",
           }}

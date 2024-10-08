@@ -74,6 +74,7 @@ async function handler(
       return res.status(200).json({
         vaults: vaults.map((vault) => vault.toJSON()),
       });
+
     case "POST":
       if (!auth.isAdmin() || !auth.isBuilder()) {
         return apiError(req, res, {
@@ -167,6 +168,7 @@ async function handler(
       }
 
       return res.status(201).json({ vault: vault.toJSON() });
+
     default:
       return apiError(req, res, {
         status_code: 405,
