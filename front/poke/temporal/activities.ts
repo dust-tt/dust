@@ -297,9 +297,14 @@ export async function deleteConversationsActivity({
               where: { conversationId: c.id },
               transaction: t,
             });
+
             hardDeleteLogger.info(
-              `[Workspace delete] Deleting conversation ${c.sId}`
+              {
+                conversationId: c.sId,
+              },
+              "Deleting conversation"
             );
+
             await c.destroy({ transaction: t });
           })();
         })
