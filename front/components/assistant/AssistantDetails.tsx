@@ -300,35 +300,42 @@ export function AssistantDetails({
                   <DataSourceViewsSection
                     owner={owner}
                     dataSourceViews={dataSourceViews}
-                    dataSourceConfigurations={action.tables.map((t) => {
-                      // We should never have an undefined dataSourceView here as if it's undefined,
-                      // it means the dataSourceView was deleted and the configuration is invalid But
-                      // we need to handle this case to avoid crashing the UI
-                      const dataSourceView = dataSourceViews.find(
-                        (dsv) => dsv.sId == t.dataSourceViewId
-                      );
+                    dataSourceConfigurations={Object.values(
+                      action.tables.reduce(
+                        (dsConfigs, t) => {
+                          // We should never have an undefined dataSourceView here as if it's undefined,
+                          // it means the dataSourceView was deleted and the configuration is invalid But
+                          // we need to handle this case to avoid crashing the UI
+                          const dataSourceView = dataSourceViews.find(
+                            (dsv) => dsv.sId == t.dataSourceViewId
+                          );
 
-                      const parentsIn = dataSourceView
-                        ? [
-                            getContentNodeInternalIdFromTableId(
-                              dataSourceView,
-                              t.tableId
-                            ),
-                          ]
-                        : [];
-
-                      return {
-                        workspaceId: t.workspaceId,
-                        dataSourceViewId: t.dataSourceViewId,
-                        filter: {
-                          parents:
-                            dataSourceView &&
-                            isFolder(dataSourceView.dataSource)
-                              ? null
-                              : { in: parentsIn, not: [] },
+                          dsConfigs[t.dataSourceViewId] ||= {
+                            workspaceId: t.workspaceId,
+                            dataSourceViewId: t.dataSourceViewId,
+                            filter: {
+                              parents:
+                                dataSourceView &&
+                                isFolder(dataSourceView.dataSource)
+                                  ? null
+                                  : { in: [], not: [] },
+                            },
+                          };
+                          if (dataSourceView) {
+                            dsConfigs[
+                              t.dataSourceViewId
+                            ].filter.parents?.in.push(
+                              getContentNodeInternalIdFromTableId(
+                                dataSourceView,
+                                t.tableId
+                              )
+                            );
+                          }
+                          return dsConfigs;
                         },
-                      };
-                    })}
+                        {} as Record<string, DataSourceConfiguration>
+                      )
+                    )}
                     viewType="tables"
                   />
                 </div>
