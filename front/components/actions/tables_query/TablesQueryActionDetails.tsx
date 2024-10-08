@@ -29,18 +29,8 @@ export function TablesQueryActionDetails({
       visual={TableIcon}
     >
       <div className="flex flex-col gap-1 gap-4 pl-6 pt-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-bold text-slate-900">Reasoning</span>
-          <div className="text-sm font-normal text-slate-500">
-            <QueryThinking action={action} />
-          </div>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-bold text-slate-900">Query</span>
-          <div className="text-sm font-normal text-slate-500">
-            <TablesQuery action={action} />
-          </div>
-        </div>
+        <QueryThinking action={action} />
+        <TablesQuery action={action} />
         <div>
           <Collapsible defaultOpen={defaultOpen}>
             <Collapsible.Button>
@@ -66,14 +56,19 @@ function TablesQuery({ action }: { action: TablesQueryActionType }) {
   }
 
   return (
-    <ContentBlockWrapper content={query}>
-      <CodeBlock
-        className="language-sql max-h-60 overflow-y-auto"
-        wrapLongLines={true}
-      >
-        {query}
-      </CodeBlock>
-    </ContentBlockWrapper>
+    <div className="flex flex-col gap-1">
+      <span className="text-sm font-bold text-slate-900">Query</span>
+      <div className="text-sm font-normal text-slate-500">
+        <ContentBlockWrapper content={query}>
+          <CodeBlock
+            className="language-sql max-h-60 overflow-y-auto"
+            wrapLongLines={true}
+          >
+            {query}
+          </CodeBlock>
+        </ContentBlockWrapper>
+      </div>
+    </div>
   );
 }
 
@@ -86,19 +81,24 @@ function QueryThinking({ action }: { action: TablesQueryActionType }) {
   }
 
   return (
-    <ContentMessage
-      title="Reasoning"
-      variant="purple"
-      icon={InformationCircleIcon}
-      size="lg"
-    >
-      <RenderMessageMarkdown
-        content={thinking}
-        isStreaming={false}
-        textSize="sm"
-        textColor="purple-800"
-      />
-    </ContentMessage>
+    <div className="flex flex-col gap-1">
+      <span className="text-sm font-bold text-slate-900">Reasoning</span>
+      <div className="text-sm font-normal text-slate-500">
+        <ContentMessage
+          title="Reasoning"
+          variant="purple"
+          icon={InformationCircleIcon}
+          size="lg"
+        >
+          <RenderMessageMarkdown
+            content={thinking}
+            isStreaming={false}
+            textSize="sm"
+            textColor="purple-800"
+          />
+        </ContentMessage>
+      </div>
+    </div>
   );
 }
 
