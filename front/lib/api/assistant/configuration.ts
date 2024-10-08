@@ -592,7 +592,10 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   }
 
   if (agentsGetView === "list" && !user) {
-    throw new Error("List view is specific to a user.");
+    throw new Error("`list` view is specific to a user.");
+  }
+  if (agentsGetView === "assistants-search" && !user) {
+    throw new Error("`assistant-search` view is specific to a user.");
   }
 
   const applySortAndLimit = makeApplySortAndLimit(sort, limit);
