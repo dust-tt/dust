@@ -1,0 +1,31 @@
+{
+  "name": "@dust-tt/extension",
+  "version": "0.0.1",
+  "description": "Dust Chrome Extension",
+  "scripts": {
+    "clean": "rm -rf build/*",
+    "dev": "NODE_ENV=development npm run clean && tsx run/watch.ts --mode=development",
+    "build": "NODE_ENV=production tsx run/build.ts"
+  },
+  "author": "@dust-tt",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/chrome": "^0.0.276",
+    "@types/node": "^22.7.4",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0",
+    "@types/zip-webpack-plugin": "^3.0.6",
+    "copy-webpack-plugin": "^12.0.2",
+    "terser-webpack-plugin": "^5.3.10",
+    "ts-loader": "^9.5.1",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2",
+    "webpack-ext-reloader": "^1.1.13",
+    "webpackbar": "^6.0.1",
+    "zip-webpack-plugin": "^4.0.1"
+  },
+  "dependencies": {
+    "react-dom": "^18.3.1"
+  }
+}
