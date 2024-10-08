@@ -69,6 +69,10 @@ export type GetRunResponseBody = {
  *               properties:
  *                 run:
  *                   $ref: '#/components/schemas/Run'
+ *       400:
+ *         description: Bad Request. Missing or invalid parameters.
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
  */
 
 async function handler(

@@ -95,7 +95,7 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
     display: ["landing", "subscribe"],
   },
   {
-    label: "Advanced workspace role and permissions",
+    label: "Unlimited secure vaults",
     variant: "check",
     display: ["landing", "subscribe"],
   },
@@ -193,7 +193,7 @@ export function ProPriceTable({
       display: ["landing", "subscribe"],
     },
     {
-      label: "Workspace role and permissions",
+      label: "One secure vault",
       variant: "dash",
       display: ["landing"],
     },

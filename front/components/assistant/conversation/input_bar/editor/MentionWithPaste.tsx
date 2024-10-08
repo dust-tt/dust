@@ -17,7 +17,8 @@ export const MentionWithPaste = Mention.extend({
           (suggestion) => {
             return [
               ...text.matchAll(
-                new RegExp(escapeRegExp("@" + suggestion.label), "g")
+                // Note: matching the @ that are found either at the start of a line or after a whitespace character.
+                new RegExp("(^@|\\s@)" + escapeRegExp(suggestion.label), "g")
               ),
             ].map((match) => {
               return {

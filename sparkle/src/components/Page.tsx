@@ -1,5 +1,6 @@
 import React, { ComponentType } from "react";
 
+import { Separator } from "@sparkle/components/Separator";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Button, ButtonProps } from "./Button";
@@ -75,9 +76,7 @@ Page.SectionHeader = function ({
 
 Page.Separator = function () {
   return (
-    <div className="s-w-full s-py-2">
-      <div className="s-h-px s-w-full s-bg-structure-200" />
-    </div>
+    <Separator/>
   );
 };
 

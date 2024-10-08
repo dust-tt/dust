@@ -1157,7 +1157,7 @@ impl DataSource {
 
         // Retrieve the documents from the store.
         let time_store_start = utils::now();
-        let documents = stream::iter(document_ids)
+        let documents: Vec<Document> = stream::iter(document_ids)
             .map(|document_id| {
                 let store = store.clone();
                 let document_id = document_id.clone();
@@ -1166,37 +1166,53 @@ impl DataSource {
                 let data_source = data_source.clone();
 
                 tokio::spawn(async move {
-                    let mut d: Document = match store
+                    match store
                         .load_data_source_document(&project, &data_source_id, &document_id, &None)
                         .await?
                     {
-                        Some(d) => d,
-                        None => Err(anyhow!("Document not found"))?,
-                    };
+                        Some(mut d) => {
+                            if full_text {
+                                let document_id_hash = make_document_id_hash(&document_id);
 
-                    if full_text {
-                        let document_id_hash = make_document_id_hash(&document_id);
+                                let stored_doc = FileStorageDocument::get_stored_document(
+                                    &data_source,
+                                    d.created,
+                                    &document_id_hash,
+                                    &d.hash,
+                                )
+                                .await?;
 
-                        let stored_doc = FileStorageDocument::get_stored_document(
-                            &data_source,
-                            d.created,
-                            &document_id_hash,
-                            &d.hash,
-                        )
-                        .await?;
-
-                        d.text = Some(stored_doc.full_text.clone());
+                                d.text = Some(stored_doc.full_text.clone());
+                            }
+                            Ok::<Option<Document>, anyhow::Error>(Some(d))
+                        }
+                        None => {
+                            // document not found should never happen
+                            // if it unexpectedly does, we skip it via returning None
+                            // to let the search move forward
+                            // but we raise a panic log
+                            error!(
+                                data_source_id = %data_source_id,
+                                document_id = %document_id,
+                                panic = true,
+                                "Document not found in store"
+                            );
+                            Ok::<Option<Document>, anyhow::Error>(None)
+                        }
                     }
-                    Ok::<Document, anyhow::Error>(d)
                 })
             })
             .buffer_unordered(16)
             .map(|r| match r {
                 Err(e) => Err(anyhow!("Data source document retrieval error: {}", e))?,
-                Ok(r) => r,
+                Ok(s) => s,
             })
-            .try_collect::<Vec<_>>()
-            .await?;
+            .try_collect::<Vec<Option<Document>>>()
+            .await?
+            .into_iter()
+            // filter out document not found
+            .filter_map(|d| d)
+            .collect();
 
         let store_duration = utils::now() - time_store_start;
 

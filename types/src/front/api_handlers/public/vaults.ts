@@ -14,9 +14,19 @@ export const PostDataSourceViewSchema = t.type({
 
 export type PostDataSourceViewType = t.TypeOf<typeof PostDataSourceViewSchema>;
 
-export const PatchDataSourceViewSchema = t.type({
+const ParentsToAddRemoveSchema = t.type({
+  parentsToAdd: t.union([t.array(t.string), t.undefined]),
+  parentsToRemove: t.union([t.array(t.string), t.undefined]),
+});
+
+const ParentsInSchema = t.type({
   parentsIn: t.array(t.string),
 });
+
+export const PatchDataSourceViewSchema = t.union([
+  ParentsToAddRemoveSchema,
+  ParentsInSchema,
+]);
 
 export type PatchDataSourceViewType = t.TypeOf<
   typeof PatchDataSourceViewSchema
