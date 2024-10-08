@@ -1100,7 +1100,7 @@
                     "dataSourceViews": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/DataSourceView"
+                        "$ref": "#/components/schemas/DatasourceView"
                       }
                     }
                   }
@@ -3136,7 +3136,7 @@
           }
         }
       },
-      "DataSourceView": {
+      "DatasourceView": {
         "type": "object",
         "properties": {
           "category": {

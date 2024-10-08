@@ -45,7 +45,7 @@ export type GetDataSourceViewsResponseBody = {
  *                 dataSourceViews:
  *                   type: array
  *                   items:
- *                     $ref: '#/components/schemas/DataSourceView'
+ *                     $ref: '#/components/schemas/DatasourceView'
  *       400:
  *         description: Bad Request. Missing or invalid parameters.
  *       401:

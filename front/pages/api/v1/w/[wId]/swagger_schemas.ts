@@ -400,7 +400,7 @@
  *           type: boolean
  *           description: Whether this datasource is selected by default for assistants
  *           example: true
- *     DataSourceView:
+ *     DatasourceView:
  *       type: object
  *       properties:
  *         category:
