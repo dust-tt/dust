@@ -54,6 +54,50 @@ type MutuallyExclusiveProps<BaseProps, ExtraProps> = Simplify<
   EitherChildrenOrProps<BaseProps, ExtraProps>
 >;
 
+interface ItemWithLabelIconAndDescriptionProps {
+  label?: string;
+  icon?: React.ComponentType;
+  description?: string;
+  children?: React.ReactNode;
+}
+
+const ItemWithLabelIconAndDescription = <
+  T extends ItemWithLabelIconAndDescriptionProps,
+>({
+  label,
+  icon,
+  description,
+  children,
+}: T) => {
+  return (
+    <>
+      {label && (
+        <div className="s-grid s-grid-cols-[auto,1fr] s-gap-x-1">
+          {icon && (
+            <div
+              className={cn(
+                "s-flex",
+                description ? "s-items-start s-pt-0.5" : "s-items-center"
+              )}
+            >
+              <Icon size="xs" visual={icon} />
+            </div>
+          )}
+          <div className="s-flex s-flex-col">
+            <span>{label}</span>
+            {description && (
+              <span className={menuStyleClasses.description}>
+                {description}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+      {children}
+    </>
+  );
+};
+
 const NewDropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
   MutuallyExclusiveProps<
@@ -133,16 +177,13 @@ const NewDropdownMenuItem = React.forwardRef<
     )}
     {...props}
   >
-    {label && (
-      <div className="s-flex s-flex-row s-gap-1">
-        {icon && <Icon size="xs" visual={icon} />}
-        <div className="s-flex s-flex-col">
-          {label}
-          <span className={menuStyleClasses.description}>{description}</span>
-        </div>
-      </div>
-    )}
-    {children}
+    <ItemWithLabelIconAndDescription
+      label={label}
+      icon={icon}
+      description={description}
+    >
+      {children}
+    </ItemWithLabelIconAndDescription>
   </DropdownMenuPrimitive.Item>
 ));
 NewDropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
@@ -193,16 +234,13 @@ const NewDropdownMenuRadioItem = React.forwardRef<
         <Icon size="xs" visual={CircleIcon} />
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
-    {label && (
-      <div className="s-flex s-flex-row s-gap-1">
-        {icon && <Icon size="xs" visual={icon} />}
-        <div className="s-flex s-flex-col">
-          {label}
-          <span className={menuStyleClasses.description}>{description}</span>
-        </div>
-      </div>
-    )}
-    {children}
+    <ItemWithLabelIconAndDescription
+      label={label}
+      icon={icon}
+      description={description}
+    >
+      {children}
+    </ItemWithLabelIconAndDescription>
   </DropdownMenuPrimitive.RadioItem>
 ));
 NewDropdownMenuRadioItem.displayName =
