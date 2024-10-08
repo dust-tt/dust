@@ -14,6 +14,7 @@ import type {
   CreationAttributes,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
@@ -29,6 +30,7 @@ import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -59,6 +61,8 @@ export type FetchDataSourceViewOptions = {
   limit?: number;
   order?: [string, "ASC" | "DESC"][];
 };
+
+type AllowedSearchColumns = "vaultId" | "dataSourceId" | "kind" | "vaultKind";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface DataSourceViewResource
@@ -353,6 +357,45 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
     return dataSourceViews ?? null;
   }
 
+  static async search(
+    auth: Authenticator,
+    searchParams: {
+      [key in AllowedSearchColumns]: string | number | undefined;
+    }
+  ): Promise<DataSourceViewResource[]> {
+    const owner = auth.workspace();
+    if (!owner) {
+      return [];
+    }
+
+    const whereClause: WhereOptions = {
+      workspaceId: owner.id,
+    };
+
+    for (const [key, value] of Object.entries(searchParams)) {
+      if (value && key !== "vaultKind") {
+        whereClause[key] = value;
+      } else {
+        whereClause["$vault.kind$"] = searchParams.vaultKind;
+      }
+    }
+
+    return this.baseFetch(
+      auth,
+      {},
+      {
+        where: whereClause,
+        order: [["updatedAt", "DESC"]],
+        includes: [
+          {
+            model: VaultModel,
+            as: "vault",
+          },
+        ],
+      }
+    );
+  }
+
   // Updating.
 
   async setEditedBy(auth: Authenticator) {
@@ -382,10 +425,28 @@ export class DataSourceViewResource extends ResourceWithVault<DataSourceViewMode
   }
 
   async updateParents(
+    parentsToAdd: string[] = [],
+    parentsToRemove: string[] = []
+  ): Promise<Result<undefined, Error>> {
+    const currentParents = this.parentsIn || [];
+
+    // add new parents
+    const newParents = [...new Set(currentParents), ...new Set(parentsToAdd)];
+
+    // remove specified parents
+    const updatedParents = newParents.filter(
+      (parent) => !parentsToRemove.includes(parent)
+    );
+
+    await this.update({ parentsIn: updatedParents });
+
+    return new Ok(undefined);
+  }
+
+  async setParents(
     parentsIn: string[] | null
   ): Promise<Result<undefined, Error>> {
     await this.update({ parentsIn });
-
     return new Ok(undefined);
   }
 
