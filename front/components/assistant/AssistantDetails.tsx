@@ -310,6 +310,7 @@ export function AssistantDetails({
                             (dsv) => dsv.sId == t.dataSourceViewId
                           );
 
+                          // Initializing the datasource configuration if we are seeing the id for the first time
                           dsConfigs[t.dataSourceViewId] ||= {
                             workspaceId: t.workspaceId,
                             dataSourceViewId: t.dataSourceViewId,
@@ -321,6 +322,8 @@ export function AssistantDetails({
                                   : { in: [], not: [] },
                             },
                           };
+
+                          // Pushing a new parent
                           if (dataSourceView) {
                             dsConfigs[
                               t.dataSourceViewId
