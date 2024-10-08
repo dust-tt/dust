@@ -1,5 +1,4 @@
 import type { DataSourceViewType, WithAPIErrorResponse } from "@dust-tt/types";
-import { Err } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
