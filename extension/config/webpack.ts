@@ -7,6 +7,7 @@ import ZipPlugin from "zip-webpack-plugin";
 import WebpackBar from "webpackbar";
 import ExtReloader from "webpack-ext-reloader";
 import TerserPlugin from "terser-webpack-plugin";
+import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
 
 import { ENV_DEV, ENV_PROD, isDevEnv } from "./env";
 
@@ -18,7 +19,7 @@ const resolvePath = (...segments: string[]) =>
 export const getConfig = async ({
   shouldBuild,
 }: {
-  shouldBuild: "none" | "prod";
+  shouldBuild: "none" | "prod" | "analyze";
 }): Promise<Configuration> => {
   const isDevelopment = isDevEnv();
   const env = isDevelopment ? ENV_DEV : ENV_PROD;
@@ -39,6 +40,7 @@ export const getConfig = async ({
     optimization: {
       minimize: !isDevelopment,
       minimizer: [new TerserPlugin({ extractComments: false })],
+      concatenateModules: shouldBuild !== "analyze",
     },
     performance: false,
     devtool: isDevelopment ? "inline-source-map" : undefined,
@@ -56,6 +58,21 @@ export const getConfig = async ({
     },
     module: {
       rules: [
+        {
+          test: /\.css$/,
+          use: [
+            "style-loader",
+            "css-loader",
+            {
+              loader: "postcss-loader",
+              options: {
+                postcssOptions: {
+                  config: path.resolve(__dirname, "postcss.config.js"),
+                },
+              },
+            },
+          ],
+        },
         {
           test: /\.tsx?$/,
           use: {
@@ -102,6 +119,7 @@ export const getConfig = async ({
           // },
         ],
       }),
+      ...(shouldBuild === "analyze" ? [new BundleAnalyzerPlugin()] : []),
       packageDirPath
         ? new ZipPlugin({
             path: packageDirPath,
