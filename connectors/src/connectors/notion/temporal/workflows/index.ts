@@ -189,9 +189,11 @@ export async function notionSyncWorkflow({
 export async function notionGarbageCollectionWorkflow({
   connectorId,
   cursors = [null, null],
+  pageIndex = 0,
 }: {
   connectorId: ModelId;
   cursors?: (string | null)[];
+  pageIndex?: number;
 }) {
   const topLevelWorkflowId = workflowInfo().workflowId;
 
@@ -214,7 +216,6 @@ export async function notionGarbageCollectionWorkflow({
 
   const runTimestamp = Date.now();
 
-  let pageIndex = 0;
   const childWorkflowQueue = new PQueue({
     concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
   });
@@ -260,10 +261,13 @@ export async function notionGarbageCollectionWorkflow({
       })
     );
 
-    if (pageIndex > 512) {
+    if (pageIndex % 512 === 0) {
+      await Promise.all(promises);
+
       await continueAsNew<typeof notionGarbageCollectionWorkflow>({
         connectorId,
         cursors,
+        pageIndex,
       });
       return;
     }
