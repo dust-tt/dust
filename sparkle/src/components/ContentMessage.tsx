@@ -8,7 +8,7 @@ export interface ContentMessageProps {
   title: string;
   children: React.ReactNode;
   className?: string;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
   variant?:
     | "emerald"
     | "amber"
@@ -44,13 +44,15 @@ export function ContentMessage({
         "s-flex s-gap-2 s-border",
         variantClasses.border,
         variantClasses.background,
-        size === "md"
-          ? "s-max-w-[500px] s-rounded-2xl s-p-4"
-          : "s-max-w-[380px] s-rounded-xl s-px-4 s-py-3",
+        size === "lg"
+          ? "s-rounded-2xl s-p-4"
+          : size === "md"
+            ? "s-max-w-[500px] s-rounded-2xl s-p-4"
+            : "s-max-w-[380px] s-rounded-xl s-px-4 s-py-3",
         className
       )}
     >
-      {size === "md" && (
+      {["md", "lg"].includes(size) && (
         <>
           <Icon
             size="md"
