@@ -21,6 +21,7 @@ import type {
   DataSourceViewType,
   DustAppRunConfigurationType,
   RetrievalConfigurationType,
+  TablesQueryConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
@@ -243,9 +244,9 @@ export function AssistantDetails({
     isDustGlobalAgent: boolean;
     actions: AgentConfigurationType["actions"];
   }) => {
-    const [retrievalActions, otherActions] = useMemo(() => {
+    const [retrievalActions, queryTablesActions, otherActions] = useMemo(() => {
       return actions.reduce(
-        ([dataSources, otherActions], a) => {
+        ([dataSources, queryTables, otherActions], a) => {
           // Since Dust is configured with one search for all, plus individual searches for each managed data source,
           // we hide these additional searches from the user in the UI to avoid displaying the same data source twice.
           // We use the `hidden_dust_search_` prefix to identify these additional searches.
@@ -254,13 +255,16 @@ export function AssistantDetails({
             (!isDustGlobalAgent || !a.name.startsWith("hidden_dust_search_"))
           ) {
             dataSources.push(a);
+          } else if (isTablesQueryConfiguration(a)) {
+            queryTables.push(a);
           } else {
             otherActions.push(a);
           }
-          return [dataSources, otherActions];
+          return [dataSources, queryTables, otherActions];
         },
         [
           [] as RetrievalConfigurationType[],
+          [] as TablesQueryConfigurationType[],
           [] as AgentActionConfigurationType[],
         ]
       );
@@ -286,6 +290,61 @@ export function AssistantDetails({
               ))}
             </div>
           )}
+          {!!queryTablesActions.length && (
+            <div>
+              <div className="pb-2 text-lg font-bold text-element-800">
+                Query Tables
+              </div>
+              {queryTablesActions.map((action, index) => (
+                <div className="flex flex-col gap-2" key={`action-${index}`}>
+                  <DataSourceViewsSection
+                    owner={owner}
+                    dataSourceViews={dataSourceViews}
+                    dataSourceConfigurations={Object.values(
+                      action.tables.reduce(
+                        (dsConfigs, t) => {
+                          // We should never have an undefined dataSourceView here as if it's undefined,
+                          // it means the dataSourceView was deleted and the configuration is invalid But
+                          // we need to handle this case to avoid crashing the UI
+                          const dataSourceView = dataSourceViews.find(
+                            (dsv) => dsv.sId == t.dataSourceViewId
+                          );
+
+                          // Initializing the datasource configuration if we are seeing the id for the first time
+                          dsConfigs[t.dataSourceViewId] ||= {
+                            workspaceId: t.workspaceId,
+                            dataSourceViewId: t.dataSourceViewId,
+                            filter: {
+                              parents:
+                                dataSourceView &&
+                                isFolder(dataSourceView.dataSource)
+                                  ? null
+                                  : { in: [], not: [] },
+                            },
+                          };
+
+                          // Pushing a new parent
+                          if (dataSourceView) {
+                            dsConfigs[
+                              t.dataSourceViewId
+                            ].filter.parents?.in.push(
+                              getContentNodeInternalIdFromTableId(
+                                dataSourceView,
+                                t.tableId
+                              )
+                            );
+                          }
+                          return dsConfigs;
+                        },
+                        {} as Record<string, DataSourceConfiguration>
+                      )
+                    )}
+                    viewType="tables"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
           {otherActions.map((action, index) =>
             isDustAppRunConfiguration(action) ? (
               <div className="flex flex-col gap-2" key={`action-${index}`}>
@@ -293,45 +352,6 @@ export function AssistantDetails({
                   Run Actions
                 </div>
                 <DustAppSection dustApp={action} />
-              </div>
-            ) : isTablesQueryConfiguration(action) ? (
-              <div className="flex flex-col gap-2" key={`action-${index}`}>
-                <div className="text-lg font-bold text-element-800">
-                  Query Tables
-                </div>
-                <DataSourceViewsSection
-                  owner={owner}
-                  dataSourceViews={dataSourceViews}
-                  dataSourceConfigurations={action.tables.map((t) => {
-                    // We should never have an undefined dataSourceView here as if it's undefined,
-                    // it means the dataSourceView was deleted and the configuration is invalid But
-                    // we need to handle this case to avoid crashing the UI
-                    const dataSourceView = dataSourceViews.find(
-                      (dsv) => dsv.sId == t.dataSourceViewId
-                    );
-
-                    const parentsIn = dataSourceView
-                      ? [
-                          getContentNodeInternalIdFromTableId(
-                            dataSourceView,
-                            t.tableId
-                          ),
-                        ]
-                      : [];
-
-                    return {
-                      workspaceId: t.workspaceId,
-                      dataSourceViewId: t.dataSourceViewId,
-                      filter: {
-                        parents:
-                          dataSourceView && isFolder(dataSourceView.dataSource)
-                            ? null
-                            : { in: parentsIn, not: [] },
-                      },
-                    };
-                  })}
-                  viewType="tables"
-                />
               </div>
             ) : isProcessConfiguration(action) ? (
               <div className="flex flex-col gap-2" key={`action-${index}`}>
@@ -361,7 +381,9 @@ export function AssistantDetails({
             ) : isBrowseConfiguration(action) ? (
               false
             ) : (
-              !isRetrievalConfiguration(action) && assertNever(action)
+              !isRetrievalConfiguration(action) &&
+              !isTablesQueryConfiguration(action) &&
+              assertNever(action)
             )
           )}
         </>
