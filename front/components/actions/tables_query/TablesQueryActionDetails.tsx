@@ -1,11 +1,20 @@
-import { Citation, Collapsible, TableIcon } from "@dust-tt/sparkle";
+import {
+  Citation,
+  Collapsible,
+  ContentMessage,
+  InformationCircleIcon,
+  TableIcon,
+} from "@dust-tt/sparkle";
 import type { TablesQueryActionType } from "@dust-tt/types";
 import { stringify } from "csv-stringify";
 import { useCallback, useContext } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import { CodeBlock } from "@app/components/assistant/RenderMessageMarkdown";
+import {
+  CodeBlock,
+  RenderMessageMarkdown,
+} from "@app/components/assistant/RenderMessageMarkdown";
 import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
@@ -20,6 +29,12 @@ export function TablesQueryActionDetails({
       visual={TableIcon}
     >
       <div className="flex flex-col gap-1 gap-4 pl-6 pt-4">
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-bold text-slate-900">Reasoning</span>
+          <div className="text-sm font-normal text-slate-500">
+            <QueryThinking action={action} />
+          </div>
+        </div>
         <div className="flex flex-col gap-1">
           <span className="text-sm font-bold text-slate-900">Query</span>
           <div className="text-sm font-normal text-slate-500">
@@ -59,6 +74,31 @@ function TablesQuery({ action }: { action: TablesQueryActionType }) {
         {query}
       </CodeBlock>
     </ContentBlockWrapper>
+  );
+}
+
+function QueryThinking({ action }: { action: TablesQueryActionType }) {
+  const { output } = action;
+  const thinking =
+    typeof output?.thinking === "string" ? output.thinking : null;
+  if (!thinking) {
+    return null;
+  }
+
+  return (
+    <ContentMessage
+      title="Reasoning"
+      variant="purple"
+      icon={InformationCircleIcon}
+      size="lg"
+    >
+      <RenderMessageMarkdown
+        content={thinking}
+        isStreaming={false}
+        textSize="sm"
+        textColor="purple-800"
+      />
+    </ContentMessage>
   );
 }
 
