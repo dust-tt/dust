@@ -8,6 +8,7 @@ import {
   IconButton,
   LinkStrokeIcon,
   PencilSquareIcon,
+  Popover,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -191,27 +192,29 @@ export function ConversationTitle({
                 />
               )}
             </div>
-            <DropdownMenu>
-              <DropdownMenu.Button>
-                <div className="hidden sm:flex">
-                  <Button
-                    size="sm"
-                    label="Share"
-                    icon={ArrowUpOnSquareIcon}
-                    variant="tertiary"
-                  />
-                </div>
-                <div className="flex sm:hidden">
-                  <Button
-                    size="sm"
-                    label="Share"
-                    labelVisible={false}
-                    icon={ArrowUpOnSquareIcon}
-                    variant="tertiary"
-                  />
-                </div>
-              </DropdownMenu.Button>
-              <DropdownMenu.Items width={280}>
+            <Popover
+              trigger={
+                <>
+                  <div className="hidden sm:flex">
+                    <Button
+                      size="sm"
+                      label="Share"
+                      icon={ArrowUpOnSquareIcon}
+                      variant="tertiary"
+                    />
+                  </div>
+                  <div className="flex sm:hidden">
+                    <Button
+                      size="sm"
+                      label="Share"
+                      labelVisible={false}
+                      icon={ArrowUpOnSquareIcon}
+                      variant="tertiary"
+                    />
+                  </div>
+                </>
+              }
+              content={
                 <div className="flex flex-col gap-y-4 py-4">
                   <div className="text-sm font-normal text-element-700">
                     Share the conversation link with other members of your
@@ -229,8 +232,8 @@ export function ConversationTitle({
                     />
                   </div>
                 </div>
-              </DropdownMenu.Items>
-            </DropdownMenu>
+              }
+            />
           </Button.List>
         </div>
       </div>
