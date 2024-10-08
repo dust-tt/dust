@@ -32,9 +32,9 @@ import { handleDataSourceSearch } from "@app/pages/api/w/[wId]/data_sources/[dsI
  *         schema:
  *           type: string
  *       - in: path
- *         name: dsId
+ *         name: dsvId
  *         required: true
- *         description: ID of the data source
+ *         description: ID of the data source view
  *         schema:
  *           type: string
  *       - in: query
