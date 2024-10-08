@@ -158,8 +158,8 @@ export function AssistantInputBar({
 
     const { mentions: rawMentions, text } = textAndMentions;
     const mentions: MentionType[] = [
-      ...new Set(rawMentions.map((mention) => mention.id))
-    ].map((id) => ({configurationId: id}));
+      ...new Set(rawMentions.map((mention) => mention.id)),
+    ].map((id) => ({ configurationId: id }));
 
     if (fileUploaderService.fileBlobs.length > 0) {
       void ClientSideTracking.trackInputBarFileUploadUsed({
