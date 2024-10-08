@@ -20,7 +20,9 @@
     "dist/",
     "src/"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "src/index_with_tw_base.ts"
+  ],
   "devDependencies": {
     "@babel/core": "^7.22.9",
     "@babel/preset-env": "^7.22.9",
