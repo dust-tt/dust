@@ -156,6 +156,7 @@ module.exports = {
           DEFAULT: colors.emerald[500],
           dark: colors.emerald[500],
         },
+        separator: { DEFAULT: colors.slate[200], dark: colors.slate[800] },
         action: {
           950: { DEFAULT: colors.blue[950], dark: colors.blue[50] },
           900: { DEFAULT: colors.blue[900], dark: colors.blue[100] },
