@@ -5,13 +5,10 @@ import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { PatchDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]";
 import { handlePatchDataSourceView } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]";
 
 export type GetOrPostDataSourceViewsResponseBody = {
-  dataSourceView: DataSourceViewType;
-};
-
-export type PatchDataSourceViewResponseBody = {
   dataSourceView: DataSourceViewType;
 };
 
@@ -117,17 +114,7 @@ async function handler(
       });
 
     case "PATCH":
-      const result = await handlePatchDataSourceView(req, auth, dataSourceView);
-      if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: result.error.status,
-          api_error: {
-            type: "invalid_request_error",
-            message: result.error.message,
-          },
-        });
-      }
-      return res.status(200).json(result.value);
+      return handlePatchDataSourceView(req, res, auth, dataSourceView);
 
     default:
       return apiError(req, res, {

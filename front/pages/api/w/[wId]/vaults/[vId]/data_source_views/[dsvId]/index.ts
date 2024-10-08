@@ -1,9 +1,5 @@
-import type {
-  DataSourceViewType,
-  Result,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { Err, Ok, PatchDataSourceViewSchema } from "@dust-tt/types";
+import type { DataSourceViewType, WithAPIErrorResponse } from "@dust-tt/types";
+import { PatchDataSourceViewSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -13,21 +9,24 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 
-type PatchDataSourceViewResult = Result<
-  { dataSourceView: ReturnType<DataSourceViewResource["toJSON"]> },
-  { status: number; message: string }
->;
+export type PatchDataSourceViewResponseBody = {
+  dataSourceView: DataSourceViewType;
+};
 
 export async function handlePatchDataSourceView(
   req: NextApiRequest,
+  res: NextApiResponse<WithAPIErrorResponse<PatchDataSourceViewResponseBody>>,
   auth: Authenticator,
   dataSourceView: DataSourceViewResource
-): Promise<PatchDataSourceViewResult> {
+) {
   if (!auth.isAdmin() && !auth.isBuilder()) {
-    return new Err({
-      status: 403,
-      message:
-        "Only users that are `admins` or `builder` can administrate vaults.",
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        message:
+          "Only users that are `admins` or `builder` can administrate vaults.",
+        type: "workspace_auth_error",
+      },
     });
   }
 
@@ -35,9 +34,12 @@ export async function handlePatchDataSourceView(
 
   if (isLeft(patchBodyValidation)) {
     const pathError = reporter.formatValidationErrors(patchBodyValidation.left);
-    return new Err({
-      status: 400,
-      message: `invalid request body: ${pathError}`,
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        message: `invalid request body: ${pathError}`,
+        type: "invalid_request_error",
+      },
     });
   }
 
@@ -56,16 +58,21 @@ export async function handlePatchDataSourceView(
   }
 
   if (updateResultRes.isErr()) {
-    return new Err({
-      status: 500,
-      message: "The data source view cannot be updated.",
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        message: "The data source view cannot be updated.",
+        type: "internal_server_error",
+      },
     });
   }
 
   if (auth.user()) {
     await dataSourceView.setEditedBy(auth);
   }
-  return new Ok({ dataSourceView: dataSourceView.toJSON() });
+  return res.status(200).json({
+    dataSourceView: dataSourceView.toJSON(),
+  });
 }
 
 export type GetDataSourceViewResponseBody = {
@@ -103,21 +110,7 @@ async function handler(
     }
 
     case "PATCH": {
-      const result = await handlePatchDataSourceView(
-        req.body,
-        auth,
-        dataSourceView
-      );
-      if (result.isErr()) {
-        return apiError(req, res, {
-          status_code: result.error.status,
-          api_error: {
-            type: "invalid_request_error",
-            message: result.error.message,
-          },
-        });
-      }
-      return res.status(200).json(result.value);
+      return handlePatchDataSourceView(req, res, auth, dataSourceView);
     }
 
     case "DELETE": {
