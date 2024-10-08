@@ -27,7 +27,7 @@ export const menuStyleClasses = {
   },
   label: "s-font-semibold s-px-2 s-py-2 s-text-xs s-text-muted-foreground",
   description:
-    "s-grow s-truncate s-text-xs s-text-element-700 dark:s-text-element-600-dark",
+    "s-grow s-truncate s-text-sm s-font-regular s-text-element-700 dark:s-text-element-600-dark",
   separator: "-s-mx-1 s-my-1 s-h-px s-bg-separator",
   shortcut: "s-ml-auto s-text-xs s-tracking-widest s-text-primary-400",
 };
@@ -134,10 +134,10 @@ const NewDropdownMenuItem = React.forwardRef<
     {...props}
   >
     {label && (
-      <div className="s-flex s-flex-row s-gap-2">
+      <div className="s-flex s-flex-row s-gap-1">
         {icon && <Icon size="xs" visual={icon} />}
-        <div className="s-flex s-flex-col s-gap-2">
-          <span>{label}</span>
+        <div className="s-flex s-flex-col">
+          {label}
           <span className={menuStyleClasses.description}>{description}</span>
         </div>
       </div>
@@ -194,10 +194,10 @@ const NewDropdownMenuRadioItem = React.forwardRef<
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
     {label && (
-      <div className="s-flex s-flex-row s-gap-2">
+      <div className="s-flex s-flex-row s-gap-1">
         {icon && <Icon size="xs" visual={icon} />}
-        <div className="s-flex s-flex-col s-gap-2">
-          <span>{label}</span>
+        <div className="s-flex s-flex-col">
+          {label}
           <span className={menuStyleClasses.description}>{description}</span>
         </div>
       </div>
