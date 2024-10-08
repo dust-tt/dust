@@ -39,6 +39,7 @@ export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioButton } from "./RadioButton";
 export { Searchbar } from "./Searchbar";
+export { Separator } from "./Separator";
 export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
 export { Tab } from "./Tab";
