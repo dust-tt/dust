@@ -18,7 +18,7 @@ export type GetDataSourceViewsResponseBody = {
  *     summary: List Data Source Views
  *     description: Retrieves a list of data source views for the specified vault
  *     tags:
- *       - DataSourceViews
+ *       - DatasourceViews
  *     security:
  *       - BearerAuth: []
  *     parameters:
