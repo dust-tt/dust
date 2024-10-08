@@ -11,7 +11,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "NewPrimitives/Popover",
+  title: "Primitives/Popover",
   component: Popover,
 } satisfies Meta<typeof Popover>;
 
