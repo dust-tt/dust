@@ -13,7 +13,7 @@ const meta = {
 
 export default meta;
 
-export const NewTooltipLongLabel = () => (
+export const TooltipLongLabel = () => (
   <div className="s-flex s-flex-col s-bg-slate-50 s-p-12">
     <div className="s-flex s-h-[600px] s-w-[800px] s-flex-col s-gap-16 s-p-12">
       <ResizableDemo />

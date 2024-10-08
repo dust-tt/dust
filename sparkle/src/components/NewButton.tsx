@@ -6,11 +6,11 @@ import { SpinnerProps } from "@sparkle/components/Spinner";
 import {
   ChevronDownIcon,
   Icon,
-  NewTooltip,
-  NewTooltipContent,
-  NewTooltipProvider,
-  NewTooltipTrigger,
   Spinner,
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
 } from "@sparkle/index_with_tw_base";
 import { classNames, cn } from "@sparkle/lib/utils";
 
@@ -153,12 +153,12 @@ export const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
     );
 
     return tooltip ? (
-      <NewTooltipProvider>
-        <NewTooltip>
-          <NewTooltipTrigger>{buttonElement}</NewTooltipTrigger>
-          <NewTooltipContent>{tooltip}</NewTooltipContent>
-        </NewTooltip>
-      </NewTooltipProvider>
+      <TooltipProvider>
+        <TooltipRoot>
+          <TooltipTrigger>{buttonElement}</TooltipTrigger>
+          <TooltipContent>{tooltip}</TooltipContent>
+        </TooltipRoot>
+      </TooltipProvider>
     ) : (
       buttonElement
     );

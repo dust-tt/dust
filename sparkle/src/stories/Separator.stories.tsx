@@ -4,7 +4,7 @@ import * as React from "react";
 import { Separator } from "@sparkle/index_with_tw_base";
 
 const meta = {
-  title: "NewPrimitives/Separator",
+  title: "Primitives/Separator",
   component: Separator,
 } satisfies Meta<typeof Separator>;
 

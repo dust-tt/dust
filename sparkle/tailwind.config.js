@@ -182,13 +182,13 @@ module.exports = {
         // "accent-foreground": { DEFAULT: colors.white, dark: colors.white },
         // destructive: { DEFAULT: colors.red[500], dark: colors.red[500] },
         // "accent-foreground": { DEFAULT: colors.white, dark: colors.white },
-        // ring: { DEFAULT: colors.slate[700], dark: colors.slate[300] },
+        //
 
         // card: "hsl(var(--card))",
         // "card-foreground": "hsl(var(--card-foreground))",
         // popover: "hsl(var(--popover))",
         // "popover-foreground": "hsl(var(--popover-foreground))",
-        separator: { DEFAULT: colors.slate[200], dark: colors.slate[800] },
+        ring: { DEFAULT: colors.slate[700], dark: colors.slate[300] },
         border: {
           DEFAULT: colors.slate[100],
           dark: colors.slate[900],

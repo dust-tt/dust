@@ -50,6 +50,7 @@ export { Label } from "./Label";
 export { Markdown } from "./Markdown";
 export { Modal } from "./Modal";
 export { NewButton, NewButtonBar } from "./NewButton";
+export { NewCheckbox } from "./NewCheckbox";
 export {
   NewDropdownMenu,
   NewDropdownMenuContent,
@@ -65,12 +66,6 @@ export {
   NewNavigationListLabel,
 } from "./NewNavigationList";
 export { NewSearchInput } from "./NewSearchInput";
-export {
-  NewTooltip,
-  NewTooltipContent,
-  NewTooltipProvider,
-  NewTooltipTrigger,
-} from "./NewTooltip";
 export { Notification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
