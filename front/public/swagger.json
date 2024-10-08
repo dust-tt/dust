@@ -864,7 +864,7 @@
     },
     "/api/v1/w/{wId}/vaults/{vId}/data_source_views/{dsvId}/search": {
       "get": {
-        "summary": "Search the data source",
+        "summary": "Search the data source view",
         "description": "Search the data source view identified by {dsvId} in the workspace identified by {wId}.",
         "tags": ["DatasourceViews"],
         "security": [
@@ -1059,11 +1059,11 @@
         }
       }
     },
-    "/api/w/{workspaceId}/vaults/{vId}/data_source_views": {
+    "/api/v1/w/{wId}/vaults/{vId}/data_source_views": {
       "get": {
         "summary": "List Data Source Views",
         "description": "Retrieves a list of data source views for the specified vault",
-        "tags": ["DataSourceViews"],
+        "tags": ["DatasourceViews"],
         "security": [
           {
             "BearerAuth": []
@@ -1072,7 +1072,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "workspaceId",
+            "name": "wId",
             "required": true,
             "description": "Unique string identifier for the workspace",
             "schema": {

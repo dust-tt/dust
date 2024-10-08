@@ -13,7 +13,7 @@ export type GetDataSourceViewsResponseBody = {
 
 /**
  * @swagger
- * /api/w/{workspaceId}/vaults/{vId}/data_source_views:
+ * /api/v1/w/{wId}/vaults/{vId}/data_source_views:
  *   get:
  *     summary: List Data Source Views
  *     description: Retrieves a list of data source views for the specified vault
@@ -23,7 +23,7 @@ export type GetDataSourceViewsResponseBody = {
  *       - BearerAuth: []
  *     parameters:
  *       - in: path
- *         name: workspaceId
+ *         name: wId
  *         required: true
  *         description: Unique string identifier for the workspace
  *         schema:
