@@ -4,11 +4,13 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { setInternalWorkspaceSegmentation } from "@app/lib/api/workspace";
+import {
+  deleteWorkspace,
+  setInternalWorkspaceSegmentation,
+} from "@app/lib/api/workspace";
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 
 export const WorkspaceTypeSchema = t.type({
   segmentation: t.union([t.literal("interesting"), t.null]),
@@ -71,9 +73,21 @@ async function handler(
       return res.status(200).json({
         workspace,
       });
-    case "DELETE":
-      await launchDeleteWorkspaceWorkflow({ workspaceId: owner.sId });
+
+    case "DELETE": {
+      const deleteRes = await deleteWorkspace(owner);
+      if (deleteRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: deleteRes.error.message,
+          },
+        });
+      }
+
       return res.status(200).json({ success: true });
+    }
 
     default:
       return apiError(req, res, {
