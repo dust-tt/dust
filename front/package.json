@@ -5,7 +5,7 @@
     "start": "next start --keepAliveTimeout 5000",
     "start:worker": "tsx ./start_worker.ts",
     "lint": "next lint",
-    "docs": "npx next-swagger-doc-cli swagger.json && npx @redocly/cli@latest lint --extends minimal --skip-rule operation-operationId public/swagger.json && npm run format",
+    "docs": "npx next-swagger-doc-cli swagger.json && npx @redocly/cli@latest lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json && npm run format",
     "docs:check": "npx swagger-cli validate public/swagger.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
