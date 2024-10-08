@@ -2,12 +2,12 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import {
-  Button,
+  Button, EmojiPicker,
   Input,
   Popover,
   PopoverContent,
   PopoverRoot,
-  PopoverTrigger
+  PopoverTrigger,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -24,7 +24,7 @@ export function SimplePopoverExample () {
         <Button label="Popover" variant="secondary"/>
       }
       content={
-        <div className="grid gap-2">
+        <div className="s-grid s-gap-2 s-p-2">
           <p>Lorem</p>
           <p>Ipsum</p>
           <p>Lorem</p>
@@ -43,47 +43,39 @@ export function PopoverExample() {
       <PopoverTrigger>
         <Button label="Popover" variant="primary" />
       </PopoverTrigger>
-      <PopoverContent className="w-80">
-        <div className="grid gap-4">
-          <div className="space-y-2">
-            <h4 className="font-medium leading-none s-pb-2">Dimensions</h4>
-            <p className="text-sm text-muted-foreground">
+      <PopoverContent className="s-p-4">
+        <div className="s-grid s-gap-4">
+          <div className="s-space-y-2">
+            <h4 className="s-font-medium s-leading-none s-pb-2">Dimensions</h4>
+            <p className="s-text-sm s-text-muted-foreground">
               Set the dimensions for the layer.
             </p>
           </div>
-          <div className="grid gap-2">
-            <div className="grid grid-cols-3 items-center gap-4">
+          <div className="s-grid s-gap-4">
               <Input
                 name="width"
                 value="200px"
                 placeholder="Width"
-                className="col-span-2 h-8"
+                className="s-col-span-2 s-h-8"
               />
-            </div>
-            <div className="grid grid-cols-3 items-center gap-4">
               <Input
                 name="max-width"
                 value="300px"
                 placeholder="Max. width"
-                className="col-span-2 h-8"
+                className="s-col-span-2 s-h-8"
               />
-            </div>
-            <div className="grid grid-cols-3 items-center gap-4">
               <Input
                 name="height"
                 value="30px"
                 placeholder="Height"
-                className="col-span-2 h-8"
+                className="s-col-span-2 s-h-8"
               />
-            </div>
-            <div className="grid grid-cols-3 items-center gap-4">
               <Input
                 name="max-height"
                 value="100px"
                 placeholder="Max. height"
-                className="col-span-2 h-8"
+                className="s-col-span-2 s-h-8"
               />
-            </div>
           </div>
         </div>
       </PopoverContent>
@@ -91,3 +83,19 @@ export function PopoverExample() {
   )
 }
 
+export function PopoverGrowingExample() {
+  return (
+    <Popover
+      trigger={
+        <Button label="Emoji Picker Popover" variant="primary"></Button>
+      }
+      content={
+        <EmojiPicker
+          theme="light"
+          previewPosition="none"
+          onEmojiSelect={(emoji) => console.log(emoji)}
+        />
+      }
+    />
+  )
+}
