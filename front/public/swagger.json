@@ -882,9 +882,9 @@
           },
           {
             "in": "path",
-            "name": "dsId",
+            "name": "dsvId",
             "required": true,
-            "description": "ID of the data source",
+            "description": "ID of the data source view",
             "schema": {
               "type": "string"
             }
