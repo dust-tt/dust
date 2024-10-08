@@ -30,6 +30,7 @@ const config = {
     },
   ],
   onwarn(warning, warn) {
+    // This is to ignore "use client" directive in radix modules
     if (warning.code === "MODULE_LEVEL_DIRECTIVE") {
       return;
     }
