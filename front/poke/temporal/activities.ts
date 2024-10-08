@@ -8,6 +8,7 @@ import { hardDeleteApp } from "@app/lib/api/apps";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteVault } from "@app/lib/api/vaults";
+import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -56,6 +57,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { Provider } from "@app/lib/resources/storage/models/apps";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 export async function scrubDataSourceActivity({
@@ -158,28 +160,9 @@ export async function isWorkflowDeletableActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const workspace = auth.workspace();
-  if (!workspace) {
-    return false;
-  }
+  const workspace = await auth.getNonNullableWorkspace();
 
-  // Workspace must have no data sources.
-  if (
-    (await DataSourceResource.listByWorkspace(auth, { limit: 1 })).length > 0
-  ) {
-    return false;
-  }
-
-  // For now we don't support deleting workspaces who had a paid subscription at some point.
-  const subscriptions = await Subscription.findAll({
-    where: {
-      workspaceId: workspace.id,
-      stripeSubscriptionId: {
-        [Op.not]: null,
-      },
-    },
-  });
-  return subscriptions.length === 0;
+  return areAllSubscriptionsCanceled(renderLightWorkspaceType({ workspace }));
 }
 
 export async function deleteConversationsActivity({

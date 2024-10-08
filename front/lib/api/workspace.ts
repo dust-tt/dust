@@ -1,6 +1,7 @@
 import type {
   LightWorkspaceType,
   MembershipRoleType,
+  Result,
   RoleType,
   SubscriptionType,
   UserTypeWithWorkspaces,
@@ -8,14 +9,18 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { ACTIVE_ROLES } from "@dust-tt/types";
+import { ACTIVE_ROLES, Err, Ok } from "@dust-tt/types";
+import { Op } from "sequelize";
 
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { Subscription } from "@app/lib/models/plan";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
+import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 
 export async function getWorkspaceInfos(
   wId: string
@@ -281,4 +286,57 @@ export async function unsafeGetWorkspacesByModelId(
       },
     })
   ).map((w) => renderLightWorkspaceType({ workspace: w }));
+}
+
+export async function areAllSubscriptionsCanceled(
+  workspace: LightWorkspaceType
+): Promise<boolean> {
+  const subscriptions = await Subscription.findAll({
+    where: {
+      workspaceId: workspace.id,
+      stripeSubscriptionId: {
+        [Op.not]: null,
+      },
+    },
+  });
+
+  // If the workspace had a subscription, it must be canceled.
+  if (subscriptions.length > 0) {
+    for (const sub of subscriptions) {
+      if (!sub.stripeSubscriptionId) {
+        continue;
+      }
+
+      const stripeSubscription = await getStripeSubscription(
+        sub.stripeSubscriptionId
+      );
+
+      if (!stripeSubscription) {
+        continue;
+      }
+
+      if (stripeSubscription.status !== "canceled") {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+export async function deleteWorkspace(
+  owner: LightWorkspaceType
+): Promise<Result<void, Error>> {
+  const allSubscriptionsCanceled = await areAllSubscriptionsCanceled(owner);
+  if (!allSubscriptionsCanceled) {
+    return new Err(
+      new Error(
+        "The workspace cannot be deleted because there are active subscriptions."
+      )
+    );
+  }
+
+  await launchDeleteWorkspaceWorkflow({ workspaceId: owner.sId });
+
+  return new Ok(undefined);
 }
