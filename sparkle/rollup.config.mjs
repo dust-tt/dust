@@ -1,7 +1,7 @@
 // Rollup configuration for building the library as a cjs bundle. This is used by front workers.
 import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
-import resolve, { nodeResolve } from "@rollup/plugin-node-resolve";
+import resolve from "@rollup/plugin-node-resolve";
 import autoprefixer from "autoprefixer";
 import fs from "fs";
 import path from "path";
@@ -36,9 +36,6 @@ const config = {
     warn(warning);
   },
   plugins: [
-    nodeResolve({
-      preferBuiltins: true,
-    }),
     external(),
     resolve(),
     commonjs(),
