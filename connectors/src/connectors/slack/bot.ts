@@ -625,6 +625,12 @@ async function answerMessage(
     await slackChatBotMessage.save();
   }
 
+  const mostPopularAgentConfigurations = [...activeAgentConfigurations]
+    .filter((a) => a.usage && a.usage.messageCount > 0)
+    .sort((a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0))
+    .splice(0, 10)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const streamRes = await streamConversationToSlack(dustAPI, {
     assistantName: mention.assistantName,
     connector,
@@ -632,7 +638,7 @@ async function answerMessage(
     mainMessage,
     slack: { slackChannelId: slackChannel, slackClient, slackMessageTs },
     userMessage,
-    agentConfigurations: activeAgentConfigurations,
+    agentConfigurations: mostPopularAgentConfigurations,
   });
 
   if (streamRes.isErr()) {
