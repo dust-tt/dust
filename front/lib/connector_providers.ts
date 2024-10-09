@@ -9,6 +9,7 @@ import {
   NotionLogo,
   SlackLogo,
   SnowflakeLogo,
+  ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
@@ -194,7 +195,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     limitations:
       "Dust will index the content accessible to the authorized account only. Attachments are not indexed.",
     guideLink: "https://docs.dust.tt/docs/zendesk",
-    logoComponent: SnowflakeLogo,
+    logoComponent: ZendeskLogo,
     isNested: true,
     isSearchEnabled: false,
     rollingOutFlag: "zendesk_connector_feature",
