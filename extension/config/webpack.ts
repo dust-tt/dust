@@ -3,13 +3,14 @@ import fs from "fs";
 import { promisify } from "util";
 import webpack, { Configuration } from "webpack";
 import CopyPlugin from "copy-webpack-plugin";
+import Dotenv from "dotenv-webpack";
 import ZipPlugin from "zip-webpack-plugin";
 import WebpackBar from "webpackbar";
 import ExtReloader from "webpack-ext-reloader";
 import TerserPlugin from "terser-webpack-plugin";
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
 
-import { ENV_DEV, ENV_PROD, isDevEnv } from "./env";
+import { Environment, isDevEnv } from "./env";
 
 const readFileAsync = promisify(fs.readFile);
 const rootDir = path.resolve(__dirname, "../");
@@ -17,19 +18,18 @@ const resolvePath = (...segments: string[]) =>
   path.resolve(rootDir, ...segments);
 
 export const getConfig = async ({
+  env,
   shouldBuild,
 }: {
+  env: Environment;
   shouldBuild: "none" | "prod" | "analyze";
 }): Promise<Configuration> => {
-  const isDevelopment = isDevEnv();
-  const env = isDevelopment ? ENV_DEV : ENV_PROD;
-
+  const isDevelopment = isDevEnv(env);
   const manifestFilePath = resolvePath("./manifest.json");
   const maniFestFileRawContent = await readFileAsync(manifestFilePath, "utf8");
   const version = JSON.parse(maniFestFileRawContent).version;
 
   const buildDirPath = resolvePath("./build");
-  const appSrcDirPath = resolvePath("./app/src");
 
   const packageDirPath =
     shouldBuild === "prod" ? resolvePath("./packages") : null;
@@ -93,6 +93,9 @@ export const getConfig = async ({
       new webpack.EnvironmentPlugin({
         VERSION: version,
       }),
+      new Dotenv({
+        path: isDevelopment ? "./.env.development" : "./.env.production",
+      }),
       new CopyPlugin({
         patterns: [
           {
@@ -108,15 +111,6 @@ export const getConfig = async ({
             from: "**/*.png",
             to: path.resolve(buildDirPath, "images"),
           },
-          // WIP DAPH
-          // {
-          //   context: appSrcDirPath,
-          //   from: path.resolve(appSrcDirPath, "**/*").replace(/\\/g, "/"),
-          //   globOptions: {
-          //     ignore: ["**/*.js", "**/*.ts", "**/*.tsx"],
-          //   },
-          //   to: buildDirPath,
-          // },
         ],
       }),
       ...(shouldBuild === "analyze" ? [new BundleAnalyzerPlugin()] : []),
