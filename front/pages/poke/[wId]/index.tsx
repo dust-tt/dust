@@ -19,6 +19,7 @@ import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
@@ -230,6 +231,13 @@ const WorkspacePage = ({
                   worspaceCreationDay={worspaceCreationDay}
                 />
                 <div className="flex-grow">
+                  <PluginList
+                    resourceType="memberships"
+                    workspaceResource={{
+                      workspace: owner,
+                      resourceId: owner.sId,
+                    }}
+                  />
                   <ActiveSubscriptionTable
                     owner={owner}
                     subscription={activeSubscription}
