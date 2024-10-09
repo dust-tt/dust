@@ -90,6 +90,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   let totalExtracted = 0;
   let crawlingError = 0;
   let upsertingError = 0;
+  let isBlocked = false;
   const createdFolders = new Set<string>();
 
   const crawler = new CheerioCrawler(
@@ -137,11 +138,12 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       maxConcurrency: CONCURRENCY,
       maxRequestsPerMinute: 20, // 1 request every 3 seconds average, to avoid overloading the target website
       requestHandlerTimeoutSecs: REQUEST_HANDLING_TIMEOUT,
-      async requestHandler({ $, request, enqueueLinks }) {
+      async requestHandler({ $, request, enqueueLinks, response }) {
         Context.current().heartbeat({
           type: "http_request",
         });
         const currentRequestDepth = request.userData.depth || 0;
+        isBlocked = response.statusCode === 403 || response.statusCode === 429;
 
         // try-catch allowing activity cancellation by temporal (various timeouts, or signal)
         try {
@@ -376,6 +378,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   if (totalExtracted <= 0) {
     await syncFailed(connector.id, "webcrawling_error_empty_content");
+  } else if (isBlocked) {
+    await syncFailed(connector.id, "webcrawling_error_blocked");
   } else if (pageCount <= 0) {
     await syncFailed(connector.id, "webcrawling_error");
   } else {

@@ -84,6 +84,15 @@ export default function ConnectorSyncingChip({
             trigger={<Chip color="warning">Failed: no content</Chip>}
           />
         );
+      case "webcrawling_error_blocked":
+        return (
+          <Tooltip
+            label={
+              "This website has an added security layer that blocks crawlers."
+            }
+            trigger={<Chip color="warning">Failed: blocked</Chip>}
+          />
+        );
       case "remote_database_connection_not_readonly":
         return (
           <Tooltip
