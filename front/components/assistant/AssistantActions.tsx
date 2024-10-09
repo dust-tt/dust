@@ -7,23 +7,26 @@ import type { WorkspaceType } from "@dust-tt/types";
 import { useContext } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
-import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import {
+  useAgentConfiguration,
+  useUpdateAgentUserListStatus,
+} from "@app/lib/swr/assistants";
 
 export function RemoveAssistantFromListDialog({
   owner,
   agentConfiguration,
   show,
   onClose,
-  onRemove,
 }: {
   owner: WorkspaceType;
   agentConfiguration: LightAgentConfigurationType;
   show: boolean;
   onClose: () => void;
-  onRemove: () => void;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const doUpdate = useUpdateAgentUserListStatus({
+    owner,
+    agentConfigurationId: agentConfiguration.sId,
+  });
 
   return (
     <Dialog
@@ -33,26 +36,7 @@ export function RemoveAssistantFromListDialog({
       validateLabel="Remove"
       validateVariant="primaryWarning"
       onValidate={async () => {
-        const { errorMessage, success } = await updateAgentUserListStatus({
-          listStatus: "not-in-list",
-          owner,
-          agentConfigurationId: agentConfiguration.sId,
-        });
-
-        if (success) {
-          sendNotification({
-            title: `Assistant removed from your list`,
-            type: "success",
-          });
-          onRemove();
-        } else {
-          sendNotification({
-            title: `Error removing Assistant`,
-            description: errorMessage,
-            type: "error",
-          });
-        }
-
+        void doUpdate("not-in-list");
         onClose();
       }}
     >
