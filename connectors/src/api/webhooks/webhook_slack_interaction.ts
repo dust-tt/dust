@@ -76,7 +76,7 @@ const _webhookSlackInteractionsAPIHandler = async (
       {
         payload,
       },
-      `Missing required fields in slack reactions payload`
+      "Missing required fields in slack reactions payload"
     );
     return;
   }
