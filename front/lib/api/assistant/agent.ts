@@ -948,8 +948,8 @@ async function* runAction(
 
     for await (const event of eventStream) {
       switch (event.type) {
-        case "tables_query_params":
-        case "tables_query_output":
+        case "tables_query_started":
+        case "tables_query_model_output":
           yield event;
           break;
         case "tables_query_error":
@@ -964,7 +964,7 @@ async function* runAction(
             },
           };
           return;
-        case "tables_query_success":
+        case "tables_query_output":
           yield {
             type: "agent_action_success",
             created: event.created,

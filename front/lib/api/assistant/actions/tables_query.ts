@@ -8,9 +8,9 @@ import type {
   TablesQueryActionType,
   TablesQueryConfigurationType,
   TablesQueryErrorEvent,
+  TablesQueryModelOutputEvent,
   TablesQueryOutputEvent,
-  TablesQueryParamsEvent,
-  TablesQuerySuccessEvent,
+  TablesQueryStartedEvent,
 } from "@dust-tt/types";
 import { BaseAction, Ok } from "@dust-tt/types";
 
@@ -170,8 +170,8 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     }: BaseActionRunParams
   ): AsyncGenerator<
     | TablesQueryErrorEvent
-    | TablesQuerySuccessEvent
-    | TablesQueryParamsEvent
+    | TablesQueryStartedEvent
+    | TablesQueryModelOutputEvent
     | TablesQueryOutputEvent
   > {
     const owner = auth.workspace();
@@ -194,7 +194,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     });
 
     yield {
-      type: "tables_query_params",
+      type: "tables_query_started",
       created: Date.now(),
       configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,
@@ -387,37 +387,30 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
           return;
         }
 
-        if (event.content.block_name === "SQL") {
-          let tmpOutput = null;
-          if (e.value) {
-            const sql = e.value as string;
-            tmpOutput = { query: sql };
-          } else {
-            tmpOutput = { no_query: true };
-          }
+        if (event.content.block_name === "MODEL_OUTPUT") {
+          // Check e.value is an object.
 
-          yield {
-            type: "tables_query_output",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            action: new TablesQueryAction({
-              id: action.id,
-              params: action.params as DustAppParameters,
-              output: tmpOutput as Record<string, string | number | boolean>,
-              functionCallId: action.functionCallId,
-              functionCallName: action.functionCallName,
-              agentMessageId: agentMessage.id,
-              step: action.step,
-            }),
-          };
+          if (e.value && typeof e.value === "object") {
+            yield {
+              type: "tables_query_model_output",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              action: new TablesQueryAction({
+                id: action.id,
+                params: action.params as DustAppParameters,
+                output: e.value as Record<string, string | number | boolean>,
+                functionCallId: action.functionCallId,
+                functionCallName: action.functionCallName,
+                agentMessageId: agentMessage.id,
+                step: action.step,
+              }),
+            };
+          }
         }
 
         if (event.content.block_name === "OUTPUT" && e.value) {
           output = JSON.parse(e.value as string);
-          if (!output.query) {
-            output.no_query = true;
-          }
         }
       }
     }
@@ -431,7 +424,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     });
 
     yield {
-      type: "tables_query_success",
+      type: "tables_query_output",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,

@@ -184,7 +184,8 @@ async function handleUserMessageEvents(
             case "retrieval_params":
             case "dust_app_run_params":
             case "dust_app_run_block":
-            case "tables_query_params":
+            case "tables_query_started":
+            case "tables_query_model_output":
             case "tables_query_output":
             case "process_params":
             case "websearch_params":
@@ -336,7 +337,8 @@ export async function retryAgentMessageWithPubSub(
               case "retrieval_params":
               case "dust_app_run_params":
               case "dust_app_run_block":
-              case "tables_query_params":
+              case "tables_query_started":
+              case "tables_query_model_output":
               case "tables_query_output":
               case "process_params":
               case "websearch_params":
