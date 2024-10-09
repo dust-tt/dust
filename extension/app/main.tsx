@@ -1,13 +1,13 @@
 // Tailwind base globals
-import "./global.css";
+import "./src/css/global.css";
 // Use sparkle styles, override local globals
 import "@dust-tt/sparkle/dist/sparkle.css";
 // Local tailwind components override sparkle styles
-import "./components.css";
+import "./src/css/components.css";
 
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { routes } from "./routes";
+import { routes } from "./src/routes";
 
 const router = createBrowserRouter(routes);
 
