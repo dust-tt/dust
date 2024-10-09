@@ -75,12 +75,24 @@ export async function autoReadChannel(
     if (joinChannelRes.isErr()) {
       return joinChannelRes;
     }
-    const createdChannel = await SlackChannel.create({
-      connectorId,
-      slackChannelId,
-      slackChannelName: remoteChannelName,
-      permission: "read_write",
+    const channel = await SlackChannel.findOne({
+      where: {
+        slackChannelId,
+        connectorId,
+      },
     });
+    if (!channel) {
+      await SlackChannel.create({
+        connectorId,
+        slackChannelId,
+        slackChannelName: remoteChannelName,
+        permission: "read_write",
+      });
+    } else {
+      await channel.update({
+        permission: "read_write",
+      });
+    }
 
     const dustAPI = new DustAPI(
       apiConfig.getDustAPIConfig(),
