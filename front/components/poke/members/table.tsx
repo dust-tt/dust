@@ -3,7 +3,6 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { UserType } from "@dust-tt/types";
 import { MEMBERSHIP_ROLE_TYPES } from "@dust-tt/types";
 import { useRouter } from "next/router";
 

@@ -3,7 +3,6 @@ import type {
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { UserType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import React from "react";
 
