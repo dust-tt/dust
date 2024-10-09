@@ -188,7 +188,7 @@ module.exports = {
         // "card-foreground": "hsl(var(--card-foreground))",
         // popover: "hsl(var(--popover))",
         // "popover-foreground": "hsl(var(--popover-foreground))",
-        ring: { DEFAULT: colors.slate[700], dark: colors.slate[300] },
+        ring: { DEFAULT: colors.blue[300], dark: colors.slate[700] },
         border: {
           DEFAULT: colors.slate[100],
           dark: colors.slate[900],

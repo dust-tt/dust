@@ -16,7 +16,7 @@ import { classNames, cn } from "@sparkle/lib/utils";
 
 // Existing button variants
 const buttonVariants = cva(
-  "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors s-duration-200 focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 disabled:s-pointer-events-none",
+  "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-transition-colors s-duration-200 focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 disabled:s-pointer-events-none",
   {
     variants: {
       variant: {
