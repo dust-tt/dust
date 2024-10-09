@@ -80,7 +80,6 @@ const _webhookSlackInteractionsAPIHandler = async (
     );
     return;
   }
-  console.log(payload);
   for (const action of payload.actions) {
     if (action.action_id === "static_agent_config") {
       const messageId = payload.message.metadata?.event_payload?.message_id;
