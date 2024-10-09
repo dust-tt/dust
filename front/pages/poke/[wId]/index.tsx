@@ -224,13 +224,13 @@ const WorkspacePage = ({
 
           <div className="flex-col justify-center">
             <div className="flex flex-col space-y-8">
-              <div className="flex flex-col space-x-3 lg:flex-row">
+              <div className="mt-4 flex flex-col space-x-3 lg:flex-row">
                 <WorkspaceInfoTable
                   owner={owner}
                   workspaceVerifiedDomain={workspaceVerifiedDomain}
                   worspaceCreationDay={worspaceCreationDay}
                 />
-                <div className="flex-grow">
+                <div className="flex flex-grow flex-col gap-4">
                   <PluginList
                     resourceType="workspaces"
                     workspaceResource={{

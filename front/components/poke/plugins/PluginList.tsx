@@ -22,7 +22,7 @@ function PluginCard({ onClick, plugin }: PluginCardProps) {
       className="flex cursor-pointer hover:bg-gray-100"
       onClick={onClick}
     >
-      <PokeCardHeader>
+      <PokeCardHeader className="space-y-1.5 p-2">
         <PokeCardTitle className="text-sm font-medium">
           {plugin.name}
         </PokeCardTitle>
@@ -57,9 +57,11 @@ export function PluginList({
   };
 
   return (
-    <div className="border-material-200 my-4 flex w-full flex-col gap-2 rounded-lg border p-4">
-      <h2 className="text-md flex-grow pb-4 font-bold">Plugins:</h2>
-      <div className="flex w-full flex-col items-start justify-between gap-3">
+    <div className="border-material-200 flex min-h-48 flex-col rounded-lg border bg-slate-100">
+      <div className="flex justify-between gap-3 rounded-t-lg bg-slate-300 p-4">
+        <h2 className="text-md font-bold">Plugins :</h2>
+      </div>
+      <div className="flex w-full flex-col items-start justify-between gap-3 p-4">
         {plugins.map((plugin) => (
           <PluginCard
             key={plugin.id}

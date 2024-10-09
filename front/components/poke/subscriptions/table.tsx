@@ -109,9 +109,9 @@ export function ActiveSubscriptionTable({
         show={showHistoryModal}
         onClose={() => setShowHistoryModal(false)}
       />
-      <div className="flex flex-col space-y-8 pt-4">
+      <div className="flex flex-col">
         <div className="flex justify-between gap-3">
-          <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
+          <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-md flex-grow pb-4 font-bold">
                 Active Subscription:
@@ -188,7 +188,7 @@ export function ActiveSubscriptionTable({
               </PokeTableBody>
             </PokeTable>
           </div>
-          <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
+          <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
             <h2 className="text-md pb-4 font-bold">Plan limitations:</h2>
             <PokeTable>
               <PokeTableBody>
