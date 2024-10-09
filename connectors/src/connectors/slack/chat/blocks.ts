@@ -17,30 +17,6 @@ export const MAX_SLACK_MESSAGE_LENGTH = 2950;
 export const SLACK_CHOOSE_BOT_HELP_URL =
   "https://docs.dust.tt/docs/slack#calling-an-assistant-in-slack";
 
-function makeConversationLinkContextBlock(conversationUrl: string) {
-  return {
-    type: "context",
-    elements: [
-      {
-        type: "mrkdwn",
-        text: `<${conversationUrl}|Continue conversation on Dust>`,
-      },
-    ],
-  };
-}
-
-export function makeThinkingBlock(thinkingText: string) {
-  return {
-    type: "context",
-    elements: [
-      {
-        type: "mrkdwn",
-        text: `_${thinkingText}_`,
-      },
-    ],
-  };
-}
-
 function makeDividerBlock() {
   return {
     type: "divider",
@@ -82,7 +58,8 @@ function makeFootnotesBlock(footnotes: SlackMessageFootnotes) {
 function makeContextSectionBlocks(
   isComplete: boolean,
   conversationUrl: string | null,
-  footnotes: SlackMessageFootnotes | undefined
+  footnotes: SlackMessageFootnotes | undefined,
+  workspaceId: string
 ) {
   const blocks = [];
 
@@ -93,10 +70,12 @@ function makeContextSectionBlocks(
     }
   }
 
+  blocks.push(makeFooterBlock(conversationUrl, workspaceId));
+
   // Bundle the conversation url in the context.
-  if (conversationUrl && isComplete) {
-    blocks.push(makeConversationLinkContextBlock(conversationUrl));
-  }
+  // if (conversationUrl && isComplete) {
+  //   blocks.push(makeConversationLinkContextBlock(conversationUrl));
+  // }
 
   const resultBlocks = blocks.length ? [makeDividerBlock(), ...blocks] : [];
 
@@ -104,65 +83,58 @@ function makeContextSectionBlocks(
 }
 
 function makeAssistantSelectionBlock(
-  agentConfigurations?: LightAgentConfigurationType[]
+  assistantName: string,
+  agentConfigurations: LightAgentConfigurationType[],
+  isThinking: boolean,
+  thinkingText: string
 ) {
-  return agentConfigurations
+  return assistantName
     ? [
         {
-          type: "actions",
-          block_id: "agentConfigId",
-          elements: [
-            {
-              type: "static_select",
-              placeholder: {
-                type: "plain_text",
-                text: "Switch to another assistant",
-                emoji: true,
-              },
-              options: agentConfigurations.map((ac) => {
-                return {
-                  text: {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: isThinking
+              ? `@${assistantName}: _${thinkingText}_`
+              : `@${assistantName}`,
+          },
+          accessory:
+            agentConfigurations && agentConfigurations.length > 0
+              ? {
+                  type: "static_select",
+                  placeholder: {
                     type: "plain_text",
-                    text: ac.name,
+                    text: "Switch to another assistant",
+                    emoji: true,
                   },
-                  value: ac.sId,
-                };
-              }),
-              action_id: STATIC_AGENT_CONFIG,
-            },
-          ],
+                  options: agentConfigurations.map((ac) => {
+                    return {
+                      text: {
+                        type: "plain_text",
+                        text: ac.name,
+                      },
+                      value: ac.sId,
+                    };
+                  }),
+                  action_id: STATIC_AGENT_CONFIG,
+                }
+              : undefined,
         },
       ]
     : [];
 }
 
-export type SlackMessageUpdate =
-  | {
-      isComplete: false;
-      isThinking: true;
-      text?: string;
-      action?: string;
-      footnotes?: never;
-      agentConfigurations?: never;
-    }
-  | {
-      isComplete: false;
-      isThinking?: never;
-      text: string;
-      action?: never;
-      footnotes: SlackMessageFootnotes;
-      agentConfigurations?: never;
-    }
-  | {
-      isComplete: true;
-      isThinking?: never;
-      text: string;
-      action?: never;
-      footnotes: SlackMessageFootnotes;
-      agentConfigurations?: LightAgentConfigurationType[];
-    };
+export type SlackMessageUpdate = {
+  isComplete: boolean;
+  isThinking?: boolean;
+  thinkingAction?: string;
+  assistantName: string;
+  agentConfigurations: LightAgentConfigurationType[];
+  text?: string;
+  footnotes?: SlackMessageFootnotes;
+};
 
-export function makeHeaderBlock(
+export function makeFooterBlock(
   conversationUrl: string | null,
   workspaceId: string
 ) {
@@ -184,35 +156,43 @@ export function makeHeaderBlock(
 export function makeMessageUpdateBlocksAndText(
   conversationUrl: string | null,
   workspaceId: string,
-  messageUpdate: SlackMessageUpdate,
-  assistantName?: string
+  messageUpdate: SlackMessageUpdate
 ) {
   const {
     isComplete,
     isThinking,
+    thinkingAction,
+    assistantName,
+    agentConfigurations,
     text,
     footnotes,
-    action,
-    agentConfigurations,
   } = messageUpdate;
-  const thinkingText = assistantName
-    ? `@${assistantName} is thinking...`
-    : "Thinking...";
-  const thinkingTextWithAction = action
-    ? `${thinkingText}... (${action})`
+  const thinkingText = "is thinking...";
+  const thinkingTextWithAction = thinkingAction
+    ? `${thinkingText}... (${thinkingAction})`
     : thinkingText;
 
   return {
     blocks: [
-      makeHeaderBlock(conversationUrl, workspaceId),
-      ...(isThinking ? [makeThinkingBlock(thinkingTextWithAction)] : []),
+      ...makeAssistantSelectionBlock(
+        assistantName,
+        agentConfigurations,
+        isThinking ?? false,
+        thinkingTextWithAction
+      ),
       ...makeMarkdownBlock(text),
-      ...makeContextSectionBlocks(isComplete, conversationUrl, footnotes),
-      ...makeAssistantSelectionBlock(agentConfigurations),
+      ...makeContextSectionBlocks(
+        isComplete,
+        conversationUrl,
+        footnotes,
+        workspaceId
+      ),
     ],
     // TODO(2024-06-17 flav) We should not return markdown here.
     // Provide plain text for places where the content cannot be rendered (e.g push notifications).
-    text: isThinking ? thinkingText : truncate(text, MAX_SLACK_MESSAGE_LENGTH),
+    text: isThinking
+      ? thinkingText
+      : text && truncate(text, MAX_SLACK_MESSAGE_LENGTH),
     mrkdwn: true,
     unfurl_links: false,
   };
@@ -225,7 +205,6 @@ export function makeErrorBlock(
 ) {
   return {
     blocks: [
-      makeHeaderBlock(conversationUrl, workspaceId),
       {
         type: "section",
         text: {
@@ -233,6 +212,8 @@ export function makeErrorBlock(
           text: errorMessage,
         },
       },
+      makeDividerBlock(),
+      makeFooterBlock(conversationUrl, workspaceId),
     ],
     mrkdwn: true,
     unfurl_links: false,

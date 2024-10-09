@@ -7,7 +7,7 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
+import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/types";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import slackifyMarkdown from "slackify-markdown";
 
@@ -21,17 +21,8 @@ import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-const actionRunningLabels: Record<AgentActionType["type"], string> = {
-  dust_app_run_action: "Running App",
-  process_action: "Extracting data",
-  retrieval_action: "Searching data",
-  tables_query_action: "Querying tables",
-  websearch_action: "Searching the web",
-  browse_action: "Browsing page",
-};
-
 interface StreamConversationToSlackParams {
-  assistantName: string | undefined;
+  assistantName: string;
   connector: ConnectorResource;
   conversation: ConversationType;
   mainMessage: ChatPostMessageResponse;
@@ -41,7 +32,7 @@ interface StreamConversationToSlackParams {
     slackMessageTs: string;
   };
   userMessage: UserMessageType;
-  agentConfigurations?: LightAgentConfigurationType[];
+  agentConfigurations: LightAgentConfigurationType[];
 }
 
 // Adding linear backoff mechanism.
@@ -88,8 +79,7 @@ export async function streamConversationToSlack(
       ...makeMessageUpdateBlocksAndText(
         conversationUrl,
         connector.workspaceId,
-        messageUpdate,
-        assistantName
+        messageUpdate
       ),
       channel: slackChannelId,
       thread_ts: slackMessageTs,
@@ -114,7 +104,7 @@ export async function streamConversationToSlack(
 
   // Immediately post the conversation URL once available.
   await postSlackMessageUpdate(
-    { isComplete: false, isThinking: true },
+    { isComplete: false, isThinking: true, assistantName, agentConfigurations },
     { adhereToRateLimit: false }
   );
 
@@ -144,8 +134,7 @@ export async function streamConversationToSlack(
     return new Err(new Error(streamRes.error.message));
   }
 
-  const botIdentity = assistantName ? `@${assistantName}:\n` : "";
-  let answer = botIdentity;
+  let answer = "";
   const actions: AgentActionType[] = [];
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
@@ -161,8 +150,10 @@ export async function streamConversationToSlack(
           {
             isComplete: false,
             isThinking: true,
+            assistantName,
+            agentConfigurations,
             text: answer,
-            action: actionRunningLabels[event.action.type],
+            thinkingAction: ACTION_RUNNING_LABELS[event.action.type],
           },
           { adhereToRateLimit: false }
         );
@@ -221,13 +212,15 @@ export async function streamConversationToSlack(
         await postSlackMessageUpdate({
           isComplete: false,
           text: slackContent,
+          assistantName,
+          agentConfigurations,
           footnotes,
         });
         break;
       }
 
       case "agent_message_success": {
-        const finalAnswer = `${botIdentity}${event.message.content}`;
+        const finalAnswer = event.message.content ?? "";
         const actions = event.message.actions;
         const { formattedContent, footnotes } = annotateCitations(
           finalAnswer,
@@ -241,8 +234,9 @@ export async function streamConversationToSlack(
           {
             isComplete: true,
             text: slackContent,
-            footnotes,
+            assistantName,
             agentConfigurations,
+            footnotes,
           },
           { adhereToRateLimit: false }
         );
