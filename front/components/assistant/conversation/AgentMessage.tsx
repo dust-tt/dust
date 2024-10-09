@@ -7,8 +7,8 @@ import {
   ClipboardIcon,
   ContentMessage,
   DocumentDuplicateIcon,
-  DropdownMenu,
   EyeIcon,
+  Popover,
 } from "@dust-tt/sparkle";
 import type {
   AgentActionSpecificEvent,
@@ -664,36 +664,34 @@ function ErrorMessage({
           label={"ERROR: " + shortText(error.message)}
           size="xs"
         />
-        <DropdownMenu>
-          <DropdownMenu.Button>
+        <Popover
+          trigger={
             <Button
               variant="tertiary"
               size="xs"
               icon={EyeIcon}
               label="See the error"
             />
-          </DropdownMenu.Button>
-          <div className="relative bottom-6 z-30">
-            <DropdownMenu.Items origin="topLeft" width={320}>
-              <div className="flex flex-col gap-3">
-                <div className="text-sm font-normal text-warning-800">
-                  {fullMessage}
-                </div>
-                <div className="self-end">
-                  <Button
-                    variant="tertiary"
-                    size="xs"
-                    icon={DocumentDuplicateIcon}
-                    label={"Copy"}
-                    onClick={() =>
-                      void navigator.clipboard.writeText(fullMessage)
-                    }
-                  />
-                </div>
+          }
+          content={
+            <div className="flex flex-col gap-3">
+              <div className="text-sm font-normal text-warning-800">
+                {fullMessage}
               </div>
-            </DropdownMenu.Items>
-          </div>
-        </DropdownMenu>
+              <div className="self-end">
+                <Button
+                  variant="tertiary"
+                  size="xs"
+                  icon={DocumentDuplicateIcon}
+                  label={"Copy"}
+                  onClick={() =>
+                    void navigator.clipboard.writeText(fullMessage)
+                  }
+                />
+              </div>
+            </div>
+          }
+        />
       </div>
       <div>
         <Button

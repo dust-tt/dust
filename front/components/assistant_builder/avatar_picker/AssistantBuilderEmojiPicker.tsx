@@ -3,10 +3,10 @@ import {
   avatarUtils,
   Button,
   ColorPicker,
-  DropdownMenu,
   EmojiPicker,
   EmotionLaughIcon,
   PaintIcon,
+  Popover,
 } from "@dust-tt/sparkle";
 import { generateTailwindBackgroundColors } from "@dust-tt/types";
 import React, { useEffect } from "react";
@@ -79,17 +79,16 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
         size="xxl"
       />
       <div className="flex flex-row gap-2">
-        <DropdownMenu>
-          <DropdownMenu.Button>
-            <div ref={emojiButtonRef}>
-              <Button
-                variant="tertiary"
-                icon={EmotionLaughIcon}
-                label="Pick an Emoji"
-              />
-            </div>
-          </DropdownMenu.Button>
-          <DropdownMenu.Items width={350} origin="topLeft" variant="no-padding">
+        <Popover
+          fullWidth
+          trigger={
+            <Button
+              variant="tertiary"
+              icon={EmotionLaughIcon}
+              label="Pick an Emoji"
+            />
+          }
+          content={
             <EmojiPicker
               theme="light"
               previewPosition="none"
@@ -103,10 +102,11 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
                 emojiButtonRef.current?.click();
               }}
             />
-          </DropdownMenu.Items>
-        </DropdownMenu>
-        <DropdownMenu>
-          <DropdownMenu.Button>
+          }
+        />
+        <Popover
+          fullWidth
+          trigger={
             <div ref={colorButtonRef}>
               <Button
                 variant="tertiary"
@@ -114,25 +114,23 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
                 label="Pick a color"
               />
             </div>
-          </DropdownMenu.Button>
-          <DropdownMenu.Items width={240} origin="topLeft" variant="no-padding">
+          }
+          content={
             <ColorPicker
               colors={
                 generateTailwindBackgroundColors() as avatarUtils.AvatarBackgroundColorType[]
               }
               onColorSelect={(color) => {
                 setSelectedBgColor(color);
-
                 // We only mark as stale if an emoji has been selected.
                 if (selectedEmoji) {
                   onChange();
                 }
-
                 colorButtonRef.current?.click();
               }}
             />
-          </DropdownMenu.Items>
-        </DropdownMenu>
+          }
+        />
       </div>
     </div>
   );

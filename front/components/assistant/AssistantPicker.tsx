@@ -56,6 +56,7 @@ export function AssistantPicker({
   };
 
   return (
+    // TODO(2024-10-09 jules): use Popover when new Button has been released
     <DropdownMenu>
       {({ close }) => (
         <>
