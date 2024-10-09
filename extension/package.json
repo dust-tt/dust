@@ -4,9 +4,9 @@
   "description": "Dust Chrome Extension",
   "scripts": {
     "clean": "rm -rf build/*",
-    "dev": "NODE_ENV=development npm run clean && tsx run/watch.ts --mode=development",
-    "analyze": "NODE_ENV=production tsx run/build.ts --analyze",
-    "build": "NODE_ENV=production tsx run/build.ts",
+    "dev": "npm run clean && tsx run/watch.ts --mode=development",
+    "analyze": "tsx run/build.ts --analyze",
+    "build": "tsx run/build.ts",
     "lint": "eslint app"
   },
   "author": "@dust-tt",
@@ -27,6 +27,7 @@
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-react": "^7.37.1",
     "eslint-plugin-simple-import-sort": "^12.1.1",
+    "dotenv-webpack": "^8.1.0",
     "postcss": "^8.4.47",
     "postcss-loader": "^8.1.1",
     "prettier": "^3.3.3",

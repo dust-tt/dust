@@ -1,5 +1,8 @@
 .DS_Store
 .idea/
 
+.env.development
+.env.production
+
 node_modules/
 build/*
