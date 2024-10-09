@@ -42,7 +42,7 @@ impl Provider for ZendeskConnectionProvider {
             "client_id": *OAUTH_ZENDESK_CLIENT_ID,
             "client_secret": *OAUTH_ZENDESK_CLIENT_SECRET,
             "redirect_uri": redirect_uri,
-            "scope": "read"
+            "scope": "tickets:read hc:read"
         });
 
         let req = reqwest::Client::new()
