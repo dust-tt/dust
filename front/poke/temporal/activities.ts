@@ -8,6 +8,8 @@ import { hardDeleteApp } from "@app/lib/api/apps";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteVault } from "@app/lib/api/vaults";
+import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -56,7 +58,10 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { Provider } from "@app/lib/resources/storage/models/apps";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+
+const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
 export async function scrubDataSourceActivity({
   dataSourceId,
@@ -70,7 +75,7 @@ export async function scrubDataSourceActivity({
     includeDeleted: true,
   });
   if (!dataSource) {
-    logger.info(
+    hardDeleteLogger.info(
       { dataSource: { sId: dataSourceId } },
       "Data source not found."
     );
@@ -80,7 +85,7 @@ export async function scrubDataSourceActivity({
 
   // Ensure the data source has been soft deleted.
   if (!dataSource.deletedAt) {
-    logger.info(
+    hardDeleteLogger.info(
       { dataSource: { sId: dataSourceId } },
       "Data source is not soft deleted."
     );
@@ -149,6 +154,8 @@ export async function scrubVaultActivity({
     });
   }
 
+  hardDeleteLogger.info({ vault: vault.sId }, "Deleting vault");
+
   await hardDeleteVault(auth, vault);
 }
 
@@ -158,28 +165,9 @@ export async function isWorkflowDeletableActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const workspace = auth.workspace();
-  if (!workspace) {
-    return false;
-  }
+  const workspace = await auth.getNonNullableWorkspace();
 
-  // Workspace must have no data sources.
-  if (
-    (await DataSourceResource.listByWorkspace(auth, { limit: 1 })).length > 0
-  ) {
-    return false;
-  }
-
-  // For now we don't support deleting workspaces who had a paid subscription at some point.
-  const subscriptions = await Subscription.findAll({
-    where: {
-      workspaceId: workspace.id,
-      stripeSubscriptionId: {
-        [Op.not]: null,
-      },
-    },
-  });
-  return subscriptions.length === 0;
+  return areAllSubscriptionsCanceled(renderLightWorkspaceType({ workspace }));
 }
 
 export async function deleteConversationsActivity({
@@ -309,7 +297,14 @@ export async function deleteConversationsActivity({
               where: { conversationId: c.id },
               transaction: t,
             });
-            logger.info(`[Workspace delete] Deleting conversation ${c.sId}`);
+
+            hardDeleteLogger.info(
+              {
+                conversationId: c.sId,
+              },
+              "Deleting conversation"
+            );
+
             await c.destroy({ transaction: t });
           })();
         })
@@ -422,7 +417,7 @@ export async function deleteAgentsActivity({
         },
         transaction: t,
       });
-      logger.info(`[Workspace delete] Deleting agent ${agent.sId}`);
+      hardDeleteLogger.info({ agentId: agent.sId }, "Deleting agent");
       await agent.destroy({ transaction: t });
     }
   });
@@ -462,7 +457,7 @@ export async function deleteRunOnDustAppsActivity({
 }: {
   workspaceId: string;
 }) {
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), hardDeleteLogger);
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.workspace();
 
@@ -543,16 +538,26 @@ export async function deleteMembersActivity({
             },
             transaction: t,
           });
-          logger.info(
-            `[Workspace delete] Deleting Membership ${membership.id} and user ${user.id}`
+          hardDeleteLogger.info(
+            {
+              membershipId: membership.id,
+              userId: user.sId,
+            },
+            "Deleting Membership and user"
           );
-          // Delete the user's files
+
+          // Delete the user's files.
           await FileResource.deleteAllForUser(user.toJSON(), t);
           await membership.delete(auth, { transaction: t });
           await user.delete(auth, { transaction: t });
         }
       } else {
-        logger.info(`[Workspace delete] Deleting Membership ${membership.id}`);
+        hardDeleteLogger.info(
+          {
+            membershipId: membership.id,
+          },
+          "Deleting Membership"
+        );
         await membership.delete(auth, { transaction: t });
       }
     }
@@ -580,8 +585,11 @@ export async function deleteWorkspaceActivity({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const workspace = auth.getNonNullableWorkspace();
+  // TODO(2024-10-08 flav) Fix auth issue when global group has already been deleted.
+  // We can't use Authenticator as all groups have already been deleted.
+  // In the interim use `getWorkspaceInfos` to get the workspace.
+  const workspace = await getWorkspaceInfos(workspaceId);
+  assert(workspace, "Workspace not found.");
 
   await frontSequelize.transaction(async (t) => {
     await Subscription.destroy({
@@ -591,7 +599,9 @@ export async function deleteWorkspaceActivity({
       transaction: t,
     });
     await FileResource.deleteAllForWorkspace(workspace, t);
-    logger.info(`[Workspace delete] Deleting Worskpace ${workspace.sId}`);
+
+    hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
+
     await Workspace.destroy({
       where: {
         id: workspace.id,

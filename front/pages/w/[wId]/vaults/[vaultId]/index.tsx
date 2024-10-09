@@ -14,7 +14,7 @@ import { useVaultInfo } from "@app/lib/swr/vaults";
 import { getVaultIcon, getVaultName } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
-  VaultLayoutProps & { userId?: string }
+  VaultLayoutProps & { userId: string }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
@@ -54,16 +54,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       plan,
       subscription,
       vault: vault.toJSON(),
-      userId: auth.user()?.sId,
+      userId: auth.getNonNullableUser().sId,
     },
   };
 });
 
 export default function Vault({
-  owner,
-  vault,
-  userId,
   isAdmin,
+  owner,
+  userId,
+  vault,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { vaultInfo } = useVaultInfo({
     workspaceId: owner.sId,
@@ -99,6 +99,7 @@ export default function Vault({
           );
         }}
         onButtonClick={() => setShowVaultEditionModal(true)}
+        isAdmin={isAdmin}
       />
       <CreateOrEditVaultModal
         owner={owner}

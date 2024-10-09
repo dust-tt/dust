@@ -122,19 +122,18 @@ async function handler(
     }
 
     case "PATCH": {
-      if (!auth.isAdmin() || !auth.isBuilder()) {
+      if (!auth.isAdmin()) {
         // Only admins, or builders who have access to the vault, can patch
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message:
-              "Only users that are `admins` or `builder` can administrate vaults.",
+            message: "Only admins can administrate vaults.",
           },
         });
       }
-      const bodyValidation = PatchVaultRequestBodySchema.decode(req.body);
 
+      const bodyValidation = PatchVaultRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
 
@@ -203,7 +202,7 @@ async function handler(
 
     case "DELETE": {
       if (!auth.isAdmin()) {
-        // Only admins, who have access to the vault, can delete
+        // Only admins, who have access to the vault, can delete.
         return apiError(req, res, {
           status_code: 403,
           api_error: {

@@ -1,11 +1,20 @@
-import { Citation, Collapsible, TableIcon } from "@dust-tt/sparkle";
+import {
+  Citation,
+  Collapsible,
+  ContentMessage,
+  InformationCircleIcon,
+  TableIcon,
+} from "@dust-tt/sparkle";
 import type { TablesQueryActionType } from "@dust-tt/types";
 import { stringify } from "csv-stringify";
 import { useCallback, useContext } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import { CodeBlock } from "@app/components/assistant/RenderMessageMarkdown";
+import {
+  CodeBlock,
+  RenderMessageMarkdown,
+} from "@app/components/assistant/RenderMessageMarkdown";
 import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
@@ -20,12 +29,8 @@ export function TablesQueryActionDetails({
       visual={TableIcon}
     >
       <div className="flex flex-col gap-1 gap-4 pl-6 pt-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-bold text-slate-900">Query</span>
-          <div className="text-sm font-normal text-slate-500">
-            <TablesQuery action={action} />
-          </div>
-        </div>
+        <QueryThinking action={action} />
+        <TablesQuery action={action} />
         <div>
           <Collapsible defaultOpen={defaultOpen}>
             <Collapsible.Button>
@@ -51,14 +56,49 @@ function TablesQuery({ action }: { action: TablesQueryActionType }) {
   }
 
   return (
-    <ContentBlockWrapper content={query}>
-      <CodeBlock
-        className="language-sql max-h-60 overflow-y-auto"
-        wrapLongLines={true}
-      >
-        {query}
-      </CodeBlock>
-    </ContentBlockWrapper>
+    <div className="flex flex-col gap-1">
+      <span className="text-sm font-bold text-slate-900">Query</span>
+      <div className="text-sm font-normal text-slate-500">
+        <ContentBlockWrapper content={query}>
+          <CodeBlock
+            className="language-sql max-h-60 overflow-y-auto"
+            wrapLongLines={true}
+          >
+            {query}
+          </CodeBlock>
+        </ContentBlockWrapper>
+      </div>
+    </div>
+  );
+}
+
+function QueryThinking({ action }: { action: TablesQueryActionType }) {
+  const { output } = action;
+  const thinking =
+    typeof output?.thinking === "string" ? output.thinking : null;
+  if (!thinking) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-sm font-bold text-slate-900">Reasoning</span>
+      <div className="text-sm font-normal text-slate-500">
+        <ContentMessage
+          title="Reasoning"
+          variant="purple"
+          icon={InformationCircleIcon}
+          size="lg"
+        >
+          <RenderMessageMarkdown
+            content={thinking}
+            isStreaming={false}
+            textSize="sm"
+            textColor="purple-800"
+          />
+        </ContentMessage>
+      </div>
+    </div>
   );
 }
 

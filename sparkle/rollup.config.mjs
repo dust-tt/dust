@@ -29,6 +29,13 @@ const config = {
       name: "react-lib",
     },
   ],
+  onwarn(warning, warn) {
+    // This is to ignore "use client" directive in radix modules
+    if (warning.code === "MODULE_LEVEL_DIRECTIVE") {
+      return;
+    }
+    warn(warning);
+  },
   plugins: [
     external(),
     resolve(),
