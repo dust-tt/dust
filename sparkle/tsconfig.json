@@ -25,5 +25,5 @@
     "declarationMap": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", "dist", "src/index_with_tw_base"]
+  "exclude": ["node_modules", "dist"]
 }
