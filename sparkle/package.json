@@ -21,7 +21,8 @@
     "src/"
   ],
   "sideEffects": [
-    "src/index_with_tw_base.ts"
+    "src/index_with_tw_base.ts",
+    "*.css"
   ],
   "devDependencies": {
     "@babel/core": "^7.22.9",
