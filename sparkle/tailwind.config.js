@@ -178,9 +178,18 @@ module.exports = {
           DEFAULT: colors.slate[200],
           dark: colors.slate[800],
         },
-        background: { DEFAULT: colors.white, dark: colors.slate[950] },
-        foreground: { DEFAULT: colors.slate[950], dark: colors.white },
-        muted: { DEFAULT: colors.slate[50], dark: colors.slate[900] },
+        background: {
+          DEFAULT: colors.white,
+          dark: colors.slate[950]
+        },
+        foreground: {
+          DEFAULT: colors.slate[950],
+          dark: colors.white
+        },
+        muted: {
+          DEFAULT: colors.slate[50],
+          dark: colors.slate[900]
+        },
         "muted-foreground": {
           DEFAULT: colors.slate[500],
           dark: colors.slate[500],

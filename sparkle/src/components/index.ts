@@ -52,6 +52,7 @@ export { Notification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";
+export { Popover, PopoverContent, PopoverRoot, PopoverTrigger } from "./Popover";
 export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioButton } from "./RadioButton";
