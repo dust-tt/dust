@@ -14,6 +14,23 @@ export { ColorPicker } from "./ColorPicker";
 export { default as ConfettiBackground } from "./ConfettiBackground";
 export { ContentMessage } from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
+export {
+  ContextMenu,
+  ContextMenuCheckboxItem,
+  ContextMenuContent,
+  ContextMenuGroup,
+  ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuPortal,
+  ContextMenuRadioGroup,
+  ContextMenuRadioItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "./ContextMenu";
 export { DataTable } from "./DataTable";
 export { Dialog } from "./Dialog";
 export { DropdownMenu } from "./DropdownMenu";
@@ -29,20 +46,46 @@ export { IconButton } from "./IconButton";
 export { IconToggleButton } from "./IconToggleButton";
 export { Input } from "./Input";
 export { Item } from "./Item";
+export { Label } from "./Label";
 export { Markdown } from "./Markdown";
 export { Modal } from "./Modal";
+export { NewButton, NewButtonBar } from "./NewButton";
+export { NewCheckbox } from "./NewCheckbox";
+export {
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuLabel,
+  NewDropdownMenuSeparator,
+  NewDropdownMenuTrigger,
+} from "./NewDropdown";
+export { NewInput } from "./NewInput";
+export {
+  NewNavigationList,
+  NewNavigationListItem,
+  NewNavigationListLabel,
+} from "./NewNavigationList";
+export { NewSearchInput } from "./NewSearchInput";
 export { Notification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";
+export { Popover, PopoverContent, PopoverTrigger } from "./Popover";
 export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioButton } from "./RadioButton";
+export {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "./Resizable";
+export { ScrollArea } from "./ScrollArea";
 export { Searchbar } from "./Searchbar";
 export { Separator } from "./Separator";
 export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
 export { Tab } from "./Tab";
+export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { TextArea } from "./TextArea";
 export {
   Tooltip,
