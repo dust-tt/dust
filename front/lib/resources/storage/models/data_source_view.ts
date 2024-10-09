@@ -73,6 +73,7 @@ DataSourceViewModel.init(
       {
         fields: ["workspaceId", "dataSourceId", "vaultId", "deletedAt"],
         unique: true,
+        name: "data_source_view_workspace_data_source_vault_deleted_at_unique",
       },
     ],
   }
