@@ -87,6 +87,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   let pageCount = 0;
+  let totalExtracted = 0;
   let crawlingError = 0;
   let upsertingError = 0;
   const createdFolders = new Set<string>();
@@ -227,6 +228,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           ])
           .turndown($.html());
 
+        totalExtracted += extracted.length;
         const pageTitle = $("title").text();
 
         const folders = getAllFoldersForUrl(request.url);
@@ -372,10 +374,13 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   // checks for cancellation and throws if it's the case
   await Context.current().sleep(1);
 
-  if (pageCount > 0) {
-    await syncSucceeded(connector.id);
-  } else {
+  if (pageCount <= 0) {
     await syncFailed(connector.id, "webcrawling_error");
+  } else if (totalExtracted <= 0) {
+    // TODO: choose a different error type for this case
+    await syncFailed(connector.id, "webcrawling_error");
+  } else {
+    await syncSucceeded(connector.id);
   }
   if (upsertingError > 0) {
     throw new Error(
