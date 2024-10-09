@@ -33,7 +33,9 @@ const safeColorsArray = [
 const safeColorlist = safeColorsArray.flatMap((color) => [
   // Whitelist all bg colors from shade 100 t0 800.
   ...Array.from({ length: 8 }, (_, i) => `s-bg-${color}-${(i + 1) * 100}`),
+  `s-border-${color}-100`,
   `s-border-${color}-200`,
+  `s-border-${color}-300`,
   `s-text-${color}-800`,
   `s-text-${color}-900`,
   `s-text-${color}-950`,
@@ -71,6 +73,14 @@ module.exports = {
         ...theme("spacing"),
       }),
       keyframes: {
+        pulse: {
+          "0%, 100%": { boxShadow: "0 0 0 0 var(--pulse-color)" },
+          "50%": { boxShadow: "0 0 0 6px var(--pulse-color)" },
+        },
+        "background-position-spin": {
+          "0%": { backgroundPosition: "top center" },
+          "100%": { backgroundPosition: "bottom center" },
+        },
         "move-square": {
           "0%": {
             paddingLeft: "0",
@@ -147,6 +157,9 @@ module.exports = {
         },
       },
       animation: {
+        pulse: "pulse var(--duration) ease-out infinite",
+        "background-position-spin":
+          "background-position-spin 2000ms infinite alternate",
         breathing: "breathing 3s infinite ease-in-out",
         "breathing-scale": "breathing-scale 3s infinite ease-in-out",
         "move-square": "move-square 3s ease-out infinite",
@@ -157,6 +170,21 @@ module.exports = {
           dark: colors.emerald[500],
         },
         separator: { DEFAULT: colors.slate[200], dark: colors.slate[800] },
+        border: {
+          DEFAULT: colors.slate[100],
+          dark: colors.slate[900],
+        },
+        "border-dark": {
+          DEFAULT: colors.slate[200],
+          dark: colors.slate[800],
+        },
+        background: { DEFAULT: colors.white, dark: colors.slate[950] },
+        foreground: { DEFAULT: colors.slate[950], dark: colors.white },
+        muted: { DEFAULT: colors.slate[50], dark: colors.slate[900] },
+        "muted-foreground": {
+          DEFAULT: colors.slate[500],
+          dark: colors.slate[500],
+        },
         action: {
           950: { DEFAULT: colors.blue[950], dark: colors.blue[50] },
           900: { DEFAULT: colors.blue[900], dark: colors.blue[100] },
@@ -165,10 +193,36 @@ module.exports = {
           600: { DEFAULT: colors.blue[600], dark: colors.blue[400] },
           500: { DEFAULT: colors.blue[500], dark: colors.blue[500] },
           400: { DEFAULT: colors.blue[400], dark: colors.blue[600] },
-          200: { DEFAULT: colors.blue[200], dark: colors.blue[800] },
           300: { DEFAULT: colors.blue[300], dark: colors.blue[700] },
+          200: { DEFAULT: colors.blue[200], dark: colors.blue[800] },
           100: { DEFAULT: colors.blue[100], dark: colors.blue[900] },
           50: { DEFAULT: colors.blue[50], dark: colors.blue[950] },
+        },
+        highlight: {
+          950: { DEFAULT: colors.blue[950], dark: colors.blue[50] },
+          900: { DEFAULT: colors.blue[900], dark: colors.blue[100] },
+          800: { DEFAULT: colors.blue[800], dark: colors.blue[200] },
+          700: { DEFAULT: colors.blue[700], dark: colors.blue[300] },
+          600: { DEFAULT: colors.blue[600], dark: colors.blue[400] },
+          500: { DEFAULT: colors.blue[500], dark: colors.blue[500] },
+          400: { DEFAULT: colors.blue[400], dark: colors.blue[600] },
+          300: { DEFAULT: colors.blue[300], dark: colors.blue[700] },
+          200: { DEFAULT: colors.blue[200], dark: colors.blue[800] },
+          100: { DEFAULT: colors.blue[100], dark: colors.blue[900] },
+          50: { DEFAULT: colors.blue[50], dark: colors.blue[950] },
+        },
+        primary: {
+          950: { DEFAULT: colors.slate[950], dark: colors.slate[50] },
+          900: { DEFAULT: colors.slate[900], dark: colors.slate[100] },
+          800: { DEFAULT: colors.slate[800], dark: colors.slate[200] },
+          700: { DEFAULT: colors.slate[700], dark: colors.slate[300] },
+          600: { DEFAULT: colors.slate[600], dark: colors.slate[400] },
+          500: { DEFAULT: colors.slate[500], dark: colors.slate[500] },
+          400: { DEFAULT: colors.slate[400], dark: colors.slate[600] },
+          300: { DEFAULT: colors.slate[300], dark: colors.slate[700] },
+          200: { DEFAULT: colors.slate[200], dark: colors.slate[800] },
+          100: { DEFAULT: colors.slate[100], dark: colors.slate[900] },
+          50: { DEFAULT: colors.slate[50], dark: colors.slate[950] },
         },
         warning: {
           500: { DEFAULT: colors.red[500], dark: colors.red[500] },
@@ -217,7 +271,8 @@ module.exports = {
           300: { DEFAULT: colors.slate[300], dark: colors.slate[600] },
         },
         element: {
-          900: { DEFAULT: colors.slate[900], dark: colors.slate[50] },
+          950: { DEFAULT: colors.slate[950], dark: colors.slate[50] },
+          900: { DEFAULT: colors.slate[900], dark: colors.slate[100] },
           800: { DEFAULT: colors.slate[700], dark: colors.slate[200] },
           700: { DEFAULT: colors.slate[500], dark: colors.slate[300] },
           600: { DEFAULT: colors.slate[400], dark: colors.slate[400] },

@@ -31,6 +31,23 @@ export { Input } from "./Input";
 export { Item } from "./Item";
 export { Markdown } from "./Markdown";
 export { Modal } from "./Modal";
+export {
+  NewDropdownMenu,
+  NewDropdownMenuCheckboxItem,
+  NewDropdownMenuContent,
+  NewDropdownMenuGroup,
+  NewDropdownMenuItem,
+  NewDropdownMenuLabel,
+  NewDropdownMenuPortal,
+  NewDropdownMenuRadioGroup,
+  NewDropdownMenuRadioItem,
+  NewDropdownMenuSeparator,
+  NewDropdownMenuShortcut,
+  NewDropdownMenuSub,
+  NewDropdownMenuSubContent,
+  NewDropdownMenuSubTrigger,
+  NewDropdownMenuTrigger,
+} from "./NewDropdown";
 export { Notification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
