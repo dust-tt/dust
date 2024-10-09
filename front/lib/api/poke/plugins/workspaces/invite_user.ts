@@ -45,11 +45,17 @@ export const sendWelcomeEmail = createPlugin(
       invitationRequests: [args],
     });
 
+    console.log(">> invitationReS:", invitationRes);
+
     if (invitationRes.isErr()) {
       return new Err(new Error(invitationRes.error.api_error.message));
     }
 
     const [result] = invitationRes.value;
+
+    if (!result.success) {
+      return new Err(new Error(result.error_message));
+    }
 
     return new Ok(`Invitation sent to ${result.email}.`);
   }
