@@ -3,8 +3,8 @@ import React, { forwardRef } from "react";
 import { classNames } from "@sparkle/lib/utils";
 
 const sizeInputClasses = {
-  sm: "s-text-base s-rounded-md s-py-1.5 s-pl-4 s-pr-8",
-  md: "s-text-lg s-rounded-lg s-py-2 s-pl-4 s-pr-10",
+  sm: "s-text-base s-rounded-xl s-py-1.5 s-pl-4 s-pr-8",
+  md: "s-text-lg s-rounded-2xl s-py-2 s-pl-4 s-pr-10",
 };
 
 type InputProps = {

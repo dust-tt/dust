@@ -7,9 +7,9 @@ import { classNames } from "@sparkle/lib/utils";
 import { IconButton } from "./IconButton";
 
 const sizeClasses = {
-  xs: "s-text-xs s-h-[26px] s-pl-3 s-pr-6 s-pt-1.5",
-  sm: "s-text-sm s-h-[34px] s-pl-4 s-pr-8 s-pt-1.5",
-  md: "s-text-base s-h-[46px] s-pl-6 s-pr-10 s-pt-1.5",
+  xs: "s-text-xs s-h-[26px] s-pl-3 s-pr-6 s-pt-1.5 s-rounded-lg",
+  sm: "s-text-sm s-h-[34px] s-pl-4 s-pr-8 s-pt-1.5 s-rounded-xl",
+  md: "s-text-base s-h-[46px] s-pl-6 s-pr-10 s-pt-1.5 s-rounded-2xl",
 };
 const iconClasses = {
   xs: "s-pr-2",
@@ -55,7 +55,7 @@ export const Searchbar = forwardRef<HTMLInputElement, SearchbarProps>(
           ref={ref}
           className={classNames(
             "s-border-0 s-outline-none s-ring-1 s-ring-structure-200 focus:s-outline-none focus:s-ring-2",
-            "s-w-full s-rounded-full s-bg-structure-50 s-font-normal s-placeholder-element-600",
+            "s-w-full s-bg-structure-50 s-font-normal s-placeholder-element-600",
             "s-ring-structure-200 focus:s-ring-action-300",
             "dark:s-ring-structure-300-dark dark:focus:s-ring-action-300-dark",
             "s-transition-all s-duration-300 s-ease-out",
