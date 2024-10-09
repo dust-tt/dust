@@ -18,7 +18,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   members: UserTypeWithWorkspaces[];
   pendingInvitations: MembershipInvitationType[];
   owner: WorkspaceType;
-  user: UserType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const user = auth.user();
@@ -39,7 +38,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       members,
       pendingInvitations,
       owner,
-      user,
     },
   };
 });
@@ -48,7 +46,6 @@ const MembershipsPage = ({
   members,
   pendingInvitations,
   owner,
-  user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   return (
     <div className="min-h-screen bg-structure-50">
@@ -56,7 +53,7 @@ const MembershipsPage = ({
       <div className="flex-grow p-6">
         <h1 className="mb-8 text-2xl font-bold">{owner.name}</h1>
         <div className="flex justify-center">
-          <MembersDataTable members={members} owner={owner} user={user} />
+          <MembersDataTable members={members} owner={owner} />
         </div>
         <div className="flex justify-center">
           <InvitationsDataTable

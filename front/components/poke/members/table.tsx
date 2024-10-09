@@ -9,7 +9,6 @@ import { useRouter } from "next/router";
 
 import type { MemberDisplayType } from "@app/components/poke/members/columns";
 import { makeColumnsForMembers } from "@app/components/poke/members/columns";
-import InviteMemberDialog from "@app/components/poke/members/InviteMemberDialog";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 
 function prepareMembersForDisplay(
@@ -30,14 +29,9 @@ function prepareMembersForDisplay(
 interface MembersDataTableProps {
   members: UserTypeWithWorkspaces[];
   owner: WorkspaceType;
-  user: UserType;
 }
 
-export function MembersDataTable({
-  members,
-  owner,
-  user,
-}: MembersDataTableProps) {
+export function MembersDataTable({ members, owner }: MembersDataTableProps) {
   const router = useRouter();
 
   const onRevokeMember = async (m: MemberDisplayType) => {

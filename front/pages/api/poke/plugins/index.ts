@@ -33,7 +33,16 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const { resourceType } = req.query;
-      // TODO: Add scope validation.
+      if (typeof resourceType !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid resource type.",
+          },
+        });
+      }
+
       const plugins = pluginManager.getPluginsForResourceType(
         resourceType as string
       );

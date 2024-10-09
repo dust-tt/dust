@@ -28,11 +28,6 @@ class PluginManager {
         this.plugins.set(plugin.manifest.id, plugin);
       }
     }
-
-    console.log(`Loaded ${this.plugins.size} plugins`);
-    console.log(
-      `Scopes: ${Object.keys(this.pluginsByResourceType).join(", ")}`
-    );
   }
 
   private isPlugin(obj: any): obj is Plugin<PluginArgs> {
@@ -40,8 +35,6 @@ class PluginManager {
   }
 
   private getResourceTypesFromPlugin(plugin: Plugin<PluginArgs>): string[] {
-    // Assuming the plugin manifest has a 'scope' field
-    // If not, you might need to determine the scope another way
     return plugin.manifest.resourceTypes || ["default"];
   }
 
@@ -51,10 +44,6 @@ class PluginManager {
 
   getPluginById(pluginId: string): Plugin<PluginArgs> | undefined {
     return this.plugins.get(pluginId);
-  }
-
-  getAllPlugins(): Record<string, Plugin<PluginArgs>[]> {
-    return this.pluginsByResourceType;
   }
 }
 
