@@ -5,7 +5,7 @@
   "scripts": {
     "clean": "rm -rf build/*",
     "dev": "NODE_ENV=development npm run clean && tsx run/watch.ts --mode=development",
-    "analyze": "NODE_ENV=development tsx run/build.ts --mode=development --analyze",
+    "analyze": "NODE_ENV=production tsx run/build.ts --analyze",
     "build": "NODE_ENV=production tsx run/build.ts"
   },
   "author": "@dust-tt",
