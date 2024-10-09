@@ -33,7 +33,7 @@ import {
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@dust-tt/types";
-import { useContext, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import AssistantListActions from "@app/components/assistant/AssistantListActions";
@@ -42,10 +42,8 @@ import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
-import { updateAgentScope } from "@app/lib/client/dust_api";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import {
@@ -56,7 +54,7 @@ import {
 import {
   useAgentConfiguration,
   useAgentUsage,
-  useProgressiveAgentConfigurations,
+  useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
 import {
   useDataSourceViewContentNodes,
@@ -75,23 +73,19 @@ export function AssistantDetails({
   onClose,
   owner,
 }: AssistantDetailsProps) {
-  const sendNotification = useContext(SendNotificationsContext);
   const agentUsage = useAgentUsage({
     workspaceId: owner.sId,
     agentConfigurationId: assistantId,
   });
-  const {
-    agentConfiguration,
-    mutateAgentConfiguration: mutateCurrentAgentConfiguration,
-  } = useAgentConfiguration({
+  const { agentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
     agentConfigurationId: assistantId,
   });
-  const { mutate: mutateAgentConfigurations } =
-    useProgressiveAgentConfigurations({
-      workspaceId: owner.sId,
-      disabled: true,
-    });
+
+  const doUpdateScope = useUpdateAgentScope({
+    owner,
+    agentConfigurationId: assistantId,
+  });
 
   const { dataSourceViews } = useDataSourceViews(owner);
 
@@ -105,28 +99,7 @@ export function AssistantDetails({
     scope: Exclude<AgentConfigurationScope, "global">
   ) => {
     setIsUpdatingScope(true);
-
-    const { success, errorMessage } = await updateAgentScope({
-      scope,
-      owner,
-      agentConfigurationId: agentConfiguration.sId,
-    });
-
-    if (success) {
-      sendNotification({
-        title: `Assistant sharing updated.`,
-        type: "success",
-      });
-      await mutateAgentConfigurations();
-      await mutateCurrentAgentConfiguration();
-    } else {
-      sendNotification({
-        title: `Error updating assistant sharing.`,
-        description: errorMessage,
-        type: "error",
-      });
-    }
-
+    await doUpdateScope(scope);
     setIsUpdatingScope(false);
   };
 
@@ -172,7 +145,6 @@ export function AssistantDetails({
                 agentConfiguration={agentConfiguration}
                 owner={owner}
                 isParentHovered={true}
-                onAssistantListUpdate={() => void mutateAgentConfigurations?.()}
               />
             </>
           )}

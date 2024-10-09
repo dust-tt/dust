@@ -10,28 +10,27 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
+import { useUpdateAgentUserListStatus } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
 
 interface AssistantListActions {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
   isParentHovered: boolean;
-  onAssistantListUpdate?: () => void;
 }
 
 export default function AssistantListActions({
   agentConfiguration,
   isParentHovered,
   owner,
-  onAssistantListUpdate,
 }: AssistantListActions) {
   const { scope } = agentConfiguration;
-
-  const sendNotification = useContext(SendNotificationsContext);
+  const doUpdate = useUpdateAgentUserListStatus({
+    owner,
+    agentConfigurationId: agentConfiguration.sId,
+  });
 
   // Use the function to set the initial state.
   const [isAdded, setIsAdded] = useState(
@@ -43,25 +42,9 @@ export default function AssistantListActions({
   }
 
   const updateList = async (listStatus: AgentUserListStatus) => {
-    const { success, errorMessage } = await updateAgentUserListStatus({
-      owner,
-      agentConfigurationId: agentConfiguration.sId,
-      listStatus,
-    });
-
+    const success = await doUpdate(listStatus);
     if (success) {
       setIsAdded(listStatus === "in-list");
-      sendNotification({
-        title: `Assistant sharing updated.`,
-        type: "success",
-      });
-      onAssistantListUpdate && onAssistantListUpdate();
-    } else {
-      sendNotification({
-        title: `Error updating assistant sharing.`,
-        description: errorMessage,
-        type: "error",
-      });
     }
   };
 

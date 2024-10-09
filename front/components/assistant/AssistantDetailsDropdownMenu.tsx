@@ -18,12 +18,10 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, isBuilder } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useContext, useState } from "react";
+import { useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { updateAgentUserListStatus } from "@app/lib/client/dust_api";
-import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { useUpdateAgentUserListStatus } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { setQueryParam } from "@app/lib/utils/router";
 
@@ -45,12 +43,10 @@ export function AssistantDetailsDropdownMenu({
   showAddRemoveToList = false,
 }: AssistantDetailsDropdownMenuProps) {
   const [isUpdatingList, setIsUpdatingList] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
   const { user } = useUser();
-  const { mutateAgentConfiguration } = useAgentConfiguration({
-    workspaceId: owner.sId,
+  const doAgentListStatusUpdate = useUpdateAgentUserListStatus({
+    owner,
     agentConfigurationId: agentConfiguration.sId,
-    disabled: true,
   });
   const router = useRouter();
   const [showDeletionModal, setShowDeletionModal] = useState(false);
@@ -72,34 +68,7 @@ export function AssistantDetailsDropdownMenu({
 
   const updateAgentUserList = async (listStatus: AgentUserListStatus) => {
     setIsUpdatingList(true);
-
-    const { success, errorMessage } = await updateAgentUserListStatus({
-      listStatus,
-      owner,
-      agentConfigurationId: agentConfiguration.sId,
-    });
-
-    if (success) {
-      sendNotification({
-        title: `Assistant ${
-          listStatus === "in-list"
-            ? "added to your list"
-            : "removed from your list"
-        }`,
-        type: "success",
-      });
-
-      await mutateAgentConfiguration();
-    } else {
-      sendNotification({
-        title: `Error ${
-          listStatus === "in-list" ? "adding" : "removing"
-        } Assistant`,
-        description: errorMessage,
-        type: "error",
-      });
-    }
-
+    await doAgentListStatusUpdate(listStatus);
     setIsUpdatingList(false);
   };
 
