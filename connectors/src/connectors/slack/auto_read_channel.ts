@@ -75,14 +75,15 @@ export async function autoReadChannel(
     if (joinChannelRes.isErr()) {
       return joinChannelRes;
     }
-    const channel = await SlackChannel.findOne({
+    let channel: SlackChannel | null = null;
+    channel = await SlackChannel.findOne({
       where: {
         slackChannelId,
         connectorId,
       },
     });
     if (!channel) {
-      await SlackChannel.create({
+      channel = await SlackChannel.create({
         connectorId,
         slackChannelId,
         slackChannelName: remoteChannelName,
@@ -138,7 +139,7 @@ export async function autoReadChannel(
     }
 
     const patchData = {
-      parentsToAdd: [createdChannel.slackChannelId],
+      parentsToAdd: [channel.slackChannelId],
       parentsToRemove: undefined,
     };
     const joinSlackRes = await dustAPI.patchDataSourceViews(
