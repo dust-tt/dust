@@ -5,7 +5,8 @@ use crate::oauth::{
         gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
         intercom::IntercomConnectionProvider, microsoft::MicrosoftConnectionProvider,
         mock::MockConnectionProvider, notion::NotionConnectionProvider,
-        slack::SlackConnectionProvider, utils::ProviderHttpRequestError, zendesk::ZendeskConnectionProvider
+        slack::SlackConnectionProvider, utils::ProviderHttpRequestError,
+        zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };
