@@ -1,4 +1,5 @@
 import type { EmojiMartData } from "@emoji-mart/data";
+import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import React from "react";
 
@@ -15,7 +16,7 @@ EmojiPicker.defaults = {
   previewPosition: "none",
 };
 
-export function EmojiPicker({
+function EmojiPicker({
   data,
   onEmojiSelect,
   previewPosition,
@@ -29,4 +30,10 @@ export function EmojiPicker({
       onEmojiSelect={onEmojiSelect}
     />
   );
+}
+
+export {
+  data as DataEmojiMart,
+  EmojiMartData,
+  EmojiPicker
 }
