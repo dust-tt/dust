@@ -1,13 +1,13 @@
+import type { EmojiMartData } from "@dust-tt/sparkle";
+import { DataEmojiMart } from "@dust-tt/sparkle";
 import { Button, EmojiPicker, Popover, ReactionIcon } from "@dust-tt/sparkle";
 import type {
   MessageReactionType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-// TODO(2024-04-24 flav) Remove emoji-mart dependency from front.
-import type { EmojiMartData } from "@emoji-mart/data";
 import type { ComponentType, MouseEventHandler } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { useSWRConfig } from "swr";
 
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -86,17 +86,7 @@ function MessageEmojiSelector({
   // TODO(2024-05-27 flav) Use mutate from `useConversationReactions` instead.
   const { mutate } = useSWRConfig();
 
-  const [emojiData, setEmojiData] = useState<EmojiMartData | null>(null);
-
-  useEffect(() => {
-    async function loadEmojiData() {
-      const mod = await import("@emoji-mart/data");
-      const data: EmojiMartData = mod.default as EmojiMartData;
-      setEmojiData(data);
-    }
-
-    void loadEmojiData();
-  }, []);
+  const emojiData = DataEmojiMart as EmojiMartData;
 
   const { submit: handleEmoji, isSubmitting: isSubmittingEmoji } =
     useSubmitFunction(
