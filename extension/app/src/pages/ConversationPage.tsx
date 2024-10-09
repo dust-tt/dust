@@ -1,5 +1,5 @@
-import { ArrowLeftIcon, BarHeader, ChevronLeftIcon } from "@dust-tt/sparkle";
-import { Link, useLocation } from "react-router-dom";
+import { BarHeader, ChevronLeftIcon } from "@dust-tt/sparkle";
+import { Link } from "react-router-dom";
 
 export const ConversationPage = () => {
   return (

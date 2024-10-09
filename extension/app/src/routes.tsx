@@ -1,5 +1,5 @@
-import { MainPage } from "./pages/MainPage";
 import { ConversationPage } from "./pages/ConversationPage";
+import { MainPage } from "./pages/MainPage";
 
 export const routes = [
   {

@@ -6,17 +6,14 @@ import {
   Page,
   TranslateIcon,
 } from "@dust-tt/sparkle";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 export const MainPage = () => {
-  const pathName = window.location.pathname;
-  console.log(pathName);
-  const location = useLocation();
   return (
     <div className="flex flex-col p-4 gap-2">
-      <div className="flex gap-2">
+      <div className="flex gap-2 align-center">
         <LogoHorizontalColorLogo className="h-4 w-16" />
-        <a href="https://dust.tt">
+        <a href="https://dust.tt" target="_blank">
           <ExternalLinkIcon color="#64748B" />
         </a>
       </div>
