@@ -218,18 +218,20 @@ function EmojiSelector({
 
   return (
     <Popover
-      fullWidth={true}
+      fullWidth
       trigger={
-        <Button
-          variant="tertiary"
-          size="xs"
-          icon={ReactionIcon}
-          labelVisible={false}
-          label="Reaction picker"
-          disabledTooltip
-          type="menu"
-          disabled={disabled}
-        />
+        <div ref={buttonRef}>
+          <Button
+            variant="tertiary"
+            size="xs"
+            icon={ReactionIcon}
+            labelVisible={false}
+            label="Reaction picker"
+            disabledTooltip
+            type="menu"
+            disabled={disabled}
+          />
+        </div>
       }
       content={
         <EmojiPicker

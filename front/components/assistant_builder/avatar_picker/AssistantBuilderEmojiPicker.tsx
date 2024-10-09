@@ -80,7 +80,7 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
       />
       <div className="flex flex-row gap-2">
         <Popover
-          fullWidth={true}
+          fullWidth
           trigger={
             <Button
               variant="tertiary"
@@ -105,9 +105,15 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
           }
         />
         <Popover
-          fullWidth={true}
+          fullWidth
           trigger={
-            <Button variant="tertiary" icon={PaintIcon} label="Pick a color" />
+            <div ref={colorButtonRef}>
+              <Button
+                variant="tertiary"
+                icon={PaintIcon}
+                label="Pick a color"
+              />
+            </div>
           }
           content={
             <ColorPicker
