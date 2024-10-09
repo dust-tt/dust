@@ -75,12 +75,25 @@ export async function autoReadChannel(
     if (joinChannelRes.isErr()) {
       return joinChannelRes;
     }
-    const createdChannel = await SlackChannel.create({
-      connectorId,
-      slackChannelId,
-      slackChannelName: remoteChannelName,
-      permission: "read_write",
+    let channel: SlackChannel | null = null;
+    channel = await SlackChannel.findOne({
+      where: {
+        slackChannelId,
+        connectorId,
+      },
     });
+    if (!channel) {
+      channel = await SlackChannel.create({
+        connectorId,
+        slackChannelId,
+        slackChannelName: remoteChannelName,
+        permission: "read_write",
+      });
+    } else {
+      await channel.update({
+        permission: "read_write",
+      });
+    }
 
     const dustAPI = new DustAPI(
       apiConfig.getDustAPIConfig(),
@@ -126,7 +139,7 @@ export async function autoReadChannel(
     }
 
     const patchData = {
-      parentsToAdd: [createdChannel.slackChannelId],
+      parentsToAdd: [channel.slackChannelId],
       parentsToRemove: undefined,
     };
     const joinSlackRes = await dustAPI.patchDataSourceViews(
