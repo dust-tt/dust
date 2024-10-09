@@ -74,6 +74,16 @@ export default function ConnectorSyncingChip({
             trigger={<Chip color="warning">Synchronization failed</Chip>}
           />
         );
+      case "webcrawling_error_empty_content":
+        return (
+          <Tooltip
+            label={
+              "This problem commonly occurs with JavaScript-based websites," +
+              " as our current crawler cannot process JavaScript."
+            }
+            trigger={<Chip color="warning">Failed: no content</Chip>}
+          />
+        );
       case "remote_database_connection_not_readonly":
         return (
           <Tooltip

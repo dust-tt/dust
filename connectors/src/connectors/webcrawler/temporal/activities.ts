@@ -374,10 +374,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   // checks for cancellation and throws if it's the case
   await Context.current().sleep(1);
 
-  if (pageCount <= 0) {
-    await syncFailed(connector.id, "webcrawling_error");
-  } else if (totalExtracted <= 0) {
-    // TODO: choose a different error type for this case
+  if (totalExtracted <= 0) {
+    await syncFailed(connector.id, "webcrawling_error_empty_content");
+  } else if (pageCount <= 0) {
     await syncFailed(connector.id, "webcrawling_error");
   } else {
     await syncSucceeded(connector.id);
