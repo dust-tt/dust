@@ -1,11 +1,6 @@
 import type { EmojiMartData } from "@dust-tt/sparkle";
-import {DataEmojiMart} from "@dust-tt/sparkle";
-import {
-  Button,
-  EmojiPicker,
-  Popover,
-  ReactionIcon
-} from "@dust-tt/sparkle";
+import { DataEmojiMart } from "@dust-tt/sparkle";
+import { Button, EmojiPicker, Popover, ReactionIcon } from "@dust-tt/sparkle";
 import type {
   MessageReactionType,
   UserType,
