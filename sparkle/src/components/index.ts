@@ -74,6 +74,7 @@ export { Popover, PopoverContent, PopoverTrigger } from "./Popover";
 export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioButton } from "./RadioButton";
+export { RadioGroup, RadioGroupItem } from "./RadioGroup";
 export {
   ResizableHandle,
   ResizablePanel,
