@@ -108,7 +108,8 @@ Guidelines using the :::visualization tag:
 - Props:
   - The generated component should not have any required props / parameters
 - Responsiveness:
-  - The content should be responsive and should not have fixed widths or heights
+  - The content should be responsive
+  - The outermost container should have a fixed height between 200 and 600 pixels
   - The component should be able to adapt to different screen sizes
   - The content should never overflow the viewport and should never have horizontal or vertical scrollbars
 - Styling:
