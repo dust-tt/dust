@@ -31,16 +31,7 @@ export function TablesQueryActionDetails({
       <div className="flex flex-col gap-1 gap-4 pl-6 pt-4">
         <QueryThinking action={action} />
         <TablesQuery action={action} />
-        <div>
-          <Collapsible defaultOpen={defaultOpen}>
-            <Collapsible.Button>
-              <span className="text-sm font-bold text-slate-900">Results</span>
-            </Collapsible.Button>
-            <Collapsible.Panel>
-              <QueryTablesResults action={action} />
-            </Collapsible.Panel>
-          </Collapsible>
-        </div>
+        <QueryTablesResults action={action} />
       </div>
     </ActionDetailsWrapper>
   );
@@ -49,9 +40,8 @@ export function TablesQueryActionDetails({
 function TablesQuery({ action }: { action: TablesQueryActionType }) {
   const { output } = action;
   const query = typeof output?.query === "string" ? output.query : null;
-  const noQuery = output?.no_query === true;
 
-  if (noQuery || !query) {
+  if (!query) {
     return null;
   }
 
@@ -166,8 +156,17 @@ function QueryTablesResults({ action }: { action: TablesQueryActionType }) {
   const title = output?.query_title ?? "query_results";
 
   return (
-    <div onClick={() => handleDownload(title)}>
-      <Citation size="xs" title={title} />
+    <div>
+      <Collapsible defaultOpen={true}>
+        <Collapsible.Button>
+          <span className="text-sm font-bold text-slate-900">Results</span>
+        </Collapsible.Button>
+        <Collapsible.Panel>
+          <div onClick={() => handleDownload(title)}>
+            <Citation size="xs" title={title} />
+          </div>
+        </Collapsible.Panel>
+      </Collapsible>
     </div>
   );
 }

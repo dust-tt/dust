@@ -12,8 +12,9 @@ import {
 } from "../../../../front/lib/api/assistant/actions/dust_app_run";
 import { RetrievalParamsEvent } from "../../../../front/lib/api/assistant/actions/retrieval";
 import {
+  TablesQueryModelOutputEvent,
   TablesQueryOutputEvent,
-  TablesQueryParamsEvent,
+  TablesQueryStartedEvent,
 } from "../../../../front/lib/api/assistant/actions/tables_query";
 import {
   AgentActionConfigurationType,
@@ -61,7 +62,8 @@ export type AgentActionSpecificEvent =
   | RetrievalParamsEvent
   | DustAppRunParamsEvent
   | DustAppRunBlockEvent
-  | TablesQueryParamsEvent
+  | TablesQueryStartedEvent
+  | TablesQueryModelOutputEvent
   | TablesQueryOutputEvent
   | ProcessParamsEvent
   | WebsearchParamsEvent
