@@ -100,7 +100,6 @@ export function MembersDataTable({
       <div className="border-material-200 my-4 flex w-full flex-col rounded-lg border p-4">
         <div className="flex justify-between gap-3">
           <h2 className="text-md mb-4 font-bold">Members:</h2>
-          <InviteMemberDialog owner={owner} user={user} />
         </div>
         <PokeDataTable
           columns={makeColumnsForMembers({
