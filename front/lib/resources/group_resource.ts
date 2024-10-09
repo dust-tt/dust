@@ -175,7 +175,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async internalFetchWorkspaceGlobalGroup(
     workspaceId: ModelId
-  ): Promise<GroupResource> {
+  ): Promise<GroupResource | null> {
     const group = await this.model.findOne({
       where: {
         workspaceId,
@@ -184,7 +184,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     if (!group) {
-      throw new Error("Global group not found.");
+      return null;
     }
 
     return new this(GroupModel, group.get());

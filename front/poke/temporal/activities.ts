@@ -9,7 +9,6 @@ import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteVault } from "@app/lib/api/vaults";
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
-import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -585,11 +584,8 @@ export async function deleteWorkspaceActivity({
 }: {
   workspaceId: string;
 }) {
-  // TODO(2024-10-08 flav) Fix auth issue when global group has already been deleted.
-  // We can't use Authenticator as all groups have already been deleted.
-  // In the interim use `getWorkspaceInfos` to get the workspace.
-  const workspace = await getWorkspaceInfos(workspaceId);
-  assert(workspace, "Workspace not found.");
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const workspace = auth.getNonNullableWorkspace();
 
   await frontSequelize.transaction(async (t) => {
     await Subscription.destroy({
