@@ -7,7 +7,6 @@ import {
   ClipboardIcon,
   ContentMessage,
   DocumentDuplicateIcon,
-  DropdownMenu,
   EyeIcon,
   Popover,
 } from "@dust-tt/sparkle";
