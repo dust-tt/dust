@@ -17,7 +17,7 @@ import {
   MAX_SLACK_MESSAGE_LENGTH,
 } from "@connectors/connectors/slack/chat/blocks";
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
-import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
+import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -98,8 +98,9 @@ export async function streamConversationToSlack(
     }
   };
 
-  const conversationUrl = makeDustAppUrl(
-    `/w/${connector.workspaceId}/assistant/${conversation.sId}`
+  const conversationUrl = makeConversationUrl(
+    connector.workspaceId,
+    conversation.sId
   );
 
   // Immediately post the conversation URL once available.

@@ -72,11 +72,6 @@ function makeContextSectionBlocks(
 
   blocks.push(makeFooterBlock(conversationUrl, workspaceId));
 
-  // Bundle the conversation url in the context.
-  // if (conversationUrl && isComplete) {
-  //   blocks.push(makeConversationLinkContextBlock(conversationUrl));
-  // }
-
   const resultBlocks = blocks.length ? [makeDividerBlock(), ...blocks] : [];
 
   return resultBlocks;

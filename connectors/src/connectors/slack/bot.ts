@@ -20,7 +20,7 @@ import {
   makeMessageUpdateBlocksAndText,
 } from "@connectors/connectors/slack/chat/blocks";
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
-import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
+import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import {
   SlackExternalUserError,
   SlackMessageError,
@@ -203,11 +203,10 @@ async function processErrorResult(
         ? res.error
         : { mainMessage: undefined, slackChatBotMessage: undefined };
 
-    const conversationUrl = slackChatBotMessage?.conversationId
-      ? makeDustAppUrl(
-          `/w/${connector.workspaceId}/assistant/${slackChatBotMessage.conversationId}`
-        )
-      : null;
+    const conversationUrl = makeConversationUrl(
+      connector.workspaceId,
+      slackChatBotMessage?.conversationId
+    );
 
     const slackClient = await getSlackClient(connector.id);
 
@@ -216,12 +215,12 @@ async function processErrorResult(
       connector.workspaceId,
       errorMessage
     );
-    if (mainMessage) {
+    if (mainMessage && mainMessage.ts) {
       await slackClient.chat.update({
         ...errorPost,
         channel: slackChannel,
         thread_ts: slackMessageTs,
-        ts: mainMessage.ts as string,
+        ts: mainMessage.ts,
       });
     } else {
       await slackClient.chat.postMessage({
@@ -236,7 +235,7 @@ async function processErrorResult(
         connectorId: connector.id,
         ...params,
       },
-      `Successfully answered to Slack Chat Bot message`
+      "Successfully answered to Slack Chat Bot message"
     );
   }
 }
