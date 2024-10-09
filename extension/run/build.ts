@@ -2,7 +2,9 @@ import webpack from "webpack";
 import { getConfig } from "../config/webpack";
 
 async function main() {
-  const config = await getConfig({ shouldBuild: "prod" });
+  const config = await getConfig({
+    shouldBuild: process.argv.includes("--analyze") ? "analyze" : "prod",
+  });
   const compiler = webpack(config);
 
   return new Promise<void>((resolve, reject) => {
