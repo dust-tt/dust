@@ -1,12 +1,8 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import * as React from "react";
 
-import {
-  CheckIcon,
-  ChevronRightIcon,
-  CircleIcon,
-  Icon,
-} from "@sparkle/index_with_tw_base";
+import { Icon } from "@sparkle/components";
+import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 export const menuStyleClasses = {

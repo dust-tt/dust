@@ -5,7 +5,7 @@ module.exports = {
     "plugin:@typescript-eslint/recommended",
     "plugin:storybook/recommended",
   ],
-  plugins: ["simple-import-sort"],
+  plugins: ["import", "simple-import-sort"],
   ignorePatterns: [
     "rollup.config.js",
     "eslint.js",
@@ -18,6 +18,7 @@ module.exports = {
     "svgr-*-template.js",
   ],
   rules: {
+    "import/no-cycle": "error",
     curly: ["error", "all"],
     "@typescript-eslint/no-floating-promises": "error",
     "simple-import-sort/imports": [
@@ -44,11 +45,17 @@ module.exports = {
     ],
     "simple-import-sort/exports": "error",
     "@typescript-eslint/return-await": ["error", "in-try-catch"],
+    "no-restricted-imports": ["error", {
+      "patterns": ["*/index_with_tw_base"]
+    }]
   },
   overrides: [
     {
-      files: ["*.jsx", "*.js", "*.ts", "*.tsx", "**/*.jsx"],
-    },
+      files: ["*.stories.tsx"],
+      rules: {
+        "no-restricted-imports": ["off"]
+      }
+    }
   ],
   env: {
     browser: true,
