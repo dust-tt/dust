@@ -1,6 +1,7 @@
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { truncate } from "@dust-tt/types";
 
+import { STATIC_AGENT_CONFIG } from "@connectors/api/webhooks/webhook_slack_interaction";
 import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
 
@@ -127,7 +128,7 @@ function makeAssistantSelectionBlock(
                   value: ac.sId,
                 };
               }),
-              action_id: "static_agent_config",
+              action_id: STATIC_AGENT_CONFIG,
             },
           ],
         },
@@ -214,5 +215,27 @@ export function makeMessageUpdateBlocksAndText(
     text: isThinking ? thinkingText : truncate(text, MAX_SLACK_MESSAGE_LENGTH),
     mrkdwn: true,
     unfurl_links: false,
+  };
+}
+
+export function makeErrorBlock(
+  conversationUrl: string | null,
+  workspaceId: string,
+  errorMessage: string
+) {
+  return {
+    blocks: [
+      makeHeaderBlock(conversationUrl, workspaceId),
+      {
+        type: "section",
+        text: {
+          type: "plain_text",
+          text: errorMessage,
+        },
+      },
+    ],
+    mrkdwn: true,
+    unfurl_links: false,
+    text: errorMessage,
   };
 }

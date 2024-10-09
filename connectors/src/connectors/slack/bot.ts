@@ -16,7 +16,7 @@ import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import {
-  makeHeaderBlock,
+  makeErrorBlock,
   makeMessageUpdateBlocksAndText,
 } from "@connectors/connectors/slack/chat/blocks";
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
@@ -63,11 +63,9 @@ type BotAnswerParams = {
   slackThreadTs: string | null;
 };
 
-export async function botAnswerMessage(
-  message: string,
-  params: BotAnswerParams
-): Promise<Result<AgentMessageSuccessEvent | undefined, Error>> {
-  const { slackChannel, slackMessageTs, slackTeamId } = params;
+export async function getSlackConnector(params: BotAnswerParams) {
+  const { slackTeamId } = params;
+
   const slackConfig =
     await SlackConfigurationResource.fetchByActiveBot(slackTeamId);
   if (!slackConfig) {
@@ -77,10 +75,26 @@ export async function botAnswerMessage(
       )
     );
   }
+
   const connector = await ConnectorResource.fetchById(slackConfig.connectorId);
   if (!connector) {
     return new Err(new Error("Failed to find connector"));
   }
+
+  return new Ok({ slackConfig, connector });
+}
+
+export async function botAnswerMessage(
+  message: string,
+  params: BotAnswerParams
+): Promise<Result<undefined, Error>> {
+  const { slackChannel, slackMessageTs, slackTeamId } = params;
+  const connectorRes = await getSlackConnector(params);
+  if (connectorRes.isErr()) {
+    return connectorRes;
+  }
+  const { slackConfig, connector } = connectorRes.value;
+
   try {
     const res = await answerMessage(
       message,
@@ -90,9 +104,9 @@ export async function botAnswerMessage(
       slackConfig
     );
 
-    await processResult(res, params, connector);
+    await processErrorResult(res, params, connector);
 
-    return res;
+    return new Ok(undefined);
   } catch (e) {
     logger.error(
       {
@@ -114,28 +128,20 @@ export async function botAnswerMessage(
 }
 
 export async function botReplaceMention(
-  messageId: string,
+  messageId: number,
   mentionOverride: string,
   params: BotAnswerParams
-): Promise<Result<AgentMessageSuccessEvent | undefined, Error>> {
+): Promise<Result<undefined, Error>> {
   const { slackChannel, slackMessageTs, slackTeamId } = params;
-  const slackConfig = await SlackConfigurationResource.fetchByActiveBot(
-    params.slackTeamId
-  );
-  if (!slackConfig) {
-    return new Err(
-      new Error(
-        `Failed to find a Slack configuration for which the bot is enabled. Slack team id: ${slackTeamId}.`
-      )
-    );
+  const connectorRes = await getSlackConnector(params);
+  if (connectorRes.isErr()) {
+    return connectorRes;
   }
-  const connector = await ConnectorResource.fetchById(slackConfig.connectorId);
-  if (!connector) {
-    return new Err(new Error("Failed to find connector"));
-  }
+  const { slackConfig, connector } = connectorRes.value;
+
   try {
     const slackChatBotMessage = await SlackChatBotMessage.findOne({
-      where: { id: Number(messageId) },
+      where: { id: messageId },
     });
     if (!slackChatBotMessage) {
       throw new Error("Missing initial message");
@@ -148,9 +154,9 @@ export async function botReplaceMention(
       slackConfig
     );
 
-    await processResult(res, params, connector);
+    await processErrorResult(res, params, connector);
 
-    return res;
+    return new Ok(undefined);
   } catch (e) {
     logger.error(
       {
@@ -171,7 +177,7 @@ export async function botReplaceMention(
   }
 }
 
-async function processResult(
+async function processErrorResult(
   res: Result<AgentMessageSuccessEvent | undefined, Error>,
   params: BotAnswerParams,
   connector: ConnectorResource
@@ -186,12 +192,11 @@ async function processResult(
       },
       "Failed answering to Slack Chat Bot message"
     );
-    let errorMessage: string | undefined = undefined;
-    if (res.error instanceof SlackExternalUserError) {
-      errorMessage = res.error.message;
-    } else {
-      errorMessage = `An error occured : ${res.error.message}. Our team has been notified and will work on it as soon as possible.`;
-    }
+
+    const errorMessage =
+      res.error instanceof SlackExternalUserError
+        ? res.error.message
+        : `An error occured : ${res.error.message}. Our team has been notified and will work on it as soon as possible.`;
 
     const { slackChatBotMessage, mainMessage } =
       res.error instanceof SlackMessageError
@@ -206,30 +211,24 @@ async function processResult(
 
     const slackClient = await getSlackClient(connector.id);
 
-    const errorPost = {
-      blocks: [
-        makeHeaderBlock(conversationUrl, connector.workspaceId),
-        {
-          type: "section",
-          text: {
-            type: "plain_text",
-            text: errorMessage,
-          },
-        },
-      ],
-      mrkdwn: true,
-      unfurl_links: false,
-      text: errorMessage,
-      channel: slackChannel,
-      thread_ts: slackMessageTs,
-    };
+    const errorPost = makeErrorBlock(
+      conversationUrl,
+      connector.workspaceId,
+      errorMessage
+    );
     if (mainMessage) {
       await slackClient.chat.update({
         ...errorPost,
+        channel: slackChannel,
+        thread_ts: slackMessageTs,
         ts: mainMessage.ts as string,
       });
     } else {
-      await slackClient.chat.postMessage(errorPost);
+      await slackClient.chat.postMessage({
+        ...errorPost,
+        channel: slackChannel,
+        thread_ts: slackMessageTs,
+      });
     }
   } else {
     logger.info(
@@ -381,7 +380,7 @@ async function answerMessage(
     return new Err(new Error(agentConfigurationsRes.error.message));
   }
 
-  const agentConfigurations = agentConfigurationsRes.value.filter(
+  const activeAgentConfigurations = agentConfigurationsRes.value.filter(
     (ac) => ac.status === "active"
   );
 
@@ -417,7 +416,7 @@ async function answerMessage(
   // First we look at mention override
   // (eg: a mention coming from the Slack assistant picker from slack).
   if (mentionOverride) {
-    const agentConfig = agentConfigurations.find(
+    const agentConfig = activeAgentConfigurations.find(
       (ac) => ac.sId === mentionOverride
     );
     if (agentConfig) {
@@ -453,7 +452,7 @@ async function answerMessage(
           distance: number;
         }
       | undefined = undefined;
-    for (const agentConfiguration of agentConfigurations) {
+    for (const agentConfiguration of activeAgentConfigurations) {
       const distance =
         1 -
         jaroWinkler(
@@ -500,7 +499,7 @@ async function answerMessage(
 
     if (channel && channel.agentConfigurationId) {
       agentConfigurationToMention =
-        agentConfigurations.find(
+        activeAgentConfigurations.find(
           (ac) => ac.sId === channel.agentConfigurationId
         ) || null;
     }
@@ -514,10 +513,10 @@ async function answerMessage(
       // If no mention is found and no channel-based routing rule is found, we use the default assistant.
       let defaultAssistant: LightAgentConfigurationType | null = null;
       defaultAssistant =
-        agentConfigurations.find((ac) => ac.sId === "dust") || null;
+        activeAgentConfigurations.find((ac) => ac.sId === "dust") || null;
       if (!defaultAssistant || defaultAssistant.status !== "active") {
         defaultAssistant =
-          agentConfigurations.find((ac) => ac.sId === "gpt-4") || null;
+          activeAgentConfigurations.find((ac) => ac.sId === "gpt-4") || null;
       }
       if (!defaultAssistant) {
         return new Err(
@@ -633,7 +632,7 @@ async function answerMessage(
     mainMessage,
     slack: { slackChannelId: slackChannel, slackClient, slackMessageTs },
     userMessage,
-    agentConfigurations,
+    agentConfigurations: activeAgentConfigurations,
   });
 
   if (streamRes.isErr()) {
