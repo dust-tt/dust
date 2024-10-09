@@ -86,6 +86,7 @@ export function PopoverExample() {
 export function PopoverGrowingExample() {
   return (
     <Popover
+      fullWidth={true}
       trigger={
         <Button label="Emoji Picker Popover" variant="primary"></Button>
       }
