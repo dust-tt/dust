@@ -1,9 +1,4 @@
-import {
-  Button,
-  DropdownMenu,
-  EmojiPicker,
-  ReactionIcon,
-} from "@dust-tt/sparkle";
+import { Button, EmojiPicker, Popover, ReactionIcon } from "@dust-tt/sparkle";
 import type {
   MessageReactionType,
   UserType,
@@ -222,27 +217,21 @@ function EmojiSelector({
   const buttonRef = useRef<HTMLDivElement>(null);
 
   return (
-    <DropdownMenu>
-      <DropdownMenu.Button>
-        <div ref={buttonRef}>
-          <Button
-            variant="tertiary"
-            size="xs"
-            icon={ReactionIcon}
-            labelVisible={false}
-            label="Reaction picker"
-            disabledTooltip
-            type="menu"
-            disabled={disabled}
-          />
-        </div>
-      </DropdownMenu.Button>
-      <DropdownMenu.Items
-        width={350}
-        origin="bottomRight"
-        overflow="visible"
-        variant="no-padding"
-      >
+    <Popover
+      fullWidth={true}
+      trigger={
+        <Button
+          variant="tertiary"
+          size="xs"
+          icon={ReactionIcon}
+          labelVisible={false}
+          label="Reaction picker"
+          disabledTooltip
+          type="menu"
+          disabled={disabled}
+        />
+      }
+      content={
         <EmojiPicker
           theme="light"
           previewPosition="none"
@@ -261,7 +250,7 @@ function EmojiSelector({
             buttonRef.current?.click();
           }}
         />
-      </DropdownMenu.Items>
-    </DropdownMenu>
+      }
+    />
   );
 }
