@@ -21,7 +21,8 @@
     "src/"
   ],
   "sideEffects": [
-    "src/index_with_tw_base.ts"
+    "src/index_with_tw_base.ts",
+    "*.css"
   ],
   "devDependencies": {
     "@babel/core": "^7.22.9",
@@ -93,16 +94,20 @@
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
     "@headlessui/react": "^1.7.19",
-    "@radix-ui/react-separator": "^1.1.0",
+    "@radix-ui/react-dropdown-menu": "^2.1.2",
     "@radix-ui/react-popover": "^1.1.2",
+    "@radix-ui/react-separator": "^1.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-tooltip": "^1.1.3",
     "@tanstack/react-table": "^8.13.0",
+    "clsx": "^2.1.1",
     "emoji-mart": "^5.5.2",
     "lottie-react": "^2.4.0",
     "lottie-web": "^5.12.2",
     "react-confetti": "^6.1.0",
+    "react-dropdown-menu": "^0.0.2",
     "react-markdown": "^9.0.1",
+    "tailwind-merge": "^2.5.3",
     "tailwind-scrollbar-hide": "^1.1.7"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
