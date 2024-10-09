@@ -34,7 +34,7 @@ export function SimplePopoverExample () {
       side="right"
       sideOffset={100}
     />
-  )
+  );
 }
 
 export function PopoverExample() {
@@ -80,7 +80,7 @@ export function PopoverExample() {
         </div>
       </PopoverContent>
     </PopoverRoot>
-  )
+  );
 }
 
 export function PopoverGrowingExample() {
@@ -98,5 +98,5 @@ export function PopoverGrowingExample() {
         />
       }
     />
-  )
+  );
 }

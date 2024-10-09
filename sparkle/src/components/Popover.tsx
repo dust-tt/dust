@@ -1,7 +1,7 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import * as React from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 const PopoverRoot = PopoverPrimitive.Root;
 
@@ -31,7 +31,7 @@ const PopoverContent = React.forwardRef<
         ref={ref}
         align={align}
         sideOffset={sideOffset}
-        className={classNames(
+        className={cn(
           "data-[state=open]:s-animate-in data-[state=open]:s-fade-in-0 data-[state=open]:s-zoom-in-95",
           "data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=closed]:s-zoom-out-95",
           "data-[side=bottom]:s-slide-in-from-top-2",
@@ -40,7 +40,7 @@ const PopoverContent = React.forwardRef<
           "data-[side=top]:s-slide-in-from-bottom-2",
           "s-border-border s-text-primary-950 s-z-50 s-rounded-lg s-border s-bg-background s-shadow-md s-outline-none",
           fullWidth ? "s-grow" : "s-w-72 s-p-4",
-          className ?? ""
+          className
         )}
         {...props}
       />
