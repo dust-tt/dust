@@ -452,7 +452,7 @@ NotionConnectorBlockCacheEntry.init(
       allowNull: false,
     },
     childDatabaseTitle: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     workflowId: {
