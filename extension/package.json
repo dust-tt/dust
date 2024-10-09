@@ -35,7 +35,7 @@
     "zip-webpack-plugin": "^4.0.1"
   },
   "dependencies": {
-    "@dust-tt/sparkle": "^0.2.259",
+    "@dust-tt/sparkle": "^0.2.260",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2",
