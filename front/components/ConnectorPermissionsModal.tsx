@@ -75,6 +75,7 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
   },
   notion: undefined,
   github: undefined,
+  zendesk: undefined,
   intercom: {
     selected: "read",
     unselected: "none",
