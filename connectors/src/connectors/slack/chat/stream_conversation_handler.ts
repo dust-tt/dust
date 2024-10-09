@@ -21,7 +21,7 @@ import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-const actionRunningLabels = {
+const actionRunningLabels: Record<AgentActionType["type"], string> = {
   dust_app_run_action: "Running App",
   process_action: "Extracting data",
   retrieval_action: "Searching data",
