@@ -1,1 +1,1 @@
-export * from "./memberships";
+export * from "./workspaces";

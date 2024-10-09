@@ -2,22 +2,52 @@ import * as t from "io-ts";
 
 import { LightWorkspaceType } from "../../user";
 
-type SupportedArgType = "string" | "number" | "boolean";
-
-export interface PluginArgDefinition {
-  type: SupportedArgType;
+interface BaseArgDefinition {
   label: string;
   description?: string;
 }
 
+type AtLeastTwoElements<T> = readonly [T, T, ...T[]];
+
+interface EnumArgDefinition extends BaseArgDefinition {
+  type: "enum";
+  values: AtLeastTwoElements<string>;
+}
+
+interface StringArgDefinition extends BaseArgDefinition {
+  type: "string";
+  values?: never;
+}
+
+interface NumberArgDefinition extends BaseArgDefinition {
+  type: "number";
+  values?: never;
+}
+
+interface BooleanArgDefinition extends BaseArgDefinition {
+  type: "boolean";
+  values?: never;
+}
+
+export type PluginArgDefinition =
+  | EnumArgDefinition
+  | StringArgDefinition
+  | NumberArgDefinition
+  | BooleanArgDefinition;
+
+export type StrictPluginArgs = {
+  [key: string]: PluginArgDefinition;
+};
+
 export type PluginArgs = Record<string, PluginArgDefinition>;
 
 export interface PluginManifest<T extends PluginArgs> {
-  id: string;
-  title: string;
-  description: string;
-  resourceTypes: string[];
   args: T;
+  description: string;
+  explanation?: string;
+  id: string;
+  name: string;
+  resourceTypes: string[];
 }
 
 export interface PluginWorkspaceResource {
@@ -41,6 +71,17 @@ export function createIoTsCodecFromArgs(
       case "boolean":
         codecProps[key] = t.boolean;
         break;
+      case "enum":
+        if (!Array.isArray(arg.values) || arg.values.length < 2) {
+          throw new Error(
+            `Enum argument "${key}" must have at least two values`
+          );
+        }
+        codecProps[key] = t.union([
+          t.literal(arg.values[0]),
+          t.literal(arg.values[1]),
+          ...arg.values.slice(2).map((v) => t.literal(v)),
+        ]);
     }
   }
 

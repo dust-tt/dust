@@ -18,6 +18,13 @@ import {
   PokeFormMessage,
 } from "@app/components/poke/shadcn/ui/form";
 import { PokeInput } from "@app/components/poke/shadcn/ui/input";
+import {
+  PokeSelect,
+  PokeSelectContent,
+  PokeSelectItem,
+  PokeSelectTrigger,
+  PokeSelectValue,
+} from "@app/components/poke/shadcn/ui/select";
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
 
 type FallbackArgs = Record<string, unknown>;
@@ -96,6 +103,27 @@ export function PluginForm({ manifest, onSubmit }: PluginFormProps) {
                         checked={field.value}
                         onCheckedChange={field.onChange}
                       />
+                    )}
+                    {arg.type === "enum" && (
+                      <PokeSelect
+                        value={field.value as string}
+                        onValueChange={field.onChange}
+                      >
+                        <PokeFormControl>
+                          <PokeSelectTrigger>
+                            <PokeSelectValue placeholder={arg.label} />
+                          </PokeSelectTrigger>
+                        </PokeFormControl>
+                        <PokeSelectContent>
+                          <div className="bg-slate-100">
+                            {arg.values.map((option) => (
+                              <PokeSelectItem key={option} value={option}>
+                                {option}
+                              </PokeSelectItem>
+                            ))}
+                          </div>
+                        </PokeSelectContent>
+                      </PokeSelect>
                     )}
                   </>
                 </PokeFormControl>

@@ -24,7 +24,7 @@ function PluginCard({ onClick, plugin }: PluginCardProps) {
     >
       <PokeCardHeader>
         <PokeCardTitle className="text-sm font-medium">
-          {plugin.title}
+          {plugin.name}
         </PokeCardTitle>
         <PokeCardDescription className="text-xs">
           {plugin.description}

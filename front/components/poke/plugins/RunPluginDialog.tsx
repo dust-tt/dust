@@ -65,6 +65,7 @@ export function RunPluginDialog({
   return (
     <PokeDialog open={true} onOpenChange={handleClose}>
       <PokeDialogContent className="bg-structure-50 sm:max-w-[600px]">
+        <h2>Run {plugin.name} plugin</h2>
         {isLoading ? (
           <Spinner />
         ) : !manifest ? (

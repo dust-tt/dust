@@ -40,7 +40,7 @@ async function handler(
 
       const pluginList = plugins.map((p) => ({
         id: p.manifest.id,
-        title: p.manifest.title,
+        name: p.manifest.name,
         description: p.manifest.description,
       }));
 

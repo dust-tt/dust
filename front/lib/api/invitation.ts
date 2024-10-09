@@ -182,8 +182,10 @@ export async function sendWorkspaceInvitationEmail(
     },
   };
 
-  sgMail.setApiKey(config.getSendgridApiKey());
-  await sgMail.send(message);
+  console.log(">> sending invitation:", message);
+
+  // sgMail.setApiKey(config.getSendgridApiKey());
+  // await sgMail.send(message);
 }
 /**
  * Returns the pending inviations associated with the authenticator's owner workspace.

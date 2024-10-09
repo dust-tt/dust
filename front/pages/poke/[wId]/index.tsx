@@ -232,7 +232,7 @@ const WorkspacePage = ({
                 />
                 <div className="flex-grow">
                   <PluginList
-                    resourceType="memberships"
+                    resourceType="workspaces"
                     workspaceResource={{
                       workspace: owner,
                       resourceId: owner.sId,
