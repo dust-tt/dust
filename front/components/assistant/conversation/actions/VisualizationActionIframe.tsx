@@ -197,7 +197,7 @@ export function VisualizationActionIframe({
                     height: !isErrored ? `${contentHeight}px` : "100%",
                     minHeight: !isErrored ? "96" : undefined,
                   }}
-                  className={classNames("w-full")}
+                  className={classNames("w-full max-h-[600px]")}
                 >
                   <iframe
                     ref={vizIframeRef}
