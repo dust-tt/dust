@@ -87,7 +87,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   let pageCount = 0;
-  let upsertedPageCount = 0;
+  let pagesTooLarge = 0;
   let totalExtracted = 0;
   let crawlingError = 0;
   let upsertingError = 0;
@@ -279,6 +279,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         });
 
         try {
+          if (extracted.length > MAX_SMALL_DOCUMENT_TXT_LEN) {
+            pagesTooLarge++;
+          }
           if (
             extracted.length > 0 &&
             extracted.length <= MAX_SMALL_DOCUMENT_TXT_LEN
@@ -300,7 +303,6 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               },
               async: true,
             });
-            upsertedPageCount++;
           } else {
             childLogger.info(
               {
@@ -385,12 +387,11 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   if (blockCount > 0) {
     await syncFailed(connector.id, "webcrawling_error_blocked");
-  } else if (upsertedPageCount <= 0) {
-    // this means that every page was too big to be upserted
+  } else if (pagesTooLarge === pageCount) {
     await syncFailed(connector.id, "webcrawling_error_content_too_large");
   } else if (totalExtracted <= 0) {
     await syncFailed(connector.id, "webcrawling_error_empty_content");
-  } else if (pageCount <= 0) {
+  } else if (pageCount === 0) {
     await syncFailed(connector.id, "webcrawling_error");
   } else {
     await syncSucceeded(connector.id);
