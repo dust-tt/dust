@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "dev": "next dev",
+    "dev": "concurrently --kill-others \"cd ../types/ && npm run start\" \"sleep 10s && cd ../sdks/js/ && npm run start\" \"sleep 12s && next dev\"",
     "build": "next build",
     "start": "next start --keepAliveTimeout 5000",
     "start:worker": "tsx ./start_worker.ts",
@@ -21,9 +21,9 @@
     "@amplitude/analytics-browser": "^2.5.2",
     "@amplitude/analytics-node": "^1.3.5",
     "@auth0/nextjs-auth0": "^3.5.0",
+    "@dust-tt/client": "file:../sdks/js",
     "@dust-tt/sparkle": "^0.2.265",
     "@dust-tt/types": "file:../types",
-    "@dust-tt/client": "file:../sdks/js",
     "@headlessui/react": "^1.7.7",
     "@heroicons/react": "^2.0.11",
     "@hookform/resolvers": "^3.3.4",
@@ -166,6 +166,7 @@
     "@typescript-eslint/eslint-plugin": "^7.9.0",
     "@typescript-eslint/parser": "^7.9.0",
     "autoprefixer": "^10.4.12",
+    "concurrently": "^9.0.1",
     "danger": "^11.3.1",
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.2.3",
