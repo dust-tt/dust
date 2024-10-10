@@ -58,3 +58,21 @@ export const sendAuthMessage = (): Promise<Auth0AuthorizeResponse> => {
     );
   });
 };
+
+export const sentLogoutMessage = (): Promise<AuthBackgroundResponse> => {
+  return new Promise((resolve, reject) => {
+    const message: AuthBackroundMessage = { type: "LOGOUT" };
+    chrome.runtime.sendMessage(
+      message,
+      (response: AuthBackgroundResponse | undefined) => {
+        if (chrome.runtime.lastError) {
+          return reject(chrome.runtime.lastError);
+        }
+        if (!response) {
+          return reject(new Error("No response received."));
+        }
+        return resolve(response);
+      }
+    );
+  });
+};

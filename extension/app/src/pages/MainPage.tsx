@@ -10,8 +10,12 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { sendAuthMessage } from "../lib/auth";
-import { getAccessToken, saveAccessToken } from "../lib/utils";
+import { sendAuthMessage, sentLogoutMessage } from "../lib/auth";
+import {
+  clearAccessToken,
+  getAccessToken,
+  saveAccessToken,
+} from "../lib/utils";
 
 export const MainPage = () => {
   const [token, setToken] = useState<string | null>(null);
@@ -45,21 +49,27 @@ export const MainPage = () => {
         console.error("Authentication failed.");
       }
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Error sending auth message:", error);
     } finally {
       setIsLoading(false);
     }
   }, [sendAuthMessage, setIsLoading, setToken]);
 
-  const handleLogout = useCallback(() => {
-    chrome.runtime.sendMessage({ type: "LOGOUT" }, (response) => {
+  const handleLogout = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await sentLogoutMessage();
       if (response?.success) {
-        localStorage.removeItem("authToken");
+        await clearAccessToken();
         setToken(null);
       } else {
         console.error("Logout failed.");
       }
-    });
+    } catch (error) {
+      console.error("Error sending logout message:", error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [setToken]);
 
   return (

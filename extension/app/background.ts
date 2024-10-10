@@ -53,11 +53,12 @@ const authenticate = async (
     return;
   }
 
+  // First we call /authorize endpoint to get the authorization code (PKCE flow).
   const redirectUrl = chrome.identity.getRedirectURL();
   const { codeVerifier, codeChallenge } = await generatePKCE();
   const options = {
     client_id: AUTH0_CLIENT_ID,
-    response_type: "code", // Use code response type for PKCE.
+    response_type: "code",
     scope: "openid profile email offline_access",
     redirect_uri: redirectUrl,
     audience: AUTH0_AUDIENCE,
@@ -87,6 +88,7 @@ const authenticate = async (
       const authorizationCode = queryParams.get("code");
 
       if (authorizationCode) {
+        // Once we have the code we call /token endpoint to exchange it for tokens.
         const data = await exchangeCodeForTokens(
           authorizationCode,
           codeVerifier
@@ -140,7 +142,9 @@ const exchangeCodeForTokens = async (
     };
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "An unknown error occurred.";
+      error instanceof Error
+        ? error.message
+        : "Token exchange error: unknown error occurred.";
     console.error(`Token exchange error: ${message}`);
     return { success: false };
   }
