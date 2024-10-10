@@ -1,5 +1,5 @@
+import { DustUserEmailHeader } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { DustUserEmailHeader } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { Authenticator, getAPIKey } from "@app/lib/auth";
