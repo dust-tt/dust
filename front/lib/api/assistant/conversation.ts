@@ -140,7 +140,7 @@ export async function updateConversation(
     title: string | null;
     visibility: ConversationVisibility;
   }
-): Promise<ConversationType> {
+): Promise<Result<ConversationType, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -158,22 +158,12 @@ export async function updateConversation(
     throw new Error(`Conversation ${conversationId} not found`);
   }
 
-  if (!canAccessConversation(auth, conversation)) {
-    throw new Error("Conversation access restricted");
-  }
-
   await conversation.update({
     title: title,
     visibility: visibility,
   });
 
-  const cRes = await getConversation(auth, conversationId);
-
-  if (cRes.isErr()) {
-    throw cRes.error;
-  }
-
-  return cRes.value;
+  return await getConversation(auth, conversationId);
 }
 
 /**
@@ -189,7 +179,7 @@ export async function deleteConversation(
     conversationId: string;
     destroy?: boolean;
   }
-): Promise<void> {
+): Promise<Result<{ success: true }, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -204,11 +194,11 @@ export async function deleteConversation(
   });
 
   if (!conversation) {
-    throw new Error(`Conversation ${conversationId} not found`);
+    return new Err(new ConversationError("conversation_not_found"));
   }
 
   if (!canAccessConversation(auth, conversation)) {
-    throw new Error("Conversation access restricted");
+    return new Err(new ConversationError("conversation_access_restricted"));
   }
 
   if (destroy) {
@@ -218,6 +208,7 @@ export async function deleteConversation(
       visibility: "deleted",
     });
   }
+  return new Ok({ success: true });
 }
 
 /**

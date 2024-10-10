@@ -67,12 +67,17 @@ async function handler(
       res.status(200).json({ conversation });
       return;
 
-    case "DELETE":
-      await deleteConversation(auth, { conversationId: conversation.sId });
+    case "DELETE": {
+      const result = await deleteConversation(auth, {
+        conversationId: conversation.sId,
+      });
+      if (result.isErr()) {
+        return apiErrorForConversation(req, res, result.error);
+      }
 
       res.status(200).end();
       return;
-
+    }
     case "PATCH":
       const bodyValidation = PatchConversationsRequestBodySchema.decode(
         req.body
