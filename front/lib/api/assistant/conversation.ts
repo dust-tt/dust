@@ -56,6 +56,10 @@ import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
+import {
+  makeAgentMentionsRateLimitKeyForWorkspace,
+  makeMessageRateLimitKeyForWorkspace,
+} from "@app/lib/api/assistant/rate_limits";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
@@ -1825,7 +1829,7 @@ async function isMessagesLimitReached({
 
   const userMessagesLimit = 10 * activeSeats;
   const remainingMessages = await rateLimiter({
-    key: `postUserMessage:${owner.sId}`,
+    key: makeMessageRateLimitKeyForWorkspace(owner),
     maxPerTimeframe: userMessagesLimit,
     timeframeSeconds: 60,
     logger,
@@ -1860,7 +1864,10 @@ async function isMessagesLimitReached({
   const remainingMentions = await Promise.all(
     mentions.map(() =>
       rateLimiter({
-        key: `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`,
+        key: makeAgentMentionsRateLimitKeyForWorkspace(
+          owner,
+          maxMessagesTimeframe
+        ),
         maxPerTimeframe: maxMessages * activeSeats,
         timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
         logger,

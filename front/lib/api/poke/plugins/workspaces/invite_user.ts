@@ -2,6 +2,7 @@ import { Err, MEMBERSHIP_ROLE_TYPES, Ok } from "@dust-tt/types";
 
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { createPlugin } from "@app/lib/api/poke/types";
+import { isEmailValid } from "@app/lib/utils";
 
 export const inviteUser = createPlugin(
   {
@@ -38,11 +39,21 @@ export const inviteUser = createPlugin(
       );
     }
 
+    const email = args.email.trim();
+    if (isEmailValid(email) === false) {
+      return new Err(new Error("Email address is invalid."));
+    }
+
     const invitationRes = await handleMembershipInvitations(auth, {
       owner: auth.getNonNullableWorkspace(),
       user: auth.getNonNullableUser(),
       subscription,
-      invitationRequests: [args],
+      invitationRequests: [
+        {
+          ...args,
+          email,
+        },
+      ],
     });
 
     if (invitationRes.isErr()) {
