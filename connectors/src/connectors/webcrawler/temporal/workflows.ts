@@ -16,7 +16,11 @@ export const REQUEST_HANDLING_TIMEOUT = 420;
 
 export const MAX_TIME_TO_CRAWL_MINUTES = 240;
 
+export const MIN_EXTRACTED_TEXT_LENGTH = 1024;
+
 export const MAX_BLOCKED_RATIO = 0.01;
+
+export const MAX_PAGES_TOO_LARGE_RATIO = 0.01;
 
 const { crawlWebsiteByConnectorId, webCrawlerGarbageCollector } =
   proxyActivities<typeof activities>({

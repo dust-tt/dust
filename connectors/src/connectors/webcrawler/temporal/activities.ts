@@ -17,8 +17,10 @@ import {
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
 import {
-  MAX_BLOCKED_RATIO, MAX_PAGES_TOO_LARGE_RATIO,
+  MAX_BLOCKED_RATIO,
+  MAX_PAGES_TOO_LARGE_RATIO,
   MAX_TIME_TO_CRAWL_MINUTES,
+  MIN_EXTRACTED_TEXT_LENGTH,
   REQUEST_HANDLING_TIMEOUT,
 } from "@connectors/connectors/webcrawler/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -397,9 +399,12 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   if (pageCount.blocked / pageCount.total() > MAX_BLOCKED_RATIO) {
     await syncFailed(connector.id, "webcrawling_error_blocked");
-  } else if (pageCount.tooLarge === pageCount.total()) {
+  } else if (
+    pageCount.tooLarge / pageCount.total() >
+    MAX_PAGES_TOO_LARGE_RATIO
+  ) {
     await syncFailed(connector.id, "webcrawling_error_content_too_large");
-  } else if (totalExtracted <= 0) {
+  } else if (totalExtracted < MIN_EXTRACTED_TEXT_LENGTH) {
     await syncFailed(connector.id, "webcrawling_error_empty_content");
   } else if (pageCount.valid === 0) {
     await syncFailed(connector.id, "webcrawling_error");
