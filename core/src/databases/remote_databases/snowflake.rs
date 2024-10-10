@@ -44,8 +44,7 @@ struct SnowflakeQueryPlanEntry {
     operation: Option<String>,
 }
 
-// TODO(SNOWFLAKE) actual limit TBD
-pub const MAX_QUERY_RESULT_SIZE_BYTES: usize = 128 * 1024 * 1024; // 128MB
+pub const MAX_QUERY_RESULT_SIZE_BYTES: usize = 8 * 1024 * 1024; // 8MB
 
 // TODO(SNOWFLAKE) make sure we're not missing any
 pub const FORBIDDEN_OPERATIONS: [&str; 3] = ["UPDATE", "DELETE", "INSERT"];

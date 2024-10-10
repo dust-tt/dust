@@ -136,7 +136,7 @@ export function isSupportedImageContentType(
 
 export type FileStatus = "created" | "failed" | "ready";
 
-export type FileUseCase = "conversation" | "avatar";
+export type FileUseCase = "conversation" | "avatar" | "toolOutput";
 
 export interface FileType {
   contentType: SupportedFileContentType;

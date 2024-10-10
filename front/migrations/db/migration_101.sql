@@ -1,9 +1,9 @@
 -- Migration created on Oct 07, 2024
 CREATE UNIQUE INDEX "data_source_view_workspace_data_source_vault_deleted_at_unique" ON "data_source_views" (
-  "workspaceId",
-  "dataSourceId",
-  "vaultId",
-  "deletedAt"
+    "workspaceId",
+    "dataSourceId",
+    "vaultId",
+    "deletedAt"
 );
 
 -- Delete the previous truncated index.

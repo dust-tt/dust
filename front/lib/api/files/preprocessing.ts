@@ -329,46 +329,57 @@ const processingPerContentType: PreprocessingPerContentType = {
   "application/msword": {
     conversation: extractTextFromFile,
     avatar: notSupportedError,
+    toolOutput: notSupportedError,
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
     conversation: extractTextFromFile,
     avatar: notSupportedError,
+    toolOutput: notSupportedError,
   },
   "application/pdf": {
     conversation: extractTextFromFile,
     avatar: notSupportedError,
+    toolOutput: notSupportedError,
   },
   "image/jpeg": {
     conversation: resizeAndUploadToFileStorage,
     avatar: uploadToPublicBucket,
+    toolOutput: notSupportedError,
   },
   "image/png": {
     conversation: resizeAndUploadToFileStorage,
     avatar: uploadToPublicBucket,
+    toolOutput: notSupportedError,
   },
   "text/comma-separated-values": {
     conversation: storeRawText,
     avatar: notSupportedError,
+    toolOutput: notSupportedError,
   },
   "text/csv": {
     conversation: extractContentAndSchemaFromCSV,
     avatar: notSupportedError,
+    toolOutput: notSupportedError,
   },
   "text/markdown": {
     conversation: storeRawText,
     avatar: notSupportedError,
+    toolOutput: notSupportedError,
   },
   "text/plain": {
     conversation: storeRawText,
     avatar: notSupportedError,
+    toolOutput: notSupportedError,
   },
   "text/tab-separated-values": {
     conversation: storeRawText,
     avatar: notSupportedError,
+    toolOutput: notSupportedError,
   },
   "text/tsv": {
     conversation: storeRawText,
     avatar: notSupportedError,
+    toolOutput: notSupportedError,
   },
 };
 
