@@ -1,4 +1,5 @@
 import type {
+  ConversationError,
   ConversationMessageReactions,
   ConversationType,
   LightWorkspaceType,
@@ -25,7 +26,7 @@ export function useConversation({
 }): {
   conversation: ConversationType | null;
   isConversationLoading: boolean;
-  conversationError: Error;
+  conversationError: ConversationError;
   mutateConversation: () => void;
 } {
   const conversationFetcher: Fetcher<{ conversation: ConversationType }> =

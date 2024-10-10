@@ -1,12 +1,13 @@
+import type { ConversationError, ConversationErrorType } from "@dust-tt/types";
 import { Icon, StopSignIcon } from "@dust-tt/sparkle";
 import { isAPIErrorResponse, safeParseJSON } from "@dust-tt/types";
 import type { ComponentType } from "react";
 
-interface ConversationError {
-  error: Error;
+interface ConversationErrorProps {
+  error: ConversationError;
 }
 
-export function ConversationError({ error }: ConversationError) {
+export function ConversationErrorDisplay({ error }: ConversationErrorProps) {
   const errorMessageRes = safeParseJSON(error.message);
 
   if (errorMessageRes.isErr() || !isAPIErrorResponse(errorMessageRes.value)) {
