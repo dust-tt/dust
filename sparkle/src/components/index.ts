@@ -5,6 +5,7 @@ export { BarHeader } from "./BarHeader";
 export { Breadcrumbs } from "./Breadcrumbs";
 export { Button } from "./Button";
 export { CardButton } from "./CardButton";
+export type { CheckboxProps } from "./Checkbox";
 export {
   Checkbox,
   CheckboxWithText,

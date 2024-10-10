@@ -42,10 +42,11 @@ interface CheckboxProps
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
->(({ className, size = "sm", isPartial = false, ...props }, ref) => (
+>(({ className, size = "sm", isPartial = false, checked, ...props }, ref) => (
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(checkboxStyles({ isPartial, size }), className)}
+    checked={isPartial || checked}
     {...props}
   >
     <CheckboxPrimitive.Indicator className="s-flex s-items-center s-justify-center s-text-current">
@@ -96,3 +97,4 @@ function CheckBoxWithTextAndDescription({
 }
 
 export { Checkbox, CheckboxWithText, CheckBoxWithTextAndDescription };
+export type { CheckboxProps };
