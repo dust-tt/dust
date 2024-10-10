@@ -27,7 +27,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     ref
   ) => {
     return (
-      <div className="s-flex s-flex-col s-gap-1 s-p-px">
+      <div className="s-flex s-flex-col s-gap-1 s-px-1">
         {label && (
           <Label
             htmlFor={props.name}
