@@ -223,3 +223,16 @@ export interface ConversationParticipantsType {
   agents: AgentParticipant[];
   users: UserParticipant[];
 }
+
+export type ConversationErrorType =
+  | "conversation_not_found"
+  | "conversation_access_restricted";
+
+export class ConversationError extends Error {
+  readonly type: ConversationErrorType;
+
+  constructor(type: ConversationErrorType) {
+    super(`Cannot access conversation: ${type}`);
+    this.type = type;
+  }
+}

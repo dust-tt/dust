@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import { ConversationError } from "@app/components/assistant/conversation/ConversationError";
+import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -130,7 +130,7 @@ export default function ConversationLayout({
           navChildren={<AssistantSidebarMenu owner={owner} />}
         >
           {conversationError ? (
-            <ConversationError error={conversationError} />
+            <ConversationErrorDisplay error={conversationError} />
           ) : (
             <>
               <AssistantDetails

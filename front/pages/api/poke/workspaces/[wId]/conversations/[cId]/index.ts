@@ -2,6 +2,7 @@ import type { ConversationType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -43,17 +44,13 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const conversation = await getConversation(auth, cId, true);
+      const conversationRes = await getConversation(auth, cId, true);
 
-      if (!conversation) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "conversation_not_found",
-            message: "Could not find the conversation.",
-          },
-        });
+      if (conversationRes.isErr()) {
+        return apiErrorForConversation(req, res, conversationRes.error);
       }
+
+      const conversation = conversationRes.value;
 
       return res.status(200).json({ conversation });
 

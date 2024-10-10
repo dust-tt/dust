@@ -2,6 +2,7 @@ import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -22,20 +23,16 @@ async function handler(
     });
   }
   const conversationId = req.query.cId;
-  const conversation = await getConversationWithoutContent(
+  const conversationRes = await getConversationWithoutContent(
     auth,
     conversationId
   );
 
-  if (!conversation) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "The conversation you're trying to access was not found.",
-      },
-    });
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
   }
+
+  const conversation = conversationRes.value;
 
   const lastEventId = req.query.lastEventId || null;
   if (lastEventId && typeof lastEventId !== "string") {

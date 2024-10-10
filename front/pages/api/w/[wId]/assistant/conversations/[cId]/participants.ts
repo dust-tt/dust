@@ -6,6 +6,7 @@ import type {
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -35,19 +36,16 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conversationWithoutContent = await getConversationWithoutContent(
+  const conversationRes = await getConversationWithoutContent(
     auth,
     conversationId
   );
-  if (!conversationWithoutContent) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found.",
-      },
-    });
+
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
   }
+
+  const conversationWithoutContent = conversationRes.value;
 
   switch (req.method) {
     case "GET":
