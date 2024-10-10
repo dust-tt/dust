@@ -29,11 +29,11 @@ chrome.runtime.onMessage.addListener(
   ) => {
     switch (message.type) {
       case "AUTHENTICATE":
-        authenticate(sendResponse);
+        void authenticate(sendResponse);
         return true; // Keep the message channel open for async response.
 
       case "LOGOUT":
-        logout(sendResponse);
+        void logout(sendResponse);
         return true; // Keep the message channel open.
 
       default:

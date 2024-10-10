@@ -8,7 +8,7 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { sendAuthMessage } from "../lib/auth";
 
@@ -24,27 +24,25 @@ export const MainPage = () => {
     setIsLoading(false);
   }, []);
 
-  const handleLogin = () => {
+  const handleLogin = useCallback(async () => {
     setIsLoading(true);
-    sendAuthMessage()
-      .then((response) => {
-        console.log(response);
-        if (response?.accessToken) {
-          localStorage.setItem("authToken", response.accessToken);
-          setToken(response.accessToken);
-        } else {
-          console.error("Authentication failed.");
-        }
-        localStorage.setItem("full", JSON.stringify(response));
-        setIsLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error sending message:", error);
-        setIsLoading(false);
-      });
-  };
+    try {
+      const response = await sendAuthMessage();
+      if (response?.accessToken) {
+        localStorage.setItem("authToken", response.accessToken);
+        setToken(response.accessToken);
+      } else {
+        console.error("Authentication failed.");
+      }
+      localStorage.setItem("full", JSON.stringify(response));
+    } catch (error) {
+      console.error("Error sending message:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sendAuthMessage, setIsLoading, setToken]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     chrome.runtime.sendMessage({ type: "LOGOUT" }, (response) => {
       if (response?.success) {
         localStorage.removeItem("authToken");
@@ -53,7 +51,7 @@ export const MainPage = () => {
         console.error("Logout failed.");
       }
     });
-  };
+  }, [setToken]);
 
   return (
     <div className="flex flex-col p-4 gap-2 h-screen">

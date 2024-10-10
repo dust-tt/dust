@@ -38,10 +38,12 @@ export const sendAuthMessage = (): Promise<Auth0AuthorizeResponse> => {
                 message,
                 (response: Auth0AuthorizeResponse | undefined) => {
                   if (chrome.runtime.lastError) {
-                    reject(chrome.runtime.lastError);
-                  } else {
-                    resolve(response as Auth0AuthorizeResponse);
+                    return reject(chrome.runtime.lastError);
                   }
+                  if (!response) {
+                    return reject(new Error("No response received"));
+                  }
+                  return resolve(response);
                 }
               );
             });
