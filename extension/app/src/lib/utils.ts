@@ -24,3 +24,27 @@ export const generatePKCE = async () => {
     .replace(/=+$/, "");
   return { codeVerifier, codeChallenge: base64Digest };
 };
+
+export const saveAccessToken = (accessToken: string) => {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set({ accessToken }, () => {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve(true);
+      }
+    });
+  });
+};
+
+export const getAccessToken = () => {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(["accessToken"], (result) => {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve(result.accessToken);
+      }
+    });
+  });
+};

@@ -11,17 +11,27 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { sendAuthMessage } from "../lib/auth";
+import { getAccessToken, saveAccessToken } from "../lib/utils";
 
 export const MainPage = () => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem("authToken");
-    if (storedToken) {
-      setToken(storedToken);
-    }
-    setIsLoading(false);
+    const fetchToken = async () => {
+      try {
+        const storedToken = await getAccessToken();
+        if (storedToken && typeof storedToken === "string") {
+          setToken(storedToken);
+        }
+      } catch (error) {
+        console.error("Error retrieving token:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchToken();
   }, []);
 
   const handleLogin = useCallback(async () => {
@@ -29,12 +39,11 @@ export const MainPage = () => {
     try {
       const response = await sendAuthMessage();
       if (response?.accessToken) {
-        localStorage.setItem("authToken", response.accessToken);
+        await saveAccessToken(response.accessToken);
         setToken(response.accessToken);
       } else {
         console.error("Authentication failed.");
       }
-      localStorage.setItem("full", JSON.stringify(response));
     } catch (error) {
       console.error("Error sending message:", error);
     } finally {
