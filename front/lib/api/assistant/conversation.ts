@@ -163,7 +163,7 @@ export async function updateConversation(
     visibility: visibility,
   });
 
-  return await getConversation(auth, conversationId);
+  return getConversation(auth, conversationId);
 }
 
 /**

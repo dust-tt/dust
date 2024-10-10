@@ -78,7 +78,8 @@ async function handler(
       res.status(200).end();
       return;
     }
-    case "PATCH":
+
+    case "PATCH": {
       const bodyValidation = PatchConversationsRequestBodySchema.decode(
         req.body
       );
@@ -97,13 +98,18 @@ async function handler(
 
       const { title, visibility } = bodyValidation.right;
 
-      const c = await updateConversation(auth, conversation.sId, {
+      const result = await updateConversation(auth, conversation.sId, {
         title,
         visibility,
       });
 
-      res.status(200).json({ conversation: c });
+      if (result.isErr()) {
+        return apiErrorForConversation(req, res, result.error);
+      }
+
+      res.status(200).json({ conversation: result.value });
       return;
+    }
 
     default:
       return apiError(req, res, {
