@@ -48,3 +48,15 @@ export const getAccessToken = () => {
     });
   });
 };
+
+export const clearAccessToken = () => {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.remove("accessToken", () => {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve(true);
+      }
+    });
+  });
+};
