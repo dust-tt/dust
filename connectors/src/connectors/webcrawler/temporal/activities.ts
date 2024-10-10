@@ -91,7 +91,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   let totalExtracted = 0;
   let crawlingError = 0;
   let upsertingError = 0;
-  let isNotBlocked = true;
+  let blockCount = 0;
   const createdFolders = new Set<string>();
 
   const crawler = new CheerioCrawler(
@@ -144,8 +144,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           type: "http_request",
         });
         const currentRequestDepth = request.userData.depth || 0;
-        isNotBlocked &&=
-          response.statusCode !== 403 && response.statusCode !== 429;
+        if (response.statusCode === 403 && response.statusCode === 429) {
+          blockCount++;
+        }
 
         // try-catch allowing activity cancellation by temporal (various timeouts, or signal)
         try {
@@ -379,8 +380,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   // checks for cancellation and throws if it's the case
   await Context.current().sleep(1);
 
-  if (totalExtracted <= 0) {
-    await syncFailed(connector.id, "webcrawling_error_empty_content");
+  if (blockCount > 0) {
+    await syncFailed(connector.id, "webcrawling_error_blocked");
   } else if (upsertedPageCount <= 0) {
     // this means that every page was too big to be upserted
     await syncFailed(connector.id, "webcrawling_error_content_too_large");
