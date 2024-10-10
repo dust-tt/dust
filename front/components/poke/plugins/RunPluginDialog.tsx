@@ -73,7 +73,7 @@ export function RunPluginDialog({
             <AlertCircle className="h-4 w-4" />
             <PokeAlertTitle>Error</PokeAlertTitle>
             <PokeAlertDescription>
-              Your session has expired. Please log in again.
+              Plugin could not be loaded.
             </PokeAlertDescription>
           </PokeAlert>
         ) : (
@@ -87,7 +87,9 @@ export function RunPluginDialog({
             {result && (
               <PokeAlert variant="default">
                 <PokeAlertTitle>Success</PokeAlertTitle>
-                <PokeAlertDescription>{result}</PokeAlertDescription>
+                <PokeAlertDescription>
+                  {result} - Make sure to reload.
+                </PokeAlertDescription>
               </PokeAlert>
             )}
             <PluginForm manifest={manifest} onSubmit={onSubmit} />

@@ -340,3 +340,23 @@ export async function deleteWorkspace(
 
   return new Ok(undefined);
 }
+
+export async function changeWorkspaceName(
+  owner: LightWorkspaceType,
+  newName: string
+): Promise<Result<void, Error>> {
+  const [affectedCount] = await Workspace.update(
+    { name: newName },
+    {
+      where: {
+        id: owner.id,
+      },
+    }
+  );
+
+  if (affectedCount === 0) {
+    return new Err(new Error("Workspace not found."));
+  }
+
+  return new Ok(undefined);
+}

@@ -3,7 +3,7 @@ import { Err, MEMBERSHIP_ROLE_TYPES, Ok } from "@dust-tt/types";
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { createPlugin } from "@app/lib/api/poke/types";
 
-export const sendWelcomeEmail = createPlugin(
+export const inviteUser = createPlugin(
   {
     id: "invite-user",
     name: "Invite a user",
