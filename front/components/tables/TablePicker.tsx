@@ -112,7 +112,7 @@ export default function TablePicker({
                   name="search"
                   placeholder="Search"
                   value={searchFilter}
-                  onChange={(value) => setSearchFilter(value)}
+                  onChange={(e) => setSearchFilter(e.target.value)}
                   className="mt-4 w-full"
                 />
                 {(filteredTables || []).map((t) => {

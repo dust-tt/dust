@@ -153,7 +153,7 @@ export default function DataSourcePicker({
                   name="search"
                   placeholder="Search"
                   value={searchFilter}
-                  onChange={(value) => setSearchFilter(value)}
+                  onChange={(e) => setSearchFilter(e.target.value)}
                   className="mt-4 w-full"
                 />
                 {(filteredDataSourceViews || []).map((dsv) => {

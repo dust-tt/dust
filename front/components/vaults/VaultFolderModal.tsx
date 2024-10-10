@@ -149,8 +149,8 @@ export default function VaultFolderModal({
                   placeholder="folder_name"
                   name="name"
                   value={name}
-                  onChange={(value) => {
-                    setName(value);
+                  onChange={(e) => {
+                    setName(e.target.value);
                   }}
                   error={error}
                   disabled={!!dataSourceView} // We cannot change the name of a datasource

@@ -405,9 +405,9 @@ export default function VaultWebsiteModal({
                             placeholder="Header Name"
                             value={header.key}
                             name="headerName"
-                            onChange={(value) => {
+                            onChange={(e) => {
                               const newHeaders = [...headers];
-                              newHeaders[index].key = value;
+                              newHeaders[index].key = e.target.value;
                               setHeaders(newHeaders);
                             }}
                             className="grow"
@@ -416,9 +416,9 @@ export default function VaultWebsiteModal({
                             name="headerValue"
                             placeholder="Header Value"
                             value={header.value}
-                            onChange={(value) => {
+                            onChange={(e) => {
                               const newHeaders = [...headers];
-                              newHeaders[index].value = value;
+                              newHeaders[index].value = e.target.value;
                               setHeaders(newHeaders);
                             }}
                             className="flex-1"
@@ -467,10 +467,10 @@ export default function VaultWebsiteModal({
                   <Input
                     placeholder="https://example.com/articles"
                     value={dataSourceUrl}
-                    onChange={(value) => updateUrl(value)}
+                    onChange={(e) => updateUrl(e.target.value)}
                     error={dataSourceUrlError}
                     name="dataSourceUrl"
-                    showErrorLabel={true}
+                    showErrorLabel
                     className="text-sm"
                   />
                   <ContentMessage
@@ -582,11 +582,11 @@ export default function VaultWebsiteModal({
                     <Input
                       placeholder={WEBCRAWLER_MAX_PAGES.toString()}
                       value={maxPages?.toString() || ""}
-                      onChange={(value) => {
-                        const parsed = parseInt(value);
+                      onChange={(e) => {
+                        const parsed = parseInt(e.target.value);
                         if (!isNaN(parsed)) {
-                          setMaxPages(parseInt(value));
-                        } else if (value == "") {
+                          setMaxPages(parseInt(e.target.value));
+                        } else if (e.target.value == "") {
                           setMaxPages(null);
                         }
                       }}
@@ -619,12 +619,11 @@ export default function VaultWebsiteModal({
                     </p>
                   )}
                   <Input
-                    placeholder=""
                     value={dataSourceName}
-                    onChange={(value) => setDataSourceName(value)}
+                    onChange={(e) => setDataSourceName(e.target.value)}
                     error={dataSourceNameError}
                     name="dataSourceName"
-                    showErrorLabel={true}
+                    showErrorLabel
                     className="text-sm"
                     disabled={webCrawlerConfiguration !== null}
                   />

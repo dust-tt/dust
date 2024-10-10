@@ -272,8 +272,7 @@ export function CreateOrEditVaultModal({
               placeholder="Vault's name"
               value={vaultName}
               name="vaultName"
-              size="sm"
-              onChange={(value) => setVaultName(value)}
+              onChange={(e) => setVaultName(e.target.value)}
             />
             {!vault && (
               <div className="flex gap-1 text-xs text-element-700">

@@ -169,8 +169,8 @@ export function CreateConnectionSnowflakeModal({
                 name="username"
                 value={credentials.account}
                 placeholder="au12345.us-east-1"
-                onChange={(value) => {
-                  setCredentials({ ...credentials, account: value });
+                onChange={(e) => {
+                  setCredentials({ ...credentials, account: e.target.value });
                   setError(null);
                 }}
               />
@@ -179,8 +179,8 @@ export function CreateConnectionSnowflakeModal({
                 name="username"
                 value={credentials.role}
                 placeholder="dev_role"
-                onChange={(value) => {
-                  setCredentials({ ...credentials, role: value });
+                onChange={(e) => {
+                  setCredentials({ ...credentials, role: e.target.value });
                   setError(null);
                 }}
               />
@@ -189,8 +189,8 @@ export function CreateConnectionSnowflakeModal({
                 name="warehouse"
                 value={credentials.warehouse}
                 placeholder="dev_warehouse"
-                onChange={(value) => {
-                  setCredentials({ ...credentials, warehouse: value });
+                onChange={(e) => {
+                  setCredentials({ ...credentials, warehouse: e.target.value });
                   setError(null);
                 }}
               />
@@ -199,19 +199,19 @@ export function CreateConnectionSnowflakeModal({
                 name="username"
                 value={credentials.username}
                 placeholder="dev_user"
-                onChange={(value) => {
-                  setCredentials({ ...credentials, username: value });
+                onChange={(e) => {
+                  setCredentials({ ...credentials, username: e.target.value });
                   setError(null);
                 }}
               />
               <Input
                 label="Password"
                 name="password"
-                isPassword={true}
+                type="password"
                 value={credentials.password}
                 placeholder=""
-                onChange={(value) => {
-                  setCredentials({ ...credentials, password: value });
+                onChange={(e) => {
+                  setCredentials({ ...credentials, password: e.target.value });
                   setError(null);
                 }}
               />

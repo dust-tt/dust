@@ -154,13 +154,13 @@ export default function Welcome({
               name="firstName"
               placeholder="First Name"
               value={firstName}
-              onChange={setFirstName}
+              onChange={(e) => setFirstName(e.target.value)}
             />
             <Input
               name="lastName"
               placeholder="Last Name"
               value={lastName}
-              onChange={setLastName}
+              onChange={(e) => setLastName(e.target.value)}
             />
           </div>
         </div>

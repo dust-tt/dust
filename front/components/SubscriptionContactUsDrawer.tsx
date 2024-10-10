@@ -69,8 +69,8 @@ export function SubscriptionContactUsDrawer({
             <Input
               placeholder="name@example.com"
               value={email}
-              onChange={(value) => {
-                setEmail(value);
+              onChange={(e) => {
+                setEmail(e.target.value);
                 setEmailError(null);
               }}
               error={emailError}

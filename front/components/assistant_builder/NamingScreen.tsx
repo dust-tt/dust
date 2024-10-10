@@ -356,11 +356,11 @@ export default function NamingScreen({
               <Input
                 placeholder="SalesAssistant, FrenchTranslator, SupportCenter…"
                 value={builderState.handle}
-                onChange={(value) => {
+                onChange={(e) => {
                   setEdited(true);
                   setBuilderState((state) => ({
                     ...state,
-                    handle: value.trim(),
+                    handle: e.target.value.trim(),
                   }));
                 }}
                 error={assistantHandleError}
@@ -403,12 +403,12 @@ export default function NamingScreen({
                     : "Click on sparkles to generate a description"
                 }
                 value={generatingDescription ? "" : builderState.description}
-                onChange={(value) => {
+                onChange={(e) => {
                   setEdited(true);
                   setDescriptionIsGenerated(false);
                   setBuilderState((state) => ({
                     ...state,
-                    description: value,
+                    description: e.target.value,
                   }));
                 }}
                 name="assistantDescription"

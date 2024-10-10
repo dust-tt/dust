@@ -272,16 +272,19 @@ const DocumentUploadOrEditModal = ({
                   maxLength={MAX_NAME_CHARS}
                   disabled={!!initialId}
                   value={documentState.name}
-                  onChange={(value) => {
+                  onChange={(e) => {
                     setEditionStatus((prev) => ({ ...prev, name: true }));
-                    setDocumentState((prev) => ({ ...prev, name: value }));
+                    setDocumentState((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }));
                   }}
                   error={
                     !documentState.name && editionStatus.name
                       ? "You need to provide a name."
                       : null
                   }
-                  showErrorLabel={true}
+                  showErrorLabel
                 />
               </div>
 
@@ -294,8 +297,11 @@ const DocumentUploadOrEditModal = ({
                   placeholder="https://..."
                   name="sourceUrl"
                   value={documentState.sourceUrl}
-                  onChange={(value) =>
-                    setDocumentState((prev) => ({ ...prev, sourceUrl: value }))
+                  onChange={(e) =>
+                    setDocumentState((prev) => ({
+                      ...prev,
+                      sourceUrl: e.target.value,
+                    }))
                   }
                 />
               </div>
@@ -344,7 +350,7 @@ const DocumentUploadOrEditModal = ({
                       ? "You need to upload a file or specify the content of the document."
                       : null
                   }
-                  showErrorLabel={true}
+                  showErrorLabel
                 />
               </div>
 
@@ -384,9 +390,9 @@ const DocumentUploadOrEditModal = ({
                               placeholder="Tag"
                               name="tag"
                               value={tag}
-                              onChange={(value) => {
+                              onChange={(e) => {
                                 const newTags = [...documentState.tags];
-                                newTags[index] = value;
+                                newTags[index] = e.target.value;
                                 setDocumentState((prev) => ({
                                   ...prev,
                                   tags: newTags,
@@ -613,9 +619,12 @@ const TableUploadOrEditModal = ({
                   maxLength={MAX_NAME_CHARS}
                   disabled={!!initialId}
                   value={tableState.name}
-                  onChange={(value) => {
+                  onChange={(e) => {
                     setEditionStatus((prev) => ({ ...prev, name: true }));
-                    setTableState((prev) => ({ ...prev, name: value }));
+                    setTableState((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }));
                   }}
                   error={
                     editionStatus.name &&
@@ -623,7 +632,7 @@ const TableUploadOrEditModal = ({
                       ? "Invalid name: Must be alphanumeric, max 32 characters and no space."
                       : null
                   }
-                  showErrorLabel={true}
+                  showErrorLabel
                 />
               </div>
 
@@ -650,7 +659,7 @@ const TableUploadOrEditModal = ({
                       ? "You need to provide a description to your CSV file."
                       : null
                   }
-                  showErrorLabel={true}
+                  showErrorLabel
                   minRows={10}
                 />
               </div>

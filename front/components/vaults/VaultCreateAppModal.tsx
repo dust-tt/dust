@@ -120,8 +120,8 @@ export const VaultCreateAppModal = ({
                 placeholder="app_name"
                 name="name"
                 value={name}
-                onChange={(value) => {
-                  setName(value);
+                onChange={(e) => {
+                  setName(e.target.value);
                   if (errors.name) {
                     setErrors({ ...errors, name: null });
                   }
