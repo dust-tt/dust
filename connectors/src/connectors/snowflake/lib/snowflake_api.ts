@@ -261,7 +261,7 @@ export const isConnectionReadonly = async ({
   for (const g of [...currentGrantsRes.value, ...futureGrantsRes.value]) {
     const grantOn = "granted_on" in g ? g.granted_on : g.grant_on;
 
-    if (grantOn === "TABLE") {
+    if (["TABLE", "VIEW"].includes(grantOn)) {
       // We only allow SELECT grants on tables.
       if (g.privilege !== "SELECT") {
         return new Err(
