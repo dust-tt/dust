@@ -5,8 +5,9 @@ import { cn } from "@sparkle/lib/utils";
 import { Label } from "./Label";
 
 export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> {
   error?: string | null;
+  value?: string | null;
   showErrorLabel?: boolean;
   className?: string;
   label?: string;
@@ -21,7 +22,10 @@ const inputStyleClasses = cn(
 );
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, error, label, showErrorLabel = false, ...props }, ref) => {
+  (
+    { className, error, value, label, showErrorLabel = false, ...props },
+    ref
+  ) => {
     return (
       <div className="s-flex s-flex-col s-gap-1 s-p-px">
         {label && (
@@ -48,6 +52,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 )
           )}
           data-1p-ignore={props.type !== "password"}
+          value={value ?? undefined}
           {...props}
         />
         <div className="s-ml-2 s-text-sm s-text-warning-500">
