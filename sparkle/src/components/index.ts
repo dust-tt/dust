@@ -5,7 +5,12 @@ export { BarHeader } from "./BarHeader";
 export { Breadcrumbs } from "./Breadcrumbs";
 export { Button } from "./Button";
 export { CardButton } from "./CardButton";
-export { Checkbox } from "./Checkbox";
+export type { CheckboxProps } from "./Checkbox";
+export {
+  Checkbox,
+  CheckboxWithText,
+  CheckBoxWithTextAndDescription,
+} from "./Checkbox";
 export { Chip } from "./Chip";
 export { Citation } from "./Citation";
 export { default as CollapseButton } from "./CollapseButton";
