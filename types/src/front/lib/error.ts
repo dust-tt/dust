@@ -95,7 +95,10 @@ export type APIErrorType =
   | "group_not_found"
   // Conversations:
   | "conversation_access_denied"
-  | "conversation_not_found";
+  | "conversation_not_found"
+  // Plugins:
+  | "plugin_not_found"
+  | "plugin_execution_failed";
 
 export type APIError = {
   type: APIErrorType;
