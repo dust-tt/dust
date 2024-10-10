@@ -1,88 +1,59 @@
 import React, { forwardRef } from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
-const sizeInputClasses = {
-  sm: "s-text-base s-rounded-xl s-py-1.5 s-pl-4 s-pr-8",
-  md: "s-text-lg s-rounded-2xl s-py-2 s-pl-4 s-pr-10",
-};
+import { Label } from "./Label";
 
-type InputProps = {
-  placeholder: string;
-  size?: "sm" | "md";
-  value: string | null;
-  onChange?: (value: string) => void;
+export interface InputProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> {
   error?: string | null;
+  value?: string | null;
   showErrorLabel?: boolean;
-  name: string;
-  isPassword?: boolean;
-  disabled?: boolean;
   className?: string;
   label?: string;
-  maxLength?: number;
-};
+}
+
+const inputStyleClasses = cn(
+  "s-text-sm s-bg-background s-rounded-xl s-border s-border-border-dark s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
+  "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
+  "placeholder:s-text-muted-foreground",
+  "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2 focus-visible:s-ring-ring focus-visible:s-border-primary-400",
+  "disabled:s-cursor-not-allowed disabled:s-opacity-50 disabled:s-text-muted-foreground"
+);
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
-    {
-      placeholder,
-      value,
-      size = "sm",
-      onChange,
-      error,
-      showErrorLabel = false,
-      name,
-      isPassword = false,
-      disabled = false,
-      className = "",
-      label,
-      maxLength,
-    },
+    { className, error, value, label, showErrorLabel = false, ...props },
     ref
   ) => {
     return (
-      <div className="s-flex s-flex-col s-gap-1 s-p-px">
+      <div className="s-flex s-flex-col s-gap-1 s-px-1">
         {label && (
-          <label
-            htmlFor={name}
-            className="s-pb-1 s-text-sm s-font-medium s-text-element-700 dark:s-text-element-700-dark"
+          <Label
+            htmlFor={props.name}
+            className="s-pb-1 s-text-element-700 dark:s-text-element-700-dark"
           >
             {label}
-          </label>
+          </Label>
         )}
         <input
           ref={ref}
-          type={isPassword ? "password" : "text"}
-          name={name}
-          id={name}
-          maxLength={maxLength}
-          className={classNames(
-            "s-w-full s-border-0 s-outline-none s-ring-1 focus:s-outline-none focus:s-ring-2",
-            "s-bg-structure-50 s-placeholder-element-700",
-            "dark:s-bg-structure-50-dark dark:s-placeholder-element-700-dark",
-            sizeInputClasses[size],
-            "s-transition-all s-duration-300 s-ease-out",
-            className ?? "",
+          className={cn(
+            inputStyleClasses,
+            className,
             !error
-              ? classNames(
+              ? cn(
                   "s-ring-structure-200 focus:s-ring-action-300",
                   "dark:s-ring-structure-300-dark dark:focus:s-ring-action-300-dark"
                 )
-              : classNames(
+              : cn(
                   "s-ring-warning-200 focus:s-ring-warning-300",
                   "dark:s-ring-warning-200-dark dark:focus:s-ring-warning-300-dark"
-                ),
-            disabled
-              ? "s-text-element-500 hover:s-cursor-not-allowed"
-              : "s-text-element-900 dark:s-text-element-800-dark"
+                )
           )}
-          placeholder={placeholder}
-          value={value ?? ""}
-          onChange={(e) => {
-            onChange?.(e.target.value);
-          }}
-          data-1p-ignore={!isPassword}
-          disabled={disabled}
+          data-1p-ignore={props.type !== "password"}
+          value={value ?? undefined}
+          {...props}
         />
         <div className="s-ml-2 s-text-sm s-text-warning-500">
           {showErrorLabel && error ? error : null}

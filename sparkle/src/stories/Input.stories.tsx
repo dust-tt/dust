@@ -13,7 +13,37 @@ export default meta;
 export const InputExample = () => (
   <div className="s-flex s-flex-col s-gap-20">
     <div className="s-grid s-grid-cols-3 s-gap-4">
-      <Input placeholder="placeholder" name="input" value={null} />
+      <Input placeholder="placeholder" name="input" />
+      <Input
+        placeholder="placeholder"
+        name="input"
+        value={"value"}
+        error={"errored because it's a very long message"}
+        showErrorLabel
+      />
+      <Input
+        placeholder="placeholder"
+        name="input"
+        value={"value"}
+        error={"errored"}
+      />
+      <Input
+        placeholder="placeholder"
+        name="input"
+        value={"value"}
+        error={"errored because it's a very long message"}
+        showErrorLabel
+      />
+      <Input
+        placeholder="placeholder"
+        name="input"
+        value={"disabled"}
+        disabled={true}
+        showErrorLabel
+      />
+    </div>
+    <div className="s-grid s-grid-cols-3 s-gap-4">
+      <Input placeholder="placeholder" name="input" />
       <Input
         placeholder="placeholder"
         name="input"
@@ -42,53 +72,16 @@ export const InputExample = () => (
       />
     </div>
     <div className="s-grid s-grid-cols-3 s-gap-4">
-      <Input placeholder="placeholder" name="input" value={null} size="md" />
       <Input
         placeholder="placeholder"
         name="input"
-        size="md"
-        value={"value"}
-        error={"errored because it's a very long message"}
-        showErrorLabel
-      />
-      <Input
-        placeholder="placeholder"
-        name="input"
-        size="md"
-        value={"value"}
-        error={"errored"}
-      />
-      <Input
-        placeholder="placeholder"
-        name="input"
-        size="md"
-        value={"value"}
-        error={"errored because it's a very long message"}
-        showErrorLabel
-      />
-      <Input
-        placeholder="placeholder"
-        name="input"
-        size="md"
-        value={"disabled"}
-        showErrorLabel
-      />
-    </div>
-    <div className="s-grid s-grid-cols-3 s-gap-4">
-      <Input
-        placeholder="placeholder"
-        name="input"
-        size="sm"
         label="Firstname"
-        value=""
         showErrorLabel
       />
       <Input
         placeholder="placeholder"
         name="input"
-        size="sm"
         label="Lastname"
-        value=""
         showErrorLabel
       />
     </div>
