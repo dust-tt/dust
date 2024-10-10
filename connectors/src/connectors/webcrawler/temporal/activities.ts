@@ -87,6 +87,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   let pageCount = 0;
+  let upsertedPageCount = 0;
   let totalExtracted = 0;
   let crawlingError = 0;
   let upsertingError = 0;
@@ -300,6 +301,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               },
               async: true,
             });
+            upsertedPageCount++;
           } else {
             childLogger.info(
               {
@@ -378,6 +380,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
 
   if (totalExtracted <= 0) {
     await syncFailed(connector.id, "webcrawling_error_empty_content");
+  } else if (upsertedPageCount <= 0) {
+    /// TODO: check if we should have a different error type for this case
+    await syncFailed(connector.id, "webcrawling_error");
   } else if (isBlocked) {
     await syncFailed(connector.id, "webcrawling_error_blocked");
   } else if (pageCount <= 0) {
