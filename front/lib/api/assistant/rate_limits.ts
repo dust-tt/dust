@@ -19,7 +19,7 @@ export const makeAgentMentionsRateLimitKeyForWorkspace = (
   return `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`;
 };
 
-export async function resetWorkspaceRateLimit(auth: Authenticator) {
+export async function resetMessageRateLimitForWorkspace(auth: Authenticator) {
   const workspace = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
 

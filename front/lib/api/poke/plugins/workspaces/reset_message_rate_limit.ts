@@ -1,13 +1,13 @@
 import { Err, Ok } from "@dust-tt/types";
 
-import { resetWorkspaceRateLimit } from "@app/lib/api/assistant/rate_limits";
+import { resetMessageRateLimitForWorkspace } from "@app/lib/api/assistant/rate_limits";
 import { createPlugin } from "@app/lib/api/poke/types";
 
 export const resetRateLimit = createPlugin(
   {
     id: "reset-message-rate-limit",
     name: "Reset Message Rate Limit",
-    description: "Reset the message rate limit for the workspace",
+    description: "Reset the message rate limit for the workspace.",
     resourceTypes: ["workspaces"],
     args: {
       confirmReset: {
@@ -29,7 +29,7 @@ export const resetRateLimit = createPlugin(
       return new Err(new Error("Rate limit reset not confirmed."));
     }
 
-    await resetWorkspaceRateLimit(auth);
+    await resetMessageRateLimitForWorkspace(auth);
 
     return new Ok(`Message rate limit reset for workspace ${resourceId}`);
   }
