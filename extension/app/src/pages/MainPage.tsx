@@ -9,7 +9,7 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+
 import { sendAuthMessage, sentLogoutMessage } from "../lib/auth";
 import {
   clearAccessToken,
@@ -34,8 +34,7 @@ export const MainPage = () => {
         setIsLoading(false);
       }
     };
-
-    fetchToken();
+    void fetchToken();
   }, []);
 
   const handleLogin = useCallback(async () => {

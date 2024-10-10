@@ -1,12 +1,14 @@
-import { generatePKCE, randomString } from "./src/lib/utils";
+import type {
+  Auth0AuthorizeResponse,
+  AuthBackgroundResponse,
+  AuthBackroundMessage,
+} from "./src/lib/auth";
 import {
   AUTH0_AUDIENCE,
   AUTH0_CLIENT_DOMAIN,
   AUTH0_CLIENT_ID,
-  AuthBackroundMessage,
-  Auth0AuthorizeResponse,
-  AuthBackgroundResponse,
 } from "./src/lib/auth";
+import { generatePKCE } from "./src/lib/utils";
 
 /**
  * Listener to open/close the side panel when the user clicks on the extension icon.
