@@ -1187,10 +1187,9 @@ impl DataSource {
                             Ok::<Option<Document>, anyhow::Error>(Some(d))
                         }
                         None => {
-                            // document not found should never happen
-                            // if it unexpectedly does, we skip it via returning None
-                            // to let the search move forward
-                            // but we raise a panic log
+                            // document not found should never happen if it unexpectedly does,
+                            // we skip it via returning None to let the search move forward but we
+                            // raise a panic log
                             error!(
                                 data_source_id = %data_source_id,
                                 document_id = %document_id,
