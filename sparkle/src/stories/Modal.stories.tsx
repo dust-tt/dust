@@ -50,7 +50,7 @@ export const ModalExample = () => {
               placeholder="Input placeholder"
               className="s-mt-4"
               value={inputValue}
-              onChange={setInputValue}
+              onChange={(e) => setInputValue(e.target.value)}
               name="input-name"
             />
           </div>
