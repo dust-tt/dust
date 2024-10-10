@@ -1,3 +1,4 @@
+import { DustAPI } from "@dust-tt/client";
 import type {
   DustAppRunBlockEvent,
   DustAppRunConfigurationType,
@@ -13,7 +14,7 @@ import type { AgentActionSpecification } from "@dust-tt/types";
 import type { SpecificationType } from "@dust-tt/types";
 import type { DatasetSchema } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
-import { BaseAction, DustAPI } from "@dust-tt/types";
+import { BaseAction } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";

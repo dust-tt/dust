@@ -1,5 +1,6 @@
+import { DustAPI } from "@dust-tt/client";
 import type { Result, WorkspaceDomain } from "@dust-tt/types";
-import { cacheWithRedis, DustAPI, Err, Ok } from "@dust-tt/types";
+import { cacheWithRedis, Err, Ok } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type {} from "@slack/web-api/dist/response/UsersInfoResponse";
 

@@ -1,5 +1,5 @@
+import { DustAPI } from "@dust-tt/client";
 import type { Result } from "@dust-tt/types";
-import { DustAPI } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";

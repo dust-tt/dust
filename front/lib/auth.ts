@@ -1,4 +1,5 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
+import type { DustAPICredentials } from "@dust-tt/client";
 import type {
   ACLType,
   GroupType,
@@ -10,7 +11,6 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { PlanType, SubscriptionType } from "@dust-tt/types";
-import type { DustAPICredentials } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import type { APIErrorWithStatusCode } from "@dust-tt/types";
 import {

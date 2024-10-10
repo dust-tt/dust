@@ -14,6 +14,7 @@
     "create-db-migration": "./create_db_migration_file.sh"
   },
   "dependencies": {
+    "@dust-tt/client": "file:../sdks/js",
     "@dust-tt/types": "file:../types",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@microsoft/microsoft-graph-types": "^2.40.0",
