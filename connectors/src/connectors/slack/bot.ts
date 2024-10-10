@@ -534,7 +534,8 @@ async function answerMessage(
 
   const mostPopularAgentConfigurations = [...activeAgentConfigurations]
     .sort((a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0))
-    .splice(0, 50);
+    .splice(0, 100)
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const mainMessage = await slackClient.chat.postMessage({
     ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
