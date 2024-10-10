@@ -91,7 +91,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   let totalExtracted = 0;
   let crawlingError = 0;
   let upsertingError = 0;
-  let isBlocked = false;
+  let isNotBlocked = true;
   const createdFolders = new Set<string>();
 
   const crawler = new CheerioCrawler(
@@ -144,7 +144,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           type: "http_request",
         });
         const currentRequestDepth = request.userData.depth || 0;
-        isBlocked = response.statusCode === 403 || response.statusCode === 429;
+        isNotBlocked &&=
+          response.statusCode !== 403 && response.statusCode !== 429;
 
         // try-catch allowing activity cancellation by temporal (various timeouts, or signal)
         try {
@@ -383,7 +384,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   } else if (upsertedPageCount <= 0) {
     /// TODO: check if we should have a different error type for this case
     await syncFailed(connector.id, "webcrawling_error");
-  } else if (isBlocked) {
+  } else if (!isNotBlocked) {
     await syncFailed(connector.id, "webcrawling_error_blocked");
   } else if (pageCount <= 0) {
     await syncFailed(connector.id, "webcrawling_error");
