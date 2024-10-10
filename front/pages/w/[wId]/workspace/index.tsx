@@ -10,6 +10,7 @@ import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { QuickInsights } from "@app/components/workspace/Analytics";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -43,6 +44,10 @@ export default function WorkspaceAdmin({
 
   const [isDownloadingData, setIsDownloadingData] = useState(false);
   const [showProviderModal, setShowProviderModal] = useState(false);
+
+  const { subscriptions } = useWorkspaceSubscriptions({
+    workspaceId: owner.sId,
+  });
 
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
@@ -153,21 +158,35 @@ export default function WorkspaceAdmin({
 
   const monthOptions: string[] = [];
 
-  // This is not perfect as workspaces who were on multiple paid plans will have the list of months only for the current plan.
-  // We're living with it until it's a problem.
-  if (subscription.startDate) {
-    const startDate = new Date(subscription.startDate);
-    const startDateYear = startDate.getFullYear();
-    const startDateMonth = startDate.getMonth();
+  if (subscriptions.length > 0) {
+    const oldestStartDate = subscriptions.reduce(
+      (oldest, current) => {
+        if (!current.startDate) {
+          return oldest;
+        }
+        if (!oldest) {
+          return new Date(current.startDate);
+        }
+        return new Date(current.startDate) < oldest
+          ? new Date(current.startDate)
+          : oldest;
+      },
+      null as Date | null
+    );
 
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth();
+    if (oldestStartDate) {
+      const startDateYear = oldestStartDate.getFullYear();
+      const startDateMonth = oldestStartDate.getMonth();
 
-    for (let year = startDateYear; year <= currentYear; year++) {
-      const startMonth = year === startDateYear ? startDateMonth : 0;
-      const endMonth = year === currentYear ? currentMonth : 11;
-      for (let month = endMonth; month >= startMonth; month--) {
-        monthOptions.push(`${year}-${String(month + 1).padStart(2, "0")}`);
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth();
+
+      for (let year = startDateYear; year <= currentYear; year++) {
+        const startMonth = year === startDateYear ? startDateMonth : 0;
+        const endMonth = year === currentYear ? currentMonth : 11;
+        for (let month = endMonth; month >= startMonth; month--) {
+          monthOptions.push(`${year}-${String(month + 1).padStart(2, "0")}`);
+        }
       }
     }
   }
