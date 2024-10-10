@@ -1,5 +1,9 @@
 import { Button, Chip, EyeIcon, Spinner } from "@dust-tt/sparkle";
-import type { AgentActionType, AgentMessageType } from "@dust-tt/types";
+import type {
+  AgentActionType,
+  AgentMessageType,
+  LightWorkspaceType,
+} from "@dust-tt/types";
 import { useEffect, useMemo, useState } from "react";
 
 import { getActionSpecification } from "@app/components/actions/types";
@@ -10,10 +14,12 @@ import { classNames } from "@app/lib/utils";
 interface AgentMessageActionsProps {
   agentMessage: AgentMessageType;
   size?: MessageSizeType;
+  owner: LightWorkspaceType;
 }
 
 export function AgentMessageActions({
   agentMessage,
+  owner,
   size = "normal",
 }: AgentMessageActionsProps) {
   const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
@@ -48,6 +54,7 @@ export function AgentMessageActions({
         isOpened={isActionDrawerOpened}
         onClose={() => setIsActionDrawerOpened(false)}
         isStreaming={isThinkingOrActing || agentMessage.actions.length === 0}
+        owner={owner}
       />
       <ActionDetails
         hasActions={agentMessage.actions.length !== 0}

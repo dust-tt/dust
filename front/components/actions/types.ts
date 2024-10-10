@@ -1,4 +1,4 @@
-import type { AgentActionType } from "@dust-tt/types";
+import type { AgentActionType, LightWorkspaceType } from "@dust-tt/types";
 import { ACTION_RUNNING_LABELS } from "@dust-tt/types";
 
 import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
@@ -12,6 +12,7 @@ export interface ActionDetailsComponentBaseProps<
   T extends AgentActionType = AgentActionType,
 > {
   action: T;
+  owner: LightWorkspaceType;
   defaultOpen: boolean;
 }
 

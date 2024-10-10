@@ -1,5 +1,5 @@
 import { Modal, Page, Spinner } from "@dust-tt/sparkle";
-import type { AgentActionType } from "@dust-tt/types";
+import type { AgentActionType, LightWorkspaceType } from "@dust-tt/types";
 
 import { getActionSpecification } from "@app/components/actions/types";
 
@@ -8,6 +8,7 @@ interface AgentMessageActionsDrawerProps {
   isOpened: boolean;
   isStreaming: boolean;
   onClose: () => void;
+  owner: LightWorkspaceType;
 }
 
 export function AgentMessageActionsDrawer({
@@ -15,6 +16,7 @@ export function AgentMessageActionsDrawer({
   isOpened,
   isStreaming,
   onClose,
+  owner,
 }: AgentMessageActionsDrawerProps) {
   const groupedActionsByStep = actions.reduce(
     (acc, current) => {
@@ -61,6 +63,7 @@ export function AgentMessageActionsDrawer({
                         <ActionDetailsComponent
                           action={action}
                           defaultOpen={idx === 0 && step === "1"}
+                          owner={owner}
                         />
                       </div>
                     );

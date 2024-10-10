@@ -12,17 +12,25 @@ import type {
   TablesQueryOutputEvent,
   TablesQueryStartedEvent,
 } from "@dust-tt/types";
-import { BaseAction, Ok } from "@dust-tt/types";
+import {
+  BaseAction,
+  getTablesQueryResultsFileAttachment,
+  getTablesQueryResultsFileTitle,
+  Ok,
+} from "@dust-tt/types";
+import { stringify } from "csv-stringify";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
+import { internalCreateToolOutputCsvFile } from "@app/lib/api/files/tool_output";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 
@@ -30,11 +38,17 @@ import logger from "@app/logger/logger";
 const TABLES_QUERY_MIN_TOKEN = 28_000;
 const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
 
+// Max number of lines from the CSV ouptut file that will be saved in the DB
+// and inlined in the rendered conversation.
+const MAX_SNIPPET_LINES_QUERY_RESULT_FILE = 128;
+
 interface TablesQueryActionBlob {
   id: ModelId; // AgentTablesQueryAction.
   agentMessageId: ModelId;
   params: DustAppParameters;
   output: Record<string, string | number | boolean> | null;
+  resultsFileId: string | null;
+  resultsFileSnippet: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
@@ -44,6 +58,8 @@ export class TablesQueryAction extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly params: DustAppParameters;
   readonly output: Record<string, string | number | boolean> | null;
+  readonly resultsFileId: string | null;
+  readonly resultsFileSnippet: string | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
@@ -58,6 +74,8 @@ export class TablesQueryAction extends BaseAction {
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
+    this.resultsFileId = blob.resultsFileId;
+    this.resultsFileSnippet = blob.resultsFileSnippet;
   }
 
   renderForFunctionCall(): FunctionCallType {
@@ -69,19 +87,91 @@ export class TablesQueryAction extends BaseAction {
   }
 
   renderForMultiActionsModel(): FunctionMessageTypeModel {
-    let content = "";
-    content += `OUTPUT:\n`;
-
-    if (this.output === null) {
-      content += "(query failed)\n";
-    } else {
-      content += `${JSON.stringify(this.output, null, 2)}\n`;
-    }
-
-    return {
+    const partialOutput: Omit<FunctionMessageTypeModel, "content"> = {
       role: "function" as const,
       name: this.functionCallName ?? DEFAULT_TABLES_QUERY_ACTION_NAME,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
+    };
+
+    // Unexpected error case -- we don't have any action output.
+    if (!this.output) {
+      return {
+        ...partialOutput,
+        content: "(query failed)",
+      };
+    }
+
+    let content = "";
+
+    // Add reasoning if it exists (should always exist).
+    if (typeof this.output.thinking === "string") {
+      content += `Reasoning:\n${this.output.thinking}\n\n`;
+    }
+
+    const query =
+      typeof this.output.query === "string" ? this.output.query : null;
+
+    if (!query) {
+      // Model didn't generate a query, so we don't have any results.
+      content += "No query was executed.\n";
+      return {
+        ...partialOutput,
+        content,
+      };
+    }
+
+    content += `Query:\n${this.output.query}\n\n`;
+
+    const error =
+      typeof this.output.error === "string" ? this.output.error : null;
+
+    if (error) {
+      // Generated query failed to execute.
+      content += `Error:\n${this.output.error}\n\n`;
+      return {
+        ...partialOutput,
+        content,
+      };
+    }
+
+    const hasResultsFile = this.resultsFileId && this.resultsFileSnippet;
+
+    if (!hasResultsFile && !this.output.results) {
+      // We don't have any results -- this is unexpected, we should always
+      // have either an eror or some results (either a file or a `results` prop).
+      content += "No results were returned.\n";
+      return {
+        ...partialOutput,
+        content,
+      };
+    }
+
+    if (hasResultsFile) {
+      const attachment = getTablesQueryResultsFileAttachment({
+        resultsFileId: this.resultsFileId,
+        resultsFileSnippet: this.resultsFileSnippet,
+        output: this.output,
+        includeSnippet: true,
+      });
+      if (!attachment) {
+        throw new Error(
+          "Unexpected: No file attachment for tables query with results file."
+        );
+      }
+      // New path -- we have a results file.
+      // We render it as an attachment.
+      return {
+        ...partialOutput,
+        content: attachment,
+      };
+    }
+
+    // Legacy path -- we don't have a results file.
+    // We render the raw results object inline.
+    content += `OUTPUT:\n${JSON.stringify(this.output, null, 2)}`;
+
+    return {
+      ...partialOutput,
       content,
     };
   }
@@ -91,13 +181,17 @@ export class TablesQueryAction extends BaseAction {
 // used outside of api/assistant. We allow a ModelId interface here because we don't have `sId` on
 // actions (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
 export async function tableQueryTypesFromAgentMessageIds(
+  auth: Authenticator,
   agentMessageIds: ModelId[]
 ): Promise<TablesQueryActionType[]> {
+  const owner = auth.getNonNullableWorkspace();
+
   const actions = await AgentTablesQueryAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
     },
   });
+
   return actions.map((action) => {
     return new TablesQueryAction({
       id: action.id,
@@ -107,6 +201,13 @@ export async function tableQueryTypesFromAgentMessageIds(
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
       step: action.step,
+      resultsFileId: action.resultsFileId
+        ? FileResource.modelIdToSId({
+            id: action.resultsFileId,
+            workspaceId: owner.id,
+          })
+        : null,
+      resultsFileSnippet: action.resultsFileSnippet,
     });
   });
 }
@@ -206,6 +307,8 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         functionCallName: action.functionCallName,
         agentMessageId: action.agentMessageId,
         step: action.step,
+        resultsFileId: null,
+        resultsFileSnippet: null,
       }),
     };
 
@@ -404,6 +507,8 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
                 functionCallName: action.functionCallName,
                 agentMessageId: agentMessage.id,
                 step: action.step,
+                resultsFileId: null,
+                resultsFileSnippet: null,
               }),
             };
           }
@@ -415,10 +520,46 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       }
     }
 
-    const sanitizedOutput = sanitizeJSONOutput(output);
+    const sanitizedOutput = sanitizeJSONOutput(output) as Record<
+      string,
+      unknown
+    >;
+
+    const updateParams: {
+      resultsFileId: number | null;
+      resultsFileSnippet: string | null;
+      output: Record<string, unknown> | null;
+    } = {
+      resultsFileId: null,
+      resultsFileSnippet: null,
+      output: null,
+    };
+
+    if (
+      "results" in sanitizedOutput &&
+      Array.isArray(sanitizedOutput.results)
+    ) {
+      const results = sanitizedOutput.results;
+      const queryTitle = getTablesQueryResultsFileTitle({
+        output: sanitizedOutput,
+      });
+
+      const { file, snippet } = await getTablesQueryOutputCsvFileAndSnippet(
+        auth,
+        {
+          title: queryTitle,
+          results,
+        }
+      );
+
+      delete sanitizedOutput.results;
+      updateParams.resultsFileId = file.id;
+      updateParams.resultsFileSnippet = snippet;
+    }
 
     // Updating action
     await action.update({
+      ...updateParams,
       output: sanitizedOutput,
       runId: await dustRunId,
     });
@@ -436,8 +577,64 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         functionCallName: action.functionCallName,
         agentMessageId: action.agentMessageId,
         step: action.step,
+        resultsFileId: updateParams.resultsFileId
+          ? FileResource.modelIdToSId({
+              id: updateParams.resultsFileId,
+              workspaceId: owner.id,
+            })
+          : null,
+        resultsFileSnippet: updateParams.resultsFileSnippet,
       }),
     };
     return;
   }
+}
+
+async function getTablesQueryOutputCsvFileAndSnippet(
+  auth: Authenticator,
+  {
+    title,
+    results,
+  }: {
+    title: string;
+    results: Array<Record<string, string | number | boolean>>;
+  }
+): Promise<{
+  file: FileResource;
+  snippet: string;
+}> {
+  const toCsv = (
+    records: Array<Record<string, string | number | boolean>>
+  ): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      stringify(records, { header: true }, (err, data) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(data);
+      });
+    });
+  };
+
+  const csvOutput = await toCsv(results);
+
+  const file = await internalCreateToolOutputCsvFile(auth, {
+    title,
+    content: csvOutput,
+    contentType: "text/csv",
+  });
+
+  let snippetOuptut = `TOTAL_LINES: ${results.length}\n`;
+  if (results.length > MAX_SNIPPET_LINES_QUERY_RESULT_FILE) {
+    snippetOuptut += `Showing the first ${MAX_SNIPPET_LINES_QUERY_RESULT_FILE} lines of the results.\n\n`;
+    snippetOuptut += await toCsv(
+      results.slice(0, MAX_SNIPPET_LINES_QUERY_RESULT_FILE)
+    );
+    snippetOuptut += `\n... (${results.length - MAX_SNIPPET_LINES_QUERY_RESULT_FILE} lines omitted)\n`;
+  } else {
+    snippetOuptut += await toCsv(results);
+    snippetOuptut += `\n(end of file)\n`;
+  }
+
+  return { file, snippet: snippetOuptut };
 }

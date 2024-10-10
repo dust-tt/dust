@@ -506,7 +506,11 @@ export function AgentMessage({
 
     return (
       <div className="flex flex-col gap-y-4">
-        <AgentMessageActions agentMessage={agentMessage} size={size} />
+        <AgentMessageActions
+          agentMessage={agentMessage}
+          size={size}
+          owner={owner}
+        />
 
         {agentMessage.chainOfThought?.length ? (
           <ContentMessage

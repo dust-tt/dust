@@ -12,6 +12,7 @@ import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 
 export class AgentTablesQueryConfiguration extends Model<
   InferAttributes<AgentTablesQueryConfiguration>,
@@ -180,12 +181,15 @@ export class AgentTablesQueryAction extends Model<
 
   declare params: unknown | null;
   declare output: unknown | null;
+  declare resultsFileSnippet: string | null;
+
   declare functionCallId: string | null;
   declare functionCallName: string | null;
 
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
 
   declare step: number;
+  declare resultsFileId: ForeignKey<FileModel["id"]> | null;
 }
 
 AgentTablesQueryAction.init(
@@ -223,6 +227,10 @@ AgentTablesQueryAction.init(
       type: DataTypes.JSONB,
       allowNull: true,
     },
+    resultsFileSnippet: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     functionCallId: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -244,6 +252,10 @@ AgentTablesQueryAction.init(
         fields: ["agentMessageId"],
         concurrently: true,
       },
+      {
+        fields: ["resultsFileId"],
+        concurrently: true,
+      },
     ],
   }
 );
@@ -254,4 +266,13 @@ AgentTablesQueryAction.belongsTo(AgentMessage, {
 
 AgentMessage.hasMany(AgentTablesQueryAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+FileModel.hasMany(AgentTablesQueryAction, {
+  foreignKey: { name: "resultsFileId", allowNull: true },
+  onDelete: "SET NULL",
+});
+AgentTablesQueryAction.belongsTo(FileModel, {
+  foreignKey: { name: "resultsFileId", allowNull: true },
+  onDelete: "SET NULL",
 });
