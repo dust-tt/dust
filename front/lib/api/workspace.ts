@@ -345,15 +345,19 @@ export async function deleteWorkspace(
 export async function changeWorkspaceName(
   owner: LightWorkspaceType,
   newName: string
-) {
-  const workspace = await Workspace.findOne({
-    where: {
-      id: owner.id,
-    },
-  });
+): Promise<Result<void, Error>> {
+  const [affectedCount] = await Workspace.update(
+    { name: newName },
+    {
+      where: {
+        id: owner.id,
+      },
+    }
+  );
 
-  assert(workspace, "Workspace not found.");
+  if (affectedCount === 0) {
+    return new Err(new Error("Workspace not found."));
+  }
 
-  workspace.name = newName;
-  await workspace.save();
+  return new Ok(undefined);
 }

@@ -18,7 +18,13 @@ export const renameWorkspace = createPlugin(
     },
   },
   async (auth, resourceId, args) => {
-    await changeWorkspaceName(auth.getNonNullableWorkspace(), args.newName);
+    const res = await changeWorkspaceName(
+      auth.getNonNullableWorkspace(),
+      args.newName
+    );
+    if (res.isErr()) {
+      return res;
+    }
 
     return new Ok(`Workspace renamed to ${args.newName}.`);
   }
