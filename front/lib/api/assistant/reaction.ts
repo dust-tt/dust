@@ -6,7 +6,7 @@ import type {
   Result,
 } from "@dust-tt/types";
 import type { UserType } from "@dust-tt/types";
-import { ConversationPermissionError, Err, Ok } from "@dust-tt/types";
+import { ConversationError, Err, Ok } from "@dust-tt/types";
 
 import { canAccessConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
@@ -21,14 +21,14 @@ import {
 export async function getMessageReactions(
   auth: Authenticator,
   conversation: ConversationType | ConversationWithoutContentType
-): Promise<Result<ConversationMessageReactions, ConversationPermissionError>> {
+): Promise<Result<ConversationMessageReactions, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
   if (!(await canAccessConversation(auth, conversation))) {
-    return new Err(new ConversationPermissionError());
+    return new Err(new ConversationError("conversation_access_denied"));
   }
 
   const messages = await Message.findAll({

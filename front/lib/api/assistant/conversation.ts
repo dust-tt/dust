@@ -32,8 +32,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
-  ConversationNotFoundError,
-  ConversationPermissionError,
+  ConversationError,
   getSmallWhitelistedModel,
   isProviderWhitelisted,
   md5,
@@ -318,7 +317,7 @@ export async function getConversation(
   auth: Authenticator,
   conversationId: string,
   includeDeleted?: boolean
-): Promise<Result<ConversationType, ConversationPermissionError>> {
+): Promise<Result<ConversationType, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -333,7 +332,7 @@ export async function getConversation(
   });
 
   if (!conversation) {
-    return new Err(new ConversationNotFoundError());
+    return new Err(new ConversationError("conversation_not_found"));
   }
 
   const messages = await Message.findAll({
@@ -410,7 +409,7 @@ export async function getConversationWithoutContent(
   auth: Authenticator,
   conversationId: string,
   includeDeleted?: boolean
-): Promise<Result<ConversationWithoutContentType, Error>> {
+): Promise<Result<ConversationWithoutContentType, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -425,11 +424,11 @@ export async function getConversationWithoutContent(
   });
 
   if (!conversation) {
-    return new Err(new ConversationNotFoundError());
+    return new Err(new ConversationError("conversation_not_found"));
   }
 
   if (!canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationPermissionError());
+    return new Err(new ConversationError("conversation_access_denied"));
   }
 
   return new Ok({
@@ -1721,7 +1720,7 @@ export async function postNewContentFragment(
   }
 
   if (!canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationPermissionError());
+    return new Err(new ConversationError("conversation_access_denied"));
   }
 
   const messageId = generateLegacyModelSId();

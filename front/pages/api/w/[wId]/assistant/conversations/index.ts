@@ -6,7 +6,7 @@ import type {
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import {
-  ConversationNotFoundError,
+  ConversationError,
   InternalPostConversationsRequestBodySchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -119,7 +119,10 @@ async function handler(
         if (updatedConversationRes.isErr()) {
           // Preserving former code in which if the conversation was not found here, we do not error
           if (
-            !(updatedConversationRes.error instanceof ConversationNotFoundError)
+            !(
+              updatedConversationRes.error instanceof ConversationError &&
+              updatedConversationRes.error.type === "conversation_not_found"
+            )
           ) {
             return apiErrorForConversation(
               req,

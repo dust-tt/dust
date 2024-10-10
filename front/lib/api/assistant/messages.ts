@@ -8,7 +8,7 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/types";
-import { ConversationPermissionError } from "@dust-tt/types";
+import { ConversationError } from "@dust-tt/types";
 import { Err, isAgentMessageType, Ok, removeNulls } from "@dust-tt/types";
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
@@ -361,7 +361,7 @@ export async function batchRenderMessages(
   auth: Authenticator,
   conversationId: string,
   messages: Message[]
-): Promise<Result<MessageWithRankType[], ConversationPermissionError>> {
+): Promise<Result<MessageWithRankType[], ConversationError>> {
   const [userMessages, agentMessages, contentFragments] = await Promise.all([
     batchRenderUserMessages(messages),
     batchRenderAgentMessages(auth, messages),
@@ -369,7 +369,7 @@ export async function batchRenderMessages(
   ]);
 
   if (agentMessages.some((m) => !canReadMessage(auth, m.m))) {
-    return new Err(new ConversationPermissionError());
+    return new Err(new ConversationError("conversation_access_denied"));
   }
 
   return new Ok(
@@ -429,7 +429,7 @@ export async function fetchConversationMessages(
       (m) => isAgentMessageType(m) && !canReadMessage(auth, m)
     )
   ) {
-    return new Err(new ConversationPermissionError());
+    return new Err(new ConversationError("conversation_access_denied"));
   }
 
   return new Ok({

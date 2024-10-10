@@ -1,4 +1,5 @@
 import { ConnectorsAPIError } from "../../connectors/api";
+import { ConversationErrorType } from "../assistant/conversation";
 import { CoreAPIError } from "./core_api";
 
 export type InternalErrorWithStatusCode = {
@@ -94,8 +95,7 @@ export type APIErrorType =
   // Groups:
   | "group_not_found"
   // Conversations:
-  | "conversation_access_denied"
-  | "conversation_not_found"
+  | ConversationErrorType
   // Plugins:
   | "plugin_not_found"
   | "plugin_execution_failed";

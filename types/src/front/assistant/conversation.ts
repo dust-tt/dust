@@ -215,14 +215,15 @@ export interface ConversationParticipantsType {
   users: UserParticipant[];
 }
 
-export class ConversationPermissionError extends Error {
-  constructor() {
-    super("Cannot access conversation: Some agents are forbidden to the user.");
-  }
-}
+export type ConversationErrorType =
+  | "conversation_not_found"
+  | "conversation_access_denied";
 
-export class ConversationNotFoundError extends Error {
-  constructor() {
-    super("Cannot access conversation: Conversation not found.");
+export class ConversationError extends Error {
+  readonly type: ConversationErrorType;
+
+  constructor(type: ConversationErrorType) {
+    super(`Cannot access conversation: ${type}`);
+    this.type = type;
   }
 }

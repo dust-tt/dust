@@ -1,7 +1,4 @@
-import {
-  ConversationNotFoundError,
-  ConversationPermissionError,
-} from "@dust-tt/types";
+import { ConversationError } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiError } from "@app/logger/withlogging";
@@ -11,22 +8,12 @@ export function apiErrorForConversation(
   res: NextApiResponse,
   error: Error
 ) {
-  if (error instanceof ConversationPermissionError) {
+  if (error instanceof ConversationError) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
-        type: "conversation_access_denied",
-        message: "Access to the conversation is denied.",
-      },
-    });
-  }
-
-  if (error instanceof ConversationNotFoundError) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found.",
+        type: error.type,
+        message: error.message,
       },
     });
   }
