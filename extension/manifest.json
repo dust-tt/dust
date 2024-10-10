@@ -15,5 +15,5 @@
   "side_panel": {
     "default_path": "main.html"
   },
-  "permissions": ["sidePanel", "cookies", "identity"]
+  "permissions": ["sidePanel", "identity", "storage"]
 }

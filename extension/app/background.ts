@@ -127,8 +127,6 @@ const exchangeCodeForTokens = async (
 
     if (!response.ok) {
       const data = await response.json();
-      console.log({ data });
-
       throw new Error(
         `Token exchange failed: ${data.error} - ${data.error_description}`
       );
