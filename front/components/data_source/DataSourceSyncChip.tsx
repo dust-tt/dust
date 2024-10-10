@@ -65,7 +65,7 @@ export default function ConnectorSyncingChip({
           />
         );
       case "webcrawling_error_content_too_large":
-        label = "Page too large: This page contains too much data.";
+        label = "Page too large: this page contains too much data.";
         return (
           <Tooltip
             label={label}
