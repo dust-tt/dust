@@ -28,7 +28,7 @@ export async function getMessageReactions(
   }
 
   if (!canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationError("conversation_access_denied"));
+    return new Err(new ConversationError("conversation_access_restricted"));
   }
 
   const messages = await Message.findAll({

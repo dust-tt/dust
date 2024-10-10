@@ -217,7 +217,7 @@ export interface ConversationParticipantsType {
 
 export type ConversationErrorType =
   | "conversation_not_found"
-  | "conversation_access_denied";
+  | "conversation_access_restricted";
 
 export class ConversationError extends Error {
   readonly type: ConversationErrorType;

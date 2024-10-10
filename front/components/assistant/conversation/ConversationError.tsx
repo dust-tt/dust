@@ -14,8 +14,8 @@ export function ConversationError({ error }: ConversationError) {
   }
 
   switch (errorMessageRes.value.error.type) {
-    case "conversation_access_denied":
-      return <ConversationAccessDenied />;
+    case "conversation_access_restricted":
+      return <ConversationAccessRestricted />;
 
     case "conversation_not_found":
       return <ConversationNotFound />;
@@ -25,7 +25,7 @@ export function ConversationError({ error }: ConversationError) {
   }
 }
 
-function ConversationAccessDenied() {
+function ConversationAccessRestricted() {
   return (
     <ErrorDisplay
       icon={StopSignIcon}

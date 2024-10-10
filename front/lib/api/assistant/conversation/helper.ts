@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { apiError } from "@app/logger/withlogging";
 
 const STATUS_FOR_ERROR_TYPE: Record<ConversationErrorType, number> = {
-  conversation_access_denied: 403,
+  conversation_access_restricted: 403,
   conversation_not_found: 404,
 };
 

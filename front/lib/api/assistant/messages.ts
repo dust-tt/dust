@@ -369,7 +369,7 @@ export async function batchRenderMessages(
   ]);
 
   if (agentMessages.some((m) => !canReadMessage(auth, m.m))) {
-    return new Err(new ConversationError("conversation_access_denied"));
+    return new Err(new ConversationError("conversation_access_restricted"));
   }
 
   return new Ok(

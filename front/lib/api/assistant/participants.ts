@@ -113,7 +113,7 @@ export async function fetchConversationParticipants(
   // if less agents than agentConfigurationIds, it means some agents are forbidden
   // to the user
   if (agents.length < agentConfigurationIds.size) {
-    return new Err(new ConversationError("conversation_access_denied"));
+    return new Err(new ConversationError("conversation_access_restricted"));
   }
 
   return new Ok({

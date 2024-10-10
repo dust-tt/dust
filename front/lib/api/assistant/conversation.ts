@@ -159,7 +159,7 @@ export async function updateConversation(
   }
 
   if (!canAccessConversation(auth, conversation)) {
-    throw new Error("Conversation access denied");
+    throw new Error("Conversation access restricted");
   }
 
   await conversation.update({
@@ -208,7 +208,7 @@ export async function deleteConversation(
   }
 
   if (!canAccessConversation(auth, conversation)) {
-    throw new Error("Conversation access denied");
+    throw new Error("Conversation access restricted");
   }
 
   if (destroy) {
@@ -428,7 +428,7 @@ export async function getConversationWithoutContent(
   }
 
   if (!canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationError("conversation_access_denied"));
+    return new Err(new ConversationError("conversation_access_restricted"));
   }
 
   return new Ok({
@@ -703,7 +703,7 @@ export async function* postUserMessage(
       type: "user_message_error",
       created: Date.now(),
       error: {
-        code: "conversation_access_denied",
+        code: "conversation_access_restricted",
         message: "Conversation cannot be accessed.",
       },
     };
@@ -1111,7 +1111,7 @@ export async function* editUserMessage(
       type: "user_message_error",
       created: Date.now(),
       error: {
-        code: "conversation_access_denied",
+        code: "conversation_access_restricted",
         message: "Conversation cannot be accessed.",
       },
     };
@@ -1720,7 +1720,7 @@ export async function postNewContentFragment(
   }
 
   if (!canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationError("conversation_access_denied"));
+    return new Err(new ConversationError("conversation_access_restricted"));
   }
 
   const messageId = generateLegacyModelSId();
