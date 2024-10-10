@@ -42,11 +42,11 @@ export async function getRedisClient({
     client.on("error", (err) => logger.info({ err }, "Redis Client Error"));
     client.on("ready", () => logger.info({}, "Redis Client Ready"));
     client.on("connect", () => {
-      logger.info({}, "Redis Client Connected");
+      logger.info({ origin }, "Redis Client Connected");
       statsDClient.increment("redis.connection.count", 1, [origin]);
     });
     client.on("end", () => {
-      logger.info({}, "Redis Client End");
+      logger.info({ origin }, "Redis Client End");
       statsDClient.decrement("redis.connection.count", 1, [origin]);
     });
 
