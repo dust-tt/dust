@@ -2,6 +2,8 @@ import React, { forwardRef } from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
+import { Label } from "./Label";
+
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {
   error?: string | null;
@@ -23,12 +25,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="s-flex s-flex-col s-gap-1 s-p-px">
         {label && (
-          <label
+          <Label
             htmlFor={props.name}
-            className="s-pb-1 s-text-sm s-font-medium s-text-element-700 dark:s-text-element-700-dark"
+            className="s-pb-1 s-text-element-700 dark:s-text-element-700-dark"
           >
             {label}
-          </label>
+          </Label>
         )}
         <input
           ref={ref}

@@ -43,7 +43,7 @@ export const InputExample = () => (
       />
     </div>
     <div className="s-grid s-grid-cols-3 s-gap-4">
-      <Input placeholder="placeholder" name="input"/>
+      <Input placeholder="placeholder" name="input" />
       <Input
         placeholder="placeholder"
         name="input"

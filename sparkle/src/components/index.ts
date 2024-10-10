@@ -21,7 +21,7 @@ export { default as DropzoneOverlay } from "./DropzoneOverlay";
 export { ElementDialog } from "./ElementDialog";
 export { ElementModal } from "./ElementModal";
 export type { EmojiMartData } from "./EmojiPicker";
-export { DataEmojiMart,EmojiPicker } from "./EmojiPicker";
+export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
 export { FilterChips } from "./FilterChips";
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
@@ -30,6 +30,7 @@ export { IconButton } from "./IconButton";
 export { IconToggleButton } from "./IconToggleButton";
 export { Input } from "./Input";
 export { Item } from "./Item";
+export { Label } from "./Label";
 export { Markdown } from "./Markdown";
 export { Modal } from "./Modal";
 export {
@@ -53,7 +54,12 @@ export { Notification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";
-export { Popover, PopoverContent, PopoverRoot, PopoverTrigger } from "./Popover";
+export {
+  Popover,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+} from "./Popover";
 export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioButton } from "./RadioButton";
