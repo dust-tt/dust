@@ -9,7 +9,7 @@ import type {
   UserMessageType,
 } from "@dust-tt/types";
 import { ConversationError } from "@dust-tt/types";
-import { Err, isAgentMessageType, Ok, removeNulls } from "@dust-tt/types";
+import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 

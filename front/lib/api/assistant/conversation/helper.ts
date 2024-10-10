@@ -1,4 +1,5 @@
-import { ConversationError, ConversationErrorType } from "@dust-tt/types";
+import type { ConversationErrorType } from "@dust-tt/types";
+import { ConversationError } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiError } from "@app/logger/withlogging";
