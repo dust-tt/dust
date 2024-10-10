@@ -26,7 +26,10 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
       undefined;
 
     try {
-      redisCli = await redisClient(redisUri);
+      redisCli = await redisClient({
+        origin: "cache_with_redis",
+        redisUri,
+      });
       const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
       const cacheVal = await redisCli.get(key);
       if (cacheVal) {

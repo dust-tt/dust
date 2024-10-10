@@ -525,7 +525,7 @@ export async function* runMultiActionsAgent(
 
   let shouldYieldCancel = false;
   let lastCheckCancellation = Date.now();
-  const redis = await getRedisClient();
+  const redis = await getRedisClient({ origin: "assistant_generation" });
   let isGeneration = true;
 
   const contentParser = new AgentMessageContentParser(

@@ -102,16 +102,19 @@ async function handler(
         sort,
       });
       if (withUsage === "true") {
-        const mentionCounts = await runOnRedis(async (redis) => {
-          return getAgentsUsage({
-            providedRedis: redis,
-            workspaceId: owner.sId,
-            limit:
-              typeof req.query.limit === "string"
-                ? parseInt(req.query.limit, 10)
-                : -1,
-          });
-        });
+        const mentionCounts = await runOnRedis(
+          { origin: "agent_usage" },
+          async (redis) => {
+            return getAgentsUsage({
+              providedRedis: redis,
+              workspaceId: owner.sId,
+              limit:
+                typeof req.query.limit === "string"
+                  ? parseInt(req.query.limit, 10)
+                  : -1,
+            });
+          }
+        );
         const usageMap = _.keyBy(mentionCounts, "agentId");
         agentConfigurations = agentConfigurations.map((agentConfiguration) =>
           usageMap[agentConfiguration.sId]
