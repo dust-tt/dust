@@ -270,7 +270,9 @@ AgentMessage.hasMany(AgentTablesQueryAction, {
 
 FileModel.hasMany(AgentTablesQueryAction, {
   foreignKey: { name: "resultsFileId", allowNull: true },
+  onDelete: "SET NULL",
 });
 AgentTablesQueryAction.belongsTo(FileModel, {
   foreignKey: { name: "resultsFileId", allowNull: true },
+  onDelete: "SET NULL",
 });
