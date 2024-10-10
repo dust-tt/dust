@@ -1,4 +1,4 @@
-import { randomString } from "./src/lib/utils";
+import { generatePKCE, randomString } from "./src/lib/utils";
 import {
   AUTH0_AUDIENCE,
   AUTH0_CLIENT_DOMAIN,
@@ -54,13 +54,15 @@ const authenticate = async (
   }
 
   const redirectUrl = chrome.identity.getRedirectURL();
+  const { codeVerifier, codeChallenge } = await generatePKCE();
   const options = {
     client_id: AUTH0_CLIENT_ID,
-    response_type: "id_token token code",
-    scope: "offline_access openid profile email",
+    response_type: "code", // Use code response type for PKCE.
+    scope: "openid profile email offline_access",
     redirect_uri: redirectUrl,
-    nonce: randomString(16),
     audience: AUTH0_AUDIENCE,
+    code_challenge_method: "S256",
+    code_challenge: codeChallenge,
   };
 
   const queryString = new URLSearchParams(options).toString();
@@ -68,7 +70,7 @@ const authenticate = async (
 
   chrome.identity.launchWebAuthFlow(
     { url: authUrl, interactive: true },
-    (redirectUrl) => {
+    async (redirectUrl) => {
       if (chrome.runtime.lastError) {
         console.error(`Auth error: ${chrome.runtime.lastError.message}`);
         sendResponse({ success: false });
@@ -81,16 +83,69 @@ const authenticate = async (
       }
 
       const url = new URL(redirectUrl);
-      const hashParams = new URLSearchParams(url.hash.substring(1));
+      const queryParams = new URLSearchParams(url.search);
+      const authorizationCode = queryParams.get("code");
 
-      sendResponse({
-        idToken: hashParams.get("id_token"),
-        accessToken: hashParams.get("access_token"),
-        code: hashParams.get("code"),
-        expiresIn: hashParams.get("expires_in"),
-      });
+      if (authorizationCode) {
+        const data = await exchangeCodeForTokens(
+          authorizationCode,
+          codeVerifier
+        );
+        sendResponse(data);
+      } else {
+        console.error(`No authorization code in redirect URL: ${redirectUrl}`);
+        sendResponse({ success: false });
+      }
     }
   );
+};
+
+/**
+ *  Exchange authorization code for tokens
+ */
+const exchangeCodeForTokens = async (
+  code: string,
+  codeVerifier: string
+): Promise<Auth0AuthorizeResponse | AuthBackgroundResponse> => {
+  try {
+    if (!AUTH0_CLIENT_ID || !AUTH0_CLIENT_DOMAIN) {
+      throw new Error("Auth0 client ID or domain is missing.");
+    }
+
+    const tokenUrl = `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`;
+    const response = await fetch(tokenUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: AUTH0_CLIENT_ID,
+        code_verifier: codeVerifier,
+        code,
+        redirect_uri: chrome.identity.getRedirectURL(),
+      }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      console.log({ data });
+
+      throw new Error(
+        `Token exchange failed: ${data.error} - ${data.error_description}`
+      );
+    }
+
+    const data = await response.json();
+    return {
+      idToken: data.id_token,
+      accessToken: data.access_token,
+      expiresIn: data.expires_in,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "An unknown error occurred.";
+    console.error(`Token exchange error: ${message}`);
+    return { success: false };
+  }
 };
 
 /**

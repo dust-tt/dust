@@ -7,7 +7,6 @@ export const AUTH0_PROFILE_ROUTE = `https://${AUTH0_CLIENT_DOMAIN}/userinfo`;
 export type Auth0AuthorizeResponse = {
   idToken: string | null;
   accessToken: string | null;
-  code: string | null;
   expiresIn: string | null;
 };
 
@@ -41,18 +40,20 @@ export const sendAuthMessage = (): Promise<Auth0AuthorizeResponse> => {
                     return reject(chrome.runtime.lastError);
                   }
                   if (!response) {
-                    return reject(new Error("No response received"));
+                    return reject(new Error("No response received."));
                   }
                   return resolve(response);
                 }
               );
             });
           } else {
-            reject(new Error(error.message || "An unknown error occurred"));
+            reject(new Error(error.message || "An unknown error occurred."));
           }
-        } else {
-          resolve(response as Auth0AuthorizeResponse);
         }
+        if (!response) {
+          return reject(new Error("No response received."));
+        }
+        return resolve(response);
       }
     );
   });
