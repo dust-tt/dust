@@ -14,8 +14,8 @@ import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
  */
 export const MAX_SLACK_MESSAGE_LENGTH = 2950;
 
-export const SLACK_CHOOSE_BOT_HELP_URL =
-  "https://docs.dust.tt/docs/slack#calling-an-assistant-in-slack";
+export const DUST_URL = "https://dust.tt/home";
+export const SLACK_HELP_URL = "https://docs.dust.tt/docs/slack";
 
 function makeDividerBlock() {
   return {
@@ -134,14 +134,14 @@ export function makeFooterBlock(
   workspaceId: string
 ) {
   const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/assistant/new`);
-  const baseHeader = `<${assistantsUrl}|Dust assistants> | <https://dust.tt/home|More about Dust> | <${SLACK_CHOOSE_BOT_HELP_URL}| Select which assistant replies>`;
+  const baseHeader = `<${assistantsUrl}|Browse assistants> | <${SLACK_HELP_URL}|Use Dust in Slack> | <${DUST_URL}|Learn more>`;
   return {
     type: "context",
     elements: [
       {
         type: "mrkdwn",
         text: conversationUrl
-          ? `<${conversationUrl}|Full conversation on Dust> | ${baseHeader}`
+          ? `<${conversationUrl}|Go to full conversation> | ${baseHeader}`
           : baseHeader,
       },
     ],
