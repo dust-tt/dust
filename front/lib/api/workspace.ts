@@ -10,6 +10,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { ACTIVE_ROLES, Err, Ok } from "@dust-tt/types";
+import assert from "assert";
 import { Op } from "sequelize";
 
 import type { PaginationParams } from "@app/lib/api/pagination";
@@ -339,4 +340,20 @@ export async function deleteWorkspace(
   await launchDeleteWorkspaceWorkflow({ workspaceId: owner.sId });
 
   return new Ok(undefined);
+}
+
+export async function changeWorkspaceName(
+  owner: LightWorkspaceType,
+  newName: string
+) {
+  const workspace = await Workspace.findOne({
+    where: {
+      id: owner.id,
+    },
+  });
+
+  assert(workspace, "Workspace not found.");
+
+  workspace.name = newName;
+  await workspace.save();
 }
