@@ -64,6 +64,7 @@ export default function ConnectorSyncingChip({
           />
         );
       case "webcrawling_error":
+      case "webcrawling_error_content_too_large":
         return (
           <Tooltip
             label={

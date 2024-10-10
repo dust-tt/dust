@@ -382,8 +382,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   if (totalExtracted <= 0) {
     await syncFailed(connector.id, "webcrawling_error_empty_content");
   } else if (upsertedPageCount <= 0) {
-    /// TODO: check if we should have a different error type for this case
-    await syncFailed(connector.id, "webcrawling_error");
+    // this means that every page was too big to be upserted
+    await syncFailed(connector.id, "webcrawling_error_content_too_large");
   } else if (!isNotBlocked) {
     await syncFailed(connector.id, "webcrawling_error_blocked");
   } else if (pageCount <= 0) {
@@ -393,7 +393,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   }
   if (upsertingError > 0) {
     throw new Error(
-      `Webcrawler failed whlie upserting documents to Dust. Error count: ${upsertingError}`
+      `Webcrawler failed while upserting documents to Dust. Error count: ${upsertingError}`
     );
   }
 

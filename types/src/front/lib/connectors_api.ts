@@ -19,6 +19,7 @@ const CONNECTORS_ERROR_TYPES = [
   "third_party_internal_error",
   "webcrawling_error",
   "webcrawling_error_empty_content",
+  "webcrawling_error_content_too_large",
   "webcrawling_error_blocked",
   "remote_database_connection_not_readonly",
 ] as const;
