@@ -1,3 +1,4 @@
+import { Tooltip } from "@dust-tt/sparkle";
 import type { PluginWorkspaceResource } from "@dust-tt/types";
 import React, { useState } from "react";
 
@@ -19,14 +20,14 @@ interface PluginCardProps {
 function PluginCard({ onClick, plugin }: PluginCardProps) {
   return (
     <PokeCard
-      className="flex w-44 cursor-pointer hover:bg-gray-100"
+      className="flex h-20 w-44 cursor-pointer hover:bg-gray-100"
       onClick={onClick}
     >
-      <PokeCardHeader className="space-y-1.5 p-2">
+      <PokeCardHeader className="flex space-y-1.5 overflow-hidden p-2 text-left">
         <PokeCardTitle className="text-sm font-medium">
           {plugin.name}
         </PokeCardTitle>
-        <PokeCardDescription className="text-xs">
+        <PokeCardDescription className="overflow-hidden truncate whitespace-normal text-xs">
           {plugin.description}
         </PokeCardDescription>
       </PokeCardHeader>
@@ -63,10 +64,16 @@ export function PluginList({
       </div>
       <div className="flex w-full flex-row items-start gap-3 p-4">
         {plugins.map((plugin) => (
-          <PluginCard
+          <Tooltip
             key={plugin.id}
-            plugin={plugin}
-            onClick={() => handlePluginSelect(plugin)}
+            trigger={
+              <PluginCard
+                key={plugin.id}
+                plugin={plugin}
+                onClick={() => handlePluginSelect(plugin)}
+              />
+            }
+            label={plugin.description}
           />
         ))}
       </div>

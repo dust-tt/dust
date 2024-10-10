@@ -4,7 +4,6 @@ export const WHITELISTABLE_FEATURES = [
   "labs_transcripts",
   "labs_transcripts_datasource",
   "document_tracker",
-  "data_vaults_feature",
   "private_data_vaults_feature",
   "use_app_for_header_detection",
   "openai_o1_feature",

@@ -14,6 +14,7 @@ import { withSessionAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
+import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
   isEntreprisePlan,
@@ -246,7 +247,7 @@ async function handler(
             model: Subscription,
             as: "subscriptions",
             where: { status: "active" },
-            required: true,
+            required: false,
             include: [
               {
                 model: Plan,
@@ -255,15 +256,22 @@ async function handler(
             ],
           },
         ],
-        order: order,
+        order,
       });
 
-      // if limit is above originalLimit, sort manually and then splice
+      // If limit is above originalLimit, sort manually and then splice.
       if (limit > originalLimit) {
-        // Order by plan, entreprise first, then pro, then free and old free using isEntreprisePlan, isProPlan and isFreePlan, isOldFreePlan methods
+        // Order by plan, entreprise first, then pro, then free and old free using isEntreprisePlan,
+        // isProPlan and isFreePlan, isOldFreePlan methods.
         workspaces.sort((a, b) => {
-          const planAPriority = getPlanPriority(a.subscriptions[0].plan.code);
-          const planBPriority = getPlanPriority(b.subscriptions[0].plan.code);
+          // Note: TypeScript may incorrectly assume that `subscriptions` is always defined.
+          // Using optional chaining and default values to handle potential undefined cases.
+          const planAPriority = getPlanPriority(
+            a.subscriptions?.[0]?.plan?.code || ""
+          );
+          const planBPriority = getPlanPriority(
+            b.subscriptions?.[0]?.plan?.code || ""
+          );
 
           return planAPriority - planBPriority;
         });
@@ -274,10 +282,16 @@ async function handler(
       return res.status(200).json({
         workspaces: await Promise.all(
           workspaces.map(async (ws): Promise<PokeWorkspaceType> => {
+            // Note: TypeScript may incorrectly assume that `subscriptions` is always defined.
+            const [activeSubscription] = ws.subscriptions;
+
             const subscription: SubscriptionType = renderSubscriptionFromModels(
               {
-                plan: ws.subscriptions[0].plan,
-                activeSubscription: ws.subscriptions[0],
+                plan: activeSubscription
+                  ? activeSubscription.plan
+                  : // If there is no active subscription, we use the free plan data.
+                    FREE_NO_PLAN_DATA,
+                activeSubscription: activeSubscription,
               }
             );
 
