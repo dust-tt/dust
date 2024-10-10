@@ -1165,6 +1165,8 @@ impl DataSource {
                 let project = self.project.clone();
                 let data_source = data_source.clone();
 
+                let document_id_hash = make_document_id_hash(&document_id);
+
                 tokio::spawn(async move {
                     match store
                         .load_data_source_document(&project, &data_source_id, &document_id, &None)
@@ -1172,8 +1174,6 @@ impl DataSource {
                     {
                         Some(mut d) => {
                             if full_text {
-                                let document_id_hash = make_document_id_hash(&document_id);
-
                                 let stored_doc = FileStorageDocument::get_stored_document(
                                     &data_source,
                                     d.created,
@@ -1194,6 +1194,7 @@ impl DataSource {
                             error!(
                                 data_source_id = %data_source_id,
                                 document_id = %document_id,
+                                document_id_hash = %document_id_hash,
                                 panic = true,
                                 "Document not found in store"
                             );
