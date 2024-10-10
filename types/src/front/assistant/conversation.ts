@@ -108,6 +108,15 @@ export type AgentMessageStatus =
   | "failed"
   | "cancelled";
 
+export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
+  dust_app_run_action: "Running App",
+  process_action: "Extracting data",
+  retrieval_action: "Searching data",
+  tables_query_action: "Querying tables",
+  websearch_action: "Searching the web",
+  browse_action: "Browsing page",
+};
+
 /**
  * Both `action` and `message` are optional (we could have a no-op agent basically).
  *

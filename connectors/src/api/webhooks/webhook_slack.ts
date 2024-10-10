@@ -6,7 +6,7 @@ import {
   isChannelCreatedEvent,
   onChannelCreation,
 } from "@connectors/api/webhooks/slack/created_channel";
-import { botAnswerMessageWithErrorHandling } from "@connectors/connectors/slack/bot";
+import { botAnswerMessage } from "@connectors/connectors/slack/bot";
 import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {
   launchSlackSyncOneMessageWorkflow,
@@ -112,24 +112,20 @@ async function handleChatBot(req: Request, res: Response, logger: Logger) {
 
   // We need to answer 200 quickly to Slack, otherwise they will retry the HTTP request.
   res.status(200).send();
-
-  const botRes = await botAnswerMessageWithErrorHandling(
-    slackMessage,
+  const params = {
     slackTeamId,
     slackChannel,
     slackUserId,
     slackBotId,
     slackMessageTs,
-    slackThreadTs
-  );
+    slackThreadTs,
+  };
+  const botRes = await botAnswerMessage(slackMessage, params);
   if (botRes.isErr()) {
     logger.error(
       {
         error: botRes.error,
-        slackTeamId,
-        slackChannel,
-        slackUserId,
-        slackMessageTs,
+        ...params,
       },
       "Failed to answer to Slack message"
     );
