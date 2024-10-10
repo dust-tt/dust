@@ -312,7 +312,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
                 title: pageTitle,
                 url,
               },
-              `Document is ${extracted.length > 0 ? "too big to be upserted" : "empty"}. Skipping`
+              `Document is empty or too big to be upserted. Skipping`
             );
             return;
           }
