@@ -125,8 +125,8 @@ function getLimitPromptForCode(
           children: (
             <p className="text-sm font-normal text-element-800">
               As part of our fair usage policy, we've put a brief pause on your
-              messaging since you've reached the 100 messages limit within a 24h
-              window. Check our{" "}
+              messaging since you've reached the 100 messages per user limit on
+              your workspace in the last 24 hours. Check our{" "}
               <Hoverable
                 className="cursor-pointer font-bold text-action-500"
                 onClick={() => displayFairUseModal()}
