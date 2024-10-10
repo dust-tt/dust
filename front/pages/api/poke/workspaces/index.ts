@@ -289,7 +289,8 @@ async function handler(
               {
                 plan: activeSubscription
                   ? activeSubscription.plan
-                  : FREE_NO_PLAN_DATA,
+                  : // If there is no active subscription, we use the free plan data.
+                    FREE_NO_PLAN_DATA,
                 activeSubscription: activeSubscription,
               }
             );
