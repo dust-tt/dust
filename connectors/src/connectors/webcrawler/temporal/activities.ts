@@ -17,6 +17,7 @@ import {
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
 import {
+  MAX_BLOCKED_RATIO,
   MAX_TIME_TO_CRAWL_MINUTES,
   REQUEST_HANDLING_TIMEOUT,
 } from "@connectors/connectors/webcrawler/temporal/workflows";
@@ -86,7 +87,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const customHeaders = webCrawlerConfig.getCustomHeaders();
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  let pageCount = 0;
+  let validPagesCount = 0;
   let pagesTooLarge = 0;
   let totalExtracted = 0;
   let crawlingError = 0;
@@ -165,7 +166,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
                   panic: true,
                 },
                 `Website takes too long to crawl (crawls ${Math.round(
-                  pageCount / MAX_TIME_TO_CRAWL_MINUTES
+                  validPagesCount / MAX_TIME_TO_CRAWL_MINUTES
                 )} pages per minute)`
               );
             }
@@ -328,8 +329,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           );
         }
 
-        pageCount++;
-        await reportInitialSyncProgress(connector.id, `${pageCount} pages`);
+        validPagesCount++;
+        await reportInitialSyncProgress(connector.id, `${validPagesCount} pages`);
       },
       failedRequestHandler: async (context, error) => {
         Context.current().heartbeat({
@@ -385,13 +386,13 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   // checks for cancellation and throws if it's the case
   await Context.current().sleep(1);
 
-  if (blockCount > 0) {
+  if (blockCount / (pagesTooLarge + validPagesCount + blockCount) > MAX_BLOCKED_RATIO) {
     await syncFailed(connector.id, "webcrawling_error_blocked");
-  } else if (pagesTooLarge === pageCount) {
+  } else if (pagesTooLarge === validPagesCount) {
     await syncFailed(connector.id, "webcrawling_error_content_too_large");
   } else if (totalExtracted <= 0) {
     await syncFailed(connector.id, "webcrawling_error_empty_content");
-  } else if (pageCount === 0) {
+  } else if (validPagesCount === 0) {
     await syncFailed(connector.id, "webcrawling_error");
   } else {
     await syncSucceeded(connector.id);
@@ -405,7 +406,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   childLogger.info(
     {
       url,
-      pageCount,
+      pageCount: validPagesCount,
       crawlingError,
       configId: webCrawlerConfig.id,
     },
@@ -413,7 +414,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   );
 
   return {
-    pageCount,
+    pageCount: validPagesCount,
     crawlingError,
   };
 }

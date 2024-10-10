@@ -16,6 +16,8 @@ export const REQUEST_HANDLING_TIMEOUT = 420;
 
 export const MAX_TIME_TO_CRAWL_MINUTES = 240;
 
+export const MAX_BLOCKED_RATIO = 0.01;
+
 const { crawlWebsiteByConnectorId, webCrawlerGarbageCollector } =
   proxyActivities<typeof activities>({
     startToCloseTimeout: `${MAX_TIME_TO_CRAWL_MINUTES} minutes`,
