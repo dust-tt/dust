@@ -139,14 +139,11 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
       maxConcurrency: CONCURRENCY,
       maxRequestsPerMinute: 20, // 1 request every 3 seconds average, to avoid overloading the target website
       requestHandlerTimeoutSecs: REQUEST_HANDLING_TIMEOUT,
-      async requestHandler({ $, request, enqueueLinks, response }) {
+      async requestHandler({ $, request, enqueueLinks }) {
         Context.current().heartbeat({
           type: "http_request",
         });
         const currentRequestDepth = request.userData.depth || 0;
-        if (response.statusCode === 403 && response.statusCode === 429) {
-          blockCount++;
-        }
 
         // try-catch allowing activity cancellation by temporal (various timeouts, or signal)
         try {
@@ -343,6 +340,12 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           },
           "webcrawler failedRequestHandler"
         );
+        if (
+          context.response.statusCode === 403 ||
+          context.response.statusCode === 429
+        ) {
+          blockCount++;
+        }
         crawlingError++;
       },
       errorHandler: () => {
@@ -385,8 +388,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   } else if (upsertedPageCount <= 0) {
     // this means that every page was too big to be upserted
     await syncFailed(connector.id, "webcrawling_error_content_too_large");
-  } else if (!isNotBlocked) {
-    await syncFailed(connector.id, "webcrawling_error_blocked");
+  } else if (totalExtracted <= 0) {
+    await syncFailed(connector.id, "webcrawling_error_empty_content");
   } else if (pageCount <= 0) {
     await syncFailed(connector.id, "webcrawling_error");
   } else {
