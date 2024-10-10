@@ -210,7 +210,7 @@ export function InviteEmailModal({
                     setEmailError("");
                   }}
                   error={emailError}
-                  showErrorLabel={true}
+                  showErrorLabel
                 />
               </div>
             </div>

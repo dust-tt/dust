@@ -637,9 +637,8 @@ function NotionUrlCheckOrFind({
         <div className="grow">
           <Input
             placeholder="Notion URL"
-            onChange={setNotionUrl}
+            onChange={(e) => setNotionUrl(e.target.value)}
             value={notionUrl}
-            name={""}
           />
         </div>
         <Button
@@ -854,9 +853,8 @@ function SlackWhitelistBot({
         <div className="grow">
           <Input
             placeholder={`Bot or workflow name`}
-            onChange={setBotName}
+            onChange={(e) => setBotName(e.target.value)}
             value={botName}
-            name={""}
           />
         </div>
         <div>

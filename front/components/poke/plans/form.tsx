@@ -324,10 +324,8 @@ export const Field: React.FC<FieldProps> = ({
               }
               setEditingPlan({ ...editingPlan, [fieldName]: x });
             }}
-            placeholder=""
             name={fieldName}
             error={editingPlan && field.error(editingPlan)}
-            showErrorLabel={false}
           />
         ) : (
           renderPlanFieldValue(plan[fieldName])

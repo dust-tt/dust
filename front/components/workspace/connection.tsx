@@ -255,7 +255,7 @@ function CreateOktaEnterpriseConnectionModal({
             name="Callback URL"
             placeholder="Callback url"
             value={callbackUrl}
-            disabled={true}
+            disabled
             className="max-w-sm"
           />
         </div>
@@ -265,7 +265,7 @@ function CreateOktaEnterpriseConnectionModal({
             name="Initiate login URI"
             placeholder="Initiate login URI"
             value={initiateLoginUrl}
-            disabled={true}
+            disabled
             className="max-w-sm"
           />
         </div>
@@ -276,10 +276,10 @@ function CreateOktaEnterpriseConnectionModal({
             name="Okta Domain"
             placeholder="mydomain.okta.com"
             value={enterpriseConnectionDetails.domain ?? ""}
-            onChange={(value) =>
+            onChange={(e) =>
               setEnterpriseConnectionDetails({
                 ...enterpriseConnectionDetails,
-                domain: value,
+                domain: e.target.value,
               })
             }
             className="max-w-sm"
@@ -296,10 +296,10 @@ function CreateOktaEnterpriseConnectionModal({
             name="Okta Client Id"
             placeholder="okta-client-id"
             value={enterpriseConnectionDetails.clientId ?? ""}
-            onChange={(value) =>
+            onChange={(e) =>
               setEnterpriseConnectionDetails({
                 ...enterpriseConnectionDetails,
-                clientId: value,
+                clientId: e.target.value,
               })
             }
             className="max-w-sm"
@@ -316,10 +316,10 @@ function CreateOktaEnterpriseConnectionModal({
             name="Okta Client Secret"
             placeholder="okta-client-secret"
             value={enterpriseConnectionDetails.clientSecret ?? ""}
-            onChange={(value) =>
+            onChange={(e) =>
               setEnterpriseConnectionDetails({
                 ...enterpriseConnectionDetails,
-                clientSecret: value,
+                clientSecret: e.target.value,
               })
             }
             className="max-w-sm"
@@ -396,7 +396,7 @@ function CreateWAADEnterpriseConnectionModal({
             name="Callback URL"
             placeholder="Callback url"
             value={`https://${callbackUrl}/login/callback`}
-            disabled={true}
+            disabled
             className="max-w-sm"
           />
         </div>
@@ -406,7 +406,7 @@ function CreateWAADEnterpriseConnectionModal({
             name="Initiate login URI"
             placeholder="Initiate login URI"
             value={initiateLoginUrl}
-            disabled={true}
+            disabled
             className="max-w-sm"
           />
         </div>
@@ -417,10 +417,10 @@ function CreateWAADEnterpriseConnectionModal({
             name="Microsoft Domain"
             placeholder="<account_prefix>.onmicrosoft.com"
             value={enterpriseConnectionDetails.domain ?? ""}
-            onChange={(value) =>
+            onChange={(e) =>
               setEnterpriseConnectionDetails({
                 ...enterpriseConnectionDetails,
-                domain: value,
+                domain: e.target.value,
               })
             }
             className="max-w-sm"
@@ -432,10 +432,10 @@ function CreateWAADEnterpriseConnectionModal({
             name="Microsoft Client Id"
             placeholder="microsoft-client-id"
             value={enterpriseConnectionDetails.clientId ?? ""}
-            onChange={(value) =>
+            onChange={(e) =>
               setEnterpriseConnectionDetails({
                 ...enterpriseConnectionDetails,
-                clientId: value,
+                clientId: e.target.value,
               })
             }
             className="max-w-sm"
@@ -452,10 +452,10 @@ function CreateWAADEnterpriseConnectionModal({
             name="Microsoft Client Secret"
             placeholder="microsoft-client-secret"
             value={enterpriseConnectionDetails.clientSecret ?? ""}
-            onChange={(value) =>
+            onChange={(e) =>
               setEnterpriseConnectionDetails({
                 ...enterpriseConnectionDetails,
-                clientSecret: value,
+                clientSecret: e.target.value,
               })
             }
             className="max-w-sm"

@@ -222,9 +222,9 @@ export default function WorkspaceAdmin({
                   name="name"
                   placeholder="Workspace name"
                   value={workspaceName}
-                  onChange={(x) => setWorkspaceName(x)}
+                  onChange={(e) => setWorkspaceName(e.target.value)}
                   error={workspaceNameError}
-                  showErrorLabel={true}
+                  showErrorLabel
                 />
                 {!disable && (
                   <Button

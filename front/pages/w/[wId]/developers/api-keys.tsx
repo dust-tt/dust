@@ -175,7 +175,7 @@ export function APIKeys({
           name="API Key"
           placeholder="Type an API key name"
           value={newApiKeyName}
-          onChange={(e) => setNewApiKeyName(e)}
+          onChange={(e) => setNewApiKeyName(e.target.value)}
         />
         <div className="align-center flex flex-row items-center gap-2 p-2">
           <span className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">

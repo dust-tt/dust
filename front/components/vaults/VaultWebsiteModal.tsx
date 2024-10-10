@@ -4,6 +4,7 @@ import {
   DropdownMenu,
   ExclamationCircleStrokeIcon,
   Input,
+  Label,
   Modal,
   Page,
   RadioButton,
@@ -396,52 +397,50 @@ export default function VaultWebsiteModal({
               <Page.Layout direction="vertical" gap="xl">
                 <Page.H variant="h3">Custom Headers</Page.H>
                 <Page.P>Add custom request headers for the web crawler.</Page.P>
-                <div className="flex flex-col gap-4 px-1">
+                <div className="flex flex-col gap-4">
                   {headers.map((header, index) => (
-                    <>
-                      <div key={index} className="flex gap-2">
-                        <div className="flex grow flex-col gap-1 px-1">
-                          <Input
-                            placeholder="Header Name"
-                            value={header.key}
-                            name="headerName"
-                            onChange={(value) => {
-                              const newHeaders = [...headers];
-                              newHeaders[index].key = value;
-                              setHeaders(newHeaders);
-                            }}
-                            className="grow"
-                          />
-                          <Input
-                            name="headerValue"
-                            placeholder="Header Value"
-                            value={header.value}
-                            onChange={(value) => {
-                              const newHeaders = [...headers];
-                              newHeaders[index].value = value;
-                              setHeaders(newHeaders);
-                            }}
-                            className="flex-1"
-                          />
-                        </div>
-                        <Button
-                          variant="tertiary"
-                          labelVisible={false}
-                          label=""
-                          icon={XMarkIcon}
-                          disabledTooltip={true}
-                          onClick={() => {
-                            const newHeaders = headers.filter(
-                              (_, i) => i !== index
-                            );
+                    <div key={index} className="flex gap-2">
+                      <div className="flex grow flex-col gap-1">
+                        <Input
+                          placeholder="Header Name"
+                          value={header.key}
+                          name="headerName"
+                          onChange={(e) => {
+                            const newHeaders = [...headers];
+                            newHeaders[index].key = e.target.value;
                             setHeaders(newHeaders);
                           }}
+                          className="grow"
+                        />
+                        <Input
+                          name="headerValue"
+                          placeholder="Header Value"
+                          value={header.value}
+                          onChange={(e) => {
+                            const newHeaders = [...headers];
+                            newHeaders[index].value = e.target.value;
+                            setHeaders(newHeaders);
+                          }}
+                          className="flex-1"
                         />
                       </div>
-                    </>
+                      <Button
+                        variant="tertiary"
+                        labelVisible={false}
+                        label=""
+                        icon={XMarkIcon}
+                        disabledTooltip={true}
+                        onClick={() => {
+                          const newHeaders = headers.filter(
+                            (_, i) => i !== index
+                          );
+                          setHeaders(newHeaders);
+                        }}
+                      />
+                    </div>
                   ))}
                 </div>
-                <div className="flex px-2">
+                <div className="flex">
                   <Button
                     variant="secondary"
                     className="shrink"
@@ -461,17 +460,16 @@ export default function VaultWebsiteModal({
               <Page.Layout direction="vertical" gap="xl">
                 <Page.Layout direction="vertical" gap="md">
                   <Page.H variant="h3">Website Entry Point</Page.H>
-                  <Page.P>
+                  <Label className="pl-1">
                     Enter the address of the website you'd like to index.
-                  </Page.P>
+                  </Label>
                   <Input
                     placeholder="https://example.com/articles"
                     value={dataSourceUrl}
-                    onChange={(value) => updateUrl(value)}
+                    onChange={(e) => updateUrl(e.target.value)}
                     error={dataSourceUrlError}
                     name="dataSourceUrl"
-                    showErrorLabel={true}
-                    className="text-sm"
+                    showErrorLabel
                   />
                   <ContentMessage
                     title="Ensure the website is public"
@@ -582,11 +580,11 @@ export default function VaultWebsiteModal({
                     <Input
                       placeholder={WEBCRAWLER_MAX_PAGES.toString()}
                       value={maxPages?.toString() || ""}
-                      onChange={(value) => {
-                        const parsed = parseInt(value);
+                      onChange={(e) => {
+                        const parsed = parseInt(e.target.value);
                         if (!isNaN(parsed)) {
-                          setMaxPages(parseInt(value));
-                        } else if (value == "") {
+                          setMaxPages(parseInt(e.target.value));
+                        } else if (e.target.value == "") {
                           setMaxPages(null);
                         }
                       }}
@@ -611,7 +609,9 @@ export default function VaultWebsiteModal({
                 <Page.Layout direction="vertical" gap="md">
                   <Page.H variant="h3">Name</Page.H>
                   {webCrawlerConfiguration === null ? (
-                    <Page.P>Give a name to this Data Source.</Page.P>
+                    <Label className="pl-1">
+                      Give a name to this Data Source.
+                    </Label>
                   ) : (
                     <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
                       <ExclamationCircleStrokeIcon />
@@ -619,13 +619,12 @@ export default function VaultWebsiteModal({
                     </p>
                   )}
                   <Input
-                    placeholder=""
                     value={dataSourceName}
-                    onChange={(value) => setDataSourceName(value)}
+                    onChange={(e) => setDataSourceName(e.target.value)}
                     error={dataSourceNameError}
                     name="dataSourceName"
-                    showErrorLabel={true}
-                    className="text-sm"
+                    showErrorLabel
+                    placeholder="Articles"
                     disabled={webCrawlerConfiguration !== null}
                   />
                 </Page.Layout>

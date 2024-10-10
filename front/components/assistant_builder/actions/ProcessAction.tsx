@@ -160,11 +160,10 @@ function PropertiesFields({
                 <div className="col-span-2">
                   <Input
                     placeholder="Name"
-                    size="sm"
                     name={`name-${index}`}
                     value={prop["name"]}
-                    onChange={(v) => {
-                      handlePropertyChange(index, "name", v);
+                    onChange={(e) => {
+                      handlePropertyChange(index, "name", e.target.value);
                     }}
                     disabled={readOnly}
                     error={
@@ -182,11 +181,14 @@ function PropertiesFields({
                 <div className="col-span-7">
                   <Input
                     placeholder="Description"
-                    size="sm"
                     name={`description-${index}`}
                     value={prop["description"]}
-                    onChange={(v) => {
-                      handlePropertyChange(index, "description", v);
+                    onChange={(e) => {
+                      handlePropertyChange(
+                        index,
+                        "description",
+                        e.target.value
+                      );
                     }}
                     disabled={readOnly}
                     error={
@@ -449,14 +451,13 @@ export function ActionProcess({
                 <div className="flex">
                   <Input
                     placeholder="Enter tag"
-                    size="sm"
                     name="tags"
                     value={t}
-                    onChange={(v) => {
+                    onChange={(e) => {
                       setEdited(true);
                       updateAction((previousAction) => {
                         const tags = [...(previousAction.tagsFilter?.in || [])];
-                        tags[i] = v;
+                        tags[i] = e.target.value;
 
                         return {
                           ...previousAction,

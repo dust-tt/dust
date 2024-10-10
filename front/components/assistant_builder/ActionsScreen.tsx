@@ -867,9 +867,9 @@ function ActionEditor({
                       name="actionName"
                       placeholder="My tool name…"
                       value={action.name}
-                      onChange={(v) => {
+                      onChange={(e) => {
                         updateAction({
-                          actionName: v.toLowerCase(),
+                          actionName: e.target.value.toLowerCase(),
                           actionDescription: action.description,
                           getNewActionConfig: (old) => old,
                         });
@@ -948,7 +948,7 @@ function ActionEditor({
               }
             }}
             error={showInvalidActionDescError}
-            showErrorLabel={true}
+            showErrorLabel
           />
         </div>
       )}
@@ -988,12 +988,12 @@ function AdvancedSettings({
               value={maxStepsPerRun?.toString() ?? ""}
               placeholder=""
               name="maxStepsPerRun"
-              onChange={(v) => {
-                if (!v || v === "") {
+              onChange={(e) => {
+                if (!e.target.value || e.target.value === "") {
                   setMaxStepsPerRun(null);
                   return;
                 }
-                const value = parseInt(v);
+                const value = parseInt(e.target.value);
                 if (
                   !isNaN(value) &&
                   value >= 0 &&
