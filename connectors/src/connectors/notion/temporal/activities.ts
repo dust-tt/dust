@@ -630,7 +630,7 @@ export async function garbageCollectorMarkAsSeenAndReturnNewEntities({
     workspaceId: connector.workspaceId,
   });
 
-  const redisCli = await redisClient();
+  const redisCli = await redisClient({ origin: "notion_gc" });
   const redisKey = redisGarbageCollectorKey(connector.id);
   if (pageIds.length > 0) {
     await redisCli.sAdd(`${redisKey}-pages`, pageIds);
@@ -917,7 +917,7 @@ export async function completeGarbageCollectionRun(
   connectorId: ModelId,
   nbOfBatches: number
 ) {
-  const redisCli = await redisClient();
+  const redisCli = await redisClient({ origin: "notion_gc" });
   const redisKey = redisGarbageCollectorKey(connectorId);
   await redisCli.del(`${redisKey}-pages`);
   await redisCli.del(`${redisKey}-databases`);
@@ -1036,7 +1036,7 @@ export async function createResourcesNotSeenInGarbageCollectionRunBatches({
   batchSize: number;
 }) {
   const redisKey = redisGarbageCollectorKey(connectorId);
-  const redisCli = await redisClient();
+  const redisCli = await redisClient({ origin: "notion_gc" });
 
   const [pageIdsSeenInRunRaw, databaseIdsSeenInRunRaw] = await Promise.all([
     redisCli.sMembers(`${redisKey}-pages`),
@@ -1118,7 +1118,7 @@ async function getResourcesNotSeenInGarbageCollectionRunBatch(
   batchIndex: number
 ): Promise<GCResource[]> {
   const redisKey = redisGarbageCollectorKey(connectorId);
-  const redisCli = await redisClient();
+  const redisCli = await redisClient({ origin: "notion_gc" });
 
   const batch = await redisCli.get(
     `${redisKey}-resources-not-seen-batch-${batchIndex}`
