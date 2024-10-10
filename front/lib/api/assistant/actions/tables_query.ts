@@ -544,11 +544,13 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         output: sanitizedOutput,
       });
 
-      const { file, snippet } = await getTablesQueryOutputCsvFileAndSnippet({
+      const { file, snippet } = await getTablesQueryOutputCsvFileAndSnippet(
         auth,
-        title: queryTitle,
-        results,
-      });
+        {
+          title: queryTitle,
+          results,
+        }
+      );
 
       delete sanitizedOutput.results;
       updateParams.resultsFileId = file.id;
@@ -588,15 +590,16 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
   }
 }
 
-async function getTablesQueryOutputCsvFileAndSnippet({
-  auth,
-  title,
-  results,
-}: {
-  auth: Authenticator;
-  title: string;
-  results: Array<Record<string, string | number | boolean>>;
-}): Promise<{
+async function getTablesQueryOutputCsvFileAndSnippet(
+  auth: Authenticator,
+  {
+    title,
+    results,
+  }: {
+    title: string;
+    results: Array<Record<string, string | number | boolean>>;
+  }
+): Promise<{
   file: FileResource;
   snippet: string;
 }> {
@@ -615,8 +618,7 @@ async function getTablesQueryOutputCsvFileAndSnippet({
 
   const csvOutput = await toCsv(results);
 
-  const file = await internalCreateToolOutputCsvFile({
-    auth,
+  const file = await internalCreateToolOutputCsvFile(auth, {
     title,
     content: csvOutput,
     contentType: "text/csv",

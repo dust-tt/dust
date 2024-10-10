@@ -5,7 +5,7 @@ import {
   InformationCircleIcon,
   TableIcon,
 } from "@dust-tt/sparkle";
-import type { TablesQueryActionType, WorkspaceType } from "@dust-tt/types";
+import type { LightWorkspaceType, TablesQueryActionType } from "@dust-tt/types";
 import { getTablesQueryResultsFileTitle } from "@dust-tt/types";
 import { useCallback, useContext } from "react";
 
@@ -98,7 +98,7 @@ function QueryTablesResults({
   owner,
 }: {
   action: TablesQueryActionType;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
 }) {
   const sendNotification = useContext(SendNotificationsContext);
   const { output } = action;
@@ -108,7 +108,7 @@ function QueryTablesResults({
     if (action.resultsFileId) {
       try {
         const downloadUrl = `/api/w/${owner.sId}/files/${action.resultsFileId}?action=download`;
-        // Open the download URL in a new tab/window. Otherwise we get a CORS error due to the reirection
+        // Open the download URL in a new tab/window. Otherwise we get a CORS error due to the redirection
         // to cloud storage.
         window.open(downloadUrl, "_blank");
       } catch (error) {
@@ -143,7 +143,7 @@ function QueryTablesResults({
   return (
     <div>
       <span className="text-sm font-bold text-slate-900">Results</span>
-      <div onClick={() => handleDownload()} className="py-2">
+      <div onClick={handleDownload} className="py-2">
         <Citation size="xs" title={title} />
       </div>
 

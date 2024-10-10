@@ -2,7 +2,7 @@ import { Button, Chip, EyeIcon, Spinner } from "@dust-tt/sparkle";
 import type {
   AgentActionType,
   AgentMessageType,
-  WorkspaceType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
 import { useEffect, useMemo, useState } from "react";
 
@@ -14,7 +14,7 @@ import { classNames } from "@app/lib/utils";
 interface AgentMessageActionsProps {
   agentMessage: AgentMessageType;
   size?: MessageSizeType;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
 }
 
 export function AgentMessageActions({

@@ -3,17 +3,18 @@ import { pipeline } from "stream/promises";
 
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
-export async function internalCreateToolOutputCsvFile({
-  auth,
-  title,
-  content,
-  contentType,
-}: {
-  auth: Authenticator;
-  title: string;
-  content: string;
-  contentType: "text/csv";
-}): Promise<FileResource> {
+export async function internalCreateToolOutputCsvFile(
+  auth: Authenticator,
+  {
+    title,
+    content,
+    contentType,
+  }: {
+    title: string;
+    content: string;
+    contentType: "text/csv";
+  }
+): Promise<FileResource> {
   const workspace = auth.getNonNullableWorkspace();
   const user = auth.getNonNullableUser();
 
@@ -23,7 +24,7 @@ export async function internalCreateToolOutputCsvFile({
     contentType,
     fileName: title,
     fileSize: Buffer.byteLength(content),
-    useCase: "toolOutput",
+    useCase: "tool_output",
   });
 
   // Write both the "original" and "processed" versions simultaneously

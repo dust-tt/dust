@@ -1,5 +1,5 @@
 import { Modal, Page, Spinner } from "@dust-tt/sparkle";
-import type { AgentActionType, WorkspaceType } from "@dust-tt/types";
+import type { AgentActionType, LightWorkspaceType } from "@dust-tt/types";
 
 import { getActionSpecification } from "@app/components/actions/types";
 
@@ -8,7 +8,7 @@ interface AgentMessageActionsDrawerProps {
   isOpened: boolean;
   isStreaming: boolean;
   onClose: () => void;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
 }
 
 export function AgentMessageActionsDrawer({
