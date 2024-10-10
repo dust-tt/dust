@@ -34,6 +34,9 @@ const workerFunctions: Record<WorkerType, () => Promise<void>> = {
   slack: runSlackWorker,
   webcrawler: runWebCrawlerWorker,
   snowflake: runSnowflakeWorker,
+  zendesk: async () => {
+    logger.info("Zendesk worker not implemented yet.");
+  },
 };
 
 const ALL_WORKERS = Object.keys(workerFunctions) as WorkerType[];
