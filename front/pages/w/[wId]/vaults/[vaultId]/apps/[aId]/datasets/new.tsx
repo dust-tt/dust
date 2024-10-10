@@ -153,15 +153,13 @@ export default function NewDatasetView({
                 viewType="full"
               />
 
-              <div className="flex flex-row pt-6">
-                <div className="flex-initial">
-                  <Button
-                    label="Create"
-                    variant="primary"
-                    disabled={disable || loading}
-                    onClick={() => handleSubmit()}
-                  />
-                </div>
+              <div className="flex py-6">
+                <Button
+                  label="Create"
+                  variant="primary"
+                  disabled={disable || loading}
+                  onClick={() => handleSubmit()}
+                />
               </div>
             </div>
           </div>
