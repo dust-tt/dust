@@ -10,7 +10,6 @@ import { Tooltip } from "@sparkle/components/Tooltip";
 import { ChevronDownIcon, ChevronUpDownIcon } from "@sparkle/icons/solid";
 import { classNames } from "@sparkle/lib/utils";
 
-import { Avatar } from "./Avatar";
 import { Icon, IconProps } from "./Icon";
 
 const BUTTON_VARIANTS = [
@@ -19,7 +18,6 @@ const BUTTON_VARIANTS = [
   "secondary",
   "secondaryWarning",
   "tertiary",
-  "avatar",
 ] as const;
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
@@ -34,31 +32,23 @@ export type ButtonProps = {
   label: string;
   labelVisible?: boolean;
   icon?: ComponentType;
-  avatar?: string;
   className?: string;
   tooltipPosition?: React.ComponentProps<typeof Tooltip>["side"];
   disabledTooltip?: boolean;
 };
 
 const textClasses = {
-  xs: "s-text-xs s-font-semibold",
-  sm: "s-text-sm s-font-semibold",
-  md: "s-text-base s-font-bold",
-  lg: "s-text-lg s-font-bold",
+  xs: "s-text-xs s-font-semibold s-rounded-lg",
+  sm: "s-text-sm s-font-semibold s-rounded-xl",
+  md: "s-text-base s-font-bold s-rounded-2xl",
+  lg: "s-text-lg s-font-bold s-rounded-3xl",
 };
 
 const sizeClasses = {
-  xs: "s-gap-x-1 s-px-3 s-h-7",
-  sm: "s-gap-x-1 s-px-4 s-h-9",
-  md: "s-gap-x-1.5 s-px-5 s-h-12",
-  lg: "s-gap-x-3 s-px-6 s-h-16",
-};
-
-const sizeAvatarClasses = {
-  xs: "s-gap-x-1 s-pl-0.5 s-pr-3 s-py-0.5",
-  sm: "s-gap-x-1 s-pl-0.5 s-pr-4 s-py-0.5",
-  md: "s-gap-x-1.5 s-pl-1 s-pr-5 s-py-1",
-  lg: "s-gap-x-2 s-pl-0 s-pr-6 s-py-0",
+  xs: "s-gap-x-1 s-px-2 s-h-7",
+  sm: "s-gap-x-1 s-px-3 s-h-9",
+  md: "s-gap-x-1.5 s-px-4 s-h-12",
+  lg: "s-gap-x-3 s-px-5 s-h-16",
 };
 
 const containerClasses = {
@@ -142,23 +132,6 @@ const variantClasses = {
         "dark:s-text-element-600-dark dark:s-border-structure-100-dark dark:s-bg-structure-200-dark",
     },
   },
-  avatar: {
-    base: "s-text-element-800 s-border-structure-200 s-bg-structure-0",
-    hover:
-      "hover:s-bg-action-50 hover:s-text-action-500 hover:s-border-action-200",
-    active:
-      "active:s-bg-action-100 active:s-text-action-600 active:s-border-action-500",
-    disabled: "s-text-element-500 s-border-structure-200 s-bg-structure-0",
-    dark: {
-      base: "dark:s-text-element-700-dark dark:s-border-structure-300-dark dark:s-bg-structure-100-dark",
-      hover:
-        "dark:hover:s-bg-action-50-dark dark:hover:s-border-action-300-dark",
-      active:
-        "dark:active:s-bg-action-100-dark dark:active:s-border-action-500-dark",
-      disabled:
-        "dark:s-text-element-600-dark dark:s-border-structure-100-dark dark:s-bg-structure-200-dark",
-    },
-  },
 };
 
 const transitionClasses =
@@ -178,13 +151,12 @@ export function Button({
   icon,
   className = "",
   tooltipPosition,
-  hasMagnifying = true,
+  hasMagnifying = false,
   disabledTooltip = false,
-  avatar,
 }: ButtonProps) {
   let buttonClasses = classNames(
-    "s-inline-flex s-items-center s-border s-scale-100 s-box-border s-whitespace-nowrap s-rounded-full",
-    !avatar ? sizeClasses[size] : sizeAvatarClasses[size],
+    "s-inline-flex s-items-center s-border s-scale-100 s-box-border s-whitespace-nowrap",
+    sizeClasses[size],
     textClasses[size],
     className
   );
@@ -220,7 +192,6 @@ export function Button({
       aria-label={label}
     >
       {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
-      {avatar && <Avatar size={size} visual={avatar} isRounded />}
       {labelVisible ? (
         <div className={classNames("s-truncate", finalContainerClasses)}>
           {label}
