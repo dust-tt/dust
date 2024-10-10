@@ -1,4 +1,4 @@
-import { Checkbox, Dialog, Icon, Page } from "@dust-tt/sparkle";
+import { Checkbox, Dialog, Icon, Separator } from "@dust-tt/sparkle";
 import type { VaultType } from "@dust-tt/types";
 import React, { useState } from "react";
 
@@ -46,16 +46,16 @@ export function VaultSelector({
   // elements in between labels. We are aiming to refactor RadioButton
   return (
     <>
-      {sortedVaults.map((vault) => {
+      {sortedVaults.map((vault, index) => {
         const isDisabled =
           allowedVaults && !allowedVaults.some((v) => v.sId === vault.sId);
         const isChecked = selectedVault === vault.sId;
 
         return (
           <div key={vault.sId}>
-            <Page.Separator />
+            {index > 0 && <Separator />}
             <div
-              className="flex items-center gap-2"
+              className="flex items-center py-2"
               onClick={() => {
                 if (isDisabled) {
                   setAlertIsDialogOpen(true);
@@ -100,7 +100,7 @@ export function VaultSelector({
           </div>
         );
       })}
-      <Page.Separator />
+      <Separator />
       <Dialog
         alertDialog={true}
         isOpen={isAlertDialogOpen}

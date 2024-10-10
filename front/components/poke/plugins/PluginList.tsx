@@ -19,7 +19,7 @@ interface PluginCardProps {
 function PluginCard({ onClick, plugin }: PluginCardProps) {
   return (
     <PokeCard
-      className="flex cursor-pointer hover:bg-gray-100"
+      className="flex w-44 cursor-pointer hover:bg-gray-100"
       onClick={onClick}
     >
       <PokeCardHeader className="space-y-1.5 p-2">
@@ -61,7 +61,7 @@ export function PluginList({
       <div className="flex justify-between gap-3 rounded-t-lg bg-slate-300 p-4">
         <h2 className="text-md font-bold">Plugins :</h2>
       </div>
-      <div className="flex w-full flex-col items-start justify-between gap-3 p-4">
+      <div className="flex w-full flex-row items-start gap-3 p-4">
         {plugins.map((plugin) => (
           <PluginCard
             key={plugin.id}
