@@ -95,18 +95,16 @@ export async function rateLimiter({
 export async function expireRateLimiterKey({
   key,
   redisUri,
-}: RateLimiterOptionsBase): Promise<Result<void, Error>> {
+}: RateLimiterOptionsBase): Promise<Result<boolean, Error>> {
   let redis: undefined | Awaited<ReturnType<typeof redisClient>> = undefined;
 
   try {
     redis = await getRedisClient(redisUri);
     const redisKey = makeRateLimiterKey(key);
 
-    const t = await redis.expire(redisKey, 0);
+    const isExpired = await redis.expire(redisKey, 0);
 
-    console.log(">> t:", t);
-
-    return new Ok(undefined);
+    return new Ok(isExpired);
   } catch (err) {
     return new Err(err as Error);
   } finally {
