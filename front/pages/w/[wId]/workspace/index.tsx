@@ -49,8 +49,6 @@ export default function WorkspaceAdmin({
     workspaceId: owner.sId,
   });
 
-  console.log(subscriptions);
-
   const formValidation = useCallback(() => {
     if (workspaceName === owner.name) {
       return false;
