@@ -53,7 +53,7 @@ import { handleDataSourceSearch } from "@app/pages/api/w/[wId]/data_sources/[dsI
  *       - in: query
  *         name: full_text
  *         required: true
- *         description: Whether to perform a full text search
+ *         description: Whether to return the full document content
  *         schema:
  *           type: boolean
  *       - in: query

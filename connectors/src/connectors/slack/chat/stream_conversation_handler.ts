@@ -1,8 +1,8 @@
+import type { DustAPI } from "@dust-tt/client";
 import type {
   AgentActionType,
   AgentMessageType,
   ConversationType,
-  DustAPI,
   LightAgentConfigurationType,
   Result,
   UserMessageType,

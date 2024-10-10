@@ -1,5 +1,5 @@
-import type { DustAppConfigType, DustAppType } from "@dust-tt/types";
-import { DustAPI } from "@dust-tt/types";
+import type { DustAppConfigType, DustAppType } from "@dust-tt/client";
+import { DustAPI } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/types";
 
 import apiConfig from "@app/lib/api/config";

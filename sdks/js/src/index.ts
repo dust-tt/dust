@@ -1,36 +1,35 @@
 import { createParser } from "eventsource-parser";
-import * as t from "io-ts";
 
 import {
-  PublicPostContentFragmentRequestBodySchema,
-  PublicPostConversationsRequestBodySchema,
-  PublicPostMessagesRequestBodySchema,
-} from "../../front/api_handlers/public/assistant";
-import { LightAgentConfigurationType } from "../../front/assistant/agent";
-import {
+  LightAgentConfigurationType,
   AgentMessageType,
   ConversationType,
   UserMessageType,
-} from "../../front/assistant/conversation";
-import { DataSourceType } from "../../front/data_source";
-import { CoreAPITokenType } from "../../front/lib/core_api";
-import { RunType } from "../../front/run";
-import { WorkspaceDomain } from "../../front/workspace";
-import { WhitelistableFeature } from "../../shared/feature_flags";
-import { LoggerInterface } from "../../shared/logger";
-import { Err, Ok, Result } from "../../shared/result";
-import { PatchDataSourceViewType } from "../api_handlers/public/vaults";
-import { ContentFragmentType } from "../content_fragment";
-import { DataSourceViewType } from "../data_source_view";
-import {
-  AgentActionSpecificEvent,
+  DataSourceType,
+  CoreAPITokenType,
+  RunType,
+  WorkspaceDomain,
+  WhitelistableFeature,
+  Err,
+  Ok,
+  Result,
+  PatchDataSourceViewType,
+  ContentFragmentType,
+  DataSourceViewType,
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentMessageSuccessEvent,
-} from "./api/assistant/agent";
-import { UserMessageErrorEvent } from "./api/assistant/conversation";
-import { GenerationTokensEvent } from "./api/assistant/generation";
-import { APIError, isAPIError } from "./error";
+  UserMessageErrorEvent,
+  GenerationTokensEvent,
+  APIError,
+  isAPIError,
+  PublicPostContentFragmentRequestBody,
+  PublicPostConversationsRequestBody,
+  PublicPostMessagesRequestBody,
+  AgentActionSpecificEvent,
+} from "@dust-tt/types";
+
+import { LoggerInterface } from "@dust-tt/types/dist/shared/logger";
 
 export type DustAppType = {
   appHash: string;
@@ -149,10 +148,6 @@ export type DustAPICredentials = {
 
 export const DustGroupIdsHeader = "X-Dust-Group-Ids";
 export const DustUserEmailHeader = "x-api-user-email";
-
-type PublicPostContentFragmentRequestBody = t.TypeOf<
-  typeof PublicPostContentFragmentRequestBodySchema
->;
 
 export type DustAPIResponse<T> = Result<T, APIError>;
 
@@ -585,7 +580,7 @@ export class DustAPI {
     message,
     contentFragment,
     blocking = false,
-  }: t.TypeOf<typeof PublicPostConversationsRequestBodySchema>): Promise<
+  }: PublicPostConversationsRequestBody): Promise<
     DustAPIResponse<{
       conversation: ConversationType;
       message: UserMessageType;
@@ -627,7 +622,7 @@ export class DustAPI {
     message,
   }: {
     conversationId: string;
-    message: t.TypeOf<typeof PublicPostMessagesRequestBodySchema>;
+    message: PublicPostMessagesRequestBody;
   }): Promise<DustAPIResponse<UserMessageType>> {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this._credentials.apiKey}`,

@@ -23,6 +23,7 @@
     "@auth0/nextjs-auth0": "^3.5.0",
     "@dust-tt/sparkle": "^0.2.265",
     "@dust-tt/types": "file:../types",
+    "@dust-tt/client": "file:../sdks/js",
     "@headlessui/react": "^1.7.7",
     "@heroicons/react": "^2.0.11",
     "@hookform/resolvers": "^3.3.4",
