@@ -424,14 +424,6 @@ export async function fetchConversationMessages(
 
   const renderedMessages = renderedMessagesRes.value;
 
-  if (
-    renderedMessages.some(
-      (m) => isAgentMessageType(m) && !canReadMessage(auth, m)
-    )
-  ) {
-    return new Err(new ConversationError("conversation_access_denied"));
-  }
-
   return new Ok({
     hasMore,
     lastValue: renderedMessages.at(0)?.rank ?? null,

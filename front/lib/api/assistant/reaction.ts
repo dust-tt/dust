@@ -27,7 +27,7 @@ export async function getMessageReactions(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  if (!(await canAccessConversation(auth, conversation))) {
+  if (!canAccessConversation(auth, conversation)) {
     return new Err(new ConversationError("conversation_access_denied"));
   }
 

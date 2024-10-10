@@ -1,7 +1,12 @@
-import { ConversationError } from "@dust-tt/types";
+import { ConversationError, ConversationErrorType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiError } from "@app/logger/withlogging";
+
+const STATUS_FOR_ERROR_TYPE: Record<ConversationErrorType, number> = {
+  conversation_access_denied: 403,
+  conversation_not_found: 404,
+};
 
 export function apiErrorForConversation(
   req: NextApiRequest,
@@ -10,7 +15,7 @@ export function apiErrorForConversation(
 ) {
   if (error instanceof ConversationError) {
     return apiError(req, res, {
-      status_code: 403,
+      status_code: STATUS_FOR_ERROR_TYPE[error.type],
       api_error: {
         type: error.type,
         message: error.message,

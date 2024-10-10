@@ -45,13 +45,7 @@ async function handler(
       const reactionsRes = await getMessageReactions(auth, conversation);
 
       if (reactionsRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "conversation_access_denied",
-            message: "You do not have permission to access this conversation.",
-          },
-        });
+        return apiErrorForConversation(req, res, reactionsRes.error);
       }
 
       const reactions = reactionsRes.value;
