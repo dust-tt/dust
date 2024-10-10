@@ -10,7 +10,6 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { ACTIVE_ROLES, Err, Ok } from "@dust-tt/types";
-import assert from "assert";
 import { Op } from "sequelize";
 
 import type { PaginationParams } from "@app/lib/api/pagination";
