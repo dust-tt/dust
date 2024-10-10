@@ -171,7 +171,7 @@ export default function WorkspaceAdmin({
           ? new Date(current.startDate)
           : oldest;
       },
-      null as (Date | null)
+      null as Date | null
     );
 
     if (oldestStartDate) {
