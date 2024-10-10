@@ -12,7 +12,7 @@ export async function mentionsCountActivity(workspaceId: string) {
   }
   const agentMessageCounts = await agentMentionsCount(owner.id);
 
-  await runOnRedis((redis) =>
+  await runOnRedis({ origin: "mentions_count" }, (redis) =>
     storeCountsInRedis(workspaceId, agentMessageCounts, redis)
   );
 }

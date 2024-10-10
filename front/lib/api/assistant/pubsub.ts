@@ -152,7 +152,7 @@ async function handleUserMessageEvents(
     >
   > = new Promise((resolve) => {
     void wakeLock(async () => {
-      const redis = await getRedisClient();
+      const redis = await getRedisClient({ origin: "user_message_events" });
       let didResolve = false;
 
       let userMessage: UserMessageType | undefined = undefined;
@@ -301,7 +301,7 @@ export async function retryAgentMessageWithPubSub(
   const promise: Promise<Result<AgentMessageType, PubSubError>> = new Promise(
     (resolve) => {
       void wakeLock(async () => {
-        const redis = await getRedisClient();
+        const redis = await getRedisClient({ origin: "retry_agent_message" });
         let didResolve = false;
         try {
           for await (const event of retryAgentMessage(auth, {
@@ -405,7 +405,7 @@ export async function* getConversationEvents(
   },
   void
 > {
-  const redis = await getRedisClient();
+  const redis = await getRedisClient({ origin: "conversation_events" });
   const pubsubChannel = getConversationChannelId(conversationId);
 
   while (true) {
@@ -437,7 +437,7 @@ export async function* getConversationEvents(
 export async function cancelMessageGenerationEvent(
   messageIds: string[]
 ): Promise<void> {
-  const redis = await getRedisClient();
+  const redis = await getRedisClient({ origin: "cancel_message_generation" });
 
   try {
     const tasks = messageIds.map((messageId) => {
@@ -488,7 +488,7 @@ export async function* getMessagesEvents(
   void
 > {
   const pubsubChannel = getMessageChannelId(messageId);
-  const redis = await getRedisClient();
+  const redis = await getRedisClient({ origin: "message_events" });
 
   while (true) {
     // Use an isolated connection to avoid blocking the main connection.

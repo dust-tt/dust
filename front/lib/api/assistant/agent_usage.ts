@@ -60,7 +60,7 @@ export async function getAgentsUsage({
 
   const agentMessageCountKey = _getUsageKey(workspaceId);
 
-  redis = providedRedis ?? (await getRedisClient());
+  redis = providedRedis ?? (await getRedisClient({ origin: "agent_usage" }));
   const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
 
   // agent mention count doesn't exist or wasn't set to expire
@@ -115,7 +115,7 @@ export async function getAgentUsage(
 
   const agentMessageCountKey = _getUsageKey(workspaceId);
 
-  redis = providedRedis ?? (await getRedisClient());
+  redis = providedRedis ?? (await getRedisClient({ origin: "agent_usage" }));
 
   const agentUsage = await redis.hGet(
     agentMessageCountKey,
@@ -215,7 +215,7 @@ export async function signalAgentUsage({
 }) {
   let redis: RedisClientType | null = null;
 
-  redis = await getRedisClient();
+  redis = await getRedisClient({ origin: "agent_usage" });
   const agentMessageCountKey = _getUsageKey(workspaceId);
   const agentMessageCountTTL = await redis.ttl(agentMessageCountKey);
 
