@@ -81,9 +81,7 @@ export function AssistantBrowser({
       published: filteredAgents.filter((a) => a.scope === "published"),
       workspace: filteredAgents.filter((a) => a.scope === "workspace"),
       personal: filteredAgents.filter((a) => a.scope === "private"),
-      favorites: filteredAgents.filter(
-        (a) => a.scope === "published" && a.userListStatus === "in-list"
-      ),
+      favorites: filteredAgents.filter( a => a.userFavorite ),
       most_popular: filteredAgents
         .filter((a) => a.usage && a.usage.messageCount > 0)
         .sort(

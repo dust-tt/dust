@@ -1,10 +1,7 @@
-import type { AgentUserListStatus, Result } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
-import {
-  agentUserListStatus,
-  getAgentConfiguration,
-} from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 
@@ -14,7 +11,7 @@ export async function getAgentUserListStatus({
 }: {
   auth: Authenticator;
   agentId: string;
-}): Promise<Result<AgentUserListStatus, Error>> {
+}): Promise<Result<boolean, Error>> {
   const agentConfiguration = await getAgentConfiguration(auth, agentId);
 
   if (!agentConfiguration) {

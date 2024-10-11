@@ -30,6 +30,7 @@
     "@dust-tt/client": "file:../sdks/js",
     "@dust-tt/sparkle": "^0.2.267",
     "@dust-tt/types": "file:../types",
+    "@esbuild/linux-x64": "^0.24.0",
     "@headlessui/react": "^1.7.7",
     "@heroicons/react": "^2.0.11",
     "@hookform/resolvers": "^3.3.4",

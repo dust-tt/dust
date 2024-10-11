@@ -9,7 +9,7 @@ import { useContext } from "react";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   useAgentConfiguration,
-  useUpdateAgentUserListStatus,
+  useUpdateUserFavorite,
 } from "@app/lib/swr/assistants";
 
 export function RemoveAssistantFromListDialog({
@@ -23,7 +23,7 @@ export function RemoveAssistantFromListDialog({
   show: boolean;
   onClose: () => void;
 }) {
-  const doUpdate = useUpdateAgentUserListStatus({
+  const doUpdate = useUpdateUserFavorite({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });

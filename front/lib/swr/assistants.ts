@@ -403,7 +403,7 @@ export function useUpdateAgentScope({
   return doUpdate;
 }
 
-export function useUpdateAgentUserListStatus({
+export function useUpdateUserFavorite({
   owner,
   agentConfigurationId,
 }: {
