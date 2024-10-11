@@ -43,11 +43,6 @@ export type ContentNodeTreeItemStatus = {
   parents: string[];
 };
 
-type CheckboxStatus = {
-  checked: boolean;
-  isPartial: boolean;
-};
-
 export type TreeSelectionModelUpdater = (
   prev: Record<string, ContentNodeTreeItemStatus>
 ) => Record<string, ContentNodeTreeItemStatus>;
@@ -125,31 +120,31 @@ function ContentNodeTreeChildren({
   );
 
   const getCheckedState = useCallback(
-    (node: BaseContentNode): CheckboxStatus => {
+    (node: BaseContentNode) => {
       if (!selectedNodes) {
-        return { checked: false, isPartial: false };
+        return "unchecked";
       }
 
       // If the parent is selected, the node is considered selected.
       if (parentIsSelected) {
-        return { checked: true, isPartial: false };
+        return "checked";
       }
 
       // Check if there is a local state for this node.
       const localState = selectedNodes[node.internalId];
       if (localState?.isSelected) {
-        return { checked: true, isPartial: false };
+        return "checked";
       }
 
       const internalPartiallySelectedId = Object.values(selectedNodes)
         .map((status) => status.parents)
         .flat();
       if (internalPartiallySelectedId.includes(node.internalId)) {
-        return { checked: true, isPartial: true };
+        return "partial";
       }
 
       // Return false if no custom function is provided.
-      return { checked: false, isPartial: false };
+      return "unchecked";
     },
     [parentIsSelected, selectedNodes]
   );
@@ -169,8 +164,7 @@ function ContentNodeTreeChildren({
         (emptyComponent || <Tree.Empty label="No documents" />)}
 
       {filteredNodes.map((n, i) => {
-        const { checked, isPartial } = getCheckedState(n);
-
+        const checkedState = getCheckedState(n);
         return (
           <Tree.Item
             key={n.internalId}
@@ -179,14 +173,15 @@ function ContentNodeTreeChildren({
             visual={getVisualForContentNode(n)}
             className={`whitespace-nowrap tree-depth-${depth}`}
             checkbox={
-              (n.preventSelection !== true || isPartial) && selectedNodes
+              (n.preventSelection !== true || checkedState === "partial") &&
+              selectedNodes
                 ? {
                     disabled: parentIsSelected || !setSelectedNodes,
-                    isPartial,
-                    checked,
+                    isPartial: checkedState === "partial",
+                    checked: checkedState === "checked",
                     onCheckedChange: (v) => {
                       if (setSelectedNodes) {
-                        if (isPartial) {
+                        if (checkedState === "partial") {
                           // Handle clicking on partial : unselect all selected children
                           setSelectedNodes((prev) =>
                             unselectedChildren(prev, n)
@@ -197,7 +192,7 @@ function ContentNodeTreeChildren({
                             [n.internalId]: {
                               isSelected: !!v,
                               node: n,
-                              parents: checked ? parentIds : [],
+                              parents: v ? parentIds : [],
                             },
                           }));
                         }
@@ -258,7 +253,7 @@ function ContentNodeTreeChildren({
                 depth={depth + 1}
                 parentId={n.internalId}
                 parentIds={[n.internalId, ...parentIds]}
-                parentIsSelected={getCheckedState(n).checked}
+                parentIsSelected={getCheckedState(n) === "checked"}
               />
             )}
           />

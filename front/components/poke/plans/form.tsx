@@ -338,7 +338,7 @@ export const Field: React.FC<FieldProps> = ({
 
         return (
           <Checkbox
-            checked={isChecked}
+            defaultChecked={isChecked}
             onCheckedChange={(x) => {
               if (!editingPlan) {
                 return;

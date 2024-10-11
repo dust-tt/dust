@@ -98,7 +98,7 @@ export function PluginForm({ manifest, onSubmit }: PluginFormProps) {
                     )}
                     {arg.type === "boolean" && (
                       <Checkbox
-                        checked={field.value}
+                        defaultChecked={field.value}
                         onCheckedChange={field.onChange}
                       />
                     )}
