@@ -122,18 +122,18 @@ function ContentNodeTreeChildren({
   const getCheckedState = useCallback(
     (node: BaseContentNode) => {
       if (!selectedNodes) {
-        return "unchecked";
+        return false;
       }
 
       // If the parent is selected, the node is considered selected.
       if (parentIsSelected) {
-        return "checked";
+        return true;
       }
 
       // Check if there is a local state for this node.
       const localState = selectedNodes[node.internalId];
       if (localState?.isSelected) {
-        return "checked";
+        return true;
       }
 
       const internalPartiallySelectedId = Object.values(selectedNodes)
@@ -144,7 +144,7 @@ function ContentNodeTreeChildren({
       }
 
       // Return false if no custom function is provided.
-      return "unchecked";
+      return false;
     },
     [parentIsSelected, selectedNodes]
   );
@@ -177,8 +177,7 @@ function ContentNodeTreeChildren({
               selectedNodes
                 ? {
                     disabled: parentIsSelected || !setSelectedNodes,
-                    isPartial: checkedState === "partial",
-                    checked: checkedState === "checked",
+                    checked: checkedState,
                     onCheckedChange: (v) => {
                       if (setSelectedNodes) {
                         if (checkedState === "partial") {
@@ -253,7 +252,7 @@ function ContentNodeTreeChildren({
                 depth={depth + 1}
                 parentId={n.internalId}
                 parentIds={[n.internalId, ...parentIds]}
-                parentIsSelected={getCheckedState(n) === "checked"}
+                parentIsSelected={getCheckedState(n) === true}
               />
             )}
           />

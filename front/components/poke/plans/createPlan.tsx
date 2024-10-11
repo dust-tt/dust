@@ -1,5 +1,5 @@
 import { Input } from "@dust-tt/sparkle";
-import { Checkbox,Spinner } from "@dust-tt/sparkle";
+import { Checkbox, Spinner } from "@dust-tt/sparkle";
 import type { CreatePlanFormType, WorkspaceType } from "@dust-tt/types";
 import { CreatePlanFormSchema, removeNulls } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
