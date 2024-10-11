@@ -25,15 +25,13 @@ export const CheckBoxSizesExample = () => {
         SM
         <Checkbox onChange={handleChange} />
         <Checkbox checked onChange={handleChange} />
-        <Checkbox isPartial checked onChange={handleChange} />
-        <Checkbox checked="indeterminate" onChange={handleChange} />
+        <Checkbox checked="partial" onChange={handleChange} />
       </div>
       <div className="s-flex s-gap-10">
         XS
         <Checkbox size="xs" onChange={handleChange} />
         <Checkbox size="xs" checked onChange={handleChange} />
-        <Checkbox size="xs" isPartial checked onChange={handleChange} />
-        <Checkbox size="xs" checked="indeterminate" onChange={handleChange} />
+        <Checkbox size="xs" checked="partial" onChange={handleChange} />
       </div>
     </div>
   );

@@ -393,7 +393,7 @@ export const TreeExample = () => {
                   <Tree.Item
                     label="Item 1"
                     checkbox={{
-                      isPartial: true,
+                      checked: "partial",
                       onChange: () => {
                         return;
                       },
@@ -447,7 +447,7 @@ export const TreeExample = () => {
                   <Tree.Item
                     label="Item 1"
                     checkbox={{
-                      isPartial: true,
+                      checked: "partial",
                       onChange: () => {
                         return;
                       },

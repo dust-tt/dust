@@ -17,9 +17,10 @@ const checkboxStyles = cva(
   ),
   {
     variants: {
-      isPartial: {
-        false: "data-[state=checked]:s-bg-action-500",
-        true: "data-[state=checked]:s-bg-element-700",
+      checked: {
+        true: "data-[state=checked]:s-bg-action-500",
+        partial: "data-[state=checked]:s-bg-element-700",
+        false: "",
       },
       size: {
         xs: "s-h-4 s-w-4 s-rounded",
@@ -28,28 +29,35 @@ const checkboxStyles = cva(
     },
     defaultVariants: {
       size: "sm",
-      isPartial: false,
+      checked: false,
     },
   }
 );
 
+type CheckBoxStateType = boolean | "partial";
+
 interface CheckboxProps
-  extends React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
-    VariantProps<typeof checkboxStyles> {}
+  extends Omit<
+      React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
+      "checked"
+    >,
+    VariantProps<typeof checkboxStyles> {
+  checked?: CheckBoxStateType;
+}
 
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
->(({ className, size, isPartial, checked, ...props }, ref) => (
+>(({ className, size, checked, ...props }, ref) => (
   <CheckboxPrimitive.Root
     ref={ref}
-    className={cn(checkboxStyles({ isPartial, size }), className)}
-    checked={isPartial || checked}
+    className={cn(checkboxStyles({ checked, size }), className)}
+    checked={!!checked}
     {...props}
   >
     <CheckboxPrimitive.Indicator className="s-flex s-items-center s-justify-center s-text-current">
       <span className={cn(size === "xs" ? "-s-mt-px" : "")}>
-        <Icon size="xs" visual={isPartial ? DashIcon : CheckIcon} />
+        <Icon size="xs" visual={checked === "partial" ? DashIcon : CheckIcon} />
       </span>
     </CheckboxPrimitive.Indicator>
   </CheckboxPrimitive.Root>
