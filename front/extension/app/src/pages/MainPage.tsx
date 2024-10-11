@@ -23,10 +23,14 @@ export const MainPage = () => {
     defaultEmbeddingProvider: null,
     flags: [],
   };
-  const { agentConfigurations, isAgentConfigurationsLoading, isAgentConfigurationsError } = useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "assistants-search",
-    });
+  const {
+    agentConfigurations,
+    isAgentConfigurationsLoading,
+    isAgentConfigurationsError,
+  } = useAgentConfigurations({
+    workspaceId: owner.sId,
+    agentsGetView: "assistants-search",
+  });
   return (
     <div className="flex flex-col p-4 gap-2">
       <div className="flex gap-2 align-center">

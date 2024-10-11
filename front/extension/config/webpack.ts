@@ -115,7 +115,7 @@ export const getConfig = async ({
         VERSION: version,
       }),
       new webpack.DefinePlugin({
-        'process.env.USE_PUBLIC_API': "\"http://localhost:3000/api/v1\""
+        "process.env.USE_PUBLIC_API": '"http://localhost:3000/api/v1"',
       }),
       new Dotenv({
         path: isDevelopment ? "./.env.development" : "./.env.production",
