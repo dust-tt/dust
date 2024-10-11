@@ -775,6 +775,7 @@ export function ConnectorPermissionsModal({
         owner={owner}
       />
       <ConnectorDataUpdatedModal
+        owner={owner}
         isOpen={modalToShow === "data_updated"}
         onClose={() => {
           closeModal(false);
