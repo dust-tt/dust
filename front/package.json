@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "dev": "concurrently --kill-others \"cd ../types/ && npm run start\" \"sleep 10s && cd ../sdks/js/ && npm run start\" \"sleep 12s && next dev\"",
+    "dev:all": "concurrently --kill-others \"cd ../types/ && npm run start\" \"sleep 20 && cd ../sdks/js/ && npm run start\" \"sleep 22 && next dev\" \"sleep 22 && tsx ./start_worker.ts\"",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start --keepAliveTimeout 5000",
     "start:worker": "tsx ./start_worker.ts",

@@ -1,35 +1,33 @@
-import { createParser } from "eventsource-parser";
-
 import {
-  LightAgentConfigurationType,
-  AgentMessageType,
-  ConversationType,
-  UserMessageType,
-  DataSourceType,
-  CoreAPITokenType,
-  RunType,
-  WorkspaceDomain,
-  WhitelistableFeature,
-  Err,
-  Ok,
-  Result,
-  PatchDataSourceViewType,
-  ContentFragmentType,
-  DataSourceViewType,
+  AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentMessageSuccessEvent,
-  UserMessageErrorEvent,
-  GenerationTokensEvent,
+  AgentMessageType,
   APIError,
+  ContentFragmentType,
+  ConversationType,
+  CoreAPITokenType,
+  DataSourceType,
+  DataSourceViewType,
+  Err,
+  GenerationTokensEvent,
   isAPIError,
+  LightAgentConfigurationType,
+  Ok,
+  PatchDataSourceViewType,
   PublicPostContentFragmentRequestBody,
   PublicPostConversationsRequestBody,
   PublicPostMessagesRequestBody,
-  AgentActionSpecificEvent,
+  Result,
+  RunType,
+  UserMessageErrorEvent,
+  UserMessageType,
+  WhitelistableFeature,
+  WorkspaceDomain,
 } from "@dust-tt/types";
-
 import { LoggerInterface } from "@dust-tt/types/dist/shared/logger";
+import { createParser } from "eventsource-parser";
 
 export type DustAppType = {
   appHash: string;

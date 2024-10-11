@@ -24,11 +24,12 @@
     "@types/node": "^22.7.5",
     "@types/uuid": "^9.0.7",
     "tslib": "^2.6.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "dts-cli": "^2.0.5",
+    "eslint-plugin-simple-import-sort": "^12.1.0"
   },
   "dependencies": {
     "@dust-tt/types": "file:../../types",
-    "dts-cli": "^2.0.5",
     "eventsource-parser": "^1.1.1",
     "moment-timezone": "^0.5.46"
   },
