@@ -40,7 +40,7 @@ interface CheckboxProps
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   CheckboxProps
->(({ className, size = "sm", isPartial = false, checked, ...props }, ref) => (
+>(({ className, size, isPartial, checked, ...props }, ref) => (
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(checkboxStyles({ isPartial, size }), className)}
