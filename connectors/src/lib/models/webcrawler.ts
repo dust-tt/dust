@@ -194,6 +194,10 @@ WebCrawlerFolder.init(
         unique: true,
         fields: ["url", "connectorId", "webcrawlerConfigurationId"],
       },
+      {
+        unique: true,
+        fields: ["connectorId", "internalId"],
+      },
     ],
     modelName: "webcrawler_folders",
   }
