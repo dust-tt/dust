@@ -71,7 +71,7 @@ export default function ConnectorSyncingChip({
             label={label}
             className="max-w-md"
             trigger={
-              <Chip className="w-32" color="warning">
+              <Chip className="w-36" color="warning">
                 <div className="w-full truncate">{label}</div>
               </Chip>
             }
@@ -85,7 +85,7 @@ export default function ConnectorSyncingChip({
             label={label}
             className="max-w-md"
             trigger={
-              <Chip className="w-32" color="warning">
+              <Chip className="w-36" color="warning">
                 <div className="w-full truncate">{label}</div>
               </Chip>
             }
@@ -98,7 +98,7 @@ export default function ConnectorSyncingChip({
             label={label}
             className="max-w-md"
             trigger={
-              <Chip className="w-32" color="warning">
+              <Chip className="w-36" color="warning">
                 <div className="w-full truncate">{label}</div>
               </Chip>
             }
