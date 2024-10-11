@@ -5,7 +5,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import { setAgentUserListStatus } from "@app/lib/api/assistant/user_relation";
+import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -85,7 +85,7 @@ async function handler(
 
         // ensure the assistant is in the list of the user otherwise
         // switching it back to private will make it disappear
-        const setRes = await setAgentUserListStatus({
+        const setRes = await setAgentUserFavorite({
           auth,
           agentId: assistant.sId,
           listStatus: "in-list",
