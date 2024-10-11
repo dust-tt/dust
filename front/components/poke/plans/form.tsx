@@ -322,7 +322,7 @@ export const Field: React.FC<FieldProps> = ({
               if (!editingPlan) {
                 return;
               }
-              setEditingPlan({ ...editingPlan, [fieldName]: x });
+              setEditingPlan({ ...editingPlan, [fieldName]: x.target.value });
             }}
             name={fieldName}
             error={editingPlan && field.error(editingPlan)}

@@ -1,3 +1,4 @@
+import { Input } from "@dust-tt/sparkle";
 import { createIoTsCodecFromArgs } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import type * as t from "io-ts";
@@ -15,7 +16,6 @@ import {
   PokeFormLabel,
   PokeFormMessage,
 } from "@app/components/poke/shadcn/ui/form";
-import { PokeInput } from "@app/components/poke/shadcn/ui/input";
 import {
   PokeSelect,
   PokeSelectContent,
@@ -88,9 +88,9 @@ export function PluginForm({ manifest, onSubmit }: PluginFormProps) {
                 <PokeFormLabel>{arg.label}</PokeFormLabel>
                 <PokeFormControl>
                   <>
-                    {arg.type === "string" && <PokeInput {...field} />}
+                    {arg.type === "string" && <Input {...field} />}
                     {arg.type === "number" && (
-                      <PokeInput
+                      <Input
                         type="number"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
@@ -104,7 +104,7 @@ export function PluginForm({ manifest, onSubmit }: PluginFormProps) {
                     )}
                     {arg.type === "enum" && (
                       <PokeSelect
-                        value={field.value as string}
+                        value={field.value.toString()}
                         onValueChange={field.onChange}
                       >
                         <PokeFormControl>

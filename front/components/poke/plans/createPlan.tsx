@@ -1,4 +1,5 @@
 import { Spinner } from "@dust-tt/sparkle";
+import { Input } from "@dust-tt/sparkle";
 import type { CreatePlanFormType, WorkspaceType } from "@dust-tt/types";
 import { CreatePlanFormSchema, removeNulls } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
@@ -18,7 +19,6 @@ import {
   PokeFormLabel,
   PokeFormMessage,
 } from "@app/components/poke/shadcn/ui/form";
-import { PokeInput } from "@app/components/poke/shadcn/ui/input";
 import {
   PokeSelect,
   PokeSelectContent,
@@ -238,24 +238,29 @@ function InputField({
     <PokeFormField
       control={control}
       name={name}
-      render={({ field }) => (
-        <PokeFormItem>
-          <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
-          <PokeFormControl>
-            <PokeInput
-              placeholder={placeholder ?? name}
-              type={type}
-              {...field}
-              value={
-                typeof field.value === "boolean"
-                  ? field.value.toString()
-                  : field.value
-              }
-            />
-          </PokeFormControl>
-          <PokeFormMessage />
-        </PokeFormItem>
-      )}
+      render={({ field }) => {
+        const { onChange, value, ...rest } = field;
+
+        return (
+          <PokeFormItem>
+            <PokeFormLabel className="capitalize">
+              {title ?? name}
+            </PokeFormLabel>
+            <PokeFormControl>
+              <Input
+                placeholder={placeholder ?? name}
+                type={type}
+                onChange={(e) => {
+                  onChange(e.target.value);
+                }}
+                value={value.toString()}
+                {...rest}
+              />
+            </PokeFormControl>
+            <PokeFormMessage />
+          </PokeFormItem>
+        );
+      }}
     />
   );
 }
