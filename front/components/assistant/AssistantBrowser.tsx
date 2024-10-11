@@ -38,11 +38,11 @@ interface AssistantListProps {
 
 const ALL_AGENTS_TABS = [
   // default shown tab = earliest in this list with non-empty agents
-  { label: "Favorites", icon: StarIcon, id: "favorites" },
   { label: "Most popular", icon: RocketIcon, id: "most_popular" },
   { label: "Company", icon: CompanyIcon, id: "workspace" },
   { label: "Shared", icon: UserGroupIcon, id: "published" },
   { label: "Personal", icon: LockIcon, id: "personal" },
+  { label: "Favorites", icon: StarIcon, id: "favorites" },
   { label: "All", icon: RobotIcon, id: "all" },
 ] as const;
 
