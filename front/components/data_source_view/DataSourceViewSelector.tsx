@@ -26,8 +26,8 @@ import type {
   TreeSelectionModelUpdater,
 } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
-import { orderDatasourceViewByImportance } from "@app/lib/assistant";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { orderDatasourceViewByImportance } from "@app/lib/connectors";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
