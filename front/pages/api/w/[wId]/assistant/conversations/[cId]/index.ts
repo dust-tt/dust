@@ -61,9 +61,6 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      // TODO(VAULTS_INFRA) Return a 401 with `conversation_access_restricted` error type
-      // when the user doesn't have access to the conversation.
-
       res.status(200).json({ conversation });
       return;
 

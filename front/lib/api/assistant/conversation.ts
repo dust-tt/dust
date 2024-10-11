@@ -180,8 +180,7 @@ export async function deleteConversation(
     destroy?: boolean;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
-  const owner = auth.workspace();
-  if (!owner) {
+  if (!auth.workspace()) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
@@ -2039,10 +2038,7 @@ export function canAccessConversation(
   auth: Authenticator,
   conversation: ConversationWithoutContentType | ConversationType | Conversation
 ): boolean {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected: owner without auth");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const groupIds =
     conversation instanceof Conversation
