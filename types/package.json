@@ -44,6 +44,7 @@
   "browser": {
     "tls": false,
     "net": false,
-    "hot-shots": false
+    "hot-shots": false,
+    "child_process": false
   }
 }

@@ -7,8 +7,22 @@ import {
   TranslateIcon,
 } from "@dust-tt/sparkle";
 import { Link } from "react-router-dom";
+import { FixedAssistantInputBar } from "@app/shared/input_bar/InputBar";
+import { GenerationContextProvider } from "@app/shared/context/GenerationContextProvider";
+import type { WorkspaceType } from "@dust-tt/types";
 
 export const MainPage = () => {
+  const ws: WorkspaceType = {
+    id: 1,
+    sId: "test",
+    name: "test",
+    role: "user",
+    segmentation: null,
+    whiteListedProviders: null,
+    defaultEmbeddingProvider: null,
+    flags: [],
+  };
+
   return (
     <div className="flex flex-col p-4 gap-2">
       <div className="flex gap-2 align-center">
@@ -33,7 +47,15 @@ export const MainPage = () => {
       </div>
       <Page.SectionHeader title="Conversation" />
       <Link to="/conversation">Conversations</Link>
-
+      <GenerationContextProvider >
+      <FixedAssistantInputBar
+        owner={ws}
+        baseAgentConfigurations={[]}
+        onSubmit={() => {}}
+        stickyMentions={[]}
+        conversationId={null}
+      />
+      </GenerationContextProvider>
       <Page.SectionHeader title="Favorites" />
     </div>
   );

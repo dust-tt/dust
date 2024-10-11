@@ -20,7 +20,6 @@ import { Separator } from "@radix-ui/react-select";
 import { useContext, useEffect, useMemo } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
-import { GenerationContextProvider } from "@app/shared/context/GenerationContextProvider";
 import {
   usePreviewAssistant,
   useTryAssistantCore,
@@ -38,6 +37,7 @@ import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
+import { GenerationContextProvider } from "@app/shared/context/GenerationContextProvider";
 import { AssistantInputBar } from "@app/shared/input_bar/InputBar";
 
 interface AssistantBuilderRightPanelProps {
