@@ -56,7 +56,8 @@ const authenticate = async (
   const options = {
     client_id: AUTH0_CLIENT_ID,
     response_type: "code",
-    scope: "openid profile email offline_access",
+    // "offline_access" to receive refresh tokens to maintain user sessions without re-prompting for authentication.
+    scope: "openid offline_access",
     redirect_uri: redirectUrl,
     audience: AUTH0_AUDIENCE,
     code_challenge_method: "S256",
