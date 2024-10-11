@@ -15,7 +15,7 @@ import { useAuth } from "@extension/hooks/useAuth";
 import { WorkspaceType } from "@dust-tt/types";
 
 export const MainPage = () => {
-  const { token, isLoading, handleLogin, handleLogout } = useAuth();
+  const { isLoading, isAuthenticated, handleLogin, handleLogout } = useAuth();
 
   const owner: WorkspaceType = {
     id: 1,
@@ -38,7 +38,7 @@ export const MainPage = () => {
           </a>
         </div>
 
-        {token && (
+        {isAuthenticated && (
           <Button
             icon={LogoutIcon}
             variant="tertiary"
@@ -54,7 +54,7 @@ export const MainPage = () => {
         </div>
       )}
 
-      {!isLoading && !token && (
+      {!isLoading && !isAuthenticated && (
         <div className="flex justify-center items-center w-full h-full">
           <Button
             icon={LoginIcon}
@@ -65,7 +65,7 @@ export const MainPage = () => {
         </div>
       )}
 
-      {token && (
+      {isAuthenticated && (
         <div className="w-full h-full">
           <Page.SectionHeader title="Conversation" />
           <GenerationContextProvider>
