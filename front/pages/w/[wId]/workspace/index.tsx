@@ -181,7 +181,7 @@ export default function WorkspaceAdmin({
       const currentYear = new Date().getFullYear();
       const currentMonth = new Date().getMonth();
 
-      for (let year = startDateYear; year <= currentYear; year++) {
+      for (let year = currentYear; year >= startDateYear; year--) {
         const startMonth = year === startDateYear ? startDateMonth : 0;
         const endMonth = year === currentYear ? currentMonth : 11;
         for (let month = endMonth; month >= startMonth; month--) {
