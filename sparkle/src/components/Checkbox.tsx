@@ -19,7 +19,7 @@ const checkboxStyles = cva(
     variants: {
       checked: {
         true: "data-[state=checked]:s-bg-action-500",
-        partial: "data-[state=checked]:s-bg-element-700",
+        partial: "data-[state=checked]:s-bg-muted-foreground",
         false: "",
       },
       size: {
