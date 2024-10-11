@@ -289,10 +289,6 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   canWrite(auth: Authenticator) {
-    const isPrivateVaultsEnabled = auth
-      .getNonNullableWorkspace()
-      .flags.includes("private_data_vaults_feature");
-
     switch (this.kind) {
       case "system":
         return auth.isAdmin() && auth.canWrite([this.acl()]);
@@ -301,7 +297,7 @@ export class VaultResource extends BaseResource<VaultModel> {
         return auth.isBuilder() && auth.canWrite([this.acl()]);
 
       case "regular":
-        return isPrivateVaultsEnabled ? auth.canWrite([this.acl()]) : false;
+        return auth.canWrite([this.acl()]);
 
       case "public":
         return auth.canWrite([this.acl()]);
@@ -315,17 +311,13 @@ export class VaultResource extends BaseResource<VaultModel> {
   // the integrity of the permissions system. It acts as the gatekeeper,
   // determining who has the right to read resources from a vault.
   canRead(auth: Authenticator) {
-    const isPrivateVaultsEnabled = auth
-      .getNonNullableWorkspace()
-      .flags.includes("private_data_vaults_feature");
-
     switch (this.kind) {
       case "global":
       case "system":
         return auth.canRead([this.acl()]);
 
       case "regular":
-        return isPrivateVaultsEnabled ? auth.canRead([this.acl()]) : false;
+        return auth.canRead([this.acl()]);
 
       case "public":
         return true;
@@ -336,10 +328,6 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   canList(auth: Authenticator) {
-    const isPrivateVaultsEnabled = auth
-      .getNonNullableWorkspace()
-      .flags.includes("private_data_vaults_feature");
-
     const isWorkspaceAdmin =
       auth.isAdmin() && auth.getNonNullableWorkspace().id === this.workspaceId;
 
@@ -352,9 +340,7 @@ export class VaultResource extends BaseResource<VaultModel> {
         return true;
 
       case "regular":
-        return isPrivateVaultsEnabled
-          ? isWorkspaceAdmin || auth.canRead([this.acl()])
-          : false;
+        return isWorkspaceAdmin || auth.canRead([this.acl()]);
 
       case "system":
         return isWorkspaceAdmin;
