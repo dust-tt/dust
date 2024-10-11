@@ -213,6 +213,7 @@ export function ConversationTitle({
                   </div>
                 </>
               }
+              triggerIsButton
               content={
                 <div className="flex flex-col gap-y-4 py-4">
                   <div className="text-sm font-normal text-element-700">
