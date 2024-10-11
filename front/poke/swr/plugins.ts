@@ -1,5 +1,4 @@
 import type {
-  LightWorkspaceType,
   PluginWorkspaceResource,
   Result,
 } from "@dust-tt/types";
