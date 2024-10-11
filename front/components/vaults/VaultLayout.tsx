@@ -58,10 +58,6 @@ export function VaultLayout({
     disabled: plan.limits.vaults.maxVaults === 0 || !isAdmin,
   });
 
-  const isPrivateVaultsEnabled = owner.flags.includes(
-    "private_data_vaults_feature"
-  );
-
   const isLimitReached = isPrivateVaultsLimitReached(vaults, plan);
   const isEnterprise = isEntreprisePlan(plan.code);
 
@@ -74,7 +70,6 @@ export function VaultLayout({
           <VaultSideBarMenu
             owner={owner}
             isAdmin={isAdmin}
-            isPrivateVaultsEnabled={isPrivateVaultsEnabled}
             setShowVaultCreationModal={setShowVaultCreationModal}
           />
         }
@@ -87,7 +82,7 @@ export function VaultLayout({
           parentId={parentId ?? undefined}
         />
         {children}
-        {isAdmin && isPrivateVaultsEnabled && !isLimitReached && (
+        {isAdmin && !isLimitReached && (
           <CreateOrEditVaultModal
             isAdmin={isAdmin}
             owner={owner}
@@ -98,7 +93,7 @@ export function VaultLayout({
             }}
           />
         )}
-        {isAdmin && isPrivateVaultsEnabled && isLimitReached && (
+        {isAdmin && isLimitReached && (
           <Dialog
             alertDialog
             isOpen={isLimitReached && showVaultCreationModal}

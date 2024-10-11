@@ -37,14 +37,12 @@ import {
 import { getVaultIcon, getVaultName, groupVaults } from "@app/lib/vaults";
 
 interface VaultSideBarMenuProps {
-  isPrivateVaultsEnabled: boolean;
   owner: LightWorkspaceType;
   isAdmin: boolean;
   setShowVaultCreationModal?: (show: boolean) => void;
 }
 
 export default function VaultSideBarMenu({
-  isPrivateVaultsEnabled,
   owner,
   isAdmin,
   setShowVaultCreationModal,
@@ -99,12 +97,9 @@ export default function VaultSideBarMenu({
             if (kind === "public" && !vaults.length) {
               return null;
             }
-            if (kind === "regular") {
-              if (!isPrivateVaultsEnabled) {
-                return null;
-              } else if (!vaults.length && !isAdmin) {
-                return null;
-              }
+
+            if (kind === "regular" && !vaults.length && !isAdmin) {
+              return null;
             }
 
             const sectionLabel = getSectionLabel(kind);
