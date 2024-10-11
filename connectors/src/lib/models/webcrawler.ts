@@ -270,6 +270,10 @@ WebCrawlerPage.init(
         unique: true,
         fields: ["url", "connectorId", "webcrawlerConfigurationId"],
       },
+      {
+        unique: true,
+        fields: ["connectorId", "documentId"],
+      },
     ],
     modelName: "webcrawler_pages",
   }
