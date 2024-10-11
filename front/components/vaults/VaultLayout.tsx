@@ -62,7 +62,7 @@ export function VaultLayout({
     "private_data_vaults_feature"
   );
 
-  const isLimitReached = true; // isPrivateVaultsLimitReached(vaults, plan);
+  const isLimitReached = isPrivateVaultsLimitReached(vaults, plan);
   const isEnterprise = isEntreprisePlan(plan.code);
 
   return (
