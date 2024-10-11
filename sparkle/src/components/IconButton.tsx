@@ -3,14 +3,16 @@ import React, { ComponentType, MouseEventHandler } from "react";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Icon, IconProps } from "./Icon";
-import { Tooltip } from "./Tooltip";
+import { TooltipButton } from "./Tooltip";
 
 type IconButtonProps = {
   variant?: "primary" | "warning" | "secondary" | "tertiary" | "white";
   onClick?: MouseEventHandler<HTMLButtonElement>;
   size?: "xs" | "sm" | "md";
   tooltip?: string;
-  tooltipPosition?: React.ComponentProps<typeof Tooltip>["side"];
+  tooltipPosition?: React.ComponentProps<
+    typeof TooltipButton
+  >["labelProps"]["side"];
   icon?: ComponentType;
   className?: string;
   disabled?: boolean;
@@ -106,23 +108,23 @@ export function IconButton({
     disabled ? "" : iconGroup.dark.active
   );
 
-  const IconButtonContent = (
-    <button
-      className={finalIconClasses}
-      onClick={disabled ? undefined : onClick}
-      disabled={disabled}
-    >
-      {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
-    </button>
+  const buttonProps = {
+    className: finalIconClasses,
+    onClick: disabled ? undefined : onClick,
+    disabled: disabled,
+  };
+  const IconButtonContent = icon && (
+    <Icon visual={icon} size={size as IconProps["size"]} />
   );
 
   return tooltip ? (
-    <Tooltip
-      trigger={IconButtonContent}
+    <TooltipButton
+      buttonContent={IconButtonContent}
+      buttonProps={buttonProps}
       label={tooltip}
-      side={tooltipPosition}
+      labelProps={{ side: tooltipPosition }}
     />
   ) : (
-    IconButtonContent
+    <button {...buttonProps}>{IconButtonContent}</button>
   );
 }
