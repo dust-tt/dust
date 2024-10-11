@@ -43,6 +43,7 @@ export default function ConnectorSyncingChip({
   }
 
   if (connector.errorType) {
+    let label = "";
     switch (connector.errorType) {
       case "oauth_token_revoked":
         return (
@@ -63,17 +64,48 @@ export default function ConnectorSyncingChip({
             trigger={<Chip color="warning">Synchronization failed</Chip>}
           />
         );
-      case "webcrawling_error":
+      case "webcrawling_error_content_too_large":
+        label = "Page too large: this page contains too much data.";
         return (
           <Tooltip
-            label={
-              "We were unable to extract data from your site's pages using our webcrawler." +
-              " This problem commonly occurs with JavaScript-based websites," +
-              " as our current crawler cannot process JavaScript."
+            label={label}
+            className="max-w-md"
+            trigger={
+              <Chip className="w-36" color="warning">
+                <div className="w-full truncate">{label}</div>
+              </Chip>
             }
-            trigger={<Chip color="warning">Synchronization failed</Chip>}
           />
         );
+      case "webcrawling_error_empty_content":
+        label =
+          "Unable to read: this site's content loads in a way we can't read.";
+        return (
+          <Tooltip
+            label={label}
+            className="max-w-md"
+            trigger={
+              <Chip className="w-36" color="warning">
+                <div className="w-full truncate">{label}</div>
+              </Chip>
+            }
+          />
+        );
+      case "webcrawling_error_blocked":
+        label = "Access denied: the site blocks automated visits.";
+        return (
+          <Tooltip
+            label={label}
+            className="max-w-md"
+            trigger={
+              <Chip className="w-36" color="warning">
+                <div className="w-full truncate">{label}</div>
+              </Chip>
+            }
+          />
+        );
+      case "webcrawling_error":
+        return <Chip color="warning">Synchronization failed</Chip>;
       case "remote_database_connection_not_readonly":
         return (
           <Tooltip

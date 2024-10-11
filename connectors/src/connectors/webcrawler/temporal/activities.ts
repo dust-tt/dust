@@ -17,7 +17,10 @@ import {
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
 import {
+  MAX_BLOCKED_RATIO,
+  MAX_PAGES_TOO_LARGE_RATIO,
   MAX_TIME_TO_CRAWL_MINUTES,
+  MIN_EXTRACTED_TEXT_LENGTH,
   REQUEST_HANDLING_TIMEOUT,
 } from "@connectors/connectors/webcrawler/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -86,7 +89,16 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const customHeaders = webCrawlerConfig.getCustomHeaders();
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  let pageCount = 0;
+
+  const pageCount = {
+    valid: 0,
+    tooLarge: 0,
+    blocked: 0,
+    total() {
+      return this.valid + this.tooLarge + this.blocked;
+    },
+  };
+  let totalExtracted = 0;
   let crawlingError = 0;
   let upsertingError = 0;
   const createdFolders = new Set<string>();
@@ -162,7 +174,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
                   panic: true,
                 },
                 `Website takes too long to crawl (crawls ${Math.round(
-                  pageCount / MAX_TIME_TO_CRAWL_MINUTES
+                  pageCount.valid / MAX_TIME_TO_CRAWL_MINUTES
                 )} pages per minute)`
               );
             }
@@ -227,6 +239,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           ])
           .turndown($.html());
 
+        totalExtracted += extracted.length;
         const pageTitle = $("title").text();
 
         const folders = getAllFoldersForUrl(request.url);
@@ -275,6 +288,9 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         });
 
         try {
+          if (extracted.length > MAX_SMALL_DOCUMENT_TXT_LEN) {
+            pageCount.tooLarge++;
+          }
           if (
             extracted.length > 0 &&
             extracted.length <= MAX_SMALL_DOCUMENT_TXT_LEN
@@ -321,8 +337,11 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           );
         }
 
-        pageCount++;
-        await reportInitialSyncProgress(connector.id, `${pageCount} pages`);
+        pageCount.valid++;
+        await reportInitialSyncProgress(
+          connector.id,
+          `${pageCount.valid} pages`
+        );
       },
       failedRequestHandler: async (context, error) => {
         Context.current().heartbeat({
@@ -335,6 +354,12 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           },
           "webcrawler failedRequestHandler"
         );
+        if (
+          context.response.statusCode === 403 ||
+          context.response.statusCode === 429
+        ) {
+          pageCount.blocked++;
+        }
         crawlingError++;
       },
       errorHandler: () => {
@@ -372,21 +397,30 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   // checks for cancellation and throws if it's the case
   await Context.current().sleep(1);
 
-  if (pageCount > 0) {
-    await syncSucceeded(connector.id);
-  } else {
+  if (pageCount.blocked / pageCount.total() > MAX_BLOCKED_RATIO) {
+    await syncFailed(connector.id, "webcrawling_error_blocked");
+  } else if (
+    pageCount.tooLarge / pageCount.total() >
+    MAX_PAGES_TOO_LARGE_RATIO
+  ) {
+    await syncFailed(connector.id, "webcrawling_error_content_too_large");
+  } else if (totalExtracted < MIN_EXTRACTED_TEXT_LENGTH) {
+    await syncFailed(connector.id, "webcrawling_error_empty_content");
+  } else if (pageCount.valid === 0) {
     await syncFailed(connector.id, "webcrawling_error");
+  } else {
+    await syncSucceeded(connector.id);
   }
   if (upsertingError > 0) {
     throw new Error(
-      `Webcrawler failed whlie upserting documents to Dust. Error count: ${upsertingError}`
+      `Webcrawler failed while upserting documents to Dust. Error count: ${upsertingError}`
     );
   }
 
   childLogger.info(
     {
       url,
-      pageCount,
+      pageCount: pageCount.valid,
       crawlingError,
       configId: webCrawlerConfig.id,
     },
@@ -394,7 +428,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   );
 
   return {
-    pageCount,
+    pageCount: pageCount.valid,
     crawlingError,
   };
 }
