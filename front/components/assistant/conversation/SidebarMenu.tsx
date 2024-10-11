@@ -298,12 +298,9 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                                 isMultiSelect
                                   ? () => (
                                       <Checkbox
-                                        variant="checkable"
-                                        checked={
-                                          selectedConversations.includes(c)
-                                            ? "checked"
-                                            : "unchecked"
-                                        }
+                                        checked={selectedConversations.includes(
+                                          c
+                                        )}
                                         onChange={() =>
                                           toggleConversationSelection(c)
                                         }
