@@ -246,7 +246,6 @@ export async function allowSyncCollection({
     }),
   ]);
 
-  // This is way too slow!!!
   const collectionPermissionPromises = childrenCollections.map((c) =>
     allowSyncCollection({
       connectorId,
