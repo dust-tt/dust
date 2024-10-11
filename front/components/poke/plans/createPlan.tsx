@@ -239,6 +239,8 @@ function InputField({
       control={control}
       name={name}
       render={({ field }) => {
+        const { onChange, value, ...rest } = field;
+
         return (
           <PokeFormItem>
             <PokeFormLabel className="capitalize">
@@ -249,9 +251,10 @@ function InputField({
                 placeholder={placeholder ?? name}
                 type={type}
                 onChange={(e) => {
-                  console.log(e);
-                  field.onChange(e.target.value);
+                  onChange(e.target.value);
                 }}
+                value={value.toString()}
+                {...rest}
               />
             </PokeFormControl>
             <PokeFormMessage />
