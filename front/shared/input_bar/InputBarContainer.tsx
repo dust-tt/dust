@@ -108,7 +108,6 @@ const InputBarContainer = ({
       id="InputBarContainer"
       className="relative flex flex-1 flex-col sm:flex-row"
     >
-      {/* @ts-ignore */}
       <EditorContent
         editor={editor}
         className={classNames(
@@ -159,6 +158,7 @@ const InputBarContainer = ({
           )}
           {actions.includes("quick-actions") && (
             <>
+              {/* TODO(EXTENSION) restore AssistantPicker */}
               {/* <AssistantPicker
                 owner={owner}
                 size="sm"

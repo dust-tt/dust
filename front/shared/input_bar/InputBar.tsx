@@ -203,7 +203,8 @@ export function AssistantInputBar({
         }),
       }
     );
-    // todo await mutate(
+    // TODO(EXTENSION) restore mutate
+    // await mutate(
     //   `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
     // );
   };
