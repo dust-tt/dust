@@ -15,6 +15,7 @@ import { supportedFileExtensions } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
 import React, { useContext, useEffect, useRef, useState } from "react";
 
+import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { classNames } from "@app/lib/utils";
 import useAssistantSuggestions from "@app/shared/input_bar/editor/useAssistantSuggestions";
@@ -158,16 +159,15 @@ const InputBarContainer = ({
           )}
           {actions.includes("quick-actions") && (
             <>
-              {/* TODO(EXTENSION) restore AssistantPicker */}
-              {/* <AssistantPicker
+              <AssistantPicker
                 owner={owner}
                 size="sm"
                 onItemClick={(c) => {
                   editorService.insertMention({ id: c.sId, label: c.name });
                 }}
                 assistants={allAssistants}
-                showFooterButtons={true}
-              /> */}
+                showFooterButtons={false} // TODO(EXTENSION) disabled footer button here
+              />
               <div className="hidden sm:flex">
                 <IconButton
                   variant={"tertiary"}

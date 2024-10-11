@@ -32,5 +32,5 @@
     "**/*.js",
     "./.eslintrc.js"
   ],
-  "exclude": ["node_modules","extension"]
+  "exclude": ["node_modules", "extension"]
 }

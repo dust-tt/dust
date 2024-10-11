@@ -1,3 +1,4 @@
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { GenerationContextProvider } from "@app/shared/context/GenerationContextProvider";
 import { FixedAssistantInputBar } from "@app/shared/input_bar/InputBar";
 import {
@@ -12,9 +13,9 @@ import type { WorkspaceType } from "@dust-tt/types";
 import { Link } from "react-router-dom";
 
 export const MainPage = () => {
-  const ws: WorkspaceType = {
+  const owner: WorkspaceType = {
     id: 1,
-    sId: "test",
+    sId: "IQw2NP0Anb",
     name: "test",
     role: "user",
     segmentation: null,
@@ -22,7 +23,10 @@ export const MainPage = () => {
     defaultEmbeddingProvider: null,
     flags: [],
   };
-
+  const { agentConfigurations, isAgentConfigurationsLoading, isAgentConfigurationsError } = useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "assistants-search",
+    });
   return (
     <div className="flex flex-col p-4 gap-2">
       <div className="flex gap-2 align-center">
@@ -49,8 +53,8 @@ export const MainPage = () => {
       <Link to="/conversation">Conversations</Link>
       <GenerationContextProvider>
         <FixedAssistantInputBar
-          owner={ws}
-          baseAgentConfigurations={[]}
+          owner={owner}
+          baseAgentConfigurations={agentConfigurations}
           onSubmit={() => {}}
           stickyMentions={[]}
           conversationId={null}
