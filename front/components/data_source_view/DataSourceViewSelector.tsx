@@ -390,6 +390,12 @@ export function DataSourceViewSelector({
 
   const isPartiallyChecked = internalIds.length > 0;
 
+  const checkedStatus = selectionConfiguration.isSelectAll
+    ? true
+    : isPartiallyChecked
+      ? "partial"
+      : false;
+
   const isTableView = viewType === "tables";
 
   // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
@@ -460,8 +466,7 @@ export function DataSourceViewSelector({
           hideCheckbox || (!isRootSelectable && !hasActiveSelection)
             ? undefined
             : {
-                checked: selectionConfiguration.isSelectAll,
-                isPartial: isPartiallyChecked,
+                checked: checkedStatus,
                 disabled: !isRootSelectable,
                 onChange: handleSelectAll,
               }
