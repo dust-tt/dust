@@ -1,9 +1,8 @@
-import { ClipboardCheckIcon, ClipboardIcon } from "lucide-react";
+import { ClipboardCheckIcon, ClipboardIcon, Label } from "@dust-tt/sparkle";
 import * as React from "react";
 
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
-import { PokeLabel } from "@app/components/poke/shadcn/ui/label";
 import PokeLink from "@app/components/poke/shadcn/ui/link";
 
 const Table = React.forwardRef<
@@ -137,7 +136,7 @@ const TableCellWithCopy = React.forwardRef<
       {...props}
     >
       <div className="flex items-center space-x-2">
-        <PokeLabel>{label}</PokeLabel>
+        <Label>{label}</Label>
         <PokeButton size="sm" variant="outline" onClick={handleCopy}>
           {isCopied ? (
             <ClipboardCheckIcon className="h-4 w-4" />

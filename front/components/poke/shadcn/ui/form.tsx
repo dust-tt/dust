@@ -1,3 +1,4 @@
+import { Label } from "@dust-tt/sparkle";
 import type * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
 import * as React from "react";
@@ -5,7 +6,6 @@ import type { ControllerProps, FieldPath, FieldValues } from "react-hook-form";
 import { Controller, FormProvider, useFormContext } from "react-hook-form";
 
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import { PokeLabel } from "@app/components/poke/shadcn/ui/label";
 
 const Form = FormProvider;
 
@@ -85,7 +85,7 @@ const FormLabel = React.forwardRef<
   const { error, formItemId } = useFormField();
 
   return (
-    <PokeLabel
+    <Label
       ref={ref}
       className={cn(error && "text-destructive", className)}
       htmlFor={formItemId}
@@ -167,5 +167,4 @@ export {
   FormItem as PokeFormItem,
   FormLabel as PokeFormLabel,
   FormMessage as PokeFormMessage,
-  useFormField as usePokeFormField,
 };
