@@ -82,24 +82,6 @@ async function handler(
             },
           });
         }
-
-        // ensure the assistant is in the list of the user otherwise
-        // switching it back to private will make it disappear
-        const setRes = await setAgentUserFavorite({
-          auth,
-          agentId: assistant.sId,
-          listStatus: "in-list",
-        });
-
-        if (setRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: setRes.error.message,
-            },
-          });
-        }
       }
 
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
