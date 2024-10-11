@@ -35,9 +35,7 @@ const checkboxStyles = cva(
 
 interface CheckboxProps
   extends React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
-    VariantProps<typeof checkboxStyles> {
-  isPartial?: boolean;
-}
+    VariantProps<typeof checkboxStyles> {}
 
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
