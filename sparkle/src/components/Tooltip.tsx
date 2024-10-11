@@ -31,20 +31,20 @@ const TooltipContent = React.forwardRef<
 
 interface TooltipProps extends TooltipContentProps {
   trigger: React.ReactNode;
-  isTriggerButton?: boolean;
+  triggerIsButton?: boolean;
   label: React.ReactNode;
 }
 
 function Tooltip({
   trigger,
-  isTriggerButton = false,
+  triggerIsButton = false,
   label,
   ...props
 }: TooltipProps) {
   return (
     <TooltipProvider>
       <TooltipRoot>
-        <TooltipTrigger asChild={isTriggerButton}>{trigger}</TooltipTrigger>
+        <TooltipTrigger asChild={triggerIsButton}>{trigger}</TooltipTrigger>
         <TooltipContent {...props}>{label}</TooltipContent>
       </TooltipRoot>
     </TooltipProvider>
