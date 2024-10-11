@@ -47,14 +47,14 @@ export const MainPage = () => {
       </div>
       <Page.SectionHeader title="Conversation" />
       <Link to="/conversation">Conversations</Link>
-      <GenerationContextProvider >
-      <FixedAssistantInputBar
-        owner={ws}
-        baseAgentConfigurations={[]}
-        onSubmit={() => {}}
-        stickyMentions={[]}
-        conversationId={null}
-      />
+      <GenerationContextProvider>
+        <FixedAssistantInputBar
+          owner={ws}
+          baseAgentConfigurations={[]}
+          onSubmit={() => {}}
+          stickyMentions={[]}
+          conversationId={null}
+        />
       </GenerationContextProvider>
       <Page.SectionHeader title="Favorites" />
     </div>
