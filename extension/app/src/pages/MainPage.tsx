@@ -10,66 +10,69 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
-import { sendAuthMessage, sentLogoutMessage } from "../lib/auth";
 import {
-  clearAccessToken,
-  getAccessToken,
-  saveAccessToken,
-} from "../lib/utils";
+  sendAuthMessage,
+  sendGetTokenMessage,
+  sendLogoutMessage,
+} from "../lib/auth";
 
 export const MainPage = () => {
-  const [token, setToken] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchToken = async () => {
+    const checkLoginStatus = async () => {
       try {
-        const storedToken = await getAccessToken();
-        if (storedToken && typeof storedToken === "string") {
-          setToken(storedToken);
+        const response = await sendGetTokenMessage();
+        if (response.success && response.token) {
+          setIsLoggedIn(true);
         }
       } catch (error) {
-        console.error("Error retrieving token:", error);
+        console.error("Error checking login status:", error);
+        setError("Failed to check login status");
       } finally {
         setIsLoading(false);
       }
     };
-    void fetchToken();
+    void checkLoginStatus();
   }, []);
 
   const handleLogin = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const response = await sendAuthMessage();
-      if (response?.accessToken) {
-        await saveAccessToken(response.accessToken);
-        setToken(response.accessToken);
+      if (response.success) {
+        setIsLoggedIn(true);
       } else {
-        console.error("Authentication failed.");
+        setError(response.error || "Authentication failed");
       }
     } catch (error) {
       console.error("Error sending auth message:", error);
+      setError("Failed to authenticate");
     } finally {
       setIsLoading(false);
     }
-  }, [sendAuthMessage, setIsLoading, setToken]);
+  }, []);
 
   const handleLogout = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      const response = await sentLogoutMessage();
-      if (response?.success) {
-        await clearAccessToken();
-        setToken(null);
+      const response = await sendLogoutMessage();
+      if (response.success) {
+        setIsLoggedIn(false);
       } else {
-        console.error("Logout failed.");
+        setError(response.error || "Logout failed");
       }
     } catch (error) {
       console.error("Error sending logout message:", error);
+      setError("Failed to logout");
     } finally {
       setIsLoading(false);
     }
-  }, [setToken]);
+  }, []);
 
   return (
     <div className="flex flex-col p-4 gap-2 h-screen">
@@ -81,7 +84,7 @@ export const MainPage = () => {
           </a>
         </div>
 
-        {token && (
+        {isLoggedIn && (
           <Button
             icon={LogoutIcon}
             variant="tertiary"
@@ -91,13 +94,17 @@ export const MainPage = () => {
         )}
       </div>
 
+      {error && (
+        <div className="bg-red-100 text-red-700 p-2 rounded">{error}</div>
+      )}
+
       {isLoading && (
         <div className="flex justify-center items-center w-full h-full">
           <Spinner />
         </div>
       )}
 
-      {!isLoading && !token && (
+      {!isLoading && !isLoggedIn && (
         <div className="flex justify-center items-center w-full h-full">
           <Button
             icon={LoginIcon}
@@ -108,10 +115,9 @@ export const MainPage = () => {
         </div>
       )}
 
-      {token && (
+      {isLoggedIn && (
         <div className="w-full h-full">
           <Page.SectionHeader title="Conversation" />
-          {/* <Link to="/conversation">Conversations</Link> */}
           <TextArea />
           <Button
             variant="primary"
