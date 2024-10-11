@@ -184,7 +184,7 @@ function ContentNodeTreeChildren({
                     disabled: parentIsSelected || !setSelectedNodes,
                     isPartial,
                     checked,
-                    onChange: () => {
+                    onCheckedChange: (v) => {
                       if (setSelectedNodes) {
                         if (isPartial) {
                           // Handle clicking on partial : unselect all selected children
@@ -195,7 +195,7 @@ function ContentNodeTreeChildren({
                           setSelectedNodes((prev) => ({
                             ...prev,
                             [n.internalId]: {
-                              isSelected: !checked,
+                              isSelected: !!v,
                               node: n,
                               parents: checked ? parentIds : [],
                             },
