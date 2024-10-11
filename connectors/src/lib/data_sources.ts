@@ -1,14 +1,10 @@
+import { DustAPI } from "@dust-tt/client";
 import type {
   CoreAPIDataSourceDocumentSection,
   CoreAPITable,
   PostDataSourceDocumentRequestBody,
 } from "@dust-tt/types";
-import {
-  DustAPI,
-  isValidDate,
-  safeSubstring,
-  sectionFullText,
-} from "@dust-tt/types";
+import { isValidDate, safeSubstring, sectionFullText } from "@dust-tt/types";
 import { MAX_CHUNK_SIZE } from "@dust-tt/types";
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";

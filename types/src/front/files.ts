@@ -58,6 +58,8 @@ export function ensureFileSize(
   return false;
 }
 
+// NOTE: if we add more content types, we need to update the public api package.
+
 // Supported content types for plain text.
 const supportedPlainText = {
   "application/msword": [".doc", ".docx"],

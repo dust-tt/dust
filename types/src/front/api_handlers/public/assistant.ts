@@ -39,6 +39,10 @@ export const PublicPostMessagesRequestBodySchema = t.intersection([
   }),
 ]);
 
+export type PublicPostMessagesRequestBody = t.TypeOf<
+  typeof PublicPostMessagesRequestBodySchema
+>;
+
 export const PublicPostContentFragmentRequestBodySchema = t.type({
   title: t.string,
   content: t.string,
@@ -54,6 +58,10 @@ export const PublicPostContentFragmentRequestBodySchema = t.type({
     t.null,
   ]),
 });
+
+export type PublicPostContentFragmentRequestBody = t.TypeOf<
+  typeof PublicPostContentFragmentRequestBodySchema
+>;
 
 export const PublicPostConversationsRequestBodySchema = t.intersection([
   t.type({
@@ -72,3 +80,7 @@ export const PublicPostConversationsRequestBodySchema = t.intersection([
   }),
   t.partial({ blocking: t.boolean }),
 ]);
+
+export type PublicPostConversationsRequestBody = t.TypeOf<
+  typeof PublicPostConversationsRequestBodySchema
+>;

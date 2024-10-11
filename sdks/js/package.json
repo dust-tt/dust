@@ -1,6 +1,6 @@
 {
-  "name": "@dust-tt/types",
-  "version": "0.1.0",
+  "name": "@dust-tt/client",
+  "version": "1.0",
   "author": "Dust",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.3",
+    "@types/node": "^22.7.5",
     "@types/uuid": "^9.0.7",
     "tslib": "^2.6.2",
     "typescript": "^5.4.5",
@@ -28,18 +29,9 @@
     "eslint-plugin-simple-import-sort": "^12.1.0"
   },
   "dependencies": {
-    "@notionhq/client": "^2.2.4",
-    "csv-parse": "^5.5.6",
-    "csv-stringify": "^6.5.0",
+    "@dust-tt/types": "file:../../types",
     "eventsource-parser": "^1.1.1",
-    "hot-shots": "^10.0.0",
-    "htmlparser2": "^9.1.0",
-    "io-ts": "^2.2.20",
-    "io-ts-reporters": "^2.0.1",
-    "io-ts-types": "^0.5.19",
-    "moment-timezone": "^0.5.43",
-    "redis": "^4.6.8",
-    "uuid": "^9.0.1"
+    "moment-timezone": "^0.5.46"
   },
   "browser": {
     "tls": false,

@@ -1,5 +1,5 @@
+import { DustAPI } from "@dust-tt/client";
 import type { WorkspaceType } from "@dust-tt/types";
-import { DustAPI } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";

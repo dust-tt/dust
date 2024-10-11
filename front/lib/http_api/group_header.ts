@@ -1,4 +1,4 @@
-import { DustGroupIdsHeader } from "@dust-tt/types";
+import { DustGroupIdsHeader } from "@dust-tt/client";
 
 export function getGroupIdsFromHeaders(
   headers: Record<string, string | string[] | undefined>
