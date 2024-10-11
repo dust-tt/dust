@@ -92,11 +92,6 @@ export type AgentConfigurationScope =
   | "published"
   | "private";
 
-/* By default, agents with scope 'workspace' are in users' assistants list, whereeas agents with
- * scope 'published' aren't. A user can override the default behaviour by adding / removing from
- * their list. List status is enforced by the type below. */
-export type AgentUserListStatus = "in-list" | "not-in-list";
-
 /**
  * Defines strategies for fetching agent configurations based on various
  * 'views':

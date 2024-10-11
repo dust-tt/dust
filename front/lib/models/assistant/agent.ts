@@ -268,7 +268,6 @@ export class AgentUserRelation extends Model<
 
   declare agentConfiguration: string;
 
-  declare listStatusOverride: AgentUserListStatus | null;
   declare favorite: boolean;
 
   declare userId: ForeignKey<User["id"]>;
@@ -297,9 +296,10 @@ AgentUserRelation.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    listStatusOverride: {
-      type: DataTypes.STRING,
-      allowNull: true,
+    favorite: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     favorite: {
       type: DataTypes.BOOLEAN,
