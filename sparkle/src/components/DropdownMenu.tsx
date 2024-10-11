@@ -203,6 +203,7 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
           <Tooltip
             trigger={
               <Menu.Button
+                as="div"
                 disabled={disabled}
                 ref={aggregatedRef}
                 className={classNames(
