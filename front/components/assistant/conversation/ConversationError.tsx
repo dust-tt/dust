@@ -1,12 +1,13 @@
 import { Icon, StopSignIcon } from "@dust-tt/sparkle";
+import type { ConversationError } from "@dust-tt/types";
 import { isAPIErrorResponse, safeParseJSON } from "@dust-tt/types";
 import type { ComponentType } from "react";
 
-interface ConversationError {
-  error: Error;
+interface ConversationErrorProps {
+  error: ConversationError;
 }
 
-export function ConversationError({ error }: ConversationError) {
+export function ConversationErrorDisplay({ error }: ConversationErrorProps) {
   const errorMessageRes = safeParseJSON(error.message);
 
   if (errorMessageRes.isErr() || !isAPIErrorResponse(errorMessageRes.value)) {
@@ -14,8 +15,8 @@ export function ConversationError({ error }: ConversationError) {
   }
 
   switch (errorMessageRes.value.error.type) {
-    case "conversation_access_denied":
-      return <ConversationAccessDenied />;
+    case "conversation_access_restricted":
+      return <ConversationAccessRestricted />;
 
     case "conversation_not_found":
       return <ConversationNotFound />;
@@ -25,7 +26,7 @@ export function ConversationError({ error }: ConversationError) {
   }
 }
 
-function ConversationAccessDenied() {
+function ConversationAccessRestricted() {
   return (
     <ErrorDisplay
       icon={StopSignIcon}

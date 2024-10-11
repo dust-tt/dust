@@ -12,6 +12,7 @@ import {
   getConversationWithoutContent,
   updateConversation,
 } from "@app/lib/api/assistant/conversation";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -47,32 +48,35 @@ async function handler(
     });
   }
 
-  const conversation = await getConversationWithoutContent(auth, req.query.cId);
-  if (!conversation) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "The conversation you're trying to access was not found.",
-      },
-    });
+  const conversationRes = await getConversationWithoutContent(
+    auth,
+    req.query.cId
+  );
+
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
   }
+
+  const conversation = conversationRes.value;
 
   switch (req.method) {
     case "GET":
-      // TODO(VAULTS_INFRA) Return a 401 with `conversation_access_denied` error type
-      // when the user doesn't have access to the conversation.
-
       res.status(200).json({ conversation });
       return;
 
-    case "DELETE":
-      await deleteConversation(auth, { conversationId: conversation.sId });
+    case "DELETE": {
+      const result = await deleteConversation(auth, {
+        conversationId: conversation.sId,
+      });
+      if (result.isErr()) {
+        return apiErrorForConversation(req, res, result.error);
+      }
 
       res.status(200).end();
       return;
+    }
 
-    case "PATCH":
+    case "PATCH": {
       const bodyValidation = PatchConversationsRequestBodySchema.decode(
         req.body
       );
@@ -91,13 +95,18 @@ async function handler(
 
       const { title, visibility } = bodyValidation.right;
 
-      const c = await updateConversation(auth, conversation.sId, {
+      const result = await updateConversation(auth, conversation.sId, {
         title,
         visibility,
       });
 
-      res.status(200).json({ conversation: c });
+      if (result.isErr()) {
+        return apiErrorForConversation(req, res, result.error);
+      }
+
+      res.status(200).json({ conversation: result.value });
       return;
+    }
 
     default:
       return apiError(req, res, {

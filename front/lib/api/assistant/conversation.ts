@@ -32,9 +32,11 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  ConversationError,
   getSmallWhitelistedModel,
   isProviderWhitelisted,
   md5,
+  removeNulls,
 } from "@dust-tt/types";
 import {
   Err,
@@ -44,7 +46,6 @@ import {
   isUserMessageType,
   Ok,
   rateLimiter,
-  removeNulls,
 } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -55,12 +56,15 @@ import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { renderConversationForModelMultiActions } from "@app/lib/api/assistant/generation";
-import { batchRenderMessages } from "@app/lib/api/assistant/messages";
+import {
+  batchRenderMessages,
+  canReadMessage,
+} from "@app/lib/api/assistant/messages";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
@@ -136,7 +140,7 @@ export async function updateConversation(
     title: string | null;
     visibility: ConversationVisibility;
   }
-): Promise<ConversationType> {
+): Promise<Result<ConversationType, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -159,13 +163,7 @@ export async function updateConversation(
     visibility: visibility,
   });
 
-  const c = await getConversation(auth, conversationId);
-
-  if (!c) {
-    throw new Error(`Conversation ${conversationId} not found`);
-  }
-
-  return c;
+  return getConversation(auth, conversationId);
 }
 
 /**
@@ -181,9 +179,8 @@ export async function deleteConversation(
     conversationId: string;
     destroy?: boolean;
   }
-): Promise<void> {
-  const owner = auth.workspace();
-  if (!owner) {
+): Promise<Result<{ success: true }, ConversationError>> {
+  if (!auth.workspace()) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
@@ -196,7 +193,11 @@ export async function deleteConversation(
   });
 
   if (!conversation) {
-    throw new Error(`Conversation ${conversationId} not found`);
+    return new Err(new ConversationError("conversation_not_found"));
+  }
+
+  if (!canAccessConversation(auth, conversation)) {
+    return new Err(new ConversationError("conversation_access_restricted"));
   }
 
   if (destroy) {
@@ -206,6 +207,7 @@ export async function deleteConversation(
       visibility: "deleted",
     });
   }
+  return new Ok({ success: true });
 }
 
 /**
@@ -305,7 +307,7 @@ export async function getConversation(
   auth: Authenticator,
   conversationId: string,
   includeDeleted?: boolean
-): Promise<ConversationType | null> {
+): Promise<Result<ConversationType, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -320,7 +322,7 @@ export async function getConversation(
   });
 
   if (!conversation) {
-    return null;
+    return new Err(new ConversationError("conversation_not_found"));
   }
 
   const messages = await Message.findAll({
@@ -360,7 +362,13 @@ export async function getConversation(
     ],
   });
 
-  const render = await batchRenderMessages(auth, conversation.sId, messages);
+  const renderRes = await batchRenderMessages(auth, conversation.sId, messages);
+
+  if (renderRes.isErr()) {
+    return new Err(renderRes.error);
+  }
+
+  const render = renderRes.value;
 
   // We need to escape the type system here to create content. We pre-create an array that will hold
   // the versions of each User/Assistant/ContentFragment message. The lenght of that array is by definition the
@@ -375,7 +383,7 @@ export async function getConversation(
     content[rank] = [...content[rank], m];
   }
 
-  return {
+  return new Ok({
     id: conversation.id,
     created: conversation.createdAt.getTime(),
     sId: conversation.sId,
@@ -384,14 +392,14 @@ export async function getConversation(
     visibility: conversation.visibility,
     content,
     groupIds: getConversationGroupIdsFromModel(owner, conversation),
-  };
+  });
 }
 
 export async function getConversationWithoutContent(
   auth: Authenticator,
   conversationId: string,
   includeDeleted?: boolean
-): Promise<ConversationWithoutContentType | null> {
+): Promise<Result<ConversationWithoutContentType, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
@@ -406,10 +414,14 @@ export async function getConversationWithoutContent(
   });
 
   if (!conversation) {
-    return null;
+    return new Err(new ConversationError("conversation_not_found"));
   }
 
-  return {
+  if (!canAccessConversation(auth, conversation)) {
+    return new Err(new ConversationError("conversation_access_restricted"));
+  }
+
+  return new Ok({
     id: conversation.id,
     created: conversation.createdAt.getTime(),
     sId: conversation.sId,
@@ -417,7 +429,7 @@ export async function getConversationWithoutContent(
     title: conversation.title,
     visibility: conversation.visibility,
     groupIds: getConversationGroupIdsFromModel(owner, conversation),
-  };
+  });
 }
 
 export async function getConversationMessageType(
@@ -675,6 +687,19 @@ export async function* postUserMessage(
     };
     return;
   }
+
+  if (!canAccessConversation(auth, conversation)) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "conversation_access_restricted",
+        message: "Conversation cannot be accessed.",
+      },
+    };
+    return;
+  }
+
   // Check plan and rate limit
   const messageLimit = await isMessagesLimitReached({
     owner,
@@ -697,19 +722,15 @@ export async function* postUserMessage(
   }
 
   const results = await Promise.all([
-    removeNulls(
-      await Promise.all(
-        mentions.filter(isAgentMention).map((mention) => {
-          return getLightAgentConfiguration(auth, mention.configurationId);
-        })
-      )
+    Promise.all(
+      mentions.filter(isAgentMention).map((mention) => {
+        return getLightAgentConfiguration(auth, mention.configurationId);
+      })
     ),
-    await createOrUpdateParticipation({
-      user,
-      conversation,
-    }),
+    createOrUpdateParticipation({ user, conversation }),
   ]);
-  const agentConfigurations = results[0];
+
+  const agentConfigurations = removeNulls(results[0]);
 
   for (const agentConfig of agentConfigurations) {
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
@@ -885,6 +906,7 @@ export async function* postUserMessage(
   if (agentMessageRows.length !== agentMessages.length) {
     throw new Error("Unreachable: agentMessageRows and agentMessages mismatch");
   }
+
   if (agentMessages.length > 0) {
     for (const agentMessage of agentMessages) {
       void signalAgentUsage({
@@ -1073,6 +1095,19 @@ export async function* editUserMessage(
     };
     return;
   }
+
+  if (!canAccessConversation(auth, conversation)) {
+    yield {
+      type: "user_message_error",
+      created: Date.now(),
+      error: {
+        code: "conversation_access_restricted",
+        message: "Conversation cannot be accessed.",
+      },
+    };
+    return;
+  }
+
   if (auth.user()?.id !== message.user?.id) {
     yield {
       type: "user_message_error",
@@ -1123,20 +1158,15 @@ export async function* editUserMessage(
   let agentMessageRows: AgentMessage[] = [];
 
   const results = await Promise.all([
-    removeNulls(
-      await Promise.all(
-        mentions.filter(isAgentMention).map((mention) => {
-          return getLightAgentConfiguration(auth, mention.configurationId);
-        })
-      )
+    Promise.all(
+      mentions.filter(isAgentMention).map((mention) => {
+        return getLightAgentConfiguration(auth, mention.configurationId);
+      })
     ),
-    await createOrUpdateParticipation({
-      user,
-      conversation,
-    }),
+    createOrUpdateParticipation({ user, conversation }),
   ]);
 
-  const agentConfigurations = results[0];
+  const agentConfigurations = removeNulls(results[0]);
 
   for (const agentConfig of agentConfigurations) {
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
@@ -1472,6 +1502,21 @@ export async function* retryAgentMessage(
   void
 > {
   class AgentMessageError extends Error {}
+
+  if (!canReadMessage(auth, message)) {
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: message.configuration.sId,
+      messageId: message.sId,
+      error: {
+        code: "message_access_denied",
+        message: "The message to retry is not accessible.",
+      },
+    };
+    return;
+  }
+
   let agentMessageResult: {
     agentMessage: AgentMessageWithRankType;
     agentMessageRow: AgentMessage;
@@ -1558,6 +1603,7 @@ export async function* retryAgentMessage(
         configuration: message.configuration,
         rank: m.rank,
       };
+
       return {
         agentMessage,
         agentMessageRow,
@@ -1663,6 +1709,10 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
+  if (!canAccessConversation(auth, conversation)) {
+    return new Err(new ConversationError("conversation_access_restricted"));
+  }
+
   const messageId = generateLegacyModelSId();
 
   const cfBlobRes = await getContentFragmentBlob(
@@ -1743,6 +1793,20 @@ async function* streamRunAgentEvents(
   | AgentMessageSuccessEvent,
   void
 > {
+  if (!canReadMessage(auth, agentMessage)) {
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentMessage.configuration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "agent_not_allowed",
+        message: "Agent cannot be used by this user",
+      },
+    };
+    return;
+  }
+
   for await (const event of eventStream) {
     switch (event.type) {
       case "agent_error":
@@ -1968,4 +2032,18 @@ function getConversationGroupIdsFromModel(
       workspaceId: owner.id,
     })
   );
+}
+
+export function canAccessConversation(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType | ConversationType | Conversation
+): boolean {
+  const owner = auth.getNonNullableWorkspace();
+
+  const groupIds =
+    conversation instanceof Conversation
+      ? getConversationGroupIdsFromModel(owner, conversation)
+      : conversation.groupIds;
+
+  return auth.canRead(Authenticator.aclsFromGroupIds(groupIds));
 }

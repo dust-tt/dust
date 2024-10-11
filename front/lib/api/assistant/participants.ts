@@ -6,11 +6,12 @@ import type {
   Result,
   UserParticipantType,
 } from "@dust-tt/types";
-import { Err, formatUserFullName, Ok } from "@dust-tt/types";
+import { ConversationError, Err, formatUserFullName, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
+import type { Conversation } from "@app/lib/models/assistant/conversation";
 import {
   AgentMessage,
   Message,
@@ -58,7 +59,7 @@ async function fetchAllAgentsById(
 
 export async function fetchConversationParticipants(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType | Conversation
 ): Promise<Result<ConversationParticipantsType, Error>> {
   const owner = auth.workspace();
   if (!owner) {
@@ -69,6 +70,7 @@ export async function fetchConversationParticipants(
     where: {
       conversationId: conversation.id,
     },
+    attributes: [],
     include: [
       {
         model: UserMessage,
@@ -107,6 +109,12 @@ export async function fetchConversationParticipants(
     fetchAllUsersById([...userIds]),
     fetchAllAgentsById(auth, [...agentConfigurationIds]),
   ]);
+
+  // if less agents than agentConfigurationIds, it means some agents are forbidden
+  // to the user
+  if (agents.length < agentConfigurationIds.size) {
+    return new Err(new ConversationError("conversation_access_restricted"));
+  }
 
   return new Ok({
     agents,

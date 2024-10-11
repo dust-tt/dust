@@ -1,15 +1,14 @@
 import type {
   AgentActionType,
-  MessageWithRankType,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-import type {
   AgentMessageType,
   ContentFragmentType,
   LightAgentConfigurationType,
+  MessageWithRankType,
+  ModelId,
+  Result,
   UserMessageType,
 } from "@dust-tt/types";
+import { ConversationError } from "@dust-tt/types";
 import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
@@ -24,7 +23,7 @@ import {
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
@@ -112,7 +111,6 @@ async function batchRenderAgentMessages(
     agentMessages.map((m) => m.agentMessageId || null)
   );
 
-  // TODO(pr) refactor to loop on all actions rather than manually add new actions here
   const [
     agentConfigurations,
     agentRetrievalActions,
@@ -363,15 +361,22 @@ export async function batchRenderMessages(
   auth: Authenticator,
   conversationId: string,
   messages: Message[]
-): Promise<MessageWithRankType[]> {
+): Promise<Result<MessageWithRankType[], ConversationError>> {
   const [userMessages, agentMessages, contentFragments] = await Promise.all([
     batchRenderUserMessages(messages),
     batchRenderAgentMessages(auth, messages),
     batchRenderContentFragment(auth, conversationId, messages),
   ]);
-  return [...userMessages, ...agentMessages, ...contentFragments]
-    .sort((a, b) => a.rank - b.rank || a.version - b.version)
-    .map(({ m, rank }) => ({ ...m, rank }));
+
+  if (agentMessages.some((m) => !canReadMessage(auth, m.m))) {
+    return new Err(new ConversationError("conversation_access_restricted"));
+  }
+
+  return new Ok(
+    [...userMessages, ...agentMessages, ...contentFragments]
+      .sort((a, b) => a.rank - b.rank || a.version - b.version)
+      .map(({ m, rank }) => ({ ...m, rank }))
+  );
 }
 
 export interface FetchConversationMessagesResponse {
@@ -397,6 +402,7 @@ export async function fetchConversationMessages(
       visibility: { [Op.ne]: "deleted" },
     },
   });
+
   if (!conversation) {
     return new Err(new Error("Conversation not found."));
   }
@@ -406,15 +412,27 @@ export async function fetchConversationMessages(
     paginationParams
   );
 
-  const renderedMessages = await batchRenderMessages(
+  const renderedMessagesRes = await batchRenderMessages(
     auth,
     conversationId,
     messages
   );
+
+  if (renderedMessagesRes.isErr()) {
+    return renderedMessagesRes;
+  }
+
+  const renderedMessages = renderedMessagesRes.value;
 
   return new Ok({
     hasMore,
     lastValue: renderedMessages.at(0)?.rank ?? null,
     messages: renderedMessages,
   });
+}
+
+export function canReadMessage(auth: Authenticator, message: AgentMessageType) {
+  return auth.canRead(
+    Authenticator.aclsFromGroupIds(message.configuration.groupIds)
+  );
 }
