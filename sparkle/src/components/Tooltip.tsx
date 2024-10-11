@@ -45,10 +45,34 @@ function Tooltip({ trigger, label, ...props }: TooltipProps) {
   );
 }
 
+interface TooltipButtonProps extends TooltipContentProps {
+  buttonContent: React.ReactNode;
+  buttonProps: React.ButtonHTMLAttributes<HTMLButtonElement>;
+  label: React.ReactNode;
+  labelProps: React.ComponentPropsWithoutRef<typeof TooltipContent>;
+}
+
+function TooltipButton({
+  buttonContent,
+  buttonProps,
+  label,
+  labelProps,
+}: TooltipButtonProps) {
+  return (
+    <TooltipProvider>
+      <TooltipRoot>
+        <TooltipTrigger {...buttonProps}>{buttonContent}</TooltipTrigger>
+        <TooltipContent {...labelProps}>{label}</TooltipContent>
+      </TooltipRoot>
+    </TooltipProvider>
+  );
+}
+
 TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 
 export {
   Tooltip,
+  TooltipButton,
   TooltipContent,
   TooltipProvider,
   TooltipRoot,
