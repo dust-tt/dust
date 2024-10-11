@@ -35,7 +35,7 @@ chrome.runtime.onMessage.addListener(
         return true; // Keep the message channel open for async response.
 
       case "LOGOUT":
-        void logout(sendResponse);
+        logout(sendResponse);
         return true; // Keep the message channel open.
 
       default:
@@ -50,11 +50,6 @@ chrome.runtime.onMessage.addListener(
 const authenticate = async (
   sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
 ) => {
-  if (!AUTH0_CLIENT_ID || !AUTH0_CLIENT_DOMAIN) {
-    console.error("Auth0 client ID or domain is missing.");
-    return;
-  }
-
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
   const redirectUrl = chrome.identity.getRedirectURL();
   const { codeVerifier, codeChallenge } = await generatePKCE();
@@ -112,10 +107,6 @@ const exchangeCodeForTokens = async (
   codeVerifier: string
 ): Promise<Auth0AuthorizeResponse | AuthBackgroundResponse> => {
   try {
-    if (!AUTH0_CLIENT_ID || !AUTH0_CLIENT_DOMAIN) {
-      throw new Error("Auth0 client ID or domain is missing.");
-    }
-
     const tokenUrl = `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`;
     const response = await fetch(tokenUrl, {
       method: "POST",
@@ -147,7 +138,7 @@ const exchangeCodeForTokens = async (
       error instanceof Error
         ? error.message
         : "Token exchange error: unknown error occurred.";
-    console.error(`Token exchange error: ${message}`);
+    console.error(`Token exchange error: ${message}`, error);
     return { success: false };
   }
 };

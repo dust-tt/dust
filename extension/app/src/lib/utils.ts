@@ -1,43 +1,53 @@
-export const randomString = (length: number): string => {
-  const charset =
-    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._~";
-  let result = "";
-  const bytes = new Uint8Array(length);
+/**
+ * Utils to generate PKCE code verifier and challenge.
+ */
 
-  crypto.getRandomValues(bytes);
-
-  for (let i = 0; i < length; i++) {
-    result += charset[bytes[i] % charset.length];
-  }
-
-  return result;
+const base64URLEncode = (buffer: ArrayBuffer): string => {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
 };
 
-export const generatePKCE = async () => {
-  const codeVerifier = randomString(128);
+const generateCodeVerifier = (): string => {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return base64URLEncode(array.buffer);
+};
+
+const generateCodeChallenge = async (codeVerifier: string): Promise<string> => {
   const encoder = new TextEncoder();
   const data = encoder.encode(codeVerifier);
   const digest = await crypto.subtle.digest("SHA-256", data);
-  const base64Digest = btoa(String.fromCharCode(...new Uint8Array(digest)))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-  return { codeVerifier, codeChallenge: base64Digest };
+  return base64URLEncode(digest);
 };
 
-export const saveAccessToken = (accessToken: string) => {
+export async function generatePKCE(): Promise<{
+  codeVerifier: string;
+  codeChallenge: string;
+}> {
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
+  return { codeVerifier, codeChallenge };
+}
+
+/**
+ * Utils to manage access token in local storage.
+ */
+
+export const saveAccessToken = async (accessToken: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     chrome.storage.local.set({ accessToken }, () => {
       if (chrome.runtime.lastError) {
         reject(chrome.runtime.lastError);
       } else {
-        resolve(true);
+        resolve();
       }
     });
   });
 };
 
-export const getAccessToken = () => {
+export const getAccessToken = async (): Promise<string | undefined> => {
   return new Promise((resolve, reject) => {
     chrome.storage.local.get(["accessToken"], (result) => {
       if (chrome.runtime.lastError) {
@@ -49,13 +59,13 @@ export const getAccessToken = () => {
   });
 };
 
-export const clearAccessToken = () => {
+export const clearAccessToken = async (): Promise<void> => {
   return new Promise((resolve, reject) => {
     chrome.storage.local.remove("accessToken", () => {
       if (chrome.runtime.lastError) {
         reject(chrome.runtime.lastError);
       } else {
-        resolve(true);
+        resolve();
       }
     });
   });
