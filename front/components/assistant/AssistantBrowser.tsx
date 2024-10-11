@@ -2,12 +2,12 @@ import {
   AssistantPreview,
   Button,
   CompanyIcon,
-  ListAddIcon,
   LockIcon,
   PlusIcon,
   RobotIcon,
   RocketIcon,
   Searchbar,
+  StarIcon,
   Tab,
   Tooltip,
   UserGroupIcon,
@@ -38,11 +38,11 @@ interface AssistantListProps {
 
 const ALL_AGENTS_TABS = [
   // default shown tab = earliest in this list with non-empty agents
+  { label: "Favorites", icon: StarIcon, id: "favorites" },
   { label: "Most popular", icon: RocketIcon, id: "most_popular" },
   { label: "Company", icon: CompanyIcon, id: "workspace" },
   { label: "Shared", icon: UserGroupIcon, id: "published" },
   { label: "Personal", icon: LockIcon, id: "personal" },
-  { label: "In my list", icon: ListAddIcon, id: "list" },
   { label: "All", icon: RobotIcon, id: "all" },
 ] as const;
 
@@ -81,7 +81,7 @@ export function AssistantBrowser({
       published: filteredAgents.filter((a) => a.scope === "published"),
       workspace: filteredAgents.filter((a) => a.scope === "workspace"),
       personal: filteredAgents.filter((a) => a.scope === "private"),
-      list: filteredAgents.filter(
+      favorites: filteredAgents.filter(
         (a) => a.scope === "published" && a.userListStatus === "in-list"
       ),
       most_popular: filteredAgents

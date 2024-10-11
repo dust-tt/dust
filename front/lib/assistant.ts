@@ -110,6 +110,15 @@ export function compareAgentsForSort(
   a: LightAgentConfigurationType,
   b: LightAgentConfigurationType
 ) {
+  const aFavorite = a.scope === "published" && a.userListStatus === "in-list";
+  const bFavorite = b.scope === "published" && b.userListStatus === "in-list";
+  // Place favorites first
+  if (aFavorite && !bFavorite) {
+    return -1;
+  }
+  if (bFavorite && !aFavorite) {
+    return 1;
+  }
   // Check for 'dust'
   if (a.sId === GLOBAL_AGENTS_SID.DUST) {
     return -1;
@@ -168,6 +177,7 @@ function getConnectorOrder() {
 }
 
 type ComparableByProvider = { connectorProvider: ConnectorProvider | null };
+
 function compareByImportance(
   a: ComparableByProvider,
   b: ComparableByProvider

@@ -142,6 +142,15 @@ function sortAgents(
   a: LightAgentConfigurationType,
   b: LightAgentConfigurationType
 ) {
+  const aFavorite = a.scope === "published" && a.userListStatus === "in-list";
+  const bFavorite = b.scope === "published" && b.userListStatus === "in-list";
+  // Place favorites first
+  if (aFavorite && !bFavorite) {
+    return -1;
+  }
+  if (bFavorite && !aFavorite) {
+    return 1;
+  }
   if (a.sId === "dust") {
     return -1;
   } else if (b.sId === "dust") {

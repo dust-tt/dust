@@ -39,6 +39,11 @@ export function makeGetAssistantSuggestions() {
       const { suggestions, fallbackSuggestions } =
         editor.storage.MentionStorage.suggestions;
 
+      /// keeping the pre-defined order when queried without content
+      if (query === "") {
+        return suggestions.slice(0, SUGGESTION_DISPLAY_LIMIT);
+      }
+
       const lowerCaseQuery = query.toLowerCase();
 
       const inListSuggestions = filterAndSortSuggestions(
