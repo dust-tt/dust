@@ -6,6 +6,7 @@ import {
   Markdown,
   TextArea,
 } from "@dust-tt/sparkle";
+import { Input } from "@dust-tt/sparkle";
 import type {
   CreateTemplateFormType,
   TemplateTagCodeType,
@@ -47,7 +48,6 @@ import {
   PokeFormLabel,
   PokeFormMessage,
 } from "@app/components/poke/shadcn/ui/form";
-import { PokeInput } from "@app/components/poke/shadcn/ui/input";
 import {
   PokeSelect,
   PokeSelectContent,
@@ -100,7 +100,7 @@ function InputField({
           <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
           {typeof field.value === "string" ? (
             <PokeFormControl>
-              <PokeInput
+              <Input
                 placeholder={placeholder ?? name}
                 type={type}
                 {...field}
@@ -150,7 +150,7 @@ function PickerInputField({
           {typeof field.value === "string" ? (
             <PokeFormControl>
               <div className="flex flex-row gap-2">
-                <PokeInput
+                <Input
                   readOnly
                   placeholder={placeholder ?? name}
                   {...field}
