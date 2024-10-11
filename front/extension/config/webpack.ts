@@ -60,6 +60,7 @@ export const getConfig = async ({
         "@extension": path.resolve(__dirname, "../app/src"),
         redis: false,
         stream: "stream-browserify",
+        next: false,
       },
       fallback: {
         url: false,

@@ -1,10 +1,8 @@
 import {
-  Button,
   DropdownMenu,
   IconButton,
   Item,
   MoreIcon,
-  PlusIcon,
   RobotIcon,
   Searchbar,
 } from "@dust-tt/sparkle";
@@ -12,7 +10,7 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import Link from "next/link";
+// import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
@@ -118,7 +116,7 @@ export function AssistantPicker({
             bottomBar={
               showFooterButtons && (
                 <div className="flex justify-end border-t border-structure-50 p-2">
-                  <Link
+                  {/* <Link
                     href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
                   >
                     <Button
@@ -128,7 +126,7 @@ export function AssistantPicker({
                       icon={PlusIcon}
                       className="mr-2"
                     />
-                  </Link>
+                  </Link> */}
                 </div>
               )
             }
