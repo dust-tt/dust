@@ -1,3 +1,5 @@
+import { GenerationContextProvider } from "@app/shared/context/GenerationContextProvider";
+import { FixedAssistantInputBar } from "@app/shared/input_bar/InputBar";
 import {
   Button,
   ExternalLinkIcon,
@@ -6,10 +8,8 @@ import {
   Page,
   TranslateIcon,
 } from "@dust-tt/sparkle";
-import { Link } from "react-router-dom";
-import { FixedAssistantInputBar } from "@app/shared/input_bar/InputBar";
-import { GenerationContextProvider } from "@app/shared/context/GenerationContextProvider";
 import type { WorkspaceType } from "@dust-tt/types";
+import { Link } from "react-router-dom";
 
 export const MainPage = () => {
   const ws: WorkspaceType = {
