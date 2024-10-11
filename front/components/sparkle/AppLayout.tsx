@@ -5,7 +5,6 @@ import { useRouter } from "next/router";
 import Script from "next/script";
 import React, { useEffect, useState } from "react";
 
-import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { HelpAndQuickGuideWrapper } from "@app/components/assistant/conversation/HelpAndQuickGuideWrapper";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import type { SidebarNavigation } from "@app/components/navigation/config";
@@ -13,6 +12,7 @@ import { Navigation } from "@app/components/navigation/Navigation";
 import { useUser } from "@app/lib/swr/user";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
+import { GenerationContextProvider } from "@app/shared/context/GenerationContextProvider";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
 // fallback to the landing if we linked directly to that modal.

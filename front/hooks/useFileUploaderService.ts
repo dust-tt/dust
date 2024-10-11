@@ -14,6 +14,7 @@ import {
   MAX_FILE_SIZES,
   Ok,
 } from "@dust-tt/types";
+import type React from "react";
 import { useContext, useState } from "react";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";

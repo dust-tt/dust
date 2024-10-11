@@ -1,6 +1,6 @@
 import { Extension } from "@tiptap/react";
 
-import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import type { EditorSuggestions } from "@app/shared/input_bar/editor/suggestion";
 
 // Storage extension to manage mention suggestions.
 // This prevents content editable from re-rendering when suggestions change.

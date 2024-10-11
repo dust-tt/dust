@@ -5,11 +5,11 @@ import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
 
-import { MentionStorage } from "@app/components/assistant/conversation/input_bar/editor/MentionStorage";
-import { MentionWithPaste } from "@app/components/assistant/conversation/input_bar/editor/MentionWithPaste";
-import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { ParagraphExtension } from "@app/components/text_editor/extensions";
+import { MentionStorage } from "@app/shared/input_bar/editor/MentionStorage";
+import { MentionWithPaste } from "@app/shared/input_bar/editor/MentionWithPaste";
+import type { EditorSuggestions } from "@app/shared/input_bar/editor/suggestion";
+import { makeGetAssistantSuggestions } from "@app/shared/input_bar/editor/suggestion";
 
 export interface EditorMention {
   id: string;

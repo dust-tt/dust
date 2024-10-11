@@ -6,8 +6,8 @@ import React, {
   useState,
 } from "react";
 
-import type { EditorSuggestion } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { classNames } from "@app/lib/utils";
+import type { EditorSuggestion } from "@app/shared/input_bar/editor/suggestion";
 
 interface MentionListProps {
   command: any;

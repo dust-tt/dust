@@ -2,8 +2,8 @@ import type { Editor } from "@tiptap/core";
 import { ReactRenderer } from "@tiptap/react";
 import tippy from "tippy.js";
 
-import { MentionList } from "@app/components/assistant/conversation/input_bar/editor/MentionList";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
+import { MentionList } from "@app/shared/input_bar/editor/MentionList";
 
 export interface EditorSuggestion {
   id: string;

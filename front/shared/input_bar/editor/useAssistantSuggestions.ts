@@ -1,11 +1,7 @@
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { useMemo } from "react";
 
 import { compareAgentsForSort } from "@app/lib/assistant";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
 
 function makeEditorSuggestions(
   agentConfigurations: LightAgentConfigurationType[]
@@ -21,14 +17,9 @@ function makeEditorSuggestions(
 }
 
 const useAssistantSuggestions = (
-  inListAgentConfigurations: LightAgentConfigurationType[],
-  owner: WorkspaceType
+  agentConfigurations: LightAgentConfigurationType[],
+  inListAgentConfigurations: LightAgentConfigurationType[]
 ) => {
-  const { agentConfigurations } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "assistants-search",
-  });
-
   // `useMemo` will ensure that suggestions is only recalculated
   // when `inListAgentConfigurations` or `agentConfigurations` changes.
   const allSuggestions = useMemo(() => {
