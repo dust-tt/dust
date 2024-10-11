@@ -1093,7 +1093,10 @@ function Capabilities({
   }) => {
     return (
       <div className="flex flex-row gap-2">
-        <Checkbox checked={enabled} onChange={enabled ? onDisable : onEnable} />
+        <Checkbox
+          defaultChecked={enabled}
+          onCheckedChange={enabled ? onDisable : onEnable}
+        />
         <div>
           <div className="flex text-base font-semibold text-element-900">
             {name}
