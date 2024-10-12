@@ -467,7 +467,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
       versionCreatedAt: agent.createdAt.toISOString(),
       version: agent.version,
       scope: agent.scope,
-      userFavorite: agentUserRelations[agent.sId]?.favorite,
+      // no agentUserRelation means agent is not in favorites
+      userFavorite: !!agentUserRelations[agent.sId]?.favorite,
       name: agent.name,
       pictureUrl: agent.pictureUrl,
       description: agent.description,

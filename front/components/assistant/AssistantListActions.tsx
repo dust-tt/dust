@@ -30,10 +30,6 @@ export default function AssistantFavoriteActions({
     () => agentConfiguration.userFavorite
   );
 
-  if (scope !== "published") {
-    return null;
-  }
-
   const updateFavorite = async (favorite: boolean) => {
     const success = await doUpdate(favorite);
     if (success) {

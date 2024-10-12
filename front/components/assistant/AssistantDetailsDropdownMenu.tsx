@@ -61,7 +61,6 @@ const { user } = useUser();
   }
 
   const isAgentWorkspace = agentConfiguration.scope === "workspace";
-  const isAgentPublished = agentConfiguration.scope === "published";
   const isGlobalAgent = agentConfiguration.scope === "global";
 
   const isFavorite = agentConfiguration.userFavorite;
@@ -196,7 +195,7 @@ const { user } = useUser();
                     />
                   )}
 
-                  {isAgentPublished && showAddRemoveToFavorite && (
+                  {showAddRemoveToFavorite && (
                     <>
                       <DropdownMenu.SectionHeader label="MY ASSISTANTS" />
                       <DropdownMenu.Item
