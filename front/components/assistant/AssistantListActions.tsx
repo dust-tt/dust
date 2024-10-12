@@ -19,7 +19,6 @@ export default function AssistantFavoriteActions({
   isParentHovered,
   owner,
 }: AssistantFavoriteActions) {
-  const { scope } = agentConfiguration;
   const doUpdate = useUpdateUserFavorite({
     owner,
     agentConfigurationId: agentConfiguration.sId,
