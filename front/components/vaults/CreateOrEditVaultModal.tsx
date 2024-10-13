@@ -87,7 +87,7 @@ export function CreateOrEditVaultModal({
 
   const router = useRouter();
 
-  const { vaultInfo } = useVaultInfo({
+  const { vaultInfo, mutateVaultInfo } = useVaultInfo({
     workspaceId: owner.sId,
     vaultId: vault?.sId ?? null,
   });
@@ -95,10 +95,15 @@ export function CreateOrEditVaultModal({
 
   useEffect(() => {
     if (vaultMembers) {
-      setSelectedMembers(vaultMembers.map((vm) => vm.sId));
-      setVaultName(vault?.name ?? null);
+      if (selectedMembers.length === 0) {
+        setSelectedMembers(vaultMembers.map((vm) => vm.sId));
+      }
+
+      if (!vaultName) {
+        setVaultName(vault?.name ?? null);
+      }
     }
-  }, [vault?.name, vaultMembers]);
+  }, [vault?.name, vaultMembers, selectedMembers, vaultName, isSaving]);
 
   const { members, totalMembersCount, isLoading } = useSearchMembers({
     workspaceId: owner.sId,
@@ -109,17 +114,20 @@ export function CreateOrEditVaultModal({
   });
 
   const handleClose = useCallback(() => {
-    // Reset state.
-    setVaultName(null);
-    setSelectedMembers([]);
-    setSearchTerm("");
-    setIsSaving(false);
-    setPagination({ pageIndex: 0, pageSize: 25 });
-    setShowDeleteConfirmDialog(false);
-    setIsDeleting(false);
-
     // Call the original onClose function.
     onClose();
+
+    // Sleep for a bit to avoid flickering when closing the modal.
+    setTimeout(() => {
+      // Reset state.
+      setVaultName(null);
+      setSelectedMembers([]);
+      setSearchTerm("");
+      setPagination({ pageIndex: 0, pageSize: 25 });
+      setShowDeleteConfirmDialog(false);
+      setIsDeleting(false);
+      setIsSaving(false);
+    }, 500);
   }, [onClose]);
 
   const getTableColumns = useCallback(() => {
@@ -216,6 +224,7 @@ export function CreateOrEditVaultModal({
 
     if (selectedMembers.length > 0 && vault) {
       await doUpdate(vault, selectedMembers, vaultName);
+      await mutateVaultInfo();
     } else if (!vault) {
       const createdVault = await doCreate(vaultName, selectedMembers);
       setIsSaving(false);
@@ -225,13 +234,14 @@ export function CreateOrEditVaultModal({
     }
     handleClose();
   }, [
-    doCreate,
-    doUpdate,
-    onCreated,
-    handleClose,
     selectedMembers,
     vault,
+    handleClose,
+    doUpdate,
     vaultName,
+    mutateVaultInfo,
+    doCreate,
+    onCreated,
   ]);
 
   const onDelete = useCallback(async () => {
