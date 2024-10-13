@@ -123,9 +123,10 @@ export const getConfig = async ({
       isDevelopment
         ? // @ts-ignore (it's working)
           new ExtReloader({
-            manifest: manifestFilePath,
+            port: 9090,
             reloadPage: true,
             entries: {
+              contentScript: "main",
               background: "background",
             },
           })
