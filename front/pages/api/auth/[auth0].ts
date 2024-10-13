@@ -72,14 +72,14 @@ export default handleAuth({
           "login error in auth0 callback"
         );
 
-        statsDClient.increment("login.callback.error", [
+        statsDClient.increment("login.callback.error", 1, [
           `error:${error.cause?.message}`,
         ]);
 
         return res.redirect(`/login-error?reason=${reason}`);
       }
 
-      statsDClient.increment("login.callback.error", ["error:unknow"]);
+      statsDClient.increment("login.callback.error", 1, ["error:unknow"]);
 
       return res.redirect("/login-error");
     }
