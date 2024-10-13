@@ -109,7 +109,7 @@ export function DustAppSecrets({ owner }: { owner: WorkspaceType }) {
           onChange={(e) =>
             setNewDustAppSecret({
               ...newDustAppSecret,
-              name: cleanSecretName(e.target.name),
+              name: cleanSecretName(e.target.value),
             })
           }
         />
