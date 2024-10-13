@@ -401,7 +401,11 @@ export async function* getConversationEvents(
 ): AsyncGenerator<
   {
     eventId: string;
-    data: UserMessageNewEvent | AgentMessageNewEvent | ConversationTitleEvent;
+    data:
+      | UserMessageNewEvent
+      | AgentMessageNewEvent
+      | AgentGenerationCancelledEvent
+      | ConversationTitleEvent;
   },
   void
 > {

@@ -1,16 +1,14 @@
-import type { DataSourceViewType, WithAPIErrorResponse } from "@dust-tt/types";
+import type { DataSourceViewsResponseType } from "@dust-tt/client";
+import { PatchDataSourceViewRequestSchema } from "@dust-tt/client";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { PatchDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
-import { handlePatchDataSourceView } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
-
-export type GetOrPostDataSourceViewsResponseBody = {
-  dataSourceView: DataSourceViewType;
-};
 
 /**
  * @swagger
@@ -149,11 +147,7 @@ export type GetOrPostDataSourceViewsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<
-      GetOrPostDataSourceViewsResponseBody | PatchDataSourceViewResponseBody
-    >
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<DataSourceViewsResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   const dataSourceView = await DataSourceViewResource.fetchById(
@@ -161,14 +155,71 @@ async function handler(
     req.query.dsvId as string
   );
 
+  if (
+    !dataSourceView ||
+    req.query.vId !== dataSourceView.space.sId ||
+    !dataSourceView.canList(auth)
+  ) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
       return res.status(200).json({
         dataSourceView: dataSourceView.toJSON(),
       });
 
-    case "PATCH":
-      return handlePatchDataSourceView(req, res, auth, dataSourceView);
+    case "PATCH": {
+      const parsing = PatchDataSourceViewRequestSchema.safeParse(req.body);
+
+      if (parsing.error) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${parsing.error.message}`,
+          },
+        });
+      }
+
+      const r = await handlePatchDataSourceView(
+        auth,
+        parsing.data,
+        dataSourceView
+      );
+      if (r.isErr()) {
+        switch (r.error.code) {
+          case "unauthorized":
+            return apiError(req, res, {
+              status_code: 401,
+              api_error: {
+                type: "workspace_auth_error",
+                message: r.error.message,
+              },
+            });
+          case "internal_error":
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: r.error.message,
+              },
+            });
+          default:
+            assertNever(r.error.code);
+        }
+      }
+
+      return res.status(200).json({
+        dataSourceView: r.value.toJSON(),
+      });
+    }
 
     default:
       return apiError(req, res, {

@@ -97,8 +97,12 @@ export const supportedFileExtensions = uniq([
   ...supportedImageExtensions,
 ]);
 
-export const supportedPlainTextContentTypes = Object.keys(supportedPlainText);
-export const supportedImageContentTypes = Object.keys(supportedImage);
+export const supportedPlainTextContentTypes = Object.keys(
+  supportedPlainText
+) as (keyof typeof supportedPlainText)[];
+export const supportedImageContentTypes = Object.keys(
+  supportedImage
+) as (keyof typeof supportedImage)[];
 
 export const supportedUploadableContentType = [
   ...supportedPlainTextContentTypes,
