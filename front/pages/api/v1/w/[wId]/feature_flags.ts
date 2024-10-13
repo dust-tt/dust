@@ -1,16 +1,10 @@
-import type {
-  WhitelistableFeature,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
+import type { GetWorkspaceFeatureFlagsResponseType } from "@dust-tt/client";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-
-export type WorkspaceFeatureFlagsResponseBody = {
-  feature_flags: WhitelistableFeature[];
-};
 
 /**
  * @ignoreswagger
@@ -19,7 +13,9 @@ export type WorkspaceFeatureFlagsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<WorkspaceFeatureFlagsResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetWorkspaceFeatureFlagsResponseType>
+  >,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();

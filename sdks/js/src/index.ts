@@ -1,153 +1,83 @@
-import {
+import { z } from "zod";
+import type {
   AgentActionSpecificEvent,
+  DustAppRunErroredEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentMessageSuccessEvent,
   AgentMessageType,
   APIError,
-  ContentFragmentType,
   ConversationType,
-  CoreAPITokenType,
-  DataSourceType,
   DataSourceViewType,
-  Err,
   GenerationTokensEvent,
-  isAPIError,
-  LightAgentConfigurationType,
-  Ok,
   PatchDataSourceViewType,
   PublicPostContentFragmentRequestBody,
   PublicPostConversationsRequestBody,
   PublicPostMessagesRequestBody,
-  Result,
-  RunType,
   UserMessageErrorEvent,
-  UserMessageType,
-  WhitelistableFeature,
-  WorkspaceDomain,
-} from "@dust-tt/types";
-import { LoggerInterface } from "@dust-tt/types/dist/shared/logger";
+  LoggerInterface,
+  DustAppRunRunStatusEvent,
+  DustAppRunBlockStatusEvent,
+  DustAppRunBlockExecutionEvent,
+  DustAppRunTokensEvent,
+  DustAppRunFunctionCallEvent,
+  DustAppRunFunctionCallArgumentsTokensEvent,
+  DustAppRunFinalEvent,
+  DustAPICredentials,
+  DustAppConfigType,
+  RunAppResponseType,
+} from "./types";
+
+import {
+  APIErrorSchema,
+  CreateConversationResponseSchema,
+  CreateConversationResponseType,
+  Err,
+  GetActiveMemberEmailsInWorkspaceResponseSchema,
+  GetActiveMemberEmailsInWorkspaceResponseType,
+  GetAgentConfigurationsResponseSchema,
+  GetAgentConfigurationsResponseType,
+  GetConversationResponseSchema,
+  GetConversationResponseType,
+  GetDataSourcesResponseSchema,
+  GetDataSourcesResponseType,
+  GetWorkspaceFeatureFlagsResponseSchema,
+  GetWorkspaceFeatureFlagsResponseType,
+  GetWorkspaceVerifiedDomainsResponseSchema,
+  GetWorkspaceVerifiedDomainsResponseType,
+  Ok,
+  PatchDataSourceViewsReponseType,
+  PatchDataSourceViewsResponseSchema,
+  PostContentFragmentResponseSchema,
+  PostContentFragmentResponseType,
+  PostUserMessageResponseSchema,
+  PostUserMessageResponseType,
+  Result,
+  RunAppResponseSchema,
+  SearchDataSourceViewsResponseSchema,
+  SearchDataSourceViewsResponseType,
+  TokenizeResponseSchema,
+  TokenizeResponseType,
+} from "./types";
+
+export * from "./types";
+
 import { createParser } from "eventsource-parser";
 
-export type DustAppType = {
-  appHash: string;
-  appId: string;
-  workspaceId: string;
-};
-
-export type DustAppConfigType = {
-  [key: string]: unknown;
-};
-
-type DustAppRunErroredEvent = {
-  type: "error";
-  content: {
-    code: string;
-    message: string;
-  };
-};
-
-export type DustAppRunRunStatusEvent = {
-  type: "run_status";
-  content: {
-    status: "running" | "succeeded" | "errored";
-    run_id: string;
-  };
-};
-
-export type DustAppRunBlockStatusEvent = {
-  type: "block_status";
-  content: {
-    block_type: string;
-    name: string;
-    status: "running" | "succeeded" | "errored";
-    success_count: number;
-    error_count: number;
-  };
-};
-
-export type DustAppRunBlockExecutionEvent = {
-  type: "block_execution";
-  content: {
-    block_type: string;
-    block_name: string;
-    execution: {
-      value: unknown | null;
-      error: string | null;
-      meta: unknown | null;
-    }[][];
-  };
-};
-
-export type DustAppRunFinalEvent = {
-  type: "final";
-};
-
-export type DustAppRunTokensEvent = {
-  type: "tokens";
-  content: {
-    block_type: string;
-    block_name: string;
-    input_index: number;
-    map: {
-      name: string;
-      iteration: number;
-    } | null;
-    tokens: {
-      text: string;
-      tokens?: string[];
-      logprobs?: number[];
-    };
-  };
-};
-
-export type DustAppRunFunctionCallEvent = {
-  type: "function_call";
-  content: {
-    block_type: string;
-    block_name: string;
-    input_index: number;
-    map: {
-      name: string;
-      iteration: number;
-    } | null;
-    function_call: {
-      name: string;
-    };
-  };
-};
-
-export type DustAppRunFunctionCallArgumentsTokensEvent = {
-  type: "function_call_arguments_tokens";
-  content: {
-    block_type: string;
-    block_name: string;
-    input_index: number;
-    map: {
-      name: string;
-      iteration: number;
-    } | null;
-    tokens: {
-      text: string;
-    };
-  };
-};
-
-export type DustAPICredentials = {
-  apiKey: string;
-  workspaceId: string;
-  // Dust system API keys can request to be authenticated as a list of specific group IDs.
-  // This is for internal use only.
-  groupIds?: string[];
-  // Dust system API keys can request to be authenticated as a specific user email.
-  // This is for internal use only.
-  userEmail?: string;
-};
+export function isAPIError(obj: unknown): obj is APIError {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "message" in obj &&
+    typeof obj.message === "string" &&
+    "type" in obj &&
+    typeof obj.type === "string"
+    // TODO(spolu): check type is a valid APIErrorType
+  );
+}
 
 export const DustGroupIdsHeader = "X-Dust-Group-Ids";
 export const DustUserEmailHeader = "x-api-user-email";
-
-export type DustAPIResponse<T> = Result<T, APIError>;
 
 /**
  * This help functions process a streamed response in the format of the Dust API for running
@@ -155,7 +85,7 @@ export type DustAPIResponse<T> = Result<T, APIError>;
  *
  * @param res an HTTP response ready to be consumed as a stream
  */
-export async function processStreamedRunResponse(
+async function processStreamedRunResponse(
   res: Response,
   logger: LoggerInterface
 ) {
@@ -345,7 +275,7 @@ export class DustAPI {
     return this._credentials.workspaceId;
   }
 
-  apiUrl() {
+  apiUrl(): string {
     if (this._urlOverride) {
       return this._urlOverride;
     }
@@ -378,7 +308,7 @@ export class DustAPI {
     { useWorkspaceCredentials }: { useWorkspaceCredentials: boolean } = {
       useWorkspaceCredentials: false,
     }
-  ): Promise<DustAPIResponse<RunType>> {
+  ) {
     let url = `${this.apiUrl()}/api/v1/w/${workspaceId}/vaults/${appVaultId}/apps/${appId}/runs`;
     if (useWorkspaceCredentials) {
       url += "?use_workspace_credentials=true";
@@ -404,9 +334,11 @@ export class DustAPI {
       }),
     });
 
-    const r: DustAPIResponse<{ run: RunType }> = await this._resultFromResponse(
+    const r = await this._resultFromResponse<RunAppResponseType>(
+      RunAppResponseSchema,
       res
     );
+
     if (r.isErr()) {
       return r;
     }
@@ -477,9 +409,7 @@ export class DustAPI {
    *
    * @param workspaceId string the workspace id to fetch data sources for
    */
-  async getDataSources(
-    workspaceId: string
-  ): Promise<DustAPIResponse<DataSourceType[]>> {
+  async getDataSources(workspaceId: string) {
     const res = await this._fetchWithError(
       `${this.apiUrl()}/api/v1/w/${workspaceId}/data_sources`,
       {
@@ -490,17 +420,17 @@ export class DustAPI {
       }
     );
 
-    const r: DustAPIResponse<{ data_sources: DataSourceType[] }> =
-      await this._resultFromResponse(res);
+    const r = await this._resultFromResponse<GetDataSourcesResponseType>(
+      GetDataSourcesResponseSchema,
+      res
+    );
     if (r.isErr()) {
       return r;
     }
     return new Ok(r.value.data_sources);
   }
 
-  async getAgentConfigurations(): Promise<
-    DustAPIResponse<LightAgentConfigurationType[]>
-  > {
+  async getAgentConfigurations() {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this._credentials.apiKey}`,
       "Content-Type": "application/json",
@@ -522,9 +452,11 @@ export class DustAPI {
       }
     );
 
-    const r: DustAPIResponse<{
-      agentConfigurations: LightAgentConfigurationType[];
-    }> = await this._resultFromResponse(res);
+    const r =
+      await this._resultFromResponse<GetAgentConfigurationsResponseType>(
+        GetAgentConfigurationsResponseSchema,
+        res
+      );
     if (r.isErr()) {
       return r;
     }
@@ -537,7 +469,7 @@ export class DustAPI {
   }: {
     conversationId: string;
     contentFragment: PublicPostContentFragmentRequestBody;
-  }): Promise<DustAPIResponse<ContentFragmentType>> {
+  }) {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this._credentials.apiKey}`,
       "Content-Type": "application/json",
@@ -562,8 +494,10 @@ export class DustAPI {
       }
     );
 
-    const r: DustAPIResponse<{ contentFragment: ContentFragmentType }> =
-      await this._resultFromResponse(res);
+    const r = await this._resultFromResponse<PostContentFragmentResponseType>(
+      PostContentFragmentResponseSchema,
+      res
+    );
     if (r.isErr()) {
       return r;
     }
@@ -578,12 +512,7 @@ export class DustAPI {
     message,
     contentFragment,
     blocking = false,
-  }: PublicPostConversationsRequestBody): Promise<
-    DustAPIResponse<{
-      conversation: ConversationType;
-      message: UserMessageType;
-    }>
-  > {
+  }: PublicPostConversationsRequestBody) {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this._credentials.apiKey}`,
       "Content-Type": "application/json",
@@ -612,7 +541,10 @@ export class DustAPI {
       }
     );
 
-    return this._resultFromResponse(res);
+    return this._resultFromResponse<CreateConversationResponseType>(
+      CreateConversationResponseSchema,
+      res
+    );
   }
 
   async postUserMessage({
@@ -621,7 +553,7 @@ export class DustAPI {
   }: {
     conversationId: string;
     message: PublicPostMessagesRequestBody;
-  }): Promise<DustAPIResponse<UserMessageType>> {
+  }) {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this._credentials.apiKey}`,
       "Content-Type": "application/json",
@@ -646,8 +578,10 @@ export class DustAPI {
       }
     );
 
-    const r: DustAPIResponse<{ message: UserMessageType }> =
-      await this._resultFromResponse(res);
+    const r = await this._resultFromResponse<PostUserMessageResponseType>(
+      PostUserMessageResponseSchema,
+      res
+    );
     if (r.isErr()) {
       return r;
     }
@@ -793,11 +727,7 @@ export class DustAPI {
     return new Ok({ eventStream: streamEvents() });
   }
 
-  async getConversation({
-    conversationId,
-  }: {
-    conversationId: string;
-  }): Promise<DustAPIResponse<ConversationType>> {
+  async getConversation({ conversationId }: { conversationId: string }) {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this._credentials.apiKey}`,
       "Content-Type": "application/json",
@@ -819,18 +749,17 @@ export class DustAPI {
       }
     );
 
-    const r: DustAPIResponse<{ conversation: ConversationType }> =
-      await this._resultFromResponse(res);
+    const r = await this._resultFromResponse<GetConversationResponseType>(
+      GetConversationResponseSchema,
+      res
+    );
     if (r.isErr()) {
       return r;
     }
     return new Ok(r.value.conversation);
   }
 
-  async tokenize(
-    text: string,
-    dataSourceId: string
-  ): Promise<DustAPIResponse<CoreAPITokenType[]>> {
+  async tokenize(text: string, dataSourceId: string) {
     const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/data_sources/${dataSourceId}/tokenize`;
 
     const res = await this._fetchWithError(endpoint, {
@@ -844,15 +773,17 @@ export class DustAPI {
       }),
     });
 
-    const r: DustAPIResponse<{ tokens: CoreAPITokenType[] }> =
-      await this._resultFromResponse(res);
+    const r = await this._resultFromResponse<TokenizeResponseType>(
+      TokenizeResponseSchema,
+      res
+    );
     if (r.isErr()) {
       return r;
     }
     return new Ok(r.value.tokens);
   }
 
-  async getActiveMemberEmailsInWorkspace(): Promise<DustAPIResponse<string[]>> {
+  async getActiveMemberEmailsInWorkspace() {
     const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/members/emails?activeOnly=true`;
 
     const res = await this._fetchWithError(endpoint, {
@@ -863,8 +794,11 @@ export class DustAPI {
       },
     });
 
-    const r: DustAPIResponse<{ emails: string[] }> =
-      await this._resultFromResponse(res);
+    const r =
+      await this._resultFromResponse<GetActiveMemberEmailsInWorkspaceResponseType>(
+        GetActiveMemberEmailsInWorkspaceResponseSchema,
+        res
+      );
     if (r.isErr()) {
       return r;
     }
@@ -872,9 +806,7 @@ export class DustAPI {
     return new Ok(r.value.emails);
   }
 
-  async getWorkspaceVerifiedDomains(): Promise<
-    DustAPIResponse<WorkspaceDomain[]>
-  > {
+  async getWorkspaceVerifiedDomains() {
     const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/verified_domains`;
 
     const res = await this._fetchWithError(endpoint, {
@@ -885,8 +817,11 @@ export class DustAPI {
       },
     });
 
-    const r: DustAPIResponse<{ verified_domains: WorkspaceDomain[] }> =
-      await this._resultFromResponse(res);
+    const r =
+      await this._resultFromResponse<GetWorkspaceVerifiedDomainsResponseType>(
+        GetWorkspaceVerifiedDomainsResponseSchema,
+        res
+      );
     if (r.isErr()) {
       return r;
     }
@@ -894,9 +829,7 @@ export class DustAPI {
     return new Ok(r.value.verified_domains);
   }
 
-  async getWorkspaceFeatureFlags(): Promise<
-    DustAPIResponse<WhitelistableFeature[]>
-  > {
+  async getWorkspaceFeatureFlags() {
     const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/feature_flags`;
 
     const res = await this._fetchWithError(endpoint, {
@@ -907,8 +840,11 @@ export class DustAPI {
       },
     });
 
-    const r: DustAPIResponse<{ feature_flags: WhitelistableFeature[] }> =
-      await this._resultFromResponse(res);
+    const r =
+      await this._resultFromResponse<GetWorkspaceFeatureFlagsResponseType>(
+        GetWorkspaceFeatureFlagsResponseSchema,
+        res
+      );
     if (r.isErr()) {
       return r;
     }
@@ -916,9 +852,7 @@ export class DustAPI {
     return new Ok(r.value.feature_flags);
   }
 
-  async searchDataSourceViews(
-    searchParams: URLSearchParams
-  ): Promise<DustAPIResponse<DataSourceViewType[]>> {
+  async searchDataSourceViews(searchParams: URLSearchParams) {
     const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/data_source_views/search?${searchParams.toString()}`;
     const res = await this._fetchWithError(endpoint, {
       method: "GET",
@@ -927,8 +861,10 @@ export class DustAPI {
         Authorization: `Bearer ${this._credentials.apiKey}`,
       },
     });
-    const r: DustAPIResponse<{ data_source_views: DataSourceViewType[] }> =
-      await this._resultFromResponse(res);
+    const r = await this._resultFromResponse<SearchDataSourceViewsResponseType>(
+      SearchDataSourceViewsResponseSchema,
+      res
+    );
     if (r.isErr()) {
       return r;
     }
@@ -951,13 +887,15 @@ export class DustAPI {
       },
       body: JSON.stringify(patchData),
     });
-    const r: DustAPIResponse<{ data_source_views: DataSourceViewType[] }> =
-      await this._resultFromResponse(res);
+    const r = await this._resultFromResponse<PatchDataSourceViewsReponseType>(
+      PatchDataSourceViewsResponseSchema,
+      res
+    );
     if (r.isErr()) {
       return r;
     }
 
-    return new Ok(undefined);
+    return new Ok(r.value.data_source_views);
   }
 
   private async _fetchWithError(
@@ -987,7 +925,8 @@ export class DustAPI {
     }
   }
 
-  private async _resultFromResponse<T>(
+  private async _resultFromResponse<T extends Object>(
+    schema: z.ZodSchema,
     res: Result<
       {
         response: Response;
@@ -995,7 +934,7 @@ export class DustAPI {
       },
       APIError
     >
-  ): Promise<DustAPIResponse<T>> {
+  ): Promise<Result<T, APIError>> {
     if (res.isErr()) {
       return res;
     }
@@ -1004,50 +943,25 @@ export class DustAPI {
     // body is already consumed by response.json() if used otherwise).
     const text = await res.value.response.text();
 
-    let json = null;
     try {
-      json = JSON.parse(text);
+      const json = schema.parse(text) as T;
+      return new Ok(json);
     } catch (e) {
-      const err: APIError = {
-        type: "unexpected_response_format",
-        message: `Unexpected response format from DustAPI: ${e}`,
-      };
-      this._logger.error(
-        {
-          dustError: err,
-          parseError: e,
-          rawText: text,
-          status: res.value.response.status,
-          url: res.value.response.url,
-          duration: res.value.duration,
-        },
-        "DustAPI error"
-      );
-      return new Err(err);
-    }
-
-    if (!res.value.response.ok) {
-      const err = json?.error;
-      if (isAPIError(err)) {
-        this._logger.error(
-          {
-            dustError: err,
-            status: res.value.response.status,
-            url: res.value.response.url,
-            duration: res.value.duration,
-          },
-          "DustAPI error"
-        );
+      try {
+        // Expected error format
+        const err: APIError = APIErrorSchema.parse(text);
         return new Err(err);
-      } else {
+      } catch (e) {
+        // Unexpected error format
         const err: APIError = {
-          type: "unexpected_error_format",
-          message: "Unexpected error format from DustAPI",
+          type: "unexpected_response_format",
+          message: `Unexpected response format from DustAPI: ${e}`,
         };
         this._logger.error(
           {
             dustError: err,
-            json,
+            parseError: e,
+            rawText: text,
             status: res.value.response.status,
             url: res.value.response.url,
             duration: res.value.duration,
@@ -1056,8 +970,6 @@ export class DustAPI {
         );
         return new Err(err);
       }
-    } else {
-      return new Ok(json);
     }
   }
 }
