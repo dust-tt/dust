@@ -18,7 +18,8 @@ import type {
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
+import { useMemo } from "react";
 
 import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
 import type {
@@ -388,18 +389,16 @@ export function DataSourceViewSelector({
     });
   };
 
-  const isPartiallyChecked = internalIds.length > 0;
-
-  const checkedStatus = selectionConfiguration.isSelectAll
-    ? "checked"
-    : isPartiallyChecked
+  const isChecked = selectionConfiguration.isSelectAll
+    ? true
+    : internalIds.length > 0
       ? "partial"
-      : "unchecked";
+      : false;
 
   const isTableView = viewType === "tables";
 
   // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
-  const hideCheckbox = readonly || (isTableView && !isPartiallyChecked);
+  const hideCheckbox = readonly || (isTableView && isChecked !== "partial");
 
   const selectedNodes = useMemo(
     () => getNodesFromConfig(selectionConfiguration),
@@ -425,7 +424,6 @@ export function DataSourceViewSelector({
             })),
           isSelectAll: false,
         };
-
         if (updatedConfig.selectedResources.length === 0) {
           // Nothing is selected at all, remove from the list
           return _.omit(prevState, dataSourceView.sId);
@@ -466,9 +464,9 @@ export function DataSourceViewSelector({
           hideCheckbox || (!isRootSelectable && !hasActiveSelection)
             ? undefined
             : {
-                checked: checkedStatus,
+                checked: isChecked,
                 disabled: !isRootSelectable,
-                onChange: handleSelectAll,
+                onCheckedChange: handleSelectAll,
               }
         }
         actions={
