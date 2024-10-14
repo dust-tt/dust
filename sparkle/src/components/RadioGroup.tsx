@@ -2,6 +2,7 @@ import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { cva, VariantProps } from "class-variance-authority";
 import * as React from "react";
 
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { CircleIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -41,29 +42,79 @@ RadioGroup.displayName = RadioGroupPrimitive.Root.displayName;
 
 interface RadioGroupItemProps
   extends React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>,
-    VariantProps<typeof radioStyles> {}
+    VariantProps<typeof radioStyles> {
+  tooltipMessage?: string;
+  tooltipAsChild?: boolean;
+}
 
 const RadioGroupItem = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Item>,
   RadioGroupItemProps
->(({ className, size = "xs", ...props }, ref) => {
+>(({ tooltipMessage, className, size, tooltipAsChild = false, ...props }, ref) => {
   return (
-    <RadioGroupPrimitive.Item
-      ref={ref}
-      className={cn(radioStyles({ size }), className)}
-      {...props}
-    >
-      <RadioGroupPrimitive.Indicator className="s-flex s-items-center s-justify-center">
-        <CircleIcon
-          className={cn(
-            size === "xs" ? "s-h-2.5 s-w-2.5" : "s-h-3 s-w-3",
-            "s-fill-current s-text-current focus:s-bg-action-50-dark"
-          )}
+    <div className="s-group">
+      {tooltipMessage ? (
+        <Tooltip
+          triggerAsChild={tooltipAsChild}
+          trigger={
+            <RadioGroupPrimitive.Item
+              ref={ref}
+              className={cn(radioStyles({ size }), className)}
+              {...props}
+            >
+              <RadioGroupPrimitive.Indicator className="s-flex s-items-center s-justify-center">
+                <CircleIcon
+                  className={cn(
+                    size === "xs" ? "s-h-2.5 s-w-2.5" : "s-h-3 s-w-3",
+                    "s-fill-current s-text-current focus:s-bg-action-50-dark"
+                  )}
+                />
+              </RadioGroupPrimitive.Indicator>
+            </RadioGroupPrimitive.Item>
+          }
+          label={<span>{tooltipMessage}</span>}
         />
-      </RadioGroupPrimitive.Indicator>
-    </RadioGroupPrimitive.Item>
+      ) : (
+        <RadioGroupPrimitive.Item
+          ref={ref}
+          className={cn(radioStyles({ size }), className)}
+          {...props}
+        >
+          <RadioGroupPrimitive.Indicator className="s-flex s-items-center s-justify-center">
+            <CircleIcon
+              className={cn(
+                size === "xs" ? "s-h-2.5 s-w-2.5" : "s-h-3 s-w-3",
+                "s-fill-current s-text-current focus:s-bg-action-50-dark"
+              )}
+            />
+          </RadioGroupPrimitive.Indicator>
+        </RadioGroupPrimitive.Item>
+      )}
+    </div>
   );
 });
 RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName;
 
-export { RadioGroup, RadioGroupItem };
+type IconPosition = "start" | "center" | "end";
+
+interface RadioGroupChoiceProps extends RadioGroupItemProps {
+  iconPosition?: IconPosition;
+}
+
+const RadioGroupChoice = React.forwardRef<
+  React.ElementRef<typeof RadioGroupPrimitive.Item>,
+  RadioGroupChoiceProps
+>(({ className, size, iconPosition = "center", children, ...props }, ref) => {
+  return (
+    <div className={cn("s-flex s-gap-2", className, `s-items-${iconPosition}`)}>
+      <RadioGroupItem
+        ref={ref}
+        className={cn(radioStyles({ size }))}
+        {...props}
+      />
+      {children}
+    </div>
+  );
+});
+
+export { RadioGroup, RadioGroupChoice, RadioGroupItem };
