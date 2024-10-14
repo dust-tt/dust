@@ -10,9 +10,8 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-
+import type { WorkspaceType } from "@dust-tt/types";
 import { useAuth } from "@extension/hooks/useAuth";
-import { WorkspaceType } from "@dust-tt/types";
 
 export const MainPage = () => {
   const { token, isLoading, handleLogin, handleLogout } = useAuth();
@@ -29,8 +28,8 @@ export const MainPage = () => {
   };
 
   return (
-    <div className="flex flex-col p-4 gap-2 h-screen">
-      <div className="flex justify-between items-start">
+    <div className="flex h-screen flex-col gap-2 p-4">
+      <div className="flex items-start justify-between">
         <div className="flex items-center gap-2 pb-10">
           <LogoHorizontalColorLogo className="h-4 w-16" />
           <a href="https://dust.tt" target="_blank">
@@ -49,13 +48,13 @@ export const MainPage = () => {
       </div>
 
       {isLoading && (
-        <div className="flex justify-center items-center w-full h-full">
+        <div className="flex h-full w-full items-center justify-center">
           <Spinner />
         </div>
       )}
 
       {!isLoading && !token && (
-        <div className="flex justify-center items-center w-full h-full">
+        <div className="flex h-full w-full items-center justify-center">
           <Button
             icon={LoginIcon}
             variant="primary"
@@ -66,7 +65,7 @@ export const MainPage = () => {
       )}
 
       {token && (
-        <div className="w-full h-full">
+        <div className="h-full w-full">
           <Page.SectionHeader title="Conversation" />
           <GenerationContextProvider>
             <FixedAssistantInputBar
