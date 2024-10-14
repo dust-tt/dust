@@ -436,12 +436,7 @@ export function DataSourceViewSelector({
         });
       });
     },
-    [
-      dataSourceView,
-      keepOnlyOneVaultIfApplicable,
-      selectionConfiguration.isSelectAll,
-      setSelectionConfigurations,
-    ]
+    [dataSourceView, keepOnlyOneVaultIfApplicable, setSelectionConfigurations]
   );
 
   const useResourcesHook = useCallback(
