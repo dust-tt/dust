@@ -88,6 +88,7 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
               label="Pick an Emoji"
             />
           }
+          popoverTriggerAsChild
           content={
             <EmojiPicker
               theme="light"
@@ -115,6 +116,7 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
               />
             </div>
           }
+          popoverTriggerAsChild
           content={
             <ColorPicker
               colors={

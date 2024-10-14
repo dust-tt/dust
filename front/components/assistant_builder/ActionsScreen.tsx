@@ -973,6 +973,7 @@ function AdvancedSettings({
           type="menu"
         />
       }
+      popoverTriggerAsChild
       content={
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">

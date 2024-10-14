@@ -223,6 +223,7 @@ function EmojiSelector({
           />
         </div>
       }
+      popoverTriggerAsChild
       content={
         <EmojiPicker
           theme="light"
