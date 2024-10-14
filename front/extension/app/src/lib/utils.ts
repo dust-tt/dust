@@ -22,51 +22,11 @@ const generateCodeChallenge = async (codeVerifier: string): Promise<string> => {
   return base64URLEncode(digest);
 };
 
-export async function generatePKCE(): Promise<{
+export const generatePKCE = async (): Promise<{
   codeVerifier: string;
   codeChallenge: string;
-}> {
+}> => {
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = await generateCodeChallenge(codeVerifier);
   return { codeVerifier, codeChallenge };
-}
-
-/**
- * Utils to manage access token in local storage.
- */
-
-export const saveAccessToken = async (accessToken: string): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    chrome.storage.local.set({ accessToken }, () => {
-      if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError);
-      } else {
-        resolve();
-      }
-    });
-  });
-};
-
-export const getAccessToken = async (): Promise<string | undefined> => {
-  return new Promise((resolve, reject) => {
-    chrome.storage.local.get(["accessToken"], (result) => {
-      if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError);
-      } else {
-        resolve(result.accessToken);
-      }
-    });
-  });
-};
-
-export const clearAccessToken = async (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    chrome.storage.local.remove("accessToken", () => {
-      if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError);
-      } else {
-        resolve();
-      }
-    });
-  });
 };
