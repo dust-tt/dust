@@ -241,6 +241,12 @@ export async function githubUpsertIssueActivity(
     throw new Error(`Connector not found (connectorId: ${connectorId})`);
   }
 
+  const existingIssue = await GithubIssue.findOne({});
+  if (existingIssue && existingIssue.skipReason) {
+    localLogger.info("Issue skipped.");
+    return;
+  }
+
   const renderedIssueResult = await renderIssue(
     dataSourceConfig,
     connector,
