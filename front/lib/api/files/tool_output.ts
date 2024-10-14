@@ -3,6 +3,7 @@ import { pipeline } from "stream/promises";
 
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+
 export async function internalCreateToolOutputCsvFile(
   auth: Authenticator,
   {
@@ -16,11 +17,11 @@ export async function internalCreateToolOutputCsvFile(
   }
 ): Promise<FileResource> {
   const workspace = auth.getNonNullableWorkspace();
-  const user = auth.getNonNullableUser();
+  const user = auth.user();
 
   const fileResource = await FileResource.makeNew({
     workspaceId: workspace.id,
-    userId: user.id,
+    userId: user?.id ?? null,
     contentType,
     fileName: title,
     fileSize: Buffer.byteLength(content),
