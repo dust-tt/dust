@@ -283,7 +283,7 @@ function CheckboxField({
           <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
           <PokeFormControl>
             <Checkbox
-              defaultChecked={!!field.value}
+              checked={!!field.value}
               onCheckedChange={field.onChange}
             />
           </PokeFormControl>
