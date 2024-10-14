@@ -1,6 +1,6 @@
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { GenerationContextProvider } from "@app/shared/context/GenerationContextProvider";
-import { FixedAssistantInputBar } from "@app/shared/input_bar/InputBar";
+import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import {
   Button,
   ExternalLinkIcon,
@@ -58,7 +58,6 @@ export const MainPage = () => {
       <GenerationContextProvider>
         <FixedAssistantInputBar
           owner={owner}
-          baseAgentConfigurations={agentConfigurations}
           onSubmit={() => {}}
           stickyMentions={[]}
           conversationId={null}
