@@ -1,5 +1,4 @@
 import { Input } from "@dust-tt/sparkle";
-import { Checkbox } from "@dust-tt/sparkle";
 import { createIoTsCodecFromArgs } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import type * as t from "io-ts";
@@ -7,6 +6,7 @@ import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
+import { PokeCheckbox } from "@app/components/poke/shadcn/ui/checkbox";
 import {
   PokeForm,
   PokeFormControl,
@@ -97,7 +97,7 @@ export function PluginForm({ manifest, onSubmit }: PluginFormProps) {
                       />
                     )}
                     {arg.type === "boolean" && (
-                      <Checkbox
+                      <PokeCheckbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
                       />
