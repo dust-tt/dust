@@ -92,9 +92,7 @@ export function VaultSelector({
               </div>
             </div>
             {isChecked && (
-              <div className="ml-8 mt-2">
-                {renderChildren(selectedVaultObj)}
-              </div>
+              <div className="ml-8">{renderChildren(selectedVaultObj)}</div>
             )}
           </div>
         );
