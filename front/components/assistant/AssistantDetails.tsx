@@ -3,7 +3,7 @@ import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
-import AssistantListActions from "@app/components/assistant/AssistantListActions";
+import AssistantFavoriteActions from "@app/components/assistant/AssistantListActions";
 import { AssistantActionsSection } from "@app/components/assistant/details/AssistantActionsSection";
 import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
@@ -75,7 +75,7 @@ export function AssistantDetails({
                 disabled={isUpdatingScope}
                 setNewScope={(scope) => updateScope(scope)}
               />
-              <AssistantListActions
+              <AssistantFavoriteActions
                 agentConfiguration={agentConfiguration}
                 owner={owner}
                 isParentHovered={true}

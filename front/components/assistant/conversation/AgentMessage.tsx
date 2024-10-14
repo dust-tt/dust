@@ -455,7 +455,7 @@ export function AgentMessage({
               <AssistantDetailsDropdownMenu
                 agentConfiguration={agentConfiguration}
                 owner={owner}
-                showAddRemoveToList
+                showAddRemoveToFavorite
               />
             )}
           </div>

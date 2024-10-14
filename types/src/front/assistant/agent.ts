@@ -100,23 +100,21 @@ export type AgentUserListStatus = "in-list" | "not-in-list";
 /**
  * Defines strategies for fetching agent configurations based on various
  * 'views':
- * - 'list': Retrieves all agents within the user's list, including their
- *   private agents, agents from the workspace and global scope, plus any
- *   published agents they've added to their list (refer to
- *   AgentUserRelationTable).
+ * - 'list': Retrieves all active agents accessible to the user
  * - {agentIds: string}: Retrieves specific agents by their sIds.
- * - {conversationId: string}: all agent from the user's list view, plus the
- *   agents mentioned in the conversation with the provided Id.
- * - 'all': Combines workspace and published agents, excluding private agents.
- *   Typically used in agent galleries.
- * - 'assistants-search': retrieves all global agents including inactive ones, all workspace, all
- *   published and the user's private agents.
+ * - {conversationId: string}: like 'list', plus the agents mentioned in the
+ *   conversation with the provided id. This can be useful to share
+ *   conversations with personal agents
+ * - 'all': All non-private agents (so combines workspace, published and global
+ *   agents); used e.g. for non-user calls such as API
+ * - 'assistants-search': retrieves all global agents including inactive ones,
+ *   all workspace, all published and the user's private agents.
  * - 'workspace': Retrieves all agents exclusively with a 'workspace' scope.
  * - 'published': Retrieves all agents exclusively with a 'published' scope.
  * - 'global': Retrieves all agents exclusively with a 'global' scope.
  * - 'admin_internal': Grants access to all agents, including private ones.
- * - 'archived': Retrieves all agents that are archived. Only available to super users.
- *   Intended strictly for internal use with necessary superuser or admin
+ * - 'archived': Retrieves all agents that are archived. Only available to super
+ *   users. Intended strictly for internal use with necessary superuser or admin
  *   authorization.
  */
 export type AgentsGetViewType =
@@ -161,9 +159,8 @@ export type LightAgentConfigurationType = {
   status: AgentConfigurationStatus;
   scope: AgentConfigurationScope;
 
-  // Set to null if not in the context of a user (API query). Otherwise, set to the list status for
-  // the current user.
-  userListStatus: AgentUserListStatus | null;
+  // always false if not in the context of a user (API query)
+  userFavorite: boolean;
 
   name: string;
   description: string;

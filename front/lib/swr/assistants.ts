@@ -2,7 +2,6 @@ import type {
   AgentConfigurationScope,
   AgentConfigurationType,
   AgentsGetViewType,
-  AgentUserListStatus,
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@dust-tt/types";
@@ -21,7 +20,7 @@ import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
-import type { PostAgentListStatusRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_list_status";
+import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
 
 export function useAssistantTemplates({
   workspaceId,
@@ -403,7 +402,7 @@ export function useUpdateAgentScope({
   return doUpdate;
 }
 
-export function useUpdateAgentUserListStatus({
+export function useUpdateUserFavorite({
   owner,
   agentConfigurationId,
 }: {
@@ -424,15 +423,15 @@ export function useUpdateAgentUserListStatus({
     });
 
   const doUpdate = useCallback(
-    async (listStatus: AgentUserListStatus) => {
+    async (userFavorite: boolean) => {
       try {
-        const body: PostAgentListStatusRequestBody = {
+        const body: PostAgentUserFavoriteRequestBody = {
           agentId: agentConfigurationId,
-          listStatus,
+          userFavorite: userFavorite,
         };
 
         const res = await fetch(
-          `/api/w/${owner.sId}/members/me/agent_list_status`,
+          `/api/w/${owner.sId}/members/me/agent_favorite`,
           {
             method: "POST",
             headers: {
@@ -445,9 +444,7 @@ export function useUpdateAgentUserListStatus({
         if (res.ok) {
           sendNotification({
             title: `Assistant ${
-              listStatus === "in-list"
-                ? "added to your list"
-                : "removed from your list"
+              userFavorite ? "added to favorites" : "removed from favorites"
             }`,
             type: "success",
           });
@@ -457,9 +454,7 @@ export function useUpdateAgentUserListStatus({
         } else {
           const data = await res.json();
           sendNotification({
-            title: `Error ${
-              listStatus === "in-list" ? "adding" : "removing"
-            } Assistant`,
+            title: `Error ${userFavorite ? "adding" : "removing"} Assistant`,
             description: data.error.message,
             type: "error",
           });

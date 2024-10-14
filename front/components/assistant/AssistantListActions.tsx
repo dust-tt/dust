@@ -1,87 +1,82 @@
-import {
-  Button,
-  Chip,
-  ListAddIcon,
-  ListIcon,
-  ListRemoveIcon,
-} from "@dust-tt/sparkle";
+import { Button, Chip, StarIcon, StarStrokeIcon } from "@dust-tt/sparkle";
 import type {
-  AgentUserListStatus,
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import React, { useState } from "react";
 
-import { useUpdateAgentUserListStatus } from "@app/lib/swr/assistants";
+import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
 
-interface AssistantListActions {
+interface AssistantFavoriteActions {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
   isParentHovered: boolean;
 }
 
-export default function AssistantListActions({
+export default function AssistantFavoriteActions({
   agentConfiguration,
   isParentHovered,
   owner,
-}: AssistantListActions) {
-  const { scope } = agentConfiguration;
-  const doUpdate = useUpdateAgentUserListStatus({
+}: AssistantFavoriteActions) {
+  const doUpdate = useUpdateUserFavorite({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
 
   // Use the function to set the initial state.
-  const [isAdded, setIsAdded] = useState(
-    () => agentConfiguration.userListStatus === "in-list"
+  const [isUserFavorite, setIsUserFavorite] = useState(
+    () => agentConfiguration.userFavorite
   );
 
-  if (scope !== "published") {
-    return null;
-  }
-
-  const updateList = async (listStatus: AgentUserListStatus) => {
-    const success = await doUpdate(listStatus);
+  const updateFavorite = async (favorite: boolean) => {
+    const success = await doUpdate(favorite);
     if (success) {
-      setIsAdded(listStatus === "in-list");
+      setIsUserFavorite(favorite);
     }
   };
 
   return (
     <div className="group">
-      {isAdded && (
+      {isUserFavorite && (
         <Chip
-          label="In my list"
-          icon={ListIcon}
-          className={isAdded ? "group-hover:hidden" : "hidden"}
+          label="Favorite"
+          icon={StarIcon}
+          className={isUserFavorite ? "group-hover:hidden" : "hidden"}
         />
       )}
-      <div className={classNames("hidden", isAdded ? "group-hover:block" : "")}>
+      <div
+        className={classNames(
+          "hidden",
+          isUserFavorite ? "group-hover:block" : ""
+        )}
+      >
         <Button
-          label={"Remove from my list"}
+          label={"Remove from favorites"}
           size="xs"
           hasMagnifying={false}
           variant="tertiary"
-          icon={ListRemoveIcon}
+          icon={StarStrokeIcon}
           onClick={(e) => {
             e.stopPropagation();
-            return updateList("not-in-list");
+            return updateFavorite(false);
           }}
         />
       </div>
       <div
-        className={isParentHovered && !isAdded ? "group-hover:block" : "hidden"}
+        className={
+          isParentHovered && !isUserFavorite ? "group-hover:block" : "hidden"
+        }
       >
         <Button
-          label={"Add to my list"}
+          label={"Add to favorites"}
           size="xs"
           hasMagnifying={false}
           variant="tertiary"
-          icon={ListAddIcon}
+          icon={StarIcon}
           onClick={(e) => {
             e.stopPropagation();
-            return updateList("in-list");
+            return updateFavorite(true);
           }}
         />
       </div>

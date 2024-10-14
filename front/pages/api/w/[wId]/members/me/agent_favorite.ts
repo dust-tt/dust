@@ -1,37 +1,37 @@
-import type { AgentUserListStatus, WithAPIErrorResponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import { setAgentUserListStatus } from "@app/lib/api/assistant/user_relation";
+import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
-export type PostAgentListStatusResponseBody = {
+export type PostAgentUserFavoriteResponseBody = {
   agentId: string;
-  listStatus: AgentUserListStatus;
+  userFavorite: boolean;
 };
 
-export const PostAgentListStatusRequestBodySchema = t.type({
+export const PostAgentUserFavoriteRequestBodySchema = t.type({
   agentId: t.string,
-  listStatus: t.union([t.literal("in-list"), t.literal("not-in-list")]),
+  userFavorite: t.boolean,
 });
 
-export type PostAgentListStatusRequestBody = t.TypeOf<
-  typeof PostAgentListStatusRequestBodySchema
+export type PostAgentUserFavoriteRequestBody = t.TypeOf<
+  typeof PostAgentUserFavoriteRequestBodySchema
 >;
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostAgentListStatusResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<PostAgentUserFavoriteResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
     case "POST":
-      const bodyValidation = PostAgentListStatusRequestBodySchema.decode(
+      const bodyValidation = PostAgentUserFavoriteRequestBodySchema.decode(
         req.body
       );
       if (isLeft(bodyValidation)) {
@@ -46,7 +46,7 @@ async function handler(
         });
       }
 
-      const { agentId, listStatus } = bodyValidation.right;
+      const { agentId, userFavorite } = bodyValidation.right;
 
       const agentConfiguration = await getAgentConfiguration(auth, agentId);
       if (!agentConfiguration) {
@@ -59,10 +59,10 @@ async function handler(
         });
       }
 
-      const result = await setAgentUserListStatus({
+      const result = await setAgentUserFavorite({
         auth,
         agentId,
-        listStatus,
+        userFavorite,
       });
       if (result.isErr()) {
         return apiError(req, res, {

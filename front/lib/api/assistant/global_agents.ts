@@ -39,7 +39,10 @@ import {
 } from "@app/lib/api/assistant/actions/names";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import {
+  AgentUserRelation,
+  GlobalAgentSettings,
+} from "@app/lib/models/assistant/agent";
 import {
   PRODUCTION_DUST_APPS_HELPER_DATASOURCE_VIEW_ID,
   PRODUCTION_DUST_APPS_WORKSPACE_ID,
@@ -167,7 +170,7 @@ function _getHelperGlobalAgent({
     instructions: prompt,
     pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
     status: status,
-    userListStatus: "in-list",
+    userFavorite: false,
     scope: "global",
     model: model,
     actions: [
@@ -214,7 +217,7 @@ function _getGPT35TurboGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/gpt3_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: GPT_3_5_TURBO_MODEL_CONFIG.providerId,
       modelId: GPT_3_5_TURBO_MODEL_CONFIG.modelId,
@@ -255,7 +258,7 @@ function _getGPT4GlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: GPT_4O_MODEL_CONFIG.providerId,
       modelId: GPT_4O_MODEL_CONFIG.modelId,
@@ -292,7 +295,7 @@ function _getO1PreviewGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: O1_PREVIEW_MODEL_CONFIG.providerId,
       modelId: O1_PREVIEW_MODEL_CONFIG.modelId,
@@ -329,7 +332,7 @@ function _getO1MiniGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: O1_MINI_MODEL_CONFIG.providerId,
       modelId: O1_MINI_MODEL_CONFIG.modelId,
@@ -361,7 +364,7 @@ function _getClaudeInstantGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.modelId,
@@ -399,7 +402,7 @@ function _getClaude2GlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: CLAUDE_2_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_2_DEFAULT_MODEL_CONFIG.modelId,
@@ -433,7 +436,7 @@ function _getClaude3HaikuGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
@@ -471,7 +474,7 @@ function _getClaude3OpusGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
@@ -509,7 +512,7 @@ function _getClaude3GlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
@@ -548,7 +551,7 @@ function _getMistralLargeGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: MISTRAL_LARGE_MODEL_CONFIG.providerId,
       modelId: MISTRAL_LARGE_MODEL_CONFIG.modelId,
@@ -586,7 +589,7 @@ function _getMistralMediumGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: MISTRAL_MEDIUM_MODEL_CONFIG.providerId,
       modelId: MISTRAL_MEDIUM_MODEL_CONFIG.modelId,
@@ -618,7 +621,7 @@ function _getMistralSmallGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: MISTRAL_SMALL_MODEL_CONFIG.providerId,
       modelId: MISTRAL_SMALL_MODEL_CONFIG.modelId,
@@ -655,7 +658,7 @@ function _getGeminiProGlobalAgent({
     pictureUrl: "https://dust.tt/static/systemavatar/gemini_avatar_full.png",
     status,
     scope: "global",
-    userListStatus: status === "active" ? "in-list" : "not-in-list",
+    userFavorite: false,
     model: {
       providerId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.providerId,
       modelId: GEMINI_PRO_DEFAULT_MODEL_CONFIG.modelId,
@@ -726,7 +729,7 @@ function _getManagedDataSourceAgent(
       pictureUrl,
       status: "disabled_by_admin",
       scope: "global",
-      userListStatus: "not-in-list",
+      userFavorite: false,
       model,
       actions: [],
       maxStepsPerRun: 0,
@@ -753,7 +756,7 @@ function _getManagedDataSourceAgent(
       pictureUrl,
       status: "disabled_missing_datasource",
       scope: "global",
-      userListStatus: "not-in-list",
+      userFavorite: false,
       model,
       actions: [],
       maxStepsPerRun: 0,
@@ -775,7 +778,7 @@ function _getManagedDataSourceAgent(
     pictureUrl,
     status: "active",
     scope: "global",
-    userListStatus: "in-list",
+    userFavorite: false,
     model,
     actions: [
       {
@@ -973,7 +976,7 @@ function _getDustGlobalAgent(
       pictureUrl,
       status: "disabled_by_admin",
       scope: "global",
-      userListStatus: "not-in-list",
+      userFavorite: false,
       model,
       actions: [],
       maxStepsPerRun: 0,
@@ -1000,7 +1003,7 @@ function _getDustGlobalAgent(
       pictureUrl,
       status: "disabled_missing_datasource",
       scope: "global",
-      userListStatus: "not-in-list",
+      userFavorite: false,
       model,
       actions: [],
       maxStepsPerRun: 0,
@@ -1100,7 +1103,7 @@ function _getDustGlobalAgent(
     pictureUrl,
     status: "active",
     scope: "global",
-    userListStatus: "in-list",
+    userFavorite: false,
     model,
     actions,
     maxStepsPerRun: 3,
@@ -1315,6 +1318,24 @@ export async function getGlobalAgents(
       isProviderWhitelisted(owner, agentFetcherResult.model.providerId)
     ) {
       globalAgents.push(agentFetcherResult);
+    }
+  }
+
+  // add user's favorite status to the agents if needed
+  const user = auth.user();
+  if (user) {
+    const relations = await AgentUserRelation.findAll({
+      where: {
+        userId: user.id,
+        agentConfiguration: globalAgents.map((agent) => agent.sId),
+      },
+    });
+
+    for (const agent of globalAgents) {
+      const relation = relations.find(
+        (r) => r.agentConfiguration === agent.sId
+      );
+      agent.userFavorite = relation ? relation.favorite : false;
     }
   }
 

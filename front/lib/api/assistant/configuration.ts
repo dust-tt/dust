@@ -2,11 +2,9 @@ import type {
   AgentActionConfigurationType,
   AgentConfigurationScope,
   AgentConfigurationType,
-  AgentMention,
   AgentModelConfigurationType,
   AgentsGetViewType,
   AgentStatus,
-  AgentUserListStatus,
   AppType,
   DataSourceConfiguration,
   LightAgentConfigurationType,
@@ -65,11 +63,6 @@ import {
   AgentConfiguration,
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
-import {
-  Conversation,
-  Mention,
-  Message,
-} from "@app/lib/models/assistant/conversation";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -357,29 +350,6 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
   }
 }
 
-export function agentUserListStatus({
-  agentConfiguration,
-  listStatusOverride,
-}: {
-  agentConfiguration: LightAgentConfigurationType;
-  listStatusOverride: AgentUserListStatus | null;
-}): AgentUserListStatus {
-  if (listStatusOverride === null) {
-    switch (agentConfiguration.scope) {
-      case "global":
-      case "workspace":
-      case "private":
-        return "in-list";
-      case "published":
-        return "not-in-list";
-      default:
-        assertNever(agentConfiguration.scope);
-    }
-  }
-
-  return listStatusOverride;
-}
-
 async function fetchWorkspaceAgentConfigurationsForView(
   auth: Authenticator,
   owner: WorkspaceType,
@@ -444,7 +414,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       : Promise.resolve({} as Record<string, AgentUserRelation>),
   ]);
 
-  let agentConfigurationTypes: AgentConfigurationType[] = [];
+  const agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {
     const actions: AgentActionConfigurationType[] = [];
 
@@ -497,7 +467,8 @@ async function fetchWorkspaceAgentConfigurationsForView(
       versionCreatedAt: agent.createdAt.toISOString(),
       version: agent.version,
       scope: agent.scope,
-      userListStatus: null,
+      // no agentUserRelation means agent is not in favorites
+      userFavorite: !!agentUserRelations[agent.sId]?.favorite,
       name: agent.name,
       pictureUrl: agent.pictureUrl,
       description: agent.description,
@@ -518,32 +489,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       ),
     };
 
-    agentConfigurationType.userListStatus = agentUserListStatus({
-      agentConfiguration: agentConfigurationType,
-      listStatusOverride:
-        agentUserRelations[agent.sId]?.listStatusOverride ?? null,
-    });
-
     agentConfigurationTypes.push(agentConfigurationType);
-  }
-
-  if (agentsGetView === "list") {
-    agentConfigurationTypes = agentConfigurationTypes.filter((a) => {
-      return a.userListStatus === "in-list";
-    });
-  }
-
-  if (typeof agentsGetView === "object" && "conversationId" in agentsGetView) {
-    const mentions = await getConversationMentions(
-      agentsGetView.conversationId
-    );
-    const mentionedAgentIds = mentions.map((m) => m.configurationId);
-    agentConfigurationTypes = agentConfigurationTypes.filter((a) => {
-      if (mentionedAgentIds.includes(a.sId)) {
-        return true;
-      }
-      return a.userListStatus === "in-list";
-    });
   }
 
   return agentConfigurationTypes;
@@ -632,38 +578,6 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     .filter((a) => auth.canRead(Authenticator.aclsFromGroupIds(a.groupIds)));
 
   return applySortAndLimit(allowedAgentConfigurations.flat());
-}
-
-async function getConversationMentions(
-  conversationId: string
-): Promise<AgentMention[]> {
-  const mentions = await Mention.findAll({
-    attributes: ["agentConfigurationId"],
-    where: {
-      agentConfigurationId: {
-        [Op.ne]: null,
-      },
-    },
-    include: [
-      {
-        model: Message,
-        attributes: [],
-        include: [
-          {
-            model: Conversation,
-            as: "conversation",
-            attributes: [],
-            where: { sId: conversationId },
-            required: true,
-          },
-        ],
-        required: true,
-      },
-    ],
-  });
-  return mentions.map((m) => ({
-    configurationId: m.agentConfigurationId as string,
-  }));
 }
 
 /**
@@ -762,7 +676,8 @@ export async function createAgentConfiguration(
   }
 
   let version = 0;
-  let listStatusOverride: AgentUserListStatus | null = null;
+
+  let userFavorite = false;
 
   try {
     let template: TemplateResource | null = null;
@@ -796,12 +711,6 @@ export async function createAgentConfiguration(
           if (existing) {
             // Bump the version of the agent.
             version = existing.version + 1;
-
-            // If the agent already exists, record the listStatusOverride to properly render the new
-            // AgentConfigurationType.
-            if (userRelation) {
-              listStatusOverride = userRelation.listStatusOverride;
-            }
           }
 
           await AgentConfiguration.update(
@@ -814,23 +723,11 @@ export async function createAgentConfiguration(
               transaction: t,
             }
           );
+          userFavorite = userRelation?.favorite ?? false;
         }
+
         const sId = agentConfigurationId || generateLegacyModelSId();
 
-        // If creating a new agent, we include it in the user's list by default.
-        // This is so it doesn't disappear from their list on scope change
-        if (!agentConfigurationId) {
-          listStatusOverride = "in-list";
-          await AgentUserRelation.create(
-            {
-              workspaceId: owner.id,
-              agentConfiguration: sId,
-              userId: user.id,
-              listStatusOverride: "in-list",
-            },
-            { transaction: t }
-          );
-        }
         // Create Agent config.
         return AgentConfiguration.create(
           {
@@ -869,10 +766,10 @@ export async function createAgentConfiguration(
       version: agent.version,
       versionAuthorId: agent.authorId,
       scope: agent.scope,
-      userListStatus: null,
       name: agent.name,
       description: agent.description,
       instructions: agent.instructions,
+      userFavorite,
       model: {
         providerId: agent.providerId,
         modelId: agent.modelId,
@@ -887,11 +784,6 @@ export async function createAgentConfiguration(
         GroupResource.modelIdToSId({ id, workspaceId: owner.id })
       ),
     };
-
-    agentConfiguration.userListStatus = agentUserListStatus({
-      agentConfiguration,
-      listStatusOverride,
-    });
 
     await agentConfigurationWasUpdatedBy({
       agent: agentConfiguration,

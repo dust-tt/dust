@@ -5,14 +5,13 @@ import {
   DropdownMenu,
   EyeIcon,
   Icon,
-  ListAddIcon,
-  ListRemoveIcon,
   MoreIcon,
   PencilSquareIcon,
+  StarIcon,
+  StarStrokeIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type {
-  AgentUserListStatus,
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -21,7 +20,7 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
-import { useUpdateAgentUserListStatus } from "@app/lib/swr/assistants";
+import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { setQueryParam } from "@app/lib/utils/router";
 
@@ -31,7 +30,7 @@ interface AssistantDetailsDropdownMenuProps {
   variant?: "button" | "plain";
   canDelete?: boolean;
   isMoreInfoVisible?: boolean;
-  showAddRemoveToList?: boolean;
+  showAddRemoveToFavorite?: boolean;
 }
 
 export function AssistantDetailsDropdownMenu({
@@ -40,16 +39,15 @@ export function AssistantDetailsDropdownMenu({
   variant = "plain",
   canDelete,
   isMoreInfoVisible,
-  showAddRemoveToList = false,
+  showAddRemoveToFavorite = false,
 }: AssistantDetailsDropdownMenuProps) {
-  const [isUpdatingList, setIsUpdatingList] = useState(false);
+  const [isUpdatingFavorites, setIsUpdatingFavorite] = useState(false);
   const [showDeletionModal, setShowDeletionModal] = useState(false);
 
   const router = useRouter();
 
   const { user } = useUser();
-
-  const doAgentListStatusUpdate = useUpdateAgentUserListStatus({
+  const doFavoriteUpdate = useUpdateUserFavorite({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
@@ -63,16 +61,15 @@ export function AssistantDetailsDropdownMenu({
   }
 
   const isAgentWorkspace = agentConfiguration.scope === "workspace";
-  const isAgentPublished = agentConfiguration.scope === "published";
   const isGlobalAgent = agentConfiguration.scope === "global";
 
-  const isInList = agentConfiguration.userListStatus === "in-list";
+  const isFavorite = agentConfiguration.userFavorite;
   const allowDeletion = canDelete && (isBuilder(owner) || !isAgentWorkspace);
 
-  const updateAgentUserList = async (listStatus: AgentUserListStatus) => {
-    setIsUpdatingList(true);
-    await doAgentListStatusUpdate(listStatus);
-    setIsUpdatingList(false);
+  const updateFavorite = async (favorite: boolean) => {
+    setIsUpdatingFavorite(true);
+    await doFavoriteUpdate(favorite);
+    setIsUpdatingFavorite(false);
   };
 
   const dropdownButton = (() => {
@@ -198,20 +195,20 @@ export function AssistantDetailsDropdownMenu({
                     />
                   )}
 
-                  {isAgentPublished && showAddRemoveToList && (
+                  {showAddRemoveToFavorite && (
                     <>
                       <DropdownMenu.SectionHeader label="MY ASSISTANTS" />
                       <DropdownMenu.Item
                         label={
-                          isInList ? "Remove from my list" : "Add to my list"
+                          isFavorite
+                            ? "Remove from favorites"
+                            : "Add to favorites"
                         }
-                        disabled={isUpdatingList}
+                        disabled={isUpdatingFavorites}
                         onClick={() => {
-                          void updateAgentUserList(
-                            isInList ? "not-in-list" : "in-list"
-                          );
+                          void updateFavorite(isFavorite ? false : true);
                         }}
-                        icon={isInList ? ListRemoveIcon : ListAddIcon}
+                        icon={isFavorite ? StarStrokeIcon : StarIcon}
                       />
                     </>
                   )}

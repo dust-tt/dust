@@ -144,13 +144,11 @@ function sortAgents(
   a: LightAgentConfigurationType,
   b: LightAgentConfigurationType
 ) {
-  const aFavorite = a.scope === "published" && a.userListStatus === "in-list";
-  const bFavorite = b.scope === "published" && b.userListStatus === "in-list";
   // Place favorites first
-  if (aFavorite && !bFavorite) {
+  if (a.userFavorite && !b.userFavorite) {
     return -1;
   }
-  if (bFavorite && !aFavorite) {
+  if (b.userFavorite && !a.userFavorite) {
     return 1;
   }
   if (a.sId === "dust") {

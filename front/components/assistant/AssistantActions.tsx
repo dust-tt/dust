@@ -9,10 +9,10 @@ import { useContext } from "react";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   useAgentConfiguration,
-  useUpdateAgentUserListStatus,
+  useUpdateUserFavorite,
 } from "@app/lib/swr/assistants";
 
-export function RemoveAssistantFromListDialog({
+export function RemoveAssistantFromFavoritesDialog({
   owner,
   agentConfiguration,
   show,
@@ -23,7 +23,7 @@ export function RemoveAssistantFromListDialog({
   show: boolean;
   onClose: () => void;
 }) {
-  const doUpdate = useUpdateAgentUserListStatus({
+  const doUpdate = useUpdateUserFavorite({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
@@ -31,18 +31,18 @@ export function RemoveAssistantFromListDialog({
   return (
     <Dialog
       isOpen={show}
-      title={`Remove from my list`}
+      title={`Remove from favorites`}
       onCancel={onClose}
       validateLabel="Remove"
       validateVariant="primaryWarning"
       onValidate={async () => {
-        void doUpdate("not-in-list");
+        void doUpdate(false);
         onClose();
       }}
     >
       <div>
-        This will remove the assistant from your list. You can add it back to
-        your list at any time from the Chat homepage.
+        This will remove the assistant from favorites. You can add it back at
+        any time from the Chat homepage.
       </div>
     </Dialog>
   );
