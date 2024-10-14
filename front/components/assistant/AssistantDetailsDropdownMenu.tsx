@@ -43,13 +43,16 @@ export function AssistantDetailsDropdownMenu({
   showAddRemoveToList = false,
 }: AssistantDetailsDropdownMenuProps) {
   const [isUpdatingList, setIsUpdatingList] = useState(false);
+  const [showDeletionModal, setShowDeletionModal] = useState(false);
+
+  const router = useRouter();
+
   const { user } = useUser();
+
   const doAgentListStatusUpdate = useUpdateAgentUserListStatus({
     owner,
     agentConfigurationId: agentConfiguration.sId,
   });
-  const router = useRouter();
-  const [showDeletionModal, setShowDeletionModal] = useState(false);
 
   if (
     !agentConfiguration ||
@@ -94,15 +97,17 @@ export function AssistantDetailsDropdownMenu({
     }
   })();
 
+  const onDeletionModalClose = () => {
+    setShowDeletionModal(false);
+  };
+
   return (
     <>
       <DeleteAssistantDialog
         owner={owner}
         isOpen={showDeletionModal}
         agentConfiguration={agentConfiguration}
-        onClose={() => {
-          setShowDeletionModal(false);
-        }}
+        onClose={onDeletionModalClose}
         isPrivateAssistant={agentConfiguration.scope === "private"}
       />
 

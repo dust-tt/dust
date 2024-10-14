@@ -33,12 +33,12 @@ import {
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@dust-tt/types";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import AssistantListActions from "@app/components/assistant/AssistantListActions";
+import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
-import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
@@ -53,14 +53,13 @@ import {
 } from "@app/lib/data_sources";
 import {
   useAgentConfiguration,
-  useAgentUsage,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
 import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
@@ -73,49 +72,32 @@ export function AssistantDetails({
   onClose,
   owner,
 }: AssistantDetailsProps) {
-  const agentUsage = useAgentUsage({
-    workspaceId: owner.sId,
-    agentConfigurationId: assistantId,
-  });
+  const [isUpdatingScope, setIsUpdatingScope] = useState(false);
+
   const { agentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
     agentConfigurationId: assistantId,
   });
+  const { dataSourceViews } = useDataSourceViews(owner);
 
   const doUpdateScope = useUpdateAgentScope({
     owner,
     agentConfigurationId: assistantId,
   });
 
-  const { dataSourceViews } = useDataSourceViews(owner);
-
-  const [isUpdatingScope, setIsUpdatingScope] = useState(false);
+  const updateScope = useCallback(
+    async (scope: Exclude<AgentConfigurationScope, "global">) => {
+      setIsUpdatingScope(true);
+      await doUpdateScope(scope);
+      setIsUpdatingScope(false);
+    },
+    [doUpdateScope]
+  );
 
   if (!agentConfiguration) {
     return <></>;
   }
 
-  const updateScope = async (
-    scope: Exclude<AgentConfigurationScope, "global">
-  ) => {
-    setIsUpdatingScope(true);
-    await doUpdateScope(scope);
-    setIsUpdatingScope(false);
-  };
-
-  const usageSentence = assistantUsageMessage({
-    assistantName: agentConfiguration.name,
-    usage: agentUsage.agentUsage,
-    isLoading: agentUsage.isAgentUsageLoading,
-    isError: agentUsage.isAgentUsageError,
-    shortVersion: true,
-  });
-  const editedSentence =
-    agentConfiguration.versionCreatedAt &&
-    `Last edited ${timeAgoFrom(
-      Date.parse(agentConfiguration.versionCreatedAt),
-      { useLongFormat: true }
-    )} ago`;
   const DescriptionSection = () => (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -173,28 +155,10 @@ export function AssistantDetails({
       <div className="text-sm text-element-900">
         {agentConfiguration.description}
       </div>
-      {agentConfiguration.scope === "global" && usageSentence && (
-        <div className="text-xs">{usageSentence}</div>
-      )}
-      {(agentConfiguration.scope === "workspace" ||
-        agentConfiguration.scope === "published") && (
-        <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
-          {agentConfiguration.lastAuthors && (
-            <div>
-              <span className="font-bold">By: </span>{" "}
-              {agentConfiguration.lastAuthors.join(", ")}
-            </div>
-          )}
-          {usageSentence ? (
-            <div>
-              {editedSentence + ", "}
-              {usageSentence}
-            </div>
-          ) : (
-            <div className="justify-self-end">{editedSentence}</div>
-          )}
-        </div>
-      )}
+      <AssistantUsageSection
+        agentConfiguration={agentConfiguration}
+        owner={owner}
+      />
       <Page.Separator />
     </div>
   );

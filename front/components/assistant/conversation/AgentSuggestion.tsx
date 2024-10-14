@@ -4,13 +4,14 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { useContext, useMemo, useState } from "react";
+import { useRouter } from "next/router";
+import { useCallback, useContext, useMemo, useState } from "react";
 
-import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { setQueryParam } from "@app/lib/utils/router";
 
 interface AgentSuggestionProps {
   conversationId: string;
@@ -31,6 +32,8 @@ export function AgentSuggestion({
   const sendNotification = useContext(SendNotificationsContext);
 
   const [isLoading, setIsLoading] = useState(false);
+
+  const router = useRouter();
 
   const { submit: handleSelectSuggestion } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
@@ -72,16 +75,15 @@ export function AgentSuggestion({
     return [agents.slice(0, 3), agents.slice(3)];
   }, [agentConfigurations]);
 
-  const [showAssistantDetail, setShowAssistantDetail] =
-    useState<LightAgentConfigurationType | null>(null);
+  const showAssistantDetails = useCallback(
+    (agentConfiguration: LightAgentConfigurationType) => {
+      setQueryParam(router, "assistantDetails", agentConfiguration.sId);
+    },
+    [router]
+  );
 
   return (
     <>
-      <AssistantDetails
-        assistantId={showAssistantDetail?.sId || null}
-        owner={owner}
-        onClose={() => setShowAssistantDetail(null)}
-      />
       <div className="pt-4">
         <div className="flex items-center gap-2">
           <span className="grow text-sm text-element-800">
@@ -124,7 +126,7 @@ export function AgentSuggestion({
                 title={agent.name}
                 pictureUrl={agent.pictureUrl}
                 onClick={() => handleSelectSuggestion(agent)}
-                onActionClick={() => setShowAssistantDetail(agent)}
+                onActionClick={() => showAssistantDetails(agent)}
               />
             ))}
           </div>
