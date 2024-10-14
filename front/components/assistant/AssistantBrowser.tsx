@@ -158,7 +158,6 @@ export function AssistantBrowser({
                   </div>
                 </Link>
               }
-              triggerIsButton
             />
             {isBuilder && (
               <Tooltip
