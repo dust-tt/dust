@@ -170,7 +170,7 @@ export function SharingButton({
         />
       )}
       <PopoverRoot open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-        <PopoverTrigger>
+        <PopoverTrigger asChild>
           <Button
             size="sm"
             label="Sharing"
