@@ -56,9 +56,9 @@ export function AssistantActionsSection({
   agentConfiguration,
   owner,
 }: AssistantActionsSectionProps) {
-  const isDustGlobalAgent = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
-
-  const { dataSourceViews } = useDataSourceViews(owner);
+  const { dataSourceViews } = useDataSourceViews(owner, {
+    disabled: agentConfiguration.actions.length === 0,
+  });
 
   const categorizedActions = useMemo(() => {
     const initial = {
@@ -66,6 +66,8 @@ export function AssistantActionsSection({
       queryTables: [] as TablesQueryConfigurationType[],
       other: [] as AgentActionConfigurationType[],
     };
+
+    const isDustGlobalAgent = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
 
     return agentConfiguration.actions.reduce((acc, action) => {
       // Since Dust is configured with one search for all, plus individual searches for each managed data source,
@@ -83,7 +85,7 @@ export function AssistantActionsSection({
       }
       return acc;
     }, initial);
-  }, [isDustGlobalAgent, agentConfiguration.actions]);
+  }, [agentConfiguration.actions, agentConfiguration.sId]);
 
   if (agentConfiguration.actions.length === 0) {
     return null;
