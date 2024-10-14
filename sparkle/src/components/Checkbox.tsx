@@ -39,7 +39,7 @@ type CheckBoxStateType = boolean | "partial";
 interface CheckboxProps
   extends Omit<
       React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
-      "checked"
+      "checked" | "defaultChecked"
     >,
     VariantProps<typeof checkboxStyles> {
   checked?: CheckBoxStateType;
@@ -52,7 +52,7 @@ const Checkbox = React.forwardRef<
   <CheckboxPrimitive.Root
     ref={ref}
     className={cn(checkboxStyles({ checked, size }), className)}
-    checked={!!checked}
+    checked={checked === "partial" ? "indeterminate" : checked}
     {...props}
   >
     <CheckboxPrimitive.Indicator className="s-flex s-items-center s-justify-center s-text-current">
