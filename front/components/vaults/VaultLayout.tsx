@@ -17,6 +17,7 @@ import { CreateOrEditVaultModal } from "@app/components/vaults/CreateOrEditVault
 import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
 import VaultSideBarMenu from "@app/components/vaults/VaultSideBarMenu";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useVaultsAsAdmin } from "@app/lib/swr/vaults";
 import { getVaultIcon, isPrivateVaultsLimitReached } from "@app/lib/vaults";
@@ -57,11 +58,8 @@ export function VaultLayout({
     disabled: plan.limits.vaults.maxVaults === 0 || !isAdmin,
   });
 
-  const isPrivateVaultsEnabled = owner.flags.includes(
-    "private_data_vaults_feature"
-  );
-
   const isLimitReached = isPrivateVaultsLimitReached(vaults, plan);
+  const isEnterprise = isEntreprisePlan(plan.code);
 
   return (
     <RootLayout>
@@ -72,7 +70,6 @@ export function VaultLayout({
           <VaultSideBarMenu
             owner={owner}
             isAdmin={isAdmin}
-            isPrivateVaultsEnabled={isPrivateVaultsEnabled}
             setShowVaultCreationModal={setShowVaultCreationModal}
           />
         }
@@ -85,7 +82,7 @@ export function VaultLayout({
           parentId={parentId ?? undefined}
         />
         {children}
-        {isAdmin && isPrivateVaultsEnabled && !isLimitReached && (
+        {isAdmin && !isLimitReached && (
           <CreateOrEditVaultModal
             isAdmin={isAdmin}
             owner={owner}
@@ -96,16 +93,17 @@ export function VaultLayout({
             }}
           />
         )}
-        {isAdmin && isPrivateVaultsEnabled && isLimitReached && (
+        {isAdmin && isLimitReached && (
           <Dialog
-            alertDialog={true}
+            alertDialog
             isOpen={isLimitReached && showVaultCreationModal}
-            title="Max privates vaults reached"
+            title="You can't create more vaults."
             onValidate={() => setShowVaultCreationModal(false)}
           >
             <div>
-              You can't create more vaults. Please upgrade to add more. Reach
-              out to us at support@dust.tt to learn more.
+              {isEnterprise
+                ? "We're going to make changes to data permissions vaults soon and are limiting the creation of vaults for that reason. Reach out to us to learn more."
+                : "The maximum number of vaults for this workspace has been reached. Please reach out at support@dust.tt to learn more."}
             </div>
           </Dialog>
         )}

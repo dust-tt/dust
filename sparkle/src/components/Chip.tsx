@@ -24,12 +24,11 @@ type ChipProps = {
 };
 
 const sizeClasses = {
-  xs: "s-h-7 s-text-xs s-font-medium s-px-3 s-gap-2",
-  sm: "s-h-9 s-text-sm s-font-semibold s-px-3 s-gap-2.5",
+  xs: "s-rounded-lg s-h-7 s-text-xs s-font-medium s-px-3 s-gap-2",
+  sm: "s-rounded-xl s-h-9 s-text-sm s-font-semibold s-px-3 s-gap-2.5",
 };
 
-const baseClasses =
-  "s-rounded-lg s-inline-flex s-box-border s-border s-items-center";
+const baseClasses = "s-inline-flex s-box-border s-border s-items-center";
 
 export function Chip({
   size = "xs",

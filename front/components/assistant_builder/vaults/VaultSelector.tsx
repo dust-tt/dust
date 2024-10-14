@@ -63,9 +63,8 @@ export function VaultSelector({
               }}
             >
               <Checkbox
-                variant="checkable"
-                checked={isChecked ? "checked" : "unchecked"}
-                onChange={() => {
+                checked={isChecked}
+                onCheckedChange={() => {
                   if (!isDisabled) {
                     setSelectedVault(isChecked ? "" : vault.sId);
                   }

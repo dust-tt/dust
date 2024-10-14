@@ -231,31 +231,13 @@ export async function allowSyncCollection({
     throw new Error(" Collection not found.");
   }
 
-  // We create the Help Center if it doesn't exist and fetch the children collections
-  const [, childrenCollections] = await Promise.all([
-    allowSyncHelpCenter({
-      connectorId,
-      connectionId,
-      helpCenterId: collection.helpCenterId,
-      region,
-    }),
-    fetchIntercomCollections({
-      accessToken,
-      helpCenterId: collection.helpCenterId,
-      parentId: collection.collectionId,
-    }),
-  ]);
-
-  const collectionPermissionPromises = childrenCollections.map((c) =>
-    allowSyncCollection({
-      connectorId,
-      connectionId,
-      collectionId: c.id,
-      helpCenterId,
-      region,
-    })
-  );
-  await Promise.all(collectionPermissionPromises);
+  // Create the help center if it doesn't exist.
+  await allowSyncHelpCenter({
+    connectorId,
+    connectionId,
+    helpCenterId: collection.helpCenterId,
+    region,
+  });
 
   return collection;
 }

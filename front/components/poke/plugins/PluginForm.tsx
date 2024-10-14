@@ -1,3 +1,5 @@
+import { Input } from "@dust-tt/sparkle";
+import { Checkbox } from "@dust-tt/sparkle";
 import { createIoTsCodecFromArgs } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import type * as t from "io-ts";
@@ -5,7 +7,6 @@ import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
-import { PokeCheckbox } from "@app/components/poke/shadcn/ui/checkbox";
 import {
   PokeForm,
   PokeFormControl,
@@ -15,7 +16,6 @@ import {
   PokeFormLabel,
   PokeFormMessage,
 } from "@app/components/poke/shadcn/ui/form";
-import { PokeInput } from "@app/components/poke/shadcn/ui/input";
 import {
   PokeSelect,
   PokeSelectContent,
@@ -88,23 +88,23 @@ export function PluginForm({ manifest, onSubmit }: PluginFormProps) {
                 <PokeFormLabel>{arg.label}</PokeFormLabel>
                 <PokeFormControl>
                   <>
-                    {arg.type === "string" && <PokeInput {...field} />}
+                    {arg.type === "string" && <Input {...field} />}
                     {arg.type === "number" && (
-                      <PokeInput
+                      <Input
                         type="number"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />
                     )}
                     {arg.type === "boolean" && (
-                      <PokeCheckbox
+                      <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
                       />
                     )}
                     {arg.type === "enum" && (
                       <PokeSelect
-                        value={field.value as string}
+                        value={field.value.toString()}
                         onValueChange={field.onChange}
                       >
                         <PokeFormControl>

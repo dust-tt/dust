@@ -355,6 +355,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
           "webcrawler failedRequestHandler"
         );
         if (
+          !context.response ||
           context.response.statusCode === 403 ||
           context.response.statusCode === 429
         ) {

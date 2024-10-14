@@ -1,9 +1,8 @@
-import { ClipboardCheckIcon, ClipboardIcon } from "lucide-react";
+import { ClipboardCheckIcon, ClipboardIcon, Label } from "@dust-tt/sparkle";
 import * as React from "react";
 
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
-import { PokeLabel } from "@app/components/poke/shadcn/ui/label";
 import PokeLink from "@app/components/poke/shadcn/ui/link";
 
 const Table = React.forwardRef<
@@ -47,7 +46,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "bg-muted/50 border-t font-medium [&>tr]:last:border-b-0",
+      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
       className
     )}
     {...props}
@@ -62,7 +61,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
+      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
       className
     )}
     {...props}
@@ -77,7 +76,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "text-muted-foreground h-10 px-2 text-left align-middle font-medium [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      "h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
     {...props}
@@ -106,7 +105,7 @@ const TableCaption = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn("text-muted-foreground mt-4 text-sm", className)}
+    className={cn("mt-4 text-sm text-muted-foreground", className)}
     {...props}
   />
 ));
@@ -137,7 +136,7 @@ const TableCellWithCopy = React.forwardRef<
       {...props}
     >
       <div className="flex items-center space-x-2">
-        <PokeLabel>{label}</PokeLabel>
+        <Label>{label}</Label>
         <PokeButton size="sm" variant="outline" onClick={handleCopy}>
           {isCopied ? (
             <ClipboardCheckIcon className="h-4 w-4" />

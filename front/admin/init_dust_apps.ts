@@ -51,11 +51,6 @@ async function main() {
     planCode: "FREE_UPGRADED_PLAN",
   });
 
-  await FeatureFlag.create({
-    workspaceId: w.id,
-    name: "private_data_vaults_feature",
-  });
-
   const users = await User.findAll();
   await Promise.all(
     users.map(async (user) =>

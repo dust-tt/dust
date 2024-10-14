@@ -1,3 +1,4 @@
+import { DustAPI } from "@dust-tt/client";
 import type {
   AgentMessageSuccessEvent,
   APIError,
@@ -8,7 +9,7 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/types";
-import { DustAPI, Err, Ok, sectionFullText } from "@dust-tt/types";
+import { Err, Ok, sectionFullText } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import type * as t from "io-ts";

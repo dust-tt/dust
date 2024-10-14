@@ -1,18 +1,22 @@
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import {
   Button,
   ExternalLinkIcon,
+  LoginIcon,
   LogoHorizontalColorLogo,
-  MarkPenIcon,
+  LogoutIcon,
   Page,
-  TranslateIcon,
+  Spinner,
+  TextArea,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import { Link } from "react-router-dom";
+
+import { useAuth } from "@extension/hooks/useAuth";
+import { WorkspaceType } from "@dust-tt/types";
 
 export const MainPage = () => {
+  const { token, isLoading, handleLogin, handleLogout } = useAuth();
+  
   const owner: WorkspaceType = {
     id: 1,
     sId: "IQw2NP0Anb",
@@ -23,39 +27,48 @@ export const MainPage = () => {
     defaultEmbeddingProvider: null,
     flags: [],
   };
-  const {
-    agentConfigurations,
-    isAgentConfigurationsLoading,
-    isAgentConfigurationsError,
-  } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "assistants-search",
-  });
+
   return (
-    <div className="flex flex-col p-4 gap-2">
-      <div className="flex gap-2 align-center">
-        <LogoHorizontalColorLogo className="h-4 w-16" />
-        <a href="https://dust.tt" target="_blank">
-          <ExternalLinkIcon color="#64748B" />
-        </a>
+    <div className="flex flex-col p-4 gap-2 h-screen">
+      <div className="flex justify-between items-start">
+        <div className="flex items-center gap-2 pb-10">
+          <LogoHorizontalColorLogo className="h-4 w-16" />
+          <a href="https://dust.tt" target="_blank">
+            <ExternalLinkIcon color="#64748B" />
+          </a>
+        </div>
+
+        {token && (
+          <Button
+            icon={LogoutIcon}
+            variant="tertiary"
+            label="Sign out"
+            onClick={handleLogout}
+          />
+        )}
       </div>
-      <div className="flex flex-grow gap-2 p-1">
-        <Button
-          className="flex-grow"
-          icon={MarkPenIcon}
-          variant="secondary"
-          label="Summarize"
-        ></Button>
-        <Button
-          className="flex-grow"
-          icon={TranslateIcon}
-          variant="secondary"
-          label="Translate"
-        ></Button>
-      </div>
-      <Page.SectionHeader title="Conversation" />
-      <Link to="/conversation">Conversations</Link>
-      <GenerationContextProvider>
+
+      {isLoading && (
+        <div className="flex justify-center items-center w-full h-full">
+          <Spinner />
+        </div>
+      )}
+
+      {!isLoading && !token && (
+        <div className="flex justify-center items-center w-full h-full">
+          <Button
+            icon={LoginIcon}
+            variant="primary"
+            label="Sign in"
+            onClick={handleLogin}
+          />
+        </div>
+      )}
+
+      {token && (
+        <div className="w-full h-full">
+          <Page.SectionHeader title="Conversation" />
+          <GenerationContextProvider>
         <FixedAssistantInputBar
           owner={owner}
           onSubmit={() => {}}
@@ -64,7 +77,16 @@ export const MainPage = () => {
           conversationId={null}
         />
       </GenerationContextProvider>
-      <Page.SectionHeader title="Favorites" />
+          {/* <Link to="/conversation">Conversations</Link> */}
+          <TextArea />
+          <Button
+            variant="primary"
+            label="Send"
+            className="mt-4"
+            onClick={() => alert("Sorry, not implemented yet!")}
+          />
+        </div>
+      )}
     </div>
   );
 };

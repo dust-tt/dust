@@ -25,6 +25,9 @@ COPY . .
 # Types dependencies
 RUN cd types && npm ci
 
+# Api client dependencies
+RUN cd sdks/js && npm ci
+
 # Connectors dependencies
 RUN cd connectors && npm ci
 
@@ -33,6 +36,8 @@ RUN cd front && npm ci
 
 # Now copy the rest of the code
 RUN cd types && npm run build
+
+RUN cd sdks/js && npm run build
 
 RUN cd connectors && npm run build
 

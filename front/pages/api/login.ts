@@ -409,6 +409,12 @@ async function handler(
       const { error } = result;
 
       if (error instanceof AuthFlowError) {
+        logger.error(
+          {
+            error,
+          },
+          "Error during login flow."
+        );
         res.redirect(
           `/api/auth/logout?returnTo=/login-error?reason=${error.code}`
         );

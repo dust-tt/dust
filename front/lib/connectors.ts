@@ -18,6 +18,7 @@ function getConnectorOrder() {
 }
 
 type ComparableByProvider = { connectorProvider: ConnectorProvider | null };
+
 function compareByImportance(
   a: ComparableByProvider,
   b: ComparableByProvider

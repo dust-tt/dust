@@ -391,10 +391,10 @@ export function DataSourceViewSelector({
   const isPartiallyChecked = internalIds.length > 0;
 
   const checkedStatus = selectionConfiguration.isSelectAll
-    ? "checked"
+    ? true
     : isPartiallyChecked
       ? "partial"
-      : "unchecked";
+      : false;
 
   const isTableView = viewType === "tables";
 

@@ -1,10 +1,16 @@
-FROM node:20.13.0 as front
+FROM node:20.13.0 AS front
 
 RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
 
 WORKDIR /types
 COPY /types/package*.json ./
 COPY /types/ .
+RUN npm ci
+RUN npm run build
+
+WORKDIR /sdks/js
+COPY /sdks/js/package*.json ./
+COPY /sdks/js/ .
 RUN npm ci
 RUN npm run build
 

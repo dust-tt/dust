@@ -1,8 +1,4 @@
-import type {
-  LightWorkspaceType,
-  PluginWorkspaceResource,
-  Result,
-} from "@dust-tt/types";
+import type { PluginWorkspaceResource, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";

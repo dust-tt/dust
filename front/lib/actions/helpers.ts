@@ -1,6 +1,5 @@
-import type { DustAPIResponse } from "@dust-tt/types";
-import type { DustAppConfigType } from "@dust-tt/types";
-import { DustAPI } from "@dust-tt/types";
+import type { DustAPIResponse, DustAppConfigType } from "@dust-tt/client";
+import { DustAPI } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/types";
 import { isLeft, isRight } from "fp-ts/lib/Either";
 import * as t from "io-ts";
