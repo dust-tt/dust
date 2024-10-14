@@ -162,6 +162,9 @@ export const github = async ({
     }
 
     case "skip-issue": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
       if (!args.dsId) {
         throw new Error("Missing --dsId argument");
       }
