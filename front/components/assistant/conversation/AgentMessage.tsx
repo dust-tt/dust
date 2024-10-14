@@ -678,6 +678,7 @@ function ErrorMessage({
               label="See the error"
             />
           }
+          popoverTriggerAsChild
           content={
             <div className="flex flex-col gap-3">
               <div className="text-sm font-normal text-warning-800">

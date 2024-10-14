@@ -612,6 +612,7 @@ export function ActionProcess({
                     onClick={generateSchemaFromInstructions}
                   />
                 }
+                tooltipTriggerAsChild
               />
             </div>
           )}

@@ -208,6 +208,7 @@ export function ProviderManagementModal({
                   disabled={true}
                 />
               }
+              tooltipTriggerAsChild
             />
           </DropdownMenu.Button>
           <DropdownMenu.Items origin="topRight">

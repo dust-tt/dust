@@ -159,6 +159,7 @@ export function AssistantBrowser({
                 </div>
               </Link>
             }
+            tooltipTriggerAsChild
           />
           {isBuilder && (
             <Tooltip
@@ -173,6 +174,7 @@ export function AssistantBrowser({
                   />
                 </Link>
               }
+              tooltipTriggerAsChild
             />
           )}
         </Button.List>
