@@ -17,8 +17,8 @@ import type {
 } from "@dust-tt/types";
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
-import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useMemo } from "react";
+import { Dispatch, SetStateAction, useCallback, useState } from "react";
+import { useMemo } from "react";
 
 import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
 import type {
@@ -315,6 +315,7 @@ export function DataSourceViewSelector({
   isRootSelectable,
   defaultCollapsed = true,
 }: DataSourceViewSelectorProps) {
+  const [isChecked, setIsChecked] = useState<boolean | "partial">(false);
   const dataSourceView = selectionConfiguration.dataSourceView;
 
   const LogoComponent = getConnectorProviderLogoWithFallback(
@@ -390,11 +391,14 @@ export function DataSourceViewSelector({
 
   const isPartiallyChecked = internalIds.length > 0;
 
-  const checkedStatus = selectionConfiguration.isSelectAll
-    ? true
-    : isPartiallyChecked
-      ? "partial"
-      : false;
+  useCallback(() => {
+    setIsChecked(selectionConfiguration.isSelectAll
+      ? true
+      : isPartiallyChecked
+        ? "partial"
+        : false
+    )
+  }, [isPartiallyChecked, selectionConfiguration.isSelectAll]);
 
   const isTableView = viewType === "tables";
 
@@ -466,9 +470,12 @@ export function DataSourceViewSelector({
           hideCheckbox || (!isRootSelectable && !hasActiveSelection)
             ? undefined
             : {
-                checked: checkedStatus,
+                checked: isChecked,
                 disabled: !isRootSelectable,
-                onChange: handleSelectAll,
+                onCheckedChange: (v) => {
+                  setIsChecked(v === "indeterminate" ? "partial" : v);
+                  handleSelectAll()
+                },
               }
         }
         actions={

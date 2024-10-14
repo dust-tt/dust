@@ -176,7 +176,7 @@ function ContentNodeTreeChildren({
               (n.preventSelection !== true || checkedState === "partial") &&
               selectedNodes
                 ? {
-                    disabled: parentIsSelected || !setSelectedNodes,
+                    disabled: false,
                     checked: checkedState,
                     onCheckedChange: (v) => {
                       if (setSelectedNodes) {
