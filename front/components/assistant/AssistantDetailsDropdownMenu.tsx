@@ -46,7 +46,7 @@ export function AssistantDetailsDropdownMenu({
 
   const router = useRouter();
 
-const { user } = useUser();
+  const { user } = useUser();
   const doFavoriteUpdate = useUpdateUserFavorite({
     owner,
     agentConfigurationId: agentConfiguration.sId,
