@@ -13,10 +13,11 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import { useCallback, useEffect, useState } from "react";
 
-import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { filterAndSortAgents } from "@app/lib/utils";
+import { setQueryParam } from "@app/lib/utils/router";
 
 export function AssistantPicker({
   owner,
@@ -39,8 +40,6 @@ export function AssistantPicker({
   const [searchedAssistants, setSearchedAssistants] = useState<
     LightAgentConfigurationType[]
   >([]);
-  const [showDetails, setShowDetails] =
-    useState<LightAgentConfigurationType | null>(null);
 
   useEffect(() => {
     setSearchedAssistants(filterAndSortAgents(assistants, searchText));
@@ -57,19 +56,20 @@ export function AssistantPicker({
     }
   };
 
+  const router = useRouter();
+
+  const showAssistantDetails = useCallback(
+    (agentConfiguration: LightAgentConfigurationType) => {
+      setQueryParam(router, "assistantDetails", agentConfiguration.sId);
+    },
+    [router]
+  );
+
   return (
     // TODO(2024-10-09 jules): use Popover when new Button has been released
     <DropdownMenu>
       {({ close }) => (
         <>
-          <AssistantDetails
-            owner={owner}
-            assistantId={showDetails?.sId || null}
-            onClose={() => {
-              setShowDetails(null);
-            }}
-          />
-
           <div onClick={() => setSearchText("")} className="flex">
             {pickerButton ? (
               <DropdownMenu.Button size={size}>
@@ -156,7 +156,7 @@ export function AssistantPicker({
                     icon={MoreIcon}
                     onClick={() => {
                       close();
-                      setShowDetails(c);
+                      showAssistantDetails(c);
                     }}
                     variant="tertiary"
                     size="sm"

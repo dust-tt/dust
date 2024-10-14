@@ -39,7 +39,7 @@ export default function ConversationLayout({
     conversationId !== "new" ? conversationId : null
   );
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     const currentPathname = router.pathname;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { assistantDetails, ...restQuery } = router.query;
@@ -50,7 +50,7 @@ export default function ConversationLayout({
         shallow: true,
       }
     );
-  };
+  }, [router]);
 
   useEffect(() => {
     const handleRouteChange = () => {
