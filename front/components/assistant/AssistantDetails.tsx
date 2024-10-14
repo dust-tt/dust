@@ -2,10 +2,6 @@ import { Avatar, ContentMessage, ElementModal, Page } from "@dust-tt/sparkle";
 import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
-import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
-import AssistantFavoriteActions from "@app/components/assistant/AssistantListActions";
-import { AssistantActionsSection } from "@app/components/assistant/details/AssistantActionsSection";
-import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import {

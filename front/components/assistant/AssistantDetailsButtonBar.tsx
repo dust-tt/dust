@@ -2,15 +2,10 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isBuilder } from "@dust-tt/types";
-import { useRouter } from "next/router";
-import { useState } from "react";
-
-import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
-import { Button } from "@dust-tt/sparkle";
-import { StarIcon } from "lucide-react";
+import { Button, StarIcon, StarStrokeIcon } from "@dust-tt/sparkle";
+import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 
 interface AssistantDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
@@ -26,6 +21,11 @@ export function AssistantDetailsButtonBar({
 }: AssistantDetailsButtonBarProps) {
   const { user } = useUser();
 
+  const updateUserFavorite = useUpdateUserFavorite({
+    owner,
+    agentConfigurationId: agentConfiguration.sId,
+  });
+
   if (
     !agentConfiguration ||
     agentConfiguration.status === "archived" ||
@@ -37,13 +37,15 @@ export function AssistantDetailsButtonBar({
   return (
     <div className="flex flex-row items-center gap-2 px-1.5">
       <Button
-        icon={StarIcon}
-        label="Actions"
+        icon={agentConfiguration.userFavorite ? StarIcon : StarStrokeIcon}
+        label={`${agentConfiguration.userFavorite ? "Remove from" : "Add to"} favorites`}
         labelVisible={false}
         size="sm"
         variant="tertiary"
         hasMagnifying={false}
+        onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
       />
+
       <div className="h-6 w-0 border-l border-structure-200"></div>
 
       <AssistantDetailsDropdownMenu
