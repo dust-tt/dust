@@ -12,7 +12,7 @@ import {
 
 const log = console.error;
 
-export const useAuth = () => {
+export const useAuthHook = () => {
   const [tokens, setTokens] = useState<StoredTokens | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -20,7 +20,7 @@ export const useAuth = () => {
 
   // User is authenticated if we have a valid access token.
   const isTokenValid = useCallback(() => {
-    return tokens?.accessToken && tokens.expiresAt > Date.now();
+    return !!(tokens?.accessToken && tokens.expiresAt > Date.now());
   }, [tokens]);
   const isAuthenticated = useMemo(() => isTokenValid(), [isTokenValid]);
 

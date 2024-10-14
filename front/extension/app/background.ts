@@ -49,6 +49,9 @@ chrome.runtime.onMessage.addListener(
         logout(sendResponse);
         return true; // Keep the message channel open.
 
+      case "SIGN_CONNECT":
+        return true;
+
       default:
         log(`Unknown message type: ${message.type}.`);
     }

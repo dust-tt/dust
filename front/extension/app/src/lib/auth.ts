@@ -22,7 +22,7 @@ export type AuthBackgroundResponse = {
 };
 
 export type AuthBackroundMessage = {
-  type: "AUTHENTICATE" | "REFRESH_TOKEN" | "LOGOUT";
+  type: "AUTHENTICATE" | "REFRESH_TOKEN" | "LOGOUT" | "SIGN_CONNECT";
   refreshToken?: string;
 };
 
