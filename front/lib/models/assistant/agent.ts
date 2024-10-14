@@ -300,11 +300,6 @@ AgentUserRelation.init(
       allowNull: false,
       defaultValue: false,
     },
-    favorite: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
   },
   {
     modelName: "agent_user_relation",
