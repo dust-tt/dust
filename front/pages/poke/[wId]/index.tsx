@@ -29,8 +29,8 @@ import {
   getWorkspaceCreationDate,
   getWorkspaceVerifiedDomain,
 } from "@app/lib/api/workspace";
-import { orderDatasourceByImportance } from "@app/lib/assistant";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { orderDatasourceByImportance } from "@app/lib/connectors";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";

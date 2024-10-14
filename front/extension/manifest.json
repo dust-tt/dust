@@ -15,5 +15,6 @@
   "side_panel": {
     "default_path": "main.html"
   },
-  "permissions": ["sidePanel", "identity", "storage"]
+  "permissions": ["sidePanel", "identity", "storage"],
+  "host_permissions": ["http://localhost:3000/*", "https://dust.tt/*"]
 }

@@ -24,7 +24,12 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { classNames } from "@app/lib/utils";
 
-export const INPUT_BAR_ACTIONS = ["attachment", "quick-actions"] as const;
+export const INPUT_BAR_ACTIONS = [
+  "attachment",
+  "assistants-list",
+  "assistants-list-with-actions",
+  "fullscreen",
+] as const;
 
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
@@ -153,27 +158,33 @@ const InputBarContainer = ({
               />
             </>
           )}
-          {actions.includes("quick-actions") && (
-            <>
-              <AssistantPicker
-                owner={owner}
+          {(actions.includes("assistants-list") ||
+            actions.includes("assistants-list-with-actions")) && (
+            <AssistantPicker
+              owner={owner}
+              size="sm"
+              onItemClick={(c) => {
+                editorService.insertMention({ id: c.sId, label: c.name });
+              }}
+              assistants={allAssistants}
+              showFooterButtons={actions.includes(
+                "assistants-list-with-actions"
+              )}
+              showMoreDetailsButtons={actions.includes(
+                "assistants-list-with-actions"
+              )}
+            />
+          )}
+          {actions.includes("fullscreen") && (
+            <div className="hidden sm:flex">
+              <IconButton
+                variant={"tertiary"}
+                icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
                 size="sm"
-                onItemClick={(c) => {
-                  editorService.insertMention({ id: c.sId, label: c.name });
-                }}
-                assistants={allAssistants}
-                showFooterButtons={true}
+                className="flex"
+                onClick={handleExpansionToggle}
               />
-              <div className="hidden sm:flex">
-                <IconButton
-                  variant={"tertiary"}
-                  icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
-                  size="sm"
-                  className="flex"
-                  onClick={handleExpansionToggle}
-                />
-              </div>
-            </>
+            </div>
           )}
         </div>
         <Button
