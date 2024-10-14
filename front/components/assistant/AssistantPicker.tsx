@@ -13,12 +13,11 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 
-import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
-import { useRouter } from "next/router";
 
 export function AssistantPicker({
   owner,
