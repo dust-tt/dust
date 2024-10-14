@@ -60,118 +60,41 @@ export function AssistantActionsSection({
 
   const { dataSourceViews } = useDataSourceViews(owner);
 
-  const [retrievalActions, queryTablesActions, otherActions] = useMemo(() => {
-    return agentConfiguration.actions.reduce(
-      ([dataSources, queryTables, otherActions], a) => {
-        // Since Dust is configured with one search for all, plus individual searches for each managed data source,
-        // we hide these additional searches from the user in the UI to avoid displaying the same data source twice.
-        // We use the `hidden_dust_search_` prefix to identify these additional searches.
-        if (
-          isRetrievalConfiguration(a) &&
-          (!isDustGlobalAgent || !a.name.startsWith("hidden_dust_search_"))
-        ) {
-          dataSources.push(a);
-        } else if (isTablesQueryConfiguration(a)) {
-          queryTables.push(a);
-        } else {
-          otherActions.push(a);
-        }
-        return [dataSources, queryTables, otherActions];
-      },
-      [
-        [] as RetrievalConfigurationType[],
-        [] as TablesQueryConfigurationType[],
-        [] as AgentActionConfigurationType[],
-      ]
-    );
+  const categorizedActions = useMemo(() => {
+    const initial = {
+      retrieval: [] as RetrievalConfigurationType[],
+      queryTables: [] as TablesQueryConfigurationType[],
+      other: [] as AgentActionConfigurationType[],
+    };
+
+    return agentConfiguration.actions.reduce((acc, action) => {
+      // Since Dust is configured with one search for all, plus individual searches for each managed data source,
+      // we hide these additional searches from the user in the UI to avoid displaying the same data source twice.
+      // We use the `hidden_dust_search_` prefix to identify these additional searches.
+      if (
+        isRetrievalConfiguration(action) &&
+        (!isDustGlobalAgent || !action.name.startsWith("hidden_dust_search_"))
+      ) {
+        acc.retrieval.push(action);
+      } else if (isTablesQueryConfiguration(action)) {
+        acc.queryTables.push(action);
+      } else {
+        acc.other.push(action);
+      }
+      return acc;
+    }, initial);
   }, [isDustGlobalAgent, agentConfiguration.actions]);
 
+  if (agentConfiguration.actions.length === 0) {
+    return null;
+  }
+
   return (
-    !!agentConfiguration.actions.length && (
-      <>
-        {!!retrievalActions.length && (
-          <div>
-            <div className="pb-2 text-lg font-bold text-element-800">
-              Retrieve from Documents
-            </div>
-            {retrievalActions.map((a, index) => (
-              <div className="flex flex-col gap-2" key={`action-${index}`}>
-                <DataSourceViewsSection
-                  owner={owner}
-                  dataSourceViews={dataSourceViews}
-                  dataSourceConfigurations={a.dataSources}
-                  viewType="documents"
-                />
-              </div>
-            ))}
-          </div>
-        )}
-        {!!queryTablesActions.length && (
-          <div>
-            <div className="pb-2 text-lg font-bold text-element-800">
-              Query Tables
-            </div>
-            {queryTablesActions.map((action, index) => (
-              <div className="flex flex-col gap-2" key={`action-${index}`}>
-                <DataSourceViewsSection
-                  owner={owner}
-                  dataSourceViews={dataSourceViews}
-                  dataSourceConfigurations={Object.values(
-                    action.tables.reduce(
-                      (dsConfigs, t) => {
-                        // We should never have an undefined dataSourceView here as if it's undefined,
-                        // it means the dataSourceView was deleted and the configuration is invalid But
-                        // we need to handle this case to avoid crashing the UI
-                        const dataSourceView = dataSourceViews.find(
-                          (dsv) => dsv.sId == t.dataSourceViewId
-                        );
-
-                        // Initializing the datasource configuration if we are seeing the id for the first time
-                        dsConfigs[t.dataSourceViewId] ||= {
-                          workspaceId: t.workspaceId,
-                          dataSourceViewId: t.dataSourceViewId,
-                          filter: {
-                            parents:
-                              dataSourceView &&
-                              isFolder(dataSourceView.dataSource)
-                                ? null
-                                : { in: [], not: [] },
-                          },
-                        };
-
-                        // Pushing a new parent
-                        if (dataSourceView) {
-                          dsConfigs[t.dataSourceViewId].filter.parents?.in.push(
-                            getContentNodeInternalIdFromTableId(
-                              dataSourceView,
-                              t.tableId
-                            )
-                          );
-                        }
-                        return dsConfigs;
-                      },
-                      {} as Record<string, DataSourceConfiguration>
-                    )
-                  )}
-                  viewType="tables"
-                />
-              </div>
-            ))}
-          </div>
-        )}
-        {otherActions.map((action, index) =>
-          isDustAppRunConfiguration(action) ? (
-            <div className="flex flex-col gap-2" key={`action-${index}`}>
-              <div className="text-lg font-bold text-element-800">
-                Run Actions
-              </div>
-              <DustAppSection dustApp={action} />
-            </div>
-          ) : isProcessConfiguration(action) ? (
-            <div className="flex flex-col gap-2" key={`action-${index}`}>
-              <div className="text-lg font-bold text-element-800">
-                Extract from documents
-              </div>
+    <>
+      {categorizedActions.retrieval.length > 0 && (
+        <ActionSection title="Retrieve from Documents">
+          {categorizedActions.retrieval.map((action, index) => (
+            <div className="flex flex-col gap-2" key={`retrieval-${index}`}>
               <DataSourceViewsSection
                 owner={owner}
                 dataSourceViews={dataSourceViews}
@@ -179,29 +102,131 @@ export function AssistantActionsSection({
                 viewType="documents"
               />
             </div>
-          ) : isWebsearchConfiguration(action) ? (
-            <div className="flex flex-col gap-2" key={`action-${index}`}>
-              <div className="text-lg font-bold text-element-800">
-                Web navigation
-              </div>
-              <div className="flex items-center gap-2">
-                <Icon visual={PlanetIcon} size="xs" />
-                <div>
-                  Assistant can navigate the web (browse any provided links,
-                  make a google search, etc.) to answer
-                </div>
-              </div>
+          ))}
+        </ActionSection>
+      )}
+
+      {categorizedActions.queryTables.length > 0 && (
+        <ActionSection title="Query Tables">
+          {categorizedActions.queryTables.map((action, index) => (
+            <div className="flex flex-col gap-2" key={`query-tables-${index}`}>
+              <DataSourceViewsSection
+                owner={owner}
+                dataSourceViews={dataSourceViews}
+                dataSourceConfigurations={getDataSourceConfigurationsForTableAction(
+                  action,
+                  dataSourceViews
+                )}
+                viewType="tables"
+              />
             </div>
-          ) : isBrowseConfiguration(action) ? (
-            false
-          ) : (
-            !isRetrievalConfiguration(action) &&
-            !isTablesQueryConfiguration(action) &&
-            assertNever(action)
-          )
-        )}
-      </>
+          ))}
+        </ActionSection>
+      )}
+
+      {categorizedActions.other.map((action, index) =>
+        renderOtherAction(action, index, owner, dataSourceViews)
+      )}
+    </>
+  );
+}
+
+function getDataSourceConfigurationsForTableAction(
+  action: TablesQueryConfigurationType,
+  dataSourceViews: DataSourceViewType[]
+) {
+  return Object.values(
+    action.tables.reduce(
+      (dsConfigs, table) => {
+        // We should never have an undefined dataSourceView here as if it's undefined,
+        // it means the dataSourceView was deleted and the configuration is invalid But
+        // we need to handle this case to avoid crashing the UI
+        const dataSourceView = dataSourceViews.find(
+          (dsv) => dsv.sId === table.dataSourceViewId
+        );
+
+        if (!dsConfigs[table.dataSourceViewId]) {
+          dsConfigs[table.dataSourceViewId] = {
+            workspaceId: table.workspaceId,
+            dataSourceViewId: table.dataSourceViewId,
+            filter: {
+              parents:
+                dataSourceView && isFolder(dataSourceView.dataSource)
+                  ? null
+                  : { in: [], not: [] },
+            },
+          };
+        }
+
+        if (dataSourceView) {
+          dsConfigs[table.dataSourceViewId].filter.parents?.in.push(
+            getContentNodeInternalIdFromTableId(dataSourceView, table.tableId)
+          );
+        }
+
+        return dsConfigs;
+      },
+      {} as Record<string, DataSourceConfiguration>
     )
+  );
+}
+
+function renderOtherAction(
+  action: AgentActionConfigurationType,
+  index: number,
+  owner: LightWorkspaceType,
+  dataSourceViews: DataSourceViewType[]
+) {
+  if (isDustAppRunConfiguration(action)) {
+    return (
+      <ActionSection title="Run Actions" key={`other-${index}`}>
+        <DustAppSection dustApp={action} />
+      </ActionSection>
+    );
+  } else if (isProcessConfiguration(action)) {
+    return (
+      <ActionSection title="Extract from documents" key={`other-${index}`}>
+        <DataSourceViewsSection
+          owner={owner}
+          dataSourceViews={dataSourceViews}
+          dataSourceConfigurations={action.dataSources}
+          viewType="documents"
+        />
+      </ActionSection>
+    );
+  } else if (isWebsearchConfiguration(action)) {
+    return (
+      <ActionSection title="Web navigation" key={`other-${index}`}>
+        <div className="flex items-center gap-2">
+          <Icon visual={PlanetIcon} size="xs" />
+          <div>
+            Assistant can navigate the web (browse any provided links, make a
+            google search, etc.) to answer
+          </div>
+        </div>
+      </ActionSection>
+    );
+  } else if (isBrowseConfiguration(action)) {
+    return null;
+  } else if (
+    !isRetrievalConfiguration(action) &&
+    !isTablesQueryConfiguration(action)
+  ) {
+    return assertNever(action);
+  }
+}
+
+interface ActionSectionProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+function ActionSection({ title, children }: ActionSectionProps) {
+  return (
+    <div>
+      <div className="pb-2 text-lg font-bold text-element-800">{title}</div>
+      {children}
+    </div>
   );
 }
 
