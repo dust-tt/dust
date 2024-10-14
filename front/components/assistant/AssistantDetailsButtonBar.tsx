@@ -1,11 +1,19 @@
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
+import {
+  isBuilder,
+  type LightAgentConfigurationType,
+  type WorkspaceType,
 } from "@dust-tt/types";
 import { useUser } from "@app/lib/swr/user";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
-import { Button, StarIcon, StarStrokeIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  ChatBubbleBottomCenterTextIcon,
+  PencilSquareIcon,
+  StarIcon,
+  StarStrokeIcon,
+} from "@dust-tt/sparkle";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
+import Link from "next/link";
 
 interface AssistantDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
@@ -34,6 +42,12 @@ export function AssistantDetailsButtonBar({
     return <></>;
   }
 
+  const showEditButton =
+    // never allow editing of global assistants
+    agentConfiguration.scope !== "global" &&
+    // builders can all edit, non-builders can only edit personal/shared assistants
+    (isBuilder(owner) || !(agentConfiguration.scope === "workspace"));
+
   return (
     <div className="flex flex-row items-center gap-2 px-1.5">
       <Button
@@ -48,12 +62,48 @@ export function AssistantDetailsButtonBar({
 
       <div className="h-6 w-0 border-l border-structure-200"></div>
 
-      <AssistantDetailsDropdownMenu
-        agentConfiguration={agentConfiguration}
-        owner={owner}
-        variant="button"
-        canDelete
-      />
+      <Link
+        href={`/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`}
+      >
+        <Button
+          icon={ChatBubbleBottomCenterTextIcon}
+          label="Chat with this assistant"
+          labelVisible={false}
+          size="sm"
+          variant="tertiary"
+          hasMagnifying={false}
+        />
+      </Link>
+
+      {showEditButton && (
+        <Link
+          href={`/w/${owner.sId}/builder/assistants/${
+            agentConfiguration.sId
+          }?flow=${
+            agentConfiguration.scope
+              ? "workspace_assistants"
+              : "personal_assistants"
+          }`}
+        >
+          <Button
+            label="Edit this assistant"
+            labelVisible={false}
+            size="sm"
+            variant="tertiary"
+            hasMagnifying={false}
+            icon={PencilSquareIcon}
+          />
+        </Link>
+      )}
+
+      {agentConfiguration.scope !== "global" && (
+        <AssistantDetailsDropdownMenu
+          agentConfiguration={agentConfiguration}
+          owner={owner}
+          variant="button"
+          canDelete
+        />
+      )}
     </div>
   );
 }
