@@ -60,6 +60,7 @@ export const MainPage = () => {
           owner={owner}
           onSubmit={() => {}}
           stickyMentions={[]}
+          actions={["attachment", "assistants-list"]}
           conversationId={null}
         />
       </GenerationContextProvider>

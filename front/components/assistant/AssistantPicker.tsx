@@ -23,6 +23,7 @@ export function AssistantPicker({
   assistants,
   onItemClick,
   pickerButton,
+  showMoreDetailsButtons = true,
   showFooterButtons = true,
   size = "md",
 }: {
@@ -30,6 +31,7 @@ export function AssistantPicker({
   assistants: LightAgentConfigurationType[];
   onItemClick: (assistant: LightAgentConfigurationType) => void;
   pickerButton?: React.ReactNode;
+  showMoreDetailsButtons?: boolean;
   showFooterButtons?: boolean;
   size?: "sm" | "md";
 }) {
@@ -149,15 +151,17 @@ export function AssistantPicker({
                   }}
                   className="truncate"
                 />
-                <IconButton
-                  icon={MoreIcon}
-                  onClick={() => {
-                    close();
-                    setShowDetails(c);
-                  }}
-                  variant="tertiary"
-                  size="sm"
-                />
+                {showMoreDetailsButtons && (
+                  <IconButton
+                    icon={MoreIcon}
+                    onClick={() => {
+                      close();
+                      setShowDetails(c);
+                    }}
+                    variant="tertiary"
+                    size="sm"
+                  />
+                )}
               </div>
             ))}
           </DropdownMenu.Items>
