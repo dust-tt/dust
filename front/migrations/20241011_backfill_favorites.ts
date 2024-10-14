@@ -38,12 +38,14 @@ makeScript({}, async ({ execute }, logger) => {
 async function updateRelation(relation: AgentUserRelation, execute: boolean) {
   if (execute) {
     // ~233K rows 'in-list' at the time of writing
+    // @ts-expect-error column removed in a later migration
     if (relation.listStatusOverride === "in-list") {
       await relation.update({
         favorite: true,
       });
     }
     // ~461 rows 'not-in-list' at the time of writing
+    // @ts-expect-error column removed in a later migration
     if (relation.listStatusOverride === "not-in-list") {
       await relation.destroy();
     }
