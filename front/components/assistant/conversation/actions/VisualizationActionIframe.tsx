@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { Button, Spinner } from "@dust-tt/sparkle";
 import type {
   CommandResultMap,
   LightWorkspaceType,
@@ -142,14 +142,20 @@ function useVisualizationDataHandler({
 export function VisualizationActionIframe({
   owner,
   visualization,
+  conversationId,
+  agentConfigurationId,
+  canRetry,
 }: {
   owner: LightWorkspaceType;
   visualization: Visualization;
+  conversationId: string;
+  agentConfigurationId: string;
+  canRetry: boolean;
 }) {
   const [contentHeight, setContentHeight] = useState<number>(0);
   const [isErrored, setIsErrored] = useState(false);
 
-  const vizIframeRef = useRef<HTMLIFrameElement>(null);
+  const vizIframeRef = useRef<HTMLIFrameElement | null>(null);
 
   useVisualizationDataHandler({
     visualization,
@@ -166,6 +172,46 @@ export function VisualizationActionIframe({
     () => codeFullyGenerated && !iframeLoaded && !isErrored,
     [codeFullyGenerated, iframeLoaded, isErrored]
   );
+  const [retryClicked, setRetryClicked] = useState(false);
+
+  const errorMessage = "UNKNOWN ERROR";
+
+  const handleVisualizationRetry = async () => {
+    if (retryClicked) {
+      return;
+    }
+    setRetryClicked(true);
+    try {
+      const response = await fetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            content: `Visualization code failed with error: ${errorMessage}. Regenerate visualization only.`,
+            mentions: [
+              {
+                configurationId: agentConfigurationId,
+              },
+            ],
+            context: {
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              profilePictureUrl: null,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to send retry message");
+      }
+    } catch (error) {
+      console.error("Error sending retry message:", error);
+      // Optionally, show an error message to the user
+    }
+  };
 
   return (
     <div className="relative flex flex-col">
@@ -191,7 +237,7 @@ export function VisualizationActionIframe({
             </div>
           ) : (
             <div className="relative flex h-full w-full shrink-0 items-center justify-center">
-              {codeFullyGenerated && !isErrored && (
+              {codeFullyGenerated && !isErrored && !retryClicked && (
                 <div
                   style={{
                     height: !isErrored ? `${contentHeight}px` : "100%",
@@ -215,9 +261,15 @@ export function VisualizationActionIframe({
                   <div className="text-sm text-element-800">
                     An error occured while rendering the visualization.
                   </div>
-                  <div className="text-sm text-element-800">
-                    The assistant message can be retried.
-                  </div>
+
+                  {canRetry && !retryClicked && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      label="Retry Visualization"
+                      onClick={handleVisualizationRetry}
+                    />
+                  )}
                 </div>
               )}
             </div>
