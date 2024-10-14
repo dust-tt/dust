@@ -147,33 +147,32 @@ export function AssistantBrowser({
                     size="sm"
                   />
                   <div className="sm:hidden">
-                  <Button
-                    variant="primary"
-                    icon={PlusIcon}
-                    label="Create"
-                    labelVisible={false}
-                    size="sm"
-                    className="sm:hidden"
-                  />
-                </div>
-              </Link>
-            }
-            triggerIsButton
-          />
-          {isBuilder && (
-            <Tooltip
-              label="Manage assistants"
-              trigger={
-                <Link href={`/w/${owner.sId}/builder/assistants/`}>
-                  <Button
-                    variant="primary"
-                    icon={RobotIcon}
-                    label="Manage"
-                    size="sm"
-                  />
+                    <Button
+                      variant="primary"
+                      icon={PlusIcon}
+                      label="Create"
+                      labelVisible={false}
+                      size="sm"
+                      className="sm:hidden"
+                    />
+                  </div>
                 </Link>
               }
               triggerIsButton
+            />
+            {isBuilder && (
+              <Tooltip
+                label="Manage assistants"
+                trigger={
+                  <Link href={`/w/${owner.sId}/builder/assistants/`}>
+                    <Button
+                      variant="primary"
+                      icon={RobotIcon}
+                      label="Manage"
+                      size="sm"
+                    />
+                  </Link>
+                }
               />
             )}
           </Button.List>
