@@ -73,7 +73,7 @@ export const RadioGroupWithChildrenExample = () => {
           id="option-one"
           className="s-border s-border-red-500"
         >
-          <Label htmlFor="option-two">Option Two</Label>
+          Option two
         </RadioGroupChoice>
         <RadioGroupChoice
           value="option-two"
