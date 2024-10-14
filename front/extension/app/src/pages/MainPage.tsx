@@ -16,7 +16,7 @@ import { WorkspaceType } from "@dust-tt/types";
 
 export const MainPage = () => {
   const { token, isLoading, handleLogin, handleLogout } = useAuth();
-  
+
   const owner: WorkspaceType = {
     id: 1,
     sId: "IQw2NP0Anb",
@@ -69,14 +69,14 @@ export const MainPage = () => {
         <div className="w-full h-full">
           <Page.SectionHeader title="Conversation" />
           <GenerationContextProvider>
-        <FixedAssistantInputBar
-          owner={owner}
-          onSubmit={() => {}}
-          stickyMentions={[]}
-          actions={["attachment", "assistants-list"]}
-          conversationId={null}
-        />
-      </GenerationContextProvider>
+            <FixedAssistantInputBar
+              owner={owner}
+              onSubmit={() => {}}
+              stickyMentions={[]}
+              actions={["attachment", "assistants-list"]}
+              conversationId={null}
+            />
+          </GenerationContextProvider>
           {/* <Link to="/conversation">Conversations</Link> */}
           <TextArea />
           <Button

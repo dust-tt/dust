@@ -115,7 +115,9 @@ export const getConfig = async ({
         VERSION: version,
       }),
       new Dotenv({
-        path: isDevelopment ? resolvePath("./.env.development") : resolvePath("./.env.production"),
+        path: isDevelopment
+          ? resolvePath("./.env.development")
+          : resolvePath("./.env.production"),
       }),
       new CopyPlugin({
         patterns: [
