@@ -9,9 +9,8 @@ import type {
 } from "swr/infinite";
 import useSWRInfinite from "swr/infinite";
 
+import apiConfig from "@app/lib/api/config";
 import { COMMIT_HASH } from "@app/lib/commit-hash";
-
-const USE_PUBLIC_API = process.env.USE_PUBLIC_API;
 
 const DEFAULT_SWR_CONFIG: SWRConfiguration = {
   errorRetryCount: 16,
@@ -132,13 +131,14 @@ const resHandler = async (res: Response) => {
 export const fetcher = async (...args: Parameters<typeof fetch>) => {
   const [url, config] = args;
 
-  if (USE_PUBLIC_API && url.toString().startsWith("/api")) {
-    const transformedUrl = url.toString().replace("/api", USE_PUBLIC_API);
-
+  const publicApiOverride = process.env.API_URL_OVERRIDE;
+  if (publicApiOverride && url.toString().startsWith("/api")) {
+    const transformedUrl = url.toString().replace("/api", publicApiOverride);
+    const token = process.env.API_TOKEN;
     const res = await fetch(transformedUrl, {
       ...config,
       headers: {
-        Authorization: "Bearer sk-164b21d76cc2c7bf288b836d43ee77fd",
+        Authorization: `Bearer ${token}`,
         ...addCommitHashToHeaders(config?.headers),
       },
     });
