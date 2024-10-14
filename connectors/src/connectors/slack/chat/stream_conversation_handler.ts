@@ -18,6 +18,7 @@ import {
 } from "@connectors/connectors/slack/chat/blocks";
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
+import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -30,6 +31,7 @@ interface StreamConversationToSlackParams {
     slackChannelId: string;
     slackClient: WebClient;
     slackMessageTs: string;
+    slackUserInfo: SlackUserInfo;
   };
   userMessage: UserMessageType;
   agentConfigurations: LightAgentConfigurationType[];
@@ -51,7 +53,7 @@ export async function streamConversationToSlack(
     agentConfigurations,
   }: StreamConversationToSlackParams
 ): Promise<Result<undefined, Error>> {
-  const { slackChannelId, slackClient, slackMessageTs } = slack;
+  const { slackChannelId, slackClient, slackMessageTs, slackUserInfo } = slack;
 
   let lastSentDate = new Date();
   let backoffTime = initialBackoffTime;
@@ -79,6 +81,7 @@ export async function streamConversationToSlack(
       ...makeMessageUpdateBlocksAndText(
         conversationUrl,
         connector.workspaceId,
+        slackUserInfo,
         messageUpdate
       ),
       channel: slackChannelId,
