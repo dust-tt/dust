@@ -132,50 +132,50 @@ export function AssistantBrowser({
           value={assistantSearch}
           onChange={setAssistantSearch}
         />
-        <Button.List>
-          <Tooltip
-            label="Create your own assistant"
-            trigger={
-              <Link
-                href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-              >
-                <div className="hidden sm:block">
-                  <Button
-                    variant="primary"
-                    icon={PlusIcon}
-                    label="Create"
-                    size="sm"
-                  />
-                </div>
-                <div className="sm:hidden">
-                  <Button
-                    variant="primary"
-                    icon={PlusIcon}
-                    label="Create"
-                    labelVisible={false}
-                    size="sm"
-                    className="sm:hidden"
-                  />
-                </div>
-              </Link>
-            }
-          />
-          {isBuilder && (
+        <div className="hidden sm:block">
+          <Button.List>
             <Tooltip
-              label="Manage assistants"
+              label="Create your own assistant"
               trigger={
-                <Link href={`/w/${owner.sId}/builder/assistants/`}>
+                <Link
+                  href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+                >
                   <Button
                     variant="primary"
-                    icon={RobotIcon}
-                    label="Manage"
+                    icon={PlusIcon}
+                    label="Create"
                     size="sm"
                   />
+                  <div className="sm:hidden">
+                    <Button
+                      variant="primary"
+                      icon={PlusIcon}
+                      label="Create"
+                      labelVisible={false}
+                      size="sm"
+                      className="sm:hidden"
+                    />
+                  </div>
                 </Link>
               }
             />
-          )}
-        </Button.List>
+            {isBuilder && (
+              <Tooltip
+                label="Manage assistants"
+                trigger={
+                  <Link href={`/w/${owner.sId}/builder/assistants/`}>
+                    <Button
+                      variant="primary"
+                      icon={RobotIcon}
+                      label="Manage"
+                      size="sm"
+                    />
+                  </Link>
+                }
+              />
+            )}
+          </Button.List>
+        </div>
       </div>
 
       {/* Assistant tabs */}
