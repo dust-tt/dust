@@ -19,6 +19,32 @@ import { useCallback, useEffect, useState } from "react";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 
+const ShowAssistantDetailsButton = ({
+  assistant,
+}: {
+  assistant: LightAgentConfigurationType;
+}) => {
+  const router = useRouter();
+
+  const showAssistantDetails = useCallback(
+    (agentConfiguration: LightAgentConfigurationType) => {
+      setQueryParam(router, "assistantDetails", agentConfiguration.sId);
+    },
+    [router]
+  );
+  return (
+    <IconButton
+      icon={MoreIcon}
+      onClick={() => {
+        close();
+        showAssistantDetails(assistant);
+      }}
+      variant="tertiary"
+      size="sm"
+    />
+  );
+};
+
 export function AssistantPicker({
   owner,
   assistants,
@@ -55,15 +81,6 @@ export function AssistantPicker({
       }, 200);
     }
   };
-
-  const router = useRouter();
-
-  const showAssistantDetails = useCallback(
-    (agentConfiguration: LightAgentConfigurationType) => {
-      setQueryParam(router, "assistantDetails", agentConfiguration.sId);
-    },
-    [router]
-  );
 
   return (
     // TODO(2024-10-09 jules): use Popover when new Button has been released
@@ -152,15 +169,7 @@ export function AssistantPicker({
                   className="truncate"
                 />
                 {showMoreDetailsButtons && (
-                  <IconButton
-                    icon={MoreIcon}
-                    onClick={() => {
-                      close();
-                      showAssistantDetails(c);
-                    }}
-                    variant="tertiary"
-                    size="sm"
-                  />
+                  <ShowAssistantDetailsButton assistant={c} />
                 )}
               </div>
             ))}

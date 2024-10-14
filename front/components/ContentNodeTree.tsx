@@ -122,18 +122,18 @@ function ContentNodeTreeChildren({
   const getCheckedState = useCallback(
     (node: BaseContentNode) => {
       if (!selectedNodes) {
-        return "unchecked";
+        return false;
       }
 
       // If the parent is selected, the node is considered selected.
       if (parentIsSelected) {
-        return "checked";
+        return true;
       }
 
       // Check if there is a local state for this node.
       const localState = selectedNodes[node.internalId];
       if (localState?.isSelected) {
-        return "checked";
+        return true;
       }
 
       const internalPartiallySelectedId = Object.values(selectedNodes)
@@ -144,7 +144,7 @@ function ContentNodeTreeChildren({
       }
 
       // Return false if no custom function is provided.
-      return "unchecked";
+      return false;
     },
     [parentIsSelected, selectedNodes]
   );
@@ -165,7 +165,6 @@ function ContentNodeTreeChildren({
 
       {filteredNodes.map((n, i) => {
         const checkedState = getCheckedState(n);
-
         return (
           <Tree.Item
             key={n.internalId}
@@ -179,7 +178,7 @@ function ContentNodeTreeChildren({
                 ? {
                     disabled: parentIsSelected || !setSelectedNodes,
                     checked: checkedState,
-                    onChange: (checked) => {
+                    onCheckedChange: (v) => {
                       if (setSelectedNodes) {
                         if (checkedState === "partial") {
                           // Handle clicking on partial : unselect all selected children
@@ -190,9 +189,9 @@ function ContentNodeTreeChildren({
                           setSelectedNodes((prev) => ({
                             ...prev,
                             [n.internalId]: {
-                              isSelected: checked,
+                              isSelected: v === "indeterminate" ? true : v,
                               node: n,
-                              parents: checked ? parentIds : [],
+                              parents: v ? parentIds : [],
                             },
                           }));
                         }
@@ -248,14 +247,16 @@ function ContentNodeTreeChildren({
                 )}
               </div>
             }
-            renderTreeItems={() => (
-              <ContentNodeTreeChildren
-                depth={depth + 1}
-                parentId={n.internalId}
-                parentIds={[n.internalId, ...parentIds]}
-                parentIsSelected={getCheckedState(n) === "checked"}
-              />
-            )}
+            renderTreeItems={() => {
+              return (
+                <ContentNodeTreeChildren
+                  depth={depth + 1}
+                  parentId={n.internalId}
+                  parentIds={[n.internalId, ...parentIds]}
+                  parentIsSelected={getCheckedState(n) === true}
+                />
+              );
+            }}
           />
         );
       })}

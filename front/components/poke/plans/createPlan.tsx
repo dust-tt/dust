@@ -1,5 +1,5 @@
-import { Spinner } from "@dust-tt/sparkle";
 import { Input } from "@dust-tt/sparkle";
+import { Checkbox, Spinner } from "@dust-tt/sparkle";
 import type { CreatePlanFormType, WorkspaceType } from "@dust-tt/types";
 import { CreatePlanFormSchema, removeNulls } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
@@ -10,7 +10,6 @@ import { useForm } from "react-hook-form";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
-import { PokeCheckbox } from "@app/components/poke/shadcn/ui/checkbox";
 import {
   PokeForm,
   PokeFormControl,
@@ -283,7 +282,7 @@ function CheckboxField({
         <PokeFormItem>
           <PokeFormLabel className="capitalize">{title ?? name}</PokeFormLabel>
           <PokeFormControl>
-            <PokeCheckbox
+            <Checkbox
               checked={!!field.value}
               onCheckedChange={field.onChange}
             />

@@ -10,6 +10,8 @@ import {
 } from "./src/lib/auth";
 import { generatePKCE } from "./src/lib/utils";
 
+const log = console.error;
+
 /**
  * Listener to open/close the side panel when the user clicks on the extension icon.
  */
@@ -34,12 +36,24 @@ chrome.runtime.onMessage.addListener(
         void authenticate(sendResponse);
         return true; // Keep the message channel open for async response.
 
+      case "REFRESH_TOKEN":
+        if (!message.refreshToken) {
+          log("No refresh token provided on REFRESH_TOKEN message.");
+          sendResponse({ success: false });
+          return true;
+        }
+        void refreshToken(message.refreshToken, sendResponse);
+        return true;
+
       case "LOGOUT":
         logout(sendResponse);
         return true; // Keep the message channel open.
 
+      case "SIGN_CONNECT":
+        return true;
+
       default:
-        console.error(`Unknown message type: ${message.type}.`);
+        log(`Unknown message type: ${message.type}.`);
     }
   }
 );
@@ -71,12 +85,12 @@ const authenticate = async (
     { url: authUrl, interactive: true },
     async (redirectUrl) => {
       if (chrome.runtime.lastError) {
-        console.error(`Auth error: ${chrome.runtime.lastError.message}`);
+        log(`launchWebAuthFlow error: ${chrome.runtime.lastError.message}`);
         sendResponse({ success: false });
         return;
       }
       if (!redirectUrl || redirectUrl.includes("error")) {
-        console.error(`Auth error in redirect URL: ${redirectUrl}`);
+        log(`launchWebAuthFlow error in redirect URL: ${redirectUrl}`);
         sendResponse({ success: false });
         return;
       }
@@ -93,11 +107,50 @@ const authenticate = async (
         );
         sendResponse(data);
       } else {
-        console.error(`No authorization code in redirect URL: ${redirectUrl}`);
+        log(`launchWebAuthFlow missing code in redirect URL: ${redirectUrl}`);
         sendResponse({ success: false });
       }
     }
   );
+};
+
+/**
+ * Refresh the access token using the refresh token.
+ */
+const refreshToken = async (
+  refreshToken: string,
+  sendResponse: (auth: Auth0AuthorizeResponse | AuthBackgroundResponse) => void
+) => {
+  try {
+    const tokenUrl = `https://${AUTH0_CLIENT_DOMAIN}/oauth/token`;
+    const response = await fetch(tokenUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: AUTH0_CLIENT_ID,
+        refresh_token: refreshToken,
+      }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(
+        `Token refresh failed: ${data.error} - ${data.error_description}`
+      );
+    }
+
+    const data = await response.json();
+    sendResponse({
+      idToken: data.id_token,
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token || refreshToken,
+      expiresIn: data.expires_in,
+    });
+  } catch (error) {
+    log("Token refresh failed: unknown error", error);
+    sendResponse({ success: false });
+  }
 };
 
 /**
@@ -132,14 +185,12 @@ const exchangeCodeForTokens = async (
     return {
       idToken: data.id_token,
       accessToken: data.access_token,
+      refreshToken: data.refresh_token,
       expiresIn: data.expires_in,
     };
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Token exchange error: unknown error occurred.";
-    console.error(`Token exchange error: ${message}`, error);
+    const message = error instanceof Error ? error.message : "Unknown error.";
+    log(`Token exchange failed: ${message}`, error);
     return { success: false };
   }
 };
@@ -155,7 +206,7 @@ const logout = (sendResponse: (response: AuthBackgroundResponse) => void) => {
     { url: logoutUrl, interactive: true },
     () => {
       if (chrome.runtime.lastError) {
-        console.error("Logout error:", chrome.runtime.lastError.message);
+        log("Logout failed:", chrome.runtime.lastError.message);
         sendResponse({ success: false });
       } else {
         sendResponse({ success: true });
