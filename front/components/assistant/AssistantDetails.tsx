@@ -12,7 +12,12 @@ import {
   useAgentConfiguration,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
-import { classNames } from "@app/lib/utils";
+import {
+  useDataSourceViewContentNodes,
+  useDataSourceViews,
+} from "@app/lib/swr/data_source_views";
+import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
@@ -75,25 +80,17 @@ export function AssistantDetails({
                 disabled={isUpdatingScope}
                 setNewScope={(scope) => updateScope(scope)}
               />
-              <AssistantFavoriteActions
-                agentConfiguration={agentConfiguration}
-                owner={owner}
-                isParentHovered={true}
-              />
             </>
           )}
         </div>
-        {agentConfiguration.status === "active" && (
-          <div>
-            <AssistantDetailsDropdownMenu
-              agentConfiguration={agentConfiguration}
-              owner={owner}
-              variant="button"
-              canDelete
-            />
-          </div>
-        )}
       </div>
+      {agentConfiguration.status === "active" && (
+        <AssistantDetailsButtonBar
+          owner={owner}
+          agentConfiguration={agentConfiguration}
+        />
+      )}
+
       {agentConfiguration.status === "archived" && (
         <ContentMessage
           variant="amber"
