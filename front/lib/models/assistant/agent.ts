@@ -147,6 +147,13 @@ AgentConfiguration.init(
       { fields: ["workspaceId"] },
       { fields: ["workspaceId", "name"] },
       { fields: ["workspaceId", "status", "name"] },
+      {
+        fields: ["workspaceId", "scope", "authorId"],
+        name: "partial_agent_config_active",
+        where: {
+          status: "active",
+        },
+      },
       { fields: ["sId"] },
       { fields: ["sId", "version"], unique: true },
       { fields: ["authorId"] },
