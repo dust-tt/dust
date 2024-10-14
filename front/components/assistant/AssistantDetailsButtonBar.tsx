@@ -42,11 +42,9 @@ export function AssistantDetailsButtonBar({
     return <></>;
   }
 
-  const showEditButton =
-    // never allow editing of global assistants
-    agentConfiguration.scope !== "global" &&
+  const canEditAssistant =
     // builders can all edit, non-builders can only edit personal/shared assistants
-    (isBuilder(owner) || !(agentConfiguration.scope === "workspace"));
+    isBuilder(owner) || !(agentConfiguration.scope === "workspace");
 
   return (
     <div className="flex flex-row items-center gap-2 px-1.5">
@@ -75,7 +73,7 @@ export function AssistantDetailsButtonBar({
         />
       </Link>
 
-      {showEditButton && (
+      {agentConfiguration.scope !== "global" && (
         <Link
           href={`/w/${owner.sId}/builder/assistants/${
             agentConfiguration.sId
@@ -86,9 +84,14 @@ export function AssistantDetailsButtonBar({
           }`}
         >
           <Button
-            label="Edit this assistant"
+            label={
+              canEditAssistant
+                ? "Edit this assistant"
+                : "Edition of this assistant is restricted"
+            }
             labelVisible={false}
             size="sm"
+            disabled={!canEditAssistant}
             variant="tertiary"
             hasMagnifying={false}
             icon={PencilSquareIcon}
