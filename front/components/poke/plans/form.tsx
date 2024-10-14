@@ -334,12 +334,12 @@ export const Field: React.FC<FieldProps> = ({
       case "boolean":
         const fieldValue =
           editingPlan && isEditing ? editingPlan[fieldName] : plan[fieldName];
-        const checkedStatus = fieldValue ? "checked" : "unchecked";
+        const isChecked = !!fieldValue;
 
         return (
           <Checkbox
-            checked={checkedStatus}
-            onChange={(x) => {
+            checked={isChecked}
+            onCheckedChange={(x) => {
               if (!editingPlan) {
                 return;
               }

@@ -23,7 +23,7 @@
     "@amplitude/analytics-node": "^1.3.5",
     "@auth0/nextjs-auth0": "^3.5.0",
     "@dust-tt/client": "file:../sdks/js",
-    "@dust-tt/sparkle": "^0.2.265",
+    "@dust-tt/sparkle": "^0.2.267",
     "@dust-tt/types": "file:../types",
     "@headlessui/react": "^1.7.7",
     "@heroicons/react": "^2.0.11",
