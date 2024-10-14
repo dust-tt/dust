@@ -8,7 +8,7 @@ import { cn } from "@sparkle/lib/utils";
 
 const radioStyles = cva(
   cn(
-    "s-aspect-square s-h-4 s-w-4 s-rounded-full s-border s-border-primary-500 s-text-foreground s-ring-offset-background",
+    "s-aspect-square s-h-4 s-w-4 s-rounded-full s-border s-text-foreground s-ring-offset-background",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2 focus-visible:s-ring-ring",
     "disabled:s-cursor-not-allowed disabled:s-opacity-50",
     "checked:s-ring-0 checked:s-bg-action-500"
@@ -50,49 +50,54 @@ interface RadioGroupItemProps
 const RadioGroupItem = React.forwardRef<
   React.ElementRef<typeof RadioGroupPrimitive.Item>,
   RadioGroupItemProps
->(({ tooltipMessage, className, size, tooltipAsChild = false, ...props }, ref) => {
-  return (
-    <div className="s-group">
-      {tooltipMessage ? (
-        <Tooltip
-          triggerAsChild={tooltipAsChild}
-          trigger={
-            <RadioGroupPrimitive.Item
-              ref={ref}
-              className={cn(radioStyles({ size }), className)}
-              {...props}
-            >
-              <RadioGroupPrimitive.Indicator className="s-flex s-items-center s-justify-center">
-                <CircleIcon
-                  className={cn(
-                    size === "xs" ? "s-h-2.5 s-w-2.5" : "s-h-3 s-w-3",
-                    "s-fill-current s-text-current focus:s-bg-action-50-dark"
-                  )}
-                />
-              </RadioGroupPrimitive.Indicator>
-            </RadioGroupPrimitive.Item>
-          }
-          label={<span>{tooltipMessage}</span>}
-        />
-      ) : (
-        <RadioGroupPrimitive.Item
-          ref={ref}
-          className={cn(radioStyles({ size }), className)}
-          {...props}
-        >
-          <RadioGroupPrimitive.Indicator className="s-flex s-items-center s-justify-center">
-            <CircleIcon
-              className={cn(
-                size === "xs" ? "s-h-2.5 s-w-2.5" : "s-h-3 s-w-3",
-                "s-fill-current s-text-current focus:s-bg-action-50-dark"
-              )}
-            />
-          </RadioGroupPrimitive.Indicator>
-        </RadioGroupPrimitive.Item>
-      )}
-    </div>
-  );
-});
+>(
+  (
+    { tooltipMessage, className, size, tooltipAsChild = false, ...props },
+    ref
+  ) => {
+    return (
+      <div className="s-group">
+        {tooltipMessage ? (
+          <Tooltip
+            triggerAsChild={tooltipAsChild}
+            trigger={
+              <RadioGroupPrimitive.Item
+                ref={ref}
+                className={cn(radioStyles({ size }), className)}
+                {...props}
+              >
+                <RadioGroupPrimitive.Indicator className="s-flex s-items-center s-justify-center">
+                  <CircleIcon
+                    className={cn(
+                      size === "xs" ? "s-h-2.5 s-w-2.5" : "s-h-3 s-w-3",
+                      "s-fill-current s-text-current focus:s-bg-action-50-dark"
+                    )}
+                  />
+                </RadioGroupPrimitive.Indicator>
+              </RadioGroupPrimitive.Item>
+            }
+            label={<span>{tooltipMessage}</span>}
+          />
+        ) : (
+          <RadioGroupPrimitive.Item
+            ref={ref}
+            className={cn(radioStyles({ size }), className)}
+            {...props}
+          >
+            <RadioGroupPrimitive.Indicator className="s-flex s-items-center s-justify-center">
+              <CircleIcon
+                className={cn(
+                  size === "xs" ? "s-h-2.5 s-w-2.5" : "s-h-3 s-w-3",
+                  "s-fill-current s-text-current focus:s-bg-action-50-dark"
+                )}
+              />
+            </RadioGroupPrimitive.Indicator>
+          </RadioGroupPrimitive.Item>
+        )}
+      </div>
+    );
+  }
+);
 RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName;
 
 type IconPosition = "start" | "center" | "end";
