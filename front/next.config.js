@@ -45,7 +45,7 @@ module.exports = {
           {
             key: "Content-Security-Policy",
             value:
-              "frame-ancestors 'self' https://*.salesforce.com https://*.force.com chrome-extension://ijppfkjmlibdkjpiakcjbhdcofbamoni;",
+              "frame-ancestors 'self' https://*.salesforce.com https://*.force.com;",
           },
           {
             key: "Strict-Transport-Security",
