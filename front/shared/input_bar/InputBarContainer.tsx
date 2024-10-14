@@ -109,6 +109,7 @@ const InputBarContainer = ({
       id="InputBarContainer"
       className="relative flex flex-1 flex-col sm:flex-row"
     >
+      {/* @ts-ignore */}
       <EditorContent
         editor={editor}
         className={classNames(
@@ -159,15 +160,15 @@ const InputBarContainer = ({
           )}
           {actions.includes("quick-actions") && (
             <>
-              <AssistantPicker
+              {/* <AssistantPicker
                 owner={owner}
                 size="sm"
                 onItemClick={(c) => {
                   editorService.insertMention({ id: c.sId, label: c.name });
                 }}
                 assistants={allAssistants}
-                showFooterButtons={false} // TODO(EXTENSION) disabled footer button here
-              />
+                showFooterButtons={false}
+              /> */}
               <div className="hidden sm:flex">
                 <IconButton
                   variant={"tertiary"}
