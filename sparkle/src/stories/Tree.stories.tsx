@@ -47,8 +47,7 @@ export const TreeExample = () => {
                     type="leaf"
                     label="Item 1"
                     checkbox={{
-                      variant: "checkable",
-                      checked: "unchecked",
+                      checked: false,
                       onChange: () => {
                         return;
                       },
@@ -58,8 +57,7 @@ export const TreeExample = () => {
                     label="Item 2"
                     type="leaf"
                     checkbox={{
-                      variant: "checkable",
-                      checked: "unchecked",
+                      checked: false,
                       onChange: () => {
                         return;
                       },
@@ -69,8 +67,7 @@ export const TreeExample = () => {
                     label="Item 3"
                     type="leaf"
                     checkbox={{
-                      variant: "checkable",
-                      checked: "unchecked",
+                      checked: false,
                       onChange: () => {
                         return;
                       },
@@ -160,8 +157,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "checked",
+                  checked: true,
                   onChange: () => {
                     return;
                   },
@@ -172,8 +168,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "checked",
+                  checked: true,
                   onChange: () => {
                     return;
                   },
@@ -184,8 +179,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -196,8 +190,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -208,8 +201,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -227,8 +219,7 @@ export const TreeExample = () => {
                 visual={IntercomLogo}
                 type="item"
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -239,8 +230,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={NotionLogo}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -251,8 +241,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={SlackLogo}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -263,8 +252,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={DustIcon}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -346,8 +334,7 @@ export const TreeExample = () => {
                     type="leaf"
                     label="Item 1"
                     checkbox={{
-                      variant: "checkable",
-                      checked: "unchecked",
+                      checked: false,
                       onChange: () => {
                         return;
                       },
@@ -357,8 +344,7 @@ export const TreeExample = () => {
                     label="Item 2"
                     type="leaf"
                     checkbox={{
-                      variant: "checkable",
-                      checked: "unchecked",
+                      checked: false,
                       onChange: () => {
                         return;
                       },
@@ -368,8 +354,7 @@ export const TreeExample = () => {
                     label="Item 3"
                     type="leaf"
                     checkbox={{
-                      variant: "checkable",
-                      checked: "unchecked",
+                      checked: false,
                       onChange: () => {
                         return;
                       },
@@ -408,7 +393,6 @@ export const TreeExample = () => {
                   <Tree.Item
                     label="Item 1"
                     checkbox={{
-                      variant: "checkable",
                       checked: "partial",
                       onChange: () => {
                         return;
@@ -418,8 +402,7 @@ export const TreeExample = () => {
                   <Tree.Item
                     label="Item 2"
                     checkbox={{
-                      variant: "checkable",
-                      checked: "checked",
+                      checked: true,
                       onChange: () => {
                         return;
                       },
@@ -428,8 +411,7 @@ export const TreeExample = () => {
                   <Tree.Item
                     label="Item 3"
                     checkbox={{
-                      variant: "checkable",
-                      checked: "unchecked",
+                      checked: false,
                       onChange: () => {
                         return;
                       },
@@ -438,8 +420,7 @@ export const TreeExample = () => {
                   <Tree.Item
                     label="Item 4"
                     checkbox={{
-                      variant: "checkable",
-                      checked: "unchecked",
+                      checked: false,
                       onChange: () => {
                         return;
                       },
@@ -448,8 +429,7 @@ export const TreeExample = () => {
                   <Tree.Item
                     label="Item 5"
                     checkbox={{
-                      variant: "checkable",
-                      checked: "unchecked",
+                      checked: false,
                       onChange: () => {
                         return;
                       },
@@ -467,7 +447,6 @@ export const TreeExample = () => {
                   <Tree.Item
                     label="Item 1"
                     checkbox={{
-                      variant: "checkable",
                       checked: "partial",
                       onChange: () => {
                         return;
@@ -477,8 +456,7 @@ export const TreeExample = () => {
                   <Tree.Item
                     label="Item 2"
                     checkbox={{
-                      variant: "checkable",
-                      checked: "checked",
+                      checked: true,
                       onChange: () => {
                         return;
                       },
@@ -498,8 +476,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "checked",
+                  checked: true,
                   onChange: () => {
                     return;
                   },
@@ -510,8 +487,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "checked",
+                  checked: true,
                   onChange: () => {
                     return;
                   },
@@ -522,8 +498,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -534,8 +509,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -546,8 +520,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -565,8 +538,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={IntercomLogo}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -577,8 +549,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={NotionLogo}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -589,8 +560,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={SlackLogo}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -601,8 +571,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={DustIcon}
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -772,8 +741,7 @@ export const SelectDataSourceExample = () => {
                 visual={IntercomLogo}
                 size="md"
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -785,8 +753,7 @@ export const SelectDataSourceExample = () => {
                 visual={SlackLogo}
                 size="md"
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -797,8 +764,7 @@ export const SelectDataSourceExample = () => {
                 visual={NotionLogo}
                 size="md"
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
@@ -809,8 +775,7 @@ export const SelectDataSourceExample = () => {
                   <Tree.Item
                     label="Item 1"
                     checkbox={{
-                      variant: "checkable",
-                      checked: "unchecked",
+                      checked: false,
                       onChange: () => {
                         return;
                       },
@@ -819,8 +784,7 @@ export const SelectDataSourceExample = () => {
                   <Tree.Item
                     label="Item 2"
                     checkbox={{
-                      variant: "checkable",
-                      checked: "unchecked",
+                      checked: false,
                       onChange: () => {
                         return;
                       },
@@ -829,8 +793,7 @@ export const SelectDataSourceExample = () => {
                   <Tree.Item
                     label="Item 3"
                     checkbox={{
-                      variant: "checkable",
-                      checked: "unchecked",
+                      checked: false,
                       onChange: () => {
                         return;
                       },
@@ -839,8 +802,7 @@ export const SelectDataSourceExample = () => {
                   <Tree.Item
                     label="Item 4"
                     checkbox={{
-                      variant: "checkable",
-                      checked: "unchecked",
+                      checked: false,
                       onChange: () => {
                         return;
                       },
@@ -853,8 +815,7 @@ export const SelectDataSourceExample = () => {
                 visual={DriveLogo}
                 size="md"
                 checkbox={{
-                  variant: "checkable",
-                  checked: "unchecked",
+                  checked: false,
                   onChange: () => {
                     return;
                   },
