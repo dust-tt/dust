@@ -17,7 +17,13 @@ import type {
 } from "@dust-tt/types";
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
-import { Dispatch, SetStateAction, useCallback, useState } from "react";
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { useMemo } from "react";
 
 import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
@@ -389,21 +395,21 @@ export function DataSourceViewSelector({
     });
   };
 
-  const isPartiallyChecked = internalIds.length > 0;
-
-  useCallback(() => {
-    setIsChecked(selectionConfiguration.isSelectAll
-      ? true
-      : isPartiallyChecked
-        ? "partial"
-        : false
-    )
-  }, [isPartiallyChecked, selectionConfiguration.isSelectAll]);
+  useEffect(() => {
+    const isPartiallyChecked = internalIds.length > 0;
+    setIsChecked(
+      selectionConfiguration.isSelectAll
+        ? true
+        : isPartiallyChecked
+          ? "partial"
+          : false
+    );
+  }, [internalIds, selectionConfiguration.isSelectAll]);
 
   const isTableView = viewType === "tables";
 
   // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
-  const hideCheckbox = readonly || (isTableView && !isPartiallyChecked);
+  const hideCheckbox = readonly || (isTableView && isChecked !== "partial");
 
   const selectedNodes = useMemo(
     () => getNodesFromConfig(selectionConfiguration),
@@ -429,7 +435,13 @@ export function DataSourceViewSelector({
             })),
           isSelectAll: false,
         };
-
+        setIsChecked(
+          selectionConfiguration.isSelectAll
+            ? true
+            : updatedConfig.selectedResources.length > 0
+              ? "partial"
+              : false
+        );
         if (updatedConfig.selectedResources.length === 0) {
           // Nothing is selected at all, remove from the list
           return _.omit(prevState, dataSourceView.sId);
@@ -474,7 +486,7 @@ export function DataSourceViewSelector({
                 disabled: !isRootSelectable,
                 onCheckedChange: (v) => {
                   setIsChecked(v === "indeterminate" ? "partial" : v);
-                  handleSelectAll()
+                  handleSelectAll();
                 },
               }
         }

@@ -176,7 +176,7 @@ function ContentNodeTreeChildren({
               (n.preventSelection !== true || checkedState === "partial") &&
               selectedNodes
                 ? {
-                    disabled: false,
+                    disabled: parentIsSelected || !setSelectedNodes,
                     checked: checkedState,
                     onCheckedChange: (v) => {
                       if (setSelectedNodes) {
@@ -189,7 +189,7 @@ function ContentNodeTreeChildren({
                           setSelectedNodes((prev) => ({
                             ...prev,
                             [n.internalId]: {
-                              isSelected: !!v,
+                              isSelected: v === "indeterminate" ? true : v,
                               node: n,
                               parents: v ? parentIds : [],
                             },
@@ -247,14 +247,16 @@ function ContentNodeTreeChildren({
                 )}
               </div>
             }
-            renderTreeItems={() => (
-              <ContentNodeTreeChildren
-                depth={depth + 1}
-                parentId={n.internalId}
-                parentIds={[n.internalId, ...parentIds]}
-                parentIsSelected={getCheckedState(n) === true}
-              />
-            )}
+            renderTreeItems={() => {
+              return (
+                <ContentNodeTreeChildren
+                  depth={depth + 1}
+                  parentId={n.internalId}
+                  parentIds={[n.internalId, ...parentIds]}
+                  parentIsSelected={getCheckedState(n) === true}
+                />
+              );
+            }}
           />
         );
       })}
