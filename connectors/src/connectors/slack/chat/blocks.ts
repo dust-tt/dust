@@ -4,6 +4,7 @@ import { truncate } from "@dust-tt/types";
 import { STATIC_AGENT_CONFIG } from "@connectors/api/webhooks/webhook_slack_interaction";
 import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
+import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 
 /*
  * This length threshold is set to prevent the "msg_too_long" error
@@ -80,10 +81,11 @@ function makeContextSectionBlocks(
 function makeAssistantSelectionBlock(
   assistantName: string,
   agentConfigurations: LightAgentConfigurationType[],
+  slackUserInfo: SlackUserInfo,
   isThinking: boolean,
   thinkingText: string
 ) {
-  return assistantName
+  return assistantName && !slackUserInfo.is_bot
     ? [
         {
           type: "section",
@@ -151,6 +153,7 @@ export function makeFooterBlock(
 export function makeMessageUpdateBlocksAndText(
   conversationUrl: string | null,
   workspaceId: string,
+  slackUserInfo: SlackUserInfo,
   messageUpdate: SlackMessageUpdate
 ) {
   const {
@@ -172,6 +175,7 @@ export function makeMessageUpdateBlocksAndText(
       ...makeAssistantSelectionBlock(
         assistantName,
         agentConfigurations,
+        slackUserInfo,
         isThinking ?? false,
         thinkingTextWithAction
       ),
