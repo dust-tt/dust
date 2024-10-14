@@ -9,7 +9,6 @@ import type {
 } from "swr/infinite";
 import useSWRInfinite from "swr/infinite";
 
-import apiConfig from "@app/lib/api/config";
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 
 const DEFAULT_SWR_CONFIG: SWRConfiguration = {
