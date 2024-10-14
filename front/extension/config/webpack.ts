@@ -118,7 +118,7 @@ export const getConfig = async ({
         "process.env.USE_PUBLIC_API": '"http://localhost:3000/api/v1"',
       }),
       new Dotenv({
-        path: isDevelopment ? "./.env.development" : "./.env.production",
+        path: isDevelopment ? "./extension/.env.development" : "./extension/.env.production",
       }),
       new CopyPlugin({
         patterns: [
