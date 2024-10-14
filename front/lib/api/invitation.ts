@@ -172,7 +172,7 @@ export async function sendWorkspaceInvitationEmail(
     to: invitation.inviteEmail,
     from: {
       name: "Dust team",
-      email: "team@dust.tt",
+      email: "support@dust.help",
     },
     templateId: config.getInvitationEmailTemplate(),
     dynamic_template_data: {

@@ -450,7 +450,7 @@ async function sendSuggestionEmail({
 
   const msg = {
     to: recipientEmail,
-    from: "team@dust.tt",
+    from: "support@dust.tt",
     subject: `DUST: Document update suggestion for ${matchedDocumentName}`,
     html:
       "Hello!<br>" +
