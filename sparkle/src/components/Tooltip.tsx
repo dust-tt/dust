@@ -45,7 +45,9 @@ function Tooltip({
   return (
     <TooltipProvider>
       <TooltipRoot>
-        <TooltipTrigger asChild={tooltipTriggerAsChild}>{trigger}</TooltipTrigger>
+        <TooltipTrigger asChild={tooltipTriggerAsChild}>
+          {trigger}
+        </TooltipTrigger>
         <TooltipContent {...props}>{label}</TooltipContent>
       </TooltipRoot>
     </TooltipProvider>

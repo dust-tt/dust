@@ -32,7 +32,7 @@ const RadioGroup = React.forwardRef<
 >(({ className, ...props }, ref) => {
   return (
     <RadioGroupPrimitive.Root
-      className={cn("s-grid s-gap-2", className)}
+      className={cn("s-grid", className)}
       {...props}
       ref={ref}
     />
@@ -111,7 +111,7 @@ const RadioGroupChoice = React.forwardRef<
   RadioGroupChoiceProps
 >(({ className, size, iconPosition = "center", children, ...props }, ref) => {
   return (
-    <div className={cn("s-flex s-gap-2", className, `s-items-${iconPosition}`)}>
+    <div className={cn("s-flex", className, `s-items-${iconPosition}`)}>
       <RadioGroupItem
         ref={ref}
         className={cn(radioStyles({ size }))}
