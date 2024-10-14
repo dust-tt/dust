@@ -6,19 +6,21 @@ import type {
 import type { AgentMention, MentionType } from "@dust-tt/types";
 import type { UploadedContentFragment } from "@dust-tt/types";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useSWRConfig } from "swr";
 
-import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import { compareAgentsForSort } from "@app/lib/assistant";
-import { ClientSideTracking } from "@app/lib/tracking/client";
-import { classNames } from "@app/lib/utils";
-import { GenerationContext } from "@app/shared/context/GenerationContextProvider";
-import { useFileDrop } from "@app/shared/files/FileUploaderContext";
-import { InputBarCitations } from "@app/shared/input_bar/InputBarCitations";
-import type { InputBarContainerProps } from "@app/shared/input_bar/InputBarContainer";
+import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
+import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { InputBarCitations } from "@app/components/assistant/conversation/input_bar/InputBarCitations";
+import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer, {
   INPUT_BAR_ACTIONS,
-} from "@app/shared/input_bar/InputBarContainer";
-import { InputBarContext } from "@app/shared/input_bar/InputBarContext";
+} from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { compareAgentsForSort } from "@app/lib/assistant";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { ClientSideTracking } from "@app/lib/tracking/client";
+import { classNames } from "@app/lib/utils";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
@@ -52,7 +54,6 @@ export function AssistantInputBar({
   onSubmit,
   conversationId,
   stickyMentions,
-  baseAgentConfigurations,
   additionalAgentConfiguration,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
@@ -67,13 +68,20 @@ export function AssistantInputBar({
   ) => void;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
-  baseAgentConfigurations: LightAgentConfigurationType[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
 }) {
+  const { mutate } = useSWRConfig();
+
+  const { agentConfigurations: baseAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "assistants-search",
+    });
+
   // Files upload.
 
   const fileUploaderService = useFileUploaderService({
@@ -203,9 +211,9 @@ export function AssistantInputBar({
         }),
       }
     );
-    // todo await mutate(
-    //   `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
-    // );
+    await mutate(
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}`
+    );
   };
 
   useEffect(() => {
@@ -261,7 +269,6 @@ export function AssistantInputBar({
                 actions={actions}
                 disableAutoFocus={disableAutoFocus}
                 allAssistants={activeAgents}
-                baseAgentConfigurations={baseAgentConfigurations}
                 agentConfigurations={agentConfigurations}
                 owner={owner}
                 selectedAssistant={selectedAssistant}
@@ -283,7 +290,6 @@ export function FixedAssistantInputBar({
   onSubmit,
   stickyMentions,
   conversationId,
-  baseAgentConfigurations,
   additionalAgentConfiguration,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
@@ -296,7 +302,6 @@ export function FixedAssistantInputBar({
   ) => void;
   stickyMentions?: AgentMention[];
   conversationId: string | null;
-  baseAgentConfigurations: LightAgentConfigurationType[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus?: boolean;
@@ -308,7 +313,6 @@ export function FixedAssistantInputBar({
         onSubmit={onSubmit}
         conversationId={conversationId}
         stickyMentions={stickyMentions}
-        baseAgentConfigurations={baseAgentConfigurations}
         additionalAgentConfiguration={additionalAgentConfiguration}
         actions={actions}
         disableAutoFocus={disableAutoFocus}

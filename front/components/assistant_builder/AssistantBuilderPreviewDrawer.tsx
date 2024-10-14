@@ -20,6 +20,8 @@ import { Separator } from "@radix-ui/react-select";
 import { useContext, useEffect, useMemo } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
+import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import {
   usePreviewAssistant,
   useTryAssistantCore,
@@ -33,12 +35,9 @@ import type {
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/w/[wId]/assistant/builder/templates/[tId]";
-import { GenerationContextProvider } from "@app/shared/context/GenerationContextProvider";
-import { AssistantInputBar } from "@app/shared/input_bar/InputBar";
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -109,11 +108,7 @@ export default function AssistantBuilderRightPanel({
     user,
     assistant: draftAssistant,
   });
-  const { agentConfigurations: baseAgentConfigurations } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "assistants-search",
-    });
+
   useEffect(() => {
     setConversation(null);
   }, [draftAssistant?.sId, setConversation]);
@@ -168,7 +163,6 @@ export default function AssistantBuilderRightPanel({
                   <div className="shrink-0">
                     <AssistantInputBar
                       owner={owner}
-                      baseAgentConfigurations={baseAgentConfigurations}
                       onSubmit={handleSubmit}
                       stickyMentions={stickyMentions}
                       conversationId={conversation?.sId || null}

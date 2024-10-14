@@ -3,7 +3,7 @@ import type { PasteRuleMatch } from "@tiptap/react";
 import { nodePasteRule } from "@tiptap/react";
 import { escapeRegExp } from "lodash";
 
-import type { EditorSuggestions } from "@app/shared/input_bar/editor/suggestion";
+import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 
 export const MentionWithPaste = Mention.extend({
   addPasteRules() {

@@ -20,12 +20,11 @@ import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useCallback, useContext } from "react";
 
+import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { AssistantInputBar } from "@app/shared/input_bar/InputBar";
 
 // describe the type of userContent where the
 
@@ -152,11 +151,7 @@ export function HelpDrawer({
 }) {
   const router = useRouter();
   const sendNotification = useContext(SendNotificationsContext);
-  const { agentConfigurations: baseAgentConfigurations } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "assistants-search",
-    });
+
   const { submit: handleHelpSubmit } = useSubmitFunction(
     useCallback(
       async (input: string, mentions: MentionType[]) => {
@@ -253,7 +248,6 @@ export function HelpDrawer({
           </Button.List>
           <AssistantInputBar
             owner={owner}
-            baseAgentConfigurations={baseAgentConfigurations}
             onSubmit={handleHelpSubmit}
             conversationId={null}
             actions={[]}

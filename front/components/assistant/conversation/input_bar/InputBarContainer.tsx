@@ -16,13 +16,13 @@ import { EditorContent } from "@tiptap/react";
 import React, { useContext, useEffect, useRef, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
+import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
+import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
+import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { classNames } from "@app/lib/utils";
-import useAssistantSuggestions from "@app/shared/input_bar/editor/useAssistantSuggestions";
-import type { CustomEditorProps } from "@app/shared/input_bar/editor/useCustomEditor";
-import useCustomEditor from "@app/shared/input_bar/editor/useCustomEditor";
-import useHandleMentions from "@app/shared/input_bar/editor/useHandleMentions";
-import { InputBarContext } from "@app/shared/input_bar/InputBarContext";
 
 export const INPUT_BAR_ACTIONS = ["attachment", "quick-actions"] as const;
 
@@ -30,7 +30,6 @@ export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
-  baseAgentConfigurations: LightAgentConfigurationType[];
   agentConfigurations: LightAgentConfigurationType[];
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
   owner: WorkspaceType;
@@ -44,7 +43,6 @@ export interface InputBarContainerProps {
 
 const InputBarContainer = ({
   allAssistants,
-  baseAgentConfigurations,
   agentConfigurations,
   onEnterKeyDown,
   owner,
@@ -55,10 +53,7 @@ const InputBarContainer = ({
   disableSendButton,
   fileUploaderService,
 }: InputBarContainerProps) => {
-  const suggestions = useAssistantSuggestions(
-    baseAgentConfigurations,
-    agentConfigurations
-  );
+  const suggestions = useAssistantSuggestions(agentConfigurations, owner);
 
   const [isExpanded, setIsExpanded] = useState(false);
   function handleExpansionToggle() {
@@ -109,7 +104,6 @@ const InputBarContainer = ({
       id="InputBarContainer"
       className="relative flex flex-1 flex-col sm:flex-row"
     >
-      {/* @ts-ignore */}
       <EditorContent
         editor={editor}
         className={classNames(
@@ -121,6 +115,7 @@ const InputBarContainer = ({
             : "max-h-64"
         )}
       />
+
       <div className="flex flex-row items-end justify-between gap-2 self-stretch py-2 pr-2 sm:flex-col sm:border-0">
         <div
           className={classNames(
@@ -160,7 +155,7 @@ const InputBarContainer = ({
           )}
           {actions.includes("quick-actions") && (
             <>
-              {/* <AssistantPicker
+              <AssistantPicker
                 owner={owner}
                 size="sm"
                 onItemClick={(c) => {
@@ -168,7 +163,7 @@ const InputBarContainer = ({
                 }}
                 assistants={allAssistants}
                 showFooterButtons={false}
-              /> */}
+              />
               <div className="hidden sm:flex">
                 <IconButton
                   variant={"tertiary"}

@@ -22,6 +22,8 @@ import {
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
+import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   createConversationWithMessage,
   createPlaceholderUserMessage,
@@ -32,10 +34,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useConversationMessages } from "@app/lib/swr/conversations";
-import { FixedAssistantInputBar } from "@app/shared/input_bar/InputBar";
-import { InputBarContext } from "@app/shared/input_bar/InputBarContext";
 
 interface ConversationContainerProps {
   conversationId: string | null;
@@ -248,11 +247,7 @@ export function ConversationContainer({
     },
     [setStickyMentions]
   );
-  const { agentConfigurations: baseAgentConfigurations } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "assistants-search",
-    });
+
   return (
     <DropzoneContainer
       description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
@@ -302,7 +297,6 @@ export function ConversationContainer({
 
       <FixedAssistantInputBar
         owner={owner}
-        baseAgentConfigurations={baseAgentConfigurations}
         onSubmit={activeConversationId ? handleSubmit : handleMessageSubmit}
         stickyMentions={stickyMentions}
         conversationId={activeConversationId}

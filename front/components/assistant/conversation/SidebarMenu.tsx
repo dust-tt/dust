@@ -20,13 +20,13 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useState } from "react";
 
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
   useConversations,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
-import { InputBarContext } from "@app/shared/input_bar/InputBarContext";
 
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;

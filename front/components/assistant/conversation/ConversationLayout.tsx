@@ -6,15 +6,15 @@ import RootLayout from "@app/components/app/RootLayout";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import { ConversationTitle } from "@app/components/assistant/conversation/ConversationTitle";
+import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
+import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
   useConversation,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
-import { GenerationContextProvider } from "@app/shared/context/GenerationContextProvider";
-import { FileDropProvider } from "@app/shared/files/FileUploaderContext";
-import { InputBarProvider } from "@app/shared/input_bar/InputBarContext";
 
 export interface ConversationLayoutProps {
   baseUrl: string;

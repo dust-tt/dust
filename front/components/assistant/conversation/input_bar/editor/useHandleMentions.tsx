@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import type {
   EditorMention,
   EditorService,
-} from "@app/shared/input_bar/editor/useCustomEditor";
+} from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 
 const useHandleMentions = (
   editorService: EditorService,
