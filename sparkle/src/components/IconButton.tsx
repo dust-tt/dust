@@ -121,7 +121,7 @@ export function IconButton({
       trigger={IconButtonContent}
       label={tooltip}
       side={tooltipPosition}
-      triggerIsButton
+      tooltipTriggerIsButton
     />
   ) : (
     IconButtonContent

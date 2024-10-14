@@ -221,7 +221,7 @@ export function Button({
       trigger={buttonBase}
       label={label}
       side={tooltipPosition}
-      triggerIsButton
+      tooltipTriggerIsButton
     />
   );
 }
