@@ -1,3 +1,5 @@
+import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import {
   Button,
   ExternalLinkIcon,
@@ -9,10 +11,22 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "@extension/hooks/useAuth";
+import { WorkspaceType } from "@dust-tt/types";
 
 export const MainPage = () => {
   const { token, isLoading, handleLogin, handleLogout } = useAuth();
+
+  const owner: WorkspaceType = {
+    id: 1,
+    sId: "IQw2NP0Anb",
+    name: "test",
+    role: "user",
+    segmentation: null,
+    whiteListedProviders: null,
+    defaultEmbeddingProvider: null,
+    flags: [],
+  };
 
   return (
     <div className="flex flex-col p-4 gap-2 h-screen">
@@ -54,6 +68,15 @@ export const MainPage = () => {
       {token && (
         <div className="w-full h-full">
           <Page.SectionHeader title="Conversation" />
+          <GenerationContextProvider>
+            <FixedAssistantInputBar
+              owner={owner}
+              onSubmit={() => {}}
+              stickyMentions={[]}
+              actions={["attachment", "assistants-list"]}
+              conversationId={null}
+            />
+          </GenerationContextProvider>
           {/* <Link to="/conversation">Conversations</Link> */}
           <TextArea />
           <Button

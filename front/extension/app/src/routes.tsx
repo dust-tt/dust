@@ -1,5 +1,5 @@
-import { ConversationPage } from "./pages/ConversationPage";
-import { MainPage } from "./pages/MainPage";
+import { ConversationPage } from "@extension/pages/ConversationPage";
+import { MainPage } from "@extension/pages/MainPage";
 
 export const routes = [
   {

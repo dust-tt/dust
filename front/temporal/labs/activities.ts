@@ -1,5 +1,5 @@
 import type { AgentMessageType, ModelId } from "@dust-tt/types";
-import { assertNever, isEmptyString, minTranscriptsSize } from "@dust-tt/types";
+import { assertNever, isEmptyString } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import marked from "marked";
 import sanitizeHtml from "sanitize-html";
@@ -226,15 +226,6 @@ export async function processTranscriptActivity(
       return; // Already processed.
     }
     throw error;
-  }
-
-  // Short transcripts are not useful to process.
-  if (transcriptContent.length < minTranscriptsSize) {
-    localLogger.info(
-      { contentLength: transcriptContent.length },
-      "[processTranscriptActivity] Transcript content too short or empty. Skipping."
-    );
-    return;
   }
 
   const owner = auth.workspace();
