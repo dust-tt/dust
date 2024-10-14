@@ -18,7 +18,7 @@ import type {
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useMemo } from "react";
 
 import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
@@ -316,7 +316,6 @@ export function DataSourceViewSelector({
   isRootSelectable,
   defaultCollapsed = true,
 }: DataSourceViewSelectorProps) {
-  const [isChecked, setIsChecked] = useState<boolean | "partial">(false);
   const dataSourceView = selectionConfiguration.dataSourceView;
 
   const LogoComponent = getConnectorProviderLogoWithFallback(
@@ -390,16 +389,11 @@ export function DataSourceViewSelector({
     });
   };
 
-  useEffect(() => {
-    const isPartiallyChecked = internalIds.length > 0;
-    setIsChecked(
-      selectionConfiguration.isSelectAll
-        ? true
-        : isPartiallyChecked
-          ? "partial"
-          : false
-    );
-  }, [internalIds, selectionConfiguration.isSelectAll]);
+  const isChecked = selectionConfiguration.isSelectAll
+    ? true
+    : internalIds.length > 0
+      ? "partial"
+      : false;
 
   const isTableView = viewType === "tables";
 
@@ -430,13 +424,6 @@ export function DataSourceViewSelector({
             })),
           isSelectAll: false,
         };
-        setIsChecked(
-          selectionConfiguration.isSelectAll
-            ? true
-            : updatedConfig.selectedResources.length > 0
-              ? "partial"
-              : false
-        );
         if (updatedConfig.selectedResources.length === 0) {
           // Nothing is selected at all, remove from the list
           return _.omit(prevState, dataSourceView.sId);
@@ -484,10 +471,7 @@ export function DataSourceViewSelector({
             : {
                 checked: isChecked,
                 disabled: !isRootSelectable,
-                onCheckedChange: (v) => {
-                  setIsChecked(v === "indeterminate" ? "partial" : v);
-                  handleSelectAll();
-                },
+                onCheckedChange: handleSelectAll,
               }
         }
         actions={
