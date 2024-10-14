@@ -228,6 +228,15 @@ export async function processTranscriptActivity(
     throw error;
   }
 
+  // Short transcripts are not useful to process.
+  if (transcriptContent.length < 100) {
+    localLogger.info(
+      { contentLength: transcriptContent.length },
+      "[processTranscriptActivity] Transcript content too short or empty. Skipping."
+    );
+    return;
+  }
+
   const owner = auth.workspace();
 
   if (!owner) {
