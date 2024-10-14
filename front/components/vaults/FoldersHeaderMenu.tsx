@@ -56,7 +56,6 @@ export const FoldersHeaderMenu = ({
               canWriteInVault={canWriteInVault}
             />
           }
-          tooltipTriggerAsChild
         />
       )}
       {canWriteInVault ? (
@@ -82,7 +81,6 @@ export const FoldersHeaderMenu = ({
               canWriteInVault={canWriteInVault}
             />
           }
-          tooltipTriggerAsChild
         />
       )}
     </>

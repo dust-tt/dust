@@ -231,7 +231,6 @@ export default function Deploy({
             icon={CubeIcon}
           />
         }
-        tooltipTriggerAsChild
       />
     </div>
   );

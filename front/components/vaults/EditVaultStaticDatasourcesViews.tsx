@@ -111,7 +111,6 @@ export function EditVaultStaticDatasourcesViews({
               disabled={!canWriteInVault}
             />
           }
-          tooltipTriggerAsChild
         />
       )}
     </>

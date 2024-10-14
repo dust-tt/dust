@@ -72,7 +72,6 @@ export default function CopyRun({
             icon={CubeIcon}
           />
         }
-        tooltipTriggerAsChild
       />
     </div>
   );
