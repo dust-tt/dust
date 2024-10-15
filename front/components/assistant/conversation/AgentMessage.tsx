@@ -48,7 +48,7 @@ import {
 } from "react";
 
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
-import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
+import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";

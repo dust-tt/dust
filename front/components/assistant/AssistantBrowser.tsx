@@ -20,7 +20,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
-import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
+import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
 import { subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 
