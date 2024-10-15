@@ -66,6 +66,7 @@ export {
   NewNavigationListLabel,
 } from "./NewNavigationList";
 export { NewSearchInput } from "./NewSearchInput";
+export { NewTextarea } from "./NewTextArea";
 export { Notification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";

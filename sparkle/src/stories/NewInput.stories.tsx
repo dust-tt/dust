@@ -24,7 +24,7 @@ export const TabExample = () => {
 
 export function NewInputDemo() {
   return (
-    <>
+    <div className="s-flex s-flex-col s-gap-6">
       <NewInput type="email" placeholder="Email" />
       <NewInput type="email" placeholder="Email" disabled />
       <div className="grid w-full max-w-sm items-center gap-1.5">
@@ -40,6 +40,6 @@ export function NewInputDemo() {
           isPulsing
         />
       </NewButtonBar>
-    </>
+    </div>
   );
 }

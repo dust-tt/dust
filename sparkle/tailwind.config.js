@@ -197,6 +197,10 @@ module.exports = {
           DEFAULT: colors.slate[200],
           dark: colors.slate[800],
         },
+        "border-focus": {
+          DEFAULT: colors.slate[400],
+          dark: colors.slate[600],
+        },
         background: { DEFAULT: colors.white, dark: colors.slate[950] },
         foreground: { DEFAULT: colors.slate[950], dark: colors.white },
         muted: { DEFAULT: colors.slate[50], dark: colors.slate[900] },
