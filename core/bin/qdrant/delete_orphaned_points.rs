@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 
-async fn delete_orphaned_point(
+async fn delete_orphaned_points_for_document_id(
     store: &Box<dyn Store + Sync + Send>,
     ds: &DataSource,
     qdrant_client: &DustQdrantClient,
@@ -67,7 +67,9 @@ async fn delete_orphaned_points_for_data_source(
     let qdrant_client = ds.main_qdrant_client(qdrant_clients);
 
     for document_id in document_ids {
-        if let Err(e) = delete_orphaned_point(store, &ds, &qdrant_client, document_id).await {
+        if let Err(e) =
+            delete_orphaned_points_for_document_id(store, &ds, &qdrant_client, document_id).await
+        {
             eprintln!(
                 "error deleting point for document_id: {} in data_source_internal_id: {}: {}",
                 document_id, data_source_internal_id, e
