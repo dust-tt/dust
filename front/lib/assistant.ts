@@ -153,5 +153,6 @@ export function compareAgentsForSort(
     return 1;
   } // Only b is in customOrder, it comes first
 
-  return 0; // Default: keep the original order
+  // default: sort alphabetically
+  return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
 }
