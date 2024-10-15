@@ -111,6 +111,7 @@ export default function ConversationLayout({
           subscription={subscription}
           owner={owner}
           isWideMode
+          hideHelpOnMobile
           pageTitle={
             conversation?.title
               ? `Dust - ${conversation?.title}`

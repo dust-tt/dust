@@ -40,6 +40,7 @@ export default function AppLayout({
   navChildren,
   titleChildren,
   children,
+  hideHelpOnMobile,
 }: {
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -50,6 +51,7 @@ export default function AppLayout({
   navChildren?: React.ReactNode;
   titleChildren?: React.ReactNode;
   children: React.ReactNode;
+  hideHelpOnMobile?: boolean;
 }) {
   const [loaded, setLoaded] = useState(false);
   const router = useRouter();
@@ -164,10 +166,17 @@ export default function AppLayout({
           </main>
         </div>
       </div>
-      {user.user && (
+      {user.user && !hideHelpOnMobile && (
         <GenerationContextProvider>
           <HelpAndQuickGuideWrapper owner={owner} user={user.user} />
         </GenerationContextProvider>
+      )}
+      {user.user && hideHelpOnMobile && (
+        <div className="hidden sm:block">
+          <GenerationContextProvider>
+            <HelpAndQuickGuideWrapper owner={owner} user={user.user} />
+          </GenerationContextProvider>
+        </div>
       )}
       <>
         <Script
