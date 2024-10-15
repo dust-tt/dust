@@ -25,7 +25,7 @@ export async function sendGithubDeletionEmail(email: string): Promise<void> {
     to: email,
     from: {
       name: "Dust team",
-      email: "team@dust.tt",
+      email: "support@dust.help",
     },
     subject: "[Dust] Github connection deleted - important information",
     body: `<p>Your Dust connection to Github was deleted, along with all the related data on Dust servers.</p>
@@ -52,7 +52,7 @@ export async function sendCancelSubscriptionEmail(
     to: email,
     from: {
       name: "Dust team",
-      email: "team@dust.tt",
+      email: "support@dust.help",
     },
     subject: `[Dust] Subscription canceled - important information`,
     body: `
@@ -76,7 +76,7 @@ export async function sendReactivateSubscriptionEmail(
     to: email,
     from: {
       name: "Dust team",
-      email: "team@dust.tt",
+      email: "support@dust.help",
     },
     subject: `[Dust] Your subscription has been reactivated`,
     body: `<p>You have requested to reactivate your subscription.</p>
@@ -94,7 +94,7 @@ export async function sendAdminSubscriptionPaymentFailedEmail(
     to: email,
     from: {
       name: "Dust team",
-      email: "team@dust.tt",
+      email: "support@dust.help",
     },
     subject: `[Dust] Your payment has failed`,
     body: `
@@ -121,7 +121,7 @@ export async function sendAdminDataDeletionEmail({
     to: email,
     from: {
       name: "Dust team",
-      email: "team@dust.tt",
+      email: "support@dust.help",
     },
     subject: `${
       isLast ? "Last Reminder: " : ""

@@ -402,7 +402,7 @@ export async function processTranscriptActivity(
     to: user.email,
     from: {
       name: "Dust team",
-      email: "team@dust.help",
+      email: "support@dust.help",
     },
     subject: `[DUST] Meeting summary - ${transcriptTitle}`,
     body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
