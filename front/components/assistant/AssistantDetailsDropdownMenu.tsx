@@ -33,7 +33,7 @@ interface AssistantDetailsDropdownMenuProps {
   showAddRemoveToFavorite?: boolean;
 }
 
-export function AssistantDetailsDropdownMenu({
+export function AssistantDropdownMenu({
   agentConfiguration,
   owner,
   variant = "plain",

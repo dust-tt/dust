@@ -4,11 +4,12 @@ import {
   type WorkspaceType,
 } from "@dust-tt/types";
 import { useUser } from "@app/lib/swr/user";
-import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
+import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   PencilSquareIcon,
+  Separator,
   StarIcon,
   StarStrokeIcon,
 } from "@dust-tt/sparkle";
@@ -58,7 +59,7 @@ export function AssistantDetailsButtonBar({
         onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
       />
 
-      <div className="h-6 w-0 border-l border-structure-200"></div>
+      <Separator orientation="vertical" className="h-6" />
 
       <Link
         href={`/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`}
@@ -100,7 +101,7 @@ export function AssistantDetailsButtonBar({
       )}
 
       {agentConfiguration.scope !== "global" && (
-        <AssistantDetailsDropdownMenu
+        <AssistantDropdownMenu
           agentConfiguration={agentConfiguration}
           owner={owner}
           variant="button"
