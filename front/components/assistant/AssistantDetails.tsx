@@ -9,11 +9,9 @@ import {
   useAgentConfiguration,
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
-import {
-  useDataSourceViewContentNodes,
-  useDataSourceViews,
-} from "@app/lib/swr/data_source_views";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
+import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
+import { AssistantActionsSection } from "@app/components/assistant/details/AssistantActionsSection";
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
