@@ -2,6 +2,7 @@ import { Avatar, ContentMessage, ElementModal, Page } from "@dust-tt/sparkle";
 import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
+import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import {
@@ -13,7 +14,6 @@ import {
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;

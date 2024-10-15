@@ -1,20 +1,26 @@
 import {
-  isBuilder,
-  type LightAgentConfigurationType,
-  type WorkspaceType,
-} from "@dust-tt/types";
-import { useUser } from "@app/lib/swr/user";
-import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
-import {
   Button,
   ChatBubbleBottomCenterTextIcon,
+  ClipboardIcon,
+  DropdownMenu,
+  MoreIcon,
   PencilSquareIcon,
   Separator,
   StarIcon,
   StarStrokeIcon,
+  TrashIcon,
 } from "@dust-tt/sparkle";
-import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
+import type {
+  LightAgentConfigurationType,
+  WorkspaceType,
+} from "@dust-tt/types";
+import { isBuilder } from "@dust-tt/types";
 import Link from "next/link";
+import { useState } from "react";
+
+import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
+import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
+import { useUser } from "@app/lib/swr/user";
 
 interface AssistantDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
@@ -30,6 +36,8 @@ export function AssistantDetailsButtonBar({
 }: AssistantDetailsButtonBarProps) {
   const { user } = useUser();
 
+  const [showDeletionModal, setShowDeletionModal] = useState(false);
+
   const updateUserFavorite = useUpdateUserFavorite({
     owner,
     agentConfigurationId: agentConfiguration.sId,
@@ -41,6 +49,82 @@ export function AssistantDetailsButtonBar({
     !user
   ) {
     return <></>;
+  }
+
+  const allowDeletion =
+    agentConfiguration.scope !== "global" &&
+    (isBuilder(owner) || agentConfiguration.scope !== "workspace");
+
+  function AssistantDetailsDropdownMenu() {
+    return (
+      <>
+        <DeleteAssistantDialog
+          owner={owner}
+          isOpen={showDeletionModal}
+          agentConfiguration={agentConfiguration}
+          onClose={() => {
+            setShowDeletionModal(false);
+          }}
+          isPrivateAssistant={agentConfiguration.scope === "private"}
+        />
+
+        <DropdownMenu className="text-element-700">
+          {({ close }) => (
+            <>
+              <DropdownMenu.Button>
+                <Button
+                  key="show_details"
+                  icon={MoreIcon}
+                  label="Actions"
+                  labelVisible={false}
+                  disabledTooltip
+                  size="sm"
+                  variant="tertiary"
+                  hasMagnifying={false}
+                />
+              </DropdownMenu.Button>
+              {/* TODO: get rid of the hardcoded value */}
+              <DropdownMenu.Items width={230}>
+                <DropdownMenu.Item
+                  label={`Copy assistant ID`}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await navigator.clipboard.writeText(agentConfiguration.sId);
+                    close();
+                  }}
+                  icon={ClipboardIcon}
+                />
+                {agentConfiguration.scope !== "global" && (
+                  <>
+                    <DropdownMenu.Item
+                      label="Duplicate (New)"
+                      link={{
+                        href: `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`,
+                      }}
+                      icon={ClipboardIcon}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        close();
+                      }}
+                    />
+                    {allowDeletion && (
+                      <DropdownMenu.Item
+                        label="Delete"
+                        icon={TrashIcon}
+                        variant="warning"
+                        onClick={() => {
+                          setShowDeletionModal(true);
+                        }}
+                      />
+                    )}
+                  </>
+                )}
+              </DropdownMenu.Items>
+            </>
+          )}
+        </DropdownMenu>
+      </>
+    );
   }
 
   const canEditAssistant =
@@ -101,12 +185,7 @@ export function AssistantDetailsButtonBar({
       )}
 
       {agentConfiguration.scope !== "global" && (
-        <AssistantDropdownMenu
-          agentConfiguration={agentConfiguration}
-          owner={owner}
-          variant="button"
-          canDelete
-        />
+        <AssistantDetailsDropdownMenu />
       )}
     </div>
   );
