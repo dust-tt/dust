@@ -22,7 +22,7 @@ export function Demo() {
 }
 
 export const TexareBasic = () => (
-  <NewTextarea placeholder="Type your message here." />
+  <NewTextarea placeholder="Type your message here." resize="none" />
 );
 
 export function TextareaDisabled() {

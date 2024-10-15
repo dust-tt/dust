@@ -3,7 +3,9 @@ import * as React from "react";
 import { cn } from "@sparkle/lib/utils";
 
 export interface TextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
+  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  resize?: "none" | "vertical" | "horizontal" | "both";
+}
 
 const textAreaStyles = cn(
   "s-flex s-min-h-[80px] s-w-full s-px-3 s-py-2",
@@ -15,10 +17,17 @@ const textAreaStyles = cn(
 );
 
 const NewTextarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className, ...props }, ref) => {
+  ({ className, resize = "both", ...props }, ref) => {
+    const resizeClass = {
+      none: "s-resize-none",
+      vertical: "s-resize-y",
+      horizontal: "s-resize-x",
+      both: "s-resize",
+    };
+
     return (
       <textarea
-        className={cn(textAreaStyles, className)}
+        className={cn(textAreaStyles, resizeClass[resize], className)}
         ref={ref}
         {...props}
       />
