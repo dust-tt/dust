@@ -79,3 +79,11 @@ export class InvalidRowsRequestError extends Error {
     this.name = "InvalidRowsRequestError";
   }
 }
+
+// Error for body too large
+export class BodyTooLargeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BodyTooLargeError";
+  }
+}

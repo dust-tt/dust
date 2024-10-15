@@ -19,6 +19,7 @@ import { gfm } from "micromark-extension-gfm";
 import { apiConfig } from "@connectors/lib/api/config";
 import { withRetries } from "@connectors/lib/dust_front_api_helpers";
 import {
+  BodyTooLargeError,
   DustConnectorWorkflowError,
   InvalidRowsRequestError,
 } from "@connectors/lib/error";
@@ -837,6 +838,9 @@ export async function upsertTableFromCsv({
       dustRequestResult.data.error?.type === "invalid_rows_request_error"
     ) {
       throw new InvalidRowsRequestError(dustRequestResult.data.error.message);
+    }
+    if (dustRequestResult.status === 413) {
+      throw new BodyTooLargeError(dustRequestResult.data.error.message);
     }
     throw new Error(
       `Error uploading to dust, got ${

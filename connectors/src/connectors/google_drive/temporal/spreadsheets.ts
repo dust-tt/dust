@@ -20,6 +20,7 @@ import {
   upsertTableFromCsv,
 } from "@connectors/lib/data_sources";
 import {
+  BodyTooLargeError,
   InvalidRowsRequestError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
@@ -191,6 +192,12 @@ async function processSheet(
         logger.warn(
           { ...loggerArgs, error: err },
           "[Spreadsheet] Invalid rows detected - skipping (but not failing)."
+        );
+        return false;
+      } else if (err instanceof BodyTooLargeError) {
+        logger.warn(
+          { ...loggerArgs, error: err },
+          "[Spreadsheet] Body too large - skipping (but not failing)."
         );
         return false;
       } else {
