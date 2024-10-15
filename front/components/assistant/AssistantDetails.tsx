@@ -3,6 +3,8 @@ import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
+import { AssistantActionsSection } from "@app/components/assistant/details/AssistantActionsSection";
+import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
 import {
@@ -10,8 +12,6 @@ import {
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
-import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
-import { AssistantActionsSection } from "@app/components/assistant/details/AssistantActionsSection";
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
