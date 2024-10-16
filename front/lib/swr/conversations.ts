@@ -4,12 +4,13 @@ import type {
   ConversationType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { useContext, useMemo } from "react";
+import { useCallback, useContext, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
+import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
 import {
   fetcher,
   useSWRInfiniteWithDefaults,
@@ -199,3 +200,53 @@ export const useDeleteConversation = (owner: LightWorkspaceType) => {
 
   return doDelete;
 };
+
+export function useVisualizationRetry({
+  workspaceId,
+  conversationId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  agentConfigurationId: string;
+}) {
+  const handleVisualizationRetry = useCallback(
+    async (errorMessage: string) => {
+      try {
+        const response = await fetch(
+          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              content: getVisualizationRetryMessage(errorMessage),
+              mentions: [
+                {
+                  configurationId: agentConfigurationId,
+                },
+              ],
+              context: {
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                profilePictureUrl: null,
+              },
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to send retry message");
+        }
+
+        return true;
+      } catch (error) {
+        console.error("Error sending retry message:", error);
+        return false;
+      }
+    },
+    [workspaceId, conversationId, agentConfigurationId]
+  );
+
+  return handleVisualizationRetry;
+}

@@ -72,6 +72,7 @@ interface AgentMessageProps {
   hideReactions?: boolean;
   isInModal: boolean;
   size: MessageSizeType;
+  isLastMessage: boolean;
 }
 
 /**
@@ -89,6 +90,7 @@ export function AgentMessage({
   hideReactions,
   isInModal,
   size,
+  isLastMessage,
 }: AgentMessageProps) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
@@ -427,11 +429,13 @@ export function AgentMessage({
               identifier: `viz-${message.sId}-${lineStart}`,
             }}
             key={`viz-${message.sId}-${lineStart}`}
+            conversationId={conversationId}
+            agentConfigurationId={agentConfiguration.sId}
           />
         );
       },
     };
-  }, [message.sId, owner]);
+  }, [owner, conversationId, message.sId, agentConfiguration.sId]);
 
   return (
     <ConversationMessage
@@ -523,6 +527,7 @@ export function AgentMessage({
               isStreaming={false}
               textSize="sm"
               textColor="purple-800"
+              isLastMessage={isLastMessage}
             />
           </ContentMessage>
         ) : null}
@@ -547,6 +552,7 @@ export function AgentMessage({
                     setHoveredReference: setLastHoveredReference,
                   }}
                   customRenderer={customRenderer}
+                  isLastMessage={isLastMessage}
                 />
                 {activeReferences.length > 0 && (
                   <Citations

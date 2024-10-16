@@ -140,8 +140,10 @@ export function VisualizationWrapperWithErrorBoundary({
 
   return (
     <ErrorBoundary
-      onErrored={() => {
-        sendCrossDocumentMessage("setErrored", undefined);
+      onErrored={(e) => {
+        sendCrossDocumentMessage("setErrorMessage", {
+          errorMessage: e instanceof Error ? e.message : `${e}`,
+        });
       }}
     >
       <VisualizationWrapper api={api} />
@@ -158,7 +160,7 @@ export function VisualizationWrapper({
 }) {
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
 
-  const [errored, setErrored] = useState<Error | null>(null);
+  const [errored, setErrorMessage] = useState<Error | null>(null);
 
   const {
     fetchCode,
@@ -173,7 +175,7 @@ export function VisualizationWrapper({
       try {
         const fetchedCode = await fetchCode();
         if (!fetchedCode) {
-          setErrored(new Error("No visualization code found"));
+          setErrorMessage(new Error("No visualization code found"));
         } else {
           setRunnerParams({
             code: "() => {import Comp from '@dust/generated-code'; return (<Comp />);}",
@@ -196,7 +198,7 @@ export function VisualizationWrapper({
           });
         }
       } catch (error) {
-        setErrored(
+        setErrorMessage(
           error instanceof Error
             ? error
             : new Error("Failed to fetch visualization code")
@@ -232,7 +234,7 @@ export function VisualizationWrapper({
 
   useEffect(() => {
     if (error) {
-      setErrored(error);
+      setErrorMessage(error);
     }
   }, [error]);
 
@@ -259,7 +261,7 @@ export function VisualizationWrapper({
           scope={runnerParams.scope}
           onRendered={(error) => {
             if (error) {
-              setErrored(error);
+              setErrorMessage(error);
             }
           }}
         />

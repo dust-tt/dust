@@ -1,4 +1,4 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { Button, Spinner } from "@dust-tt/sparkle";
 import type {
   CommandResultMap,
   LightWorkspaceType,
@@ -7,9 +7,20 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, isVisualizationRPCRequest } from "@dust-tt/types";
 import type { SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
+import {
+  MarkDownContentContext,
+  RenderMessageMarkdown,
+} from "@app/components/assistant/RenderMessageMarkdown";
+import { useVisualizationRetry } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
 export type Visualization = {
@@ -38,13 +49,13 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
 function useVisualizationDataHandler({
   visualization,
   setContentHeight,
-  setIsErrored,
+  setErrorMessage,
   vizIframeRef,
   workspaceId,
 }: {
   visualization: Visualization;
   setContentHeight: (v: SetStateAction<number>) => void;
-  setIsErrored: (v: SetStateAction<boolean>) => void;
+  setErrorMessage: (v: SetStateAction<string | null>) => void;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
   workspaceId: string;
 }) {
@@ -113,8 +124,8 @@ function useVisualizationDataHandler({
           setContentHeight(data.params.height);
           break;
 
-        case "setErrored":
-          setIsErrored(true);
+        case "setErrorMessage":
+          setErrorMessage(data.params.errorMessage);
           break;
 
         case "sendScreenshotBlob":
@@ -133,7 +144,7 @@ function useVisualizationDataHandler({
     downloadScreenshotFromBlob,
     getFileBlob,
     setContentHeight,
-    setIsErrored,
+    setErrorMessage,
     visualization.identifier,
     vizIframeRef,
   ]);
@@ -142,20 +153,27 @@ function useVisualizationDataHandler({
 export function VisualizationActionIframe({
   owner,
   visualization,
+  conversationId,
+  agentConfigurationId,
 }: {
   owner: LightWorkspaceType;
   visualization: Visualization;
+  conversationId: string;
+  agentConfigurationId: string;
 }) {
   const [contentHeight, setContentHeight] = useState<number>(0);
-  const [isErrored, setIsErrored] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [retryClicked, setRetryClicked] = useState(false);
 
-  const vizIframeRef = useRef<HTMLIFrameElement>(null);
+  const vizIframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  const isErrored = !!errorMessage || retryClicked;
 
   useVisualizationDataHandler({
     visualization,
     workspaceId: owner.sId,
     setContentHeight,
-    setIsErrored,
+    setErrorMessage,
     vizIframeRef,
   });
 
@@ -166,6 +184,25 @@ export function VisualizationActionIframe({
     () => codeFullyGenerated && !iframeLoaded && !isErrored,
     [codeFullyGenerated, iframeLoaded, isErrored]
   );
+
+  const handleVisualizationRetry = useVisualizationRetry({
+    workspaceId: owner.sId,
+    conversationId,
+    agentConfigurationId,
+  });
+
+  const handleRetryClick = useCallback(async () => {
+    if (retryClicked || !errorMessage) {
+      return;
+    }
+    setRetryClicked(true);
+    const success = await handleVisualizationRetry(errorMessage);
+    if (!success) {
+      setRetryClicked(false);
+    }
+  }, [errorMessage, handleVisualizationRetry, retryClicked]);
+
+  const canRetry = useContext(MarkDownContentContext)?.isLastMessage ?? false;
 
   return (
     <div className="relative flex flex-col">
@@ -178,7 +215,7 @@ export function VisualizationActionIframe({
         className={classNames(
           "relative w-full overflow-hidden",
           codeFullyGenerated && !isErrored ? "min-h-96" : "",
-          isErrored ? "h-full" : ""
+          errorMessage ? "h-full" : ""
         )}
       >
         <div className="flex">
@@ -187,6 +224,7 @@ export function VisualizationActionIframe({
               <RenderMessageMarkdown
                 content={"```javascript\n" + (code ?? "") + "\n```"}
                 isStreaming={!codeFullyGenerated}
+                isLastMessage={true}
               />
             </div>
           ) : (
@@ -194,8 +232,8 @@ export function VisualizationActionIframe({
               {codeFullyGenerated && !isErrored && (
                 <div
                   style={{
-                    height: !isErrored ? `${contentHeight}px` : "100%",
-                    minHeight: !isErrored ? "96" : undefined,
+                    height: `${contentHeight}px`,
+                    minHeight: "96",
                   }}
                   className={classNames("max-h-[600px] w-full")}
                 >
@@ -203,7 +241,7 @@ export function VisualizationActionIframe({
                     ref={vizIframeRef}
                     className={classNames(
                       "h-full w-full",
-                      !isErrored ? "min-h-96" : ""
+                      !errorMessage ? "min-h-96" : ""
                     )}
                     src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}`}
                     sandbox="allow-scripts"
@@ -214,10 +252,19 @@ export function VisualizationActionIframe({
                 <div className="flex h-full w-full flex-col items-center gap-4 py-8">
                   <div className="text-sm text-element-800">
                     An error occured while rendering the visualization.
+                    <div className="pt-2 text-xs text-element-600">
+                      {errorMessage}
+                    </div>
                   </div>
-                  <div className="text-sm text-element-800">
-                    The assistant message can be retried.
-                  </div>
+
+                  {canRetry && !retryClicked && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      label="Retry Visualization"
+                      onClick={handleRetryClick}
+                    />
+                  )}
                 </div>
               )}
             </div>
