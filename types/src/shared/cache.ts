@@ -4,6 +4,9 @@ import { redisClient } from "../shared/redis_client";
 // Usage:
 // const cachedFn = cacheWithRedis(fn, (fnArg1, fnArg2, ...) => `${fnArg1}-${fnArg2}`, 60 * 10 * 1000);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+// if caching big objects, there is a possible race condition (mulitple calls to
+// caching), therefore, we use a lock
 export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
   fn: T,
   resolver: (...args: Parameters<T>) => string,
@@ -31,8 +34,17 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
         redisUri,
       });
       const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
-      const cacheVal = await redisCli.get(key);
+      let cacheVal = await redisCli.get(key);
       if (cacheVal) {
+        return JSON.parse(cacheVal) as Awaited<ReturnType<T>>;
+      }
+
+      // if value not found, lock, recheck and set
+      // we avoid locking for the first read to allow parallel calls to redis if the value is set
+      await lock(key);
+      cacheVal = await redisCli.get(key);
+      if (cacheVal) {
+        unlock(key);
         return JSON.parse(cacheVal) as Awaited<ReturnType<T>>;
       }
 
@@ -40,6 +52,7 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
       await redisCli.set(key, JSON.stringify(result), {
         PX: ttlMs,
       });
+      unlock(key);
 
       return result;
     } finally {
@@ -48,4 +61,33 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
       }
     }
   };
+}
+
+const locks: Record<string, (() => void)[]> = {};
+
+async function lock(key: string) {
+  return new Promise<void>((resolve) => {
+    if (locks[key]) {
+      locks[key].push(resolve);
+    } else {
+      locks[key] = [];
+      resolve();
+    }
+  });
+}
+
+function unlock(key: string) {
+  if (locks[key] === undefined) {
+    throw new Error("Unreachable: unlock called without lock");
+  }
+  if (locks[key].length === 0) {
+    delete locks[key];
+    return;
+  }
+
+  const unlockFn = locks[key].pop();
+  if (!unlockFn) {
+    throw new Error("Unreachable: unlock called without lock");
+  }
+  unlockFn();
 }
