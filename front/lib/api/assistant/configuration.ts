@@ -131,13 +131,13 @@ export async function searchAgentConfigurationsByName(
       },
     },
   });
-  const r = await Promise.all(
-    (agentConfigurations || []).map((c) =>
-      getLightAgentConfiguration(auth, c.sId)
+  const r = (
+    await Promise.all(
+      agentConfigurations.map((c) => getLightAgentConfiguration(auth, c.sId))
     )
-  );
+  ).filter((c) => c !== null) as LightAgentConfigurationType[];
 
-  return r.filter((c) => c !== null);
+  return r;
 }
 
 function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {

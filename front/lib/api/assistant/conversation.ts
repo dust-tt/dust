@@ -1953,9 +1953,9 @@ export function normalizeContentFragmentType({
 }: {
   contentType: SupportedContentFragmentType;
   url?: string;
-}) {
+}): SupportedContentFragmentType {
   // hack: for users creating content_fragments through our public API
-  if (contentType === "file_attachment") {
+  if ((contentType as string) === "file_attachment") {
     logger.info(
       {
         url,
