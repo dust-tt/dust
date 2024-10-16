@@ -22,6 +22,8 @@ type GeneralWorkflowErrorType =
   | "unhandled_internal_activity_error"
   | "workflow_timeout_failure";
 
+type TablesErrorType = "invalid_headers" | "file_too_large";
+
 // Combine both general and provider-specific error types.
 type WorkflowErrorType = GeneralWorkflowErrorType | ProviderErrorType;
 
@@ -73,9 +75,12 @@ export function isNotFoundError(err: unknown): err is NotFoundError {
 }
 
 // Error for invalid rows when upserting table
-export class InvalidRowsRequestError extends Error {
-  constructor(message: string) {
+export class TablesError extends Error {
+  constructor(
+    public type: TablesErrorType,
+    message: string
+  ) {
     super(message);
-    this.name = "InvalidRowsRequestError";
+    this.name = "TablesError";
   }
 }

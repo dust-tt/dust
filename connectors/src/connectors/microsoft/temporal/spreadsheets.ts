@@ -16,10 +16,7 @@ import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteTable, upsertTableFromCsv } from "@connectors/lib/data_sources";
-import {
-  InvalidRowsRequestError,
-  ProviderWorkflowError,
-} from "@connectors/lib/error";
+import { ProviderWorkflowError, TablesError } from "@connectors/lib/error";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -204,10 +201,10 @@ async function processSheet({
         { ...loggerArgs, error: err },
         "[Spreadsheet] Failed to upsert table."
       );
-      if (err instanceof InvalidRowsRequestError) {
+      if (err instanceof TablesError) {
         localLogger.warn(
           { ...loggerArgs, error: err },
-          "[Spreadsheet] Invalid rows detected - skipping (but not failing)."
+          "[Spreadsheet] Tables error - skipping (but not failing)."
         );
         return new Ok(null);
       }
