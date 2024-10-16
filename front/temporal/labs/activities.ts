@@ -183,6 +183,7 @@ export async function processTranscriptActivity(
 
   let transcriptTitle = "";
   let transcriptContent = "";
+  let doNotProcess = false;
 
   switch (transcriptsConfiguration.provider) {
     case "google_drive":
@@ -203,8 +204,12 @@ export async function processTranscriptActivity(
         fileId,
         localLogger
       );
-      transcriptTitle = gongResult?.transcriptTitle || "";
-      transcriptContent = gongResult?.transcriptContent || "";
+      if (!gongResult) {
+        doNotProcess = true;
+        break;
+      }
+      transcriptTitle = gongResult.transcriptTitle || "";
+      transcriptContent = gongResult.transcriptContent || "";
       break;
 
     default:
@@ -215,8 +220,16 @@ export async function processTranscriptActivity(
     await transcriptsConfiguration.recordHistory({
       configurationId: transcriptsConfiguration.id,
       fileId,
-      fileName: transcriptTitle,
+      fileName: doNotProcess ? "Not processed" : transcriptTitle,
     });
+
+    if (doNotProcess) {
+      localLogger.info(
+        {},
+        "[processTranscriptActivity] Transcript not to be processed. Stopping."
+      );
+      return;
+    }
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
       localLogger.info(
