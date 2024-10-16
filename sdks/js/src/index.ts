@@ -1,7 +1,7 @@
 import { z } from "zod";
+
 import type {
   AgentActionSpecificEvent,
-  DustAppRunErroredEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentMessageSuccessEvent,
@@ -9,55 +9,42 @@ import type {
   APIError,
   ConversationType,
   DataSourceViewType,
+  DustAPICredentials,
+  DustAppConfigType,
+  DustAppRunBlockExecutionEvent,
+  DustAppRunBlockStatusEvent,
+  DustAppRunErroredEvent,
+  DustAppRunFinalEvent,
+  DustAppRunFunctionCallArgumentsTokensEvent,
+  DustAppRunFunctionCallEvent,
+  DustAppRunRunStatusEvent,
+  DustAppRunTokensEvent,
   GenerationTokensEvent,
-  PatchDataSourceViewType,
+  LoggerInterface,
+  PatchDataSourceViewRequestType,
   PublicPostContentFragmentRequestBody,
   PublicPostConversationsRequestBody,
   PublicPostMessagesRequestBody,
   UserMessageErrorEvent,
-  LoggerInterface,
-  DustAppRunRunStatusEvent,
-  DustAppRunBlockStatusEvent,
-  DustAppRunBlockExecutionEvent,
-  DustAppRunTokensEvent,
-  DustAppRunFunctionCallEvent,
-  DustAppRunFunctionCallArgumentsTokensEvent,
-  DustAppRunFinalEvent,
-  DustAPICredentials,
-  DustAppConfigType,
-  RunAppResponseType,
 } from "./types";
-
 import {
   APIErrorSchema,
   CreateConversationResponseSchema,
-  CreateConversationResponseType,
   Err,
   GetActiveMemberEmailsInWorkspaceResponseSchema,
-  GetActiveMemberEmailsInWorkspaceResponseType,
   GetAgentConfigurationsResponseSchema,
-  GetAgentConfigurationsResponseType,
   GetConversationResponseSchema,
-  GetConversationResponseType,
   GetDataSourcesResponseSchema,
-  GetDataSourcesResponseType,
   GetWorkspaceFeatureFlagsResponseSchema,
-  GetWorkspaceFeatureFlagsResponseType,
   GetWorkspaceVerifiedDomainsResponseSchema,
-  GetWorkspaceVerifiedDomainsResponseType,
   Ok,
-  PatchDataSourceViewsReponseType,
   PatchDataSourceViewsResponseSchema,
   PostContentFragmentResponseSchema,
-  PostContentFragmentResponseType,
   PostUserMessageResponseSchema,
-  PostUserMessageResponseType,
   Result,
   RunAppResponseSchema,
   SearchDataSourceViewsResponseSchema,
-  SearchDataSourceViewsResponseType,
   TokenizeResponseSchema,
-  TokenizeResponseType,
 } from "./types";
 
 export * from "./types";
@@ -334,10 +321,7 @@ export class DustAPI {
       }),
     });
 
-    const r = await this._resultFromResponse<RunAppResponseType>(
-      RunAppResponseSchema,
-      res
-    );
+    const r = await this._resultFromResponse(RunAppResponseSchema, res);
 
     if (r.isErr()) {
       return r;
@@ -420,10 +404,7 @@ export class DustAPI {
       }
     );
 
-    const r = await this._resultFromResponse<GetDataSourcesResponseType>(
-      GetDataSourcesResponseSchema,
-      res
-    );
+    const r = await this._resultFromResponse(GetDataSourcesResponseSchema, res);
     if (r.isErr()) {
       return r;
     }
@@ -452,11 +433,10 @@ export class DustAPI {
       }
     );
 
-    const r =
-      await this._resultFromResponse<GetAgentConfigurationsResponseType>(
-        GetAgentConfigurationsResponseSchema,
-        res
-      );
+    const r = await this._resultFromResponse(
+      GetAgentConfigurationsResponseSchema,
+      res
+    );
     if (r.isErr()) {
       return r;
     }
@@ -494,7 +474,7 @@ export class DustAPI {
       }
     );
 
-    const r = await this._resultFromResponse<PostContentFragmentResponseType>(
+    const r = await this._resultFromResponse(
       PostContentFragmentResponseSchema,
       res
     );
@@ -541,10 +521,7 @@ export class DustAPI {
       }
     );
 
-    return this._resultFromResponse<CreateConversationResponseType>(
-      CreateConversationResponseSchema,
-      res
-    );
+    return this._resultFromResponse(CreateConversationResponseSchema, res);
   }
 
   async postUserMessage({
@@ -578,7 +555,7 @@ export class DustAPI {
       }
     );
 
-    const r = await this._resultFromResponse<PostUserMessageResponseType>(
+    const r = await this._resultFromResponse(
       PostUserMessageResponseSchema,
       res
     );
@@ -645,6 +622,7 @@ export class DustAPI {
         if (event.data) {
           try {
             const data = JSON.parse(event.data).data;
+            // TODO: shall we use the schema to validate the data?
             switch (data.type) {
               case "user_message_error": {
                 pendingEvents.push(data as UserMessageErrorEvent);
@@ -749,7 +727,7 @@ export class DustAPI {
       }
     );
 
-    const r = await this._resultFromResponse<GetConversationResponseType>(
+    const r = await this._resultFromResponse(
       GetConversationResponseSchema,
       res
     );
@@ -773,10 +751,7 @@ export class DustAPI {
       }),
     });
 
-    const r = await this._resultFromResponse<TokenizeResponseType>(
-      TokenizeResponseSchema,
-      res
-    );
+    const r = await this._resultFromResponse(TokenizeResponseSchema, res);
     if (r.isErr()) {
       return r;
     }
@@ -794,11 +769,10 @@ export class DustAPI {
       },
     });
 
-    const r =
-      await this._resultFromResponse<GetActiveMemberEmailsInWorkspaceResponseType>(
-        GetActiveMemberEmailsInWorkspaceResponseSchema,
-        res
-      );
+    const r = await this._resultFromResponse(
+      GetActiveMemberEmailsInWorkspaceResponseSchema,
+      res
+    );
     if (r.isErr()) {
       return r;
     }
@@ -817,11 +791,10 @@ export class DustAPI {
       },
     });
 
-    const r =
-      await this._resultFromResponse<GetWorkspaceVerifiedDomainsResponseType>(
-        GetWorkspaceVerifiedDomainsResponseSchema,
-        res
-      );
+    const r = await this._resultFromResponse(
+      GetWorkspaceVerifiedDomainsResponseSchema,
+      res
+    );
     if (r.isErr()) {
       return r;
     }
@@ -840,11 +813,10 @@ export class DustAPI {
       },
     });
 
-    const r =
-      await this._resultFromResponse<GetWorkspaceFeatureFlagsResponseType>(
-        GetWorkspaceFeatureFlagsResponseSchema,
-        res
-      );
+    const r = await this._resultFromResponse(
+      GetWorkspaceFeatureFlagsResponseSchema,
+      res
+    );
     if (r.isErr()) {
       return r;
     }
@@ -861,7 +833,7 @@ export class DustAPI {
         Authorization: `Bearer ${this._credentials.apiKey}`,
       },
     });
-    const r = await this._resultFromResponse<SearchDataSourceViewsResponseType>(
+    const r = await this._resultFromResponse(
       SearchDataSourceViewsResponseSchema,
       res
     );
@@ -874,7 +846,7 @@ export class DustAPI {
 
   async patchDataSourceViews(
     dataSourceView: DataSourceViewType,
-    patchData: PatchDataSourceViewType
+    patchData: PatchDataSourceViewRequestType
   ) {
     const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/data_source_views/${
       dataSourceView.id
@@ -887,7 +859,7 @@ export class DustAPI {
       },
       body: JSON.stringify(patchData),
     });
-    const r = await this._resultFromResponse<PatchDataSourceViewsReponseType>(
+    const r = await this._resultFromResponse(
       PatchDataSourceViewsResponseSchema,
       res
     );
@@ -925,8 +897,8 @@ export class DustAPI {
     }
   }
 
-  private async _resultFromResponse<T extends Object>(
-    schema: z.ZodSchema,
+  private async _resultFromResponse<T extends z.ZodTypeAny>(
+    schema: T,
     res: Result<
       {
         response: Response;
@@ -934,7 +906,7 @@ export class DustAPI {
       },
       APIError
     >
-  ): Promise<Result<T, APIError>> {
+  ): Promise<Result<z.infer<T>, APIError>> {
     if (res.isErr()) {
       return res;
     }
@@ -944,7 +916,7 @@ export class DustAPI {
     const text = await res.value.response.text();
 
     try {
-      const json = schema.parse(text) as T;
+      const json = schema.parse(text) as z.infer<T>;
       return new Ok(json);
     } catch (e) {
       try {

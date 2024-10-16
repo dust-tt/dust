@@ -1,7 +1,6 @@
-import type { DataSourceViewType, WithAPIErrorResponse } from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
+import type { SearchDataSourceViewsResponseType } from "@dust-tt/client";
+import { SearchDataSourceViewsRequestSchema } from "@dust-tt/client";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
@@ -9,25 +8,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
 
-const SearchDataSourceViewsQuerySchema = t.type({
-  dataSourceId: t.union([t.string, t.undefined]),
-  kind: t.union([t.string, t.undefined]),
-  vaultId: t.union([t.string, t.undefined]),
-  vaultKind: t.union([t.string, t.undefined]),
-});
-
-export type SearchDataSourceViewsResponseBody = {
-  data_source_views: DataSourceViewType[];
-};
-
 /**
  * @ignoreswagger
  * System API key only endpoint. Undocumented.
  */
-
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<SearchDataSourceViewsResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<SearchDataSourceViewsResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isSystemKey()) {
@@ -42,21 +29,19 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const queryValidation = SearchDataSourceViewsQuerySchema.decode(
-        req.query
-      );
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
+      const r = SearchDataSourceViewsRequestSchema.safeParse(req.query);
+
+      if (r.error) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid query parameters: ${pathError}`,
+            message: `Invalid request body: ${r.error.message}`,
           },
         });
       }
 
-      const { vaultId, dataSourceId, kind, vaultKind } = queryValidation.right;
+      const { vaultId, dataSourceId, kind, vaultKind } = r.data;
 
       const data_source_views = await DataSourceViewResource.search(auth, {
         vaultId,

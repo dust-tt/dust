@@ -1,16 +1,11 @@
+import type { PostConversationsResponseType } from "@dust-tt/client";
+import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
 import type {
   ContentFragmentType,
-  ConversationType,
   UserMessageType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import {
-  ConversationError,
-  isEmptyString,
-  PublicPostConversationsRequestBodySchema,
-} from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
+import { ConversationError, isEmptyString } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -24,12 +19,6 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-
-export type PostConversationsResponseBody = {
-  conversation: ConversationType;
-  message?: UserMessageType;
-  contentFragment?: ContentFragmentType;
-};
 
 /**
  * @swagger
@@ -93,29 +82,24 @@ export type PostConversationsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostConversationsResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<PostConversationsResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
     case "POST":
-      const bodyValidation = PublicPostConversationsRequestBodySchema.decode(
-        req.body
-      );
+      const r = PublicPostConversationsRequestBodySchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      if (r.error) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${r.error.message}`,
           },
         });
       }
 
-      const { title, visibility, message, contentFragment, blocking } =
-        bodyValidation.right;
+      const { title, visibility, message, contentFragment, blocking } = r.data;
 
       if (message) {
         if (isEmptyString(message.context.username)) {

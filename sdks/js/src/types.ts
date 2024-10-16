@@ -7,10 +7,8 @@ const ModelProviderIdSchema = z.enum([
   "mistral",
   "google_ai_studio",
 ]);
-type ModelProviderIdType = z.infer<typeof ModelProviderIdSchema>;
 
 const EmbeddingProviderIdSchema = z.enum(["openai", "mistral"]);
-type EmbeddingProviderIdType = z.infer<typeof EmbeddingProviderIdSchema>;
 
 const ConnectorsAPIErrorTypeSchema = z.enum([
   "authorization_error",
@@ -43,9 +41,48 @@ const ModelIdSchema = z.number();
 export type ConnectorsAPIErrorType = z.infer<
   typeof ConnectorsAPIErrorTypeSchema
 >;
-type ConnectorsAPIError = z.infer<typeof ConnectorsAPIErrorSchema>;
 
-type ModelId = z.infer<typeof ModelIdSchema>;
+const SupportedContentFragmentTypeSchema = z.enum([
+  ...([
+    // Text content types.
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/pdf",
+    "text/comma-separated-values",
+    "text/csv",
+    "text/markdown",
+    "text/plain",
+    "text/tab-separated-values",
+    "text/tsv",
+
+    // Image content types.
+
+    "image/jpeg",
+    "image/png",
+
+    // Legacy
+    "dust-application/slack",
+  ] as const),
+]);
+
+const UserMessageOriginSchema = z.union([
+  z.enum([
+    "slack",
+    "web",
+    "api",
+    "gsheet",
+    "zapier",
+    "make",
+    "zendesk",
+    "raycast",
+  ]),
+  z.null(),
+  z.undefined(),
+]);
+
+const RankSchema = z.object({
+  rank: z.number(),
+});
 
 export class Ok<T> {
   constructor(public value: T) {}
@@ -78,145 +115,6 @@ const Timezone = z.string().refine((s) => moment.tz.names().includes(s), {
   message: "Invalid timezone",
 });
 
-export const PublicPostMessagesRequestBodySchema = z.intersection(
-  z.object({
-    content: z.string(),
-    mentions: z.array(
-      z.object({
-        configurationId: z.string(),
-      })
-    ),
-    context: z.object({
-      timezone: Timezone,
-      username: z.string(),
-      fullName: z.string().nullable(),
-      email: z.string().nullable(),
-      profilePictureUrl: z.string().nullable(),
-      origin: z
-        .union([
-          z.literal("slack"),
-          z.literal("web"),
-          z.literal("api"),
-          z.literal("gsheet"),
-          z.literal("zapier"),
-          z.literal("make"),
-          z.literal("zendesk"),
-          z.literal("raycast"),
-          z.null(),
-          z.undefined(),
-        ])
-        .nullable(),
-    }),
-  }),
-  z
-    .object({
-      blocking: z.boolean().optional(),
-    })
-    .partial()
-);
-export type PublicPostMessagesRequestBody = z.infer<
-  typeof PublicPostMessagesRequestBodySchema
->;
-
-export type PostMessagesResponseBody = {
-  message: UserMessageType;
-  agentMessages?: AgentMessageType[];
-};
-
-export const PublicPostContentFragmentRequestBodySchema = z.object({
-  title: z.string(),
-  content: z.string(),
-  url: z.string().nullable(),
-  contentType: z.unknown(),
-  context: z
-    .object({
-      profilePictureUrl: z.string().nullable(),
-      fullName: z.string().nullable(),
-      email: z.string().nullable(),
-      username: z.string().nullable(),
-    })
-    .nullable(),
-});
-export type PublicPostContentFragmentRequestBody = z.infer<
-  typeof PublicPostContentFragmentRequestBodySchema
->;
-
-export const PublicPostConversationsRequestBodySchema = z.intersection(
-  z.object({
-    title: z.string().nullable(),
-    visibility: z.union([
-      z.literal("unlisted"),
-      z.literal("workspace"),
-      z.literal("deleted"),
-      z.literal("test"),
-    ]),
-    message: z.union([
-      z.intersection(
-        z.object({
-          content: z.string(),
-          mentions: z.array(
-            z.object({
-              configurationId: z.string(),
-            })
-          ),
-          context: z.object({
-            timezone: Timezone,
-            username: z.string(),
-            fullName: z.string().nullable(),
-            email: z.string().nullable(),
-            profilePictureUrl: z.string().nullable(),
-            origin: z
-              .union([
-                z.literal("slack"),
-                z.literal("web"),
-                z.literal("api"),
-                z.literal("gsheet"),
-                z.literal("zapier"),
-                z.literal("make"),
-                z.literal("zendesk"),
-                z.literal("raycast"),
-                z.null(),
-                z.undefined(),
-              ])
-              .nullable(),
-          }),
-        }),
-        z
-          .object({
-            blocking: z.boolean().optional(),
-          })
-          .partial()
-      ),
-      z.undefined(),
-    ]),
-    contentFragment: z.union([
-      z.object({
-        title: z.string(),
-        content: z.string(),
-        url: z.string().nullable(),
-        contentType: z.unknown(),
-        context: z
-          .object({
-            profilePictureUrl: z.string().nullable(),
-            fullName: z.string().nullable(),
-            email: z.string().nullable(),
-            username: z.string().nullable(),
-          })
-          .nullable(),
-      }),
-      z.undefined(),
-    ]),
-  }),
-  z
-    .object({
-      blocking: z.boolean().optional(),
-    })
-    .partial()
-);
-
-export type PublicPostConversationsRequestBody = z.infer<
-  typeof PublicPostConversationsRequestBodySchema
->;
 const ConnectorProvidersSchema = z.enum([
   "confluence",
   "github",
@@ -237,7 +135,6 @@ const EditedByUserSchema = z.object({
   email: z.string().nullable(),
   userId: z.string().nullable(),
 });
-type EditedByUser = z.infer<typeof EditedByUserSchema>;
 
 const DataSourceTypeSchema = z.object({
   id: ModelIdSchema,
@@ -253,7 +150,27 @@ const DataSourceTypeSchema = z.object({
   editedByUser: EditedByUserSchema.nullable().optional(),
 });
 
-type DataSourceType = z.infer<typeof DataSourceTypeSchema>;
+const CoreAPIDocumentChunkSchema = z.object({
+  text: z.string(),
+  hash: z.string(),
+  offset: z.number(),
+  vector: z.array(z.number()).nullable().optional(),
+  score: z.number().nullable().optional(),
+});
+
+const CoreAPIDocumentSchema = z.object({
+  data_source_id: z.string(),
+  created: z.number(),
+  document_id: z.string(),
+  timestamp: z.number(),
+  tags: z.array(z.string()),
+  source_url: z.string().nullable().optional(),
+  hash: z.string(),
+  text_size: z.number(),
+  chunk_count: z.number(),
+  chunks: z.array(CoreAPIDocumentChunkSchema),
+  text: z.string().nullable().optional(),
+});
 
 export interface LoggerInterface {
   error: (args: Record<string, unknown>, message: string) => void;
@@ -261,16 +178,7 @@ export interface LoggerInterface {
   trace: (args: Record<string, unknown>, message: string) => void;
   warn: (args: Record<string, unknown>, message: string) => void;
 }
-const PatchDataSourceViewSchema = z.union([
-  z.object({
-    parentsToAdd: z.array(z.string()).optional(),
-    parentsToRemove: z.array(z.string()).optional(),
-  }),
-  z.object({
-    parentsIn: z.array(z.string()),
-  }),
-]);
-export type PatchDataSourceViewType = z.infer<typeof PatchDataSourceViewSchema>;
+
 const DataSourceViewCategoriesSchema = z.enum([
   "managed",
   "folder",
@@ -375,7 +283,7 @@ export const GenerationTokensEventSchema = z.object({
     TokensClassificationSchema,
     z.enum(["opening_delimiter", "closing_delimiter"]),
   ]),
-  delimiterClassification: TokensClassificationSchema.nullable(),
+  delimiterClassification: TokensClassificationSchema.nullable().optional(),
 });
 export type GenerationTokensEvent = z.infer<typeof GenerationTokensEventSchema>;
 
@@ -388,7 +296,6 @@ const BaseActionTypeSchema = z.enum([
   "browse_action",
   "visualization_action",
 ]);
-type BaseActionType = z.infer<typeof BaseActionTypeSchema>;
 
 const BaseActionSchema = z.object({
   id: ModelIdSchema,
@@ -398,7 +305,7 @@ const BaseActionSchema = z.object({
     .function()
     .returns(FunctionMessageTypeModelSchema),
 });
-type BaseAction = z.infer<typeof BaseActionSchema>;
+
 const BrowseActionOutputSchema = z.object({
   results: z.array(
     z.object({
@@ -410,7 +317,7 @@ const BrowseActionOutputSchema = z.object({
     })
   ),
 });
-type BrowseActionOutputType = z.infer<typeof BrowseActionOutputSchema>;
+
 const BrowseActionTypeSchema = z.object({
   agentMessageId: ModelIdSchema,
   urls: z.array(z.string()),
@@ -420,12 +327,10 @@ const BrowseActionTypeSchema = z.object({
   step: z.number(),
   type: z.literal("browse_action"),
 });
-type BrowseActionType = z.infer<typeof BrowseActionTypeSchema>;
 
 const DustAppParametersSchema = z.record(
   z.union([z.string(), z.number(), z.boolean()])
 );
-type DustAppParameters = z.infer<typeof DustAppParametersSchema>;
 
 const DustAppRunActionTypeSchema = z.object({
   agentMessageId: ModelIdSchema,
@@ -446,15 +351,14 @@ const DustAppRunActionTypeSchema = z.object({
   step: z.number(),
   type: z.literal("dust_app_run_action"),
 });
-type DustAppRunActionType = z.infer<typeof DustAppRunActionTypeSchema>;
+
 const DataSourceViewKindSchema = z.enum(["default", "custom"]);
-type DataSourceViewKind = z.infer<typeof DataSourceViewKindSchema>;
 
 const DataSourceViewSchema = z.object({
   category: DataSourceViewCategoriesSchema,
   createdAt: z.number(),
   dataSource: DataSourceTypeSchema,
-  editedByUser: EditedByUserSchema.nullable(),
+  editedByUser: EditedByUserSchema.nullable().optional(),
   id: ModelIdSchema,
   kind: DataSourceViewKindSchema,
   parentsIn: z.array(z.string()).nullable(),
@@ -466,13 +370,11 @@ export type DataSourceViewType = z.infer<typeof DataSourceViewSchema>;
 
 const TIME_FRAME_UNITS = ["hour", "day", "week", "month", "year"] as const;
 const TimeframeUnitSchema = z.enum(TIME_FRAME_UNITS);
-type TimeframeUnit = z.infer<typeof TimeframeUnitSchema>;
 
 const TimeFrameSchema = z.object({
   duration: z.number(),
   unit: TimeframeUnitSchema,
 });
-type TimeFrame = z.infer<typeof TimeFrameSchema>;
 
 const DataSourceFilterSchema = z.object({
   parents: z
@@ -482,23 +384,18 @@ const DataSourceFilterSchema = z.object({
     })
     .nullable(),
 });
-type DataSourceFilter = z.infer<typeof DataSourceFilterSchema>;
 
 const DataSourceConfigurationSchema = z.object({
   workspaceId: z.string(),
   dataSourceViewId: z.string(),
   filter: DataSourceFilterSchema,
 });
-type DataSourceConfiguration = z.infer<typeof DataSourceConfigurationSchema>;
 
 const RetrievalDocumentChunkTypeSchema = z.object({
   offset: z.number(),
   score: z.number().nullable(),
   text: z.string(),
 });
-type RetrievalDocumentChunkType = z.infer<
-  typeof RetrievalDocumentChunkTypeSchema
->;
 
 const RetrievalDocumentTypeSchema = z.object({
   chunks: z.array(RetrievalDocumentChunkTypeSchema),
@@ -511,7 +408,6 @@ const RetrievalDocumentTypeSchema = z.object({
   tags: z.array(z.string()),
   timestamp: z.number(),
 });
-type RetrievalDocumentType = z.infer<typeof RetrievalDocumentTypeSchema>;
 
 const RetrievalActionTypeSchema = z.object({
   id: ModelIdSchema,
@@ -527,19 +423,14 @@ const RetrievalActionTypeSchema = z.object({
   step: z.number(),
   type: z.literal("retrieval_action"),
 });
-type RetrievalActionType = z.infer<typeof RetrievalActionTypeSchema>;
 
 const ProcessSchemaAllowedTypesSchema = z.enum(["string", "number", "boolean"]);
-type ProcessSchemaAllowedTypes = z.infer<
-  typeof ProcessSchemaAllowedTypesSchema
->;
 
 const ProcessSchemaPropertySchema = z.object({
   name: z.string(),
   type: ProcessSchemaAllowedTypesSchema,
   description: z.string(),
 });
-type ProcessSchemaPropertyType = z.infer<typeof ProcessSchemaPropertySchema>;
 
 const ProcessActionOutputsSchema = z.object({
   data: z.array(z.unknown()),
@@ -551,7 +442,6 @@ const ProcessActionOutputsSchema = z.object({
   skip_chunks: z.number(),
   skip_tokens: z.number(),
 });
-type ProcessActionOutputsType = z.infer<typeof ProcessActionOutputsSchema>;
 
 const ProcessActionTypeSchema = z.object({
   id: ModelIdSchema,
@@ -566,7 +456,6 @@ const ProcessActionTypeSchema = z.object({
   step: z.number(),
   type: z.literal("process_action"),
 });
-type ProcessActionType = z.infer<typeof ProcessActionTypeSchema>;
 
 const TablesQueryActionTypeSchema = z.object({
   id: ModelIdSchema,
@@ -580,7 +469,6 @@ const TablesQueryActionTypeSchema = z.object({
   step: z.number(),
   type: z.literal("tables_query_action"),
 });
-type TablesQueryActionType = z.infer<typeof TablesQueryActionTypeSchema>;
 
 const WhitelistableFeaturesSchema = z.enum([
   "usage_data_api",
@@ -597,10 +485,8 @@ const WhitelistableFeaturesSchema = z.enum([
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
 
 const WorkspaceSegmentationSchema = z.enum(["interesting"]).nullable();
-type WorkspaceSegmentationType = z.infer<typeof WorkspaceSegmentationSchema>;
 
 const RoleSchema = z.enum(["admin", "builder", "user", "none"]);
-type RoleType = z.infer<typeof RoleSchema>;
 
 const LightWorkspaceSchema = z.object({
   id: ModelIdSchema,
@@ -611,16 +497,13 @@ const LightWorkspaceSchema = z.object({
   whiteListedProviders: ModelProviderIdSchema.array().nullable(),
   defaultEmbeddingProvider: EmbeddingProviderIdSchema.nullable(),
 });
-type LightWorkspaceType = z.infer<typeof LightWorkspaceSchema>;
 
 const WorkspaceSchema = LightWorkspaceSchema.extend({
   flags: WhitelistableFeaturesSchema.array(),
   ssoEnforced: z.boolean().optional(),
 });
-type WorkspaceType = z.infer<typeof WorkspaceSchema>;
 
 const UserProviderSchema = z.enum(["github", "google"]).nullable();
-type UserProviderType = z.infer<typeof UserProviderSchema>;
 
 const UserSchema = z.object({
   sId: z.string(),
@@ -634,7 +517,7 @@ const UserSchema = z.object({
   fullName: z.string(),
   image: z.string().nullable(),
 });
-type UserType = z.infer<typeof UserSchema>;
+
 const WebsearchActionOutputSchema = z.union([
   z.object({
     results: z.array(
@@ -658,7 +541,6 @@ const WebsearchActionOutputSchema = z.union([
     error: z.string(),
   }),
 ]);
-type WebsearchActionOutputType = z.infer<typeof WebsearchActionOutputSchema>;
 
 const WebsearchActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
@@ -669,7 +551,6 @@ const WebsearchActionTypeSchema = BaseActionSchema.extend({
   step: z.number(),
   type: z.literal("websearch_action"),
 });
-type WebsearchActionType = z.infer<typeof WebsearchActionTypeSchema>;
 
 const GlobalAgentStatusSchema = z.enum([
   "active",
@@ -677,16 +558,13 @@ const GlobalAgentStatusSchema = z.enum([
   "disabled_missing_datasource",
   "disabled_free_workspace",
 ]);
-type GlobalAgentStatus = z.infer<typeof GlobalAgentStatusSchema>;
 
 const AgentStatusSchema = z.enum(["active", "archived", "draft"]);
-type AgentStatus = z.infer<typeof AgentStatusSchema>;
 
 const AgentConfigurationStatusSchema = z.union([
   AgentStatusSchema,
   GlobalAgentStatusSchema,
 ]);
-type AgentConfigurationStatus = z.infer<typeof AgentConfigurationStatusSchema>;
 
 const AgentConfigurationScopeSchema = z.enum([
   "global",
@@ -694,19 +572,16 @@ const AgentConfigurationScopeSchema = z.enum([
   "published",
   "private",
 ]);
-type AgentConfigurationScope = z.infer<typeof AgentConfigurationScopeSchema>;
 
 const AgentUserListStatusSchema = z.enum(["in-list", "not-in-list"]);
-type AgentUserListStatus = z.infer<typeof AgentUserListStatusSchema>;
 
 const AgentUsageTypeSchema = z.object({
   messageCount: z.number(),
   timePeriodSec: z.number(),
 });
-type AgentUsageType = z.infer<typeof AgentUsageTypeSchema>;
 
 const AgentRecentAuthorsSchema = z.array(z.string()).readonly();
-type AgentRecentAuthors = z.infer<typeof AgentRecentAuthorsSchema>;
+
 const AgentModelConfigurationSchema = z.object({
   providerId: ModelProviderIdSchema,
   modelId: z.enum([
@@ -731,9 +606,6 @@ const AgentModelConfigurationSchema = z.object({
   ]),
   temperature: z.number(),
 });
-type AgentModelConfigurationType = z.infer<
-  typeof AgentModelConfigurationSchema
->;
 
 const LightAgentConfigurationSchema = z.object({
   id: ModelIdSchema,
@@ -745,7 +617,7 @@ const LightAgentConfigurationSchema = z.object({
   model: AgentModelConfigurationSchema,
   status: AgentConfigurationStatusSchema,
   scope: AgentConfigurationScopeSchema,
-  userListStatus: AgentUserListStatusSchema.nullable(),
+  userListStatus: AgentUserListStatusSchema.optional(),
   name: z.string(),
   description: z.string(),
   pictureUrl: z.string(),
@@ -757,24 +629,12 @@ const LightAgentConfigurationSchema = z.object({
   groupIds: z.array(z.string()),
 });
 
-export type LightAgentConfigurationType = z.infer<
-  typeof LightAgentConfigurationSchema
->;
-
 const ContentFragmentContextSchema = z.object({
   username: z.string().nullable(),
   fullName: z.string().nullable(),
   email: z.string().nullable(),
   profilePictureUrl: z.string().nullable(),
 });
-type ContentFragmentContextType = z.infer<typeof ContentFragmentContextSchema>;
-
-const SupportedContentFragmentTypeSchema = z.enum([
-  ...(["dust-application/slack"] as const),
-]);
-type SupportedContentFragmentType = z.infer<
-  typeof SupportedContentFragmentTypeSchema
->;
 
 const ContentFragmentSchema = z.object({
   id: ModelIdSchema,
@@ -791,40 +651,23 @@ const ContentFragmentSchema = z.object({
   contentType: SupportedContentFragmentTypeSchema,
   context: ContentFragmentContextSchema,
 });
-export type ContentFragmentType = z.infer<typeof ContentFragmentSchema>;
 
 const AgentMentionSchema = z.object({
   configurationId: z.string(),
 });
-type AgentMention = z.infer<typeof AgentMentionSchema>;
 
 const MentionTypeSchema = AgentMentionSchema;
-type MentionType = z.infer<typeof MentionTypeSchema>;
 
 const MessageVisibilitySchema = z.enum(["visible", "deleted"]);
-type MessageVisibility = z.infer<typeof MessageVisibilitySchema>;
-
-const UserMessageOriginSchema = z.enum([
-  "slack",
-  "web",
-  "api",
-  "gsheet",
-  "zapier",
-  "make",
-  "zendesk",
-  "raycast",
-]);
-type UserMessageOrigin = z.infer<typeof UserMessageOriginSchema>;
 
 const UserMessageContextSchema = z.object({
   username: z.string(),
-  timezone: z.string(),
+  timezone: Timezone,
   fullName: z.string().nullable(),
   email: z.string().nullable(),
   profilePictureUrl: z.string().nullable(),
-  origin: UserMessageOriginSchema.nullable(),
+  origin: UserMessageOriginSchema,
 });
-type UserMessageContext = z.infer<typeof UserMessageContextSchema>;
 
 const UserMessageSchema = z.object({
   id: ModelIdSchema,
@@ -848,7 +691,6 @@ const AgentActionTypeSchema = z.union([
   WebsearchActionTypeSchema,
   BrowseActionTypeSchema,
 ]);
-type AgentActionType = z.infer<typeof AgentActionTypeSchema>;
 
 const AgentMessageStatusSchema = z.enum([
   "created",
@@ -856,9 +698,8 @@ const AgentMessageStatusSchema = z.enum([
   "failed",
   "cancelled",
 ]);
-type AgentMessageStatus = z.infer<typeof AgentMessageStatusSchema>;
 
-export const AgentMessageTypeSchema = z.object({
+const AgentMessageTypeSchema = z.object({
   id: ModelIdSchema,
   agentMessageId: ModelIdSchema,
   created: z.number(),
@@ -893,7 +734,6 @@ const ConversationVisibilitySchema = z.enum([
   "deleted",
   "test",
 ]);
-type ConversationVisibility = z.infer<typeof ConversationVisibilitySchema>;
 
 const ConversationWithoutContentSchema = z.object({
   id: ModelIdSchema,
@@ -904,9 +744,6 @@ const ConversationWithoutContentSchema = z.object({
   visibility: ConversationVisibilitySchema,
   groupIds: z.array(z.string()),
 });
-type ConversationWithoutContentType = z.infer<
-  typeof ConversationWithoutContentSchema
->;
 
 export const ConversationSchema = ConversationWithoutContentSchema.extend({
   content: z.array(
@@ -919,12 +756,6 @@ export const ConversationSchema = ConversationWithoutContentSchema.extend({
 });
 export type ConversationType = z.infer<typeof ConversationSchema>;
 
-const ConversationErrorTypeSchema = z.enum([
-  "conversation_not_found",
-  "conversation_access_restricted",
-]);
-type ConversationErrorType = z.infer<typeof ConversationErrorTypeSchema>;
-
 const BrowseParamsEventSchema = z.object({
   type: z.literal("browse_params"),
   created: z.number(),
@@ -932,7 +763,6 @@ const BrowseParamsEventSchema = z.object({
   messageId: z.string(),
   action: BrowseActionTypeSchema,
 });
-type BrowseParamsEvent = z.infer<typeof BrowseParamsEventSchema>;
 
 const DustAppRunParamsEventSchema = z.object({
   type: z.literal("dust_app_run_params"),
@@ -941,7 +771,6 @@ const DustAppRunParamsEventSchema = z.object({
   messageId: z.string(),
   action: DustAppRunActionTypeSchema,
 });
-type DustAppRunParamsEvent = z.infer<typeof DustAppRunParamsEventSchema>;
 
 const DustAppRunBlockEventSchema = z.object({
   type: z.literal("dust_app_run_block"),
@@ -950,7 +779,6 @@ const DustAppRunBlockEventSchema = z.object({
   messageId: z.string(),
   action: DustAppRunActionTypeSchema,
 });
-type DustAppRunBlockEvent = z.infer<typeof DustAppRunBlockEventSchema>;
 
 const ProcessParamsEventSchema = z.object({
   type: z.literal("process_params"),
@@ -960,7 +788,6 @@ const ProcessParamsEventSchema = z.object({
   dataSources: z.array(DataSourceConfigurationSchema),
   action: ProcessActionTypeSchema,
 });
-type ProcessParamsEvent = z.infer<typeof ProcessParamsEventSchema>;
 
 const RetrievalParamsEventSchema = z.object({
   type: z.literal("retrieval_params"),
@@ -970,7 +797,6 @@ const RetrievalParamsEventSchema = z.object({
   dataSources: z.array(DataSourceConfigurationSchema),
   action: RetrievalActionTypeSchema,
 });
-type RetrievalParamsEvent = z.infer<typeof RetrievalParamsEventSchema>;
 
 const TablesQueryStartedEventSchema = z.object({
   type: z.literal("tables_query_started"),
@@ -979,7 +805,6 @@ const TablesQueryStartedEventSchema = z.object({
   messageId: z.string(),
   action: TablesQueryActionTypeSchema,
 });
-type TablesQueryStartedEvent = z.infer<typeof TablesQueryStartedEventSchema>;
 
 const TablesQueryModelOutputEventSchema = z.object({
   type: z.literal("tables_query_model_output"),
@@ -988,9 +813,6 @@ const TablesQueryModelOutputEventSchema = z.object({
   messageId: z.string(),
   action: TablesQueryActionTypeSchema,
 });
-type TablesQueryModelOutputEvent = z.infer<
-  typeof TablesQueryModelOutputEventSchema
->;
 
 const TablesQueryOutputEventSchema = z.object({
   type: z.literal("tables_query_output"),
@@ -999,7 +821,6 @@ const TablesQueryOutputEventSchema = z.object({
   messageId: z.string(),
   action: TablesQueryActionTypeSchema,
 });
-type TablesQueryOutputEvent = z.infer<typeof TablesQueryOutputEventSchema>;
 
 const WebsearchParamsEventSchema = z.object({
   type: z.literal("websearch_params"),
@@ -1008,9 +829,8 @@ const WebsearchParamsEventSchema = z.object({
   messageId: z.string(),
   action: WebsearchActionTypeSchema,
 });
-type WebsearchParamsEvent = z.infer<typeof WebsearchParamsEventSchema>;
 
-export const AgentErrorEventSchema = z.object({
+const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),
   created: z.number(),
   configurationId: z.string(),
@@ -1022,7 +842,7 @@ export const AgentErrorEventSchema = z.object({
 });
 export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 
-export const AgentActionSpecificEventSchema = z.union([
+const AgentActionSpecificEventSchema = z.union([
   RetrievalParamsEventSchema,
   DustAppRunParamsEventSchema,
   DustAppRunBlockEventSchema,
@@ -1037,7 +857,7 @@ export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
 >;
 
-export const AgentActionSuccessEventSchema = z.object({
+const AgentActionSuccessEventSchema = z.object({
   type: z.literal("agent_action_success"),
   created: z.number(),
   configurationId: z.string(),
@@ -1048,7 +868,7 @@ export type AgentActionSuccessEvent = z.infer<
   typeof AgentActionSuccessEventSchema
 >;
 
-export const AgentMessageSuccessEventSchema = z.object({
+const AgentMessageSuccessEventSchema = z.object({
   type: z.literal("agent_message_success"),
   created: z.number(),
   configurationId: z.string(),
@@ -1060,7 +880,17 @@ export type AgentMessageSuccessEvent = z.infer<
   typeof AgentMessageSuccessEventSchema
 >;
 
-export const UserMessageErrorEventSchema = z.object({
+const AgentGenerationCancelledEventSchema = z.object({
+  type: z.literal("agent_generation_cancelled"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+});
+export type AgentGenerationCancelledEvent = z.infer<
+  typeof AgentGenerationCancelledEventSchema
+>;
+
+const UserMessageErrorEventSchema = z.object({
   type: z.literal("user_message_error"),
   created: z.number(),
   error: z.object({
@@ -1070,96 +900,148 @@ export const UserMessageErrorEventSchema = z.object({
 });
 export type UserMessageErrorEvent = z.infer<typeof UserMessageErrorEventSchema>;
 
+// Event sent when the user message is created.
+const UserMessageNewEventSchema = z.object({
+  type: z.literal("user_message_new"),
+  created: z.number(),
+  messageId: z.string(),
+  message: UserMessageSchema.and(RankSchema),
+});
+export type UserMessageNewEvent = z.infer<typeof UserMessageNewEventSchema>;
+
+// Event sent when a new message is created (empty) and the agent is about to be executed.
+const AgentMessageNewEventSchema = z.object({
+  type: z.literal("agent_message_new"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  message: AgentMessageTypeSchema.and(RankSchema),
+});
+export type AgentMessageNewEvent = z.infer<typeof AgentMessageNewEventSchema>;
+
+// Event sent when the conversation title is updated.
+const ConversationTitleEventSchema = z.object({
+  type: z.literal("conversation_title"),
+  created: z.number(),
+  title: z.string(),
+});
+export type ConversationTitleEvent = z.infer<
+  typeof ConversationTitleEventSchema
+>;
+
+const ConversationEventTypeSchema = z.object({
+  eventId: z.string(),
+  data: z.union([
+    UserMessageNewEventSchema,
+    AgentMessageNewEventSchema,
+    AgentGenerationCancelledEventSchema,
+    ConversationTitleEventSchema,
+  ]),
+});
+
+export type ConversationEventType = z.infer<typeof ConversationEventTypeSchema>;
+
+const AgentMessageEventTypeSchema = z.object({
+  eventId: z.string(),
+  data: z.union([
+    AgentErrorEventSchema,
+    AgentActionSpecificEventSchema,
+    AgentActionSuccessEventSchema,
+    AgentGenerationCancelledEventSchema,
+    GenerationTokensEventSchema,
+  ]),
+});
+
+export type AgentMessageEventType = z.infer<typeof AgentMessageEventTypeSchema>;
+
 export const CoreAPIErrorSchema = z.object({
   message: z.string(),
   code: z.string(),
 });
-export type CoreAPIError = z.infer<typeof CoreAPIErrorSchema>;
 
 export const CoreAPITokenTypeSchema = z.tuple([z.number(), z.string()]);
 export type CoreAPITokenType = z.infer<typeof CoreAPITokenTypeSchema>;
 
-export const APIErrorTypeSchema = z.enum([
-  "not_authenticated",
-  "missing_authorization_header_error",
-  "malformed_authorization_header_error",
-  "invalid_api_key_error",
-  "internal_server_error",
-  "invalid_request_error",
-  "invalid_rows_request_error",
-  "user_not_found",
-  "data_source_error",
-  "data_source_not_found",
-  "data_source_view_not_found",
-  "data_source_auth_error",
-  "data_source_quota_error",
-  "data_source_document_not_found",
-  "data_source_not_managed",
-  "run_error",
-  "app_not_found",
-  "app_auth_error",
-  "provider_auth_error",
-  "provider_not_found",
-  "dataset_not_found",
-  "workspace_not_found",
-  "workspace_auth_error",
-  "workspace_user_not_found",
-  "method_not_supported_error",
-  "personal_workspace_not_found",
-  "workspace_not_found",
-  "action_unknown_error",
+const APIErrorTypeSchema = z.enum([
   "action_api_error",
-  "membership_not_found",
-  "invitation_not_found",
-  "plan_limit_error",
-  "template_not_found",
-  "chat_message_not_found",
-  "connector_not_found_error",
-  "connector_update_error",
-  "connector_update_unauthorized",
-  "connector_oauth_target_mismatch",
-  "connector_provider_not_supported",
-  "connector_credentials_error",
+  "action_failed",
+  "action_unknown_error",
   "agent_configuration_not_found",
   "agent_message_error",
-  "message_not_found",
-  "plan_message_limit_exceeded",
-  "global_agent_error",
-  "stripe_invalid_product_id_error",
-  "rate_limit_error",
-  "subscription_payment_failed",
-  "subscription_not_found",
-  "subscription_state_invalid",
+  "app_auth_error",
+  "app_not_found",
   "assistant_saving_error",
-  "unexpected_error_format",
-  "unexpected_response_format",
-  "unexpected_network_error",
-  "action_failed",
-  "unexpected_action_response",
-  "feature_flag_not_found",
-  "feature_flag_already_exists",
-  "invalid_pagination_parameters",
-  "table_not_found",
-  "template_not_found",
-  "invitation_already_sent_recently",
+  "chat_message_not_found",
+  "connector_credentials_error",
+  "connector_not_found_error",
+  "connector_oauth_target_mismatch",
+  "connector_provider_not_supported",
+  "connector_update_error",
+  "connector_update_unauthorized",
+  "conversation_access_restricted",
+  "conversation_not_found",
+  "data_source_auth_error",
+  "data_source_document_not_found",
+  "data_source_error",
+  "data_source_not_found",
+  "data_source_not_managed",
+  "data_source_quota_error",
+  "data_source_view_not_found",
+  "dataset_not_found",
   "dust_app_secret_not_found",
-  "key_not_found",
-  "transcripts_configuration_not_found",
-  "transcripts_configuration_default_not_allowed",
-  "transcripts_configuration_already_exists",
+  "feature_flag_already_exists",
+  "feature_flag_not_found",
   "file_not_found",
   "file_too_large",
   "file_type_not_supported",
+  "global_agent_error",
+  "group_not_found",
+  "internal_server_error",
+  "invalid_api_key_error",
+  "invalid_pagination_parameters",
+  "invalid_request_error",
+  "invalid_rows_request_error",
+  "invitation_already_sent_recently",
+  "invitation_not_found",
+  "key_not_found",
+  "malformed_authorization_header_error",
+  "membership_not_found",
+  "message_not_found",
+  "method_not_supported_error",
+  "missing_authorization_header_error",
+  "not_authenticated",
+  "personal_workspace_not_found",
+  "plan_limit_error",
+  "plan_message_limit_exceeded",
+  "plugin_execution_failed",
+  "plugin_not_found",
+  "provider_auth_error",
+  "provider_not_found",
+  "rate_limit_error",
+  "run_error",
   "run_not_found",
+  "stripe_invalid_product_id_error",
+  "subscription_not_found",
+  "subscription_payment_failed",
+  "subscription_state_invalid",
+  "table_not_found",
+  "template_not_found",
+  "template_not_found",
+  "transcripts_configuration_already_exists",
+  "transcripts_configuration_default_not_allowed",
+  "transcripts_configuration_not_found",
+  "unexpected_action_response",
+  "unexpected_error_format",
+  "unexpected_network_error",
+  "unexpected_response_format",
+  "user_not_found",
   "vault_already_exists",
   "vault_not_found",
-  "group_not_found",
-  "plugin_not_found",
-  "plugin_execution_failed",
-  "conversation_not_found",
-  "conversation_access_restricted",
+  "workspace_auth_error",
+  "workspace_not_found",
+  "workspace_not_found",
+  "workspace_user_not_found",
 ]);
-export type APIErrorType = z.infer<typeof APIErrorTypeSchema>;
 
 export const APIErrorSchema = z.object({
   type: APIErrorTypeSchema,
@@ -1175,13 +1057,13 @@ export const WorkspaceDomainSchema = z.object({
   domain: z.string(),
   domainAutoJoinEnabled: z.boolean(),
 });
-export type WorkspaceDomain = z.infer<typeof WorkspaceDomainSchema>;
 
 export const DustAppTypeSchema = z.object({
   appHash: z.string(),
   appId: z.string(),
   workspaceId: z.string(),
 });
+
 export type DustAppType = z.infer<typeof DustAppTypeSchema>;
 
 export const DustAppConfigTypeSchema = z.record(z.unknown());
@@ -1316,6 +1198,27 @@ export type DustAPICredentials = {
   userEmail?: string;
 };
 
+const VaultKindSchema = z.enum(["regular", "global", "system", "public"]);
+
+const VaultTypeSchema = z.object({
+  name: z.string(),
+  sId: z.string(),
+  kind: VaultKindSchema,
+  groupIds: z.array(z.string()),
+});
+
+const AppTypeSchema = z.object({
+  id: ModelIdSchema,
+  sId: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  savedSpecification: z.string().nullable(),
+  savedConfig: z.string().nullable(),
+  savedRun: z.string().nullable(),
+  dustAPIProjectId: z.string(),
+  vault: VaultTypeSchema,
+});
+
 export const RunAppResponseSchema = z.object({
   run: RunTypeSchema,
 });
@@ -1401,6 +1304,112 @@ export type GetWorkspaceFeatureFlagsResponseType = z.infer<
   typeof GetWorkspaceFeatureFlagsResponseSchema
 >;
 
+export const PatchDataSourceViewsResponseSchema = z.object({
+  data_source_views: DataSourceViewSchema.array(),
+});
+
+export type PatchDataSourceViewsReponseType = z.infer<
+  typeof PatchDataSourceViewsResponseSchema
+>;
+
+export const PublicPostMessagesRequestBodySchema = z.intersection(
+  z.object({
+    content: z.string(),
+    mentions: z.array(
+      z.object({
+        configurationId: z.string(),
+      })
+    ),
+    context: UserMessageContextSchema,
+  }),
+  z
+    .object({
+      blocking: z.boolean().optional(),
+    })
+    .partial()
+);
+export type PublicPostMessagesRequestBody = z.infer<
+  typeof PublicPostMessagesRequestBodySchema
+>;
+
+export type PostMessagesResponseBody = {
+  message: UserMessageType;
+  agentMessages?: AgentMessageType[];
+};
+
+export const PublicPostContentFragmentRequestBodySchema = z.object({
+  title: z.string(),
+  content: z.string(),
+  url: z.string().nullable(),
+  contentType: SupportedContentFragmentTypeSchema,
+  context: ContentFragmentContextSchema.nullable(),
+});
+export type PublicPostContentFragmentRequestBody = z.infer<
+  typeof PublicPostContentFragmentRequestBodySchema
+>;
+
+export const PublicPostConversationsRequestBodySchema = z.intersection(
+  z.object({
+    title: z.string().nullable(),
+    visibility: z.enum(["unlisted", "workspace", "deleted", "test"]),
+    message: z.union([
+      z.intersection(
+        z.object({
+          content: z.string(),
+          mentions: z.array(
+            z.object({
+              configurationId: z.string(),
+            })
+          ),
+          context: UserMessageContextSchema,
+        }),
+        z
+          .object({
+            blocking: z.boolean().optional(),
+          })
+          .partial()
+      ),
+      z.undefined(),
+    ]),
+    contentFragment: z.union([
+      z.object({
+        title: z.string(),
+        content: z.string(),
+        url: z.string().nullable(),
+        contentType: SupportedContentFragmentTypeSchema,
+        context: ContentFragmentContextSchema.nullable(),
+      }),
+      z.undefined(),
+    ]),
+  }),
+  z
+    .object({
+      blocking: z.boolean().optional(),
+    })
+    .partial()
+);
+
+export type PublicPostConversationsRequestBody = z.infer<
+  typeof PublicPostConversationsRequestBodySchema
+>;
+
+export const PostConversationsResponseSchema = z.object({
+  conversation: ConversationSchema,
+  message: UserMessageSchema.optional(),
+  contentFragment: ContentFragmentSchema.optional(),
+});
+
+export type PostConversationsResponseType = z.infer<
+  typeof PostConversationsResponseSchema
+>;
+
+export const SearchDataSourceViewsRequestSchema = z.object({
+  dataSourceId: z.string().optional(),
+  kind: z.string().optional(),
+  vaultId: z.string().optional(),
+  vaultKind: z.string().optional(),
+});
+
 export const SearchDataSourceViewsResponseSchema = z.object({
   data_source_views: DataSourceViewSchema.array(),
 });
@@ -1409,10 +1418,87 @@ export type SearchDataSourceViewsResponseType = z.infer<
   typeof SearchDataSourceViewsResponseSchema
 >;
 
-export const PatchDataSourceViewsResponseSchema = z.object({
-  data_source_views: DataSourceViewSchema.array(),
+const ListMemberEmailsResponseSchema = z.object({
+  emails: z.array(z.string()),
 });
 
-export type PatchDataSourceViewsReponseType = z.infer<
-  typeof PatchDataSourceViewsResponseSchema
+export type ListMemberEmailsResponseType = z.infer<
+  typeof ListMemberEmailsResponseSchema
+>;
+
+export const ValidateMemberRequestSchema = z.object({
+  email: z.string(),
+});
+
+const ValidateMemberResponseSchema = z.object({
+  valid: z.boolean(),
+});
+
+export type ValidateMemberResponseType = z.infer<
+  typeof ValidateMemberResponseSchema
+>;
+
+const GetAppsResponseSchema = z.object({
+  apps: AppTypeSchema.array(),
+});
+
+export type GetAppsResponseType = z.infer<typeof GetAppsResponseSchema>;
+
+const DataSourceViewsResponseSchema = z.object({
+  dataSourceView: DataSourceViewSchema,
+});
+
+export type DataSourceViewsResponseType = z.infer<
+  typeof DataSourceViewsResponseSchema
+>;
+
+export const PatchDataSourceViewRequestSchema = z.union([
+  z
+    .object({
+      parentsToAdd: z.union([z.array(z.string()), z.undefined()]),
+      parentsToRemove: z.array(z.string()).optional(),
+    })
+    // For the fields to be not optional, see https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
+    .transform((o) => ({
+      parentsToAdd: o.parentsToAdd,
+      parentsToRemove: o.parentsToRemove,
+    })),
+  z.object({
+    parentsIn: z.array(z.string()),
+  }),
+]);
+
+export type PatchDataSourceViewRequestType = z.infer<
+  typeof PatchDataSourceViewRequestSchema
+>;
+
+export const DataSourceSearchQuerySchema = z.object({
+  query: z.string(),
+  top_k: z.number(),
+  full_text: z.boolean(),
+  target_document_tokens: z.number().optional(),
+  timestamp_gt: z.number().optional(),
+  timestamp_lt: z.number().optional(),
+  tags_in: z.array(z.string()).optional(),
+  tags_not: z.array(z.string()).optional(),
+  parents_in: z.array(z.string()).optional(),
+  parents_not: z.array(z.string()).optional(),
+});
+
+export type DataSourceSearchQuery = z.infer<typeof DataSourceSearchQuerySchema>;
+
+const DataSourceSearchResponseSchema = z.object({
+  documents: CoreAPIDocumentSchema.array(),
+});
+
+export type DataSourceSearchResponseType = z.infer<
+  typeof DataSourceSearchResponseSchema
+>;
+
+const DataSourceViewsListResponseSchema = z.object({
+  dataSourceViews: DataSourceViewSchema.array(),
+});
+
+export type DataSourceViewsListResponseType = z.infer<
+  typeof DataSourceViewsListResponseSchema
 >;

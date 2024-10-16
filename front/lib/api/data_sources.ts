@@ -1,4 +1,9 @@
 import type {
+  DataSourceSearchQuery,
+  DataSourceSearchResponseType,
+} from "@dust-tt/client";
+import type {
+  APIErrorWithStatusCode,
   ConnectorProvider,
   ConnectorType,
   CoreAPIDataSource,
@@ -457,4 +462,57 @@ export async function upsertTable({
   });
 
   return tableRes;
+}
+
+export async function handleDataSourceSearch({
+  searchQuery,
+  dataSource,
+}: {
+  searchQuery: DataSourceSearchQuery;
+  dataSource: DataSourceResource;
+}): Promise<Result<DataSourceSearchResponseType, APIErrorWithStatusCode>> {
+  // Dust managed credentials: all data sources.
+  const credentials = dustManagedCredentials();
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const data = await coreAPI.searchDataSource(
+    dataSource.dustAPIProjectId,
+    dataSource.dustAPIDataSourceId,
+    {
+      query: searchQuery.query,
+      topK: searchQuery.top_k,
+      fullText: searchQuery.full_text,
+      target_document_tokens: searchQuery.target_document_tokens,
+      filter: {
+        tags: {
+          in: searchQuery.tags_in ?? null,
+          not: searchQuery.tags_not ?? null,
+        },
+        parents: {
+          in: searchQuery.parents_in ?? null,
+          not: searchQuery.parents_not ?? null,
+        },
+        timestamp: {
+          gt: searchQuery.timestamp_gt ?? null,
+          lt: searchQuery.timestamp_lt ?? null,
+        },
+      },
+      credentials: credentials,
+    }
+  );
+
+  if (data.isErr()) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "data_source_error",
+        message: "There was an error performing the data source search.",
+        data_source_error: data.error,
+      },
+    });
+  }
+
+  return new Ok({
+    documents: data.value.documents,
+  });
 }
