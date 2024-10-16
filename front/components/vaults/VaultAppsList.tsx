@@ -1,4 +1,5 @@
 import {
+  BracesIcon,
   Button,
   CommandLineIcon,
   DataTable,
@@ -10,12 +11,12 @@ import {
 import type { ConnectorType, VaultType, WorkspaceType } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { sortBy } from "lodash";
+import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useRef } from "react";
 import { useState } from "react";
 import * as React from "react";
 
-import { ManageAppSecretsButtonModal } from "@app/components/app/ManageAppSecretsButtonModal";
 import { VaultCreateAppModal } from "@app/components/vaults/VaultCreateAppModal";
 import { useApps } from "@app/lib/swr/apps";
 
@@ -56,6 +57,7 @@ export const VaultAppsList = ({
   vault,
   onSelect,
 }: VaultAppListProps) => {
+  const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
   const [appSearch, setAppSearch] = useState<string>("");
@@ -124,7 +126,15 @@ export const VaultAppsList = ({
                     setIsCreateAppModalOpened(true);
                   }}
                 />
-                <ManageAppSecretsButtonModal owner={owner} />
+                <Button
+                  label="Dev secrets"
+                  variant="primary"
+                  icon={BracesIcon}
+                  size="sm"
+                  onClick={() => {
+                    void router.push(`/w/${owner.sId}/developers/dev-secrets`);
+                  }}
+                />
               </>
             )}
           </div>
