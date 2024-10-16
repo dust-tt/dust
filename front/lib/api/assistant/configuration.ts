@@ -323,7 +323,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         where: {
           ...baseWhereConditions,
           authorId: user.id,
-          scope: { [Op.notIn]: ["workspace", "published"] },
+          scope: "private",
         },
       });
 
