@@ -52,7 +52,7 @@ import {
   upsertTableFromCsv,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
-import { InvalidRowsRequestError } from "@connectors/lib/error";
+import { TablesError } from "@connectors/lib/error";
 import {
   NotionConnectorBlockCacheEntry,
   NotionConnectorPageCacheEntry,
@@ -71,14 +71,11 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const logger = mainLogger.child({ provider: "notion" });
 
-const ignoreInvalidRowsRequestError = async (
-  fn: () => Promise<void>,
-  logger: Logger
-) => {
+const ignoreTablesError = async (fn: () => Promise<void>, logger: Logger) => {
   try {
     return await fn();
   } catch (err) {
-    if (err instanceof InvalidRowsRequestError) {
+    if (err instanceof TablesError) {
       logger.warn(
         { error: err },
         "[Notion table] Invalid rows detected - skipping (but not failing)."
@@ -1793,7 +1790,7 @@ export async function renderAndUpsertPageFromCache({
           runTimestamp.toString()
         );
 
-        await ignoreInvalidRowsRequestError(
+        await ignoreTablesError(
           () =>
             upsertTableFromCsv({
               dataSourceConfig: dataSourceConfigFromConnector(connector),
@@ -2496,7 +2493,7 @@ export async function upsertDatabaseStructuredDataFromCache({
   );
 
   localLogger.info("Upserting Notion Database as Table.");
-  await ignoreInvalidRowsRequestError(
+  await ignoreTablesError(
     () =>
       upsertTableFromCsv({
         dataSourceConfig,

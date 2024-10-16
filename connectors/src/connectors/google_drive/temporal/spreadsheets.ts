@@ -19,11 +19,7 @@ import {
   MAX_FILE_SIZE_TO_DOWNLOAD,
   upsertTableFromCsv,
 } from "@connectors/lib/data_sources";
-import {
-  BodyTooLargeError,
-  InvalidRowsRequestError,
-  ProviderWorkflowError,
-} from "@connectors/lib/error";
+import { ProviderWorkflowError, TablesError } from "@connectors/lib/error";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
@@ -188,16 +184,10 @@ async function processSheet(
     try {
       await upsertTable(connector, sheet, parents, rows, loggerArgs);
     } catch (err) {
-      if (err instanceof InvalidRowsRequestError) {
+      if (err instanceof TablesError) {
         logger.warn(
           { ...loggerArgs, error: err },
-          "[Spreadsheet] Invalid rows detected - skipping (but not failing)."
-        );
-        return false;
-      } else if (err instanceof BodyTooLargeError) {
-        logger.warn(
-          { ...loggerArgs, error: err },
-          "[Spreadsheet] Body too large - skipping (but not failing)."
+          "[Spreadsheet] Tables error - skipping (but not failing)."
         );
         return false;
       } else {
