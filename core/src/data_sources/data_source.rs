@@ -1194,7 +1194,7 @@ impl DataSource {
                                 data_source_id = %data_source_id,
                                 document_id = %document_id,
                                 document_id_hash = %document_id_hash,
-                                project_id = %project.project_id(),
+                                data_source_internal_id = data_source.internal_id(),
                                 panic = true,
                                 "Document not found in store"
                             );

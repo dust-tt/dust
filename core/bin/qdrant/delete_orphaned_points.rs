@@ -59,6 +59,11 @@ async fn delete_orphaned_points_for_data_source(
     data_source_internal_id: &str,
     document_ids: &[String],
 ) -> Result<()> {
+    println!(
+        "processing data_source_internal_id: {}",
+        data_source_internal_id
+    );
+
     let ds = store
         .load_data_source_by_internal_id(data_source_internal_id)
         .await?
