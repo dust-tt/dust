@@ -23,6 +23,8 @@ import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
+const MAX_CSV_SIZE = 50 * 1024 * 1024;
+
 const axiosWithTimeout = axios.create({
   timeout: 60000,
   // Ensure client timeout is lower than the target server timeout.
@@ -725,6 +727,13 @@ export async function upsertTableFromCsv({
 
   const now = new Date();
 
+  if (new Blob([tableCsv]).size > MAX_CSV_SIZE) {
+    throw new TablesError(
+      "file_too_large",
+      "The file is too large to be processed."
+    );
+  }
+
   const endpoint =
     `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/csv`;
@@ -840,7 +849,7 @@ export async function upsertTableFromCsv({
     }
     if (dustRequestResult.status === 413) {
       throw new TablesError(
-        "too_many_rows",
+        "file_too_large",
         dustRequestResult.data.error.message
       );
     }
