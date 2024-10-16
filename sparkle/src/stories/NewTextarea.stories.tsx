@@ -4,7 +4,7 @@ import React from "react";
 import { Label, NewButton, NewTextarea } from "../index_with_tw_base";
 
 const meta = {
-  title: "NewPrimitives/TextArea",
+  title: "NewPrimitives/Textarea",
 } satisfies Meta;
 
 export default meta;
