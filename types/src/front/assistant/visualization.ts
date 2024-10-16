@@ -20,12 +20,16 @@ interface SendScreenshotBlobParams {
   blob: Blob;
 }
 
+interface setErrorMessageParams {
+  errorMessage: string;
+}
+
 // Define a mapped type to extend the base with specific parameters.
 export type VisualizationRPCRequestMap = {
   getFile: GetFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
-  setErrored: void;
+  setErrorMessage: setErrorMessageParams;
   sendScreenshotBlob: SendScreenshotBlobParams;
 };
 
@@ -44,7 +48,7 @@ export const validCommands: VisualizationRPCCommand[] = [
   "getFile",
   "getCodeToExecute",
   "setContentHeight",
-  "setErrored",
+  "setErrorMessage",
 ];
 
 // Command results.
@@ -54,7 +58,7 @@ export interface CommandResultMap {
   getFile: { fileBlob: Blob | null };
   sendScreenshotBlob: { blob: Blob };
   setContentHeight: void;
-  setErrored: void;
+  setErrorMessage: void;
 }
 
 // TODO(@fontanierh): refactor all these guards to use io-ts instead of manual checks.
@@ -125,10 +129,10 @@ export function isSetContentHeightRequest(
   );
 }
 
-export function isSetErroredRequest(
+export function isSetErrorMessageRequest(
   value: unknown
 ): value is VisualizationRPCRequest & {
-  command: "setErrored";
+  command: "setErrorMessage";
 } {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -137,7 +141,7 @@ export function isSetErroredRequest(
   const v = value as Partial<VisualizationRPCRequest>;
 
   return (
-    v.command === "setErrored" &&
+    v.command === "setErrorMessage" &&
     typeof v.identifier === "string" &&
     typeof v.messageUniqueId === "string"
   );
@@ -177,6 +181,6 @@ export function isVisualizationRPCRequest(
     isGetFileRequest(value) ||
     isSendScreenshotBlobRequest(value) ||
     isSetContentHeightRequest(value) ||
-    isSetErroredRequest(value)
+    isSetErrorMessageRequest(value)
   );
 }
