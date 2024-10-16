@@ -86,6 +86,7 @@ function QueryThinking({ action }: { action: TablesQueryActionType }) {
             isStreaming={false}
             textSize="sm"
             textColor="purple-800"
+            isLastMessage={false}
           />
         </ContentMessage>
       </div>

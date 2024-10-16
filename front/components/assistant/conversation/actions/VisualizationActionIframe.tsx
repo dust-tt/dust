@@ -16,8 +16,11 @@ import {
   useState,
 } from "react";
 
-import { AgentMessageContext } from "@app/components/assistant/conversation/context";
-import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
+import {
+  MarkDownContentContext,
+  RenderMessageMarkdown,
+} from "@app/components/assistant/RenderMessageMarkdown";
+import { useVisualizationRetry } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
 export type Visualization = {
@@ -182,45 +185,24 @@ export function VisualizationActionIframe({
     [codeFullyGenerated, iframeLoaded, isErrored]
   );
 
-  const handleVisualizationRetry = async () => {
-    if (retryClicked) {
+  const handleVisualizationRetry = useVisualizationRetry({
+    workspaceId: owner.sId,
+    conversationId,
+    agentConfigurationId,
+  });
+
+  const handleRetryClick = useCallback(async () => {
+    if (retryClicked || !errorMessage) {
       return;
     }
     setRetryClicked(true);
-    try {
-      const response = await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            content: `The visualization code failed with this error:\n\`\`\`\n${errorMessage}\n\`\`\`\nPlease fix the code.`,
-            mentions: [
-              {
-                configurationId: agentConfigurationId,
-              },
-            ],
-            context: {
-              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-              profilePictureUrl: null,
-            },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to send retry message");
-      }
-    } catch (error) {
-      console.error("Error sending retry message:", error);
-      // Optionally, show an error message to the user
+    const success = await handleVisualizationRetry(errorMessage);
+    if (!success) {
+      setRetryClicked(false);
     }
-  };
+  }, [errorMessage, handleVisualizationRetry, retryClicked]);
 
-  const agentMessageContext = useContext(AgentMessageContext);
-  const canRetry = agentMessageContext?.isLastMessage ?? false;
+  const canRetry = useContext(MarkDownContentContext)?.isLastMessage ?? false;
 
   return (
     <div className="relative flex flex-col">
@@ -242,6 +224,7 @@ export function VisualizationActionIframe({
               <RenderMessageMarkdown
                 content={"```javascript\n" + (code ?? "") + "\n```"}
                 isStreaming={!codeFullyGenerated}
+                isLastMessage={true}
               />
             </div>
           ) : (
@@ -279,7 +262,7 @@ export function VisualizationActionIframe({
                       variant="secondary"
                       size="sm"
                       label="Retry Visualization"
-                      onClick={handleVisualizationRetry}
+                      onClick={handleRetryClick}
                     />
                   )}
                 </div>

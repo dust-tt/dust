@@ -51,7 +51,6 @@ import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import { AgentMessageContext } from "@app/components/assistant/conversation/context";
 import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -91,7 +90,7 @@ export function AgentMessage({
   hideReactions,
   isInModal,
   size,
-  isLastMessage = false,
+  isLastMessage,
 }: AgentMessageProps) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
@@ -439,49 +438,47 @@ export function AgentMessage({
   }, [owner, conversationId, message.sId, agentConfiguration.sId]);
 
   return (
-    <AgentMessageContext.Provider value={{ isLastMessage: isLastMessage }}>
-      <ConversationMessage
-        owner={owner}
-        user={user}
-        conversationId={conversationId}
-        messageId={agentMessageToRender.sId}
-        pictureUrl={agentConfiguration.pictureUrl}
-        name={`@${agentConfiguration.name}`}
-        buttons={buttons}
-        avatarBusy={agentMessageToRender.status === "created"}
-        reactions={reactions}
-        enableEmojis={!hideReactions}
-        renderName={() => {
-          return (
-            <div className="flex flex-row items-center gap-2">
-              <div className="text-base font-medium">
-                {AssitantDetailViewLink(agentConfiguration)}
-              </div>
-              {!isInModal && (
-                <AssistantDetailsDropdownMenu
-                  agentConfiguration={agentConfiguration}
-                  owner={owner}
-                  showAddRemoveToFavorite
-                />
-              )}
+    <ConversationMessage
+      owner={owner}
+      user={user}
+      conversationId={conversationId}
+      messageId={agentMessageToRender.sId}
+      pictureUrl={agentConfiguration.pictureUrl}
+      name={`@${agentConfiguration.name}`}
+      buttons={buttons}
+      avatarBusy={agentMessageToRender.status === "created"}
+      reactions={reactions}
+      enableEmojis={!hideReactions}
+      renderName={() => {
+        return (
+          <div className="flex flex-row items-center gap-2">
+            <div className="text-base font-medium">
+              {AssitantDetailViewLink(agentConfiguration)}
             </div>
-          );
-        }}
-        type="agent"
-        size={size}
-      >
-        <div>
-          {renderAgentMessage({
-            agentMessage: agentMessageToRender,
-            references: references,
-            streaming: shouldStream,
-            lastTokenClassification: lastTokenClassification,
-          })}
-        </div>
-        {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
-        <div ref={bottomRef} className="h-1.5" />
-      </ConversationMessage>
-    </AgentMessageContext.Provider>
+            {!isInModal && (
+              <AssistantDetailsDropdownMenu
+                agentConfiguration={agentConfiguration}
+                owner={owner}
+                showAddRemoveToFavorite
+              />
+            )}
+          </div>
+        );
+      }}
+      type="agent"
+      size={size}
+    >
+      <div>
+        {renderAgentMessage({
+          agentMessage: agentMessageToRender,
+          references: references,
+          streaming: shouldStream,
+          lastTokenClassification: lastTokenClassification,
+        })}
+      </div>
+      {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
+      <div ref={bottomRef} className="h-1.5" />
+    </ConversationMessage>
   );
 
   function renderAgentMessage({
@@ -530,6 +527,7 @@ export function AgentMessage({
               isStreaming={false}
               textSize="sm"
               textColor="purple-800"
+              isLastMessage={isLastMessage}
             />
           </ContentMessage>
         ) : null}
@@ -554,6 +552,7 @@ export function AgentMessage({
                     setHoveredReference: setLastHoveredReference,
                   }}
                   customRenderer={customRenderer}
+                  isLastMessage={isLastMessage}
                 />
                 {activeReferences.length > 0 && (
                   <Citations

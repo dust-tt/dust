@@ -53,6 +53,7 @@ export function UserMessage({
           <RenderMessageMarkdown
             content={message.content}
             isStreaming={false}
+            isLastMessage={isLastMessage}
           />
         </div>
         {message.mentions.length === 0 && isLastMessage && (
