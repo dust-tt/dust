@@ -70,6 +70,8 @@ async function lock(key: string) {
     if (locks[key]) {
       locks[key].push(resolve);
     } else {
+      // use array to allow multiple locks
+      // array set to empty indicates first lock
       locks[key] = [];
       resolve();
     }
