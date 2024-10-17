@@ -1,6 +1,6 @@
 import { LockIcon, PlanetIcon, ServerIcon } from "@dust-tt/sparkle";
 import type { PlanType, VaultType, WorkspaceType } from "@dust-tt/types";
-import { groupBy, sortBy } from "lodash";
+import { groupBy } from "lodash";
 import type React from "react";
 
 const VAULT_SECTION_GROUP_ORDER = [
