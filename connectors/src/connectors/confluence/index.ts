@@ -507,7 +507,9 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         ? await cacheWithRedis(
             getSpaceHierarchy,
             () => memoizationKey,
-            60 * 60 * 1000
+            60 * 60 * 1000,
+            undefined,
+            true
           )(this.connectorId, currentPage.spaceId)
         : undefined;
 

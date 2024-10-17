@@ -11,7 +11,8 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
   fn: T,
   resolver: (...args: Parameters<T>) => string,
   ttlMs: number,
-  redisUri?: string
+  redisUri?: string,
+  lockCaching?: boolean
 ): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
   if (ttlMs > 60 * 60 * 24 * 1000) {
     throw new Error("ttlMs should be less than 24 hours");
@@ -40,13 +41,15 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
         return JSON.parse(cacheVal) as Awaited<ReturnType<T>>;
       }
 
-      // if value not found, lock, recheck and set
-      // we avoid locking for the first read to allow parallel calls to redis if the value is set
-      await lock(key);
-      cacheVal = await redisCli.get(key);
-      if (cacheVal) {
-        unlock(key);
-        return JSON.parse(cacheVal) as Awaited<ReturnType<T>>;
+      if (lockCaching) {
+        // if value not found, lock, recheck and set
+        // we avoid locking for the first read to allow parallel calls to redis if the value is set
+        await lock(key);
+        cacheVal = await redisCli.get(key);
+        if (cacheVal) {
+          unlock(key);
+          return JSON.parse(cacheVal) as Awaited<ReturnType<T>>;
+        }
       }
 
       const result = await fn(...args);
@@ -55,7 +58,10 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
       });
       return result;
     } finally {
-      unlock(key);
+      if (lockCaching) {
+        unlock(key);
+      }
+
       if (redisCli) {
         await redisCli.quit();
       }
@@ -82,6 +88,7 @@ function unlock(key: string) {
   if (locks[key] === undefined) {
     throw new Error("Unreachable: unlock called without lock");
   }
+
   if (locks[key].length === 0) {
     delete locks[key];
     return;
