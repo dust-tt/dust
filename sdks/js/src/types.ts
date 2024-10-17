@@ -172,6 +172,55 @@ const CoreAPIDocumentSchema = z.object({
   text: z.string().nullable().optional(),
 });
 
+const CoreAPILightDocumentSchema = z.object({
+  hash: z.string(),
+  text_size: z.number(),
+  chunk_count: z.number(),
+  token_count: z.number(),
+  created: z.number(),
+});
+
+const CoreAPIRowValueSchema = z.union([
+  z.number(),
+  z.string(),
+  z.boolean(),
+  z.object({
+    type: z.literal("datetime"),
+    epoch: z.number(),
+    string_value: z.string().optional(),
+  }),
+  z.null(),
+]);
+
+const CoreAPIRowSchema = z.object({
+  row_id: z.string(),
+  value: z.record(CoreAPIRowValueSchema),
+});
+
+const CoreAPIQueryResultSchema = z.object({
+  value: z.record(z.unknown()),
+});
+
+const CoreAPITableSchema = z.array(
+  z.object({
+    name: z.string(),
+    value_type: z.enum(["int", "float", "text", "bool", "datetime"]),
+    possible_values: z.array(z.string()).nullable().optional(),
+  })
+);
+
+const CoreAPITablePublicSchema = z.object({
+  table_id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  schema: CoreAPITableSchema.nullable(),
+  timestamp: z.number(),
+  tags: z.array(z.string()),
+  parents: z.array(z.string()),
+});
+
+export type CoreAPITablePublic = z.infer<typeof CoreAPITablePublicSchema>;
+
 export interface LoggerInterface {
   error: (args: Record<string, unknown>, message: string) => void;
   info: (args: Record<string, unknown>, message: string) => void;
@@ -1501,4 +1550,151 @@ const DataSourceViewsListResponseSchema = z.object({
 
 export type DataSourceViewsListResponseType = z.infer<
   typeof DataSourceViewsListResponseSchema
+>;
+
+type FrontDataSourceDocumentSection = {
+  prefix: string | null;
+  content: string | null;
+  sections: FrontDataSourceDocumentSection[];
+};
+
+const FrontDataSourceDocumentSectionSchema: z.ZodSchema<FrontDataSourceDocumentSection> =
+  z.lazy(() =>
+    z.object({
+      prefix: z.string().nullable(),
+      content: z.string().nullable(),
+      sections: z.array(FrontDataSourceDocumentSectionSchema),
+    })
+  );
+
+export const PostDataSourceDocumentRequestSchema = z.object({
+  timestamp: z.number().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  parents: z.array(z.string()).nullable().optional(),
+  source_url: z.string().nullable().optional(),
+  upsert_context: z
+    .object({
+      sync_type: z.union([z.enum(["batch", "incremental"]), z.undefined()]),
+    }) // For the fields to be not optional, see https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
+    .transform((o) => ({
+      sync_type: o.sync_type,
+    })),
+  text: z.string().nullable().optional(),
+  section: FrontDataSourceDocumentSectionSchema.nullable().optional(),
+  light_document_output: z.boolean().optional(),
+  async: z.boolean().nullable().optional(),
+});
+
+const GetDocumentResponseSchema = z.object({
+  document: CoreAPIDocumentSchema,
+});
+export type GetDocumentResponseType = z.infer<typeof GetDocumentResponseSchema>;
+
+const DeleteDocumentResponseSchema = z.object({
+  document: z.object({
+    document_id: z.string(),
+  }),
+});
+export type DeleteDocumentResponseType = z.infer<
+  typeof DeleteDocumentResponseSchema
+>;
+
+const UpsertDocumentResponseSchema = z.object({
+  document: z.union([
+    CoreAPIDocumentSchema,
+    CoreAPILightDocumentSchema,
+    z.object({
+      document_id: z.string(),
+    }),
+  ]),
+  data_source: DataSourceTypeSchema,
+});
+export type UpsertDocumentResponseType = z.infer<
+  typeof UpsertDocumentResponseSchema
+>;
+
+const PostParentsResponseSchema = z.object({
+  updated: z.boolean(),
+});
+export type PostParentsResponseType = z.infer<typeof PostParentsResponseSchema>;
+
+const GetDocumentsResponseSchema = z.object({
+  documents: z.array(CoreAPIDocumentSchema),
+  total: z.number(),
+});
+
+export type GetDocumentsResponseType = z.infer<
+  typeof GetDocumentsResponseSchema
+>;
+
+const GetTableRowsResponseSchema = z.object({
+  row: CoreAPIRowSchema,
+});
+
+export type GetTableRowsResponseType = z.infer<
+  typeof GetTableRowsResponseSchema
+>;
+export const UpsertTableRowsRequestSchema = z.object({
+  rows: z.array(
+    z.object({
+      row_id: z.string(),
+      value: z.record(
+        z
+          .union([
+            z.string(),
+            z.number(),
+            z.boolean(),
+            z.object({
+              type: z.literal("datetime"),
+              epoch: z.number(),
+            }),
+          ])
+          .nullable()
+      ),
+    })
+  ),
+  truncate: z.boolean().optional(),
+});
+
+export type CellValueType = z.infer<
+  typeof UpsertTableRowsRequestSchema
+>["rows"][number]["value"][string];
+
+const UpsertTableRowsResponseSchema = z.object({
+  table: z.object({
+    name: z.string(),
+    table_id: z.string(),
+    description: z.string(),
+    schema: CoreAPITableSchema.nullable(),
+  }),
+});
+
+export type UpsertTableRowsResponseType = z.infer<
+  typeof UpsertTableRowsResponseSchema
+>;
+
+const ListTableRowsResponseSchema = z.object({
+  rows: z.array(CoreAPIRowSchema),
+  offset: z.number(),
+  limit: z.number(),
+  total: z.number(),
+});
+export type ListTableRowsResponseType = z.infer<
+  typeof ListTableRowsResponseSchema
+>;
+
+const GetTableResponseSchema = z.object({
+  table: CoreAPITablePublicSchema,
+});
+export type GetTableResponseType = z.infer<typeof GetTableResponseSchema>;
+
+export const PostTableParentsRequestSchema = z.object({
+  parents: z.array(z.string()),
+});
+
+const PostTableParentsResponseSchema = z.object({
+  updated: z.literal(true),
+});
+export type PostTableParentsResponseType = z.infer<
+  typeof PostTableParentsResponseSchema
 >;
