@@ -21,19 +21,17 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "s-bg-primary-800 s-text-primary-50 hover:s-text-white hover:s-bg-primary-600 active:s-bg-primary-900 disabled:s-bg-primary-400",
+          "s-bg-primary s-text-white hover:s-bg-primary-light active:s-bg-primary-dark disabled:s-bg-primary-muted",
         highlight:
-          "s-bg-action-500 s-text-white hover:s-bg-action-400 active:s-bg-action-600 disabled:s-bg-action-300",
+          "s-bg-highlight s-text-white hover:s-bg-highlight-light active:s-bg-highlight-dark disabled:s-bg-highlight-muted",
         warning:
-          "s-bg-warning-500 s-text-white hover:s-bg-warning-400 active:s-bg-warning-600  disabled:s-bg-warning-300",
+          "s-bg-warning s-text-white hover:s-bg-warning-light active:s-bg-warning-dark  disabled:s-bg-warning-muted",
         outline:
-          "s-border s-text-primary-950 s-border-border-dark s-bg-background hover:s-text-primary-900 hover:s-bg-primary-100 hover:s-border-primary-200 active:s-bg-primary-300 disabled:s-text-primary-400 disabled:s-border-structure-100",
-        secondary:
-          "s-border s-border-primary-200/0 s-bg-primary-200 s-text-primary-950 hover:s-text-primary-900 hover:s-bg-primary-100 hover:s-border-primary-200 active:s-bg-primary-200 disabled:s-text-primary-500",
+          "s-border s-text-primary-dark s-border-border-dark s-bg-background hover:s-text-primary hover:s-bg-primary-100 hover:s-border-primary-200 active:s-bg-primary-300 disabled:s-text-primary-muted disabled:s-border-structure-100",
         ghost:
           "s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-100 hover:s-text-primary-900 active:s-bg-primary-200 hover:s-border-primary-200 disabled:s-text-primary-400",
-        "ghost-secondary":
-          "s-border s-border-primary-200/0 s-text-muted-foreground hover:s-text-primary-600 hover:s-bg-primary-100 active:s-bg-primary-200 hover:s-border-primary-200 disabled:s-text-primary-400",
+        // "ghost-secondary":
+        //   "s-border s-border-primary-200/0 s-text-muted-foreground hover:s-text-primary-600 hover:s-bg-primary-100 active:s-bg-primary-200 hover:s-border-primary-200 disabled:s-text-primary-400",
       },
       size: {
         xs: "s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5",
