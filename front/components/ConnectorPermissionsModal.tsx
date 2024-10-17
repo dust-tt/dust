@@ -780,6 +780,7 @@ export function ConnectorPermissionsModal({
         onClose={() => {
           closeModal(false);
         }}
+        connectorProvider={connector.type}
       />
     </>
   );

@@ -123,3 +123,7 @@ export function isDataSourceNameValid(name: string): Result<void, string> {
 
   return new Ok(undefined);
 }
+
+export const REMOTE_DATABASE_CONNECTOR_PROVIDERS: ConnectorProvider[] = [
+  "snowflake",
+];
