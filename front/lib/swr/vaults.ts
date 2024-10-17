@@ -464,11 +464,11 @@ export function useUpdateVault({ owner }: { owner: LightWorkspaceType }) {
       );
     }
 
-    // Prepare group members update request if provided.
+    // Prepare vault members update request if provided.
     if (memberIds && memberIds.length > 0) {
-      const groupUrl = `/api/w/${owner.sId}/vaults/${vault.sId}/members`;
+      const vaultMembersUrl = `/api/w/${owner.sId}/vaults/${vault.sId}/members`;
       updatePromises.push(
-        fetch(groupUrl, {
+        fetch(vaultMembersUrl, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
