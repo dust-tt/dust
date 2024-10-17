@@ -600,9 +600,13 @@ export class GroupResource extends BaseResource<GroupModel> {
   ): Promise<Result<undefined, DustError>> {
     if (!this.canWrite(auth)) {
       return new Err(
-        new DustError("unauthorized", "Only `admins` can administer groups")
+        new DustError(
+          "unauthorized",
+          "Only `admins` are authorized to manage groups"
+        )
       );
     }
+
     const userIds = users.map((u) => u.sId);
     const currentMembers = await this.getActiveMembers(auth);
     const currentMemberIds = currentMembers.map((member) => member.sId);
