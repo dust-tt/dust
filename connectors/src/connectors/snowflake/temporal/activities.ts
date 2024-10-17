@@ -154,7 +154,6 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
           tableName: internalId,
           remoteDatabaseTableId: internalId,
           remoteDatabaseSecretId: connector.connectionId,
-          // TODO(SNOWFLAKE): decide what to do wrt description.
           tableDescription: "",
           parents: [
             table.internalId,

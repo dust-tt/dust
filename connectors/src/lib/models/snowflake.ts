@@ -17,8 +17,6 @@ export class SnowflakeConfigurationModel extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  // TODO(SNOWFLAKE): Add the fields for the Snowflake configuration.
-
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 SnowflakeConfigurationModel.init(

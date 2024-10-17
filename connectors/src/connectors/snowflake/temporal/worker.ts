@@ -18,7 +18,6 @@ export async function runSnowflakeWorker() {
     workflowsPath: require.resolve("./workflows"),
     activities: { ...activities, ...sync_status },
     taskQueue: QUEUE_NAME,
-    // TODO(SNOWFLAKE) real value
     maxConcurrentActivityTaskExecutions: 4,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     connection,

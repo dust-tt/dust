@@ -290,7 +290,17 @@ export const AddConnectionMenu = ({
                 integration: prev.integration,
               }))
             }
-            onSubmit={handleCredentialProviderManagedDataSource}
+            onSubmit={(
+              args: Omit<
+                Parameters<typeof handleCredentialProviderManagedDataSource>[0],
+                "suffix"
+              >
+            ) =>
+              handleCredentialProviderManagedDataSource({
+                ...args,
+                suffix: integration?.setupWithSuffix ?? null,
+              })
+            }
             onCreated={onCreated}
           />
         ) : (
