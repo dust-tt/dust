@@ -347,6 +347,12 @@ export class VaultResource extends BaseResource<VaultModel> {
         return auth.isBuilder() && auth.canWrite([this.acl()]);
 
       case "regular":
+        // TODO(SPACE_INFRA): Represent this in ACL.
+        // In the meantime, if the vault has a global group, only builders can write.
+        if (this.groups.some((group) => group.isGlobal())) {
+          return auth.isBuilder() && auth.canWrite([this.acl()]);
+        }
+
         return auth.canWrite([this.acl()]);
 
       case "public":
