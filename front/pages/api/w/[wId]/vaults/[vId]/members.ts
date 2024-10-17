@@ -1,16 +1,15 @@
 import type { VaultType, WithAPIErrorResponse } from "@dust-tt/types";
 import { PatchVaultMembersRequestBodySchema } from "@dust-tt/types";
-import assert from "assert";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { updateVaultPermissions } from "@app/lib/api/vaults";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
-import { updateVaultPermissions } from "@app/lib/api/vaults";
-import { DustError } from "@app/lib/error";
 
 export interface PatchVaultMembersResponseBody {
   vault: VaultType;
