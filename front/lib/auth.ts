@@ -29,6 +29,7 @@ import type {
   NextApiResponse,
 } from "next";
 
+import { getUserFromAuth0Token } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { isValidSession } from "@app/lib/iam/provider";
@@ -288,6 +289,78 @@ export class Authenticator {
       user,
       role,
       groups,
+      subscription,
+      flags,
+    });
+  }
+
+  /**
+   * Get an Authenticator from an auth0 token a given workspace.
+   * This is to be used from the extension, calling our public API.
+   * @param key The Auth0 token
+   * @param wId string the target workspaceId
+   * @returns an Authenticator for wId and the key's own workspaceId
+   */
+  static async fromAuth0Token(
+    token: string,
+    wId: string | undefined
+  ): Promise<Authenticator> {
+    const user = await getUserFromAuth0Token(token);
+
+    let workspace: Workspace | null = null;
+    let role = "none" as RoleType;
+    let groups: GroupResource[] = [];
+    let subscription: SubscriptionType | null = null;
+    let flags: WhitelistableFeature[] = [];
+
+    if (user && typeof wId === "string") {
+      workspace = await Workspace.findOne({
+        where: {
+          sId: wId,
+        },
+      });
+    } else if (user) {
+      const memberships = user
+        ? await MembershipResource.getActiveMemberships({
+            users: [user],
+          })
+        : null;
+      // TODO(EXT): This is a temporary solution to get the workspace from the user's memberships.
+      // We need to be better at this in case the user has multiple memberships.
+      const workspaceId = memberships?.memberships[0]?.workspaceId;
+      workspace = workspaceId
+        ? await Workspace.findOne({
+            where: {
+              id: workspaceId,
+            },
+          })
+        : null;
+    }
+
+    if (user && workspace) {
+      [role, groups, subscription, flags] = await Promise.all([
+        MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: user,
+          workspace: renderLightWorkspaceType({ workspace }),
+        }).then((m) => m?.role ?? "none"),
+        GroupResource.listUserGroupsInWorkspace({
+          user,
+          workspace: renderLightWorkspaceType({ workspace }),
+        }),
+        subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+        FeatureFlag.findAll({
+          where: {
+            workspaceId: workspace.id,
+          },
+        }).then((flags) => flags.map((flag) => flag.name)),
+      ]);
+    }
+
+    return new Authenticator({
+      workspace,
+      groups,
+      user,
+      role,
       subscription,
       flags,
     });
@@ -768,13 +841,13 @@ export async function getSession(
 }
 
 /**
- * Retrieves the API Key from the request.
- * @param req NextApiRequest request object
- * @returns Result<Key, APIErrorWithStatusCode>
+ * Gets the Bearer token from the request.
+ * @param req
+ * @returns
  */
-export async function getAPIKey(
+export async function getBearerToken(
   req: NextApiRequest
-): Promise<Result<KeyResource, APIErrorWithStatusCode>> {
+): Promise<Result<string, APIErrorWithStatusCode>> {
   if (!req.headers.authorization) {
     return new Err({
       status_code: 401,
@@ -785,8 +858,35 @@ export async function getAPIKey(
     });
   }
 
-  const parse = req.headers.authorization.match(/Bearer (sk-[a-zA-Z0-9]+)/);
-  if (!parse || !parse[1] || !parse[1].startsWith("sk-")) {
+  const parse = req.headers.authorization.match(/^Bearer\s+(.+)$/i);
+  if (!parse || !parse[1]) {
+    return new Err({
+      status_code: 401,
+      api_error: {
+        type: "malformed_authorization_header_error",
+        message: "Missing Authorization header",
+      },
+    });
+  }
+
+  return new Ok(parse[1]);
+}
+
+/**
+ * Retrieves the API Key from the request.
+ * @param req NextApiRequest request object
+ * @returns Result<Key, APIErrorWithStatusCode>
+ */
+export async function getAPIKey(
+  req: NextApiRequest
+): Promise<Result<KeyResource, APIErrorWithStatusCode>> {
+  const token = await getBearerToken(req);
+
+  if (token.isErr()) {
+    return new Err(token.error);
+  }
+
+  if (!token.value.startsWith("sk-")) {
     return new Err({
       status_code: 401,
       api_error: {
@@ -796,7 +896,7 @@ export async function getAPIKey(
     });
   }
 
-  const key = await KeyResource.fetchBySecret(parse[1]);
+  const key = await KeyResource.fetchBySecret(token.value);
 
   if (!key || !key.isActive) {
     return new Err({
