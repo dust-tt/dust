@@ -7,9 +7,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { UserResource } from "@app/lib/resources/user_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
+import { updateVaultPermissions } from "@app/lib/api/vaults";
+import { DustError } from "@app/lib/error";
 
 export interface PatchVaultMembersResponseBody {
   vault: VaultType;
@@ -20,8 +21,20 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PatchVaultMembersResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const vault = await VaultResource.fetchById(auth, req.query.vId as string);
-  if (!vault || !vault.canAdministrate(auth)) {
+  const { vId } = req.query;
+
+  if (typeof vId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid vault id.",
+      },
+    });
+  }
+
+  const vault = await VaultResource.fetchById(auth, vId);
+  if (!vault) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -43,16 +56,6 @@ async function handler(
 
   switch (req.method) {
     case "PATCH": {
-      const regularGroups = vault.groups.filter(
-        (group) => group.kind === "regular"
-      );
-      // Assert that there is exactly one regular group associated with the vault.
-      assert(
-        regularGroups.length === 1,
-        `Expected exactly one regular group for the vault, but found ${regularGroups.length}.`
-      );
-      const [defaultVaultGroup] = regularGroups;
-
       const bodyValidation = PatchVaultMembersRequestBodySchema.decode(
         req.body
       );
@@ -69,89 +72,32 @@ async function handler(
         });
       }
 
-      const { isRestricted, memberIds } = bodyValidation.right;
-      const wasRestricted = vault.groups.every((g) => !g.isGlobal());
-
-      if (isRestricted) {
-        // If the vault should be restricted and was not restricted before, remove the global group.
-        if (!wasRestricted) {
-          const updateRes = await vault.updatePermissions(auth, true);
-          if (updateRes.isErr()) {
-            return apiError(req, res, {
-              status_code: 403,
-              api_error: {
-                type: "workspace_auth_error",
-                message: updateRes.error.message,
-              },
-            });
-          }
-        }
-
-        if (memberIds) {
-          const users = await UserResource.fetchByIds(memberIds);
-
-          const result = await defaultVaultGroup.setMembers(
-            auth,
-            users.map((u) => u.toJSON())
-          );
-
-          if (result.isErr()) {
-            if (result.error.code === "unauthorized") {
-              return apiError(req, res, {
-                status_code: 403,
-                api_error: {
-                  type: "workspace_auth_error",
-                  message:
-                    "Only users that are `admins` can administrate vault members.",
-                },
-              });
-            } else {
-              return apiError(req, res, {
-                status_code: 400,
-                api_error: {
-                  type: "invalid_request_error",
-                  message: result.error.message,
-                },
-              });
-            }
-          }
-        }
-      } else {
-        // If the vault should not be restricted and was restricted before, add the global group.
-        if (wasRestricted) {
-          const updateRes = await vault.updatePermissions(auth, false);
-          if (updateRes.isErr()) {
-            return apiError(req, res, {
-              status_code: 403,
-              api_error: {
-                type: "workspace_auth_error",
-                message: updateRes.error.message,
-              },
-            });
-          }
-        }
-
-        // Remove all members.
-        const updateRes = await defaultVaultGroup.setMembers(auth, []);
-        if (updateRes.isErr()) {
-          if (updateRes.error.code === "unauthorized") {
-            return apiError(req, res, {
-              status_code: 403,
-              api_error: {
-                type: "workspace_auth_error",
-                message:
-                  "Only users that are `admins` can administrate vault members.",
-              },
-            });
-          } else {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: updateRes.error.message,
-              },
-            });
-          }
+      const updateRes = await updateVaultPermissions(
+        auth,
+        vault,
+        bodyValidation.right
+      );
+      if (updateRes.isErr()) {
+        if (
+          updateRes.error instanceof DustError &&
+          updateRes.error.code === "unauthorized"
+        ) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message:
+                "Only users that are `admins` can administrate vault members.",
+            },
+          });
+        } else {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: updateRes.error.message,
+            },
+          });
         }
       }
 

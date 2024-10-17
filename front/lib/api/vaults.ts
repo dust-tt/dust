@@ -12,6 +12,8 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 import { launchScrubVaultWorkflow } from "@app/poke/temporal/client";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { DustError } from "@app/lib/error";
 
 export async function softDeleteVaultAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -147,4 +149,63 @@ export async function hardDeleteVault(
   });
 
   return new Ok(undefined);
+}
+
+export async function updateVaultPermissions(
+  auth: Authenticator,
+  vault: VaultResource,
+  {
+    isRestricted,
+    memberIds,
+  }: { isRestricted: boolean; memberIds: string[] | null }
+): Promise<Result<undefined, DustError | Error>> {
+  if (vault.canAdministrate(auth)) {
+    return new Err(
+      new DustError("unauthorized", "Cannot update permissions for vault.")
+    );
+  }
+
+  const regularGroups = vault.groups.filter(
+    (group) => group.kind === "regular"
+  );
+  // Assert that there is exactly one regular group associated with the vault.
+  assert(
+    regularGroups.length === 1,
+    `Expected exactly one regular group for the vault, but found ${regularGroups.length}.`
+  );
+  const [defaultVaultGroup] = regularGroups;
+
+  const wasRestricted = vault.groups.every((g) => !g.isGlobal());
+
+  if (isRestricted) {
+    // If the vault should be restricted and was not restricted before, remove the global group.
+    if (!wasRestricted) {
+      const updateRes = await vault.updatePermissions(auth, true);
+      if (updateRes.isErr()) {
+        return updateRes;
+      }
+    }
+
+    if (memberIds) {
+      const users = await UserResource.fetchByIds(memberIds);
+
+      return defaultVaultGroup.setMembers(
+        auth,
+        users.map((u) => u.toJSON())
+      );
+    }
+
+    return new Ok(undefined);
+  } else {
+    // If the vault should not be restricted and was restricted before, add the global group.
+    if (wasRestricted) {
+      const updateRes = await vault.updatePermissions(auth, false);
+      if (updateRes.isErr()) {
+        return updateRes;
+      }
+    }
+
+    // Remove all members.
+    return defaultVaultGroup.setMembers(auth, []);
+  }
 }
