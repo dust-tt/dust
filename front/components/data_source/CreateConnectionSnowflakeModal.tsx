@@ -26,11 +26,9 @@ type CreateConnectionSnowflakeModalProps = {
   onSubmit: ({
     connectionId,
     provider,
-    suffix,
   }: {
     connectionId: string;
     provider: ConnectorProvider;
-    suffix: string | null;
   }) => Promise<Response>;
   onCreated: (dataSource: DataSourceType) => void;
 };
@@ -88,7 +86,6 @@ export function CreateConnectionSnowflakeModal({
     const createDataSourceRes = await onSubmit({
       provider: "snowflake",
       connectionId: data.credentials.id,
-      suffix: null, // TODO(SNOWFLAKE): Manage suffix.
     });
 
     if (!createDataSourceRes.ok) {
