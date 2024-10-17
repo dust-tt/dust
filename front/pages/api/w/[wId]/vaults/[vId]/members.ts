@@ -21,7 +21,7 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const vault = await VaultResource.fetchById(auth, req.query.vId as string);
-  if (!vault || !vault.canWrite(auth)) {
+  if (!vault || !vault.canAdministrate(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
