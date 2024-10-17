@@ -53,7 +53,10 @@ export const ConnectorDataUpdatedModal = ({
               <div>{title}</div>
             </div>
           </div>
-          <ContentMessage title={contentMessage} variant="warning">
+          <ContentMessage
+            title={contentMessage}
+            variant={isRemoteDbProvider ? "amber" : "warning"}
+          >
             <div className="flex flex-col gap-2">
               <p>
                 Once synchronized, {isRemoteDbProvider ? "tables" : "data"} will
