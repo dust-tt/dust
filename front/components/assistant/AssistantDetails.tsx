@@ -2,8 +2,7 @@ import { Avatar, ContentMessage, ElementModal, Page } from "@dust-tt/sparkle";
 import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
-import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
-import AssistantFavoriteActions from "@app/components/assistant/AssistantListActions";
+import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
 import { AssistantActionsSection } from "@app/components/assistant/details/AssistantActionsSection";
 import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
@@ -75,25 +74,17 @@ export function AssistantDetails({
                 disabled={isUpdatingScope}
                 setNewScope={(scope) => updateScope(scope)}
               />
-              <AssistantFavoriteActions
-                agentConfiguration={agentConfiguration}
-                owner={owner}
-                isParentHovered={true}
-              />
             </>
           )}
         </div>
-        {agentConfiguration.status === "active" && (
-          <div>
-            <AssistantDetailsDropdownMenu
-              agentConfiguration={agentConfiguration}
-              owner={owner}
-              variant="button"
-              canDelete
-            />
-          </div>
-        )}
       </div>
+      {agentConfiguration.status === "active" && (
+        <AssistantDetailsButtonBar
+          owner={owner}
+          agentConfiguration={agentConfiguration}
+        />
+      )}
+
       {agentConfiguration.status === "archived" && (
         <ContentMessage
           variant="amber"

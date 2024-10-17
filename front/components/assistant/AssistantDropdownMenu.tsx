@@ -24,7 +24,7 @@ import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
 import { setQueryParam } from "@app/lib/utils/router";
 
-interface AssistantDetailsDropdownMenuProps {
+interface AssistantDetailsMenuProps {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
   variant?: "button" | "plain";
@@ -33,14 +33,14 @@ interface AssistantDetailsDropdownMenuProps {
   showAddRemoveToFavorite?: boolean;
 }
 
-export function AssistantDetailsDropdownMenu({
+export function AssistantDropdownMenu({
   agentConfiguration,
   owner,
   variant = "plain",
   canDelete,
   isMoreInfoVisible,
   showAddRemoveToFavorite = false,
-}: AssistantDetailsDropdownMenuProps) {
+}: AssistantDetailsMenuProps) {
   const [isUpdatingFavorites, setIsUpdatingFavorite] = useState(false);
   const [showDeletionModal, setShowDeletionModal] = useState(false);
 

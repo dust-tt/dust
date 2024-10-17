@@ -20,7 +20,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
-import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
+import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
 import { subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 
@@ -210,7 +210,7 @@ export function AssistantBrowser({
                   {/* Theses 2 divs are an ugly hack to align the button while making the dropdown menu visible above the container, it has the size of the button hardcoded -- Let's fix it asap */}
                   <div style={{ width: "56px" }}></div>{" "}
                   <div className="absolute">
-                    <AssistantDetailsDropdownMenu
+                    <AssistantDropdownMenu
                       agentConfiguration={agent}
                       owner={owner}
                       variant="button"
