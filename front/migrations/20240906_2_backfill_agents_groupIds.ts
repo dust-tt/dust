@@ -100,7 +100,7 @@ async function updateAgent(
   const groupIds = (
     await DataSourceViewResource.fetchByIds(auth, dataSourceViewIds)
   )
-    .map((view) => view.acl().aclEntries.map((entry) => entry.groupId))
+    .map((view) => view.acl(auth).aclEntries.map((entry) => entry.groupId))
     .flat();
 
   if (execute) {
