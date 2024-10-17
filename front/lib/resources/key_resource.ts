@@ -27,6 +27,8 @@ export interface KeyAuthType {
   isSystem: boolean;
 }
 
+export const SECRET_KEY_PREFIX = "sk-";
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface KeyResource extends ReadonlyAttributesType<KeyModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -44,7 +46,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     group: GroupResource
   ) {
     const new_id = Buffer.from(blake3(uuidv4())).toString("hex");
-    const secret = `sk-${new_id.slice(0, 32)}`;
+    const secret = `${SECRET_KEY_PREFIX}${new_id.slice(0, 32)}`;
 
     const key = await KeyResource.model.create({
       ...blob,

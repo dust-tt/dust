@@ -39,7 +39,10 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
-import { KeyResource } from "@app/lib/resources/key_resource";
+import {
+  KeyResource,
+  SECRET_KEY_PREFIX,
+} from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -49,6 +52,12 @@ import logger from "@app/logger/logger";
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
 const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
+
+export type PublicAPIAuthMethod = "api_key" | "access_token";
+
+export const getAuthType = (token: string): PublicAPIAuthMethod => {
+  return token.startsWith(SECRET_KEY_PREFIX) ? "api_key" : "access_token";
+};
 
 /**
  * This is a class that will be used to check if a user can perform an action on a resource.
@@ -301,60 +310,48 @@ export class Authenticator {
    * @param wId string the target workspaceId
    * @returns an Authenticator for wId and the key's own workspaceId
    */
-  static async fromAuth0Token(
-    token: string,
-    wId: string | undefined
-  ): Promise<Authenticator> {
+  static async fromAuth0Token({
+    token,
+    wId,
+  }: {
+    token: string;
+    wId: string;
+  }): Promise<Authenticator> {
     const user = await getUserFromAuth0Token(token);
+    if (!user) {
+      throw new Error("User not found.");
+    }
 
-    let workspace: Workspace | null = null;
+    const workspace = await Workspace.findOne({
+      where: {
+        sId: wId,
+      },
+    });
+    if (!workspace) {
+      throw new Error("Workspace not found.");
+    }
+
     let role = "none" as RoleType;
     let groups: GroupResource[] = [];
     let subscription: SubscriptionType | null = null;
     let flags: WhitelistableFeature[] = [];
 
-    if (user && typeof wId === "string") {
-      workspace = await Workspace.findOne({
+    [role, groups, subscription, flags] = await Promise.all([
+      MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user: user,
+        workspace: renderLightWorkspaceType({ workspace }),
+      }).then((m) => m?.role ?? "none"),
+      GroupResource.listUserGroupsInWorkspace({
+        user,
+        workspace: renderLightWorkspaceType({ workspace }),
+      }),
+      subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+      FeatureFlag.findAll({
         where: {
-          sId: wId,
+          workspaceId: workspace.id,
         },
-      });
-    } else if (user) {
-      const memberships = user
-        ? await MembershipResource.getActiveMemberships({
-            users: [user],
-          })
-        : null;
-      // TODO(EXT): This is a temporary solution to get the workspace from the user's memberships.
-      // We need to be better at this in case the user has multiple memberships.
-      const workspaceId = memberships?.memberships[0]?.workspaceId;
-      workspace = workspaceId
-        ? await Workspace.findOne({
-            where: {
-              id: workspaceId,
-            },
-          })
-        : null;
-    }
-
-    if (user && workspace) {
-      [role, groups, subscription, flags] = await Promise.all([
-        MembershipResource.getActiveMembershipOfUserInWorkspace({
-          user: user,
-          workspace: renderLightWorkspaceType({ workspace }),
-        }).then((m) => m?.role ?? "none"),
-        GroupResource.listUserGroupsInWorkspace({
-          user,
-          workspace: renderLightWorkspaceType({ workspace }),
-        }),
-        subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
-        FeatureFlag.findAll({
-          where: {
-            workspaceId: workspace.id,
-          },
-        }).then((flags) => flags.map((flag) => flag.name)),
-      ]);
-    }
+      }).then((flags) => flags.map((flag) => flag.name)),
+    ]);
 
     return new Authenticator({
       workspace,

@@ -1,5 +1,6 @@
 import type {
   Result,
+  RoleType,
   UserMetadataType,
   UserType,
   UserTypeWithWorkspaces,
@@ -136,4 +137,45 @@ export async function fetchRevokedWorkspace(
   }
 
   return new Ok(workspace);
+}
+
+export async function getUserWithWorkspaces(
+  user: UserResource
+): Promise<UserTypeWithWorkspaces> {
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    users: [user],
+  });
+  const workspaces = await Workspace.findAll({
+    where: {
+      id: memberships.map((m) => m.workspaceId),
+    },
+  });
+
+  return {
+    ...user.toJSON(),
+    workspaces: workspaces.map((w) => {
+      const m = memberships.find((m) => m.workspaceId === w.id);
+      let role = "none" as RoleType;
+      if (m) {
+        switch (m.role) {
+          case "admin":
+          case "builder":
+          case "user":
+            role = m.role;
+            break;
+          default:
+            role = "none";
+        }
+      }
+      return {
+        id: w.id,
+        sId: w.sId,
+        name: w.name,
+        role,
+        segmentation: w.segmentation || null,
+        whiteListedProviders: w.whiteListedProviders,
+        defaultEmbeddingProvider: w.defaultEmbeddingProvider,
+      };
+    }),
+  };
 }
