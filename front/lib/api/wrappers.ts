@@ -1,8 +1,18 @@
 import { DustUserEmailHeader } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  UserTypeWithWorkspaces,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getAPIKey } from "@app/lib/auth";
+import { getUserFromAuth0Token } from "@app/lib/api/auth0";
+import { getUserWithWorkspaces } from "@app/lib/api/user";
+import {
+  Authenticator,
+  getAPIKey,
+  getAuthType,
+  getBearerToken,
+} from "@app/lib/auth";
 import { getSession } from "@app/lib/auth";
 import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -138,7 +148,6 @@ export function withSessionAuthenticationForWorkspace<T>(
  *
  * opts.allowUserOutsideCurrentWorkspace allows the handler to be called even if the key is not a
  * associated with the workspace. This is useful for routes that share data across workspaces (eg apps
- * runs).
  *
  * @param handler
  * @param opts
@@ -163,8 +172,8 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       req: NextApiRequest,
       res: NextApiResponse<WithAPIErrorResponse<T>>
     ) => {
-      const { wId } = req.query;
-      if (typeof wId !== "string" || !wId) {
+      const wId = typeof req.query.wId === "string" ? req.query.wId : undefined;
+      if (!wId) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -174,6 +183,38 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
         });
       }
 
+      const bearerTokenRes = await getBearerToken(req);
+      if (bearerTokenRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "not_authenticated",
+            message:
+              "The request does not have valid authentication credentials.",
+          },
+        });
+      }
+      const token = bearerTokenRes.value;
+      const authMethod = getAuthType(token);
+
+      // Authentification with Auth0 token.
+      // Straightforward since the token is attached to the user.
+      if (authMethod === "access_token") {
+        const auth = await Authenticator.fromAuth0Token({
+          token,
+          wId,
+        });
+        if (auth.isUser()) {
+          return handler(
+            req,
+            res,
+            auth,
+            null as U extends true ? Authenticator : null
+          );
+        }
+      }
+
+      // Authentification with an API key.
       const keyRes = await getAPIKey(req);
       if (keyRes.isErr()) {
         return apiError(req, res, keyRes.error);
@@ -252,5 +293,63 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       );
     },
     isStreaming
+  );
+}
+
+/**
+ * This function is a wrapper for Public API routes that require authentication without a workspace with a token
+ */
+export function withUserTokenAuthentication<T>(
+  handler: (
+    req: NextApiRequest,
+    res: NextApiResponse<WithAPIErrorResponse<T>>,
+    user: UserTypeWithWorkspaces
+  ) => Promise<void> | void
+) {
+  return withLogging(
+    async (
+      req: NextApiRequest,
+      res: NextApiResponse<WithAPIErrorResponse<T>>
+    ) => {
+      const bearerTokenRes = await getBearerToken(req);
+      if (bearerTokenRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "not_authenticated",
+            message:
+              "The request does not have valid authentication credentials.",
+          },
+        });
+      }
+      const bearerToken = bearerTokenRes.value;
+      const authMethod = getAuthType(bearerToken);
+
+      if (authMethod !== "access_token") {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "not_authenticated",
+            message:
+              "The request does not have valid authentication credentials.",
+          },
+        });
+      }
+
+      const user = await getUserFromAuth0Token(bearerToken);
+      if (!user) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "user_not_found",
+            message: "Could not find the user.",
+          },
+        });
+      }
+
+      const userWithWorkspaces = await getUserWithWorkspaces(user);
+
+      return handler(req, res, userWithWorkspaces);
+    }
   );
 }
