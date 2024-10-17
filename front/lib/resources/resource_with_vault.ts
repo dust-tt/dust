@@ -153,8 +153,8 @@ export abstract class ResourceWithVault<
 
   // Permissions.
 
-  acl() {
-    return this.vault.acl();
+  acl(auth: Authenticator) {
+    return this.vault.acl(auth);
   }
 
   canList(auth: Authenticator) {
