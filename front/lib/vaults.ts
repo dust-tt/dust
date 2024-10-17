@@ -1,30 +1,29 @@
-import { CompanyIcon, LockIcon, PlanetIcon } from "@dust-tt/sparkle";
-import type {
-  PlanType,
-  VaultKind,
-  VaultType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import { LockIcon, PlanetIcon, ServerIcon } from "@dust-tt/sparkle";
+import type { PlanType, VaultType, WorkspaceType } from "@dust-tt/types";
 import { groupBy } from "lodash";
 import type React from "react";
 
-export const VAULTS_SORT_ORDER: VaultKind[] = [
+const VAULT_SECTION_GROUP_ORDER = [
   "system",
-  "global",
-  "regular",
+  "shared",
+  "restricted",
   "public",
-];
+] as const;
+
+export type VaultSectionGroupType = (typeof VAULT_SECTION_GROUP_ORDER)[number];
 
 export function getVaultIcon(
   vault: VaultType
 ): (props: React.SVGProps<SVGSVGElement>) => React.ReactElement {
-  if (vault.kind === "global") {
-    return CompanyIcon;
-  }
   if (vault.kind === "public") {
     return PlanetIcon;
   }
-  return LockIcon;
+
+  if (vault.isRestricted) {
+    return LockIcon;
+  }
+
+  return ServerIcon;
 }
 
 export const getVaultName = (vault: VaultType) => {
@@ -40,10 +39,21 @@ export const dustAppsListUrl = (
 
 export const groupVaults = (vaults: VaultType[]) => {
   // Group by kind and sort.
-  const groupedVaults = groupBy(vaults, (vault) => vault.kind);
-  return VAULTS_SORT_ORDER.map((kind) => ({
-    kind,
-    vaults: groupedVaults[kind] || [],
+  const groupedVaults = groupBy(vaults, (vault): VaultSectionGroupType => {
+    switch (vault.kind) {
+      case "public":
+      case "system":
+        return vault.kind;
+
+      case "global":
+      case "regular":
+        return vault.isRestricted ? "restricted" : "shared";
+    }
+  });
+
+  return VAULT_SECTION_GROUP_ORDER.map((section) => ({
+    section,
+    vaults: groupedVaults[section] || [],
   }));
 };
 
