@@ -68,6 +68,7 @@ const _patchConnectorConfiguration = async (
     case "intercom":
     case "microsoft":
     case "snowflake":
+    case "zendesk":
     case "slack": {
       throw new Error(
         `Connector type ${connector.type} does not support configuration patching`

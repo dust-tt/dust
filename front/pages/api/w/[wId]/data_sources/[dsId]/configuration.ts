@@ -89,6 +89,7 @@ async function handler(
     case "notion":
     case "microsoft":
     case "slack":
+    case "zendesk":
     case "snowflake":
       if (!auth.isAdmin()) {
         return apiError(req, res, {
