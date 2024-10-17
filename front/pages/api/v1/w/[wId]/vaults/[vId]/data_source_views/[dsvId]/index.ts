@@ -16,6 +16,10 @@ export type GetOrPostDataSourceViewsResponseBody = {
  * @swagger
  * /api/v1/w/{wId}/vaults/{vId}/data_source_views/{dsvId}:
  *   get:
+ *     tags:
+ *       - DatasourceViews
+ *     security:
+ *       - BearerAuth: []
  *     summary: Get a data source view
  *     parameters:
  *       - name: wId
@@ -39,15 +43,16 @@ export type GetOrPostDataSourceViewsResponseBody = {
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 dataSourceView:
- *                   $ref: '#/components/schemas/DataSourceViewType'
+ *               $ref: '#/components/schemas/DatasourceView'
  *       '404':
  *         description: Data source view not found
  *       '405':
  *         description: Method not allowed
  *   patch:
+ *     tags:
+ *       - DatasourceViews
+ *     security:
+ *       - BearerAuth: []
  *     summary: Update a data source view
  *     parameters:
  *       - name: wId
@@ -70,27 +75,76 @@ export type GetOrPostDataSourceViewsResponseBody = {
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/PatchDataSourceViewSchema'
+ *             type: object
+ *             oneOf:
+ *               - type: object
+ *                 properties:
+ *                   parentsIn:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                 required:
+ *                   - parentsIn
+ *               - type: object
+ *                 properties:
+ *                   parentsToAdd:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   parentsToRemove:
+ *                     type: array
+ *                     items:
+ *                       type: string
  *     responses:
  *       '200':
  *         description: Successful response
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 dataSourceView:
- *                   $ref: '#/components/schemas/DataSourceViewType'
+ *               $ref: '#/components/schemas/DatasourceView'
  *       '400':
  *         description: Invalid request body
  *       '403':
- *         description: Unauthorized
+ *         description: Unauthorized - Only admins or builders can administrate vaults
  *       '404':
  *         description: Data source view not found
  *       '405':
  *         description: Method not allowed
  *       '500':
- *         description: Internal server error
+ *         description: Internal server error - The data source view cannot be updated
+ *   delete:
+ *     tags:
+ *       - DatasourceViews
+ *     security:
+ *       - BearerAuth: []
+ *     summary: Delete a data source view
+ *     parameters:
+ *       - name: wId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: vId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: dsvId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '204':
+ *         description: Data source view successfully deleted
+ *       '401':
+ *         description: Unauthorized - The data source view is in use and cannot be deleted
+ *       '403':
+ *         description: Forbidden - Only admins or builders can delete data source views
+ *       '404':
+ *         description: Data source view not found
+ *       '405':
+ *         description: Method not allowed
  */
 
 async function handler(
