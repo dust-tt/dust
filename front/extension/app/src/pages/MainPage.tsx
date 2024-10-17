@@ -16,7 +16,7 @@ export const MainPage = () => {
   };
 
   return (
-    <div className="w-full h-full">
+    <div className="h-full w-full">
       <Page.SectionHeader title="Conversation" />
       <GenerationContextProvider>
         <FixedAssistantInputBar
