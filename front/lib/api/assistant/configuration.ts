@@ -307,17 +307,27 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     case "list":
       const user = auth.user();
 
-      return AgentConfiguration.findAll({
+      const sharedAssistants = await AgentConfiguration.findAll({
         ...baseAgentsSequelizeQuery,
         where: {
           ...baseWhereConditions,
-          [Op.or]: [
-            { scope: { [Op.in]: ["workspace", "published"] } },
-            { authorId: user?.id },
-          ],
+          scope: { [Op.in]: ["workspace", "published"] },
+        },
+      });
+      if (!user) {
+        return sharedAssistants;
+      }
+
+      const userAssistants = await AgentConfiguration.findAll({
+        ...baseAgentsSequelizeQuery,
+        where: {
+          ...baseWhereConditions,
+          authorId: user.id,
+          scope: "private",
         },
       });
 
+      return [...sharedAssistants, ...userAssistants];
     default:
       if (typeof agentsGetView === "object" && "agentIds" in agentsGetView) {
         return AgentConfiguration.findAll({
