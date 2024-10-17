@@ -188,16 +188,12 @@ export const github = async ({
         );
       }
 
-      await GithubIssue.update(
-        { skipReason: args.skipReason },
-        {
-          where: {
-            repoId: args.repoId.toString(),
-            issueNumber: args.issueNumber,
-            connectorId: connector.id,
-          },
-        }
-      );
+      await GithubIssue.upsert({
+        repoId: args.repoId.toString(),
+        issueNumber: parseInt(args.issueNumber, 10),
+        connectorId: connector.id,
+        skipReason: args.skipReason,
+      });
 
       return { success: true };
     }
