@@ -328,8 +328,12 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   /**
    * Determines the permissions a group has for resources within a vault.
-   * This function may be moved to a group_vaults join table in the future
+   * This function may be moved to the group_vaults join table in the future
    * to define more granular permissions per group within each vault.
+   *
+   * Ensure thorough testing when modifying this method, as it is crucial for
+   * the integrity of the permissions system. It acts as the gatekeeper,
+   * determining who has the right to read resources from a vault.
    */
   private getGroupPermissionsForVault(
     auth: Authenticator,
@@ -366,11 +370,9 @@ export class VaultResource extends BaseResource<VaultModel> {
   canWrite(auth: Authenticator) {
     switch (this.kind) {
       case "global":
+      case "public":
       case "regular":
       case "system":
-        return auth.canWrite([this.acl(auth)]);
-
-      case "public":
         return auth.canWrite([this.acl(auth)]);
 
       default:
