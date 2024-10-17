@@ -118,7 +118,7 @@ export function CreateOrEditVaultModal({
       setIsDeleting(false);
       setIsSaving(false);
     }, 500);
-  }, [onClose, vaultInfo]);
+  }, [onClose]);
 
   const onSave = useCallback(async () => {
     setIsSaving(true);
