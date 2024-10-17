@@ -31,6 +31,16 @@ async function handler(
     });
   }
 
+  if (!vault.isRegular()) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Only regular vaults can have members.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "PATCH": {
       const regularGroups = vault.groups.filter(
