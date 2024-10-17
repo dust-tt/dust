@@ -1,17 +1,16 @@
 import type {
-  UserType,
+  UserTypeWithWorkspaces,
   WithAPIErrorResponse,
-  WorkspaceType,
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
-import type { Authenticator } from "@app/lib/auth";
+import { getUserFromAuth0Token } from "@app/lib/api/auth0";
+import { getUserWithWorkspaces } from "@app/lib/api/user";
+import { getAuthType, getBearerToken } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
 export type MeResponseBody = {
-  owner: WorkspaceType;
-  user: UserType;
+  user: UserTypeWithWorkspaces;
 };
 
 /**
@@ -22,24 +21,49 @@ export type MeResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<MeResponseBody>>,
-  auth: Authenticator
+  res: NextApiResponse<WithAPIErrorResponse<MeResponseBody>>
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-  const user = auth.getNonNullableUser();
-  if (auth.isSystemKey()) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
-      },
-    });
-  }
-
   switch (req.method) {
     case "GET":
-      return res.status(200).json({ owner, user });
+      const bearerTokenRes = await getBearerToken(req);
+      if (bearerTokenRes.isErr()) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "not_authenticated",
+            message:
+              "The request does not have valid authentication credentials.",
+          },
+        });
+      }
+      const bearerToken = bearerTokenRes.value;
+      const authMethod = getAuthType(bearerToken);
+
+      if (authMethod !== "access_token") {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "not_authenticated",
+            message:
+              "The request does not have valid authentication credentials.",
+          },
+        });
+      }
+
+      const user = await getUserFromAuth0Token(bearerToken);
+      if (!user) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "user_not_found",
+            message: "Could not find the user.",
+          },
+        });
+      }
+
+      const userWithWorkspaces = await getUserWithWorkspaces(user);
+
+      return res.status(200).json({ user: userWithWorkspaces });
 
     default:
       return apiError(req, res, {
@@ -52,7 +76,5 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  isWorkspaceRoute: false,
-  forceAuthWithToken: true,
-});
+// This route is specific, not using the generic wrapper for public API routes.
+export default handler;

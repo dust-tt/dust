@@ -26,35 +26,52 @@ export function getAuth0ManagemementClient(): ManagementClient {
 }
 
 /**
- * Verify an Auth0 token.
- * Not meant to be exported, use `getUserFromAuth0Token` instead.
+ * Get the public key to verify an Auth0 token.
  */
-export function verifyAuth0Token(idToken: string): Promise<jwt.JwtPayload> {
+async function getSigningKey(jwksUri: string, kid: string): Promise<string> {
   const client = jwksClient({
-    jwksUri: AUTH0_VERIFY_TOKEN,
+    jwksUri,
     cache: true,
     rateLimit: true,
   });
 
-  function getKey(header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) {
-    client.getSigningKey(header.kid!, (err, key) => {
+  return new Promise((resolve, reject) => {
+    client.getSigningKey(kid, (err, key) => {
       if (err) {
-        callback(err);
+        reject(err);
         return;
       }
       if (!key) {
-        callback(new Error("Key not found"));
+        reject(new Error("Key not found"));
         return;
       }
-      const signingKey = key.getPublicKey();
-      callback(null, signingKey);
+      resolve(key.getPublicKey());
     });
-  }
+  });
+}
 
+/**
+ * Verify an Auth0 token.
+ * Not meant to be exported, use `getUserFromAuth0Token` instead.
+ */
+async function verifyAuth0Token(accessToken: string): Promise<jwt.JwtPayload> {
   return new Promise((resolve, reject) => {
     jwt.verify(
-      idToken,
-      getKey,
+      accessToken,
+      async (header, callback) => {
+        try {
+          if (!header.kid) {
+            throw new Error("No 'kid' in token header");
+          }
+          const signingKey = await getSigningKey(
+            AUTH0_VERIFY_TOKEN,
+            header.kid
+          );
+          callback(null, signingKey);
+        } catch (err) {
+          callback(err as Error);
+        }
+      },
       {
         algorithms: ["RS256"],
         audience: AUTH0_AUDIENCE,
@@ -63,26 +80,27 @@ export function verifyAuth0Token(idToken: string): Promise<jwt.JwtPayload> {
       (err, decoded) => {
         if (err) {
           reject(err);
-        } else if (!decoded || typeof decoded !== "object") {
-          reject(new Error("No token payload"));
-        } else {
-          resolve(decoded);
+          return;
         }
+        if (!decoded || typeof decoded !== "object") {
+          reject(new Error("No token payload"));
+          return;
+        }
+        resolve(decoded);
       }
     );
   });
 }
-
 /**
  * Get a user resource from an Auth0 token.
  * We return the user from its Auth0 sub, only if the token is not expired.
  */
 export async function getUserFromAuth0Token(
-  idToken: string
+  accessToken: string
 ): Promise<UserResource | null> {
   let decoded: jwt.JwtPayload;
   try {
-    decoded = await verifyAuth0Token(idToken);
+    decoded = await verifyAuth0Token(accessToken);
   } catch (error) {
     logger.error({ error }, "Error verifying Auth0 token");
     return null;

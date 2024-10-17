@@ -2,7 +2,12 @@ import { DustUserEmailHeader } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { Authenticator, getAPIKey, getBearerToken } from "@app/lib/auth";
+import {
+  Authenticator,
+  getAPIKey,
+  getAuthType,
+  getBearerToken,
+} from "@app/lib/auth";
 import { getSession } from "@app/lib/auth";
 import { getGroupIdsFromHeaders } from "@app/lib/http_api/group_header";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -134,16 +139,10 @@ export function withSessionAuthenticationForWorkspace<T>(
 
 /**
  * This function is a wrapper for Public API routes that require authentication for a workspace.
- * It must be used on all routes that require workspace authentication (prefix: /v1]).
- *
- * opts.isWorkspaceRoute is used to determine if the route is under the /v1/w/[wId/] prefix.
- * We have one route (/v1/me) that is not a workspace route.
- *
- * opts.forceAuthWithToken is used to determine if the route requires an auth token for authentication.
+ * It must be used on all routes that require workspace authentication (prefix: /v1/w/[wId/]).
  *
  * opts.allowUserOutsideCurrentWorkspace allows the handler to be called even if the key is not a
  * associated with the workspace. This is useful for routes that share data across workspaces (eg apps
- * runs).
  *
  * @param handler
  * @param opts
@@ -157,20 +156,11 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
     keyAuth: U extends true ? Authenticator : null
   ) => Promise<void> | void,
   opts: {
-    isWorkspaceRoute?: boolean;
-    forceAuthWithToken?: boolean;
     isStreaming?: boolean;
     allowUserOutsideCurrentWorkspace?: U;
-  } = { isWorkspaceRoute: true, forceAuthWithToken: false }
+  } = {}
 ) {
-  const {
-    allowUserOutsideCurrentWorkspace,
-    isStreaming,
-    isWorkspaceRoute,
-    forceAuthWithToken,
-  } = opts;
-
-  type PublicAPIAllowedAuthType = "api_key" | "auth_token";
+  const { allowUserOutsideCurrentWorkspace, isStreaming } = opts;
 
   return withLogging(
     async (
@@ -178,8 +168,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       res: NextApiResponse<WithAPIErrorResponse<T>>
     ) => {
       const wId = typeof req.query.wId === "string" ? req.query.wId : undefined;
-
-      if (isWorkspaceRoute && !wId) {
+      if (!wId) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
@@ -200,15 +189,16 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           },
         });
       }
-      const bearerToken = bearerTokenRes.value;
-      const authMethod: PublicAPIAllowedAuthType = bearerToken.startsWith("sk-")
-        ? "api_key"
-        : "auth_token";
+      const token = bearerTokenRes.value;
+      const authMethod = getAuthType(token);
 
       // Authentification with Auth0 token.
       // Straightforward since the token is attached to the user.
-      if (authMethod === "auth_token") {
-        const auth = await Authenticator.fromAuth0Token(bearerToken, wId);
+      if (authMethod === "access_token") {
+        const auth = await Authenticator.fromAuth0Token({
+          token,
+          wId,
+        });
         if (auth.isUser()) {
           return handler(
             req,
@@ -220,26 +210,6 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       }
 
       // Authentification with an API key.
-      if (forceAuthWithToken) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "not_authenticated",
-            message:
-              "The request does not have valid authentication credentials.",
-          },
-        });
-      }
-      if (!wId) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "workspace_not_found",
-            message: "The workspace was not found.",
-          },
-        });
-      }
-
       const keyRes = await getAPIKey(req);
       if (keyRes.isErr()) {
         return apiError(req, res, keyRes.error);
