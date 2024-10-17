@@ -43,7 +43,7 @@ async function main() {
 
   await VaultResource.makeNew(
     { id: 93077, name: "Public Dust Apps", kind: "public", workspaceId: w.id },
-    group
+    [group]
   );
 
   await internalSubscribeWorkspaceToFreePlan({

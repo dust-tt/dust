@@ -55,19 +55,22 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   static async makeNew(
     blob: CreationAttributes<VaultModel>,
-    group: GroupResource
+    groups: GroupResource[]
   ) {
     return frontSequelize.transaction(async (transaction) => {
       const vault = await VaultModel.create(blob, { transaction });
-      await GroupVaultModel.create(
-        {
-          groupId: group.id,
-          vaultId: vault.id,
-        },
-        { transaction }
-      );
 
-      return new this(VaultModel, vault.get(), [group]);
+      for (const group of groups) {
+        await GroupVaultModel.create(
+          {
+            groupId: group.id,
+            vaultId: vault.id,
+          },
+          { transaction }
+        );
+      }
+
+      return new this(VaultModel, vault.get(), groups);
     });
   }
 
@@ -92,7 +95,7 @@ export class VaultResource extends BaseResource<VaultModel> {
           kind: "system",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        systemGroup
+        [systemGroup]
       ));
 
     const globalVault =
@@ -103,7 +106,7 @@ export class VaultResource extends BaseResource<VaultModel> {
           kind: "global",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        globalGroup
+        [globalGroup]
       ));
 
     return {
@@ -374,7 +377,7 @@ export class VaultResource extends BaseResource<VaultModel> {
     return this.deletedAt !== null;
   }
 
-  // Seriliazation.
+  // Serialization.
 
   toJSON(): VaultType {
     return {

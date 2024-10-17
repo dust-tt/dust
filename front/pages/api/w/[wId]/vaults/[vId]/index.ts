@@ -20,6 +20,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
@@ -123,7 +124,7 @@ async function handler(
 
     case "PATCH": {
       if (!auth.isAdmin()) {
-        // Only admins, or builders who have access to the vault, can patch
+        // Only admins can update.
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -154,13 +155,12 @@ async function handler(
           vault
         );
 
-        const viewByDataSourceId = currentViews.reduce(
-          (acc, view) => {
-            acc[view.dataSource.sId] = view;
-            return acc;
-          },
-          {} as { [key: string]: DataSourceViewResource }
-        );
+        const viewByDataSourceId = currentViews.reduce<
+          Record<string, DataSourceViewResource>
+        >((acc, view) => {
+          acc[view.dataSource.sId] = view;
+          return acc;
+        }, {});
 
         for (const dataSourceConfig of content) {
           const view = viewByDataSourceId[dataSourceConfig.dataSourceId];
@@ -194,6 +194,7 @@ async function handler(
           }
         }
       }
+
       if (name) {
         await vault.updateName(auth, name);
       }
