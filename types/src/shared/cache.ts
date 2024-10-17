@@ -28,12 +28,13 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
     let redisCli: Awaited<ReturnType<typeof redisClient>> | undefined =
       undefined;
 
+    const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+
     try {
       redisCli = await redisClient({
         origin: "cache_with_redis",
         redisUri,
       });
-      const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
       let cacheVal = await redisCli.get(key);
       if (cacheVal) {
         return JSON.parse(cacheVal) as Awaited<ReturnType<T>>;
@@ -52,10 +53,9 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
       await redisCli.set(key, JSON.stringify(result), {
         PX: ttlMs,
       });
-      unlock(key);
-
       return result;
     } finally {
+      unlock(key);
       if (redisCli) {
         await redisCli.quit();
       }
