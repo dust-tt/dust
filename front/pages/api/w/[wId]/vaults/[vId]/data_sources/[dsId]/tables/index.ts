@@ -13,7 +13,7 @@ import { apiError } from "@app/logger/withlogging";
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: "8mb",
+      sizeLimit: "50mb",
     },
   },
 };
