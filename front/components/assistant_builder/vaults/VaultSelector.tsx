@@ -34,7 +34,7 @@ export function VaultSelector({
 
   // Group by kind and sort.
   const sortedVaults = groupVaults(vaults)
-    .filter((i) => i.kind !== "system")
+    .filter((i) => i.section !== "system")
     .map((i) =>
       i.vaults.sort((a, b) => {
         return a.name.localeCompare(b.name);
@@ -77,7 +77,7 @@ export function VaultSelector({
                   size="md"
                   className={classNames(
                     "ml-3 mr-2 inline-block flex-shrink-0 align-middle",
-                    isDisabled ? "text-element-700" : "text-brand"
+                    isDisabled ? "text-element-700" : ""
                   )}
                 />
                 <span
