@@ -33,11 +33,15 @@ async function handler(
 
   switch (req.method) {
     case "PATCH": {
-      // Assumption is made that a vault can only have one regular group.
-      const defaultVaultGroup = vault.groups.find(
+      const regularGroups = vault.groups.filter(
         (group) => group.kind === "regular"
       );
-      assert(defaultVaultGroup, "Default vault group not found");
+      // Assert that there is exactly one regular group associated with the vault
+      assert(
+        regularGroups.length === 1,
+        `Expected exactly one regular group for the vault, but found ${regularGroups.length}.`
+      );
+      const [defaultVaultGroup] = regularGroups;
 
       const bodyValidation = PatchGroupRequestBodySchema.decode(req.body);
 
