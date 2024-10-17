@@ -1,5 +1,5 @@
 import type { VaultType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PatchGroupRequestBodySchema } from "@dust-tt/types";
+import { PatchVaultMembersRequestBodySchema } from "@dust-tt/types";
 import assert from "assert";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -46,14 +46,16 @@ async function handler(
       const regularGroups = vault.groups.filter(
         (group) => group.kind === "regular"
       );
-      // Assert that there is exactly one regular group associated with the vault
+      // Assert that there is exactly one regular group associated with the vault.
       assert(
         regularGroups.length === 1,
         `Expected exactly one regular group for the vault, but found ${regularGroups.length}.`
       );
       const [defaultVaultGroup] = regularGroups;
 
-      const bodyValidation = PatchGroupRequestBodySchema.decode(req.body);
+      const bodyValidation = PatchVaultMembersRequestBodySchema.decode(
+        req.body
+      );
 
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -67,17 +69,72 @@ async function handler(
         });
       }
 
-      const { memberIds } = bodyValidation.right;
-      if (memberIds) {
-        const users = await UserResource.fetchByIds(memberIds);
+      const { isRestricted, memberIds } = bodyValidation.right;
+      const wasRestricted = vault.groups.every((g) => !g.isGlobal());
 
-        const result = await defaultVaultGroup.setMembers(
-          auth,
-          users.map((u) => u.toJSON())
-        );
+      if (isRestricted) {
+        // If the vault should be restricted and was not restricted before, remove the global group.
+        if (!wasRestricted) {
+          const updateRes = await vault.updatePermissions(auth, true);
+          if (updateRes.isErr()) {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message: updateRes.error.message,
+              },
+            });
+          }
+        }
 
-        if (result.isErr()) {
-          if (result.error.code === "unauthorized") {
+        if (memberIds) {
+          const users = await UserResource.fetchByIds(memberIds);
+
+          const result = await defaultVaultGroup.setMembers(
+            auth,
+            users.map((u) => u.toJSON())
+          );
+
+          if (result.isErr()) {
+            if (result.error.code === "unauthorized") {
+              return apiError(req, res, {
+                status_code: 403,
+                api_error: {
+                  type: "workspace_auth_error",
+                  message:
+                    "Only users that are `admins` can administrate vault members.",
+                },
+              });
+            } else {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message: result.error.message,
+                },
+              });
+            }
+          }
+        }
+      } else {
+        // If the vault should not be restricted and was restricted before, add the global group.
+        if (wasRestricted) {
+          const updateRes = await vault.updatePermissions(auth, false);
+          if (updateRes.isErr()) {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message: updateRes.error.message,
+              },
+            });
+          }
+        }
+
+        // Remove all members.
+        const updateRes = await defaultVaultGroup.setMembers(auth, []);
+        if (updateRes.isErr()) {
+          if (updateRes.error.code === "unauthorized") {
             return apiError(req, res, {
               status_code: 403,
               api_error: {
@@ -91,7 +148,7 @@ async function handler(
               status_code: 400,
               api_error: {
                 type: "invalid_request_error",
-                message: result.error.message,
+                message: updateRes.error.message,
               },
             });
           }

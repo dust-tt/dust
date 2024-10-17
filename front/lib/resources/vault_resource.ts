@@ -282,6 +282,49 @@ export class VaultResource extends BaseResource<VaultModel> {
     return new Ok(undefined);
   }
 
+  // Permissions.
+
+  async updatePermissions(
+    auth: Authenticator,
+    isRestricted: boolean
+  ): Promise<Result<undefined, Error>> {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new Error("You do not have permission to update vault permissions.")
+      );
+    }
+
+    const groupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    if (groupRes.isErr()) {
+      return groupRes;
+    }
+
+    const globalGroup = groupRes.value;
+    if (isRestricted) {
+      await this.removeGroup(globalGroup);
+    } else {
+      await this.addGroup(globalGroup);
+    }
+
+    return new Ok(undefined);
+  }
+
+  private async addGroup(group: GroupResource) {
+    await GroupVaultModel.create({
+      groupId: group.id,
+      vaultId: this.id,
+    });
+  }
+
+  private async removeGroup(group: GroupResource) {
+    await GroupVaultModel.destroy({
+      where: {
+        groupId: group.id,
+        vaultId: this.id,
+      },
+    });
+  }
+
   acl(): ACLType {
     return {
       aclEntries: this.groups.map((group) => ({
@@ -381,10 +424,11 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   toJSON(): VaultType {
     return {
-      sId: this.sId,
-      name: this.name,
-      kind: this.kind,
       groupIds: this.groups.map((group) => group.sId),
+      isRestricted: !this.groups.some((group) => group.isGlobal()),
+      kind: this.kind,
+      name: this.name,
+      sId: this.sId,
     };
   }
 

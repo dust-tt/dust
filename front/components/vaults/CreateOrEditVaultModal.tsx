@@ -7,6 +7,7 @@ import {
   Page,
   PlusIcon,
   Searchbar,
+  SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, UserType, VaultType } from "@dust-tt/types";
@@ -42,15 +43,6 @@ type RowData = {
 
 type Info = CellContext<RowData, unknown>;
 
-interface CreateOrEditVaultModalProps {
-  owner: LightWorkspaceType;
-  isOpen: boolean;
-  onClose: () => void;
-  onCreated?: (vault: VaultType) => void;
-  isAdmin: boolean;
-  vault?: VaultType;
-}
-
 function getTableRows(allUsers: UserType[]): RowData[] {
   return allUsers.map((user) => ({
     icon: user.image ?? "",
@@ -60,12 +52,21 @@ function getTableRows(allUsers: UserType[]): RowData[] {
   }));
 }
 
+interface CreateOrEditVaultModalProps {
+  isAdmin: boolean;
+  isOpen: boolean;
+  onClose: () => void;
+  onCreated?: (vault: VaultType) => void;
+  owner: LightWorkspaceType;
+  vault?: VaultType;
+}
+
 export function CreateOrEditVaultModal({
-  owner,
+  isAdmin,
   isOpen,
   onClose,
   onCreated,
-  isAdmin,
+  owner,
   vault,
 }: CreateOrEditVaultModalProps) {
   const [vaultName, setVaultName] = useState<string | null>(
@@ -78,9 +79,13 @@ export function CreateOrEditVaultModal({
     pageIndex: 0,
     pageSize: 25,
   });
-  const sendNotifications = useContext(SendNotificationsContext);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRestricted, setIsRestricted] = useState(
+    vault?.isRestricted ?? false
+  );
+
+  const sendNotifications = useContext(SendNotificationsContext);
   const doCreate = useCreateVault({ owner });
   const doUpdate = useUpdateVault({ owner });
   const doDelete = useDeleteVault({ owner });
@@ -121,6 +126,7 @@ export function CreateOrEditVaultModal({
     setTimeout(() => {
       // Reset state.
       setVaultName(null);
+      setIsRestricted(false);
       setSelectedMembers([]);
       setSearchTerm("");
       setPagination({ pageIndex: 0, pageSize: 25 });
@@ -223,10 +229,39 @@ export function CreateOrEditVaultModal({
     setIsSaving(true);
 
     if (selectedMembers.length > 0 && vault) {
-      await doUpdate(vault, selectedMembers, vaultName);
+      if (isRestricted) {
+        await doUpdate(vault, {
+          isRestricted: true,
+          memberIds: selectedMembers,
+          name: vaultName,
+        });
+      } else {
+        await doUpdate(vault, {
+          isRestricted: false,
+          memberIds: null,
+          name: vaultName,
+        });
+      }
+
+      // FIXME: we should update the page vault's name as well.
       await mutateVaultInfo();
     } else if (!vault) {
-      const createdVault = await doCreate(vaultName, selectedMembers);
+      let createdVault;
+
+      if (isRestricted) {
+        createdVault = await doCreate({
+          name: vaultName,
+          isRestricted: true,
+          memberIds: selectedMembers, // must be a string[] when isRestricted is true
+        });
+      } else {
+        createdVault = await doCreate({
+          name: vaultName,
+          isRestricted: false,
+          memberIds: null, // must be null when isRestricted is false
+        });
+      }
+
       setIsSaving(false);
       if (createdVault && onCreated) {
         onCreated(createdVault);
@@ -234,14 +269,15 @@ export function CreateOrEditVaultModal({
     }
     handleClose();
   }, [
+    doCreate,
+    doUpdate,
+    handleClose,
+    isRestricted,
+    mutateVaultInfo,
+    onCreated,
     selectedMembers,
     vault,
-    handleClose,
-    doUpdate,
     vaultName,
-    mutateVaultInfo,
-    doCreate,
-    onCreated,
   ]);
 
   const onDelete = useCallback(async () => {
@@ -269,7 +305,10 @@ export function CreateOrEditVaultModal({
       title={vault ? `Edit ${vault.name}` : "Create a Vault"}
       saveLabel={vault ? "Save" : "Create"}
       variant="side-md"
-      hasChanged={!!vaultName && selectedMembers.length > 0}
+      hasChanged={
+        !!vaultName &&
+        (!isRestricted || (isRestricted && selectedMembers.length > 0))
+      }
       isSaving={isSaving}
       className="flex overflow-visible" // overflow-visible is needed to avoid clipping the delete button
       onSave={onSave}
@@ -291,33 +330,54 @@ export function CreateOrEditVaultModal({
               </div>
             )}
           </div>
+          {/* TODO: Extract to a dedicated component */}
           <div className="flex w-full grow flex-col gap-y-2 overflow-y-hidden border-t pt-2">
-            <Page.SectionHeader title="Vault members" />
-            <div className="flex w-full">
-              <Searchbar
-                name="search"
-                placeholder="Search members (email)"
-                value={searchTerm}
-                onChange={setSearchTerm}
+            <div className="flex w-full items-center justify-between">
+              <Page.SectionHeader title="Restricted Access" />
+              <SliderToggle
+                selected={isRestricted}
+                onClick={() => setIsRestricted(!isRestricted)}
               />
             </div>
-            {isLoading ? (
-              <div className="mt-8 flex justify-center">
-                <Spinner size="lg" variant="color" />
-              </div>
-            ) : (
-              <div className="flex grow flex-col overflow-y-auto scrollbar-hide">
-                <DataTable
-                  data={rows}
-                  columns={columns}
-                  pagination={pagination}
-                  setPagination={setPagination}
-                  totalRowCount={totalMembersCount}
-                  columnsBreakpoints={{
-                    email: "md",
-                  }}
-                />
-              </div>
+            <div className="text-sm font-normal text-element-700">
+              {isRestricted ? (
+                <p>Restricted access is active.</p>
+              ) : (
+                <p>
+                  Restricted access is disabled. The space is accessible to
+                  everyone in the workspace.
+                </p>
+              )}
+            </div>
+            {isRestricted && (
+              <>
+                <div className="flex w-full">
+                  <Searchbar
+                    name="search"
+                    placeholder="Search members (email)"
+                    value={searchTerm}
+                    onChange={setSearchTerm}
+                  />
+                </div>
+                {isLoading ? (
+                  <div className="mt-8 flex justify-center">
+                    <Spinner size="lg" variant="color" />
+                  </div>
+                ) : (
+                  <div className="flex grow flex-col overflow-y-auto scrollbar-hide">
+                    <DataTable
+                      data={rows}
+                      columns={columns}
+                      pagination={pagination}
+                      setPagination={setPagination}
+                      totalRowCount={totalMembersCount}
+                      columnsBreakpoints={{
+                        email: "md",
+                      }}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
           {isAdmin && vault && vault.kind === "regular" && (
