@@ -5,8 +5,7 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
-import { Mutex } from "async-mutex";
+import { cacheWithRedis, Err, Ok } from "@dust-tt/types";
 
 import {
   getConfluenceAccessToken,
@@ -469,30 +468,6 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     return new Ok(contentNodes);
   }
 
-  private _cachedHierarchyMutex = new Mutex();
-  private _cachedHierarchy: Map<string, Map<string, string | null>> = new Map();
-
-  private async getCachedHierarchy(
-    memoizationKey: string,
-    spaceId: string
-  ): Promise<Map<string, string | null>> {
-    return this._cachedHierarchyMutex.runExclusive(async () => {
-      if (!this._cachedHierarchy.has(memoizationKey)) {
-        this._cachedHierarchy.set(
-          memoizationKey,
-          await getSpaceHierarchy(this.connectorId, spaceId)
-        );
-      }
-
-      // pleasing typescript
-      const cachedHierarchy = this._cachedHierarchy.get(memoizationKey);
-      if (!cachedHierarchy) {
-        throw new Error("Unreachable: Cached hierarchy is not set.");
-      }
-      return cachedHierarchy;
-    });
-  }
-
   async retrieveContentNodeParents({
     internalId,
     memoizationKey,
@@ -529,7 +504,13 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
       // if a memoization key is provided, use it to cache the hierarchy which
       // is expensive to compute
       const cachedHierarchy = memoizationKey
-        ? await this.getCachedHierarchy(memoizationKey, currentPage.spaceId)
+        ? await cacheWithRedis(
+            getSpaceHierarchy,
+            () => memoizationKey,
+            60 * 60 * 1000,
+            undefined,
+            true
+          )(this.connectorId, currentPage.spaceId)
         : undefined;
 
       const parentIds = await getConfluencePageParentIds(
