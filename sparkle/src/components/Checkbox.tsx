@@ -10,7 +10,7 @@ import { Label } from "./Label";
 
 const checkboxStyles = cva(
   cn(
-    "s-shrink-0 s-peer s-border s-border-primary-500 s-text-foreground",
+    "s-shrink-0 s-peer s-border s-text-foreground",
     "data-[state=checked]:s-text-white data-[state=checked]:s-text-foreground",
     "focus-visible:s-ring-ring s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2",
     "disabled:s-cursor-not-allowed disabled:s-opacity-50"

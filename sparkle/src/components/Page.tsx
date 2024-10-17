@@ -75,9 +75,7 @@ Page.SectionHeader = function ({
 };
 
 Page.Separator = function () {
-  return (
-    <Separator/>
-  );
+  return <Separator />;
 };
 
 interface PagePProps {

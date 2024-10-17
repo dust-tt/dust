@@ -15,7 +15,8 @@ export const SeparatorExample = () => (
     <div className="s-space-y-1">
       <h4 className="s-text-sm s-font-medium s-leading-none">Dust Separator</h4>
       <p className="s-text-sm s-text-muted-foreground">
-        Lorem Ipsum is simply dummy text of the printing and typesetting industry.
+        Lorem Ipsum is simply dummy text of the printing and typesetting
+        industry.
       </p>
     </div>
     <Separator className="s-my-4" />

@@ -84,7 +84,7 @@ export function Dialog({
                 )}
                 ref={referentRef}
               >
-                <HeadlessDialog.Title className="s-text-element-950 s-truncate s-text-lg s-font-medium">
+                <HeadlessDialog.Title className="s-truncate s-text-lg s-font-medium s-text-element-950">
                   {title}
                 </HeadlessDialog.Title>
                 <div className="s-text-base s-text-element-700">{children}</div>
