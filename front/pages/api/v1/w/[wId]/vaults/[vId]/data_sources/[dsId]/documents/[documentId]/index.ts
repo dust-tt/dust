@@ -149,12 +149,35 @@ export type UpsertDocumentResponseBody = {
  *               text:
  *                 type: string
  *                 description: The text content of the document to upsert.
+ *               section:
+ *                 type: object
+ *                 description: The structured content of the document to upsert.
  *               source_url:
  *                 type: string
  *                 description: The source URL for the document to upsert.
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Tags to associate with the document.
+ *               parents:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Parent document IDs to associate with the document.
+ *               timestamp:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Timestamp for the document.
  *               light_document_output:
  *                 type: boolean
  *                 description: If true, a lightweight version of the document will be returned in the response (excluding the text, chunks and vectors). Defaults to false.
+ *               async:
+ *                 type: boolean
+ *                 description: If true, the upsert operation will be performed asynchronously.
+ *               upsert_context:
+ *                 type: object
+ *                 description: Additional context for the upsert operation.
  *     responses:
  *       200:
  *         description: The document
@@ -165,6 +188,8 @@ export type UpsertDocumentResponseBody = {
  *               properties:
  *                 document:
  *                   $ref: '#/components/schemas/Document'
+ *                 data_source:
+ *                   $ref: '#/components/schemas/Datasource'
  *       400:
  *         description: Bad Request. Missing or invalid parameters.
  *       401:
@@ -175,6 +200,10 @@ export type UpsertDocumentResponseBody = {
  *         description: Data source or document not found.
  *       405:
  *         description: Method not supported.
+ *       429:
+ *         description: Rate limit exceeded.
+ *       500:
+ *         description: Internal Server Error.
  *   delete:
  *     summary: Delete a document from a data source
  *     description: Delete a document from a data source in the workspace identified by {wId}.
@@ -210,6 +239,16 @@ export type UpsertDocumentResponseBody = {
  *     responses:
  *       200:
  *         description: The document
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 document:
+ *                   type: object
+ *                   properties:
+ *                     document_id:
+ *                       type: string
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
  *       403:
@@ -218,6 +257,8 @@ export type UpsertDocumentResponseBody = {
  *         description: Data source or document not found.
  *       405:
  *         description: Method not supported.
+ *       500:
+ *         description: Internal Server Error.
  */
 
 async function handler(
