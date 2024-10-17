@@ -1044,16 +1044,13 @@ export async function githubCodeSyncActivity({
         const parentInternalId = f.parentInternalId || rootInternalId;
 
         // Find file or create it with an empty contentHash.
-        let githubCodeFile = await GithubCodeFile.findOne({
+        const [githubCodeFile] = await GithubCodeFile.findOrCreate({
           where: {
             connectorId: connector.id,
             repoId: repoId.toString(),
             documentId: f.documentId,
           },
-        });
-
-        if (!githubCodeFile) {
-          githubCodeFile = await GithubCodeFile.create({
+          defaults: {
             connectorId: connector.id,
             repoId: repoId.toString(),
             documentId: f.documentId,
@@ -1065,8 +1062,8 @@ export async function githubCodeSyncActivity({
             updatedAt: codeSyncStartedAt,
             lastSeenAt: codeSyncStartedAt,
             codeUpdatedAt: codeSyncStartedAt,
-          });
-        }
+          },
+        });
 
         // If the parents have updated then the documentId gets updated as well so we should never
         // have an udpate to parentInternalId. We check that this is always the case. If the file
