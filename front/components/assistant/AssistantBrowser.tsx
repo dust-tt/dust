@@ -215,6 +215,7 @@ export function AssistantBrowser({
                       owner={owner}
                       variant="button"
                       isMoreInfoVisible
+                      showAddRemoveToFavorite
                       canDelete
                     />
                   </div>
