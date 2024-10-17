@@ -85,6 +85,7 @@ export function getLargeWhitelistedModel(
 export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
 export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
 export const GPT_4O_MODEL_ID = "gpt-4o" as const;
+export const GPT_4O_20240806_MODEL_ID = "gpt-4o-2024-08-06" as const;
 export const GPT_4O_MINI_MODEL_ID = "gpt-4o-mini" as const;
 export const O1_PREVIEW_MODEL_ID = "o1-preview" as const;
 export const O1_MINI_MODEL_ID = "o1-mini" as const;
@@ -107,6 +108,7 @@ export const MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_TURBO_MODEL_ID,
   GPT_4O_MODEL_ID,
+  GPT_4O_20240806_MODEL_ID,
   GPT_4O_MINI_MODEL_ID,
   O1_PREVIEW_MODEL_ID,
   O1_MINI_MODEL_ID,
@@ -208,6 +210,19 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
 export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_4O_MODEL_ID,
+  displayName: "GPT 4o",
+  contextSize: 128_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128, // 65_536
+  largeModel: true,
+  description: "OpenAI's GPT 4o model (128k context).",
+  shortDescription: "OpenAI's most advanced model.",
+  isLegacy: false,
+  supportsVision: true,
+};
+export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_4O_20240806_MODEL_ID,
   displayName: "GPT 4o",
   contextSize: 128_000,
   recommendedTopK: 32,
@@ -472,6 +487,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_TURBO_MODEL_CONFIG,
   GPT_4O_MODEL_CONFIG,
+  GPT_4O_20240806_MODEL_CONFIG,
   GPT_4O_MINI_MODEL_CONFIG,
   O1_PREVIEW_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
