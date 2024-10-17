@@ -452,9 +452,7 @@ export function useUpdateVault({ owner }: { owner: LightWorkspaceType }) {
 
   const doUpdate = async (
     vault: VaultType,
-    params:
-      | DoCreateOrUpdateAllowedParams
-      | { name: string | null; memberIds: string[]; isRestricted: true }
+    params: DoCreateOrUpdateAllowedParams
   ) => {
     const { name: newName, memberIds, isRestricted } = params;
 
