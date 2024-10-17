@@ -23,6 +23,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
+  MAX_FILE_LENGTH,
   maxFileSizeToHumanReadable,
   parseAndStringifyCsv,
 } from "@dust-tt/types";
@@ -503,7 +504,7 @@ const TableUploadOrEditModal = ({
         ? await parseAndStringifyCsv(fileContent.value.content)
         : null;
 
-      if (csvContent && csvContent.length > BIG_FILE_SIZE) {
+      if (csvContent && csvContent.length > MAX_FILE_LENGTH) {
         throw new Error("File too large");
       }
 
