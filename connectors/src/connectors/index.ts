@@ -56,6 +56,8 @@ export function getConnectorManager({
       return new WebcrawlerConnectorManager(connectorId);
     case "snowflake":
       return new SnowflakeConnectorManager(connectorId);
+    case "zendesk":
+      throw new Error("Zendesk connector not implemented yet");
     default:
       assertNever(connectorProvider);
   }
@@ -108,6 +110,8 @@ export function createConnector({
       return WebcrawlerConnectorManager.create(params);
     case "snowflake":
       return SnowflakeConnectorManager.create(params);
+    case "zendesk":
+      throw new Error("Zendesk connector not implemented yet");
     default:
       assertNever(connectorProvider);
   }
