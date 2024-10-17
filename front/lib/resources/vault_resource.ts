@@ -1,6 +1,7 @@
 import type {
   ACLType,
   ModelId,
+  Permission,
   PokeVaultType,
   Result,
   VaultType,
@@ -325,11 +326,35 @@ export class VaultResource extends BaseResource<VaultModel> {
     });
   }
 
-  acl(): ACLType {
+  /**
+   * Determines the permissions a group has for resources within a vault.
+   * This function may be moved to a group_vaults join table in the future
+   * to define more granular permissions per group within each vault.
+   */
+  private getGroupPermissionsForVault(
+    auth: Authenticator,
+    group: GroupResource
+  ): Permission[] {
+    switch (group.kind) {
+      case "global":
+        return auth.isBuilder() ? ["read", "write"] : ["read"];
+
+      case "regular":
+        return ["read", "write"];
+
+      case "system":
+        return auth.isAdmin() ? ["read", "write"] : ["read"];
+
+      default:
+        assertNever(group.kind);
+    }
+  }
+
+  acl(auth: Authenticator): ACLType {
     return {
       aclEntries: this.groups.map((group) => ({
         groupId: group.id,
-        permissions: ["read", "write"],
+        permissions: this.getGroupPermissionsForVault(auth, group),
       })),
     };
   }
@@ -340,23 +365,13 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   canWrite(auth: Authenticator) {
     switch (this.kind) {
-      case "system":
-        return auth.isAdmin() && auth.canWrite([this.acl()]);
-
       case "global":
-        return auth.isBuilder() && auth.canWrite([this.acl()]);
-
       case "regular":
-        // TODO(SPACE_INFRA): Represent this in ACL.
-        // In the meantime, if the vault has a global group, only builders can write.
-        if (this.groups.some((group) => group.isGlobal())) {
-          return auth.isBuilder() && auth.canWrite([this.acl()]);
-        }
-
-        return auth.canWrite([this.acl()]);
+      case "system":
+        return auth.canWrite([this.acl(auth)]);
 
       case "public":
-        return auth.canWrite([this.acl()]);
+        return auth.canWrite([this.acl(auth)]);
 
       default:
         assertNever(this.kind);
@@ -369,11 +384,9 @@ export class VaultResource extends BaseResource<VaultModel> {
   canRead(auth: Authenticator) {
     switch (this.kind) {
       case "global":
-      case "system":
-        return auth.canRead([this.acl()]);
-
       case "regular":
-        return auth.canRead([this.acl()]);
+      case "system":
+        return auth.canRead([this.acl(auth)]);
 
       case "public":
         return true;
@@ -389,14 +402,14 @@ export class VaultResource extends BaseResource<VaultModel> {
 
     switch (this.kind) {
       case "global":
-        return auth.canRead([this.acl()]);
+        return auth.canRead([this.acl(auth)]);
 
       // Public vaults can be listed by anyone.
       case "public":
         return true;
 
       case "regular":
-        return isWorkspaceAdmin || auth.canRead([this.acl()]);
+        return isWorkspaceAdmin || auth.canRead([this.acl(auth)]);
 
       case "system":
         return isWorkspaceAdmin;
