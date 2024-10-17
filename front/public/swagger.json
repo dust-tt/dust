@@ -862,6 +862,216 @@
         }
       }
     },
+    "/api/v1/w/{wId}/vaults/{vId}/data_source_views/{dsvId}": {
+      "get": {
+        "tags": ["DatasourceViews"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get a data source view",
+        "parameters": [
+          {
+            "name": "wId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dsvId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasourceView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data source view not found"
+          },
+          "405": {
+            "description": "Method not allowed"
+          }
+        }
+      },
+      "patch": {
+        "tags": ["DatasourceViews"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Update a data source view",
+        "parameters": [
+          {
+            "name": "wId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dsvId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "parentsIn": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": ["parentsIn"]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "parentsToAdd": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "parentsToRemove": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasourceView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body"
+          },
+          "403": {
+            "description": "Unauthorized - Only admins or builders can administrate vaults"
+          },
+          "404": {
+            "description": "Data source view not found"
+          },
+          "405": {
+            "description": "Method not allowed"
+          },
+          "500": {
+            "description": "Internal server error - The data source view cannot be updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["DatasourceViews"],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Delete a data source view",
+        "parameters": [
+          {
+            "name": "wId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dsvId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Data source view successfully deleted"
+          },
+          "401": {
+            "description": "Unauthorized - The data source view is in use and cannot be deleted"
+          },
+          "403": {
+            "description": "Forbidden - Only admins or builders can delete data source views"
+          },
+          "404": {
+            "description": "Data source view not found"
+          },
+          "405": {
+            "description": "Method not allowed"
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/vaults/{vId}/data_source_views/{dsvId}/search": {
       "get": {
         "summary": "Search the data source view",
@@ -1265,13 +1475,44 @@
                     "type": "string",
                     "description": "The text content of the document to upsert."
                   },
+                  "section": {
+                    "type": "object",
+                    "description": "The structured content of the document to upsert."
+                  },
                   "source_url": {
                     "type": "string",
                     "description": "The source URL for the document to upsert."
                   },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Tags to associate with the document."
+                  },
+                  "parents": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Parent document IDs to associate with the document."
+                  },
+                  "timestamp": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Timestamp for the document."
+                  },
                   "light_document_output": {
                     "type": "boolean",
                     "description": "If true, a lightweight version of the document will be returned in the response (excluding the text, chunks and vectors). Defaults to false."
+                  },
+                  "async": {
+                    "type": "boolean",
+                    "description": "If true, the upsert operation will be performed asynchronously."
+                  },
+                  "upsert_context": {
+                    "type": "object",
+                    "description": "Additional context for the upsert operation."
                   }
                 }
               }
@@ -1288,6 +1529,9 @@
                   "properties": {
                     "document": {
                       "$ref": "#/components/schemas/Document"
+                    },
+                    "data_source": {
+                      "$ref": "#/components/schemas/Datasource"
                     }
                   }
                 }
@@ -1308,6 +1552,12 @@
           },
           "405": {
             "description": "Method not supported."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          },
+          "500": {
+            "description": "Internal Server Error."
           }
         }
       },
@@ -1360,7 +1610,24 @@
         ],
         "responses": {
           "200": {
-            "description": "The document"
+            "description": "The document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "document": {
+                      "type": "object",
+                      "properties": {
+                        "document_id": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "description": "Unauthorized. Invalid or missing authentication token."
@@ -1373,6 +1640,9 @@
           },
           "405": {
             "description": "Method not supported."
+          },
+          "500": {
+            "description": "Internal Server Error."
           }
         }
       }
