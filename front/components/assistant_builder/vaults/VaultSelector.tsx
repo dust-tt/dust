@@ -59,7 +59,7 @@ export function VaultSelector({
             allowedVaults && !allowedVaults.some((v) => v.sId === vault.sId);
 
           return (
-            <>
+            <React.Fragment key={vault.sId}>
               {index > 0 && <Separator />}
               <div key={vault.sId} className="py-2">
                 <RadioGroupChoice
@@ -100,7 +100,7 @@ export function VaultSelector({
                   </div>
                 </RadioGroupChoice>
               </div>
-            </>
+            </React.Fragment>
           );
         })}
       </RadioGroup>
