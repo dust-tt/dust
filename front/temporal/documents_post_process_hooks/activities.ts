@@ -46,6 +46,7 @@ export async function runPostUpsertHookActivity(
   });
 
   if (dataSourceDocumentRes.isErr()) {
+    // TODO(DOC_TRACKER): allow to dinstinguish between deleted and "unreachable" docs.
     localLogger.warn(
       {
         error: dataSourceDocumentRes.error,
