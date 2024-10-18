@@ -230,6 +230,7 @@ DropdownMenu.Button = forwardRef<HTMLButtonElement, DropdownButtonProps>(
                 />
               </Menu.Button>
             }
+            tooltipTriggerAsChild
             label={tooltip}
             side={tooltipPosition}
           />

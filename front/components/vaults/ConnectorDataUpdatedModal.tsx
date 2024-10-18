@@ -7,20 +7,34 @@ import {
   Page,
   SparklesIcon,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType } from "@dust-tt/types";
+import type { ConnectorProvider, LightWorkspaceType } from "@dust-tt/types";
+import { REMOTE_DATABASE_CONNECTOR_PROVIDERS } from "@dust-tt/types";
 import Link from "next/link";
 
 type DataSourceViewSelectionModalProps = {
   isOpen: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
+  connectorProvider: ConnectorProvider;
 };
 
 export const ConnectorDataUpdatedModal = ({
   isOpen,
   onClose,
   owner,
+  connectorProvider,
 }: DataSourceViewSelectionModalProps) => {
+  const isRemoteDbProvider =
+    REMOTE_DATABASE_CONNECTOR_PROVIDERS.includes(connectorProvider);
+
+  const title = isRemoteDbProvider
+    ? "Metadata Sync in Progress"
+    : "Data Sync in Progress";
+
+  const contentMessage = isRemoteDbProvider
+    ? "Databases, schemas, and tables metadata are being synced (this process is usually quick)."
+    : "Data is not yet available to the workspace";
+
   return (
     <Modal
       isOpen={isOpen}
@@ -36,20 +50,20 @@ export const ConnectorDataUpdatedModal = ({
           <div className="flex flex-col gap-2">
             <div className="p-1 text-xl font-bold">
               <Icon visual={SparklesIcon} className="text-brand" size="lg" />
-              <div>Data Sync in Progress</div>
+              <div>{title}</div>
             </div>
           </div>
           <ContentMessage
-            title="Data is not yet available to the workspace"
-            variant="warning"
+            title={contentMessage}
+            variant={isRemoteDbProvider ? "amber" : "warning"}
           >
             <div className="flex flex-col gap-2">
               <p>
-                Once synchronized, data will appear under{" "}
-                <em>"Connection Admin"</em>.
+                Once synchronized, {isRemoteDbProvider ? "tables" : "data"} will
+                appear under <em>"Connection Admin"</em>.
               </p>
               <p className="font-bold">
-                Add data to{" "}
+                Add {isRemoteDbProvider ? "tables" : "data"} to{" "}
                 <Link
                   className="cursor-pointer font-bold text-action-500"
                   href={`/w/${owner.sId}/vaults`}

@@ -129,6 +129,21 @@ const resHandler = async (res: Response) => {
 
 export const fetcher = async (...args: Parameters<typeof fetch>) => {
   const [url, config] = args;
+
+  const publicApiOverride = process.env.API_URL_OVERRIDE;
+  if (publicApiOverride && url.toString().startsWith("/api")) {
+    const transformedUrl = url.toString().replace("/api", publicApiOverride);
+    const token = process.env.API_TOKEN;
+    const res = await fetch(transformedUrl, {
+      ...config,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...addCommitHashToHeaders(config?.headers),
+      },
+    });
+    return resHandler(res);
+  }
+
   const res = await fetch(url, {
     ...config,
     headers: addCommitHashToHeaders(config?.headers),

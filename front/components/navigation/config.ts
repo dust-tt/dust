@@ -1,5 +1,6 @@
 import {
   BookOpenIcon,
+  BracesIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
@@ -44,7 +45,8 @@ export type SubNavigationAdminId =
   | "workspace"
   | "members"
   | "providers"
-  | "api_keys";
+  | "api_keys"
+  | "dev_secrets";
 
 export type SubNavigationAppId =
   | "specification"
@@ -220,6 +222,15 @@ export const subNavigationAdmin = ({
           current: current === "api_keys",
           subMenuLabel: current === "api_keys" ? subMenuLabel : undefined,
           subMenu: current === "api_keys" ? subMenu : undefined,
+        },
+        {
+          id: "dev_secrets",
+          label: "Secrets",
+          icon: BracesIcon,
+          href: `/w/${owner.sId}/developers/dev-secrets`,
+          current: current === "dev_secrets",
+          subMenuLabel: current === "dev_secrets" ? subMenuLabel : undefined,
+          subMenu: current === "dev_secrets" ? subMenu : undefined,
         },
       ],
     });

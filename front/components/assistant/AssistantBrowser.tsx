@@ -20,7 +20,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
-import { AssistantDetailsDropdownMenu } from "@app/components/assistant/AssistantDetailsDropdownMenu";
+import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
 import { subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 
@@ -38,11 +38,11 @@ interface AssistantListProps {
 
 const ALL_AGENTS_TABS = [
   // default shown tab = earliest in this list with non-empty agents
+  { label: "Favorites", icon: StarIcon, id: "favorites" },
   { label: "Most popular", icon: RocketIcon, id: "most_popular" },
   { label: "Company", icon: CompanyIcon, id: "workspace" },
   { label: "Shared", icon: UserGroupIcon, id: "published" },
   { label: "Personal", icon: LockIcon, id: "personal" },
-  { label: "Favorites", icon: StarIcon, id: "favorites" },
   { label: "All", icon: RobotIcon, id: "all" },
 ] as const;
 
@@ -81,9 +81,7 @@ export function AssistantBrowser({
       published: filteredAgents.filter((a) => a.scope === "published"),
       workspace: filteredAgents.filter((a) => a.scope === "workspace"),
       personal: filteredAgents.filter((a) => a.scope === "private"),
-      favorites: filteredAgents.filter(
-        (a) => a.scope === "published" && a.userListStatus === "in-list"
-      ),
+      favorites: filteredAgents.filter((a) => a.userFavorite),
       most_popular: filteredAgents
         .filter((a) => a.usage && a.usage.messageCount > 0)
         .sort(
@@ -132,50 +130,50 @@ export function AssistantBrowser({
           value={assistantSearch}
           onChange={setAssistantSearch}
         />
-        <Button.List>
-          <Tooltip
-            label="Create your own assistant"
-            trigger={
-              <Link
-                href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-              >
-                <div className="hidden sm:block">
-                  <Button
-                    variant="primary"
-                    icon={PlusIcon}
-                    label="Create"
-                    size="sm"
-                  />
-                </div>
-                <div className="sm:hidden">
-                  <Button
-                    variant="primary"
-                    icon={PlusIcon}
-                    label="Create"
-                    labelVisible={false}
-                    size="sm"
-                    className="sm:hidden"
-                  />
-                </div>
-              </Link>
-            }
-          />
-          {isBuilder && (
+        <div className="hidden sm:block">
+          <Button.List>
             <Tooltip
-              label="Manage assistants"
+              label="Create your own assistant"
               trigger={
-                <Link href={`/w/${owner.sId}/builder/assistants/`}>
+                <Link
+                  href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+                >
                   <Button
                     variant="primary"
-                    icon={RobotIcon}
-                    label="Manage"
+                    icon={PlusIcon}
+                    label="Create"
                     size="sm"
                   />
+                  <div className="sm:hidden">
+                    <Button
+                      variant="primary"
+                      icon={PlusIcon}
+                      label="Create"
+                      labelVisible={false}
+                      size="sm"
+                      className="sm:hidden"
+                    />
+                  </div>
                 </Link>
               }
             />
-          )}
-        </Button.List>
+            {isBuilder && (
+              <Tooltip
+                label="Manage assistants"
+                trigger={
+                  <Link href={`/w/${owner.sId}/builder/assistants/`}>
+                    <Button
+                      variant="primary"
+                      icon={RobotIcon}
+                      label="Manage"
+                      size="sm"
+                    />
+                  </Link>
+                }
+              />
+            )}
+          </Button.List>
+        </div>
       </div>
 
       {/* Assistant tabs */}
@@ -212,11 +210,12 @@ export function AssistantBrowser({
                   {/* Theses 2 divs are an ugly hack to align the button while making the dropdown menu visible above the container, it has the size of the button hardcoded -- Let's fix it asap */}
                   <div style={{ width: "56px" }}></div>{" "}
                   <div className="absolute">
-                    <AssistantDetailsDropdownMenu
+                    <AssistantDropdownMenu
                       agentConfiguration={agent}
                       owner={owner}
                       variant="button"
                       isMoreInfoVisible
+                      showAddRemoveToFavorite
                       canDelete
                     />
                   </div>

@@ -1,4 +1,4 @@
-import { parse } from "csv-parse";
+import { CsvError, parse } from "csv-parse";
 import { stringify } from "csv-stringify";
 
 import { Err, Ok, Result } from "../result";
@@ -98,7 +98,11 @@ export async function parseAndStringifyCsv(tableCsv: string): Promise<string> {
       records.push(record);
     }
   } catch (err) {
-    throw new ParsingCsvError("Unable to parse CSV string");
+    throw new ParsingCsvError(
+      err instanceof CsvError
+        ? `Unable to parse CSV string : ${err.message}`
+        : "Unable to parse CSV string"
+    );
   }
 
   return new Promise((resolve, reject) => {

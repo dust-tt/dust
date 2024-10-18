@@ -25,13 +25,13 @@ export function DeleteAssistantDialog({
   onClose,
   owner,
 }: DeleteAssistantDialogProps) {
-  const doDelete = useDeleteAgentConfiguration({ owner, agentConfiguration });
-
   const agentUsage = useAgentUsage({
     agentConfigurationId: agentConfiguration.sId,
     disabled: !isOpen,
     workspaceId: owner.sId,
   });
+
+  const doDelete = useDeleteAgentConfiguration({ owner, agentConfiguration });
 
   return (
     <Dialog

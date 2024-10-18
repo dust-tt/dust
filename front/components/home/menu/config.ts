@@ -41,7 +41,7 @@ const AboutMenuConfig: MenuConfig = {
     },
     {
       title: "Contact",
-      href: "mailto:team@dust.tt",
+      href: "mailto:support@dust.tt",
       isExternal: true,
     },
     {

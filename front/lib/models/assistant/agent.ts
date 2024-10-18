@@ -1,4 +1,3 @@
-import type { AgentUserListStatus } from "@dust-tt/types";
 import type {
   AgentConfigurationScope,
   AgentStatus,
@@ -147,6 +146,13 @@ AgentConfiguration.init(
       { fields: ["workspaceId"] },
       { fields: ["workspaceId", "name"] },
       { fields: ["workspaceId", "status", "name"] },
+      {
+        fields: ["workspaceId", "scope", "authorId"],
+        name: "partial_agent_config_active",
+        where: {
+          status: "active",
+        },
+      },
       { fields: ["sId"] },
       { fields: ["sId", "version"], unique: true },
       { fields: ["authorId"] },
@@ -261,7 +267,7 @@ export class AgentUserRelation extends Model<
 
   declare agentConfiguration: string;
 
-  declare listStatusOverride: AgentUserListStatus | null;
+  declare favorite: boolean;
 
   declare userId: ForeignKey<User["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
@@ -289,9 +295,10 @@ AgentUserRelation.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    listStatusOverride: {
-      type: DataTypes.STRING,
-      allowNull: true,
+    favorite: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

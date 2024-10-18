@@ -73,6 +73,8 @@ export class GithubIssue extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare skipReason: string | null;
+
   declare repoId: string;
   declare issueNumber: number;
 
@@ -94,6 +96,10 @@ GithubIssue.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     repoId: {
       type: DataTypes.STRING,

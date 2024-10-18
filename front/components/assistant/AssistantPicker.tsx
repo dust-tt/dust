@@ -13,16 +13,44 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import { useCallback, useEffect, useState } from "react";
 
-import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { filterAndSortAgents } from "@app/lib/utils";
+import { setQueryParam } from "@app/lib/utils/router";
+
+const ShowAssistantDetailsButton = ({
+  assistant,
+}: {
+  assistant: LightAgentConfigurationType;
+}) => {
+  const router = useRouter();
+
+  const showAssistantDetails = useCallback(
+    (agentConfiguration: LightAgentConfigurationType) => {
+      setQueryParam(router, "assistantDetails", agentConfiguration.sId);
+    },
+    [router]
+  );
+  return (
+    <IconButton
+      icon={MoreIcon}
+      onClick={() => {
+        close();
+        showAssistantDetails(assistant);
+      }}
+      variant="tertiary"
+      size="sm"
+    />
+  );
+};
 
 export function AssistantPicker({
   owner,
   assistants,
   onItemClick,
   pickerButton,
+  showMoreDetailsButtons = true,
   showFooterButtons = true,
   size = "md",
 }: {
@@ -30,6 +58,7 @@ export function AssistantPicker({
   assistants: LightAgentConfigurationType[];
   onItemClick: (assistant: LightAgentConfigurationType) => void;
   pickerButton?: React.ReactNode;
+  showMoreDetailsButtons?: boolean;
   showFooterButtons?: boolean;
   size?: "sm" | "md";
 }) {
@@ -37,8 +66,6 @@ export function AssistantPicker({
   const [searchedAssistants, setSearchedAssistants] = useState<
     LightAgentConfigurationType[]
   >([]);
-  const [showDetails, setShowDetails] =
-    useState<LightAgentConfigurationType | null>(null);
 
   useEffect(() => {
     setSearchedAssistants(filterAndSortAgents(assistants, searchText));
@@ -60,14 +87,6 @@ export function AssistantPicker({
     <DropdownMenu>
       {({ close }) => (
         <>
-          <AssistantDetails
-            owner={owner}
-            assistantId={showDetails?.sId || null}
-            onClose={() => {
-              setShowDetails(null);
-            }}
-          />
-
           <div onClick={() => setSearchText("")} className="flex">
             {pickerButton ? (
               <DropdownMenu.Button size={size}>
@@ -149,15 +168,9 @@ export function AssistantPicker({
                   }}
                   className="truncate"
                 />
-                <IconButton
-                  icon={MoreIcon}
-                  onClick={() => {
-                    close();
-                    setShowDetails(c);
-                  }}
-                  variant="tertiary"
-                  size="sm"
-                />
+                {showMoreDetailsButtons && (
+                  <ShowAssistantDetailsButton assistant={c} />
+                )}
               </div>
             ))}
           </DropdownMenu.Items>

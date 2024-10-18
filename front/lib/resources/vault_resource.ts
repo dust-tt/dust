@@ -288,6 +288,10 @@ export class VaultResource extends BaseResource<VaultModel> {
     };
   }
 
+  canAdministrate(auth: Authenticator) {
+    return auth.isAdmin();
+  }
+
   canWrite(auth: Authenticator) {
     switch (this.kind) {
       case "system":

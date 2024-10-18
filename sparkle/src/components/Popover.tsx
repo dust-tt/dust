@@ -50,13 +50,14 @@ const PopoverContent = React.forwardRef<
 
 interface PopoverProps extends Omit<PopoverContentProps, "content"> {
   trigger: React.ReactNode;
+  popoverTriggerAsChild?: boolean;
   content: React.ReactNode;
 }
 
-function Popover({ trigger, content, ...props }: PopoverProps) {
+function Popover({ trigger, popoverTriggerAsChild = false, content, ...props }: PopoverProps) {
   return (
     <PopoverRoot>
-      <PopoverTrigger>{trigger}</PopoverTrigger>
+      <PopoverTrigger asChild={popoverTriggerAsChild}>{trigger}</PopoverTrigger>
       <PopoverContent {...props}>{content}</PopoverContent>
     </PopoverRoot>
   );

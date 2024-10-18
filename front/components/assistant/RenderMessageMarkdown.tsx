@@ -185,9 +185,11 @@ export const CitationsContext = React.createContext<CitationsContextType>({
 export const MarkDownContentContext = React.createContext<{
   content: string;
   isStreaming: boolean;
+  isLastMessage: boolean;
 }>({
   content: "",
   isStreaming: false,
+  isLastMessage: false,
 });
 
 export type CustomRenderers = {
@@ -205,6 +207,7 @@ export function RenderMessageMarkdown({
   textSize,
   textColor,
   customRenderer,
+  isLastMessage,
 }: {
   content: string;
   isStreaming: boolean;
@@ -212,6 +215,7 @@ export function RenderMessageMarkdown({
   textSize?: "sm" | "base";
   textColor?: string;
   customRenderer?: CustomRenderers;
+  isLastMessage: boolean;
 }) {
   const processedContent = useMemo(() => sanitizeContent(content), [content]);
 
@@ -329,7 +333,7 @@ export function RenderMessageMarkdown({
         }
       >
         <MarkDownContentContext.Provider
-          value={{ content: processedContent, isStreaming }}
+          value={{ content: processedContent, isStreaming, isLastMessage }}
         >
           <MermaidDisplayProvider>
             <ReactMarkdown

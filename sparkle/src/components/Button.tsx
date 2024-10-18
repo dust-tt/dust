@@ -217,7 +217,12 @@ export function Button({
   return labelVisible || disabledTooltip ? (
     buttonBase
   ) : (
-    <Tooltip trigger={buttonBase} label={label} side={tooltipPosition} />
+    <Tooltip
+      trigger={buttonBase}
+      label={label}
+      side={tooltipPosition}
+      tooltipTriggerAsChild
+    />
   );
 }
 

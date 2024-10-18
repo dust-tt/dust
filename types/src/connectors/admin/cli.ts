@@ -29,6 +29,7 @@ export const GithubCommandSchema = t.type({
     t.literal("code-sync"),
     t.literal("sync-issue"),
     t.literal("force-daily-code-sync"),
+    t.literal("skip-issue"),
   ]),
   args: t.record(
     t.string,

@@ -18,13 +18,12 @@ import { gfm } from "micromark-extension-gfm";
 
 import { apiConfig } from "@connectors/lib/api/config";
 import { withRetries } from "@connectors/lib/dust_front_api_helpers";
-import {
-  DustConnectorWorkflowError,
-  InvalidRowsRequestError,
-} from "@connectors/lib/error";
+import { DustConnectorWorkflowError, TablesError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
+const MAX_CSV_SIZE = 50 * 1024 * 1024;
 
 const axiosWithTimeout = axios.create({
   timeout: 60000,
@@ -728,6 +727,13 @@ export async function upsertTableFromCsv({
 
   const now = new Date();
 
+  if (new Blob([tableCsv]).size > MAX_CSV_SIZE) {
+    throw new TablesError(
+      "file_too_large",
+      "The file is too large to be processed."
+    );
+  }
+
   const endpoint =
     `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/csv`;
@@ -836,7 +842,16 @@ export async function upsertTableFromCsv({
       dustRequestResult.status === 400 &&
       dustRequestResult.data.error?.type === "invalid_rows_request_error"
     ) {
-      throw new InvalidRowsRequestError(dustRequestResult.data.error.message);
+      throw new TablesError(
+        "invalid_headers",
+        dustRequestResult.data.error.message
+      );
+    }
+    if (dustRequestResult.status === 413) {
+      throw new TablesError(
+        "file_too_large",
+        dustRequestResult.data.error.message
+      );
     }
     throw new Error(
       `Error uploading to dust, got ${

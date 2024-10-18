@@ -539,12 +539,17 @@ async function answerMessage(
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const mainMessage = await slackClient.chat.postMessage({
-    ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
-      assistantName: mention.assistantName,
-      agentConfigurations: mostPopularAgentConfigurations,
-      isComplete: false,
-      isThinking: true,
-    }),
+    ...makeMessageUpdateBlocksAndText(
+      null,
+      connector.workspaceId,
+      slackUserInfo,
+      {
+        assistantName: mention.assistantName,
+        agentConfigurations: mostPopularAgentConfigurations,
+        isComplete: false,
+        isThinking: true,
+      }
+    ),
     channel: slackChannel,
     thread_ts: slackMessageTs,
     metadata: {
@@ -637,7 +642,12 @@ async function answerMessage(
     connector,
     conversation,
     mainMessage,
-    slack: { slackChannelId: slackChannel, slackClient, slackMessageTs },
+    slack: {
+      slackChannelId: slackChannel,
+      slackClient,
+      slackMessageTs,
+      slackUserInfo,
+    },
     userMessage,
     agentConfigurations: mostPopularAgentConfigurations,
   });

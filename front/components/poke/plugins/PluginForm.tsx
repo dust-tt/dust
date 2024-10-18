@@ -104,7 +104,7 @@ export function PluginForm({ manifest, onSubmit }: PluginFormProps) {
                     )}
                     {arg.type === "enum" && (
                       <PokeSelect
-                        value={field.value.toString()}
+                        value={field.value ? field.value.toString() : ""}
                         onValueChange={field.onChange}
                       >
                         <PokeFormControl>
