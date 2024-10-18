@@ -7,7 +7,8 @@ import {
   Label,
   Modal,
   Page,
-  RadioButton,
+  RadioGroup,
+  RadioGroupChoice,
   Spinner,
   TrashIcon,
   XMarkIcon,
@@ -493,26 +494,28 @@ export default function VaultWebsiteModal({
                       title="Crawling strategy"
                       description="Do you want to limit to child pages or not?"
                     />
-                    <RadioButton
+                    <RadioGroup
                       value={crawlMode}
-                      className="flex-col font-medium"
-                      onChange={(value) => {
-                        setCrawlMode(value == "child" ? "child" : "website");
+                      onValueChange={(value) => {
+                        setCrawlMode(value === "child" ? "child" : "website");
                       }}
-                      name="crawlMode"
-                      choices={[
-                        {
-                          label: "Only child pages of the provided URL",
-                          value: "child",
-                          disabled: false,
-                        },
-                        {
-                          label: "Follow all the links within the domain",
-                          value: "website",
-                          disabled: false,
-                        },
-                      ]}
-                    />
+                      className="flex flex-col gap-1"
+                    >
+                      <RadioGroupChoice
+                        value="child"
+                        iconPosition="center"
+                        className="gap-2 text-sm"
+                      >
+                        Only child pages of the provided URL
+                      </RadioGroupChoice>
+                      <RadioGroupChoice
+                        value="website"
+                        iconPosition="center"
+                        className="gap-2 text-sm"
+                      >
+                        Follow all the links within the domain
+                      </RadioGroupChoice>
+                    </RadioGroup>
                   </Page.Layout>
                   <Page.Layout direction="vertical" sizing="grow">
                     <Page.SectionHeader
