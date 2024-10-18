@@ -40,7 +40,7 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
 
   return (
     <PopoverRoot>
-      <PopoverTrigger>
+      <PopoverTrigger asChild>
         <PokeButton variant="outline" size="sm" className="h-8 border-dashed">
           <PlusCircleIcon className="mr-2 h-4 w-4" />
           {title}
