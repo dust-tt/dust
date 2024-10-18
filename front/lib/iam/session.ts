@@ -1,4 +1,4 @@
-import type { RoleType, UserTypeWithWorkspaces } from "@dust-tt/types";
+import type { UserTypeWithWorkspaces } from "@dust-tt/types";
 import type {
   GetServerSidePropsContext,
   GetServerSidePropsResult,
@@ -6,6 +6,7 @@ import type {
 } from "next";
 import type { ParsedUrlQuery } from "querystring";
 
+import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { Authenticator, getSession } from "@app/lib/auth";
 import { isEnterpriseConnection } from "@app/lib/iam/enterprise";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -14,8 +15,6 @@ import {
   fetchUserFromSession,
   maybeUpdateFromExternalUser,
 } from "@app/lib/iam/users";
-import { Workspace } from "@app/lib/models/workspace";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 
@@ -36,44 +35,9 @@ export async function getUserFromSession(
     return null;
   }
 
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    users: [user],
-  });
-  const workspaces = await Workspace.findAll({
-    where: {
-      id: memberships.map((m) => m.workspaceId),
-    },
-  });
-
   await maybeUpdateFromExternalUser(user, session.user);
 
-  return {
-    ...user.toJSON(),
-    workspaces: workspaces.map((w) => {
-      const m = memberships.find((m) => m.workspaceId === w.id);
-      let role = "none" as RoleType;
-      if (m) {
-        switch (m.role) {
-          case "admin":
-          case "builder":
-          case "user":
-            role = m.role;
-            break;
-          default:
-            role = "none";
-        }
-      }
-      return {
-        id: w.id,
-        sId: w.sId,
-        name: w.name,
-        role,
-        segmentation: w.segmentation || null,
-        whiteListedProviders: w.whiteListedProviders,
-        defaultEmbeddingProvider: w.defaultEmbeddingProvider,
-      };
-    }),
-  };
+  return getUserWithWorkspaces(user);
 }
 
 export type UserPrivilege = "none" | "user" | "superuser";
