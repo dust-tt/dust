@@ -9,6 +9,8 @@ import {
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
+  ScrollArea,
+  Separator,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -95,5 +97,28 @@ export function PopoverGrowingExample() {
         />
       }
     />
+  );
+}
+
+export function ScrollablePopoverExample() {
+  const tags = Array.from({ length: 50 }).map(
+    (_, i, a) => `v1.2.0-beta.${a.length - i}`
+  );
+  return (
+    <PopoverRoot>
+      <PopoverTrigger>
+        <Button label="Popover" variant="primary" />
+      </PopoverTrigger>
+      <PopoverContent className="s-p-4">
+        <ScrollArea className="s-h-[200px]">
+          {tags.map((tag) => (
+            <div key={tag}>
+              <div className="s-text-sm">{tag}</div>
+              <Separator className="s-my-2" />
+            </div>
+          ))}
+        </ScrollArea>
+      </PopoverContent>
+    </PopoverRoot>
   );
 }
