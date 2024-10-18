@@ -184,18 +184,38 @@ export const NavigationSidebar = React.forwardRef<
 
 function AppStatusBanner() {
   const { appStatus } = useAppStatus();
-  const { providerStatus } = appStatus ?? {};
 
-  if (!appStatus || !providerStatus) {
+  if (!appStatus) {
     return null;
   }
 
-  return (
-    <div className="space-y-2 border-y border-pink-200 bg-pink-100 px-3 py-3 text-xs text-pink-900">
-      <div className="font-bold">{providerStatus.name}</div>
-      <div className="font-normal">{providerStatus.description}</div>
-    </div>
-  );
+  const { providersStatus, dustStatus } = appStatus;
+
+  if (dustStatus) {
+    return (
+      <div className="space-y-2 border-y border-pink-200 bg-pink-100 px-3 py-3 text-xs text-pink-900">
+        <div className="font-bold">{dustStatus.name}</div>
+        <div className="font-normal">{dustStatus.description}</div>
+        <div>
+          Check our{" "}
+          <Link href={dustStatus.link} target="_blank" className="underline">
+            status page
+          </Link>{" "}
+          for updates.
+        </div>
+      </div>
+    );
+  }
+  if (providersStatus) {
+    return (
+      <div className="space-y-2 border-y border-pink-200 bg-pink-100 px-3 py-3 text-xs text-pink-900">
+        <div className="font-bold">{providersStatus.name}</div>
+        <div className="font-normal">{providersStatus.description}</div>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function SubscriptionEndBanner({ endDate }: { endDate: number }) {
