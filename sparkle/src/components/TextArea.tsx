@@ -27,7 +27,7 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
           rows={minRows}
           ref={ref}
           className={classNames(
-            "overflow-y-auto s-block s-w-full s-min-w-0 s-rounded-xl s-text-sm s-placeholder-element-700 s-transition-all s-duration-200 s-scrollbar-hide",
+            "overflow-y-auto s-block s-w-full s-min-w-0 s-rounded-xl s-text-sm s-placeholder-element-700 s-transition-all s-scrollbar-hide s-duration-200",
             !error
               ? "s-border-structure-100 focus:s-border-action-300 focus:s-ring-action-300"
               : "s-border-red-500 focus:s-border-red-500 focus:s-ring-red-500",
