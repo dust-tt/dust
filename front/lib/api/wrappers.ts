@@ -204,14 +204,21 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           token,
           wId,
         });
-        if (auth.isUser()) {
-          return handler(
-            req,
-            res,
-            auth,
-            null as U extends true ? Authenticator : null
-          );
+        if (!auth.isUser()) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "workspace_auth_error",
+              message: "Only users of the workspace can access this route.",
+            },
+          });
         }
+        return handler(
+          req,
+          res,
+          auth,
+          null as U extends true ? Authenticator : null
+        );
       }
 
       // Authentification with an API key.

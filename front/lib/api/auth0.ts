@@ -27,6 +27,7 @@ export function getAuth0ManagemementClient(): ManagementClient {
 
 /**
  * Get the public key to verify an Auth0 token.
+ * key id (kid) is used to find the right key in the JWKS.
  */
 async function getSigningKey(jwksUri: string, kid: string): Promise<string> {
   const client = jwksClient({
