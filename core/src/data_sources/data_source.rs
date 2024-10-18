@@ -1765,11 +1765,12 @@ impl DataSource {
         );
 
         // Delete data source and documents (SQL).
-        store
+        let deleted_rows = store
             .delete_data_source(&self.project, &self.data_source_id)
             .await?;
 
         info!(
+            deleted_rows = deleted_rows,
             data_source_internal_id = self.internal_id(),
             "Deleted data source records"
         );
