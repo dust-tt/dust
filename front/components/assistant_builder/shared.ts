@@ -42,6 +42,7 @@ const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   intercom: { singular: "element", plural: "elements" },
   webcrawler: { singular: "page", plural: "pages" },
   snowflake: { singular: "table", plural: "tables" },
+  zendesk: { singular: "element", plural: "elements" },
 };
 
 export const getConnectorProviderResourceName = (
@@ -314,6 +315,7 @@ export function getTableIdForContentNode(
     case "intercom":
     case "slack":
     case "github":
+    case "zendesk":
     case "webcrawler":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`

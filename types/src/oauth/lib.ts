@@ -17,6 +17,7 @@ export const OAUTH_PROVIDERS = [
   "slack",
   "gong",
   "microsoft",
+  "zendesk",
 ] as const;
 
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
