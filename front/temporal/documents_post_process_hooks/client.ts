@@ -23,8 +23,8 @@ export async function launchRunPostUpsertHooksWorkflow(
 
   await client.workflow.signalWithStart(runPostUpsertHooksWorkflow, {
     args: [
-      dataSourceId,
       workspaceId,
+      dataSourceId,
       documentId,
       documentHash,
       dataSourceConnectorProvider,
