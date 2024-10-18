@@ -33,6 +33,8 @@ import type { GetContentToDownloadFunction } from "@app/components/misc/ContentB
 import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
 import { classNames } from "@app/lib/utils";
 
+const supportedDirectives = ["mention", "cite", "visualization"];
+
 const SyntaxHighlighter = dynamic(
   () => import("react-syntax-highlighter").then((mod) => mod.Light),
   { ssr: false }
@@ -102,6 +104,20 @@ function visualizationDirective() {
         data.hProperties = {
           position: node.position,
         };
+      }
+    });
+  };
+}
+
+function showUnsupportedDirective() {
+  return (tree: any) => {
+    visit(tree, ["textDirective"], (node) => {
+      if (node.type === "textDirective") {
+        if (!supportedDirectives.includes(node.name)) {
+          // it's not a valid directive, so we'll leave it as plain text
+          node.type = "text";
+          node.value = `:${node.name}${node.children ? node.children.map((c: any) => c.value).join("") : ""}`;
+        }
       }
     });
   };
@@ -317,6 +333,7 @@ export function RenderMessageMarkdown({
       citeDirective(),
       remarkGfm,
       [remarkMath, { singleDollarTextMath: false }],
+      showUnsupportedDirective,
     ],
     []
   );
