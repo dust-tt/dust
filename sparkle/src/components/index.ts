@@ -68,6 +68,7 @@ export {
 export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupChoice, RadioGroupItem } from "./RadioGroup";
+export { ScrollArea } from "./ScrollArea";
 export { Searchbar } from "./Searchbar";
 export { Separator } from "./Separator";
 export { SliderToggle } from "./SliderToggle";
