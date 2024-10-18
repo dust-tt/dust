@@ -154,7 +154,7 @@ impl TryFrom<&ChatFunctionCall> for GoogleAIStudioFunctionCall {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Content {
-    role: String,
+    role: Option<String>,
     parts: Option<Vec<Part>>,
 }
 
@@ -193,12 +193,12 @@ impl TryFrom<&ChatMessage> for Content {
                 };
 
                 Ok(Content {
-                    role: String::from("model"),
+                    role: Some(String::from("model")),
                     parts: Some(parts),
                 })
             }
             ChatMessage::Function(function_msg) => Ok(Content {
-                role: String::from("function"),
+                role: Some(String::from("function")),
                 parts: Some(vec![Part {
                     text: None,
                     function_call: None,
@@ -237,7 +237,7 @@ impl TryFrom<&ChatMessage> for Content {
                 }?;
 
                 Ok(Content {
-                    role: String::from("user"),
+                    role: Some(String::from("user")),
                     parts: Some(vec![Part {
                         text: Some(text),
                         function_call: None,
@@ -246,7 +246,7 @@ impl TryFrom<&ChatMessage> for Content {
                 })
             }
             ChatMessage::System(system_msg) => Ok(Content {
-                role: String::from("user"),
+                role: Some(String::from("user")),
                 parts: Some(vec![Part {
                     // System is passed as a Content. We transform it here but it will be removed
                     // from the list of messages and passed as separate argument to the API.
@@ -439,7 +439,7 @@ impl LLM for GoogleAiStudioLLM {
             uri,
             api_key,
             &vec![Content {
-                role: String::from("user"),
+                role: Some(String::from("user")),
                 parts: Some(vec![Part {
                     text: Some(String::from(prompt)),
                     function_call: None,
@@ -898,7 +898,7 @@ pub async fn streamed_chat_completion(
 
     let mut full_candidate = Candidate {
         content: Some(Content {
-            role: String::from("MODEL"),
+            role: Some(String::from("MODEL")),
             parts: Some(vec![]),
         }),
         finish_reason: None,
@@ -931,9 +931,12 @@ pub async fn streamed_chat_completion(
             // Validate that the role (if any) is MODEL.
 
             if let Some(c) = candidate.content.as_ref() {
-                match c.role.to_uppercase().as_str() {
-                    "MODEL" => (),
-                    r => Err(anyhow!("Unexpected role in completion: {}", r))?,
+                match &c.role {
+                    Some(r) => match r.to_uppercase().as_str() {
+                        "MODEL" => (),
+                        r => Err(anyhow!("Unexpected role in completion: {}", r))?,
+                    },
+                    None => (),
                 }
             }
 
