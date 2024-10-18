@@ -56,7 +56,7 @@ export function SearchMembersPopover({
     <div className="flex flex-col items-end gap-2">
       <PopoverRoot>
         <PopoverTrigger>
-          <Button label="Add members" icon={UserIcon} size="xs" />
+          <Button label="Add members" icon={UserIcon} size="sm" />
         </PopoverTrigger>
         <PopoverContent className="w-72 p-4">
           <Searchbar
