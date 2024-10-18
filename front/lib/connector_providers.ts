@@ -241,7 +241,6 @@ export const isConnectorProviderAllowedForPlan = (
       // TODO(SNOWFLAKE): Add a isSnowflakeAllowed column to the plan model.
       return true;
     case "zendesk":
-      // TODO(ZENDESK): Add a isZendeskAllowed column to the plan model.
       return true;
     default:
       assertNever(provider);
