@@ -47,7 +47,6 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
         await lock(key);
         cacheVal = await redisCli.get(key);
         if (cacheVal) {
-          unlock(key);
           return JSON.parse(cacheVal) as Awaited<ReturnType<T>>;
         }
       }
