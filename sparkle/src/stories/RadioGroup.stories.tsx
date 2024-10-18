@@ -65,33 +65,32 @@ export const RadioGroupExample = () => {
 };
 
 export const RadioGroupWithChildrenExample = () => {
+  const [selectedChoice, setSelectedChoice] =
+    React.useState<string>("option-one");
+
+  const choices = [
+    { id: "option-one", label: "Option One" },
+    { id: "option-two", label: "Option Two" },
+    { id: "option-three", label: "Option Three" },
+  ];
   return (
     <div className="s-flex s-flex-col s-gap-10">
-      <RadioGroup defaultValue="option-one">
-        <RadioGroupChoice
-          value="option-one"
-          id="option-one"
-          className="s-border s-border-red-500"
-        >
-          Option two
-        </RadioGroupChoice>
-        <RadioGroupChoice
-          value="option-two"
-          id="option-two"
-          iconPosition="center"
-          className="s-border s-border-action-700"
-        >
-          <div className="s-flex s-flex-col s-gap-2">
-            <Icon visual={LockIcon} />
-            <Label>Lore ipsum</Label>
-            <Button label="Click me" />
-          </div>
-        </RadioGroupChoice>
-        <RadioGroupChoice
-          value="option-three"
-          id="option-three"
-          className="s-border s-border-green-500"
-        ></RadioGroupChoice>
+      <RadioGroup
+        defaultValue="option-one"
+        onValueChange={(value) => setSelectedChoice(value)}
+      >
+        {choices.map((choice) => (
+          <RadioGroupChoice value={choice.id}>
+            <div className="s-flex s-items-center s-gap-2 s-p-2">
+              <Icon visual={LockIcon} />
+              <Label>{choice.label}</Label>
+              <Button label="Click me" />
+            </div>
+            {choice.id === selectedChoice && (
+              <span>{choice.label} is selected</span>
+            )}
+          </RadioGroupChoice>
+        ))}
       </RadioGroup>
     </div>
   );
