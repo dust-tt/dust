@@ -16,21 +16,11 @@ if [ -z "$DUST_LINT_ON_COMMIT" ]; then
     exit 0
 fi
 
-
 # Get the root path of the git repository
 root_path=$(git rev-parse --show-toplevel)
 
 # List the directories to check for changes
 directories=("front" "connectors")
-
-# Flag to check if docs:check should be run
-run_docs_check=false
-
-# Check if any files in front/pages/api/v1 have changed
-if git diff --cached --name-only | grep -qE "^front/pages/api/v1/"; then
-    run_docs_check=true
-fi
-
 
 # For each directory, check if any files have changed
 for directory in "${directories[@]}"; do
@@ -48,13 +38,16 @@ for directory in "${directories[@]}"; do
             echo "Formatting check failed. Please fix the issues before committing."
             exit 1
         fi
-        if [ "$run_docs_check" = true ] && [ "$directory" = "front" ]; then
-            if ! npm run docs:check --if-present --prefix $root_path/$directory; then
-                echo "Documentation check failed. Please fix the issues before committing."
-                exit 1
+        
+        # Check for changes in front/pages/api/v1/ only when processing the front/ directory
+        if [ "$directory" = "front" ]; then
+            if git diff --cached --name-only | grep -qE "^front/pages/api/v1/"; then
+                if ! npm run docs:check --if-present --prefix $root_path/$directory; then
+                    echo "Documentation check failed. Please fix the issues before committing."
+                    exit 1
+                fi
             fi
         fi
-        break
     fi
 done
 
