@@ -116,7 +116,7 @@ function showUnsupportedDirective() {
         if (!supportedDirectives.includes(node.name)) {
           // it's not a valid directive, so we'll leave it as plain text
           node.type = "text";
-          node.value = `:${node.name}${node.children ? node.children.map((c) => c.value).join("") : ""}`;
+          node.value = `:${node.name}${node.children ? node.children.map((c: any) => c.value).join("") : ""}`;
         }
       }
     });
