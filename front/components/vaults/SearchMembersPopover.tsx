@@ -5,6 +5,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
   Searchbar,
+  Separator,
   UserIcon,
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, UserType } from "@dust-tt/types";
@@ -58,10 +59,10 @@ export function SearchMembersPopover({
         <PopoverTrigger>
           <Button label="Add members" icon={UserIcon} size="sm" />
         </PopoverTrigger>
-        <PopoverContent className="w-72 p-4">
+        <PopoverContent className="p-4">
           <Searchbar
             name="search"
-            placeholder="Search members"
+            placeholder="Search members (email)"
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e);
@@ -71,7 +72,7 @@ export function SearchMembersPopover({
           {isLoading ? (
             <div className="mt-4 text-center">Loading...</div>
           ) : (
-            <div className="mt-4 max-h-64 overflow-y-auto">
+            <div className="mt-2 overflow-y-auto">
               <InfiniteScroll
                 nextPage={loadMoreMembers}
                 hasMore={filteredMembers.length < totalMembersCount}
@@ -81,23 +82,19 @@ export function SearchMembersPopover({
                 {filteredMembers?.map((member) => (
                   <div
                     key={member.sId}
-                    className="flex items-center justify-between py-2"
+                    className="flex cursor-pointer flex-col items-start hover:opacity-80"
+                    onClick={() => addMember(member)}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="my-1 flex items-center gap-2">
                       <Avatar size="sm" visual={member.image || ""} />
                       <div>
-                        <div className="font-medium">{member.fullName}</div>
-                        <div className="text-sm text-element-700">
+                        <div className="text-sm">{member.fullName}</div>
+                        <div className="text-xs text-element-700">
                           {member.email}
                         </div>
                       </div>
                     </div>
-                    <Button
-                      label="Add"
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => addMember(member)}
-                    />
+                    <Separator />
                   </div>
                 ))}
               </InfiniteScroll>
