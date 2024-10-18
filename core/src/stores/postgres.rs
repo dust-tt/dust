@@ -1962,22 +1962,15 @@ impl Store for PostgresStore {
             .await?;
 
         loop {
-            // Delete in batches
             let deleted_rows = c
                 .execute(&stmt, &[&data_source_row_id, &(deletion_batch_size as i64)])
                 .await?;
             total_deleted_rows += deleted_rows;
 
-            // Break if no more rows to delete
             if deleted_rows < deletion_batch_size {
                 break;
             }
         }
-
-        let stmt = c
-            .prepare("DELETE FROM data_sources_documents WHERE data_source = $1")
-            .await?;
-        let _ = c.query(&stmt, &[&data_source_row_id]).await?;
 
         let stmt = c.prepare("DELETE FROM data_sources WHERE id = $1").await?;
         let _ = c.query(&stmt, &[&data_source_row_id]).await?;
