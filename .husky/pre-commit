@@ -23,6 +23,15 @@ root_path=$(git rev-parse --show-toplevel)
 # List the directories to check for changes
 directories=("front" "connectors")
 
+# Flag to check if docs:check should be run
+run_docs_check=false
+
+# Check if any files in front/pages/api/v1 have changed
+if git diff --cached --name-only | grep -qE "^front/pages/api/v1/"; then
+    run_docs_check=true
+fi
+
+
 # For each directory, check if any files have changed
 for directory in "${directories[@]}"; do
     if git diff --cached --name-only | grep -qE "^$directory/"; then
@@ -39,9 +48,11 @@ for directory in "${directories[@]}"; do
             echo "Formatting check failed. Please fix the issues before committing."
             exit 1
         fi
-        if ! npm run docs:check --if-present --prefix $root_path/$directory; then
-            echo "Documentation check failed. Please fix the issues before committing."
-            exit 1
+        if [ "$run_docs_check" = true ] && [ "$directory" = "front" ]; then
+            if ! npm run docs:check --if-present --prefix $root_path/$directory; then
+                echo "Documentation check failed. Please fix the issues before committing."
+                exit 1
+            fi
         fi
         break
     fi
