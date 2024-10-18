@@ -7,7 +7,7 @@
     "start:worker": "tsx ./start_worker.ts",
     "lint": "next lint",
     "docs": "npx next-swagger-doc-cli swagger.json && npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json && npm run format",
-    "docs:check": "npx swagger-cli validate public/swagger.json",
+    "docs:check": "npx next-swagger-doc-cli swagger.json && npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "tsc": "tsc",
