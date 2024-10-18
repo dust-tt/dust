@@ -3,6 +3,7 @@ import {
   Button,
   CompanyIcon,
   LockIcon,
+  MagnifyingGlassIcon,
   PlusIcon,
   RobotIcon,
   RocketIcon,
@@ -21,7 +22,7 @@ import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
 import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
-import { subFilter } from "@app/lib/utils";
+import { classNames, subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
@@ -44,6 +45,11 @@ const ALL_AGENTS_TABS = [
   { label: "Shared", icon: UserGroupIcon, id: "published" },
   { label: "Personal", icon: LockIcon, id: "personal" },
   { label: "All", icon: RobotIcon, id: "all" },
+  {
+    label: "Searching across all assistants",
+    icon: MagnifyingGlassIcon,
+    id: "search",
+  },
 ] as const;
 
 type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
@@ -87,12 +93,23 @@ export function AssistantBrowser({
         .sort(
           (a, b) => (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0)
         ),
+      search: loadingStatus !== "finished" ? [] : filteredAgents,
     };
   }, [assistantSearch, loadingStatus, agents]);
 
+  // if search is active, only show the search tab, otherwise show all tabs with agents except the search tab
   const visibleTabs = useMemo(() => {
-    return ALL_AGENTS_TABS.filter((tab) => agentsByTab[tab.id].length > 0);
-  }, [agentsByTab]);
+    const searchTab = ALL_AGENTS_TABS.find((tab) => tab.id === "search");
+    if (!searchTab) {
+      throw new Error("Unexpected: Search tab not found");
+    }
+
+    return assistantSearch.trim() !== ""
+      ? [searchTab]
+      : ALL_AGENTS_TABS.filter(
+          (tab) => agentsByTab[tab.id].length > 0 && tab.id !== "search"
+        );
+  }, [agentsByTab, assistantSearch]);
 
   // check the query string for the tab to show, the query param to look for is called "selectedTab"
   // if it's not found, show the first tab with agents
@@ -107,14 +124,11 @@ export function AssistantBrowser({
       : visibleTabs[0]?.id;
   }, [router.query.selectedTab, visibleTabs]);
 
-  const displayedTab =
-    assistantSearch.trim() !== "" // If search is active, show all agents
-      ? "all"
-      : visibleTabs.find((tab) => tab.id === selectedTab)
-        ? selectedTab
-        : visibleTabs.length > 0
-          ? visibleTabs[0].id
-          : null;
+  const displayedTab = visibleTabs.find((tab) => tab.id === selectedTab)
+    ? selectedTab
+    : visibleTabs.length > 0
+      ? visibleTabs[0].id
+      : null;
 
   return (
     <>
@@ -184,6 +198,9 @@ export function AssistantBrowser({
             ...tab,
             current: tab.id === displayedTab,
           }))}
+          tabClassName={classNames(
+            assistantSearch !== "" ? "text-element-700 border-element-700" : ""
+          )}
           setCurrentTab={(t) => setQueryParam(router, "selectedTab", t)}
         />
       </div>
