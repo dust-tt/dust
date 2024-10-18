@@ -55,19 +55,22 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   static async makeNew(
     blob: CreationAttributes<VaultModel>,
-    group: GroupResource
+    groups: GroupResource[]
   ) {
     return frontSequelize.transaction(async (transaction) => {
       const vault = await VaultModel.create(blob, { transaction });
-      await GroupVaultModel.create(
-        {
-          groupId: group.id,
-          vaultId: vault.id,
-        },
-        { transaction }
-      );
 
-      return new this(VaultModel, vault.get(), [group]);
+      for (const group of groups) {
+        await GroupVaultModel.create(
+          {
+            groupId: group.id,
+            vaultId: vault.id,
+          },
+          { transaction }
+        );
+      }
+
+      return new this(VaultModel, vault.get(), groups);
     });
   }
 
@@ -92,7 +95,7 @@ export class VaultResource extends BaseResource<VaultModel> {
           kind: "system",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        systemGroup
+        [systemGroup]
       ));
 
     const globalVault =
@@ -103,7 +106,7 @@ export class VaultResource extends BaseResource<VaultModel> {
           kind: "global",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        globalGroup
+        [globalGroup]
       ));
 
     return {
@@ -279,6 +282,49 @@ export class VaultResource extends BaseResource<VaultModel> {
     return new Ok(undefined);
   }
 
+  // Permissions.
+
+  async updatePermissions(
+    auth: Authenticator,
+    isRestricted: boolean
+  ): Promise<Result<undefined, Error>> {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new Error("You do not have permission to update vault permissions.")
+      );
+    }
+
+    const groupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    if (groupRes.isErr()) {
+      return groupRes;
+    }
+
+    const globalGroup = groupRes.value;
+    if (isRestricted) {
+      await this.removeGroup(globalGroup);
+    } else {
+      await this.addGroup(globalGroup);
+    }
+
+    return new Ok(undefined);
+  }
+
+  private async addGroup(group: GroupResource) {
+    await GroupVaultModel.create({
+      groupId: group.id,
+      vaultId: this.id,
+    });
+  }
+
+  private async removeGroup(group: GroupResource) {
+    await GroupVaultModel.destroy({
+      where: {
+        groupId: group.id,
+        vaultId: this.id,
+      },
+    });
+  }
+
   acl(): ACLType {
     return {
       aclEntries: this.groups.map((group) => ({
@@ -301,6 +347,12 @@ export class VaultResource extends BaseResource<VaultModel> {
         return auth.isBuilder() && auth.canWrite([this.acl()]);
 
       case "regular":
+        // TODO(SPACE_INFRA): Represent this in ACL.
+        // In the meantime, if the vault has a global group, only builders can write.
+        if (this.groups.some((group) => group.isGlobal())) {
+          return auth.isBuilder() && auth.canWrite([this.acl()]);
+        }
+
         return auth.canWrite([this.acl()]);
 
       case "public":
@@ -374,14 +426,15 @@ export class VaultResource extends BaseResource<VaultModel> {
     return this.deletedAt !== null;
   }
 
-  // Seriliazation.
+  // Serialization.
 
   toJSON(): VaultType {
     return {
-      sId: this.sId,
-      name: this.name,
-      kind: this.kind,
       groupIds: this.groups.map((group) => group.sId),
+      isRestricted: !this.groups.some((group) => group.isGlobal()),
+      kind: this.kind,
+      name: this.name,
+      sId: this.sId,
     };
   }
 
