@@ -14,8 +14,8 @@ export const LoginPage = () => {
   }, [isAuthenticated, navigate]);
 
   return (
-    <div className="flex flex-col p-4 gap-2 h-screen">
-      <div className="flex justify-center items-center w-full h-full">
+    <div className="flex h-screen flex-col gap-2 p-4">
+      <div className="flex h-full w-full items-center justify-center">
         <Button
           icon={LoginIcon}
           variant="primary"

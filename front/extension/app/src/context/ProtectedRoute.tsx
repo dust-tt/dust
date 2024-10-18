@@ -23,8 +23,8 @@ export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col p-4 gap-2 h-screen">
-        <div className="flex justify-center items-center w-full h-full">
+      <div className="flex h-screen flex-col gap-2 p-4">
+        <div className="flex h-full w-full items-center justify-center">
           <Spinner />
         </div>
       </div>
@@ -32,8 +32,8 @@ export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <div className="flex flex-col p-4 gap-2 h-screen">
-      <div className="flex justify-between items-start">
+    <div className="flex h-screen flex-col gap-2 p-4">
+      <div className="flex items-start justify-between">
         <div className="flex items-center gap-2 pb-10">
           <LogoHorizontalColorLogo className="h-4 w-16" />
           <a href="https://dust.tt" target="_blank">
