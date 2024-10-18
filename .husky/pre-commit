@@ -16,7 +16,6 @@ if [ -z "$DUST_LINT_ON_COMMIT" ]; then
     exit 0
 fi
 
-
 # Get the root path of the git repository
 root_path=$(git rev-parse --show-toplevel)
 
@@ -35,15 +34,21 @@ for directory in "${directories[@]}"; do
             echo "Type checking failed. Please fix the issues before committing."
             exit 1
         fi
+        
+        # Check for changes in front/pages/api/v1/ only when processing the front/ directory
+        if [ "$directory" = "front" ]; then
+            if git diff --cached --name-only | grep -qE "^front/pages/api/v1/"; then
+                if ! npm run docs:check --if-present --prefix $root_path/$directory; then
+                    echo "Documentation check failed. Please fix the issues before committing."
+                    exit 1
+                fi
+            fi
+        fi
+
         if ! npm run format:check --if-present --prefix $root_path/$directory; then
             echo "Formatting check failed. Please fix the issues before committing."
             exit 1
         fi
-        if ! npm run docs:check --if-present --prefix $root_path/$directory; then
-            echo "Documentation check failed. Please fix the issues before committing."
-            exit 1
-        fi
-        break
     fi
 done
 
