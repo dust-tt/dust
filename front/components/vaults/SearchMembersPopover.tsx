@@ -4,12 +4,13 @@ import {
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
+  ScrollArea,
   Searchbar,
   Separator,
   UserIcon,
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, UserType } from "@dust-tt/types";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect,useMemo, useState } from "react";
 
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useSearchMembers } from "@app/lib/swr/memberships";
@@ -27,6 +28,7 @@ export function SearchMembersPopover({
 }: SearchMembersPopoverProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 25 });
+  const [allMembers, setAllMembers] = useState<UserType[]>([]);
 
   const { members, isLoading, totalMembersCount } = useSearchMembers({
     workspaceId: owner.sId,
@@ -35,12 +37,30 @@ export function SearchMembersPopover({
     pageSize: pagination.pageSize,
   });
 
+  useEffect(() => {
+    if (members && !isLoading) {
+      setAllMembers((prevMembers) => {
+        const newMembers = members.filter(
+          (member) =>
+            !prevMembers.some((prevMember) => prevMember.sId === member.sId)
+        );
+        return [...prevMembers, ...newMembers];
+      });
+    }
+  }, [members, isLoading]);
+
+  useEffect(() => {
+    // reset allMembers when search term changes
+    setAllMembers([]);
+    setPagination({ pageIndex: 0, pageSize: 25 });
+  }, [searchTerm]);
+
   const filteredMembers = useMemo(() => {
-    return members?.filter(
+    return allMembers.filter(
       (member) =>
         !selectedMembers.some((selected) => selected.sId === member.sId)
     );
-  }, [members, selectedMembers]);
+  }, [allMembers, selectedMembers]);
 
   const addMember = useCallback(
     (member: UserType) => {
@@ -49,9 +69,11 @@ export function SearchMembersPopover({
     [selectedMembers, onMembersUpdated]
   );
 
-  const loadMoreMembers = useCallback(() => {
+  const loadNextPage = useCallback(() => {
     setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex + 1 }));
   }, []);
+
+  const hasMore = totalMembersCount > allMembers.length;
 
   return (
     <div className="flex flex-col items-end gap-2">
@@ -66,40 +88,42 @@ export function SearchMembersPopover({
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e);
-              setPagination({ pageIndex: 0, pageSize: 25 });
             }}
           />
-          {isLoading ? (
-            <div className="mt-4 text-center">Loading...</div>
-          ) : (
-            <div className="mt-2 overflow-y-auto">
-              <InfiniteScroll
-                nextPage={loadMoreMembers}
-                hasMore={filteredMembers.length < totalMembersCount}
-                isValidating={true}
-                isLoading={isLoading}
-              >
-                {filteredMembers?.map((member) => (
-                  <div
-                    key={member.sId}
-                    className="flex cursor-pointer flex-col items-start hover:opacity-80"
-                    onClick={() => addMember(member)}
-                  >
-                    <div className="my-1 flex items-center gap-2">
-                      <Avatar size="sm" visual={member.image || ""} />
-                      <div>
-                        <div className="text-sm">{member.fullName}</div>
-                        <div className="text-xs text-element-700">
-                          {member.email}
-                        </div>
+          <ScrollArea className="mt-2 h-[300px]">
+            <div className="space-y-1">
+              {filteredMembers.map((member) => (
+                <div
+                  key={member.sId}
+                  className="flex cursor-pointer flex-col items-start hover:opacity-80"
+                  onClick={() => addMember(member)}
+                >
+                  <div className="my-1 flex items-center gap-2">
+                    <Avatar size="sm" visual={member.image || ""} />
+                    <div>
+                      <div className="text-sm">{member.fullName}</div>
+                      <div className="text-xs text-element-700">
+                        {member.email}
                       </div>
                     </div>
-                    <Separator />
                   </div>
-                ))}
-              </InfiniteScroll>
+                  <Separator />
+                </div>
+              ))}
             </div>
-          )}
+            <InfiniteScroll
+              nextPage={loadNextPage}
+              hasMore={hasMore}
+              isValidating={isLoading}
+              isLoading={isLoading}
+            >
+              {isLoading && (
+                <div className="py-2 text-center text-sm text-element-700">
+                  Loading more members...
+                </div>
+              )}
+            </InfiniteScroll>
+          </ScrollArea>
         </PopoverContent>
       </PopoverRoot>
     </div>
