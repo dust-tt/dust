@@ -1,4 +1,10 @@
-import { Checkbox, Dialog, Icon, Separator } from "@dust-tt/sparkle";
+import {
+  Dialog,
+  Icon,
+  RadioGroup,
+  RadioGroupChoice,
+  Separator,
+} from "@dust-tt/sparkle";
 import type { VaultType } from "@dust-tt/types";
 import React, { useState } from "react";
 
@@ -41,64 +47,63 @@ export function VaultSelector({
       })
     )
     .flat();
-  // TODO: we are using Checkboxes here as our RadioButton isn't flexible
-  // enough to allow a onClick callback on a disabled item and to render
-  // elements in between labels. We are aiming to refactor RadioButton
+
   return (
     <>
-      {sortedVaults.map((vault, index) => {
-        const isDisabled =
-          allowedVaults && !allowedVaults.some((v) => v.sId === vault.sId);
-        const isChecked = selectedVault === vault.sId;
+      <RadioGroup
+        value={selectedVault}
+        onValueChange={(value) => setSelectedVault(value)}
+      >
+        {sortedVaults.map((vault, index) => {
+          const isDisabled =
+            allowedVaults && !allowedVaults.some((v) => v.sId === vault.sId);
 
-        return (
-          <div key={vault.sId}>
-            {index > 0 && <Separator />}
-            <div
-              className="flex items-center py-2"
-              onClick={() => {
-                if (isDisabled) {
-                  setAlertIsDialogOpen(true);
-                }
-              }}
-            >
-              <Checkbox
-                checked={isChecked}
-                onCheckedChange={() => {
-                  if (!isDisabled) {
-                    setSelectedVault(isChecked ? "" : vault.sId);
-                  }
-                }}
-                disabled={isDisabled}
-              />
-              <div className="flex items-center gap-2">
-                <Icon
-                  visual={getVaultIcon(vault)}
-                  size="md"
-                  className={classNames(
-                    "ml-3 mr-2 inline-block flex-shrink-0 align-middle",
-                    isDisabled ? "text-element-700" : "text-brand"
-                  )}
-                />
-                <span
-                  className={classNames(
-                    "font-bold",
-                    "align-middle",
-                    isDisabled ? "text-element-700" : "text-element-900"
-                  )}
+          return (
+            <React.Fragment key={vault.sId}>
+              {index > 0 && <Separator />}
+              <div key={vault.sId} className="py-2">
+                <RadioGroupChoice
+                  value={vault.sId}
+                  disabled={isDisabled}
+                  iconPosition="start"
+                  onClick={() => {
+                    if (isDisabled) {
+                      setAlertIsDialogOpen(true);
+                    }
+                  }}
                 >
-                  {getVaultName(vault)}
-                </span>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1 pl-2">
+                      <Icon
+                        visual={getVaultIcon(vault)}
+                        size="md"
+                        className={classNames(
+                          "inline-block flex-shrink-0 align-middle",
+                          isDisabled ? "text-element-700" : "text-brand"
+                        )}
+                      />
+                      <span
+                        className={classNames(
+                          "font-bold",
+                          "align-middle",
+                          isDisabled ? "text-element-700" : "text-element-900"
+                        )}
+                      >
+                        {getVaultName(vault)}
+                      </span>
+                    </div>
+                    {selectedVault === vault.sId && (
+                      <div className="ml-4 mt-1">
+                        {renderChildren(selectedVaultObj)}
+                      </div>
+                    )}
+                  </div>
+                </RadioGroupChoice>
               </div>
-            </div>
-            {isChecked && (
-              <div className="ml-8 mt-2">
-                {renderChildren(selectedVaultObj)}
-              </div>
-            )}
-          </div>
-        );
-      })}
+            </React.Fragment>
+          );
+        })}
+      </RadioGroup>
       <Separator />
       <Dialog
         alertDialog={true}

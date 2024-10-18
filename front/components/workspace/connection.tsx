@@ -9,7 +9,8 @@ import {
   Modal,
   Page,
   Popup,
-  RadioButton,
+  RadioGroup,
+  RadioGroupChoice,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import type {
@@ -177,11 +178,11 @@ export function EnterpriseConnectionDetails({
         <Popup
           show={showNoVerifiedDomainPopup}
           chipLabel="Domain Verification Required"
-          description="Single Sign-On (SSO) is not available because your domain isn't verified yet. Contact us at support@dust.tt for assistance."
+          description="Single Sign-On (SSO) is not available because your domain isn't verified yet. Contact us at team@dust.tt for assistance."
           buttonLabel="Get Help"
           buttonClick={() => {
             window.location.href =
-              "mailto:support@dust.tt?subject=Help with Domain Verification for SSO";
+              "mailto:team@dust.tt?subject=Help with Domain Verification for SSO";
           }}
           className="absolute bottom-8 right-8"
           onClose={() => setShowNoVerifiedDomainPopup(false)}
@@ -594,28 +595,22 @@ function CreateEnterpriseConnectionModal({
               Dust supports Single Sign On (SSO) with Okta and Microsoft Entra
               Id. Choose the SSO provider you'd like to integrate.
             </Page.P>
-            <RadioButton
-              name="strategy"
-              className="s-flex-col"
-              choices={[
-                {
-                  label: "Okta SSO",
-                  value: "okta",
-                  disabled: false,
-                },
-                {
-                  label: "Microsoft Entra Id",
-                  value: "waad",
-                  disabled: false,
-                },
-              ]}
+            <RadioGroup
               value={selectedStrategy ?? ""}
-              onChange={(v) => {
+              onValueChange={(v) => {
                 setSelectedStrategy(
                   v as SupportedEnterpriseConnectionStrategies
                 );
               }}
-            />
+              className="flex-col gap-2"
+            >
+              <RadioGroupChoice value="okta">
+                <span className="pl-1">Okta SSO</span>
+              </RadioGroupChoice>
+              <RadioGroupChoice value="waad">
+                <span className="pl-1">Microsoft Entra Id</span>
+              </RadioGroupChoice>
+            </RadioGroup>
           </div>
         )}
         {selectedStrategy && (

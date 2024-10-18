@@ -3,7 +3,8 @@ import {
   Input,
   LogoSquareColorLogo,
   Page,
-  RadioButton,
+  RadioGroup,
+  RadioGroupChoice,
 } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -136,14 +137,12 @@ export default function Welcome({
           title={`Hello ${firstName}!`}
           icon={() => <LogoSquareColorLogo className="-ml-11 h-10 w-32" />}
         />
-        <p className="font-semibold text-element-800">
-          Let's check a few things.
-        </p>
+        <p className="text-element-800">Let's check a few things.</p>
         {!isAdmin && (
           <div>
             <p className="text-element-700">
               You will be joining the workspace:{" "}
-              <span className="font-semibold">{owner.name}</span>.
+              <span className="">{owner.name}</span>.
             </p>
           </div>
         )}
@@ -167,53 +166,39 @@ export default function Welcome({
         {isAdmin && (
           <div>
             <p className="pb-2">I'm looking at Dust:</p>
-            <RadioButton
-              name="adminInterest"
-              className="flex-col font-semibold sm:flex-row"
-              choices={[
-                {
-                  label: "Just for me",
-                  value: "personnal",
-                  disabled: false,
-                },
-                {
-                  label: "For me and my team",
-                  value: "team",
-                  disabled: false,
-                },
-              ]}
+            <RadioGroup
               value={adminInterest}
-              onChange={setAdminInterest}
-            />
+              onValueChange={setAdminInterest}
+              className="flex flex-col gap-2 sm:flex-row"
+            >
+              <RadioGroupChoice value="personnal" iconPosition="center">
+                <span className="pl-1">Just for me</span>
+              </RadioGroupChoice>
+              <RadioGroupChoice value="team" iconPosition="center">
+                <span className="pl-1">For me and my team</span>
+              </RadioGroupChoice>
+            </RadioGroup>
           </div>
         )}
         <div>
           <p className="pb-2 text-element-700">
             How much do you know about AI assistants?
           </p>
-          <RadioButton
-            name="expertise"
-            className="flex-col font-semibold sm:flex-row"
-            choices={[
-              {
-                label: "Nothing!",
-                value: "beginner",
-                disabled: false,
-              },
-              {
-                label: "I know the basics",
-                value: "intermediate",
-                disabled: false,
-              },
-              {
-                label: "I'm a pro",
-                value: "advanced",
-                disabled: false,
-              },
-            ]}
+          <RadioGroup
             value={expertise}
-            onChange={setExpertise}
-          />
+            onValueChange={setExpertise}
+            className="flex flex-col gap-2 sm:flex-row"
+          >
+            <RadioGroupChoice value="beginner" iconPosition="center">
+              <span className="pl-1">Nothing!</span>
+            </RadioGroupChoice>
+            <RadioGroupChoice value="intermediate" iconPosition="center">
+              <span className="pl-1">I know the basics</span>
+            </RadioGroupChoice>
+            <RadioGroupChoice value="advanced" iconPosition="center">
+              <span className="pl-1">I'm a pro</span>
+            </RadioGroupChoice>
+          </RadioGroup>
         </div>
         <div className="flex justify-end">
           <Button
