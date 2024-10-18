@@ -33,6 +33,7 @@ export function getContentNodeInternalIdFromTableId(
     case "confluence":
     case "github":
     case "slack":
+    case "zendesk":
     case "webcrawler":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`

@@ -9,6 +9,7 @@ import {
   NotionLogo,
   SlackLogo,
   SnowflakeLogo,
+  ZendeskLogo,
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
@@ -184,6 +185,21 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     selectLabel: "Select tables",
     rollingOutFlag: "snowflake_connector_feature",
   },
+  zendesk: {
+    name: "Zendesk",
+    connectorProvider: "zendesk",
+    status: "rolling_out",
+    hide: false,
+    description:
+      "Authorize access to Zendesk for indexing tickets from your support center and articles from your help center.",
+    limitations:
+      "Dust will index the content accessible to the authorized account only. Attachments are not indexed.",
+    guideLink: "https://docs.dust.tt/docs/zendesk",
+    logoComponent: ZendeskLogo,
+    isNested: true,
+    isSearchEnabled: false,
+    rollingOutFlag: "zendesk_connector_feature",
+  },
 };
 
 export function getConnectorProviderLogoWithFallback(
@@ -224,6 +240,8 @@ export const isConnectorProviderAllowedForPlan = (
     case "snowflake":
       // TODO(SNOWFLAKE): Add a isSnowflakeAllowed column to the plan model.
       return true;
+    case "zendesk":
+      return true;
     default:
       assertNever(provider);
   }
@@ -240,6 +258,7 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "google_drive":
     case "intercom":
     case "microsoft":
+    case "zendesk":
     case "snowflake":
       return true;
     case "webcrawler":
@@ -260,6 +279,7 @@ export const isConnectionIdRequiredForProvider = (
     case "google_drive":
     case "intercom":
     case "microsoft":
+    case "zendesk":
     case "snowflake":
       return true;
     case "webcrawler":
