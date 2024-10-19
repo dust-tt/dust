@@ -21,7 +21,6 @@ export const GetAgentConfigurationsQuerySchema = t.type({
     t.literal("global"),
     t.literal("admin_internal"),
     t.literal("all"),
-    t.literal("assistants-search"),
     t.undefined,
   ]),
   conversationId: t.union([t.string, t.undefined]),

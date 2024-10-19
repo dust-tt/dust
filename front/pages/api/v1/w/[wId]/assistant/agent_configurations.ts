@@ -56,7 +56,7 @@ async function handler(
     case "GET": {
       const agentConfigurations = await getAgentConfigurations({
         auth,
-        agentsGetView: auth.user() ? "assistants-search" : "all",
+        agentsGetView: auth.user() ? "list" : "all",
         variant: "light",
       });
       return res.status(200).json({

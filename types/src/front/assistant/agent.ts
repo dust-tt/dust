@@ -97,13 +97,8 @@ export type AgentConfigurationScope =
  * 'views':
  * - 'list': Retrieves all active agents accessible to the user
  * - {agentIds: string}: Retrieves specific agents by their sIds.
- * - {conversationId: string}: like 'list', plus the agents mentioned in the
- *   conversation with the provided id. This can be useful to share
- *   conversations with personal agents
  * - 'all': All non-private agents (so combines workspace, published and global
  *   agents); used e.g. for non-user calls such as API
- * - 'assistants-search': retrieves all global agents including inactive ones,
- *   all workspace, all published and the user's private agents.
  * - 'workspace': Retrieves all agents exclusively with a 'workspace' scope.
  * - 'published': Retrieves all agents exclusively with a 'published' scope.
  * - 'global': Retrieves all agents exclusively with a 'global' scope.
@@ -115,9 +110,7 @@ export type AgentConfigurationScope =
 export type AgentsGetViewType =
   | { agentIds: string[]; allVersions?: boolean }
   | "list"
-  | { conversationId: string }
   | "all"
-  | "assistants-search"
   | "workspace"
   | "published"
   | "global"

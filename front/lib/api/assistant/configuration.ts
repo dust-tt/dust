@@ -172,16 +172,8 @@ function determineGlobalAgentIdsToFetch(
     case "list":
     case "all":
     case "admin_internal":
-    case "assistants-search":
       return undefined; // undefined means all global agents will be fetched
     default:
-      if (
-        typeof agentsGetView === "object" &&
-        "conversationId" in agentsGetView
-      ) {
-        // All global agents in conversation view.
-        return undefined;
-      }
       if (typeof agentsGetView === "object" && "agentIds" in agentsGetView) {
         return agentsGetView.agentIds.filter(isGlobalAgentId);
       }
@@ -303,7 +295,6 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         where: baseConditionsAndScopesIn(["published"]),
       });
 
-    case "assistants-search":
     case "list":
       const user = auth.user();
 
@@ -338,22 +329,6 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
           },
           order: [["version", "DESC"]],
           ...(agentsGetView.allVersions ? {} : { limit: 1 }),
-        });
-      } else if (
-        typeof agentsGetView === "object" &&
-        "conversationId" in agentsGetView
-      ) {
-        const user = auth.user();
-
-        return AgentConfiguration.findAll({
-          ...baseAgentsSequelizeQuery,
-          where: {
-            ...baseWhereConditions,
-            [Op.or]: [
-              { scope: { [Op.in]: ["workspace", "published"] } },
-              { authorId: user?.id },
-            ],
-          },
         });
       }
       assertNever(agentsGetView);
@@ -547,10 +522,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     throw new Error("Archived view is for dust superusers only.");
   }
 
-  if (
-    (agentsGetView === "list" || agentsGetView === "assistants-search") &&
-    !user
-  ) {
+  if (agentsGetView === "list" && !user) {
     throw new Error(
       "`list` or `assistants-search` view is specific to a user."
     );
