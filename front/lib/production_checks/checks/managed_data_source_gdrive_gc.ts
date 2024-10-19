@@ -3,8 +3,8 @@ import { QueryTypes } from "sequelize";
 import { getCoreDocuments } from "@app/lib/production_checks/managed_ds";
 import type { CheckFunction } from "@app/lib/production_checks/types";
 import {
-  getConnectorsReplicaDbConnection,
-  getFrontReplicaDbConnection,
+  getConnectorsPrimaryDbConnection,
+  getFrontPrimaryDbConnection,
 } from "@app/lib/production_checks/utils";
 
 export const managedDataSourceGCGdriveCheck: CheckFunction = async (
@@ -14,10 +14,10 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   reportFailure,
   heartbeat
 ) => {
-  const connectorsReplica = getConnectorsReplicaDbConnection();
-  const frontReplica = getFrontReplicaDbConnection();
+  const connectorsDb = getConnectorsPrimaryDbConnection();
+  const frontDb = getFrontPrimaryDbConnection();
   const GdriveDataSources: { id: number; connectorId: string }[] =
-    await frontReplica.query(
+    await frontDb.query(
       `SELECT id, "connectorId" FROM data_sources WHERE "connectorProvider" = 'google_drive'`,
       { type: QueryTypes.SELECT }
     );
@@ -27,7 +27,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
 
     // Retrieve all documents from the connector (first)
     const connectorDocuments: { id: number; coreDocumentId: string }[] =
-      await connectorsReplica.query(
+      await connectorsDb.query(
         'SELECT id, "dustFileId" as "coreDocumentId" FROM google_drive_files WHERE "connectorId" = :connectorId',
         {
           replacements: {

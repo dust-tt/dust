@@ -6,8 +6,9 @@ import config from "@app/lib/production_checks/config";
 let connectorsReplicaDbInstance: Sequelize | null = null;
 let connectorsPrimaryDbInstance: Sequelize | null = null;
 let coreReplicaDbInstance: Sequelize | null = null;
-let frontReplicaDbInstance: Sequelize | null = null;
 let corePrimaryDbInstance: Sequelize | null = null;
+let frontReplicaDbInstance: Sequelize | null = null;
+let frontPrimaryDbInstance: Sequelize | null = null;
 
 export function getConnectorsReplicaDbConnection() {
   if (!connectorsReplicaDbInstance) {
@@ -72,4 +73,17 @@ export function getCorePrimaryDbConnection() {
   }
 
   return corePrimaryDbInstance;
+}
+
+export function getFrontPrimaryDbConnection() {
+  if (!frontPrimaryDbInstance) {
+    frontPrimaryDbInstance = new Sequelize(
+      config.getFrontDatabasePrimaryUri() as string,
+      {
+        logging: false,
+      }
+    );
+  }
+
+  return frontPrimaryDbInstance;
 }
