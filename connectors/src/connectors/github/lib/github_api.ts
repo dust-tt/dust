@@ -14,6 +14,7 @@ import { pipeline } from "stream/promises";
 import { extract } from "tar";
 
 import {
+  isBadCredentials,
   isGithubRequestErrorNotFound,
   isGithubRequestRedirectCountExceededError,
 } from "@connectors/connectors/github/lib/errors";
@@ -202,9 +203,9 @@ export async function getIssue(
   issueNumber: number,
   loggerArgs: Record<string, string | number>
 ): Promise<GithubIssue | null> {
-  const octokit = await getOctokit(connectionId);
-
   try {
+    const octokit = await getOctokit(connectionId);
+
     const issue = (
       await octokit.rest.issues.get({
         owner: login,
@@ -234,7 +235,8 @@ export async function getIssue(
     // by safely ignoring the issue and logging the error.
     if (
       isGithubRequestRedirectCountExceededError(err) ||
-      isGithubRequestErrorNotFound(err)
+      isGithubRequestErrorNotFound(err) ||
+      isBadCredentials(err)
     ) {
       logger.info({ ...loggerArgs, err: err.message }, "Failed to get issue.");
 
