@@ -12,7 +12,7 @@ import type { Client, WorkflowHandle } from "@temporalio/client";
 import { QueryTypes } from "sequelize";
 
 import type { CheckFunction } from "@app/lib/production_checks/types";
-import { getConnectorReplicaDbConnection } from "@app/lib/production_checks/utils";
+import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 
 interface ConnectorBlob {
@@ -26,7 +26,7 @@ interface ProviderCheck {
   makeIdsFn: (connector: ConnectorBlob) => string[];
 }
 
-const connectorsReplica = getConnectorReplicaDbConnection();
+const connectorsDb = getConnectorsPrimaryDbConnection();
 
 const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
   confluence: {
@@ -53,7 +53,7 @@ const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
 };
 
 async function listAllConnectorsForProvider(provider: ConnectorProvider) {
-  const connectors: ConnectorBlob[] = await connectorsReplica.query(
+  const connectors: ConnectorBlob[] = await connectorsDb.query(
     `SELECT id, "dataSourceId", "workspaceId", "pausedAt" FROM connectors WHERE "type" = :provider and  "errorType" IS NULL`,
     {
       type: QueryTypes.SELECT,

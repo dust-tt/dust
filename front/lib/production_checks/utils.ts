@@ -3,14 +3,15 @@ import { Sequelize } from "sequelize";
 import config from "@app/lib/production_checks/config";
 
 // Variables to hold the singleton instances.
-let connectorReplicaDbInstance: Sequelize | null = null;
+let connectorsReplicaDbInstance: Sequelize | null = null;
+let connectorsPrimaryDbInstance: Sequelize | null = null;
 let coreReplicaDbInstance: Sequelize | null = null;
 let frontReplicaDbInstance: Sequelize | null = null;
 let corePrimaryDbInstance: Sequelize | null = null;
 
-export function getConnectorReplicaDbConnection() {
-  if (!connectorReplicaDbInstance) {
-    connectorReplicaDbInstance = new Sequelize(
+export function getConnectorsReplicaDbConnection() {
+  if (!connectorsReplicaDbInstance) {
+    connectorsReplicaDbInstance = new Sequelize(
       config.getConnectorsDatabaseReadReplicaUri() as string,
       {
         logging: false,
@@ -18,13 +19,13 @@ export function getConnectorReplicaDbConnection() {
     );
   }
 
-  return connectorReplicaDbInstance;
+  return connectorsReplicaDbInstance;
 }
 
 export function getCoreReplicaDbConnection() {
   if (!coreReplicaDbInstance) {
     coreReplicaDbInstance = new Sequelize(
-      config.getReadReplicaCoreDatabaseUri() as string,
+      config.getCoreDatabaseReadReplicaUri() as string,
       {
         logging: false,
       }
@@ -47,10 +48,23 @@ export function getFrontReplicaDbConnection() {
   return frontReplicaDbInstance;
 }
 
+export function getConnectorsPrimaryDbConnection() {
+  if (!connectorsPrimaryDbInstance) {
+    connectorsPrimaryDbInstance = new Sequelize(
+      config.getConnectorsDatabasePrimaryUri() as string,
+      {
+        logging: false,
+      }
+    );
+  }
+
+  return connectorsPrimaryDbInstance;
+}
+
 export function getCorePrimaryDbConnection() {
   if (!corePrimaryDbInstance) {
     corePrimaryDbInstance = new Sequelize(
-      config.getPrimaryCoreDatabaseUri() as string,
+      config.getCoreDatabasePrimaryUri() as string,
       {
         logging: false,
       }
