@@ -15,7 +15,7 @@ import {
 const BATCH_SIZE = 100;
 
 export async function purgeExpiredRunExecutionsActivity() {
-  const primaryCoreDatabaseUri = config.getPrimaryCoreDatabaseUri();
+  const primaryCoreDatabaseUri = config.getCoreDatabasePrimaryUri();
   const coreSequelize = new Sequelize(primaryCoreDatabaseUri, {
     logging: false,
   });
