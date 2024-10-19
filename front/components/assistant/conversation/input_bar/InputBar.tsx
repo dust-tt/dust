@@ -79,7 +79,7 @@ export function AssistantInputBar({
   const { agentConfigurations: baseAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetView: "assistants-search",
+      agentsGetView: "list",
     });
 
   // Files upload.
