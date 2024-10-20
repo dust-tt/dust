@@ -1,7 +1,7 @@
 import type { VaultType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PatchGroupRequestBodySchema } from "@dust-tt/types";
 import assert from "assert";
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -10,6 +10,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
+
+const PatchGroupRequestBodySchema = t.type({
+  memberIds: t.union([t.array(t.string), t.undefined]),
+});
 
 export interface PatchVaultMembersResponseBody {
   vault: VaultType;

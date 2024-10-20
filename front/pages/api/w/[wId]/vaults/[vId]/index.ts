@@ -4,11 +4,9 @@ import type {
   VaultType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import {
-  DATA_SOURCE_VIEW_CATEGORIES,
-  PatchVaultRequestBodySchema,
-} from "@dust-tt/types";
+import { DATA_SOURCE_VIEW_CATEGORIES } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { uniq } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -23,7 +21,21 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
-export type VaultCategoryInfo = {
+const PatchVaultRequestBodySchema = t.type({
+  name: t.union([t.string, t.undefined]),
+  memberIds: t.union([t.array(t.string), t.undefined]),
+  content: t.union([
+    t.array(
+      t.type({
+        dataSourceId: t.string,
+        parentsIn: t.array(t.string),
+      })
+    ),
+    t.undefined,
+  ]),
+});
+
+type VaultCategoryInfo = {
   usage: DataSourceWithAgentsUsageType;
   count: number;
 };

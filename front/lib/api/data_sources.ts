@@ -1,16 +1,24 @@
 import type {
+  DataSourceSearchQuery,
+  DataSourceSearchResponseType,
+} from "@dust-tt/client";
+import type {
+  APIErrorWithStatusCode,
   ConnectorProvider,
   ConnectorType,
   CoreAPIDataSource,
   CoreAPIDocument,
   CoreAPILightDocument,
+  CoreAPITable,
   DataSourceType,
   DataSourceWithConnectorDetailsType,
   FrontDataSourceDocumentSectionType,
   Result,
+  UpsertTableFromCsvRequestType,
   WithConnector,
 } from "@dust-tt/types";
 import {
+  assertNever,
   ConnectorsAPI,
   CoreAPI,
   dustManagedCredentials,
@@ -457,4 +465,212 @@ export async function upsertTable({
   });
 
   return tableRes;
+}
+
+export async function handleDataSourceSearch({
+  searchQuery,
+  dataSource,
+}: {
+  searchQuery: DataSourceSearchQuery;
+  dataSource: DataSourceResource;
+}): Promise<Result<DataSourceSearchResponseType, APIErrorWithStatusCode>> {
+  // Dust managed credentials: all data sources.
+  const credentials = dustManagedCredentials();
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const data = await coreAPI.searchDataSource(
+    dataSource.dustAPIProjectId,
+    dataSource.dustAPIDataSourceId,
+    {
+      query: searchQuery.query,
+      topK: searchQuery.top_k,
+      fullText: searchQuery.full_text,
+      target_document_tokens: searchQuery.target_document_tokens,
+      filter: {
+        tags: {
+          in: searchQuery.tags_in ?? null,
+          not: searchQuery.tags_not ?? null,
+        },
+        parents: {
+          in: searchQuery.parents_in ?? null,
+          not: searchQuery.parents_not ?? null,
+        },
+        timestamp: {
+          gt: searchQuery.timestamp_gt ?? null,
+          lt: searchQuery.timestamp_lt ?? null,
+        },
+      },
+      credentials: credentials,
+    }
+  );
+
+  if (data.isErr()) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "data_source_error",
+        message: "There was an error performing the data source search.",
+        data_source_error: data.error,
+      },
+    });
+  }
+
+  return new Ok({
+    documents: data.value.documents,
+  });
+}
+
+export async function handleDataSourceTableCSVUpsert({
+  auth,
+  params,
+  dataSource,
+}: {
+  auth: Authenticator;
+  params: UpsertTableFromCsvRequestType;
+  dataSource: DataSourceResource;
+}): Promise<
+  Result<
+    | {
+        table: {
+          table_id: string;
+        };
+      }
+    | {
+        table: CoreAPITable;
+      },
+    APIErrorWithStatusCode
+  >
+> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const { name, description, csv, truncate, async } = params;
+  if (!csv && truncate) {
+    return new Err({
+      api_error: {
+        type: "invalid_request_error",
+        message: "Cannot truncate a table without providing a CSV.",
+      },
+      status_code: 400,
+    });
+  }
+
+  const tableId = params.tableId ?? generateLegacyModelSId();
+  const tableParents: string[] = params.parents ?? [];
+
+  if (!tableParents.includes(tableId)) {
+    tableParents.push(tableId);
+  }
+
+  const useAppForHeaderDetection =
+    !!params.useAppForHeaderDetection &&
+    owner.flags.includes("use_app_for_header_detection");
+
+  if (async) {
+    // Ensure the CSV is valid before enqueuing the upsert.
+    const csvRowsRes = csv
+      ? await rowsFromCsv({ auth, csv, useAppForHeaderDetection })
+      : null;
+    if (csvRowsRes?.isErr()) {
+      return new Err({
+        api_error: {
+          type: "invalid_rows_request_error",
+          message: `Failed to parse CSV: ${csvRowsRes.error.message}`,
+        },
+        status_code: 400,
+      });
+    }
+
+    const enqueueRes = await enqueueUpsertTable({
+      upsertTable: {
+        workspaceId: owner.sId,
+        dataSourceId: dataSource.sId,
+        tableId,
+        tableName: name,
+        tableDescription: description,
+        tableTimestamp: params.timestamp ?? null,
+        tableTags: params.tags ?? [],
+        tableParents,
+        csv: csv ?? null,
+        truncate,
+        useAppForHeaderDetection,
+      },
+    });
+    if (enqueueRes.isErr()) {
+      return new Err({
+        status_code: 500,
+        api_error: {
+          type: "data_source_error",
+          message:
+            "There was an error enqueueing the the document for asynchronous upsert.",
+        },
+      });
+    }
+    return new Ok({
+      table: {
+        table_id: tableId,
+      },
+    });
+  }
+
+  const tableRes = await upsertTableFromCsv({
+    auth,
+    dataSource,
+    tableId,
+    tableName: name,
+    tableDescription: description,
+    tableTimestamp: params.timestamp ?? null,
+    tableTags: params.tags || [],
+    tableParents,
+    csv: csv ?? null,
+    truncate,
+    useAppForHeaderDetection,
+  });
+
+  if (tableRes.isErr()) {
+    if (tableRes.error.type === "internal_server_error") {
+      return new Err({
+        api_error: {
+          type: "internal_server_error",
+          message: tableRes.error.message,
+        },
+        status_code: 500,
+      });
+    }
+
+    if (tableRes.error.type === "invalid_request_error") {
+      if ("csvParsingError" in tableRes.error) {
+        return new Err({
+          api_error: {
+            type: "invalid_request_error",
+            message: `Failed to parse CSV: ${tableRes.error.csvParsingError.message}`,
+          },
+          status_code: 400,
+        });
+      } else if ("inputValidationError" in tableRes.error) {
+        return new Err({
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${tableRes.error.inputValidationError}`,
+          },
+          status_code: 400,
+        });
+      } else {
+        assertNever(tableRes.error);
+      }
+    }
+
+    if (tableRes.error.type === "not_found_error") {
+      return new Err({
+        api_error: {
+          type: tableRes.error.notFoundError.type,
+          message: tableRes.error.notFoundError.message,
+        },
+        status_code: 404,
+      });
+    }
+
+    assertNever(tableRes.error);
+  }
+
+  return new Ok(tableRes.value);
 }

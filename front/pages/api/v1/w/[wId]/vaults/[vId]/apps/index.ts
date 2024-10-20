@@ -2,7 +2,8 @@
 // Disabling jsdoc rule, as we're not yet documentating dust apps endpoints under vaults.
 // We still document the legacy endpoint, which does the same thing.
 // Note: for now, an API key only has access to the global vault.
-import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
+import type { GetAppsResponseType } from "@dust-tt/client";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
@@ -10,10 +11,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
-
-export type GetAppsResponseBody = {
-  apps: AppType[];
-};
 
 /**
  * @swagger
@@ -89,7 +86,7 @@ export type GetAppsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetAppsResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetAppsResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   const { vId } = req.query;
