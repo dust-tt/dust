@@ -1,6 +1,6 @@
 import type { VaultType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PostVaultRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -20,6 +20,11 @@ export type GetVaultsResponseBody = {
 export type PostVaultsResponseBody = {
   vault: VaultType;
 };
+
+const PostVaultRequestSchema = t.type({
+  name: t.string,
+  memberIds: t.union([t.array(t.string), t.undefined]),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -86,7 +91,7 @@ async function handler(
           },
         });
       }
-      const bodyValidation = PostVaultRequestBodySchema.decode(req.body);
+      const bodyValidation = PostVaultRequestSchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);

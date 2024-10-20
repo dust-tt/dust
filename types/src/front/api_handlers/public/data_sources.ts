@@ -66,20 +66,12 @@ export const PatchDataSourceTableRequestBodySchema = t.type({
   useAppForHeaderDetection: t.union([t.boolean, t.undefined]),
 });
 
-export type PatchDataSourceTableRequest = t.TypeOf<
-  typeof PatchDataSourceTableRequestBodySchema
->;
-
 export const PostDataSourceTableRequestBodySchema = t.intersection([
   PatchDataSourceTableRequestBodySchema,
   t.type({
     csv: t.string,
   }),
 ]);
-
-export type PostDataSourceTableRequest = t.TypeOf<
-  typeof PostDataSourceTableRequestBodySchema
->;
 
 export const UpsertTableFromCsvRequestSchema = t.intersection([
   t.type({

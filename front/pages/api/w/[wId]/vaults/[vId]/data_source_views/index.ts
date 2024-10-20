@@ -4,8 +4,8 @@ import type {
   DataSourceViewType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { PostDataSourceViewSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -22,6 +22,11 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
+
+const PostDataSourceViewSchema = t.type({
+  dataSourceId: t.string,
+  parentsIn: t.array(t.string),
+});
 
 export type GetVaultDataSourceViewsResponseBody<
   IncludeDetails extends boolean = boolean,

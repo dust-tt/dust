@@ -17,7 +17,6 @@ export * from "./core/data_source";
 export * from "./front/acl";
 export * from "./front/api_handlers/internal/agent_configuration";
 export * from "./front/api_handlers/internal/assistant";
-export * from "./front/api_handlers/public/assistant";
 export * from "./front/api_handlers/public/data_sources";
 export * from "./front/api_handlers/public/groups";
 export * from "./front/api_handlers/public/vaults";
