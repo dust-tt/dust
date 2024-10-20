@@ -24,8 +24,6 @@
     "@tsconfig/recommended": "^1.0.3",
     "@types/node": "^22.7.5",
     "@types/uuid": "^9.0.7",
-    "dts-bundle-generator": "^9.5.1",
-    "dts-cli": "^2.0.5",
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "tslib": "^2.6.2",
     "typescript": "^5.4.5"

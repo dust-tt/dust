@@ -66,163 +66,13 @@ export function isAPIError(obj: unknown): obj is APIError {
 export const DustGroupIdsHeader = "X-Dust-Group-Ids";
 export const DustUserEmailHeader = "x-api-user-email";
 
-/**
- * This help functions process a streamed response in the format of the Dust API for running
- * streamed apps.
- *
- * @param res an HTTP response ready to be consumed as a stream
- */
-async function processStreamedRunResponse(
-  res: Response,
-  logger: LoggerInterface
-) {
-  if (!res.ok || !res.body) {
-    return new Err({
-      type: "dust_api_error",
-      message: `Error running streamed app: status_code=${res.status}`,
-    });
-  }
-
-  let hasRunId = false;
-  let rejectDustRunIdPromise: (err: Error) => void;
-  let resolveDustRunIdPromise: (runId: string) => void;
-  const dustRunIdPromise = new Promise<string>((resolve, reject) => {
-    rejectDustRunIdPromise = reject;
-    resolveDustRunIdPromise = resolve;
-  });
-
-  let pendingEvents: (
-    | DustAppRunErroredEvent
-    | DustAppRunRunStatusEvent
-    | DustAppRunBlockStatusEvent
-    | DustAppRunBlockExecutionEvent
-    | DustAppRunTokensEvent
-    | DustAppRunFunctionCallEvent
-    | DustAppRunFunctionCallArgumentsTokensEvent
-    | DustAppRunFinalEvent
-  )[] = [];
-
-  const parser = createParser((event) => {
-    if (event.type === "event") {
-      if (event.data) {
-        try {
-          const data = JSON.parse(event.data);
-
-          switch (data.type) {
-            case "error": {
-              pendingEvents.push({
-                type: "error",
-                content: {
-                  code: data.content.code,
-                  message: data.content.message,
-                },
-              } as DustAppRunErroredEvent);
-              break;
-            }
-            case "run_status": {
-              pendingEvents.push({
-                type: data.type,
-                content: data.content,
-              });
-              break;
-            }
-            case "block_status": {
-              pendingEvents.push({
-                type: data.type,
-                content: data.content,
-              });
-              break;
-            }
-            case "block_execution": {
-              pendingEvents.push({
-                type: data.type,
-                content: data.content,
-              });
-              break;
-            }
-            case "tokens": {
-              pendingEvents.push({
-                type: "tokens",
-                content: data.content,
-              } as DustAppRunTokensEvent);
-              break;
-            }
-            case "function_call": {
-              pendingEvents.push({
-                type: "function_call",
-                content: data.content,
-              } as DustAppRunFunctionCallEvent);
-              break;
-            }
-            case "function_call_arguments_tokens": {
-              pendingEvents.push({
-                type: "function_call_arguments_tokens",
-                content: data.content,
-              } as DustAppRunFunctionCallArgumentsTokensEvent);
-              break;
-            }
-            case "final": {
-              pendingEvents.push({
-                type: "final",
-              } as DustAppRunFinalEvent);
-            }
-          }
-          if (data.content?.run_id && !hasRunId) {
-            hasRunId = true;
-            resolveDustRunIdPromise(data.content.run_id);
-          }
-        } catch (err) {
-          logger.error({ error: err }, "Failed parsing chunk from Dust API");
-        }
-      }
-    }
-  });
-
-  const reader = res.body.getReader();
-
-  const streamEvents = async function* () {
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-        parser.feed(new TextDecoder().decode(value));
-        for (const event of pendingEvents) {
-          yield event;
-        }
-        pendingEvents = [];
-      }
-      if (!hasRunId) {
-        // once the stream is entirely consumed, if we haven't received a run id, reject the promise
-        setImmediate(() => {
-          logger.error({}, "No run id received.");
-          rejectDustRunIdPromise(new Error("No run id received"));
-        });
-      }
-    } catch (e) {
-      yield {
-        type: "error",
-        content: {
-          code: "stream_error",
-          message: "Error streaming chunks",
-        },
-      } as DustAppRunErroredEvent;
-      logger.error(
-        {
-          error: e,
-          errorStr: JSON.stringify(e),
-          errorSource: "processStreamedRunResponse",
-        },
-        "Error streaming chunks."
-      );
-    } finally {
-      reader.releaseLock();
-    }
-  };
-
-  return new Ok({ eventStream: streamEvents(), dustRunId: dustRunIdPromise });
-}
+type DoCallArgsType = {
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  path: string;
+  query?: URLSearchParams;
+  body?: Record<string, unknown>;
+  overrideWorkspaceId?: string;
+};
 
 export class DustAPI {
   _url: string;
@@ -271,6 +121,41 @@ export class DustAPI {
       : this._url;
   }
 
+  async doCall(args: DoCallArgsType) {
+    // Conveniently clean path from any leading "/" just in case
+    args.path = args.path.replace(/^\/+/, "");
+
+    let url = `${this.apiUrl()}/api/v1/w/${
+      args.overrideWorkspaceId ?? this.workspaceId()
+    }/${args.path}`;
+
+    if (args.query) {
+      url += `?${args.query.toString()}`;
+    }
+
+    const headers: RequestInit["headers"] = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this._credentials.apiKey}`,
+    };
+    if (this._credentials.groupIds) {
+      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
+    }
+    if (this._credentials.userEmail) {
+      headers[DustUserEmailHeader] = this._credentials.userEmail;
+    }
+    if (this._credentials.extraHeaders) {
+      Object.assign(headers, this._credentials.extraHeaders);
+    }
+
+    const res = await this._fetchWithError(url, {
+      method: args.method,
+      headers,
+      body: args.body ? JSON.stringify(args.body) : undefined,
+    });
+
+    return res;
+  }
+
   /**
    * This functions talks directly to the Dust production API to create a run.
    *
@@ -296,29 +181,20 @@ export class DustAPI {
       useWorkspaceCredentials: false,
     }
   ) {
-    let url = `${this.apiUrl()}/api/v1/w/${workspaceId}/vaults/${appVaultId}/apps/${appId}/runs`;
-    if (useWorkspaceCredentials) {
-      url += "?use_workspace_credentials=true";
-    }
-
-    const headers: RequestInit["headers"] = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${this._credentials.apiKey}`,
-    };
-    if (this._credentials.groupIds) {
-      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
-    }
-
-    const res = await this._fetchWithError(url, {
+    const res = await this.doCall({
+      overrideWorkspaceId: workspaceId,
+      path: `vaults/${appVaultId}/apps/${appId}/runs`,
+      query: new URLSearchParams({
+        use_workspace_credentials: useWorkspaceCredentials ? "true" : "false",
+      }),
       method: "POST",
-      headers,
-      body: JSON.stringify({
+      body: {
         specification_hash: appHash,
-        config: config,
+        config,
         stream: false,
         blocking: true,
-        inputs: inputs,
-      }),
+        inputs,
+      },
     });
 
     const r = await this._resultFromResponse(RunAppResponseSchema, res);
@@ -355,33 +231,188 @@ export class DustAPI {
       useWorkspaceCredentials: false,
     }
   ) {
-    let url = `${this.apiUrl()}/api/v1/w/${workspaceId}/vaults/${appVaultId}/apps/${appId}/runs`;
-    if (useWorkspaceCredentials) {
-      url += "?use_workspace_credentials=true";
-    }
-
-    const headers: RequestInit["headers"] = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${this._credentials.apiKey}`,
-    };
-    if (this._credentials.groupIds) {
-      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
-    }
-
-    const res = await this._fetchWithError(url, {
+    const res = await this.doCall({
+      overrideWorkspaceId: workspaceId,
+      path: `vaults/${appVaultId}/apps/${appId}/runs`,
+      query: new URLSearchParams({
+        use_workspace_credentials: useWorkspaceCredentials ? "true" : "false",
+      }),
       method: "POST",
-      headers,
-      body: JSON.stringify({
+      body: {
         specification_hash: appHash,
-        config: config,
+        config,
         stream: true,
         blocking: false,
-        inputs: inputs,
-      }),
+        inputs,
+      },
     });
 
     if (res.isErr()) {
       return res;
+    }
+
+    /**
+     * This help functions process a streamed response in the format of the Dust API for running
+     * streamed apps.
+     *
+     * @param res an HTTP response ready to be consumed as a stream
+     */
+    async function processStreamedRunResponse(
+      res: Response,
+      logger: LoggerInterface
+    ) {
+      if (!res.ok || !res.body) {
+        return new Err({
+          type: "dust_api_error",
+          message: `Error running streamed app: status_code=${res.status}`,
+        });
+      }
+
+      let hasRunId = false;
+      let rejectDustRunIdPromise: (err: Error) => void;
+      let resolveDustRunIdPromise: (runId: string) => void;
+      const dustRunIdPromise = new Promise<string>((resolve, reject) => {
+        rejectDustRunIdPromise = reject;
+        resolveDustRunIdPromise = resolve;
+      });
+
+      let pendingEvents: (
+        | DustAppRunErroredEvent
+        | DustAppRunRunStatusEvent
+        | DustAppRunBlockStatusEvent
+        | DustAppRunBlockExecutionEvent
+        | DustAppRunTokensEvent
+        | DustAppRunFunctionCallEvent
+        | DustAppRunFunctionCallArgumentsTokensEvent
+        | DustAppRunFinalEvent
+      )[] = [];
+
+      const parser = createParser((event) => {
+        if (event.type === "event") {
+          if (event.data) {
+            try {
+              const data = JSON.parse(event.data);
+
+              switch (data.type) {
+                case "error": {
+                  pendingEvents.push({
+                    type: "error",
+                    content: {
+                      code: data.content.code,
+                      message: data.content.message,
+                    },
+                  } as DustAppRunErroredEvent);
+                  break;
+                }
+                case "run_status": {
+                  pendingEvents.push({
+                    type: data.type,
+                    content: data.content,
+                  });
+                  break;
+                }
+                case "block_status": {
+                  pendingEvents.push({
+                    type: data.type,
+                    content: data.content,
+                  });
+                  break;
+                }
+                case "block_execution": {
+                  pendingEvents.push({
+                    type: data.type,
+                    content: data.content,
+                  });
+                  break;
+                }
+                case "tokens": {
+                  pendingEvents.push({
+                    type: "tokens",
+                    content: data.content,
+                  } as DustAppRunTokensEvent);
+                  break;
+                }
+                case "function_call": {
+                  pendingEvents.push({
+                    type: "function_call",
+                    content: data.content,
+                  } as DustAppRunFunctionCallEvent);
+                  break;
+                }
+                case "function_call_arguments_tokens": {
+                  pendingEvents.push({
+                    type: "function_call_arguments_tokens",
+                    content: data.content,
+                  } as DustAppRunFunctionCallArgumentsTokensEvent);
+                  break;
+                }
+                case "final": {
+                  pendingEvents.push({
+                    type: "final",
+                  } as DustAppRunFinalEvent);
+                }
+              }
+              if (data.content?.run_id && !hasRunId) {
+                hasRunId = true;
+                resolveDustRunIdPromise(data.content.run_id);
+              }
+            } catch (err) {
+              logger.error(
+                { error: err },
+                "Failed parsing chunk from Dust API"
+              );
+            }
+          }
+        }
+      });
+
+      const reader = res.body.getReader();
+
+      const streamEvents = async function* () {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              break;
+            }
+            parser.feed(new TextDecoder().decode(value));
+            for (const event of pendingEvents) {
+              yield event;
+            }
+            pendingEvents = [];
+          }
+          if (!hasRunId) {
+            // once the stream is entirely consumed, if we haven't received a run id, reject the promise
+            setImmediate(() => {
+              logger.error({}, "No run id received.");
+              rejectDustRunIdPromise(new Error("No run id received"));
+            });
+          }
+        } catch (e) {
+          yield {
+            type: "error",
+            content: {
+              code: "stream_error",
+              message: "Error streaming chunks",
+            },
+          } as DustAppRunErroredEvent;
+          logger.error(
+            {
+              error: e,
+              errorStr: JSON.stringify(e),
+              errorSource: "processStreamedRunResponse",
+            },
+            "Error streaming chunks."
+          );
+        } finally {
+          reader.releaseLock();
+        }
+      };
+
+      return new Ok({
+        eventStream: streamEvents(),
+        dustRunId: dustRunIdPromise,
+      });
     }
 
     return processStreamedRunResponse(res.value.response, this._logger);
@@ -394,15 +425,12 @@ export class DustAPI {
    * @param workspaceId string the workspace id to fetch data sources for
    */
   async getDataSources(workspaceId: string) {
-    const res = await this._fetchWithError(
-      `${this.apiUrl()}/api/v1/w/${workspaceId}/data_sources`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${this._credentials.apiKey}`,
-        },
-      }
-    );
+    // Note for henry: do we need to override the workspace id here? (isn't it already derived from the credentials?)
+    const res = await this.doCall({
+      overrideWorkspaceId: workspaceId,
+      method: "GET",
+      path: "data_sources",
+    });
 
     const r = await this._resultFromResponse(GetDataSourcesResponseSchema, res);
     if (r.isErr()) {
@@ -412,26 +440,10 @@ export class DustAPI {
   }
 
   async getAgentConfigurations() {
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${this._credentials.apiKey}`,
-      "Content-Type": "application/json",
-    };
-
-    if (this._credentials.userEmail) {
-      headers[DustUserEmailHeader] = this._credentials.userEmail;
-    }
-
-    if (this._credentials.groupIds) {
-      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
-    }
-
-    const res = await this._fetchWithError(
-      `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/agent_configurations`,
-      {
-        method: "GET",
-        headers,
-      }
-    );
+    const res = await this.doCall({
+      path: "assistant/agent_configurations",
+      method: "GET",
+    });
 
     const r = await this._resultFromResponse(
       GetAgentConfigurationsResponseSchema,
@@ -450,29 +462,11 @@ export class DustAPI {
     conversationId: string;
     contentFragment: PublicPostContentFragmentRequestBody;
   }) {
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${this._credentials.apiKey}`,
-      "Content-Type": "application/json",
-    };
-
-    if (this._credentials.userEmail) {
-      headers[DustUserEmailHeader] = this._credentials.userEmail;
-    }
-
-    if (this._credentials.groupIds) {
-      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
-    }
-
-    const res = await this._fetchWithError(
-      `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/content_fragments`,
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          ...contentFragment,
-        }),
-      }
-    );
+    const res = await this.doCall({
+      method: "POST",
+      path: `assistant/conversations/${conversationId}/content_fragments`,
+      body: { ...contentFragment },
+    });
 
     const r = await this._resultFromResponse(
       PostContentFragmentResponseSchema,
@@ -493,33 +487,17 @@ export class DustAPI {
     contentFragment,
     blocking = false,
   }: PublicPostConversationsRequestBody) {
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${this._credentials.apiKey}`,
-      "Content-Type": "application/json",
-    };
-
-    if (this._credentials.userEmail) {
-      headers[DustUserEmailHeader] = this._credentials.userEmail;
-    }
-
-    if (this._credentials.groupIds) {
-      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
-    }
-
-    const res = await this._fetchWithError(
-      `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations`,
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          title,
-          visibility,
-          message,
-          contentFragment,
-          blocking,
-        }),
-      }
-    );
+    const res = await this.doCall({
+      method: "POST",
+      path: "assistant/conversations",
+      body: {
+        title,
+        visibility,
+        message,
+        contentFragment,
+        blocking,
+      },
+    });
 
     return this._resultFromResponse(CreateConversationResponseSchema, res);
   }
@@ -531,29 +509,11 @@ export class DustAPI {
     conversationId: string;
     message: PublicPostMessagesRequestBody;
   }) {
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${this._credentials.apiKey}`,
-      "Content-Type": "application/json",
-    };
-
-    if (this._credentials.userEmail) {
-      headers[DustUserEmailHeader] = this._credentials.userEmail;
-    }
-
-    if (this._credentials.groupIds) {
-      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
-    }
-
-    const res = await this._fetchWithError(
-      `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}/messages`,
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          ...message,
-        }),
-      }
-    );
+    const res = await this.doCall({
+      method: "POST",
+      path: `assistant/conversations/${conversationId}/messages`,
+      body: { ...message },
+    });
 
     const r = await this._resultFromResponse(
       PostUserMessageResponseSchema,
@@ -572,28 +532,10 @@ export class DustAPI {
     conversation: ConversationType;
     message: AgentMessageType;
   }) {
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${this._credentials.apiKey}`,
-      "Content-Type": "application/json",
-    };
-
-    if (this._credentials.userEmail) {
-      headers[DustUserEmailHeader] = this._credentials.userEmail;
-    }
-
-    if (this._credentials.groupIds) {
-      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
-    }
-
-    const res = await this._fetchWithError(
-      `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${
-        conversation.sId
-      }/messages/${message.sId}/events`,
-      {
-        method: "GET",
-        headers,
-      }
-    );
+    const res = await this.doCall({
+      method: "GET",
+      path: `assistant/conversations/${conversation.sId}/messages/${message.sId}/events`,
+    });
 
     if (res.isErr()) {
       return res;
@@ -706,26 +648,10 @@ export class DustAPI {
   }
 
   async getConversation({ conversationId }: { conversationId: string }) {
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${this._credentials.apiKey}`,
-      "Content-Type": "application/json",
-    };
-
-    if (this._credentials.userEmail) {
-      headers[DustUserEmailHeader] = this._credentials.userEmail;
-    }
-
-    if (this._credentials.groupIds) {
-      headers[DustGroupIdsHeader] = this._credentials.groupIds.join(",");
-    }
-
-    const res = await this._fetchWithError(
-      `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/assistant/conversations/${conversationId}`,
-      {
-        method: "GET",
-        headers,
-      }
-    );
+    const res = await this.doCall({
+      method: "GET",
+      path: `assistant/conversations/${conversationId}`,
+    });
 
     const r = await this._resultFromResponse(
       GetConversationResponseSchema,
@@ -738,17 +664,10 @@ export class DustAPI {
   }
 
   async tokenize(text: string, dataSourceId: string) {
-    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/data_sources/${dataSourceId}/tokenize`;
-
-    const res = await this._fetchWithError(endpoint, {
+    const res = await this.doCall({
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this._credentials.apiKey}`,
-      },
-      body: JSON.stringify({
-        text,
-      }),
+      path: `data_sources/${dataSourceId}/tokenize`,
+      body: { text },
     });
 
     const r = await this._resultFromResponse(TokenizeResponseSchema, res);
@@ -759,14 +678,10 @@ export class DustAPI {
   }
 
   async getActiveMemberEmailsInWorkspace() {
-    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/members/emails?activeOnly=true`;
-
-    const res = await this._fetchWithError(endpoint, {
+    const res = await this.doCall({
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this._credentials.apiKey}`,
-      },
+      path: "members/emails",
+      query: new URLSearchParams({ activeOnly: "true" }),
     });
 
     const r = await this._resultFromResponse(
@@ -781,14 +696,9 @@ export class DustAPI {
   }
 
   async getWorkspaceVerifiedDomains() {
-    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/verified_domains`;
-
-    const res = await this._fetchWithError(endpoint, {
+    const res = await this.doCall({
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this._credentials.apiKey}`,
-      },
+      path: "verified_domains",
     });
 
     const r = await this._resultFromResponse(
@@ -803,14 +713,9 @@ export class DustAPI {
   }
 
   async getWorkspaceFeatureFlags() {
-    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/feature_flags`;
-
-    const res = await this._fetchWithError(endpoint, {
+    const res = await this.doCall({
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this._credentials.apiKey}`,
-      },
+      path: "feature_flags",
     });
 
     const r = await this._resultFromResponse(
@@ -825,14 +730,12 @@ export class DustAPI {
   }
 
   async searchDataSourceViews(searchParams: URLSearchParams) {
-    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/data_source_views/search?${searchParams.toString()}`;
-    const res = await this._fetchWithError(endpoint, {
+    const res = await this.doCall({
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this._credentials.apiKey}`,
-      },
+      path: "data_source_views/search",
+      query: searchParams,
     });
+
     const r = await this._resultFromResponse(
       SearchDataSourceViewsResponseSchema,
       res
@@ -848,17 +751,12 @@ export class DustAPI {
     dataSourceView: DataSourceViewType,
     patchData: PatchDataSourceViewRequestType
   ) {
-    const endpoint = `${this.apiUrl()}/api/v1/w/${this.workspaceId()}/data_source_views/${
-      dataSourceView.id
-    }`;
-    const res = await this._fetchWithError(endpoint, {
+    const res = await this.doCall({
       method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this._credentials.apiKey}`,
-      },
-      body: JSON.stringify(patchData),
+      path: `data_source_views/${dataSourceView.id}`,
+      body: patchData,
     });
+
     const r = await this._resultFromResponse(
       PatchDataSourceViewsResponseSchema,
       res

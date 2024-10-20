@@ -125,6 +125,7 @@ const ConnectorProvidersSchema = z.enum([
   "microsoft",
   "webcrawler",
   "snowflake",
+  "zendesk",
 ]);
 export type ConnectorProvider = z.infer<typeof ConnectorProvidersSchema>;
 
@@ -195,10 +196,6 @@ const CoreAPIRowValueSchema = z.union([
 const CoreAPIRowSchema = z.object({
   row_id: z.string(),
   value: z.record(CoreAPIRowValueSchema),
-});
-
-const CoreAPIQueryResultSchema = z.object({
-  value: z.record(z.unknown()),
 });
 
 const CoreAPITableSchema = z.array(
@@ -530,6 +527,7 @@ const WhitelistableFeaturesSchema = z.enum([
   "openai_o1_feature",
   "openai_o1_mini_feature",
   "snowflake_connector_feature",
+  "zendesk_connector_feature",
 ]);
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
 
@@ -1243,6 +1241,7 @@ export type DustAppRunFunctionCallArgumentsTokensEvent = z.infer<
 export type DustAPICredentials = {
   apiKey: string;
   workspaceId: string;
+  extraHeaders?: Record<string, string>;
   groupIds?: string[];
   userEmail?: string;
 };
@@ -1697,4 +1696,115 @@ const PostTableParentsResponseSchema = z.object({
 });
 export type PostTableParentsResponseType = z.infer<
   typeof PostTableParentsResponseSchema
+>;
+
+export const UpsertTableFromCsvRequestSchema = z.intersection(
+  z
+    .object({
+      name: z.string(),
+      description: z.string(),
+      timestamp: z.number().nullable().optional(),
+      tags: z.array(z.string()).nullable().optional(),
+      parents: z.array(z.string()).nullable().optional(),
+      truncate: z.boolean(),
+      useAppForHeaderDetection: z.boolean().nullable().optional(),
+      async: z.boolean().optional(),
+    })
+    .transform((o) => ({
+      name: o.name,
+      description: o.description,
+      timestamp: o.timestamp,
+      tags: o.tags,
+      parents: o.parents,
+      truncate: o.truncate,
+      useAppForHeaderDetection: o.useAppForHeaderDetection,
+      async: o.async,
+    })),
+  z.union([
+    z.object({ csv: z.string(), tableId: z.undefined() }).transform((o) => ({
+      csv: o.csv,
+      tableId: o.tableId,
+    })),
+    z
+      .object({
+        csv: z.string().optional(),
+        tableId: z.string(),
+      })
+      .transform((o) => ({
+        csv: o.csv,
+        tableId: o.tableId,
+      })),
+  ])
+);
+
+const PostTableCSVAsyncResponseSchema = z.object({
+  table: z.object({
+    table_id: z.string(),
+  }),
+});
+export type PostTableCSVAsyncResponseType = z.infer<
+  typeof PostTableCSVAsyncResponseSchema
+>;
+
+const PostTableCSVResponseSchema = z.object({
+  table: CoreAPITableSchema,
+});
+export type PostTableCSVResponseType = z.infer<
+  typeof PostTableCSVResponseSchema
+>;
+
+const ListTablesResponseSchema = z.object({
+  tables: z.array(CoreAPITablePublicSchema),
+});
+export type ListTablesResponseType = z.infer<typeof ListTablesResponseSchema>;
+
+export const UpsertDatabaseTableRequestSchema = z.object({
+  table_id: z.string().optional(),
+  name: z.string(),
+  description: z.string(),
+  timestamp: z.number().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  parents: z.array(z.string()).nullable().optional(),
+  remote_database_table_id: z.string().nullable().optional(),
+  remote_database_secret_id: z.string().nullable().optional(),
+});
+
+const UpsertTableResponseSchema = z.object({
+  table: CoreAPITablePublicSchema,
+});
+export type UpsertTableResponseType = z.infer<typeof UpsertTableResponseSchema>;
+
+const usageTables = [
+  "users",
+  "assistant_messages",
+  "builders",
+  "assistants",
+  "all",
+] as const;
+
+const SupportedUsageTablesSchema = z.enum(usageTables);
+
+export type UsageTableType = z.infer<typeof SupportedUsageTablesSchema>;
+
+const MonthSchema = z
+  .string()
+  .refine((s): s is string => /^\d{4}-(0[1-9]|1[0-2])$/.test(s), "YYYY-MM");
+
+export const GetWorkspaceUsageRequestSchema = z.union([
+  z.object({
+    start: MonthSchema,
+    end: z.undefined(),
+    mode: z.literal("month"),
+    table: SupportedUsageTablesSchema,
+  }),
+  z.object({
+    start: MonthSchema,
+    end: MonthSchema,
+    mode: z.literal("range"),
+    table: SupportedUsageTablesSchema,
+  }),
+]);
+
+export type GetWorkspaceUsageRequestType = z.infer<
+  typeof GetWorkspaceUsageRequestSchema
 >;

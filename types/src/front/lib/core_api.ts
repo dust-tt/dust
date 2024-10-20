@@ -116,7 +116,7 @@ export type CoreAPITableSchema = {
   possible_values: string[] | null;
 }[];
 
-export type CoreAPITablePublic = {
+export type CoreAPITable = {
   table_id: string;
   name: string;
   description: string;
@@ -124,9 +124,6 @@ export type CoreAPITablePublic = {
   timestamp: number;
   tags: string[];
   parents: string[];
-};
-
-export type CoreAPITable = CoreAPITablePublic & {
   created: number;
   data_source_id: string;
   remote_database_table_id: string | null;

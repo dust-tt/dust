@@ -80,3 +80,28 @@ export const PostDataSourceTableRequestBodySchema = t.intersection([
 export type PostDataSourceTableRequest = t.TypeOf<
   typeof PostDataSourceTableRequestBodySchema
 >;
+
+export const UpsertTableFromCsvRequestSchema = t.intersection([
+  t.type({
+    name: t.string,
+    description: t.string,
+    timestamp: t.union([t.number, t.undefined, t.null]),
+    tags: t.union([t.array(t.string), t.undefined, t.null]),
+    parents: t.union([t.array(t.string), t.undefined, t.null]),
+    truncate: t.boolean,
+    useAppForHeaderDetection: t.union([t.boolean, t.undefined, t.null]),
+    async: t.union([t.boolean, t.undefined]),
+  }),
+  // csv is optional when editing an existing table.
+  t.union([
+    t.type({ csv: t.string, tableId: t.undefined }),
+    t.type({
+      csv: t.union([t.string, t.undefined]),
+      tableId: t.string,
+    }),
+  ]),
+]);
+
+export type UpsertTableFromCsvRequestType = t.TypeOf<
+  typeof UpsertTableFromCsvRequestSchema
+>;

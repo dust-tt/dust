@@ -22,7 +22,7 @@ const MonthSchema = t.refinement(
   "YYYY-MM"
 );
 
-export const usageTables = [
+const usageTables = [
   "users",
   "assistant_messages",
   "builders",
@@ -31,7 +31,7 @@ export const usageTables = [
 ];
 type usageTableType = (typeof usageTables)[number];
 
-export function getSupportedUsageTablesCodec(): t.Mixed {
+function getSupportedUsageTablesCodec(): t.Mixed {
   const [first, second, ...rest] = usageTables;
   return t.union([
     t.literal(first),
