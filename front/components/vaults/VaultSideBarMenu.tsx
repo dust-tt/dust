@@ -109,7 +109,7 @@ export default function VaultSideBarMenu({
 
             return (
               <Fragment key={`vault-section-${index}`}>
-                <div className="flex items-center justify-between pr-1">
+                <div className="flex items-center justify-between px-2 pr-1">
                   <Item.SectionHeader
                     label={sectionDetails.label}
                     variant="secondary"
