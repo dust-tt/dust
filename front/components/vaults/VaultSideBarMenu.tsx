@@ -128,7 +128,7 @@ export default function VaultSideBarMenu({
                     )}
                 </div>
                 {renderVaultItems(
-                  // TODO(SPACE_INFRA): Ranme global vaults to "Company Data" in db to preserve
+                  // TODO(SPACE_INFRA): Rename global vaults to "Company Data" in db to preserve
                   // alphabetical sorting.
                   vaults.toSorted(compareVaults),
                   vaultsAsUser,
