@@ -101,13 +101,12 @@ export async function fetchZendeskBrands({
 
   do {
     try {
-      const fetchResponse = await callZendeskApi({
+      response = await callZendeskApi({
         subdomain,
         accessToken,
         path: `brands.json?page=${page}&per_page=100`,
         method: "GET",
       });
-      response = await fetchResponse.json();
 
       if (response.brands && Array.isArray(response.brands)) {
         brands.push(...response.brands);
@@ -178,13 +177,12 @@ export async function fetchZendeskCategories({
 
   do {
     try {
-      const fetchResponse = await callZendeskApi({
+      response = await callZendeskApi({
         subdomain,
         accessToken,
         path: `help_center/categories.json?page=${page}&per_page=100`,
         method: "GET",
       });
-      response = await fetchResponse.json();
 
       if (response.categories && Array.isArray(response.categories)) {
         categories.push(...response.categories);
@@ -244,7 +242,7 @@ export async function fetchZendeskArticles({
 
   do {
     try {
-      const fetchResponse = await callZendeskApi({
+      response = await callZendeskApi({
         subdomain,
         accessToken,
         path: categoryId
@@ -252,7 +250,6 @@ export async function fetchZendeskArticles({
           : `help_center/articles.json?page=${page}&per_page=100`,
         method: "GET",
       });
-      response = await fetchResponse.json();
 
       if (response.articles && Array.isArray(response.articles)) {
         articles.push(...response.articles);
