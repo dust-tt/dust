@@ -70,7 +70,7 @@ export const ConnectorDataUpdatedModal = ({
                 >
                   <Hoverable onClick={() => {}}>Company Data</Hoverable>
                 </Link>{" "}
-                for team-wide access or to a specific vault for restricted
+                for team-wide access or to a specific space for restricted
                 access by some team members.
               </p>
             </div>

@@ -198,7 +198,7 @@ export function CreateOrEditVaultModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={vault ? `Edit ${vault.name}` : "Create a Vault"}
+      title={vault ? `Edit ${vault.name}` : "Create a Space"}
       saveLabel={vault ? "Save" : "Create"}
       variant="side-md"
       hasChanged={
@@ -214,7 +214,7 @@ export function CreateOrEditVaultModal({
           <div className="mb-4 flex w-full flex-col gap-y-2 pt-2">
             <Page.SectionHeader title="Name" />
             <Input
-              placeholder="Vault's name"
+              placeholder="Space's name"
               value={vaultName}
               name="vaultName"
               onChange={(e) => setVaultName(e.target.value)}
@@ -265,7 +265,7 @@ export function CreateOrEditVaultModal({
               <div className="flex w-full justify-end">
                 <Button
                   size="sm"
-                  label="Delete Vault"
+                  label="Delete Space"
                   variant="primaryWarning"
                   className="mr-2"
                   onClick={() => setShowDeleteConfirmDialog(true)}

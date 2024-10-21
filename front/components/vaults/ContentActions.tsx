@@ -220,7 +220,7 @@ export const getMenuItems = (
     contentNode.type === "folder"
   ) {
     actions.push({
-      label: "Add to vault",
+      label: "Add to space",
       icon: PlusIcon,
       onClick: () => {
         contentActionsRef.current &&
