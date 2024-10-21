@@ -24,7 +24,11 @@ export function Icon({
 }: IconProps) {
   return IconComponent ? (
     <IconComponent
-      className={classNames(className, "s-shrink-0", IconSizes[size])}
+      className={classNames(
+        className,
+        "s-flex-shrink-0 s-shrink-0",
+        IconSizes[size]
+      )}
     />
   ) : null;
 }
