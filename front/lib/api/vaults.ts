@@ -5,13 +5,11 @@ import { uniq } from "lodash";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { UserResource } from "@app/lib/resources/user_resource";
 import type { VaultResource } from "@app/lib/resources/vault_resource";
 import { launchScrubVaultWorkflow } from "@app/poke/temporal/client";
 
