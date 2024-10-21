@@ -16,7 +16,7 @@ import type { NotionConnectorState } from "@connectors/lib/models/notion";
 import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
 import type { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
-import type { ZendeskConfigurationModel } from "@connectors/lib/models/zendesk";
+import type { ZendeskConfiguration } from "@connectors/lib/models/zendesk";
 import { ConfluenceConnectorStrategy } from "@connectors/resources/connector/confluence";
 import { GithubConnectorStrategy } from "@connectors/resources/connector/github";
 import { GoogleDriveConnectorStrategy } from "@connectors/resources/connector/google_drive";
@@ -46,7 +46,7 @@ export interface ConnectorProviderModelM {
   slack: SlackConfigurationModel;
   webcrawler: WebCrawlerConfigurationModel;
   snowflake: SnowflakeConfigurationModel;
-  zendesk: ZendeskConfigurationModel;
+  zendesk: ZendeskConfiguration;
 }
 
 export type ConnectorProviderModelMapping = {
