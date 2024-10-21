@@ -209,6 +209,7 @@ function EmojiSelector({
   return (
     <Popover
       fullWidth
+      popoverTriggerAsChild
       trigger={
         <div ref={buttonRef}>
           <Button
