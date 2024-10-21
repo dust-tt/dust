@@ -2,7 +2,7 @@ import React, { ComponentType, ReactNode, useState } from "react";
 
 import Spinner from "@sparkle/components/Spinner";
 import { ArrowDownSIcon, ArrowRightSIcon } from "@sparkle/icons";
-import { classNames, cn } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 import { Checkbox, CheckboxProps } from "./Checkbox";
 import { Icon } from "./Icon";
@@ -49,11 +49,10 @@ export function Tree({
     </div>
   ) : (
     <div
-      className={classNames(
+      className={cn(
         "s-flex s-flex-col s-gap-0.5 s-overflow-hidden",
-        isBoxed
-          ? "s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4"
-          : ""
+        isBoxed &&
+          "s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4"
       )}
     >
       {modifiedChildren}
@@ -182,11 +181,10 @@ Tree.Item = function ({
         <div className="s-grow" />
         {actions && (
           <div
-            className={classNames(
+            className={cn(
               "s-flex s-gap-2 s-pl-4",
-              areActionsFading
-                ? "s-transform s-opacity-0 s-duration-300 group-hover/tree:s-opacity-100"
-                : ""
+              areActionsFading &&
+                "s-transform s-opacity-0 s-duration-300 group-hover/tree:s-opacity-100"
             )}
           >
             {actions}

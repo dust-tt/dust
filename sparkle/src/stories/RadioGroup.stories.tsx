@@ -33,7 +33,7 @@ export const RadioGroupExample = () => {
           <Label htmlFor="option-two">Option Three</Label>
         </div>
       </RadioGroup>
-      <RadioGroup defaultValue="option-one" className="hello">
+      <RadioGroup defaultValue="option-one">
         <div className="s-flex s-items-center s-space-x-2">
           <RadioGroupItem
             value="option-one"
