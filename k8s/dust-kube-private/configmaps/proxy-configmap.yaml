@@ -40,9 +40,3 @@ data:
       }
     }
 
-    stream {
-      server {
-        listen 1080;
-        proxy_pass $remote_addr:$remote_port;
-      }
-    }
