@@ -18,6 +18,10 @@ const BUTTON_VARIANTS = ["primary", "highlight", "warning", "outline", "ghost"];
 
 type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
+const BUTTON_SIZES = ["xs", "sm", "md"] as const;
+
+type ButtonSizeType = (typeof BUTTON_SIZES)[number];
+
 const variantStyle: Record<ButtonVariantType, string> = {
   primary:
     "s-bg-primary s-text-white hover:s-bg-primary-light active:s-bg-primary-dark disabled:s-bg-primary-muted",
@@ -31,6 +35,12 @@ const variantStyle: Record<ButtonVariantType, string> = {
     "s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-100 hover:s-text-primary-900 active:s-bg-primary-200 hover:s-border-primary-200 disabled:s-text-primary-400",
 };
 
+const variantSizes: Record<ButtonSizeType, string> = {
+  xs: "s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5",
+  sm: "s-h-9 s-px-3 s-rounded-xl s-text-sm s-gap-2",
+  md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-text-base s-gap-2.5",
+};
+
 const buttonVariants = cva(
   "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors " +
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2 " +
@@ -38,12 +48,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: variantStyle,
-      size: {
-        xs: "s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5",
-        sm: "s-h-9 s-px-3 s-rounded-xl s-text-sm s-gap-2",
-        md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-text-base s-gap-2.5",
-        icon: "s-h-10 s-w-10",
-      },
+      size: variantSizes,
     },
   }
 );
@@ -115,30 +120,25 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       tooltip,
       isSelect = false,
       isPulsing = false,
+      size,
       ...props
     },
     ref
   ) => {
+    const buttonSize = size || "sm";
     const spinnerVariant = isLoading
       ? spinnerVariantsMapIsLoading[variant] || "slate400"
       : spinnerVariantsMap[variant] || "slate400";
 
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
-      <Icon
-        visual={visual}
-        size={props.size as "xs" | "sm" | "md"}
-        className={extraClass}
-      />
+      <Icon visual={visual} size={buttonSize} className={extraClass} />
     );
 
     const content = (
       <>
         {isLoading ? (
           <div className="-s-mx-0.5">
-            <Spinner
-              size={props.size as "xs" | "sm" | "md"}
-              variant={spinnerVariant}
-            />
+            <Spinner size={buttonSize} variant={spinnerVariant} />
           </div>
         ) : (
           icon && renderIcon(icon, "-s-mx-0.5")
