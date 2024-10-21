@@ -26,22 +26,22 @@ export const usageTables = [
 ];
 type usageTableType = (typeof usageTables)[number];
 
-const MonthSchema = t.refinement(
+const DateSchema = t.refinement(
   t.string,
-  (s): s is string => /^\d{4}-(0[1-9]|1[0-2])$/.test(s),
-  "YYYY-MM"
+  (s): s is string => /^\d{4}-(0[1-9]|1[0-2])(-([0-2]\d|3[01]))?$/.test(s),
+  "YYYY-MM or YYYY-MM-DD"
 );
 
 const GetWorkspaceUsageSchema = t.union([
   t.type({
-    start: MonthSchema,
+    start: DateSchema,
     end: t.undefined,
     mode: t.literal("month"),
     table: getSupportedUsageTablesCodec(),
   }),
   t.type({
-    start: MonthSchema,
-    end: MonthSchema,
+    start: DateSchema,
+    end: DateSchema,
     mode: t.literal("range"),
     table: getSupportedUsageTablesCodec(),
   }),
@@ -67,13 +67,13 @@ const GetWorkspaceUsageSchema = t.union([
  *       - in: query
  *         name: start
  *         required: true
- *         description: The start date in YYYY-MM format
+ *         description: The start date in YYYY-MM or YYYY-MM-DD format
  *         schema:
  *           type: string
  *       - in: query
  *         name: end
  *         required: false
- *         description: The end date in YYYY-MM format (required when mode is 'range')
+ *         description: The end date in YYYY-MM or YYYY-MM-DD format (required when mode is 'range')
  *         schema:
  *           type: string
  *       - in: query
@@ -199,14 +199,23 @@ async function handler(
 }
 
 function resolveDates(query: t.TypeOf<typeof GetWorkspaceUsageSchema>) {
+  const parseDate = (dateString: string) => {
+    const parts = dateString.split("-");
+    return new Date(
+      parseInt(parts[0]),
+      parseInt(parts[1]) - 1,
+      parts[2] ? parseInt(parts[2]) : 1
+    );
+  };
+
   switch (query.mode) {
     case "month":
-      const date = new Date(`${query.start}-01`);
+      const date = parseDate(query.start);
       return { startDate: date, endDate: endOfMonth(date) };
     case "range":
       return {
-        startDate: new Date(`${query.start}-01`),
-        endDate: endOfMonth(new Date(`${query.end}-01`)),
+        startDate: parseDate(query.start),
+        endDate: endOfMonth(parseDate(query.end)),
       };
     default:
       assertNever(query);
