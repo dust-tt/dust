@@ -5,10 +5,13 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
+import { Err } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 
 import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
+import { retrieveZendeskBrandsPermissions } from "@connectors/connectors/zendesk/lib/brand_permissions";
+import { retrieveSelectedNodes } from "@connectors/connectors/zendesk/lib/permissions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -75,7 +78,34 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       { parentInternalId, filterPermission },
       "Retrieving permissions"
     );
-    throw new Error("Method not implemented.");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      logger.error(
+        { connectorId: this.connectorId },
+        "[Zendesk] Connector not found."
+      );
+      return new Err(new Error("Connector not found"));
+    }
+
+    if (filterPermission === "read" && parentInternalId === null) {
+      // We want all selected nodes despite the hierarchy
+      const selectedNodes = await retrieveSelectedNodes({
+        connectorId: this.connectorId,
+      });
+      return new Ok(selectedNodes);
+    }
+
+    try {
+      const brandNodes = await retrieveZendeskBrandsPermissions({
+        connectorId: this.connectorId,
+        parentInternalId,
+        filterPermission,
+        viewType: "documents",
+      });
+      return new Ok(brandNodes);
+    } catch (e) {
+      return new Err(e as Error);
+    }
   }
 
   async setPermissions({
