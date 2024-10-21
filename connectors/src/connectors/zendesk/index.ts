@@ -2,13 +2,16 @@ import type {
   ConnectorPermission,
   ConnectorsAPIError,
   ContentNode,
+  ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import type { ContentNodesViewType } from "@dust-tt/types";
+import { Ok } from "@dust-tt/types";
 
 import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
+import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export class ZendeskConnectorManager extends BaseConnectorManager<null> {
@@ -19,11 +22,20 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
   }): Promise<Result<string, ConnectorManagerError>> {
-    logger.info(
-      { dataSourceConfig, connectionId },
-      "Creating Zendesk connector"
+    await getZendeskAccessToken(connectionId);
+
+    const connector = await ConnectorResource.makeNew(
+      "zendesk",
+      {
+        connectionId,
+        workspaceAPIKey: dataSourceConfig.workspaceAPIKey,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+      },
+      { subdomain: "d3v-dust", conversationsSlidingWindow: 90 }
     );
-    throw new Error("Not implemented yet.");
+
+    return new Ok(connector.id.toString());
   }
 
   async update({
