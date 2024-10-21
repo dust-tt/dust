@@ -192,6 +192,22 @@ export class VaultResource extends BaseResource<VaultModel> {
     });
   }
 
+  static async listForGroups(auth: Authenticator, groups: GroupResource[]) {
+    const groupVaults = await GroupVaultModel.findAll({
+      where: {
+        groupId: groups.map((g) => g.id),
+      },
+    });
+
+    const vaults = await this.baseFetch(auth, {
+      where: {
+        id: groupVaults.map((v) => v.vaultId),
+      },
+    });
+
+    return vaults.filter((v) => v.canRead(auth));
+  }
+
   static async fetchWorkspaceSystemVault(
     auth: Authenticator
   ): Promise<VaultResource> {
