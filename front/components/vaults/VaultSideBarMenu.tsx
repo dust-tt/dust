@@ -174,7 +174,7 @@ const getVaultSectionDetails = (
 ): VaultSectionStructureType => {
   switch (kind) {
     case "shared":
-      return { label: "Team", displayCreateVaultButton: true };
+      return { label: "Open", displayCreateVaultButton: true };
 
     case "restricted":
       return { label: "Restricted", displayCreateVaultButton: true };
