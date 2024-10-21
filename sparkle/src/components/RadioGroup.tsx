@@ -3,12 +3,11 @@ import { cva, VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import { Tooltip } from "@sparkle/components/Tooltip";
-import { CircleIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 const radioStyles = cva(
   cn(
-    "s-aspect-square s-h-4 s-w-4 s-rounded-full s-border s-text-foreground s-ring-offset-background",
+    "s-aspect-square s-rounded-full s-border s-border-border-darker s-text-foreground",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2 focus-visible:s-ring-ring",
     "disabled:s-cursor-not-allowed disabled:s-opacity-50",
     "checked:s-ring-0 checked:s-bg-action-500"
@@ -18,6 +17,21 @@ const radioStyles = cva(
       size: {
         xs: "s-h-4 s-w-4",
         sm: "s-h-5 s-w-5",
+      },
+    },
+    defaultVariants: {
+      size: "xs",
+    },
+  }
+);
+
+const radioIndicatorStyles = cva(
+  "s-bg-primary s-flex s-items-center s-justify-center s-rounded-full",
+  {
+    variants: {
+      size: {
+        xs: "s-h-2 s-w-2 s-ml-[3px]",
+        sm: "s-h-2.5 s-w-2.5 s-ml-1",
       },
     },
     defaultVariants: {
@@ -66,14 +80,9 @@ const RadioGroupItem = React.forwardRef<
                 className={cn(radioStyles({ size }), className)}
                 {...props}
               >
-                <RadioGroupPrimitive.Indicator className="s-flex s-items-center s-justify-center">
-                  <CircleIcon
-                    className={cn(
-                      size === "xs" ? "s-h-2.5 s-w-2.5" : "s-h-3 s-w-3",
-                      "s-fill-current s-text-current focus:s-bg-action-50-dark"
-                    )}
-                  />
-                </RadioGroupPrimitive.Indicator>
+                <RadioGroupPrimitive.Indicator
+                  className={radioIndicatorStyles({ size })}
+                />
               </RadioGroupPrimitive.Item>
             }
             label={<span>{tooltipMessage}</span>}
@@ -84,14 +93,9 @@ const RadioGroupItem = React.forwardRef<
             className={cn(radioStyles({ size }), className)}
             {...props}
           >
-            <RadioGroupPrimitive.Indicator className="s-flex s-items-center s-justify-center">
-              <CircleIcon
-                className={cn(
-                  size === "xs" ? "s-h-2.5 s-w-2.5" : "s-h-3 s-w-3",
-                  "s-fill-current s-text-current focus:s-bg-action-50-dark"
-                )}
-              />
-            </RadioGroupPrimitive.Indicator>
+            <RadioGroupPrimitive.Indicator
+              className={radioIndicatorStyles({ size })}
+            />
           </RadioGroupPrimitive.Item>
         )}
       </div>

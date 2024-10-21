@@ -270,7 +270,6 @@ export const TreeExample = () => {
                 visual={IntercomLogo}
                 onItemClick={() => console.log("Clickable")}
                 isSelected={true}
-                size="md"
               >
                 <Tree variant="navigator" tailwindIconTextColor="s-text-brand">
                   <Tree.Item
@@ -311,9 +310,9 @@ export const TreeExample = () => {
                   </Tree.Item>
                 </Tree>
               </Tree.Item>
-              <Tree.Item label="Notion" visual={NotionLogo} size="md" />
-              <Tree.Item label="Slack" visual={SlackLogo} size="md" />
-              <Tree.Item label="Dust" visual={DustIcon} size="md" />
+              <Tree.Item label="Notion" visual={NotionLogo} />
+              <Tree.Item label="Slack" visual={SlackLogo} />
+              <Tree.Item label="Dust" visual={DustIcon} />
             </Tree>
           </div>
         </div>
@@ -636,7 +635,6 @@ export const SelectDataSourceExample = () => {
               <Tree.Item
                 label="Intercom"
                 visual={IntercomLogo}
-                size="md"
                 areActionsFading={false}
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
@@ -674,13 +672,11 @@ export const SelectDataSourceExample = () => {
                     />
                   </div>
                 }
-                size="md"
               />
               <Tree.Item
                 label="Notion"
                 visual={NotionLogo}
                 areActionsFading={false}
-                size="md"
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
                     <span className="s-text-sm s-text-element-700">
@@ -709,7 +705,6 @@ export const SelectDataSourceExample = () => {
                 label="Google Drive"
                 visual={DriveLogo}
                 areActionsFading={false}
-                size="md"
                 defaultCollapsed={true}
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
@@ -739,7 +734,6 @@ export const SelectDataSourceExample = () => {
               <Tree.Item
                 label="Intercom"
                 visual={IntercomLogo}
-                size="md"
                 checkbox={{
                   checked: false,
                   onChange: () => {
@@ -751,7 +745,6 @@ export const SelectDataSourceExample = () => {
                 label="Slack"
                 collapsed={true}
                 visual={SlackLogo}
-                size="md"
                 checkbox={{
                   checked: false,
                   onChange: () => {
@@ -762,7 +755,6 @@ export const SelectDataSourceExample = () => {
               <Tree.Item
                 label="Notion"
                 visual={NotionLogo}
-                size="md"
                 checkbox={{
                   checked: false,
                   onChange: () => {
@@ -813,7 +805,6 @@ export const SelectDataSourceExample = () => {
               <Tree.Item
                 label="Google Drive"
                 visual={DriveLogo}
-                size="md"
                 checkbox={{
                   checked: false,
                   onChange: () => {

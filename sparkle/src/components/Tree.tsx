@@ -2,7 +2,7 @@ import React, { ComponentType, ReactNode, useState } from "react";
 
 import Spinner from "@sparkle/components/Spinner";
 import { ArrowDownSIcon, ArrowRightSIcon } from "@sparkle/icons";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 import { Checkbox, CheckboxProps } from "./Checkbox";
 import { Icon } from "./Icon";
@@ -49,11 +49,10 @@ export function Tree({
     </div>
   ) : (
     <div
-      className={classNames(
-        "s-flex s-flex-col s-gap-1 s-overflow-hidden",
-        isBoxed
-          ? "s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4"
-          : ""
+      className={cn(
+        "s-flex s-flex-col s-gap-0.5 s-overflow-hidden",
+        isBoxed &&
+          "s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4"
       )}
     >
       {modifiedChildren}
@@ -62,9 +61,9 @@ export function Tree({
 }
 
 const treeItemStyleClasses = {
-  base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center",
+  base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center s-gap-2 s-py-1.5",
   isNavigatableBase:
-    "s-border s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
+    "s-rounded-lg s-pl-1.5 s-pr-3 s-border s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
   isNavigatableUnselected:
     "s-border-structure-200/0 s-bg-white/0 hover:s-border-structure-200 hover:s-bg-white",
   isNavigatableSelected: "s-border-structure-200 s-bg-white",
@@ -73,7 +72,6 @@ const treeItemStyleClasses = {
 interface TreeItemProps {
   label?: string;
   type?: "node" | "item" | "leaf";
-  size?: "sm" | "md";
   tailwindIconTextColor?: string;
   visual?: ComponentType<{ className?: string }>;
   checkbox?: CheckboxProps;
@@ -104,7 +102,6 @@ Tree.Item = function ({
   type = "node",
   className = "",
   labelClassName = "",
-  size = "sm",
   tailwindIconTextColor = "s-text-element-800",
   visual,
   checkbox,
@@ -145,25 +142,18 @@ Tree.Item = function ({
   return (
     <>
       <div
-        className={classNames(
-          className ? className : "",
+        className={cn(
           treeItemStyleClasses.base,
           onItemClick ? "s-cursor-pointer" : "",
           isNavigatable ? treeItemStyleClasses.isNavigatableBase : "",
-          isNavigatable
-            ? size === "sm"
-              ? "s-gap-1 s-rounded-lg s-py-1 s-pl-1.5 s-pr-3"
-              : "s-gap-2 s-rounded-lg s-py-2 s-pl-2.5 s-pr-4"
-            : size === "sm"
-              ? "s-gap-1 s-py-1"
-              : "s-gap-2 s-py-2",
           isNavigatable
             ? isSelected
               ? treeItemStyleClasses.isNavigatableSelected
               : treeItemStyleClasses.isNavigatableUnselected
             : "",
           isExpanded ? "is-expanded" : "is-collapsed",
-          type
+          type,
+          className
         )}
         onClick={onItemClick ? onItemClick : undefined}
       >
@@ -182,28 +172,19 @@ Tree.Item = function ({
         )}
         {type === "leaf" && <div className="s-w-4 s-flex-shrink-0"></div>}
         {checkbox && <Checkbox {...checkbox} size="xs" />}
-        <Icon
-          visual={visual}
-          size={size === "sm" ? "sm" : "md"}
-          className={classNames("s-flex-shrink-0", tailwindIconTextColor)}
-        />
-
+        <Icon visual={visual} size="xs" className={tailwindIconTextColor} />
         <div
-          className={classNames(
-            `s-truncate s-font-medium s-text-element-900 ${labelClassName}`,
-            size === "sm" ? "s-ml-1 s-text-sm" : "s-ml-1 s-text-base"
-          )}
+          className={`s-font-regular s-truncate s-text-sm s-text-element-900 ${labelClassName}`}
         >
           {label}
         </div>
         <div className="s-grow" />
         {actions && (
           <div
-            className={classNames(
+            className={cn(
               "s-flex s-gap-2 s-pl-4",
-              areActionsFading
-                ? "s-transform s-opacity-0 s-duration-300 group-hover/tree:s-opacity-100"
-                : ""
+              areActionsFading &&
+                "s-transform s-opacity-0 s-duration-300 group-hover/tree:s-opacity-100"
             )}
           >
             {actions}
@@ -211,7 +192,7 @@ Tree.Item = function ({
         )}
       </div>
       {React.Children.count(childrenToRender) > 0 && (
-        <div className="s-pl-2.5">{childrenToRender}</div>
+        <div className="s-pl-4">{childrenToRender}</div>
       )}
     </>
   );
@@ -223,7 +204,7 @@ interface TreeEmptyProps {
 
 Tree.Empty = function ({ label }: TreeEmptyProps) {
   return (
-    <div className="s-py-1 s-pl-6 s-text-sm s-font-medium s-text-element-700">
+    <div className="s-font-regular s-py-1.5 s-pl-6 s-text-sm s-text-muted-foreground">
       {label}
     </div>
   );
