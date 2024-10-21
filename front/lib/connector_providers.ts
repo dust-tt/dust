@@ -174,8 +174,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   snowflake: {
     name: "Snowflake",
     connectorProvider: "snowflake",
-    // TODO(SNOWFLAKE): built
-    status: "rolling_out",
+    status: "built",
     hide: true,
     description: "Query a Snowflake database.",
     limitations: null,
@@ -184,7 +183,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isSearchEnabled: false,
     guideLink: "https://docs.dust.tt/docs/snowflake-connection",
     selectLabel: "Select tables",
-    rollingOutFlag: "snowflake_connector_feature",
   },
   zendesk: {
     name: "Zendesk",
