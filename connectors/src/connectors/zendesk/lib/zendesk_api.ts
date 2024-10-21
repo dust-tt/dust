@@ -1,9 +1,9 @@
 import { createClient } from "node-zendesk";
 
 export function createZendeskClient({
-                                      token,
-                                      subdomain = "d3v-dust",
-                                    }: {
+  token,
+  subdomain = "d3v-dust",
+}: {
   token: string;
   subdomain?: string;
 }) {
