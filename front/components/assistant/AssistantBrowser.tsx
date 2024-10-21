@@ -213,9 +213,7 @@ export function AssistantBrowser({
       )}
 
       {displayedTab && (
-        // TODO(jules 2024/10/18): remove z-index when using popover instead of
-        // old DropdownMenu
-        <div className="relative z-20 grid w-full grid-cols-1 gap-2 px-4 md:grid-cols-3">
+        <div className="relative grid w-full grid-cols-1 gap-2 px-4 md:grid-cols-3">
           {agentsByTab[displayedTab].map((agent) => (
             <AssistantPreview
               key={agent.sId}
