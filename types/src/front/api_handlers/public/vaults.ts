@@ -2,15 +2,6 @@ import * as t from "io-ts";
 
 import { ContentNodeType } from "../../lib/connectors_api";
 
-export const ContentSchema = t.type({
-  dataSourceId: t.string,
-  parentsIn: t.array(t.string),
-});
-
-export const PostDataSourceViewSchema = ContentSchema;
-
-export type PostDataSourceViewType = t.TypeOf<typeof PostDataSourceViewSchema>;
-
 const ParentsToAddRemoveSchema = t.type({
   parentsToAdd: t.union([t.array(t.string), t.undefined]),
   parentsToRemove: t.union([t.array(t.string), t.undefined]),
@@ -27,15 +18,6 @@ export const PatchDataSourceViewSchema = t.union([
 
 export type PatchDataSourceViewType = t.TypeOf<
   typeof PatchDataSourceViewSchema
->;
-
-export const PatchVaultRequestBodySchema = t.type({
-  name: t.union([t.string, t.undefined]),
-  content: t.union([t.array(ContentSchema), t.undefined]),
-});
-
-export type PatchVaultRequestBodyType = t.TypeOf<
-  typeof PatchVaultRequestBodySchema
 >;
 
 export type LightContentNode = {
