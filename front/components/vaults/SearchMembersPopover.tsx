@@ -42,18 +42,23 @@ export function SearchMembersPopover({
   useEffect(() => {
     if (members && !isLoading) {
       setAllMembers((prevMembers) => {
-        const newMembers = members.filter(
-          (member) =>
-            !prevMembers.some((prevMember) => prevMember.sId === member.sId)
-        );
-        return [...prevMembers, ...newMembers];
+        if (pagination.pageIndex === 0) {
+          // if it's the first page, replace all members
+          return members;
+        } else {
+          // otherwise, append new members
+          const newMembers = members.filter(
+            (member) =>
+              !prevMembers.some((prevMember) => prevMember.sId === member.sId)
+          );
+          return [...prevMembers, ...newMembers];
+        }
       });
     }
-  }, [members, isLoading]);
+  }, [members, isLoading, pagination.pageIndex]);
 
+  // effect to reset pagination when search term changes
   useEffect(() => {
-    // reset allMembers and pagination when search term changes
-    setAllMembers([]);
     setPagination(DefaultPagination);
   }, [searchTerm]);
 
