@@ -42,8 +42,7 @@ const pxSizeClasses: Record<SpinnerSizeType, string> = {
 
 type LottieColorType = [number, number, number, number];
 
-const colors: Record<SpinnerVariantType, LottieColorType> = {
-  color: [0.0235, 0.3059, 0.2314, 1],
+const colors: Record<Exclude<SpinnerVariantType, "color">, LottieColorType> = {
   light: [1, 1, 1, 1],
   dark: [0.0588, 0.0902, 0.1647, 1],
   purple900: [0.298, 0.1137, 0.5843, 1], // #4C1D95
@@ -112,10 +111,10 @@ const Spinner: React.FC<SpinnerProps> = ({
             : animColor;
   }
 
-  const animationData = replaceColors(
-    JSON.parse(JSON.stringify(anim)),
-    colors[variant]
-  );
+  const animationData =
+    variant === "color"
+      ? anim
+      : replaceColors(JSON.parse(JSON.stringify(anim)), colors[variant]);
 
   return (
     <Lottie
