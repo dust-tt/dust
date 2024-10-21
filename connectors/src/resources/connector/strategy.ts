@@ -26,6 +26,7 @@ import { NotionConnectorStrategy } from "@connectors/resources/connector/notion"
 import { SlackConnectorStrategy } from "@connectors/resources/connector/slack";
 import { SnowflakeConnectorStrategy } from "@connectors/resources/connector/snowflake";
 import { WebCrawlerStrategy } from "@connectors/resources/connector/webcrawler";
+import { ZendeskConnectorStrategy } from "@connectors/resources/connector/zendesk";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 import type { BaseResource } from "../base_resource";
@@ -139,7 +140,7 @@ export function getConnectorProviderStrategy(
       return new SnowflakeConnectorStrategy();
 
     case "zendesk":
-      throw new Error(`Not implemented yet.`);
+      throw new ZendeskConnectorStrategy();
 
     default:
       assertNever(type);
