@@ -9,9 +9,9 @@ import { DataTypes, Model } from "sequelize";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
-export class ZendeskConfigurationModel extends Model<
-  InferAttributes<ZendeskConfigurationModel>,
-  InferCreationAttributes<ZendeskConfigurationModel>
+export class ZendeskConfiguration extends Model<
+  InferAttributes<ZendeskConfiguration>,
+  InferCreationAttributes<ZendeskConfiguration>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
@@ -21,7 +21,8 @@ export class ZendeskConfigurationModel extends Model<
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
-ZendeskConfigurationModel.init(
+
+ZendeskConfiguration.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -50,8 +51,8 @@ ZendeskConfigurationModel.init(
     indexes: [{ fields: ["connectorId"], unique: true }],
   }
 );
-ConnectorModel.hasMany(ZendeskConfigurationModel, {
+ConnectorModel.hasMany(ZendeskConfiguration, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-ZendeskConfigurationModel.belongsTo(ConnectorModel);
+ZendeskConfiguration.belongsTo(ConnectorModel);
