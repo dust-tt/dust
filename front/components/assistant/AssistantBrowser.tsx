@@ -148,6 +148,7 @@ export function AssistantBrowser({
           <Button.List>
             <Tooltip
               label="Create your own assistant"
+              tooltipTriggerAsChild
               trigger={
                 <Link
                   href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
@@ -174,6 +175,7 @@ export function AssistantBrowser({
             {isBuilder && (
               <Tooltip
                 label="Manage assistants"
+                tooltipTriggerAsChild
                 trigger={
                   <Link href={`/w/${owner.sId}/builder/assistants/`}>
                     <Button
