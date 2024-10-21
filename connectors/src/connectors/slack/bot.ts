@@ -411,7 +411,7 @@ async function answerMessage(
   // Extract all ~mentions and +mentions
   const mentionCandidates =
     messageWithoutMarkdown.match(
-      /(?<!\S)[+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|$)/g
+      /(?<!\S)[+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$)/g
     ) || [];
 
   // First we look at mention override
