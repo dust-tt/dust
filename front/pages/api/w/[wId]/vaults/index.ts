@@ -1,5 +1,5 @@
 import type { VaultType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PostVaultRequestBodySchema } from "@dust-tt/types";
+import { PostVaultRequestBodySchema, removeNulls } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -117,7 +117,7 @@ async function handler(
         });
       }
 
-      const { name, memberIds } = bodyValidation.right;
+      const { name, memberIds, isRestricted } = bodyValidation.right;
 
       const nameAvailable = await VaultResource.isNameAvailable(auth, name);
       if (!nameAvailable) {
@@ -136,13 +136,22 @@ async function handler(
         kind: "regular",
       });
 
+      const globalGroupRes = isRestricted
+        ? null
+        : await GroupResource.fetchWorkspaceGlobalGroup(auth);
+
+      const groups = removeNulls([
+        group,
+        globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
+      ]);
+
       const vault = await VaultResource.makeNew(
         {
           name,
           kind: "regular",
           workspaceId: owner.id,
         },
-        group
+        groups
       );
 
       if (memberIds) {

@@ -1,13 +1,12 @@
 import type { VaultType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PatchGroupRequestBodySchema } from "@dust-tt/types";
-import assert from "assert";
+import { PatchVaultMembersRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { UserResource } from "@app/lib/resources/user_resource";
+import { DustError } from "@app/lib/error";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
 
@@ -20,8 +19,20 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PatchVaultMembersResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const vault = await VaultResource.fetchById(auth, req.query.vId as string);
-  if (!vault || !vault.canAdministrate(auth)) {
+  const { vId } = req.query;
+
+  if (typeof vId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid vault id.",
+      },
+    });
+  }
+
+  const vault = await VaultResource.fetchById(auth, vId);
+  if (!vault) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -43,17 +54,9 @@ async function handler(
 
   switch (req.method) {
     case "PATCH": {
-      const regularGroups = vault.groups.filter(
-        (group) => group.kind === "regular"
+      const bodyValidation = PatchVaultMembersRequestBodySchema.decode(
+        req.body
       );
-      // Assert that there is exactly one regular group associated with the vault
-      assert(
-        regularGroups.length === 1,
-        `Expected exactly one regular group for the vault, but found ${regularGroups.length}.`
-      );
-      const [defaultVaultGroup] = regularGroups;
-
-      const bodyValidation = PatchGroupRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -67,34 +70,31 @@ async function handler(
         });
       }
 
-      const { memberIds } = bodyValidation.right;
-      if (memberIds) {
-        const users = await UserResource.fetchByIds(memberIds);
-
-        const result = await defaultVaultGroup.setMembers(
-          auth,
-          users.map((u) => u.toJSON())
-        );
-
-        if (result.isErr()) {
-          if (result.error.code === "unauthorized") {
-            return apiError(req, res, {
-              status_code: 403,
-              api_error: {
-                type: "workspace_auth_error",
-                message:
-                  "Only users that are `admins` can administrate vault members.",
-              },
-            });
-          } else {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: result.error.message,
-              },
-            });
-          }
+      const updateRes = await vault.updatePermissions(
+        auth,
+        bodyValidation.right
+      );
+      if (updateRes.isErr()) {
+        if (
+          updateRes.error instanceof DustError &&
+          updateRes.error.code === "unauthorized"
+        ) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message:
+                "Only users that are `admins` can administrate vault members.",
+            },
+          });
+        } else {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: updateRes.error.message,
+            },
+          });
         }
       }
 

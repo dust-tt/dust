@@ -6,4 +6,5 @@ export type VaultType = {
   sId: string;
   kind: VaultKind;
   groupIds: string[];
+  isRestricted: boolean;
 };

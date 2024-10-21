@@ -18,6 +18,7 @@ import type {
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -28,6 +29,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -55,19 +57,22 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   static async makeNew(
     blob: CreationAttributes<VaultModel>,
-    group: GroupResource
+    groups: GroupResource[]
   ) {
     return frontSequelize.transaction(async (transaction) => {
       const vault = await VaultModel.create(blob, { transaction });
-      await GroupVaultModel.create(
-        {
-          groupId: group.id,
-          vaultId: vault.id,
-        },
-        { transaction }
-      );
 
-      return new this(VaultModel, vault.get(), [group]);
+      for (const group of groups) {
+        await GroupVaultModel.create(
+          {
+            groupId: group.id,
+            vaultId: vault.id,
+          },
+          { transaction }
+        );
+      }
+
+      return new this(VaultModel, vault.get(), groups);
     });
   }
 
@@ -92,7 +97,7 @@ export class VaultResource extends BaseResource<VaultModel> {
           kind: "system",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        systemGroup
+        [systemGroup]
       ));
 
     const globalVault =
@@ -103,7 +108,7 @@ export class VaultResource extends BaseResource<VaultModel> {
           kind: "global",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        globalGroup
+        [globalGroup]
       ));
 
     return {
@@ -279,6 +284,87 @@ export class VaultResource extends BaseResource<VaultModel> {
     return new Ok(undefined);
   }
 
+  // Permissions.
+
+  async updatePermissions(
+    auth: Authenticator,
+    {
+      isRestricted,
+      memberIds,
+    }: { isRestricted: boolean; memberIds: string[] | null }
+  ): Promise<Result<undefined, DustError>> {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You do not have permission to update vault permissions."
+        )
+      );
+    }
+
+    const regularGroups = this.groups.filter(
+      (group) => group.kind === "regular"
+    );
+    // Assert that there is exactly one regular group associated with the vault.
+    assert(
+      regularGroups.length === 1,
+      `Expected exactly one regular group for the vault, but found ${regularGroups.length}.`
+    );
+    const [defaultVaultGroup] = regularGroups;
+
+    const wasRestricted = this.groups.every((g) => !g.isGlobal());
+
+    const groupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    if (groupRes.isErr()) {
+      return groupRes;
+    }
+
+    const globalGroup = groupRes.value;
+    if (isRestricted) {
+      // If the vault should be restricted and was not restricted before, remove the global group.
+      if (!wasRestricted) {
+        await this.removeGroup(globalGroup);
+      }
+
+      if (memberIds) {
+        const users = await UserResource.fetchByIds(memberIds);
+
+        return defaultVaultGroup.setMembers(
+          auth,
+          users.map((u) => u.toJSON())
+        );
+      }
+
+      return new Ok(undefined);
+    } else {
+      // If the vault should not be restricted and was restricted before, add the global group.
+      if (wasRestricted) {
+        await this.addGroup(globalGroup);
+      }
+
+      // Remove all members.
+      await defaultVaultGroup.setMembers(auth, []);
+
+      return new Ok(undefined);
+    }
+  }
+
+  private async addGroup(group: GroupResource) {
+    await GroupVaultModel.create({
+      groupId: group.id,
+      vaultId: this.id,
+    });
+  }
+
+  private async removeGroup(group: GroupResource) {
+    await GroupVaultModel.destroy({
+      where: {
+        groupId: group.id,
+        vaultId: this.id,
+      },
+    });
+  }
+
   acl(): ACLType {
     return {
       aclEntries: this.groups.map((group) => ({
@@ -301,6 +387,12 @@ export class VaultResource extends BaseResource<VaultModel> {
         return auth.isBuilder() && auth.canWrite([this.acl()]);
 
       case "regular":
+        // TODO(SPACE_INFRA): Represent this in ACL.
+        // In the meantime, if the vault has a global group, only builders can write.
+        if (this.groups.some((group) => group.isGlobal())) {
+          return auth.isBuilder() && auth.canWrite([this.acl()]);
+        }
+
         return auth.canWrite([this.acl()]);
 
       case "public":
@@ -374,14 +466,15 @@ export class VaultResource extends BaseResource<VaultModel> {
     return this.deletedAt !== null;
   }
 
-  // Seriliazation.
+  // Serialization.
 
   toJSON(): VaultType {
     return {
-      sId: this.sId,
-      name: this.name,
-      kind: this.kind,
       groupIds: this.groups.map((group) => group.sId),
+      isRestricted: !this.groups.some((group) => group.isGlobal()),
+      kind: this.kind,
+      name: this.name,
+      sId: this.sId,
     };
   }
 

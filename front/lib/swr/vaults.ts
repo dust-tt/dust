@@ -371,19 +371,31 @@ export function useDeleteFolderOrWebsite({
   return doDelete;
 }
 
+type DoCreateOrUpdateAllowedParams =
+  | { name: string | null; memberIds: null; isRestricted: false }
+  | { name: string | null; memberIds: string[]; isRestricted: true };
+
 export function useCreateVault({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useContext(SendNotificationsContext);
   const { mutate: mutateVaults } = useVaults({
     workspaceId: owner.sId,
-    disabled: true, // Needed just to mutate
+    disabled: true, // Needed just to mutate.
   });
   const { mutate: mutateVaultsAsAdmin } = useVaultsAsAdmin({
     workspaceId: owner.sId,
-    disabled: true, // Needed just to mutate
+    disabled: true, // Needed just to mutate.
   });
 
-  const doCreate = async (name: string | null, memberIds: string[] | null) => {
-    if (!name || !memberIds || memberIds?.length < 1) {
+  const doCreate = async ({
+    name,
+    memberIds,
+    isRestricted,
+  }: DoCreateOrUpdateAllowedParams) => {
+    if (!name) {
+      return null;
+    }
+
+    if (isRestricted && (!memberIds || memberIds?.length < 1)) {
       return null;
     }
 
@@ -396,6 +408,7 @@ export function useCreateVault({ owner }: { owner: LightWorkspaceType }) {
       body: JSON.stringify({
         name,
         memberIds,
+        isRestricted,
       }),
     });
 
@@ -439,12 +452,9 @@ export function useUpdateVault({ owner }: { owner: LightWorkspaceType }) {
 
   const doUpdate = async (
     vault: VaultType,
-    memberIds: string[] | null,
-    newName: string | null
+    params: DoCreateOrUpdateAllowedParams
   ) => {
-    if (!vault) {
-      return null;
-    }
+    const { name: newName, memberIds, isRestricted } = params;
 
     const updatePromises: Promise<Response>[] = [];
 
@@ -459,26 +469,26 @@ export function useUpdateVault({ owner }: { owner: LightWorkspaceType }) {
           },
           body: JSON.stringify({
             name: newName,
+            isRestricted,
           }),
         })
       );
     }
 
     // Prepare vault members update request if provided.
-    if (memberIds && memberIds.length > 0) {
-      const vaultMembersUrl = `/api/w/${owner.sId}/vaults/${vault.sId}/members`;
-      updatePromises.push(
-        fetch(vaultMembersUrl, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            memberIds,
-          }),
-        })
-      );
-    }
+    const vaultMembersUrl = `/api/w/${owner.sId}/vaults/${vault.sId}/members`;
+    updatePromises.push(
+      fetch(vaultMembersUrl, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          memberIds,
+          isRestricted,
+        }),
+      })
+    );
 
     if (updatePromises.length === 0) {
       return null;
