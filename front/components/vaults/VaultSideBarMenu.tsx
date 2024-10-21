@@ -39,13 +39,17 @@ import { getVaultIcon, getVaultName, groupVaults } from "@app/lib/vaults";
 interface VaultSideBarMenuProps {
   owner: LightWorkspaceType;
   isAdmin: boolean;
-  setShowVaultCreationModal?: (show: boolean) => void;
+  openVaultCreationModal?: ({
+    defaultRestricted,
+  }: {
+    defaultRestricted: boolean;
+  }) => void;
 }
 
 export default function VaultSideBarMenu({
   owner,
   isAdmin,
-  setShowVaultCreationModal,
+  openVaultCreationModal,
 }: VaultSideBarMenuProps) {
   const { vaults: vaultsAsAdmin, isVaultsLoading: isVaultsAsAdminLoading } =
     useVaultsAsAdmin({
@@ -116,14 +120,18 @@ export default function VaultSideBarMenu({
                   />
                   {sectionDetails.displayCreateVaultButton &&
                     isAdmin &&
-                    setShowVaultCreationModal && (
+                    openVaultCreationModal && (
                       <Button
                         className="mt-4"
                         size="xs"
                         variant="tertiary"
                         label="New"
                         icon={PlusIcon}
-                        onClick={() => setShowVaultCreationModal(true)}
+                        onClick={() =>
+                          openVaultCreationModal({
+                            defaultRestricted: sectionDetails.defaultRestricted,
+                          })
+                        }
                       />
                     )}
                 </div>
@@ -164,20 +172,34 @@ const renderVaultItems = (
   ));
 };
 
-type VaultSectionStructureType = {
-  label: string;
-  displayCreateVaultButton: boolean;
-};
+type VaultSectionStructureType =
+  | {
+      label: string;
+      displayCreateVaultButton: true;
+      defaultRestricted: boolean;
+    }
+  | {
+      label: string;
+      displayCreateVaultButton: false;
+    };
 
 const getVaultSectionDetails = (
   kind: VaultSectionGroupType
 ): VaultSectionStructureType => {
   switch (kind) {
     case "shared":
-      return { label: "Open", displayCreateVaultButton: true };
+      return {
+        label: "Open",
+        displayCreateVaultButton: true,
+        defaultRestricted: false,
+      };
 
     case "restricted":
-      return { label: "Restricted", displayCreateVaultButton: true };
+      return {
+        label: "Restricted",
+        displayCreateVaultButton: true,
+        defaultRestricted: true,
+      };
 
     case "system":
       return { label: "", displayCreateVaultButton: false };

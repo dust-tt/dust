@@ -53,6 +53,7 @@ function getTableRows(allUsers: UserType[]): RowData[] {
 }
 
 interface CreateOrEditVaultModalProps {
+  defaultRestricted?: boolean;
   isAdmin: boolean;
   isOpen: boolean;
   onClose: () => void;
@@ -62,6 +63,7 @@ interface CreateOrEditVaultModalProps {
 }
 
 export function CreateOrEditVaultModal({
+  defaultRestricted,
   isAdmin,
   isOpen,
   onClose,
@@ -76,9 +78,7 @@ export function CreateOrEditVaultModal({
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isRestricted, setIsRestricted] = useState(
-    vault?.isRestricted ?? false
-  );
+  const [isRestricted, setIsRestricted] = useState(false);
 
   const doCreate = useCreateVault({ owner });
   const doUpdate = useUpdateVault({ owner });
@@ -101,9 +101,11 @@ export function CreateOrEditVaultModal({
 
       setVaultName(vaultInfo?.name ?? null);
 
-      setIsRestricted(vaultInfo?.isRestricted ?? false);
+      setIsRestricted(
+        vaultInfo ? vaultInfo.isRestricted : defaultRestricted ?? false
+      );
     }
-  }, [isOpen, vaultInfo]);
+  }, [defaultRestricted, isOpen, vaultInfo]);
 
   const handleClose = useCallback(() => {
     // Call the original onClose function.
