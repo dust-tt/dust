@@ -318,6 +318,10 @@ export const VaultDataSourceViewContentList = ({
     ]
   );
 
+  const onSelectedDataUpdated = useCallback(async () => {
+    await mutateContentNodes();
+  }, [mutateContentNodes]);
+
   const emptyVaultContent =
     isManaged(dataSourceView.dataSource) && vault.kind !== "system" ? (
       isAdmin ? (
@@ -424,6 +428,7 @@ export const VaultDataSourceViewContentList = ({
               systemVault={systemVault}
               isAdmin={isAdmin}
               dataSourceView={dataSourceView}
+              onSelectedDataUpdated={onSelectedDataUpdated}
             />
           )}
         {isManaged(dataSourceView.dataSource) &&

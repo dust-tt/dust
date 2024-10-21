@@ -9,7 +9,7 @@ import type {
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
 import AppLayout from "@app/components/sparkle/AppLayout";
@@ -40,7 +40,11 @@ export function VaultLayout({
   children: React.ReactNode;
   pageProps: VaultLayoutProps;
 }) {
-  const [showVaultCreationModal, setShowVaultCreationModal] = useState(false);
+  const [vaultCreationModalState, setVaultCreationModalState] = useState({
+    isOpen: false,
+    defaultRestricted: false,
+  });
+
   const {
     owner,
     plan,
@@ -61,6 +65,17 @@ export function VaultLayout({
   const isLimitReached = isPrivateVaultsLimitReached(vaults, plan);
   const isEnterprise = isEntreprisePlan(plan.code);
 
+  const closeVaultCreationModal = useCallback(() => {
+    setVaultCreationModalState((prev) => ({ ...prev, isOpen: false }));
+  }, []);
+
+  const openVaultCreationModal = useCallback(
+    ({ defaultRestricted }: { defaultRestricted: boolean }) => {
+      setVaultCreationModalState({ defaultRestricted, isOpen: true });
+    },
+    []
+  );
+
   return (
     <RootLayout>
       <AppLayout
@@ -70,7 +85,7 @@ export function VaultLayout({
           <VaultSideBarMenu
             owner={owner}
             isAdmin={isAdmin}
-            setShowVaultCreationModal={setShowVaultCreationModal}
+            openVaultCreationModal={openVaultCreationModal}
           />
         }
       >
@@ -86,19 +101,20 @@ export function VaultLayout({
           <CreateOrEditVaultModal
             isAdmin={isAdmin}
             owner={owner}
-            isOpen={!isLimitReached && showVaultCreationModal}
-            onClose={() => setShowVaultCreationModal(false)}
+            isOpen={!isLimitReached && vaultCreationModalState.isOpen}
+            onClose={closeVaultCreationModal}
             onCreated={(vault) => {
               void router.push(`/w/${owner.sId}/vaults/${vault.sId}`);
             }}
+            defaultRestricted={vaultCreationModalState.defaultRestricted}
           />
         )}
         {isAdmin && isLimitReached && (
           <Dialog
             alertDialog
-            isOpen={isLimitReached && showVaultCreationModal}
+            isOpen={isLimitReached && vaultCreationModalState.isOpen}
             title="You can't create more spaces."
-            onValidate={() => setShowVaultCreationModal(false)}
+            onValidate={closeVaultCreationModal}
           >
             <div>
               {isEnterprise
