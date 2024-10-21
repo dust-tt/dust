@@ -140,7 +140,7 @@ export function getConnectorProviderStrategy(
       return new SnowflakeConnectorStrategy();
 
     case "zendesk":
-      throw new ZendeskConnectorStrategy();
+      return new ZendeskConnectorStrategy();
 
     default:
       assertNever(type);
