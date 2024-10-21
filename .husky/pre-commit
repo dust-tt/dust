@@ -38,7 +38,7 @@ for directory in "${directories[@]}"; do
         # Check for changes in front/pages/api/v1/ only when processing the front/ directory
         if [ "$directory" = "front" ]; then
             if git diff --cached --name-only | grep -qE "^front/pages/api/v1/"; then
-                if ! npm run docs --if-present --prefix $root_path/$directory; then
+                if ! npm run docs:check --if-present --prefix $root_path/$directory; then
                     echo "Documentation check failed. Please fix the issues before committing."
                     exit 1
                 fi
