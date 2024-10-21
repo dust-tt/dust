@@ -17,6 +17,7 @@ export class ZendeskConfiguration extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare subdomain: string;
   declare conversationsSlidingWindow: number;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -38,6 +39,10 @@ ZendeskConfiguration.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    subdomain: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     conversationsSlidingWindow: {
       type: DataTypes.INTEGER,
