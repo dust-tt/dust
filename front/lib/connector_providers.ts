@@ -187,7 +187,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   zendesk: {
     name: "Zendesk",
     connectorProvider: "zendesk",
-    status: "rolling_out",
+    status: "preview",
     hide: false,
     description:
       "Authorize access to Zendesk for indexing tickets from your support center and articles from your help center.",
