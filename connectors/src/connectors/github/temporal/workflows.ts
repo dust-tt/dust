@@ -66,12 +66,6 @@ export async function githubFullSyncWorkflow(
   forceCodeResync = false
 ) {
   await githubSaveStartSyncActivity(dataSourceConfig);
-  const loggerArgs = {
-    connectorId,
-    dataSourceId: dataSourceConfig.dataSourceId,
-    workspaceId: dataSourceConfig.workspaceId,
-    syncCodeOnly: syncCodeOnly.toString(),
-  };
 
   const queue = new PQueue({ concurrency: MAX_CONCURRENT_REPO_SYNC_WORKFLOWS });
   const promises: Promise<void>[] = [];
@@ -82,7 +76,7 @@ export async function githubFullSyncWorkflow(
     const resultsPage = await githubGetReposResultPageActivity(
       connectorId,
       pageNumber,
-      loggerArgs
+      { syncCodeOnly: syncCodeOnly.toString() }
     );
     if (!resultsPage.length) {
       break;
@@ -180,14 +174,6 @@ export async function githubRepoIssuesSyncWorkflow({
   repoLogin: string;
   pageNumber: number;
 }): Promise<boolean> {
-  const loggerArgs = {
-    dataSourceId: dataSourceConfig.dataSourceId,
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    repoName,
-    repoLogin,
-  };
-
   const queue = new PQueue({
     concurrency: MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW,
   });
@@ -198,7 +184,7 @@ export async function githubRepoIssuesSyncWorkflow({
     repoName,
     repoLogin,
     pageNumber,
-    loggerArgs
+    { repoId }
   );
 
   if (!resultsPage.length) {
@@ -215,7 +201,7 @@ export async function githubRepoIssuesSyncWorkflow({
           repoLogin,
           issueNumber,
           dataSourceConfig,
-          loggerArgs,
+          {},
           true // isBatchSync
         )
       )
@@ -242,14 +228,6 @@ export async function githubRepoDiscussionsSyncWorkflow({
   repoLogin: string;
   nextCursor: string | null;
 }): Promise<string | null> {
-  const loggerArgs = {
-    dataSourceId: dataSourceConfig.dataSourceId,
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    repoName,
-    repoLogin,
-  };
-
   const queue = new PQueue({
     concurrency: MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW,
   });
@@ -261,7 +239,7 @@ export async function githubRepoDiscussionsSyncWorkflow({
       repoName,
       repoLogin,
       nextCursor,
-      loggerArgs
+      { repoId }
     );
 
   for (const discussionNumber of discussionNumbers) {
@@ -274,7 +252,7 @@ export async function githubRepoDiscussionsSyncWorkflow({
           repoLogin,
           discussionNumber,
           dataSourceConfig,
-          loggerArgs,
+          {},
           true // isBatchSync
         )
       )
@@ -305,15 +283,6 @@ export async function githubRepoSyncWorkflow({
   isFullSync: boolean;
   forceCodeResync?: boolean;
 }) {
-  const loggerArgs = {
-    dataSourceId: dataSourceConfig.dataSourceId,
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    repoName,
-    repoLogin,
-    syncCodeOnly: syncCodeOnly ? "true" : "false",
-  };
-
   if (!syncCodeOnly) {
     let pageNumber = 1; // 1-indexed
     for (;;) {
@@ -390,7 +359,7 @@ export async function githubRepoSyncWorkflow({
     repoLogin,
     repoName,
     repoId,
-    loggerArgs,
+    loggerArgs: { syncCodeOnly: syncCodeOnly ? "true" : "false" },
     isBatchSync: true,
     forceResync: forceCodeResync,
   });
@@ -403,14 +372,6 @@ export async function githubCodeSyncWorkflow(
   repoId: number,
   repoLogin: string
 ) {
-  const loggerArgs = {
-    dataSourceId: dataSourceConfig.dataSourceId,
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    repoName,
-    repoLogin,
-  };
-
   let signaled = false;
   let debounceCount = 0;
 
@@ -429,13 +390,17 @@ export async function githubCodeSyncWorkflow(
       debounceCount += 1;
       continue;
     }
+
     await githubCodeSyncActivity({
       dataSourceConfig,
       connectorId,
       repoLogin,
       repoName,
       repoId,
-      loggerArgs: { ...loggerArgs, debounceCount, activity: "githubCodeSync" },
+      loggerArgs: {
+        debounceCount,
+        activity: "githubCodeSync",
+      },
       isBatchSync: true,
     });
     await githubSaveSuccessSyncActivity(dataSourceConfig);
@@ -468,15 +433,6 @@ export async function githubIssueSyncWorkflow(
   repoLogin: string,
   issueNumber: number
 ) {
-  const loggerArgs = {
-    dataSourceId: dataSourceConfig.dataSourceId,
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    repoName,
-    repoLogin,
-    issueNumber,
-  };
-
   let signaled = false;
   let debounceCount = 0;
 
@@ -498,7 +454,7 @@ export async function githubIssueSyncWorkflow(
       repoLogin,
       issueNumber,
       dataSourceConfig,
-      { ...loggerArgs, debounceCount }
+      { debounceCount }
     );
     await githubSaveSuccessSyncActivity(dataSourceConfig);
   }
@@ -512,15 +468,6 @@ export async function githubDiscussionSyncWorkflow(
   repoLogin: string,
   discussionNumber: number
 ) {
-  const loggerArgs = {
-    dataSourceId: dataSourceConfig.dataSourceId,
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    repoName,
-    repoLogin,
-    discussionNumber,
-  };
-
   let signaled = false;
   let debounceCount = 0;
 
@@ -542,7 +489,7 @@ export async function githubDiscussionSyncWorkflow(
       repoLogin,
       discussionNumber,
       dataSourceConfig,
-      { ...loggerArgs, debounceCount },
+      { debounceCount },
       false // isBatchSync
     );
 
@@ -556,19 +503,11 @@ export async function githubIssueGarbageCollectWorkflow(
   repoId: string,
   issueNumber: number
 ) {
-  const loggerArgs = {
-    dataSourceId: dataSourceConfig.dataSourceId,
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    issueNumber,
-  };
-
   await githubIssueGarbageCollectActivity(
     dataSourceConfig,
     connectorId,
     repoId,
-    issueNumber,
-    loggerArgs
+    issueNumber
   );
   await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
@@ -579,19 +518,11 @@ export async function githubDiscussionGarbageCollectWorkflow(
   repoId: string,
   discussionNumber: number
 ) {
-  const loggerArgs = {
-    dataSourceId: dataSourceConfig.dataSourceId,
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    discussionNumber,
-  };
-
   await githubDiscussionGarbageCollectActivity(
     dataSourceConfig,
     connectorId,
     repoId,
-    discussionNumber,
-    loggerArgs
+    discussionNumber
   );
   await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
@@ -601,17 +532,6 @@ export async function githubRepoGarbageCollectWorkflow(
   connectorId: ModelId,
   repoId: string
 ) {
-  const loggerArgs = {
-    dataSourceId: dataSourceConfig.dataSourceId,
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-  };
-
-  await githubRepoGarbageCollectActivity(
-    dataSourceConfig,
-    connectorId,
-    repoId,
-    loggerArgs
-  );
+  await githubRepoGarbageCollectActivity(dataSourceConfig, connectorId, repoId);
   await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
