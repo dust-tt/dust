@@ -149,6 +149,21 @@ export function AssistantDropdownMenu({
                   icon={ClipboardIcon}
                 />
               )}
+              {showAddRemoveToFavorite && (
+                <>
+                  <DropdownMenu.Item
+                    label={
+                      isFavorite ? "Remove from favorites" : "Add to favorites"
+                    }
+                    disabled={isUpdatingFavorites}
+                    onClick={() => {
+                      void updateFavorite(isFavorite ? false : true);
+                    }}
+                    icon={isFavorite ? StarIcon : StarStrokeIcon}
+                  />
+                </>
+              )}
+
               {!isGlobalAgent && (
                 <>
                   <DropdownMenu.SectionHeader label="Edition" />
@@ -194,21 +209,6 @@ export function AssistantDropdownMenu({
                       }}
                     />
                   )}
-                </>
-              )}
-              {showAddRemoveToFavorite && (
-                <>
-                  <DropdownMenu.SectionHeader label="MY ASSISTANTS" />
-                  <DropdownMenu.Item
-                    label={
-                      isFavorite ? "Remove from favorites" : "Add to favorites"
-                    }
-                    disabled={isUpdatingFavorites}
-                    onClick={() => {
-                      void updateFavorite(isFavorite ? false : true);
-                    }}
-                    icon={isFavorite ? StarStrokeIcon : StarIcon}
-                  />
                 </>
               )}
             </DropdownMenu.Items>
