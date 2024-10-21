@@ -7,7 +7,9 @@ import logger from "@app/logger/logger";
 
 const OPERATIONS = ["STOP", "PAUSE", "UNPAUSE", "RESUME", "SYNC"] as const;
 
-const doOperation = (op: (typeof OPERATIONS)[number], connectorId: string) => {
+type OperationType = (typeof OPERATIONS)[number];
+
+const doOperation = (op: OperationType, connectorId: string) => {
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
     logger
