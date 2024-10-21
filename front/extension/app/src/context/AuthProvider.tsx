@@ -1,8 +1,7 @@
+import { useAuthHook } from "@app/extension/app/src/hooks/useAuth";
 import type { StoredUser } from "@app/extension/app/src/lib/storage";
 import type { ReactNode } from "react";
 import React, { createContext, useContext } from "react";
-
-import { useAuthHook } from "../hooks/useAuth";
 
 type AuthContextType = {
   token: string | null;

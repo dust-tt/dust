@@ -1,8 +1,14 @@
 import { login, logout, refreshToken } from "@app/extension/app/src/lib/auth";
+import type {
+  StoredTokens,
+  StoredUser,
+} from "@app/extension/app/src/lib/storage";
+import {
+  getStoredTokens,
+  getStoredUser,
+  saveSelectedWorkspace,
+} from "@app/extension/app/src/lib/storage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-import type { StoredTokens, StoredUser } from "../lib/storage";
-import { getStoredTokens, saveSelectedWorkspace } from "../lib/storage";
 
 const log = console.error;
 
@@ -57,18 +63,26 @@ export const useAuthHook = () => {
   useEffect(() => {
     void (async () => {
       setIsLoading(true);
+
+      // Fetch tokens & user from storage.
       const storedTokens = await getStoredTokens();
-      if (!storedTokens) {
+      const savedUser = await getStoredUser();
+
+      if (!storedTokens || !savedUser) {
         // TODO(EXT): User facing error message if no tokens found.
         setIsLoading(false);
         return;
       }
       setTokens(storedTokens);
+      setUser(savedUser);
+
+      //  Token refresh.
       if (storedTokens.expiresAt > Date.now()) {
         scheduleTokenRefresh(storedTokens.expiresAt);
       } else {
         await handleRefreshToken();
       }
+
       setIsLoading(false);
     })();
 
