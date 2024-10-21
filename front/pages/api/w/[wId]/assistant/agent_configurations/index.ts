@@ -497,10 +497,10 @@ async function getAgentConfigurationGroupIdsFromActions(
   return uniq(
     [
       ...dsViews.map((view) =>
-        view.acl().aclEntries.map((entry) => entry.groupId)
+        view.acl(auth).aclEntries.map((entry) => entry.groupId)
       ),
       ...dustApps.map((app) =>
-        app.acl().aclEntries.map((entry) => entry.groupId)
+        app.acl(auth).aclEntries.map((entry) => entry.groupId)
       ),
     ].flat()
   );
