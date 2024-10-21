@@ -41,26 +41,29 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
         return JSON.parse(cacheVal) as Awaited<ReturnType<T>>;
       }
 
-      if (lockCaching) {
-        // if value not found, lock, recheck and set
-        // we avoid locking for the first read to allow parallel calls to redis if the value is set
-        await lock(key);
-        cacheVal = await redisCli.get(key);
-        if (cacheVal) {
-          return JSON.parse(cacheVal) as Awaited<ReturnType<T>>;
+      // specific try-finally to ensure unlock is called only after lock
+      try {
+        if (lockCaching) {
+          // if value not found, lock, recheck and set
+          // we avoid locking for the first read to allow parallel calls to redis if the value is set
+          await lock(key);
+          cacheVal = await redisCli.get(key);
+          if (cacheVal) {
+            return JSON.parse(cacheVal) as Awaited<ReturnType<T>>;
+          }
+        }
+
+        const result = await fn(...args);
+        await redisCli.set(key, JSON.stringify(result), {
+          PX: ttlMs,
+        });
+        return result;
+      } finally {
+        if (lockCaching) {
+          unlock(key);
         }
       }
-
-      const result = await fn(...args);
-      await redisCli.set(key, JSON.stringify(result), {
-        PX: ttlMs,
-      });
-      return result;
     } finally {
-      if (lockCaching) {
-        unlock(key);
-      }
-
       if (redisCli) {
         await redisCli.quit();
       }
