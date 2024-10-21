@@ -56,7 +56,7 @@ export const NewSearchInput = forwardRef<HTMLInputElement, NewSearchInputProps>(
           {value && onChange ? (
             <NewButton
               icon={XMarkIcon}
-              variant="ghost-secondary"
+              variant="ghost"
               size="xs"
               onClick={clearInputField}
             />
