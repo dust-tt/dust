@@ -469,7 +469,6 @@ export function useUpdateVault({ owner }: { owner: LightWorkspaceType }) {
           },
           body: JSON.stringify({
             name: newName,
-            isRestricted,
           }),
         })
       );

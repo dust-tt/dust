@@ -21,3 +21,19 @@ export const PatchVaultMembersRequestBodySchema = t.union([
   PostRestrictedVault,
   PostUnrestrictedVault,
 ]);
+
+export const ContentSchema = t.type({
+  dataSourceId: t.string,
+  parentsIn: t.array(t.string),
+});
+
+export const PatchVaultRequestBodySchema = t.type({
+  name: t.union([t.string, t.undefined]),
+  content: t.union([t.array(ContentSchema), t.undefined]),
+});
+
+export type PatchVaultRequestBodyType = t.TypeOf<
+  typeof PatchVaultRequestBodySchema
+>;
+
+export const PostDataSourceViewSchema = ContentSchema;
