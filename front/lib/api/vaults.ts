@@ -53,7 +53,7 @@ export async function softDeleteVaultAndLaunchScrubWorkflow(
 
   const groupHasKeys = await KeyResource.countActiveForGroups(
     auth,
-    vault.groups
+    vault.groups.filter((g) => !vault.isRegular() || !g.isGlobal())
   );
   if (groupHasKeys > 0) {
     return new Err(
