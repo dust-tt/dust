@@ -132,13 +132,19 @@ const config = {
   getOAuthMicrosoftClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_MICROSOFT_CLIENT_ID");
   },
+  getOAuthZendeskClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_ZENDESK_CLIENT_ID");
+  },
   // Text extraction.
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
   },
   // Status page.
-  getProviderStatusPageId: (): string => {
-    return EnvironmentConfig.getEnvVariable("PROVIDER_STATUS_PAGE_ID");
+  getStatusPageProvidersPageId: (): string => {
+    return EnvironmentConfig.getEnvVariable("STATUS_PAGE_PROVIDERS_PAGE_ID");
+  },
+  getStatusPageDustPageId: (): string => {
+    return EnvironmentConfig.getEnvVariable("STATUS_PAGE_DUST_PAGE_ID");
   },
   getStatusPageApiToken: (): string => {
     return EnvironmentConfig.getEnvVariable("STATUS_PAGE_API_TOKEN");

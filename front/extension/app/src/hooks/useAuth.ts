@@ -15,99 +15,22 @@ const log = console.error;
 export const useAuthHook = () => {
   const [tokens, setTokens] = useState<StoredTokens | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // User is authenticated if we have a valid access token.
-  const isTokenValid = useCallback(() => {
-    return !!(tokens?.accessToken && tokens.expiresAt > Date.now());
-  }, [tokens]);
-  const isAuthenticated = useMemo(() => isTokenValid(), [isTokenValid]);
+  const isAuthenticated = useMemo(
+    () => !!(tokens?.accessToken && tokens.expiresAt > Date.now()),
+    [tokens]
+  );
 
-  // Schedule a token refresh before the current token expires.
-  const scheduleTokenRefresh = useCallback((expiresAt: number) => {
-    if (refreshTimerRef.current) {
-      clearTimeout(refreshTimerRef.current);
-    }
-    const refreshTime = Math.max(expiresAt - Date.now() - 60000, 0);
-    refreshTimerRef.current = setTimeout(handleRefreshToken, refreshTime);
-  }, []);
-
-  // Send a refresh token message to the background script to get a new access token.
-  const handleRefreshToken = useCallback(async () => {
-    if (!tokens?.refreshToken) {
-      return;
-    }
-    try {
-      const response = await sendRefreshTokenMessage(tokens.refreshToken);
-      if (!response) {
-        log("Refresh token: empty response from background.");
-      }
-      const savedTokens = await saveTokens(response);
-      setTokens(savedTokens);
-      scheduleTokenRefresh(savedTokens.expiresAt);
-    } catch (error) {
-      log("Refresh token: unknown error.", error);
-      await handleLogout();
-    }
-  }, [tokens, scheduleTokenRefresh]);
-
-  // On mount, check if we have stored tokens and if they are still valid.
-  useEffect(() => {
-    const fetchTokens = async () => {
-      try {
-        const storedTokens = await getStoredTokens();
-        if (!storedTokens) {
-          setIsLoading(false);
-          return;
-        }
-        setTokens(storedTokens);
-        if (storedTokens.expiresAt > Date.now()) {
-          scheduleTokenRefresh(storedTokens.expiresAt);
-        } else {
-          await handleRefreshToken();
-        }
-      } catch (error) {
-        log("Unknown error retrieving tokens.", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    void fetchTokens();
-
-    return () => {
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current);
-      }
-    };
-  }, [handleRefreshToken, scheduleTokenRefresh]);
-
-  // Send an auth message to the background script to start the authentication flow.
-  const handleLogin = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await sendAuthMessage();
-      if (!response.accessToken) {
-        log("Login failed: No access token received.");
-        return;
-      }
-      const savedTokens = await saveTokens(response);
-      setTokens(savedTokens);
-      scheduleTokenRefresh(savedTokens.expiresAt);
-    } catch (error) {
-      log("Login failed: Unknown error.", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [scheduleTokenRefresh]);
-
-  // Send a logout message to the background script to clear the stored tokens.
+  // Logout sends a message to the background script to call the auth0 logout endpoint.
+  // It also clears the stored tokens in the extension.
   const handleLogout = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await sentLogoutMessage();
-      if (!response || !response.success === true) {
+      if (!response?.success) {
         log("Logout failed: No success response received.");
+        return;
       }
       await clearStoredTokens();
       setTokens(null);
@@ -120,6 +43,89 @@ export const useAuthHook = () => {
       setIsLoading(false);
     }
   }, []);
+
+  // Refresh token sends a message to the background script to call the auth0 refresh token endpoint.
+  // It updates the stored tokens with the new access token.
+  // If the refresh token is invalid, it will call handleLogout.
+  const handleRefreshToken = useCallback(async () => {
+    if (!tokens?.refreshToken) {
+      return;
+    }
+    try {
+      const response = await sendRefreshTokenMessage(tokens.refreshToken);
+      if (!response?.accessToken) {
+        log("Refresh token: No access token received.");
+        await handleLogout();
+        return;
+      }
+      const savedTokens = await saveTokens(response);
+      setTokens(savedTokens);
+    } catch (error) {
+      log("Refresh token: unknown error.", error);
+      await handleLogout();
+    }
+  }, [tokens, handleLogout]);
+
+  // Schedule token refresh sets a timeout to call handleRefreshToken before the token expires.
+  const scheduleTokenRefresh = useCallback(
+    (expiresAt: number) => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+      const refreshTime = Math.max(expiresAt - Date.now() - 60000, 0);
+      refreshTimerRef.current = setTimeout(handleRefreshToken, refreshTime);
+    },
+    [handleRefreshToken]
+  );
+
+  // Initialize auth checks if there are stored tokens and if they are still valid.
+  // It is called on component mount.
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        const storedTokens = await getStoredTokens();
+        if (storedTokens) {
+          setTokens(storedTokens);
+          if (storedTokens.expiresAt > Date.now()) {
+            scheduleTokenRefresh(storedTokens.expiresAt);
+          } else {
+            await handleRefreshToken();
+          }
+        }
+      } catch (error) {
+        log("Unknown error retrieving tokens.", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    void initializeAuth();
+
+    return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+    };
+  }, [handleRefreshToken, scheduleTokenRefresh]);
+
+  // Login sends a message to the background script to call the auth0 login endpoint.
+  // It saves the tokens in the extension and schedules a token refresh.
+  const handleLogin = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await sendAuthMessage();
+      if (response.accessToken) {
+        const savedTokens = await saveTokens(response);
+        setTokens(savedTokens);
+        scheduleTokenRefresh(savedTokens.expiresAt);
+      } else {
+        log("Login failed: No access token received.");
+      }
+    } catch (error) {
+      log("Login failed: Unknown error.", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [scheduleTokenRefresh]);
 
   return {
     token: tokens?.accessToken ?? null,

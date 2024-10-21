@@ -14,6 +14,7 @@ import { pipeline } from "stream/promises";
 import { extract } from "tar";
 
 import {
+  isBadCredentials,
   isGithubRequestErrorNotFound,
   isGithubRequestRedirectCountExceededError,
 } from "@connectors/connectors/github/lib/errors";
@@ -31,6 +32,7 @@ import {
 import { apiConfig } from "@connectors/lib/api/config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
+import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 
 const API_PAGE_SIZE = 100;
@@ -200,11 +202,11 @@ export async function getIssue(
   repoName: string,
   login: string,
   issueNumber: number,
-  loggerArgs: Record<string, string | number>
+  logger: Logger
 ): Promise<GithubIssue | null> {
-  const octokit = await getOctokit(connectionId);
-
   try {
+    const octokit = await getOctokit(connectionId);
+
     const issue = (
       await octokit.rest.issues.get({
         owner: login,
@@ -234,9 +236,10 @@ export async function getIssue(
     // by safely ignoring the issue and logging the error.
     if (
       isGithubRequestRedirectCountExceededError(err) ||
-      isGithubRequestErrorNotFound(err)
+      isGithubRequestErrorNotFound(err) ||
+      isBadCredentials(err)
     ) {
-      logger.info({ ...loggerArgs, err: err.message }, "Failed to get issue.");
+      logger.info({ err: err.message }, "Failed to get issue.");
 
       return null;
     }
@@ -640,15 +643,14 @@ export async function processRepository({
   repoLogin,
   repoName,
   repoId,
-  loggerArgs,
+  logger,
 }: {
   connectionId: string;
   repoLogin: string;
   repoName: string;
   repoId: number;
-  loggerArgs: Record<string, string | number>;
+  logger: Logger;
 }) {
-  const localLogger = logger.child(loggerArgs);
   const octokit = await getOctokit(connectionId);
 
   const { data } = await octokit.rest.repos.get({
@@ -657,10 +659,7 @@ export async function processRepository({
   });
   const defaultBranch = data.default_branch;
 
-  localLogger.info(
-    { defaultBranch, size: data.size },
-    "Retrieved repository info"
-  );
+  logger.info({ defaultBranch, size: data.size }, "Retrieved repository info");
 
   // `data.size` is the whole repo size in KB, we use it to filter repos > 10GB download size. There
   // is further filtering by file type + for "extracted size" per file to 1MB.
@@ -705,14 +704,14 @@ export async function processRepository({
   try {
     const tarPath = resolve(tempDir, "repo.tar.gz");
 
-    localLogger.info({ tempDir, tarPath }, "Starting download of tarball");
+    logger.info({ tempDir, tarPath }, "Starting download of tarball");
 
     // Save the tarball to the temp directory.
     await pipeline(tarballStream, createWriteStream(tarPath));
 
     const { size } = await fs.stat(tarPath);
 
-    localLogger.info({ tarSize: size, tarPath }, "Finished tarball download");
+    logger.info({ tarSize: size, tarPath }, "Finished tarball download");
 
     // Extract the tarball.
     await extract({
@@ -762,14 +761,11 @@ export async function processRepository({
         const isUnderLimit = size < 1024 * 1024;
 
         if (!isUnderLimit) {
-          localLogger.info(
-            { file, size },
-            "File is over the size limit, skipping."
-          );
+          logger.info({ file, size }, "File is over the size limit, skipping.");
           continue;
         }
       } catch (e) {
-        localLogger.info(
+        logger.info(
           { error: e, file },
           "Caught exception while stating file, skipping."
         );
@@ -851,7 +847,7 @@ export async function processRepository({
       directories,
     });
   } catch (e) {
-    localLogger.info(
+    logger.info(
       { error: e },
       "Caught exception while processing repository, cleaning up"
     );

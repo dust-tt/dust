@@ -1,4 +1,10 @@
-import { CheckIcon, PlusCircleIcon } from "@dust-tt/sparkle";
+import {
+  CheckIcon,
+  PlusCircleIcon,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+} from "@dust-tt/sparkle";
 import { Separator } from "@radix-ui/react-select";
 import type { Column } from "@tanstack/react-table";
 import * as React from "react";
@@ -13,11 +19,6 @@ import {
   PokeCommandList,
   PokeCommandSeparator,
 } from "@app/components/poke/shadcn/ui/command";
-import {
-  PokePopover,
-  PokePopoverContent,
-  PokePopoverTrigger,
-} from "@app/components/poke/shadcn/ui/popover";
 
 interface PokeDataTableFacetedFilterProps<TData, TValue> {
   column?: Column<TData, TValue>;
@@ -38,8 +39,8 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
   const selectedValues = new Set(column?.getFilterValue() as string[]);
 
   return (
-    <PokePopover>
-      <PokePopoverTrigger asChild>
+    <PopoverRoot>
+      <PopoverTrigger asChild>
         <PokeButton variant="outline" size="sm" className="h-8 border-dashed">
           <PlusCircleIcon className="mr-2 h-4 w-4" />
           {title}
@@ -77,11 +78,8 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
             </>
           )}
         </PokeButton>
-      </PokePopoverTrigger>
-      <PokePopoverContent
-        className="w-[200px] bg-structure-100 p-0"
-        align="start"
-      >
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] bg-structure-100 p-0" align="start">
         <PokeCommand>
           <PokeCommandList>
             <PokeCommandGroup>
@@ -142,7 +140,7 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
             )}
           </PokeCommandList>
         </PokeCommand>
-      </PokePopoverContent>
-    </PokePopover>
+      </PopoverContent>
+    </PopoverRoot>
   );
 }

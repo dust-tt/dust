@@ -12,6 +12,7 @@ export const CONNECTOR_PROVIDERS = [
   "microsoft",
   "webcrawler",
   "snowflake",
+  "zendesk",
 ] as const;
 
 export const MANAGED_DS_DELETABLE: ConnectorProvider[] = [
@@ -29,6 +30,7 @@ export const CONNECTOR_TYPE_TO_NAME: Record<ConnectorProvider, string> = {
   microsoft: "Microsoft",
   webcrawler: "Website",
   snowflake: "Snowflake",
+  zendesk: "Zendesk",
 };
 
 export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
@@ -49,6 +51,8 @@ export const CONNECTOR_TYPE_TO_MISMATCH_ERROR: Record<
   webcrawler: "You cannot change the URL. Please add a new Public URL instead.",
   snowflake:
     "You cannot change the Snowflake account. Please add a new Snowflake connection instead.",
+  zendesk:
+    "You cannot select another Zendesk Workspace.\nPlease contact us at support@dust.tt if you initially selected a wrong Workspace.",
 };
 
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];

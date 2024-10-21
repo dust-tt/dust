@@ -14,7 +14,6 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
   LightWorkspaceType,
-  VaultKind,
   VaultType,
 } from "@dust-tt/types";
 import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@dust-tt/types";
@@ -34,6 +33,7 @@ import {
   useVaults,
   useVaultsAsAdmin,
 } from "@app/lib/swr/vaults";
+import type { VaultSectionGroupType } from "@app/lib/vaults";
 import { getVaultIcon, getVaultName, groupVaults } from "@app/lib/vaults";
 
 interface VaultSideBarMenuProps {
@@ -83,48 +83,53 @@ export default function VaultSideBarMenu({
     return <></>;
   }
 
-  // Group by kind and sort.
+  // Group by section and sort.
   const sortedGroupedVaults = groupVaults(vaults)
-    // remove the empty system menu for users & builders
-    .filter(({ vaults, kind }) => kind !== "system" || vaults.length !== 0);
+    // Remove the empty system menu for users & builders.
+    .filter(
+      ({ section, vaults }) => section !== "system" || vaults.length !== 0
+    );
 
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
       <div className="flex w-full flex-col px-2">
         <Item.List>
-          {sortedGroupedVaults.map(({ kind, vaults }, index) => {
-            // Public vaults are created manually by us to hold public dust apps - other workspaces can't create them, so we do not show the section at all if there are no vaults.
-            if (kind === "public" && !vaults.length) {
+          {sortedGroupedVaults.map(({ section, vaults }, index) => {
+            // Public vaults are created manually by us to hold public dust apps - other workspaces
+            // can't create them, so we do not show the section at all if there are no vaults.
+            if (section === "public" && !vaults.length) {
               return null;
             }
 
-            if (kind === "regular" && !vaults.length && !isAdmin) {
+            if (section === "restricted" && !vaults.length && !isAdmin) {
               return null;
             }
 
-            const sectionLabel = getSectionLabel(kind);
+            const sectionDetails = getVaultSectionDetails(section);
 
             return (
               <Fragment key={`vault-section-${index}`}>
                 <div className="flex items-center justify-between pr-1">
                   <Item.SectionHeader
-                    label={sectionLabel}
+                    label={sectionDetails.label}
                     variant="secondary"
                   />
-                  {sectionLabel === "VAULTS" &&
+                  {sectionDetails.displayCreateVaultButton &&
                     isAdmin &&
                     setShowVaultCreationModal && (
                       <Button
                         className="mt-4"
                         size="xs"
                         variant="tertiary"
-                        label="Create Vault"
+                        label="New"
                         icon={PlusIcon}
                         onClick={() => setShowVaultCreationModal(true)}
                       />
                     )}
                 </div>
                 {renderVaultItems(
+                  // TODO(SPACE_INFRA): Rename global vaults to "Company Data" in db to preserve
+                  // alphabetical sorting.
                   vaults.toSorted(compareVaults),
                   vaultsAsUser,
                   owner
@@ -159,19 +164,26 @@ const renderVaultItems = (
   ));
 };
 
-const getSectionLabel = (kind: VaultKind) => {
-  switch (kind) {
-    case "global":
-      return "SHARED";
+type VaultSectionStructureType = {
+  label: string;
+  displayCreateVaultButton: boolean;
+};
 
-    case "regular":
-      return "VAULTS";
+const getVaultSectionDetails = (
+  kind: VaultSectionGroupType
+): VaultSectionStructureType => {
+  switch (kind) {
+    case "shared":
+      return { label: "Open", displayCreateVaultButton: true };
+
+    case "restricted":
+      return { label: "Restricted", displayCreateVaultButton: true };
 
     case "system":
-      return "";
+      return { label: "", displayCreateVaultButton: false };
 
     case "public":
-      return "PUBLIC";
+      return { label: "Public", displayCreateVaultButton: false };
 
     default:
       assertNever(kind);
@@ -184,7 +196,6 @@ const SYSTEM_VAULTS_ITEMS = [
   {
     label: "Connection Admin",
     visual: CloudArrowLeftRightIcon,
-    tailwindIconTextColor: "text-brand",
     category: "managed" as DataSourceViewCategory,
   },
 ];
@@ -206,7 +217,6 @@ const SystemVaultMenu = ({
           owner={owner}
           vault={vault}
           visual={item.visual}
-          tailwindIconTextColor={item.tailwindIconTextColor}
         />
       ))}
     </Tree>
@@ -221,14 +231,12 @@ const SystemVaultItem = ({
   owner,
   vault,
   visual,
-  tailwindIconTextColor,
 }: {
   category: Exclude<DataSourceViewCategory, "apps">;
   label: string;
   owner: LightWorkspaceType;
   vault: VaultType;
   visual: IconType;
-  tailwindIconTextColor: string;
 }) => {
   const router = useRouter();
 
@@ -263,7 +271,6 @@ const SystemVaultItem = ({
       visual={visual}
       size="md"
       areActionsFading={false}
-      tailwindIconTextColor={tailwindIconTextColor}
     >
       {isExpanded && (
         <Tree isLoading={isVaultDataSourceViewsLoading}>
@@ -337,7 +344,7 @@ const VaultMenuItem = ({
       isSelected={router.asPath === vaultPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={getVaultIcon(vault)}
-      tailwindIconTextColor={isMember ? "text-success-500" : "text-warning-400"}
+      tailwindIconTextColor={isMember ? undefined : "text-warning-400"}
       size="md"
       areActionsFading={false}
     >

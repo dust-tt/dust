@@ -175,7 +175,7 @@ pub trait Store {
         data_source_id: &str,
         document_id: &str,
     ) -> Result<()>;
-    async fn delete_data_source(&self, project: &Project, data_source_id: &str) -> Result<()>;
+    async fn delete_data_source(&self, project: &Project, data_source_id: &str) -> Result<u64>;
     // Databases
     async fn upsert_database(
         &self,

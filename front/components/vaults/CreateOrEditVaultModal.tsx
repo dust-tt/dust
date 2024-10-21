@@ -102,6 +102,7 @@ export function CreateOrEditVaultModal({
     }
   }, [isOpen, vaultInfo]);
 
+
   const handleClose = useCallback(() => {
     // Call the original onClose function.
     onClose();
@@ -144,7 +145,7 @@ export function CreateOrEditVaultModal({
         createdVault = await doCreate({
           name: vaultName,
           isRestricted: true,
-          memberIds: selectedMembers.map((vm) => vm.sId), // must be a string[] when isRestricted is true
+          memberIds: selectedMembers.map((vm) => vm.sId),
         });
       } else {
         createdVault = await doCreate({
@@ -195,7 +196,7 @@ export function CreateOrEditVaultModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Space Settings"
+      title={vault ? `Edit ${vault.name}` : "Create a Vault"}
       saveLabel={vault ? "Save" : "Create"}
       variant="side-md"
       hasChanged={
@@ -211,15 +212,17 @@ export function CreateOrEditVaultModal({
           <div className="mb-4 flex w-full flex-col gap-y-2 pt-2">
             <Page.SectionHeader title="Name" />
             <Input
-              placeholder="Marketing"
+              placeholder="Vault's name"
               value={vaultName}
               name="vaultName"
               onChange={(e) => setVaultName(e.target.value)}
             />
-            <div className="flex gap-1 text-xs text-element-700">
-              <Icon visual={ExclamationCircleStrokeIcon} size="xs" />
-              <span>Space name must be unique</span>
-            </div>
+            {!vault && (
+              <div className="flex gap-1 text-xs text-element-700">
+                <Icon visual={ExclamationCircleStrokeIcon} size="xs" />
+                <span>Space name must be unique</span>
+              </div>
+            )}
           </div>
           <div className="flex w-full grow flex-col gap-y-2 overflow-y-hidden border-t pt-2">
             <div className="flex w-full items-center justify-between">
@@ -233,10 +236,10 @@ export function CreateOrEditVaultModal({
               {isRestricted ? (
                 <p>Restricted access is active.</p>
               ) : (
-                <>
-                  <p>Restricted access is disabled.</p>
-                  <p>The space is accessible to everyone in the workspace.</p>
-                </>
+                <p>
+                  Restricted access is disabled. The space is accessible to
+                  everyone in the workspace.
+                </p>
               )}
             </div>
             <MembersSearchAndList
@@ -248,6 +251,7 @@ export function CreateOrEditVaultModal({
           </div>
           {isAdmin && vault && vault.kind === "regular" && (
             <>
+              <Page.Separator />
               <ConfirmDeleteVaultDialog
                 vault={vault}
                 handleDelete={onDelete}
@@ -255,10 +259,10 @@ export function CreateOrEditVaultModal({
                 isDeleting={isDeleting}
                 onClose={() => setShowDeleteConfirmDialog(false)}
               />
-              <div className="flex w-full justify-center">
+              <div className="flex w-full justify-end">
                 <Button
-                  size="xs"
-                  label="Delete the Space"
+                  size="sm"
+                  label="Delete Vault"
                   variant="primaryWarning"
                   className="mr-2"
                   onClick={() => setShowDeleteConfirmDialog(true)}
@@ -280,11 +284,11 @@ interface MembersSearchAndListProps {
 }
 
 function MembersSearchAndList({
-  isRestricted,
-  onMembersUpdated,
-  owner,
-  selectedMembers,
-}: MembersSearchAndListProps) {
+                                isRestricted,
+                                onMembersUpdated,
+                                owner,
+                                selectedMembers,
+                              }: MembersSearchAndListProps) {
   const sendNotifications = useContext(SendNotificationsContext);
 
   const getTableColumns = useCallback(() => {
