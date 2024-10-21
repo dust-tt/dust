@@ -250,7 +250,6 @@ export function CreateOrEditVaultModal({
           </div>
           {isAdmin && vault && vault.kind === "regular" && (
             <>
-              <Page.Separator />
               <ConfirmDeleteVaultDialog
                 vault={vault}
                 handleDelete={onDelete}

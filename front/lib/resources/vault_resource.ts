@@ -18,7 +18,6 @@ import type {
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -29,7 +28,6 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import { UserResource } from "@app/lib/resources/user_resource";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

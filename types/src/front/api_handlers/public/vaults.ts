@@ -7,7 +7,7 @@ export const ContentSchema = t.type({
   parentsIn: t.array(t.string),
 });
 
-export const PostDataSourceViewSchema = ContentSchema
+export const PostDataSourceViewSchema = ContentSchema;
 
 export type PostDataSourceViewType = t.TypeOf<typeof PostDataSourceViewSchema>;
 
