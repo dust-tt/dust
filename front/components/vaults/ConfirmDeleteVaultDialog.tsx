@@ -22,9 +22,9 @@ export function ConfirmDeleteVaultDialog({
 }: ConfirmDeleteVaultDialogProps) {
   const message =
     dataSourceUsage === undefined
-      ? `Are you sure you want to permanently delete vault ${getVaultName(vault)}?`
+      ? `Are you sure you want to permanently delete space ${getVaultName(vault)}?`
       : dataSourceUsage > 0
-        ? `${dataSourceUsage} assistants currently use vault ${getVaultName(vault)}. Are you sure you want to delete?`
+        ? `${dataSourceUsage} assistants currently use space ${getVaultName(vault)}. Are you sure you want to delete?`
         : `No assistants are using this ${getVaultName(vault)}. Confirm permanent deletion?`;
 
   return (

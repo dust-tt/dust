@@ -137,7 +137,7 @@ export default function VaultManagedDataSourcesViewsModal({
       }}
       hasChanged={hasChanged}
       variant="side-md"
-      title={`Add connected data to vault "${vault.name}"`}
+      title={`Add connected data to space "${vault.name}"`}
     >
       <div className="w-full pt-12">
         <div className="overflow-x-auto">

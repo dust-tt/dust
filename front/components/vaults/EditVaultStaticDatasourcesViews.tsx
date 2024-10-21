@@ -99,8 +99,8 @@ export function EditVaultStaticDatasourcesViews({
         <Tooltip
           label={
             vault.kind === "global"
-              ? `Only builders of the workspace can add a ${category} in the Company data Vault.`
-              : `Only members of the vault can add a ${category}.`
+              ? `Only builders of the workspace can add a ${category} in the Company data space.`
+              : `Only members of the space can add a ${category}.`
           }
           side="top"
           trigger={

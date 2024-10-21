@@ -97,13 +97,13 @@ export function VaultLayout({
           <Dialog
             alertDialog
             isOpen={isLimitReached && showVaultCreationModal}
-            title="You can't create more vaults."
+            title="You can't create more spaces."
             onValidate={() => setShowVaultCreationModal(false)}
           >
             <div>
               {isEnterprise
-                ? "We're going to make changes to data permissions vaults soon and are limiting the creation of vaults for that reason. Reach out to us to learn more."
-                : "The maximum number of vaults for this workspace has been reached. Please reach out at support@dust.tt to learn more."}
+                ? "We're going to make changes to data permissions spaces soon and are limiting the creation of spaces for that reason. Reach out to us to learn more."
+                : "The maximum number of spaces for this workspace has been reached. Please reach out at support@dust.tt to learn more."}
             </div>
           </Dialog>
         )}

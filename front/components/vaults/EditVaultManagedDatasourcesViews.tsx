@@ -172,7 +172,7 @@ export function EditVaultManagedDataSourcesViews({
               return rawError.error.message;
             }
           } catch (e) {
-            return `An Unknown error ${e} occurred while adding data to vault.`;
+            return `An Unknown error ${e} occurred while adding data to space.`;
           }
           return null;
         }
@@ -184,7 +184,7 @@ export function EditVaultManagedDataSourcesViews({
     );
     if (errors.length) {
       sendNotification({
-        title: "Error Adding Data to Vault",
+        title: "Error Adding Data to Space",
         type: "error",
         description: errors[0],
       });
@@ -192,7 +192,7 @@ export function EditVaultManagedDataSourcesViews({
       sendNotification({
         title: "Data Successfully Updated",
         type: "success",
-        description: "All data sources were successfully updated in the Vault.",
+        description: "All data sources were successfully updated in the Space.",
       });
     }
     await mutateVaultDataSourceViews();
