@@ -21,13 +21,15 @@ interface SearchMembersPopoverProps {
   onMembersUpdated: (members: UserType[]) => void;
 }
 
+const DefaultPagination = { pageIndex: 0, pageSize: 25 };
+
 export function SearchMembersPopover({
   owner,
   selectedMembers,
   onMembersUpdated,
 }: SearchMembersPopoverProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 25 });
+  const [pagination, setPagination] = useState(DefaultPagination);
   const [allMembers, setAllMembers] = useState<UserType[]>([]);
 
   const { members, isLoading, totalMembersCount } = useSearchMembers({
@@ -51,9 +53,9 @@ export function SearchMembersPopover({
 
   useEffect(() => {
     // reset allMembers when search term changes
-    setAllMembers([]);
-    setPagination({ pageIndex: 0, pageSize: 25 });
-  }, [searchTerm]);
+    setAllMembers(members);
+    setPagination(DefaultPagination);
+  }, [members, searchTerm]);
 
   const filteredMembers = useMemo(() => {
     return allMembers.filter(
