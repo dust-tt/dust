@@ -222,7 +222,7 @@ export function CreateOrEditVaultModal({
             {!vault && (
               <div className="flex gap-1 text-xs text-element-700">
                 <Icon visual={InformationCircleIcon} size="xs" />
-                <span>Vault name must be unique</span>
+                <span>Space name must be unique</span>
               </div>
             )}
           </div>
