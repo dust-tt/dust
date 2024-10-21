@@ -133,15 +133,29 @@ export function AssistantDetailsButtonBar({
 
   return (
     <div className="flex flex-row items-center gap-2 px-1.5">
-      <Button
-        icon={agentConfiguration.userFavorite ? StarIcon : StarStrokeIcon}
-        label={`${agentConfiguration.userFavorite ? "Remove from" : "Add to"} favorites`}
-        labelVisible={false}
-        size="sm"
-        variant="tertiary"
-        hasMagnifying={false}
-        onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
-      />
+      <div className="group">
+        <Button
+          icon={agentConfiguration.userFavorite ? StarIcon : StarStrokeIcon}
+          label={`${agentConfiguration.userFavorite ? "Remove from" : "Add to"} favorites`}
+          labelVisible={false}
+          size="sm"
+          className="group-hover:hidden"
+          variant="tertiary"
+          hasMagnifying={false}
+          onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
+        />
+
+        <Button
+          icon={agentConfiguration.userFavorite ? StarStrokeIcon : StarIcon}
+          label={`${agentConfiguration.userFavorite ? "Remove from" : "Add to"} favorites`}
+          labelVisible={false}
+          size="sm"
+          className="hidden group-hover:block"
+          variant="tertiary"
+          hasMagnifying={false}
+          onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
+        />
+      </div>
 
       <Separator orientation="vertical" className="h-6" />
 

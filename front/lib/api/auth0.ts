@@ -6,11 +6,6 @@ import config from "@app/lib/api/config";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 
-const AUTH0_DOMAIN = config.getAuth0TenantUrl();
-const AUTH0_AUDIENCE = `https://${AUTH0_DOMAIN}/api/v2/`;
-const AUTH0_VERIFY_TOKEN = `https://${AUTH0_DOMAIN}/.well-known/jwks.json`;
-const AUTH0_ISSUER = `https://${AUTH0_DOMAIN}/`;
-
 let auth0ManagemementClient: ManagementClient | null = null;
 
 export function getAuth0ManagemementClient(): ManagementClient {
@@ -56,6 +51,11 @@ async function getSigningKey(jwksUri: string, kid: string): Promise<string> {
  * Not meant to be exported, use `getUserFromAuth0Token` instead.
  */
 async function verifyAuth0Token(accessToken: string): Promise<jwt.JwtPayload> {
+  const auth0Domain = config.getAuth0TenantUrl();
+  const audience = `https://${auth0Domain}/api/v2/`;
+  const verify = `https://${auth0Domain}/.well-known/jwks.json`;
+  const issuer = `https://${auth0Domain}/`;
+
   return new Promise((resolve, reject) => {
     jwt.verify(
       accessToken,
@@ -64,10 +64,7 @@ async function verifyAuth0Token(accessToken: string): Promise<jwt.JwtPayload> {
           if (!header.kid) {
             throw new Error("No 'kid' in token header");
           }
-          const signingKey = await getSigningKey(
-            AUTH0_VERIFY_TOKEN,
-            header.kid
-          );
+          const signingKey = await getSigningKey(verify, header.kid);
           callback(null, signingKey);
         } catch (err) {
           callback(err as Error);
@@ -75,8 +72,8 @@ async function verifyAuth0Token(accessToken: string): Promise<jwt.JwtPayload> {
       },
       {
         algorithms: ["RS256"],
-        audience: AUTH0_AUDIENCE,
-        issuer: AUTH0_ISSUER,
+        audience: audience,
+        issuer: issuer,
       },
       (err, decoded) => {
         if (err) {

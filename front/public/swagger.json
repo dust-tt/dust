@@ -2804,7 +2804,7 @@
             "in": "query",
             "name": "start",
             "required": true,
-            "description": "The start date in YYYY-MM format",
+            "description": "The start date in YYYY-MM or YYYY-MM-DD format",
             "schema": {
               "type": "string"
             }
@@ -2813,7 +2813,7 @@
             "in": "query",
             "name": "end",
             "required": false,
-            "description": "The end date in YYYY-MM format (required when mode is 'range')",
+            "description": "The end date in YYYY-MM or YYYY-MM-DD format (required when mode is 'range')",
             "schema": {
               "type": "string"
             }

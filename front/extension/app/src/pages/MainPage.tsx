@@ -3,21 +3,33 @@ import { FixedAssistantInputBar } from "@app/components/assistant/conversation/i
 import { useAuth } from "@app/extension/app/src/context/AuthProvider";
 import { Page } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
+import { useNavigate } from "react-router-dom";
 
 export const MainPage = () => {
-  const { token } = useAuth();
-  if (!token) {
-    return <div>Not logged in!!!</div>;
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
+  if (!isAuthenticated || !user) {
+    navigate("/login");
+    return;
+  }
+
+  const workspace = user.workspaces.find(
+    (w) => w.sId === user.selectedWorkspace
+  );
+
+  if (!workspace) {
+    navigate("/login");
+    return;
   }
 
   const owner: WorkspaceType = {
-    id: 1,
-    sId: "7ea8c3d99c",
-    name: "test",
-    role: "user",
-    segmentation: null,
-    whiteListedProviders: null,
-    defaultEmbeddingProvider: null,
+    id: workspace.id,
+    sId: workspace.sId,
+    name: workspace.name,
+    role: workspace.role,
+    segmentation: workspace.segmentation,
+    whiteListedProviders: workspace.whiteListedProviders,
+    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
     flags: [],
   };
 
