@@ -165,9 +165,9 @@ module.exports = {
         "move-square": "move-square 3s ease-out infinite",
       },
       colors: {
-        brand: {
-          DEFAULT: colors.emerald[500],
-          dark: colors.emerald[500],
+        separator: {
+          DEFAULT: colors.slate[200],
+          dark: colors.slate[800],
         },
         border: {
           DEFAULT: { DEFAULT: colors.slate[100], dark: colors.slate[900] },
@@ -178,32 +178,33 @@ module.exports = {
             dark: colors.slate[600],
           },
         },
-        separator: { DEFAULT: colors.slate[200], dark: colors.slate[800] },
-        ring: { DEFAULT: colors.blue[300], dark: colors.slate[700] },
-        background: { DEFAULT: colors.white, dark: colors.slate[950] },
-        foreground: { DEFAULT: colors.slate[950], dark: colors.white },
+        background: {
+          DEFAULT: colors.white,
+          dark: colors.slate[950],
+        },
+        foreground: {
+          DEFAULT: colors.slate[950],
+          dark: colors.white,
+        },
         muted: {
-          DEFAULT: { DEFAULT: colors.slate[50], dark: colors.slate[900] },
-          foreground: {
-            DEFAULT: colors.slate[500],
-            dark: colors.slate[500],
-          },
-          background: {
-            DEFAULT: colors.slate[50],
-            dark: colors.slate[900],
-          },
+          DEFAULT: colors.slate[50],
+          dark: colors.slate[900],
+        },
+        "muted-foreground": {
+          DEFAULT: colors.slate[500],
+          dark: colors.slate[500],
+        },
+        brand: {
+          DEFAULT: colors.emerald[500],
+          dark: colors.emerald[500],
         },
         highlight: {
-          DEFAULT: colors.blue[500],
-          light: { DEFAULT: colors.blue[400], dark: colors.blue[600] },
-          dark: { DEFAULT: colors.blue[600], dark: colors.blue[400] },
-          muted: { DEFAULT: colors.blue[300], dark: colors.blue[700] },
           950: { DEFAULT: colors.blue[950], dark: colors.blue[50] },
           900: { DEFAULT: colors.blue[900], dark: colors.blue[100] },
           800: { DEFAULT: colors.blue[800], dark: colors.blue[200] },
           700: { DEFAULT: colors.blue[700], dark: colors.blue[300] },
           600: { DEFAULT: colors.blue[600], dark: colors.blue[400] },
-          500: colors.blue[500],
+          500: { DEFAULT: colors.blue[500], dark: colors.blue[500] },
           400: { DEFAULT: colors.blue[400], dark: colors.blue[600] },
           300: { DEFAULT: colors.blue[300], dark: colors.blue[700] },
           200: { DEFAULT: colors.blue[200], dark: colors.blue[800] },
