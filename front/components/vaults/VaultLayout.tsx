@@ -67,13 +67,13 @@ export function VaultLayout({
 
   const closeVaultCreationModal = useCallback(() => {
     setVaultCreationModalState((prev) => ({ ...prev, isOpen: false }));
-  }, [setVaultCreationModalState]);
+  }, []);
 
   const openVaultCreationModal = useCallback(
     ({ defaultRestricted }: { defaultRestricted: boolean }) => {
       setVaultCreationModalState({ defaultRestricted, isOpen: true });
     },
-    [setVaultCreationModalState]
+    []
   );
 
   return (
