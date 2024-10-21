@@ -203,9 +203,7 @@ impl Provider for GoogleDriveConnectionProvider {
             ProviderHttpRequestError::RequestFailed {
                 status, message, ..
             } if *status == 400 => {
-                let is_revoked = message.contains("invalid_grant")
-                    && (message.contains("Token has been expired or revoked")
-                        || message.contains("Bad Request"));
+                let is_revoked = message.contains("invalid_grant");
                 info!(message, is_revoked, "Google drive 403 error");
                 if is_revoked {
                     ProviderError::TokenRevokedError
