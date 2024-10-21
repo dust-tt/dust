@@ -369,6 +369,7 @@ function AdvancedSettings({
 
   return (
     <Popover
+      popoverTriggerAsChild
       trigger={
         <Button
           label="Advanced settings"
