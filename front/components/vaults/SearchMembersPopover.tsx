@@ -70,7 +70,7 @@ export function SearchMembersPopover({
   }, [allMembers, selectedMembers]);
 
   const addMember = useCallback(
-    (member: UserType) => {
+    (member: UserType) => () => {
       onMembersUpdated([...selectedMembers, member]);
     },
     [selectedMembers, onMembersUpdated]
@@ -103,7 +103,7 @@ export function SearchMembersPopover({
                 <div
                   key={member.sId}
                   className="flex cursor-pointer flex-col items-start hover:opacity-80"
-                  onClick={() => addMember(member)}
+                  onClick={addMember(member)}
                 >
                   <div className="my-1 flex items-center gap-2">
                     <Avatar size="sm" visual={member.image || ""} />
