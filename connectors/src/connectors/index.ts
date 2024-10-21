@@ -58,7 +58,7 @@ export function getConnectorManager({
     case "snowflake":
       return new SnowflakeConnectorManager(connectorId);
     case "zendesk":
-      throw new ZendeskConnectorManager(connectorId);
+      return new ZendeskConnectorManager(connectorId);
     default:
       assertNever(connectorProvider);
   }
