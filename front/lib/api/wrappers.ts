@@ -148,6 +148,7 @@ export function withSessionAuthenticationForWorkspace<T>(
  *
  * opts.allowUserOutsideCurrentWorkspace allows the handler to be called even if the key is not a
  * associated with the workspace. This is useful for routes that share data across workspaces (eg apps
+ * runs).
  *
  * @param handler
  * @param opts

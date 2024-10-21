@@ -855,7 +855,9 @@ export async function getBearerToken(
     });
   }
 
-  const parse = req.headers.authorization.match(/^Bearer\s+(.+)$/i);
+  const parse = req.headers.authorization.match(
+    /^Bearer\s+([A-Za-z0-9-._~+/]+=*)$/i
+  );
   if (!parse || !parse[1]) {
     return new Err({
       status_code: 401,
