@@ -14,11 +14,7 @@ export const useAuthHook = () => {
   );
 
   const [user, setUser] = useState<StoredUser | null>(null);
-  const isUserSetup = useMemo(
-    () => !!(user && user.userId && user.selectedWorkspace),
-    [user]
-  );
-
+  const isUserSetup = !!(user && user.userId && user.selectedWorkspace);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
