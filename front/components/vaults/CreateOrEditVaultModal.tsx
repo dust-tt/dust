@@ -122,7 +122,7 @@ export function CreateOrEditVaultModal({
   const onSave = useCallback(async () => {
     setIsSaving(true);
 
-    if (selectedMembers.length > 0 && vault) {
+    if (vault) {
       if (isRestricted) {
         await doUpdate(vault, {
           isRestricted: true,
