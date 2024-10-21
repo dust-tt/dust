@@ -83,7 +83,7 @@ export function SearchMembersPopover({
         <PopoverTrigger>
           <Button label="Add members" icon={UserIcon} size="sm" />
         </PopoverTrigger>
-        <PopoverContent className="p-4">
+        <PopoverContent className="p-4 mr-2">
           <Searchbar
             name="search"
             placeholder="Search members (email)"
