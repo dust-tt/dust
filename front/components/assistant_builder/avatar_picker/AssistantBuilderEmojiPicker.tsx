@@ -80,6 +80,7 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
       />
       <div className="flex flex-row gap-2">
         <Popover
+          popoverTriggerAsChild
           fullWidth
           trigger={
             <Button
