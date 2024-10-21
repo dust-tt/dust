@@ -134,6 +134,11 @@ export async function hardDeleteVault(
   await frontSequelize.transaction(async (t) => {
     // Delete all vaults groups.
     for (const group of vault.groups) {
+      // Skip deleting global groups for regular vaults.
+      if (vault.isRegular() && group.isGlobal()) {
+        continue;
+      }
+
       const res = await group.delete(auth, { transaction: t });
       if (res.isErr()) {
         throw res.error;
