@@ -434,7 +434,10 @@ export class CoreAPI {
         if (!hasRunId) {
           // once the stream is entirely consumed, if we haven't received a run id, reject the promise
           setImmediate(() => {
-            logger.error({}, "No run id received");
+            logger.error(
+              { projectId, runType, specificationHash },
+              "No run id received"
+            );
             rejectDustRunIdPromise(new Error("No run id received"));
           });
         }
