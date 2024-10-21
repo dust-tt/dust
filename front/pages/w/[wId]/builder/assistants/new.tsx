@@ -200,7 +200,7 @@ export default function CreateAssistant({
         }
         agentConfigurationId={null}
         isAdmin={isAdmin}
-        defaultIsEdited={false}
+        defaultIsEdited={assistantTemplate !== null}
         baseUrl={baseUrl}
         defaultTemplate={assistantTemplate}
       />
