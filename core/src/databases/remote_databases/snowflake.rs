@@ -46,10 +46,8 @@ struct SnowflakeQueryPlanEntry {
 
 pub const MAX_QUERY_RESULT_SIZE_BYTES: usize = 8 * 1024 * 1024; // 8MB
 
-// TODO(SNOWFLAKE) make sure we're not missing any
 pub const FORBIDDEN_OPERATIONS: [&str; 3] = ["UPDATE", "DELETE", "INSERT"];
 
-// TODO(SNOWFLAKE) revisit
 pub const GET_SESSION_MAX_TRIES: usize = 3;
 
 impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
@@ -69,9 +67,6 @@ impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
         Ok(TableSchemaColumn {
             name: col.name,
             value_type: col_type,
-            // TODO(SNOWFLAKE): decide if we want possible values for remote DBs.
-            // We could potentially look at rows count and decide based on that.
-            // Or have a cache specifically for this.
             possible_values: None,
         })
     }
@@ -275,7 +270,6 @@ impl SnowflakeRemoteDatabase {
             }?;
         }
 
-        // TODO(SNOWFLAKE): decide if we want to infer query result schema for remote DBs.
         let schema = TableSchema::empty();
 
         Ok((all_rows, schema))
@@ -368,7 +362,6 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         self.execute_query(&session, query).await
     }
 
-    // TODO(SNOWFLAKE): TBD caching
     async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<TableSchema>> {
         // Construct a "DESCRIBE TABLE" query for each opaque table ID.
         let queries: Vec<String> = opaque_ids

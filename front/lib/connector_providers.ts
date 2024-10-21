@@ -174,6 +174,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   snowflake: {
     name: "Snowflake",
     connectorProvider: "snowflake",
+    // TODO(SNOWFLAKE): built
     status: "rolling_out",
     hide: true,
     description: "Query a Snowflake database.",
@@ -181,7 +182,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     logoComponent: SnowflakeLogo,
     isNested: true,
     isSearchEnabled: false,
-    guideLink: "https://docs.dust.tt/", // TODO(SNOWFLAKE): Add a doc for snowflake and point.
+    guideLink: "https://docs.dust.tt/docs/snowflake-connection",
     selectLabel: "Select tables",
     rollingOutFlag: "snowflake_connector_feature",
   },

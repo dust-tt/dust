@@ -92,7 +92,6 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       throw launchRes.error;
     }
 
-    // TODO(SNOWFLAKE): Launch Sync Workflow.
     return new Ok(connector.id.toString());
   }
 
