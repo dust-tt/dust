@@ -4,11 +4,9 @@ import type {
   VaultType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import {
-  DATA_SOURCE_VIEW_CATEGORIES,
-  PatchVaultRequestBodySchema,
-} from "@dust-tt/types";
+import { DATA_SOURCE_VIEW_CATEGORIES } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { uniq } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -38,6 +36,16 @@ export type GetVaultResponseBody = {
 export type PatchVaultResponseBody = {
   vault: VaultType;
 };
+
+const ContentSchema = t.type({
+  dataSourceId: t.string,
+  parentsIn: t.array(t.string),
+});
+
+export const PatchVaultRequestBodySchema = t.type({
+  name: t.union([t.string, t.undefined]),
+  content: t.union([t.array(ContentSchema), t.undefined]),
+});
 
 async function handler(
   req: NextApiRequest,

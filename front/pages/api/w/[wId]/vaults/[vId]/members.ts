@@ -71,9 +71,8 @@ async function handler(
         });
       }
 
-      const updateRes = await updateVaultPermissions(
+      const updateRes = await vault.updatePermissions(
         auth,
-        vault,
         bodyValidation.right
       );
       if (updateRes.isErr()) {
