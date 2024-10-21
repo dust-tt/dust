@@ -8,11 +8,14 @@ import {
 } from "@dust-tt/sparkle";
 import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
 import { EMBEDDING_PROVIDER_IDS } from "@dust-tt/types";
-import { MODEL_PROVIDER_IDS, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
+import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import { isEqual } from "lodash";
 import { useCallback, useContext, useMemo, useState } from "react";
 
-import { MODEL_PROVIDER_LOGOS } from "@app/components/providers/types";
+import {
+  MODEL_PROVIDER_LOGOS,
+  USED_MODEL_CONFIGS,
+} from "@app/components/providers/types";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 interface ProviderManagementModalProps {
@@ -31,7 +34,7 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
 };
 
 const modelProviders: Record<ModelProviderIdType, string[]> =
-  SUPPORTED_MODEL_CONFIGS.reduce(
+  USED_MODEL_CONFIGS.reduce(
     (acc, model) => {
       if (!model.isLegacy) {
         acc[model.providerId] = acc[model.providerId] || [];
