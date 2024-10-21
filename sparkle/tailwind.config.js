@@ -170,8 +170,12 @@ module.exports = {
           dark: colors.slate[800],
         },
         border: {
-          DEFAULT: colors.slate[100],
-          dark: colors.slate[900],
+          DEFAULT: { DEFAULT: colors.slate[100], dark: colors.slate[900] },
+          dark: { DEFAULT: colors.slate[200], dark: colors.slate[800] },
+          focus: {
+            DEFAULT: colors.slate[400],
+            dark: colors.slate[600],
+          },
         },
         "border-dark": {
           DEFAULT: colors.slate[200],
@@ -189,6 +193,7 @@ module.exports = {
           DEFAULT: colors.slate[50],
           dark: colors.slate[900],
         },
+        ring: { DEFAULT: colors.blue[300], dark: colors.slate[700] },
         "muted-foreground": {
           DEFAULT: colors.slate[500],
           dark: colors.slate[500],
@@ -198,6 +203,7 @@ module.exports = {
           dark: colors.emerald[500],
         },
         highlight: {
+          DEFAULT: colors.blue[500],
           950: { DEFAULT: colors.blue[950], dark: colors.blue[50] },
           900: { DEFAULT: colors.blue[900], dark: colors.blue[100] },
           800: { DEFAULT: colors.blue[800], dark: colors.blue[200] },
@@ -211,6 +217,8 @@ module.exports = {
           50: { DEFAULT: colors.blue[50], dark: colors.blue[950] },
         },
         primary: {
+          DEFAULT: colors.slate[800],
+          muted: { DEFAULT: colors.slate[400], dark: colors.slate[600] },
           950: { DEFAULT: colors.blue[950], dark: colors.blue[50] },
           900: { DEFAULT: colors.blue[900], dark: colors.blue[100] },
           800: { DEFAULT: colors.blue[800], dark: colors.blue[200] },
@@ -237,6 +245,7 @@ module.exports = {
           50: { DEFAULT: colors.blue[50], dark: colors.blue[950] },
         },
         warning: {
+          DEFAULT: colors.red[500],
           500: { DEFAULT: colors.red[500], dark: colors.red[500] },
           400: { DEFAULT: colors.red[400], dark: colors.red[600] },
           200: { DEFAULT: colors.red[200], dark: colors.red[800] },
@@ -263,6 +272,7 @@ module.exports = {
           50: { DEFAULT: colors.red[50], dark: colors.red[950] },
         },
         success: {
+          DEFAULT: colors.emerald[500],
           500: { DEFAULT: colors.emerald[500], dark: colors.emerald[500] },
           400: { DEFAULT: colors.emerald[400], dark: colors.emerald[600] },
           200: { DEFAULT: colors.emerald[200], dark: colors.emerald[800] },
