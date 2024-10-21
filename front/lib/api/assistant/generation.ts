@@ -469,7 +469,7 @@ export async function constructPromptMultiActions(
   }
 
   additionalInstructions +=
-    "If asked to generate a formula in latex, put the formula between $$.";
+    "When generating latex formulas, solely rely on the $$ escape sequence, single $ latex sequence are not supported.\n";
 
   let prompt = `${context}\n${instructions}`;
   if (additionalInstructions) {
