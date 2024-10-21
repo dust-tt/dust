@@ -2,7 +2,7 @@ import * as t from "io-ts";
 
 import { callAction } from "@app/lib/actions/helpers";
 import type { Authenticator } from "@app/lib/auth";
-import { getTrackableDataSources } from "@app/lib/documents_post_process_hooks/hooks/document_tracker/lib";
+import { getTrackableDataSourceViews } from "@app/lib/documents_post_process_hooks/hooks/document_tracker/lib";
 import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 
 // Part of the new doc tracker pipeline, performs the retrieval (semantic search) step
@@ -16,8 +16,17 @@ export async function callDocTrackerRetrievalAction(
   const action = DustProdActionRegistry["doc-tracker-retrieval"];
   const config = cloneBaseConfig(action.config);
 
-  config.SEMANTIC_SEARCH.data_sources = await getTrackableDataSources(
-    auth.getNonNullableWorkspace()
+  const trackableDataSourceViews = await getTrackableDataSourceViews(auth);
+
+  if (!trackableDataSourceViews.length) {
+    return [];
+  }
+
+  config.SEMANTIC_SEARCH.data_sources = trackableDataSourceViews.map(
+    (view) => ({
+      workspace_id: auth.getNonNullableWorkspace().sId,
+      data_source_id: view.sId,
+    })
   );
   config.SEMANTIC_SEARCH.target_document_tokens = targetDocumentTokens;
 
