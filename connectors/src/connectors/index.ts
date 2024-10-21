@@ -58,7 +58,7 @@ export function getConnectorManager({
     case "snowflake":
       return new SnowflakeConnectorManager(connectorId);
     case "zendesk":
-      throw new Error("Zendesk connector not implemented yet");
+      throw new ZendeskConnectorManager(connectorId);
     default:
       assertNever(connectorProvider);
   }
