@@ -102,7 +102,6 @@ export function CreateOrEditVaultModal({
     }
   }, [isOpen, vaultInfo]);
 
-
   const handleClose = useCallback(() => {
     // Call the original onClose function.
     onClose();
@@ -284,11 +283,11 @@ interface MembersSearchAndListProps {
 }
 
 function MembersSearchAndList({
-                                isRestricted,
-                                onMembersUpdated,
-                                owner,
-                                selectedMembers,
-                              }: MembersSearchAndListProps) {
+  isRestricted,
+  onMembersUpdated,
+  owner,
+  selectedMembers,
+}: MembersSearchAndListProps) {
   const sendNotifications = useContext(SendNotificationsContext);
 
   const getTableColumns = useCallback(() => {
