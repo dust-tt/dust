@@ -12,14 +12,15 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthProvider";
 
 export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
-  const { isLoading, isAuthenticated, handleLogout } = useAuth();
+  const { isLoading, isAuthenticated, isUserSetup, handleLogout } = useAuth();
+
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!isAuthenticated || !isUserSetup) {
       navigate("/login");
     }
-  }, [isLoading, isAuthenticated, navigate]);
+  }, [navigate, isLoading, isAuthenticated, isUserSetup]);
 
   if (isLoading) {
     return (
