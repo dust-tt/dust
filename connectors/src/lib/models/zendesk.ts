@@ -143,7 +143,10 @@ ZendeskBrand.init(
     ],
   }
 );
-ConnectorModel.hasMany(ZendeskBrand);
+ConnectorModel.hasMany(ZendeskBrand, {
+  foreignKey: { allowNull: false },
+  onDelete: "RESTRICT",
+});
 
 export class ZendeskCategory extends Model<
   InferAttributes<ZendeskCategory>,
@@ -221,7 +224,10 @@ ZendeskCategory.init(
     ],
   }
 );
-ConnectorModel.hasMany(ZendeskCategory);
+ConnectorModel.hasMany(ZendeskCategory, {
+  foreignKey: { allowNull: false },
+  onDelete: "RESTRICT",
+});
 
 export class ZendeskArticle extends Model<
   InferAttributes<ZendeskArticle>,
@@ -304,4 +310,7 @@ ZendeskArticle.init(
     ],
   }
 );
-ConnectorModel.hasMany(ZendeskCategory);
+ConnectorModel.hasMany(ZendeskArticle, {
+  foreignKey: { allowNull: false },
+  onDelete: "RESTRICT",
+});
