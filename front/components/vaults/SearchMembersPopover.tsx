@@ -52,10 +52,10 @@ export function SearchMembersPopover({
   }, [members, isLoading]);
 
   useEffect(() => {
-    // reset allMembers when search term changes
-    setAllMembers(members);
+    // reset allMembers and pagination when search term changes
+    setAllMembers([]);
     setPagination(DefaultPagination);
-  }, [members, searchTerm]);
+  }, [searchTerm]);
 
   const filteredMembers = useMemo(() => {
     return allMembers.filter(
@@ -83,7 +83,7 @@ export function SearchMembersPopover({
         <PopoverTrigger>
           <Button label="Add members" icon={UserIcon} size="sm" />
         </PopoverTrigger>
-        <PopoverContent className="p-4 mr-2">
+        <PopoverContent className="mr-2 p-4">
           <Searchbar
             name="search"
             placeholder="Search members (email)"
