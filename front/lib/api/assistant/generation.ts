@@ -466,6 +466,11 @@ export async function constructPromptMultiActions(
     if (toolMetaPrompt) {
       additionalInstructions += `\n${toolMetaPrompt}\n`;
     }
+
+    additionalInstructions += `\n\nImportant: You only have access to these tools: ${agentConfiguration.actions.map((action) => action.name).join(", ")}. Do not try to use any other tool.`;
+  } else {
+    additionalInstructions +=
+      "\n\nImportant: Do not try to do any function call. You don't have access to any tool.";
   }
 
   additionalInstructions +=
