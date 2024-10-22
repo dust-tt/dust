@@ -1,4 +1,4 @@
-import type { Result, WithAPIErrorReponse } from "@dust-tt/types";
+import type { Result, WithAPIErrorResponse } from "@dust-tt/types";
 import { Err, Ok, removeNulls } from "@dust-tt/types";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -95,7 +95,7 @@ export type PostResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorReponse<PostResponseBody>>
+  res: NextApiResponse<WithAPIErrorResponse<PostResponseBody>>
 ): Promise<void> {
   switch (req.method) {
     case "POST":
