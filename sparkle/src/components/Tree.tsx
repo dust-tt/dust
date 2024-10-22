@@ -62,7 +62,7 @@ export function Tree({
 }
 
 const treeItemStyleClasses = {
-  base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center s-gap-2 s-py-1.5",
+  base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center s-gap-1.5 s-py-1.5",
   isNavigatableBase:
     "s-rounded-lg s-pl-1.5 s-pr-3 s-border s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
   isNavigatableUnselected:
