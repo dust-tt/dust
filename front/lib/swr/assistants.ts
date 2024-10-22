@@ -7,7 +7,6 @@ import type {
 } from "@dust-tt/types";
 import { useCallback, useContext, useMemo } from "react";
 import type { Fetcher } from "swr";
-import { useSWRConfig } from "swr";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
@@ -79,7 +78,6 @@ export function useAgentConfigurations({
   limit,
   sort,
   disabled,
-  revalidate,
 }: {
   workspaceId: string;
   agentsGetView: AgentsGetViewType | null;
@@ -87,7 +85,6 @@ export function useAgentConfigurations({
   limit?: number;
   sort?: "alphabetical" | "priority";
   disabled?: boolean;
-  revalidate?: boolean;
 }) {
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
@@ -123,14 +120,11 @@ export function useAgentConfigurations({
   const queryString = getQueryString();
 
   const key = `/api/w/${workspaceId}/assistant/agent_configurations?${queryString}`;
-  const { cache } = useSWRConfig();
-  const inCache = typeof cache.get(key) !== "undefined";
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(agentsGetView ? key : null, agentConfigurationsFetcher, {
       disabled,
-      revalidateOnMount: !inCache || revalidate,
-      revalidateOnFocus: !inCache || revalidate,
+      serveFromCache: true,
     });
 
   return {
@@ -138,7 +132,7 @@ export function useAgentConfigurations({
       () => (data ? data.agentConfigurations : []),
       [data]
     ),
-    isAgentConfigurationsLoading: !error && !data,
+    isAgentConfigurationsLoading: !disabled && !error && !data,
     isAgentConfigurationsError: error,
     mutate,
     mutateRegardlessOfQueryParams,

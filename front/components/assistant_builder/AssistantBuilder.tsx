@@ -61,6 +61,7 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
@@ -159,6 +160,13 @@ export default function AssistantBuilder({
     agentConfigurationId,
   });
   useNavigationLock(edited && !disableUnsavedChangesPrompt);
+
+  const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "list", // Anything would work
+      disabled: true, // We only use the hook to mutate the cache
+    });
 
   const checkUsernameTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -321,6 +329,9 @@ export default function AssistantBuilder({
         if (slackDataSource) {
           await mutateSlackChannels();
         }
+
+        await mutateAgentConfigurations();
+
         // Redirect to the assistant list once saved.
         if (flow === "personal_assistants") {
           await router.push(
