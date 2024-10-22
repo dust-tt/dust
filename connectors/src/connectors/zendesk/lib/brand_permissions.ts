@@ -180,7 +180,7 @@ export async function retrieveZendeskBrandsPermissions({
           parentInternalId: getHelpCenterInternalId(connectorId),
           type: "folder",
           title: brand.name || "Brand",
-          sourceUrl: brand.url,
+          sourceUrl: brand.brand_url,
           expandable: true,
           preventSelection: !brand.has_help_center,
           permission: "none",
