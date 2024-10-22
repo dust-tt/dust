@@ -262,7 +262,6 @@ export async function streamConversationToSlack(
         ) {
           await slackClient.chat.postEphemeral({
             channel: slackChannelId,
-            text: "hello",
             user: slackUserId,
             blocks: makeAssistantSelectionBlock(
               agentConfigurations,
