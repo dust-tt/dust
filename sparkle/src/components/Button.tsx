@@ -28,20 +28,20 @@ const BUTTON_SIZES = ["xs", "sm", "md"] as const;
 
 type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
-const variantStyle: Record<ButtonVariantType, string> = {
+const styleVariants: Record<ButtonVariantType, string> = {
   primary:
     "s-bg-primary s-text-white hover:s-bg-primary-light active:s-bg-primary-dark disabled:s-bg-primary-muted",
   highlight:
     "s-bg-highlight s-text-white hover:s-bg-highlight-light active:s-bg-highlight-dark disabled:s-bg-highlight-muted",
   warning:
-    "s-bg-warning s-text-primary hover:s-bg-warning-light active:s-bg-warning-dark  disabled:s-bg-warning-muted",
+    "s-bg-warning s-text-primary hover:s-bg-warning-light active:s-bg-warning-dark disabled:s-bg-warning-muted",
   outline:
-    "s-border s-text-primary-dark s-border-border-dark hover:s-text-primary hover:s-bg-primary-100 hover:s-border-primary-200 active:s-bg-primary-300 disabled:s-text-primary-muted disabled:s-border-structure-100 disabled: ",
+    "s-border s-text-primary-dark s-border-border-dark hover:s-text-primary hover:s-bg-primary-100 hover:s-border-primary-200 active:s-bg-primary-300 disabled:s-text-primary-muted disabled:s-border-structure-100",
   ghost:
     "s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-100 hover:s-text-primary-900 active:s-bg-primary-200 hover:s-border-primary-200 disabled:s-text-primary-400",
 };
 
-const variantSizes: Record<ButtonSizeType, string> = {
+const sizeVariants: Record<ButtonSizeType, string> = {
   xs: "s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5",
   sm: "s-h-9 s-px-3 s-rounded-xl s-text-sm s-gap-2",
   md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-text-base s-gap-2.5",
@@ -53,8 +53,8 @@ const buttonVariants = cva(
     "disabled:s-pointer-events-none",
   {
     variants: {
-      variant: variantStyle,
-      size: variantSizes,
+      variant: styleVariants,
+      size: sizeVariants,
     },
   }
 );
