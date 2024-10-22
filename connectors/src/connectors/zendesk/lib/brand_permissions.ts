@@ -5,7 +5,10 @@ import type {
   ModelId,
 } from "@dust-tt/types";
 
-import { getBrandInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
+import {
+  getBrandInternalId,
+  getHelpCenterInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskBrand,
@@ -116,48 +119,74 @@ export async function retrieveZendeskBrandsPermissions({
     throw new Error("Connector not found");
   }
 
+  const isRootLevel = !parentInternalId;
+
+  // At the root level, we show two nodes: Help Center and Tickets.
+  if (isRootLevel) {
+    const helpCenterNode: ContentNode = {
+      provider: connector.type,
+      internalId: getHelpCenterInternalId(connectorId),
+      parentInternalId: null,
+      type: "database",
+      title: "Help Center",
+      sourceUrl: null,
+      expandable: true,
+      permission: "none",
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+    };
+
+    return [helpCenterNode];
+  }
+
   const subdomain = "d3v-dust"; // TODO: get subdomain from connector
   const accessToken = await getZendeskAccessToken(connector.connectionId);
 
   const isReadPermissionsOnly = filterPermission === "read";
-  const isRootLevel = !parentInternalId;
   let nodes: ContentNode[] = [];
 
-  // At the root level, we retrieve the list of Brands.
+  // If the parent is a Help Center, we retrieve the list of Brands for this help center.
   // If isReadPermissionsOnly = true, we retrieve the list of Brands from the DB that have permission == "read"
   // If isReadPermissionsOnly = false, we retrieve the list of Brands from Zendesk
-  if (isRootLevel) {
+  if (parentInternalId === getHelpCenterInternalId(connectorId)) {
     if (isReadPermissionsOnly) {
       const brandsInDatabase = await ZendeskBrand.findAll({
-        where: { connectorId: connectorId, permission: "read" },
+        where: {
+          connectorId: connectorId,
+          permission: "read",
+          hasHelpCenter: true,
+        },
       });
       nodes = brandsInDatabase.map((brand) => ({
         provider: connector.type,
         internalId: getBrandInternalId(connectorId, brand.brandId),
-        parentInternalId: null,
-        type: "database",
+        parentInternalId: getHelpCenterInternalId(connectorId),
+        type: "channel",
         title: brand.name,
-        sourceUrl: null,
+        sourceUrl: brand.url,
         expandable: true,
+        preventSelection: !brand.hasHelpCenter,
         permission: brand.permission,
         dustDocumentId: null,
         lastUpdatedAt: brand.updatedAt.getTime(),
       }));
     } else {
       const brands = await fetchZendeskBrands({ subdomain, accessToken });
-      nodes = brands.map((brand) => ({
-        provider: connector.type,
-        internalId: getBrandInternalId(connectorId, brand.id.toString()),
-        parentInternalId: null,
-        type: "database",
-        title: brand.name || "Brand",
-        sourceUrl: null,
-        expandable: true,
-        preventSelection: true,
-        permission: "none",
-        dustDocumentId: null,
-        lastUpdatedAt: null,
-      }));
+      nodes = brands
+        .filter((brand) => brand.has_help_center)
+        .map((brand) => ({
+          provider: connector.type,
+          internalId: getBrandInternalId(connectorId, brand.id.toString()),
+          parentInternalId: getHelpCenterInternalId(connectorId),
+          type: "folder",
+          title: brand.name || "Brand",
+          sourceUrl: brand.url,
+          expandable: true,
+          preventSelection: !brand.has_help_center,
+          permission: "none",
+          dustDocumentId: null,
+          lastUpdatedAt: null,
+        }));
     }
     nodes.sort((a, b) => a.title.localeCompare(b.title));
     return nodes;
