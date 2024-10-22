@@ -47,7 +47,7 @@ export const NewSearchInput = forwardRef<HTMLInputElement, NewSearchInputProps>(
         />
         <div
           className={classNames(
-            "s-absolute s-inset-y-0 s-right-0 -s-mt-1 s-flex s-items-center s-pr-2"
+            "s-absolute s-inset-y-0 s-right-0 s-flex s-items-center s-pr-1"
           )}
         >
           {value && onChange ? (

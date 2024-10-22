@@ -5,18 +5,20 @@ import { MoreIcon } from "@sparkle/icons";
 import { classNames, cn } from "@sparkle/lib/utils";
 
 export const listStyleClasses = {
-  container: "s-gap-0.5 s-flex s-flex-col s-overflow-hidden",
+  container: "s-gap-1 s-flex s-flex-col s-overflow-hidden",
   item: classNames(
     "s-box-border s-items-center s-w-full s-flex s-gap-1 s-cursor-pointer s-select-none s-items-center s-outline-none",
-    "s-rounded-lg s-text-muted-foreground s-text-sm s-px-2 s-py-2",
+    "s-rounded-xl s-text-sm s-px-3 s-py-2",
     "s-transition-colors s-duration-300",
-    "data-[disabled]:s-pointer-events-none data-[disabled]:s-text-primary-400",
-    "hover:s-text-primary-950 hover:s-bg-white"
+    "data-[disabled]:s-pointer-events-none data-[disabled]:s-text-muted-foreground",
+    "hover:s-text-foreground hover:s-bg-white hover:s-ring-1 hover:s-ring-border-dark"
   ),
-  "item-active": "s-bg-primary-200 s-border-border",
-  "item-selected": "s-text-primary-950 s-bg-white s-ring-1 s-ring-primary-200",
+  "item-idle": "",
+  "item-active": "s-bg-primary-200 s-ring-1 s-ring-border",
+  "item-unselected": "s-text-muted-foreground",
+  "item-selected": "s-text-foreground s-bg-white s-ring-1 s-ring-border-dark",
   label:
-    "s-font-semibold s-px-2 s-pt-6 s-pb-2 s-text-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
+    "s-font-semibold s-pt-6 s-pb-2 s-text-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
 };
 
 const NewNavigationList = React.forwardRef<
@@ -57,12 +59,16 @@ const NewNavigationListItem = React.forwardRef<
   };
 
   return (
-    <div className={cn("s-px-2", className)} ref={ref} {...props}>
+    <div className={className} ref={ref} {...props}>
       <div
         className={cn(
           listStyleClasses.item,
-          selected ? listStyleClasses["item-selected"] : "",
-          isPressed ? listStyleClasses["item-active"] : ""
+          selected
+            ? listStyleClasses["item-selected"]
+            : listStyleClasses["item-unselected"],
+          isPressed
+            ? listStyleClasses["item-active"]
+            : listStyleClasses["item-idle"]
         )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={handleMouseLeave}
@@ -75,7 +81,7 @@ const NewNavigationListItem = React.forwardRef<
           </span>
         )}
         {isHovered && (
-          <div className="-s-mr-1 s-flex s-h-4 s-items-center">
+          <div className="-s-mr-2 s-flex s-h-4 s-items-center">
             <NewButton
               variant="ghost"
               icon={MoreIcon}
@@ -83,7 +89,6 @@ const NewNavigationListItem = React.forwardRef<
               onClick={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
               onMouseUp={(e) => e.stopPropagation()}
-              className="new-button-class"
             />
           </div>
         )}

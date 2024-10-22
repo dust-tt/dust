@@ -250,7 +250,7 @@ export const ChatTab = () => {
           </NewDropdownMenuContent>
         </NewDropdownMenu>
       </NewButtonBar>
-      <NewNavigationList className="s-w-full">
+      <NewNavigationList className="s-w-full s-px-2">
         {conversationTitles.map((section, sectionIndex) => (
           <React.Fragment key={sectionIndex}>
             <NewNavigationListLabel label={section.label} />
@@ -470,8 +470,8 @@ interface NavTabProps {
 
 export const KnowledgeNav: React.FC<NavTabProps> = ({ className = "" }) => {
   return (
-    <div className={cn("s-flex s-flex-col s-gap-2 s-px-2 s-py-4", className)}>
-      <Tree variant="navigator">
+    <div className={cn("s-flex s-flex-col s-gap-1 s-py-4", className)}>
+      <Tree variant="navigator" className="s-mx-2">
         <Tree.Item
           label="Connection Managment"
           visual={CloudArrowLeftRightIcon}
@@ -516,7 +516,7 @@ export const KnowledgeNav: React.FC<NavTabProps> = ({ className = "" }) => {
         </Tree.Item>
       </Tree>
       <NewNavigationListLabel variant="secondary" label="Workspace" />
-      <Tree variant="navigator">
+      <Tree variant="navigator" className="s-mx-2">
         <Tree.Item
           label="Drive"
           visual={ServerIcon}
@@ -574,7 +574,7 @@ export const KnowledgeNav: React.FC<NavTabProps> = ({ className = "" }) => {
         </Tree.Item>
       </Tree>
       <NewNavigationListLabel variant="secondary" label="Vaults" />
-      <Tree variant="navigator">
+      <Tree variant="navigator" className="s-mx-2">
         <Tree.Item
           label="Finance"
           visual={LockIcon}
@@ -621,7 +621,7 @@ export const KnowledgeNav: React.FC<NavTabProps> = ({ className = "" }) => {
           visual={LockIcon}
           onItemClick={() => console.log("Clickable")}
         >
-          <Tree variant="navigator">
+          <Tree variant="navigator" className="s-mx-2">
             <Tree.Item label="Notion" visual={NotionLogo}>
               <Tree variant="navigator">
                 <Tree.Item
