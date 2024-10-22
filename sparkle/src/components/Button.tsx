@@ -155,6 +155,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const buttonElement = (
       <MetaButton
         ref={ref}
+        size={buttonSize}
         variant={variant}
         disabled={isLoading || props.disabled}
         hasVisual={!!icon || isLoading}
