@@ -124,7 +124,8 @@ export function useAgentConfigurations({
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(agentsGetView ? key : null, agentConfigurationsFetcher, {
       disabled,
-      serveFromCache: true,
+      revalidateIfStale: false,
+      keepPreviousData: true,
     });
 
   return {
