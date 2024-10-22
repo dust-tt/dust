@@ -37,10 +37,14 @@ const IconButtonExamples = () => (
   </>
 );
 
-const ButtonExamplesBySize = ({ size }) => (
+const ButtonExamplesBySize = ({
+  size,
+}: {
+  size: React.ComponentProps<typeof Button>["size"];
+}) => (
   <>
     <Separator />
-    <h3>{size.toUpperCase()}</h3>
+    <h3>{size?.toUpperCase()}</h3>
     <div className="s-flex s-items-center s-gap-4">
       <Button size={size} label="Button" />
       <Button size={size} variant="outline" label="Button" />
