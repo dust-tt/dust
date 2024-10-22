@@ -372,7 +372,7 @@ export async function getParents({
  * per-sync basis (given by startSyncTs) */
 const getParentId = cacheWithRedis(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async (connectorId, internalId, startSyncTs) => {
+  async (connectorId: ModelId, internalId: string, startSyncTs: number) => {
     const node = await MicrosoftNodeResource.fetchByInternalId(
       connectorId,
       internalId
