@@ -209,10 +209,10 @@ async function handler(
       }
 
       for (const { workspace, targetEmails } of workspacesAndEmails) {
-        const auth = await Authenticator.internalUserForWorkspace({
-          user,
-          workspace,
-        });
+        const auth = await Authenticator.fromUserIdAndWorkspaceId(
+          user.sId,
+          workspace.sId
+        );
 
         const agentConfigurations = removeNulls(
           await Promise.all(

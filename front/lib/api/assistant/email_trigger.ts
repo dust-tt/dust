@@ -268,23 +268,38 @@ export async function triggerFromEmail({
   // console.log("REST_OF_THREAD", restOfThread, restOfThread.length);
 
   if (restOfThread.length > 0) {
-    await postNewContentFragment(auth, {
+    await postNewContentFragment(
+      auth,
       conversation,
-      title: `Email thread: ${email.subject}`,
-      content: restOfThread,
-      url: null,
-      contentType: "file_attachment",
-      context: {
+      {
+        title: `Email thread: ${email.subject}`,
+        content: restOfThread,
+        url: null,
+        contentType: "file_attachment",
+      },
+      {
         username: user.username,
         fullName: user.fullName,
         email: user.email,
         profilePictureUrl: user.image,
-      },
-    });
+      }
+    );
 
-    const updatedConversation = await getConversation(auth, conversation.sId);
-    if (updatedConversation) {
-      conversation = updatedConversation;
+    const updatedConversationRes = await getConversation(
+      auth,
+      conversation.sId
+    );
+    if (updatedConversationRes.isErr()) {
+      // if no conversation found, we just keep the conversation as is but do
+      // not err
+      if (updatedConversationRes.error.type !== "conversation_not_found") {
+        return new Err({
+          type: "unexpected_error",
+          message: "Failed to update conversation with email thread.",
+        });
+      }
+    } else {
+      conversation = updatedConversationRes.value;
     }
   }
 
@@ -313,6 +328,7 @@ export async function triggerFromEmail({
         fullName: user.fullName,
         email: user.email,
         profilePictureUrl: user.image,
+        origin: "email",
       },
     },
     { resolveAfterFullGeneration: true }
@@ -327,9 +343,17 @@ export async function triggerFromEmail({
     });
   }
 
-  const updatedConversation = await getConversation(auth, conversation.sId);
-  if (updatedConversation) {
-    conversation = updatedConversation;
+  const updatedConversationRes = await getConversation(auth, conversation.sId);
+
+  if (updatedConversationRes.isErr()) {
+    if (updatedConversationRes.error.type !== "conversation_not_found") {
+      return new Err({
+        type: "unexpected_error",
+        message: "Failed to update conversation with user message.",
+      });
+    }
+  } else {
+    conversation = updatedConversationRes.value;
   }
 
   localLogger.info(
