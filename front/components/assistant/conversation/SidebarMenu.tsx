@@ -3,11 +3,14 @@ import {
   ChatBubbleBottomCenterPlusIcon,
   Checkbox,
   Dialog,
-  DropdownMenu,
   Item,
   Label,
   ListCheckIcon,
   MoreIcon,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
   PlusIcon,
   RobotIcon,
   TrashIcon,
@@ -220,44 +223,48 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 />
               </div>
             ) : (
-              <div className={classNames("flex pt-2")}>
-                <div className="flex-grow" />
-                <DropdownMenu className="mr-2">
-                  <DropdownMenu.Button>
-                    <Button size="sm" icon={MoreIcon} variant="ghost" />
-                  </DropdownMenu.Button>
-                  <DropdownMenu.Items width={250}>
+              <div className={classNames("flex justify-end gap-2 pt-2")}>
+                <NewDropdownMenu>
+                  <NewDropdownMenuTrigger asChild>
+                    <Button size="sm" icon={MoreIcon} variant="outline" />
+                  </NewDropdownMenuTrigger>
+                  <NewDropdownMenuContent>
                     {isBuilder(owner) && (
                       <>
-                        <DropdownMenu.Item
+                        <NewDropdownMenuItem
                           label="Create new assistant"
-                          link={{
-                            href: `/w/${owner.sId}/builder/assistants/create`,
+                          onClick={async () => {
+                            await router.push(
+                              `/w/${owner.sId}/builder/assistants/create`
+                            );
                           }}
                           icon={PlusIcon}
                         />
-                        <DropdownMenu.Item
+                        <NewDropdownMenuItem
+                          onClick={async () => {
+                            await router.push(
+                              `/w/${owner.sId}/builder/assistants`
+                            );
+                          }}
                           label="Manage assistants"
-                          link={{ href: `/w/${owner.sId}/builder/assistants` }}
                           icon={RobotIcon}
                         />
                       </>
                     )}
-
-                    <DropdownMenu.Item
+                    <NewDropdownMenuItem
                       label="Edit conversations"
                       onClick={toggleMultiSelect}
                       icon={ListCheckIcon}
                       disabled={conversations.length === 0}
                     />
-                    <DropdownMenu.Item
+                    <NewDropdownMenuItem
                       label="Clear conversation history"
                       onClick={() => setShowDeleteDialog("all")}
                       icon={TrashIcon}
                       disabled={conversations.length === 0}
                     />
-                  </DropdownMenu.Items>
-                </DropdownMenu>
+                  </NewDropdownMenuContent>
+                </NewDropdownMenu>
                 <Link
                   href={`/w/${owner.sId}/assistant/new`}
                   onClick={() => {
@@ -274,7 +281,6 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   }}
                 >
                   <Button
-                    labelVisible={true}
                     label="New conversation"
                     icon={ChatBubbleBottomCenterPlusIcon}
                     className="flex-none shrink"

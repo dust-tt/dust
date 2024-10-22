@@ -374,7 +374,7 @@ export default function NamingScreen({
             <Avatar size="xl" visual={builderState.avatarUrl} />
             <Button
               label="Change"
-              variant="ghost"
+              variant="outline"
               size="xs"
               icon={PencilSquareIcon}
               onClick={() => {

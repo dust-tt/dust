@@ -318,7 +318,7 @@ function DataSourceEditionModal({
             </div>
             <div className="flex items-center justify-center">
               <Button
-                label={"Edit Permissions"}
+                label="Edit Permissions"
                 icon={LockIcon}
                 variant="warning"
                 onClick={() => {
@@ -331,7 +331,7 @@ function DataSourceEditionModal({
         {isDataSourceOwner && (
           <div className="flex items-center justify-center">
             <Button
-              label={"Edit Permissions"}
+              label="Edit Permissions"
               icon={LockIcon}
               variant="warning"
               onClick={() => {
@@ -702,7 +702,7 @@ export function ConnectorPermissionsModal({
               <Button
                 className="ml-auto justify-self-end"
                 label="Edit permissions"
-                variant="ghost"
+                variant="outline"
                 icon={LockIcon}
                 onClick={() => {
                   setModalToShow("edition");

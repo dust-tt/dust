@@ -955,7 +955,12 @@ function AdvancedSettings({
   return (
     <Popover
       trigger={
-        <Button label="Advanced settings" variant="ghost" size="sm" isSelect />
+        <Button
+          label="Advanced settings"
+          variant="outline"
+          size="sm"
+          isSelect
+        />
       }
       content={
         <div className="flex flex-col gap-4">

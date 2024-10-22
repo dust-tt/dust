@@ -175,7 +175,7 @@ export function SharingButton({
             size="sm"
             label="Sharing"
             icon={ArrowUpOnSquareIcon}
-            variant="ghost"
+            variant="outline"
             isSelect
             onClick={() => setIsPopoverOpen(!isPopoverOpen)}
           />

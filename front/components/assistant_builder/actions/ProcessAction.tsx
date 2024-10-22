@@ -204,7 +204,6 @@ function PropertiesFields({
                     <DropdownMenu.Button tooltipPosition="top">
                       <Button
                         isSelect
-                        labelVisible={true}
                         label={prop["type"]}
                         variant="ghost"
                         size="sm"

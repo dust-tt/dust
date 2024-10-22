@@ -146,7 +146,7 @@ const InputBarContainer = ({
                 multiple={true}
               />
               <IconButton
-                variant="ghost"
+                variant="outline"
                 icon={AttachmentIcon}
                 size="sm"
                 tooltip={`Add a document to the conversation (${supportedFileExtensions.join(", ")}).`}
@@ -177,7 +177,7 @@ const InputBarContainer = ({
           {actions.includes("fullscreen") && (
             <div className="hidden sm:flex">
               <IconButton
-                variant="ghost"
+                variant="outline"
                 icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
                 size="sm"
                 className="flex"

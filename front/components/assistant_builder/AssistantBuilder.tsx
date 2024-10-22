@@ -462,7 +462,7 @@ export default function AssistantBuilder({
             <>
               <IconButton
                 size="md"
-                variant="ghost"
+                variant="outline"
                 icon={
                   rightPanelStatus.tab !== null
                     ? ChevronRightIcon
@@ -480,7 +480,6 @@ export default function AssistantBuilder({
                       ? "Add instructions or tools to Preview"
                       : "Preview"
                   }
-                  labelVisible={false}
                   variant="primary"
                   disabled={isBuilderStateEmpty}
                   className={classNames(
