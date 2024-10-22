@@ -1,12 +1,7 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta } from "@storybook/react";
 import React from "react";
 
-import {
-  ArrowDownStrokeIcon,
-  Button, Icon,
-  PlusIcon, RobotIcon, Separator,
-} from "../index_with_tw_base";
-import { MetaButton } from "@sparkle/components/Button";
+import { Button, PlusIcon, RobotIcon, Separator } from "../index_with_tw_base";
 
 const meta = {
   title: "Primitives/Button",
@@ -14,7 +9,6 @@ const meta = {
 } satisfies Meta<typeof Button>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
 
 const IconButtonExamples = () => (
   <>
@@ -45,7 +39,7 @@ const IconButtonExamples = () => (
 
 const ButtonExamplesBySize = ({ size }) => (
   <>
-    <Separator/>
+    <Separator />
     <h3>{size.toUpperCase()}</h3>
     <div className="s-flex s-items-center s-gap-4">
       <Button size={size} label="Button" />
@@ -82,22 +76,12 @@ export const ButtonExamples = () => (
 
 export const DropdownButtonExample = () => (
   <div>
-    <Button
-      icon={RobotIcon}
-      variant="outline"
-      isSelect
-    />
+    <Button icon={RobotIcon} variant="outline" isSelect />
   </div>
 );
 
-
 export const DisabledButtonExample = () => (
   <div>
-    <Button
-      icon={RobotIcon}
-      variant="outline"
-      isSelect
-      disabled={true}
-    />
+    <Button icon={RobotIcon} variant="outline" isSelect disabled={true} />
   </div>
 );
