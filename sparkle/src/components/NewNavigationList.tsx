@@ -14,7 +14,7 @@ export const listStyleClasses = {
     "hover:s-text-foreground hover:s-bg-structure-150"
   ),
   "item-idle": "",
-  "item-active": "s-bg-primary-200",
+  "item-active": "active:s-bg-structure-200",
   "item-unselected": "s-text-muted-foreground",
   "item-selected": "s-text-foreground s-font-medium s-bg-structure-150",
   label:
