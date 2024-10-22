@@ -45,7 +45,7 @@ export const NewNavigationListDemo = () => {
         <NewNavigationList className="s-w-full">
           {conversationTitles.map((section, sectionIndex) => (
             <React.Fragment key={sectionIndex}>
-              <NewNavigationListLabel>{section.label}</NewNavigationListLabel>
+              <NewNavigationListLabel label={section.label} />
               {section.items.map((title, index) => {
                 const itemIndex = allItems.indexOf(title); // Calculate the global index
                 return (
