@@ -69,7 +69,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       });
       let cacheVal = await redisCli.get(key);
       if (cacheVal) {
-        return await (JSON.parse(cacheVal) as Promise<JsonSerializable<T>>);
+        return JSON.parse(cacheVal) as JsonSerializable<T>;
       }
 
       // specific try-finally to ensure unlock is called only after lock
@@ -80,7 +80,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
           await lock(key);
           cacheVal = await redisCli.get(key);
           if (cacheVal) {
-            return await (JSON.parse(cacheVal) as Promise<JsonSerializable<T>>);
+            return JSON.parse(cacheVal) as JsonSerializable<T>;
           }
         }
 
