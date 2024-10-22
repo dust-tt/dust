@@ -155,7 +155,6 @@ export function useProgressiveAgentConfigurations({
     limit: 24,
     includes: ["usage"],
     disabled,
-    revalidate: false,
   });
 
   const {
