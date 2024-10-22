@@ -229,8 +229,6 @@ export const VaultDataSourceViewContentList = ({
     viewType: isValidContentNodesViewType(viewType) ? viewType : "documents",
   });
 
-  console.log(nodes);
-
   const { hasContent: hasDocuments, isNodesValidating: isDocumentsValidating } =
     useStaticDataSourceViewHasContent({
       owner,
