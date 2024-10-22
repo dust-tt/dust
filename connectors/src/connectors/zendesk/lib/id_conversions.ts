@@ -5,23 +5,20 @@ import type { ModelId } from "@dust-tt/types";
  */
 export function getBrandInternalId(
   connectorId: ModelId,
-  helpCenterId: string
+  brandId: string
 ): string {
-  return `zendesk-brand-${connectorId}-${helpCenterId}`;
+  return `zendesk-brand-${connectorId}-${brandId}`;
 }
 
-export function getHelpCenterInternalId(
-  connectorId: ModelId,
-  helpCenterId: string
-): string {
-  return `zendesk-help-center-${connectorId}-${helpCenterId}`;
+export function getHelpCenterInternalId(connectorId: ModelId): string {
+  return `zendesk-help-center-${connectorId}`;
 }
 
 export function getCategoryInternalId(
   connectorId: ModelId,
-  collectionId: string
+  categoryId: string
 ): string {
-  return `zendesk-category-${connectorId}-${collectionId}`;
+  return `zendesk-category-${connectorId}-${categoryId}`;
 }
 
 export function getArticleInternalId(
@@ -63,11 +60,11 @@ export function getBrandIdFromInternalId(
   return _getIdFromInternal(internalId, `zendesk-brand-${connectorId}-`);
 }
 
-export function getHelpCenterIdFromInternalId(
+export function isInternalIdOnWholeHelpCenter(
   connectorId: ModelId,
   internalId: string
-): string | null {
-  return _getIdFromInternal(internalId, `zendesk-help-center-${connectorId}-`);
+): boolean {
+  return internalId === `zendesk-help-center-${connectorId}`;
 }
 
 export function getCategoryIdFromInternalId(
@@ -84,7 +81,7 @@ export function getArticleIdFromInternalId(
   return _getIdFromInternal(internalId, `zendesk-article-${connectorId}-`);
 }
 
-export function getTicketsIdFromInternalId(
+export function isInternalIdOnAllTickets(
   connectorId: ModelId,
   internalId: string
 ): boolean {
