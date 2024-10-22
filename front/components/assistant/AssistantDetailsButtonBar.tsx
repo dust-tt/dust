@@ -2,8 +2,11 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   ClipboardIcon,
-  DropdownMenu,
   MoreIcon,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
   PencilSquareIcon,
   Separator,
   StarIcon,
@@ -16,6 +19,7 @@ import type {
 } from "@dust-tt/types";
 import { isBuilder } from "@dust-tt/types";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
@@ -37,6 +41,7 @@ export function AssistantDetailsButtonBar({
   const { user } = useUser();
 
   const [showDeletionModal, setShowDeletionModal] = useState(false);
+  const router = useRouter();
 
   const updateUserFavorite = useUpdateUserFavorite({
     owner,
@@ -67,58 +72,44 @@ export function AssistantDetailsButtonBar({
           }}
           isPrivateAssistant={agentConfiguration.scope === "private"}
         />
-
-        <DropdownMenu className="text-element-700">
-          {({ close }) => (
-            <>
-              <DropdownMenu.Button>
-                <Button
-                  key="show_details"
-                  icon={MoreIcon}
-                  size="sm"
-                  variant="ghost"
-                />
-              </DropdownMenu.Button>
-              {/* TODO: get rid of the hardcoded value */}
-              <DropdownMenu.Items width={230}>
-                <DropdownMenu.Item
-                  label={`Copy assistant ID`}
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    await navigator.clipboard.writeText(agentConfiguration.sId);
-                    close();
-                  }}
+        <NewDropdownMenu>
+          <NewDropdownMenuTrigger asChild>
+            <Button icon={MoreIcon} size="sm" variant="ghost" />
+          </NewDropdownMenuTrigger>
+          <NewDropdownMenuContent>
+            <NewDropdownMenuItem
+              label="Copy assistant ID"
+              onClick={async (e) => {
+                e.stopPropagation();
+                await navigator.clipboard.writeText(agentConfiguration.sId);
+              }}
+              icon={ClipboardIcon}
+            />
+            {agentConfiguration.scope !== "global" && (
+              <>
+                <NewDropdownMenuItem
+                  label="Duplicate (New)"
                   icon={ClipboardIcon}
+                  onClick={async (e) => {
+                    await router.push(
+                      `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
+                    );
+                    e.stopPropagation();
+                  }}
                 />
-                {agentConfiguration.scope !== "global" && (
-                  <>
-                    <DropdownMenu.Item
-                      label="Duplicate (New)"
-                      link={{
-                        href: `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`,
-                      }}
-                      icon={ClipboardIcon}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        close();
-                      }}
-                    />
-                    {allowDeletion && (
-                      <DropdownMenu.Item
-                        label="Delete"
-                        icon={TrashIcon}
-                        variant="warning"
-                        onClick={() => {
-                          setShowDeletionModal(true);
-                        }}
-                      />
-                    )}
-                  </>
+                {allowDeletion && (
+                  <NewDropdownMenuItem
+                    label="Delete"
+                    icon={TrashIcon}
+                    onClick={() => {
+                      setShowDeletionModal(true);
+                    }}
+                  />
                 )}
-              </DropdownMenu.Items>
-            </>
-          )}
-        </DropdownMenu>
+              </>
+            )}
+          </NewDropdownMenuContent>
+        </NewDropdownMenu>
       </>
     );
   }

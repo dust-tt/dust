@@ -128,21 +128,23 @@ export function AssistantDropdownMenu({
             <NewDropdownMenuItem
               label="More info"
               icon={EyeIcon}
-              onClick={() =>
+              onClick={(e) => {
+                e.stopPropagation();
                 setQueryParam(
                   router,
                   "assistantDetails",
                   agentConfiguration.sId
-                )
-              }
+                );
+              }}
             />
           ) : (
             <NewDropdownMenuItem
               label="Copy assistant ID"
               icon={ClipboardIcon}
-              onClick={() =>
-                navigator.clipboard.writeText(agentConfiguration.sId)
-              }
+              onClick={async (e) => {
+                e.stopPropagation();
+                await navigator.clipboard.writeText(agentConfiguration.sId);
+              }}
             />
           )}
           {showAddRemoveToFavorite && (
@@ -150,7 +152,10 @@ export function AssistantDropdownMenu({
               label={isFavorite ? "Remove from favorites" : "Add to favorites"}
               icon={isFavorite ? StarStrokeIcon : StarIcon}
               disabled={isUpdatingFavorites}
-              onClick={() => updateFavorite(!isFavorite)}
+              onClick={async (e) => {
+                e.stopPropagation();
+                await updateFavorite(!isFavorite);
+              }}
             />
           )}
           {!isGlobalAgent && (
@@ -161,21 +166,23 @@ export function AssistantDropdownMenu({
                 <NewDropdownMenuItem
                   label="Edit"
                   icon={PencilSquareIcon}
-                  onClick={() =>
-                    router.push(
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await router.push(
                       `/w/${owner.sId}/builder/assistants/${agentConfiguration.sId}?flow=${isAgentWorkspace ? "workspace_assistants" : "personal_assistants"}`
-                    )
-                  }
+                    );
+                  }}
                 />
               )}
               <NewDropdownMenuItem
                 label="Duplicate (New)"
                 icon={ClipboardIcon}
-                onClick={() =>
-                  router.push(
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  await router.push(
                     `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
-                  )
-                }
+                  );
+                }}
               />
               {allowDeletion && (
                 <NewDropdownMenuItem

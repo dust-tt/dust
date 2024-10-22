@@ -468,6 +468,7 @@ export default function AssistantBuilder({
                     ? ChevronRightIcon
                     : ChevronLeftIcon
                 }
+                disabled={isBuilderStateEmpty}
                 onClick={toggleRightPanel}
               />
               {rightPanelStatus.tab === null && template === null && (
@@ -475,7 +476,7 @@ export default function AssistantBuilder({
                   icon={ChatBubbleBottomCenterTextIcon}
                   onClick={() => openRightPanelTab("Preview")}
                   size="md"
-                  label={
+                  tooltip={
                     isBuilderStateEmpty
                       ? "Add instructions or tools to Preview"
                       : "Preview"
