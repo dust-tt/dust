@@ -588,34 +588,48 @@ async function answerMessage(
   if (buildContentFragmentRes.isErr()) {
     return buildSlackMessageError(buildContentFragmentRes);
   }
+
   let conversation: ConversationType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
+
   if (lastSlackChatBotMessage?.conversationId) {
-    if (buildContentFragmentRes.value) {
-      const contentFragmentRes = await dustAPI.postContentFragment({
-        conversationId: lastSlackChatBotMessage.conversationId,
-        contentFragment: buildContentFragmentRes.value,
-      });
-      if (contentFragmentRes.isErr()) {
-        return buildSlackMessageError(contentFragmentRes);
+    // Check conversation existence (it might have been deleted between two messages).
+    const existsRes = await dustAPI.getConversation({
+      conversationId: lastSlackChatBotMessage.conversationId,
+    });
+
+    // If it doesn't exists, we will create a new one later.
+    if (existsRes.isOk()) {
+      if (buildContentFragmentRes.value) {
+        const contentFragmentRes = await dustAPI.postContentFragment({
+          conversationId: lastSlackChatBotMessage.conversationId,
+          contentFragment: buildContentFragmentRes.value,
+        });
+        if (contentFragmentRes.isErr()) {
+          return buildSlackMessageError(contentFragmentRes);
+        }
       }
+
+      const messageRes = await dustAPI.postUserMessage({
+        conversationId: lastSlackChatBotMessage.conversationId,
+        message: messageReqBody,
+      });
+      if (messageRes.isErr()) {
+        return buildSlackMessageError(messageRes);
+      }
+      userMessage = messageRes.value;
+
+      const conversationRes = await dustAPI.getConversation({
+        conversationId: lastSlackChatBotMessage.conversationId,
+      });
+      if (conversationRes.isErr()) {
+        return buildSlackMessageError(conversationRes);
+      }
+      conversation = conversationRes.value;
     }
-    const messageRes = await dustAPI.postUserMessage({
-      conversationId: lastSlackChatBotMessage.conversationId,
-      message: messageReqBody,
-    });
-    if (messageRes.isErr()) {
-      return buildSlackMessageError(messageRes);
-    }
-    userMessage = messageRes.value;
-    const conversationRes = await dustAPI.getConversation({
-      conversationId: lastSlackChatBotMessage.conversationId,
-    });
-    if (conversationRes.isErr()) {
-      return buildSlackMessageError(conversationRes);
-    }
-    conversation = conversationRes.value;
-  } else {
+  }
+
+  if (!conversation || !userMessage) {
     const convRes = await dustAPI.createConversation({
       title: null,
       visibility: "unlisted",
@@ -756,9 +770,13 @@ async function makeContentFragment(
     }
     url = permalinkRes.permalink;
   }
+
+  // Prepend $url to the content to make it available to the model.
+  const section = `$url: ${url}\n${sectionFullText(content)}`;
+
   return new Ok({
     title: `Thread content from #${channel.channel.name}`,
-    content: sectionFullText(content),
+    content: section,
     url: url,
     contentType: "dust-application/slack",
     context: null,
