@@ -22,7 +22,7 @@ const BUTTON_VARIANTS = [
   "ghost",
 ] as const;
 
-type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
+export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
 const BUTTON_SIZES = ["xs", "sm", "md"] as const;
 
