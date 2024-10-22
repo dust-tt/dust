@@ -1,5 +1,7 @@
 import "node-zendesk";
 
+import type { ZendeskClientOptions } from "node-zendesk";
+
 interface Brand {
   url: string;
   id: number;
@@ -70,6 +72,7 @@ interface Article {
 
 declare module "node-zendesk" {
   interface Client {
+    config: ZendeskClientOptions;
     brand: {
       list: () => Promise<{
         response: Response;
