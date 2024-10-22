@@ -165,7 +165,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         isOpen={showDeleteDialog === "all"}
         onCancel={() => setShowDeleteDialog(null)}
         onValidate={deleteAll}
-        validateVariant="primaryWarning"
+        validateVariant="warning"
         isSaving={isDeleting}
       >
         Are you sure you want to delete ALL conversations&nbsp;?
@@ -177,7 +177,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         isOpen={showDeleteDialog === "selection"}
         onCancel={() => setShowDeleteDialog(null)}
         onValidate={deleteSelection}
-        validateVariant="primaryWarning"
+        validateVariant="warning"
         isSaving={isDeleting}
       >
         Are you sure you want to delete {selectedConversations.length}{" "}

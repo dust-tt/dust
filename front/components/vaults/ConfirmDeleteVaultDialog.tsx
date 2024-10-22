@@ -33,7 +33,7 @@ export function ConfirmDeleteVaultDialog({
       title={`Deleting ${getVaultName(vault)}`}
       onValidate={handleDelete}
       onCancel={onClose}
-      validateVariant="primaryWarning"
+      validateVariant="warning"
       isSaving={isDeleting}
     >
       <div>{message}</div>

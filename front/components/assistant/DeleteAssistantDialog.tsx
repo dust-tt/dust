@@ -41,7 +41,7 @@ export function DeleteAssistantDialog({
       validateLabel={
         isPrivateAssistant ? "Delete the assistant" : "Delete for everyone"
       }
-      validateVariant="primaryWarning"
+      validateVariant="warning"
       onValidate={async () => {
         await doDelete();
         onClose();

@@ -227,7 +227,7 @@ function ContentNodeTreeChildren({
                     n.sourceUrl ? "" : "pointer-events-none opacity-0"
                   )}
                   disabled={!n.sourceUrl}
-                  variant="tertiary"
+                  variant="ghost"
                 />
                 {onDocumentViewClick && (
                   <IconButton
@@ -242,7 +242,7 @@ function ContentNodeTreeChildren({
                       n.dustDocumentId ? "" : "pointer-events-none opacity-0"
                     )}
                     disabled={!n.dustDocumentId}
-                    variant="tertiary"
+                    variant="ghost"
                   />
                 )}
               </div>

@@ -39,7 +39,7 @@ const ShowAssistantDetailsButton = ({
         close();
         showAssistantDetails(assistant);
       }}
-      variant="tertiary"
+      variant="ghost"
       size="sm"
     />
   );

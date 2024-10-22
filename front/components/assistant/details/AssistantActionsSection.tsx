@@ -370,7 +370,7 @@ function DataSourceViewSelectedNodes({
                   node.sourceUrl ? "" : "pointer-events-none opacity-0"
                 )}
                 disabled={!node.sourceUrl}
-                variant="tertiary"
+                variant="ghost"
               />
               <IconButton
                 size="xs"
@@ -385,7 +385,7 @@ function DataSourceViewSelectedNodes({
                   node.dustDocumentId ? "" : "pointer-events-none opacity-0"
                 )}
                 disabled={!node.dustDocumentId}
-                variant="tertiary"
+                variant="ghost"
               />
             </div>
           }

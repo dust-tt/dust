@@ -325,7 +325,7 @@ const TemplateDropDownMenu = ({
               title: "Are you sure you want to close the template?",
               message:
                 "Your assistant will remain as it is but will not display template's help any more.",
-              validateVariant: "primaryWarning",
+              validateVariant: "warning",
             });
             if (confirmed) {
               openRightPanelTab("Preview");
@@ -343,7 +343,7 @@ const TemplateDropDownMenu = ({
                 title: "Are you sure?",
                 message:
                   "You will lose the changes you have made to the assistant's instructions and go back to the template's default settings.",
-                validateVariant: "primaryWarning",
+                validateVariant: "warning",
               });
               if (confirmed) {
                 await resetToTemplateInstructions();
@@ -361,7 +361,7 @@ const TemplateDropDownMenu = ({
                 title: "Are you sure?",
                 message:
                   "You will lose the changes you have made to the assistant's tools.",
-                validateVariant: "primaryWarning",
+                validateVariant: "warning",
               });
               if (confirmed) {
                 await resetToTemplateActions();

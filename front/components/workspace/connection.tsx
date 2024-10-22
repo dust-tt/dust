@@ -690,7 +690,7 @@ function ToggleEnforceEnterpriseConnectionModal({
       }}
       onCancel={() => onClose(false)}
       validateLabel={dialog.validateLabel}
-      validateVariant="primaryWarning"
+      validateVariant="warning"
     >
       <div>{dialog.content}</div>
     </Dialog>
@@ -748,7 +748,7 @@ function DisableEnterpriseConnectionModal({
       }}
       onCancel={() => onClose(false)}
       validateLabel={`Disable ${strategyHumanReadable} Single Sign On`}
-      validateVariant="primaryWarning"
+      validateVariant="warning"
     >
       <div>
         Anyone with an {strategyHumanReadable} account won't be able to access

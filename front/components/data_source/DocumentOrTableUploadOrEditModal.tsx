@@ -360,7 +360,7 @@ const DocumentUploadOrEditModal = ({
                   title="Developer Options"
                   action={{
                     label: developerOptionsVisible ? "Hide" : "Show",
-                    variant: "tertiary",
+                    variant: "ghost",
                     icon: developerOptionsVisible ? EyeSlashIcon : EyeIcon,
                     onClick: () =>
                       setDeveloperOptionsVisible(!developerOptionsVisible),
@@ -373,7 +373,7 @@ const DocumentUploadOrEditModal = ({
                       description="Tags can be set to filter Data Source retrieval or provide a user-friendly title for programmatically uploaded documents (`title:User-friendly Title`)."
                       action={{
                         label: "Add tag",
-                        variant: "tertiary",
+                        variant: "ghost",
                         icon: PlusIcon,
                         onClick: () =>
                           setDocumentState((prev) => ({
@@ -709,9 +709,7 @@ const TableUploadOrEditModal = ({
                     }
                     action={{
                       label: useAppForHeaderDetection ? "Disable" : "Enable",
-                      variant: useAppForHeaderDetection
-                        ? "primary"
-                        : "tertiary",
+                      variant: useAppForHeaderDetection ? "primary" : "ghost",
                       icon: SparklesIcon,
                       onClick: () =>
                         setUseAppForHeaderDetection(!useAppForHeaderDetection),

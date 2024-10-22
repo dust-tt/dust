@@ -101,7 +101,7 @@ export function ContentBlockWrapper({
       <div className="absolute right-2 top-2 mx-2 flex gap-3 rounded-xl">
         {getContentToDownload && (
           <IconButton
-            variant="tertiary"
+            variant="ghost"
             size="xs"
             icon={ArrowDownOnSquareIcon}
             onClick={handleDownload}
@@ -109,7 +109,7 @@ export function ContentBlockWrapper({
         )}
         {content && (
           <IconButton
-            variant="tertiary"
+            variant="ghost"
             size="xs"
             icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
             onClick={handleCopyToClipboard}
