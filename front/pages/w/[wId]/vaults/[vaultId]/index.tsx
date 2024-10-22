@@ -84,7 +84,7 @@ export default function Vault({
         <div>
           <Chip
             color="pink"
-            label="You are not a member of this vault."
+            label="You are not a member of this space."
             size="sm"
             icon={InformationCircleIcon}
           />
