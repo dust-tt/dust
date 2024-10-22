@@ -97,10 +97,6 @@ export function useAgentConfigurations({
     const params = new URLSearchParams();
     if (typeof agentsGetView === "string") {
       params.append("view", agentsGetView);
-    } else {
-      if (agentsGetView && "conversationId" in agentsGetView) {
-        params.append("conversationId", agentsGetView.conversationId);
-      }
     }
     if (includes.includes("usage")) {
       params.append("withUsage", "true");
@@ -157,7 +153,7 @@ export function useProgressiveAgentConfigurations({
     isAgentConfigurationsLoading: isInitialAgentConfigurationsLoading,
   } = useAgentConfigurations({
     workspaceId,
-    agentsGetView: "assistants-search",
+    agentsGetView: "list",
     limit: 24,
     includes: ["usage"],
     disabled,
@@ -171,7 +167,7 @@ export function useProgressiveAgentConfigurations({
     mutateRegardlessOfQueryParams,
   } = useAgentConfigurations({
     workspaceId,
-    agentsGetView: "assistants-search",
+    agentsGetView: "list",
     includes: ["authors", "usage"],
     disabled,
   });
