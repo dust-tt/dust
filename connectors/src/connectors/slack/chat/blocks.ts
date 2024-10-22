@@ -1,6 +1,5 @@
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { truncate } from "@dust-tt/types";
-import type { ChatPostMessageResponse } from "@slack/web-api";
 
 import { STATIC_AGENT_CONFIG } from "@connectors/api/webhooks/webhook_slack_interaction";
 import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
