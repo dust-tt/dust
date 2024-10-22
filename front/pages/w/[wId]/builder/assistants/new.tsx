@@ -89,6 +89,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         notFound: true,
       };
     }
+    // We reset the scope according to the current flow. This ensures that cloning a workspace
+    // assistant with flow `personal_assistants` will initialize the assistant as private.
+    configuration.scope =
+      flow === "personal_assistants" ? "private" : "workspace";
   } else if (templateId) {
     const agentConfigRes = await generateMockAgentConfigurationFromTemplate(
       templateId,
@@ -200,7 +204,7 @@ export default function CreateAssistant({
         }
         agentConfigurationId={null}
         isAdmin={isAdmin}
-        defaultIsEdited={false}
+        defaultIsEdited={assistantTemplate !== null}
         baseUrl={baseUrl}
         defaultTemplate={assistantTemplate}
       />

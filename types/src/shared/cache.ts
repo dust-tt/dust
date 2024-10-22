@@ -7,13 +7,19 @@ import { redisClient } from "../shared/redis_client";
 
 // if caching big objects, there is a possible race condition (mulitple calls to
 // caching), therefore, we use a lock
-export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export function cacheWithRedis<
+  T extends (...args: any[]) => Promise<Awaited<ReturnType<T>>>
+>(
   fn: T,
   resolver: (...args: Parameters<T>) => string,
   ttlMs: number,
   redisUri?: string,
   lockCaching?: boolean
-): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>>> {
+): (
+  ...args: Parameters<T>
+) => Promise<Awaited<ReturnType<T>>> | Promise<ReturnType<T>> {
   if (ttlMs > 60 * 60 * 24 * 1000) {
     throw new Error("ttlMs should be less than 24 hours");
   }
@@ -70,6 +76,7 @@ export function cacheWithRedis<T extends (...args: any[]) => Promise<any>>(
     }
   };
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 const locks: Record<string, (() => void)[]> = {};
 

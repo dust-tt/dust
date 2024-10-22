@@ -1,33 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: proxy-deployment
+  name: socks-proxy-deployment
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: proxy
+      app: socks-proxy
   template:
     metadata:
       labels:
-        app: proxy
-        name: proxy-pod
+        app: socks-proxy
+        name: socks-proxy-pod
         admission.datadoghq.com/enabled: "true"
       annotations:
-        ad.datadoghq.com/web.logs: '[{"source": "nginx","service": "proxy","tags": ["env:prod"]}]'
+        ad.datadoghq.com/web.logs: '[{"source": "dante","service": "socks-proxy","tags": ["env:prod"]}]'
     spec:
       containers:
-        - name: proxy
-          image: gcr.io/or1g1n-186209/nginx-proxy-image:latest
+        - name: socks-proxy
+          image: gcr.io/or1g1n-186209/dante-image:latest
           ports:
           - containerPort: 80
           volumeMounts:
-          - name: nginx-config
-            mountPath: /etc/nginx/nginx.conf
-            subPath: nginx.conf
-          - name: auth-file
-            mountPath: /etc/nginx/auth
-            subPath: auth
+          - name: dante-config
+            mountPath: /etc/sockd.conf
+            subPath: sockd.conf
           env:
             - name: DD_AGENT_HOST
               valueFrom:
@@ -41,9 +38,6 @@ spec:
               cpu: 1000m
               memory: 1Gi
       volumes:
-      - name: nginx-config
+      - name: dante-config
         configMap:
-          name: proxy-config
-      - name: auth-file
-        secret:
-          secretName: proxy-auth
+          name: socks-proxy-config

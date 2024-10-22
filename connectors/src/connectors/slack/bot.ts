@@ -410,8 +410,9 @@ async function answerMessage(
 
   // Extract all ~mentions and +mentions
   const mentionCandidates =
-    messageWithoutMarkdown.match(/(?<!\S)[+~]([a-zA-Z0-9_-]{1,40})(?!\S)/g) ||
-    [];
+    messageWithoutMarkdown.match(
+      /(?<!\S)[+~]([a-zA-Z0-9_-]{1,40})(?=\s|,|\.|$)/g
+    ) || [];
 
   // First we look at mention override
   // (eg: a mention coming from the Slack assistant picker from slack).
@@ -539,17 +540,12 @@ async function answerMessage(
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const mainMessage = await slackClient.chat.postMessage({
-    ...makeMessageUpdateBlocksAndText(
-      null,
-      connector.workspaceId,
-      slackUserInfo,
-      {
-        assistantName: mention.assistantName,
-        agentConfigurations: mostPopularAgentConfigurations,
-        isComplete: false,
-        isThinking: true,
-      }
-    ),
+    ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
+      assistantName: mention.assistantName,
+      agentConfigurations: mostPopularAgentConfigurations,
+      isComplete: false,
+      isThinking: true,
+    }),
     channel: slackChannel,
     thread_ts: slackMessageTs,
     metadata: {
@@ -592,34 +588,48 @@ async function answerMessage(
   if (buildContentFragmentRes.isErr()) {
     return buildSlackMessageError(buildContentFragmentRes);
   }
+
   let conversation: ConversationType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
+
   if (lastSlackChatBotMessage?.conversationId) {
-    if (buildContentFragmentRes.value) {
-      const contentFragmentRes = await dustAPI.postContentFragment({
-        conversationId: lastSlackChatBotMessage.conversationId,
-        contentFragment: buildContentFragmentRes.value,
-      });
-      if (contentFragmentRes.isErr()) {
-        return buildSlackMessageError(contentFragmentRes);
+    // Check conversation existence (it might have been deleted between two messages).
+    const existsRes = await dustAPI.getConversation({
+      conversationId: lastSlackChatBotMessage.conversationId,
+    });
+
+    // If it doesn't exists, we will create a new one later.
+    if (existsRes.isOk()) {
+      if (buildContentFragmentRes.value) {
+        const contentFragmentRes = await dustAPI.postContentFragment({
+          conversationId: lastSlackChatBotMessage.conversationId,
+          contentFragment: buildContentFragmentRes.value,
+        });
+        if (contentFragmentRes.isErr()) {
+          return buildSlackMessageError(contentFragmentRes);
+        }
       }
+
+      const messageRes = await dustAPI.postUserMessage({
+        conversationId: lastSlackChatBotMessage.conversationId,
+        message: messageReqBody,
+      });
+      if (messageRes.isErr()) {
+        return buildSlackMessageError(messageRes);
+      }
+      userMessage = messageRes.value;
+
+      const conversationRes = await dustAPI.getConversation({
+        conversationId: lastSlackChatBotMessage.conversationId,
+      });
+      if (conversationRes.isErr()) {
+        return buildSlackMessageError(conversationRes);
+      }
+      conversation = conversationRes.value;
     }
-    const messageRes = await dustAPI.postUserMessage({
-      conversationId: lastSlackChatBotMessage.conversationId,
-      message: messageReqBody,
-    });
-    if (messageRes.isErr()) {
-      return buildSlackMessageError(messageRes);
-    }
-    userMessage = messageRes.value;
-    const conversationRes = await dustAPI.getConversation({
-      conversationId: lastSlackChatBotMessage.conversationId,
-    });
-    if (conversationRes.isErr()) {
-      return buildSlackMessageError(conversationRes);
-    }
-    conversation = conversationRes.value;
-  } else {
+  }
+
+  if (!conversation || !userMessage) {
     const convRes = await dustAPI.createConversation({
       title: null,
       visibility: "unlisted",
@@ -647,8 +657,10 @@ async function answerMessage(
       slackClient,
       slackMessageTs,
       slackUserInfo,
+      slackUserId,
     },
     userMessage,
+    slackChatBotMessage,
     agentConfigurations: mostPopularAgentConfigurations,
   });
 
@@ -758,9 +770,13 @@ async function makeContentFragment(
     }
     url = permalinkRes.permalink;
   }
+
+  // Prepend $url to the content to make it available to the model.
+  const section = `$url: ${url}\n${sectionFullText(content)}`;
+
   return new Ok({
     title: `Thread content from #${channel.channel.name}`,
-    content: sectionFullText(content),
+    content: section,
     url: url,
     contentType: "dust-application/slack",
     context: null,

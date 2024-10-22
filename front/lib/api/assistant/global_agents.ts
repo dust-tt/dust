@@ -31,6 +31,7 @@ import {
   O1_MINI_MODEL_CONFIG,
   O1_PREVIEW_MODEL_CONFIG,
 } from "@dust-tt/types";
+import assert from "assert";
 
 import {
   DEFAULT_BROWSE_ACTION_NAME,
@@ -48,6 +49,7 @@ import {
   PRODUCTION_DUST_APPS_WORKSPACE_ID,
 } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 
@@ -101,7 +103,13 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
 }> {
   const owner = auth.getNonNullableWorkspace();
 
-  const defaultVaults = [await VaultResource.fetchWorkspaceGlobalVault(auth)];
+  const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+  assert(globalGroup.isOk(), "Failed to fetch global group");
+
+  const defaultVaults = await VaultResource.listForGroups(auth, [
+    globalGroup.value,
+  ]);
+
   const dataSourceViews = await DataSourceViewResource.listByVaults(
     auth,
     defaultVaults
@@ -942,15 +950,9 @@ function _getDustGlobalAgent(
   const description = "An assistant with context on your company data.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
-  const modelConfiguration = (() => {
-    // If we can use Sonnet 3.5, we use it. Otherwise we use the default model.
-    if (auth.isUpgraded() && isProviderWhitelisted(owner, "anthropic")) {
-      return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
-    }
-    return auth.isUpgraded()
-      ? getLargeWhitelistedModel(owner)
-      : getSmallWhitelistedModel(owner);
-  })();
+  const modelConfiguration = auth.isUpgraded()
+    ? getLargeWhitelistedModel(owner)
+    : getSmallWhitelistedModel(owner);
 
   const model: AgentModelConfigurationType = modelConfiguration
     ? {

@@ -17,18 +17,21 @@ echo "Applying configmaps"
 echo "-----------------------------------"
 
 kubectl apply -f "$(dirname "$0")/configmaps/proxy-configmap.yaml"
+kubectl apply -f "$(dirname "$0")/configmaps/socks-proxy-configmap.yaml"
 
 echo "-----------------------------------"
 echo "Applying deployments"
 echo "-----------------------------------"
 
 apply_deployment proxy-deployment
+apply_deployment socks-proxy-deployment
 
 echo "-----------------------------------"
 echo "Applying services"
 echo "-----------------------------------"
 
 kubectl apply -f "$(dirname "$0")/services/proxy-service.yaml"
+kubectl apply -f "$(dirname "$0")/services/socks-proxy-service.yaml"
 
 echo "-----------------------------------"
 echo "Applying network policies"

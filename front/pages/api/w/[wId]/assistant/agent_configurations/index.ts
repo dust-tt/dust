@@ -78,13 +78,9 @@ async function handler(
         });
       }
 
-      const { view, conversationId, limit, withUsage, withAuthors, sort } =
+      const { view, limit, withUsage, withAuthors, sort } =
         queryValidation.right;
-      const viewParam = view
-        ? view
-        : conversationId
-          ? { conversationId }
-          : "all";
+      const viewParam = view ? view : "all";
       if (viewParam === "admin_internal" && !auth.isDustSuperUser()) {
         return apiError(req, res, {
           status_code: 404,

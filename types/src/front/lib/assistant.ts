@@ -63,11 +63,11 @@ export function getSmallWhitelistedModel(
 export function getLargeWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
-  if (isProviderWhitelisted(owner, "openai")) {
-    return GPT_4_TURBO_MODEL_CONFIG;
-  }
   if (isProviderWhitelisted(owner, "anthropic")) {
-    return CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG;
+    return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "openai")) {
+    return GPT_4O_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
     return GEMINI_PRO_DEFAULT_MODEL_CONFIG;
