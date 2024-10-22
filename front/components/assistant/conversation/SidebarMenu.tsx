@@ -23,13 +23,13 @@ import { useRouter } from "next/router";
 import React, { useCallback, useContext, useState } from "react";
 
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
   useConversations,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;
