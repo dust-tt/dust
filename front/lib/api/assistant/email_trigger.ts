@@ -18,9 +18,7 @@ import {
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
-import { renderUserType } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
-import { sendEmail } from "@app/lib/email";
 import {
   Conversation,
   ConversationParticipant,
@@ -31,6 +29,22 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { sendEmail } from "@app/lib/api/email";
+
+function renderUserType(user: User): UserType {
+  return {
+    sId: user.sId,
+    id: user.id,
+    createdAt: user.createdAt.getTime(),
+    provider: user.provider,
+    username: user.username,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
+    image: user.imageUrl,
+  };
+}
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = "run.dust.help";
 
