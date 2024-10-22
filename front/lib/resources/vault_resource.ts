@@ -305,7 +305,10 @@ export class VaultResource extends BaseResource<VaultModel> {
     const regularGroups = this.groups.filter(
       (group) => group.kind === "regular"
     );
-    // Assert that there is exactly one regular group associated with the vault.
+
+    // Ensure exactly one regular group is associated with the vault.
+    // IMPORTANT: This constraint is critical for the acl() method logic.
+    // Modifying this requires careful review and updates to acl().
     assert(
       regularGroups.length === 1,
       `Expected exactly one regular group for the vault, but found ${regularGroups.length}.`
@@ -365,7 +368,29 @@ export class VaultResource extends BaseResource<VaultModel> {
     });
   }
 
+  /**
+   * Determine ACL entries based on vault type and group configuration:
+   * 1. For regular vaults with a global group:
+   *    - Return only the global group with full permissions
+   *    - Ignore regular groups as they're not used in non-restricted vaults
+   * 2. For all the other vaults:
+   *    - Return all associated groups with full permissions
+   */
   acl(): ACLType {
+    const globalGroup = this.isRegular()
+      ? this.groups.find((group) => group.isGlobal())
+      : undefined;
+    if (globalGroup) {
+      return {
+        aclEntries: [
+          {
+            groupId: globalGroup.id,
+            permissions: ["read", "write"],
+          },
+        ],
+      };
+    }
+
     return {
       aclEntries: this.groups.map((group) => ({
         groupId: group.id,
