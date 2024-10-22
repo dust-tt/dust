@@ -5,6 +5,7 @@ import {
   Dialog,
   DropdownMenu,
   Item,
+  Label,
   ListCheckIcon,
   MoreIcon,
   PlusIcon,
@@ -17,10 +18,12 @@ import type { WorkspaceType } from "@dust-tt/types";
 import { isBuilder, isOnlyUser } from "@dust-tt/types";
 import moment from "moment";
 import Link from "next/link";
+import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useState } from "react";
 
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
   useConversations,
@@ -48,8 +51,9 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     "all" | "selection" | null
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const sendNotification = useContext(SendNotificationsContext);
 
-  const toggleMutliSelect = useCallback(() => {
+  const toggleMultiSelect = useCallback(() => {
     setIsMultiSelect((prev) => !prev);
     setSelectedConversations([]);
   }, [setIsMultiSelect, setSelectedConversations]);
@@ -71,20 +75,42 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
       for (const conversation of selectedConversations) {
         await doDelete(conversation);
       }
-      toggleMutliSelect();
+      toggleMultiSelect();
     }
     setIsDeleting(false);
     setShowDeleteDialog(null);
-  }, [doDelete, selectedConversations, toggleMutliSelect]);
+    sendNotification({
+      type: "success",
+      title: "Conversations successfully deleted",
+      description:
+        conversations.length > 1
+          ? `${conversations.length} conversations have been deleted.`
+          : `${conversations.length} conversation has been deleted.`,
+    });
+  }, [
+    conversations.length,
+    doDelete,
+    selectedConversations,
+    sendNotification,
+    toggleMultiSelect,
+  ]);
 
   const deleteAll = useCallback(async () => {
     setIsDeleting(true);
     for (const conversation of conversations) {
       await doDelete(conversation);
     }
+    sendNotification({
+      type: "success",
+      title: "Conversations successfully deleted",
+      description:
+        conversations.length > 1
+          ? `${conversations.length} conversations have been deleted.`
+          : `${conversations.length} conversation has been deleted.`,
+    });
     setIsDeleting(false);
     setShowDeleteDialog(null);
-  }, [conversations, doDelete]);
+  }, [conversations, doDelete, sendNotification]);
 
   const groupConversationsByDate = (conversations: ConversationType[]) => {
     const today = moment().startOf("day");
@@ -185,7 +211,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   size="xs"
                   variant="tertiary"
                   icon={XMarkIcon}
-                  onClick={toggleMutliSelect}
+                  onClick={toggleMultiSelect}
                   className="mr-2"
                   disabledTooltip
                 />
@@ -238,7 +264,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
                     <DropdownMenu.Item
                       label="Edit conversations"
-                      onClick={toggleMutliSelect}
+                      onClick={toggleMultiSelect}
                       icon={ListCheckIcon}
                       disabled={conversations.length === 0}
                     />
@@ -275,9 +301,9 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </div>
             )}
             {isConversationsError && (
-              <div className="py-1">
-                <Item.SectionHeader label="Error loading conversations" />
-              </div>
+              <Label className="py-1 text-xs font-medium text-element-800">
+                Error loading conversations
+              </Label>
             )}
             {conversationsByDate &&
               Object.keys(conversationsByDate).map((dateLabel) => {
@@ -285,61 +311,24 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 return (
                   conversations.length > 0 && (
                     <React.Fragment key={dateLabel}>
-                      <div className="px-2 py-1">
-                        <Item.SectionHeader label={dateLabel} />
-                      </div>
+                      <Label className="py-1 text-xs font-medium text-element-800">
+                        {dateLabel.toUpperCase()}
+                      </Label>
                       <Item.List>
-                        {conversations.map((c: ConversationType) => {
-                          return (
-                            <Item
-                              spacing="sm"
-                              style="item"
-                              action={
-                                isMultiSelect
-                                  ? () => (
-                                      <Checkbox
-                                        className="bg-white"
-                                        checked={selectedConversations.includes(
-                                          c
-                                        )}
-                                        onCheckedChange={() =>
-                                          toggleConversationSelection(c)
-                                        }
-                                      />
-                                    )
-                                  : undefined
-                              }
-                              hasAction={"hover"}
-                              key={c.sId}
-                              onClick={() => {
-                                isMultiSelect
-                                  ? toggleConversationSelection(c)
-                                  : setSidebarOpen(false);
-                              }}
-                              selected={
-                                isMultiSelect
-                                  ? false
-                                  : router.query.cId === c.sId
-                              }
-                              label={
-                                c.title ||
-                                (moment(c.created).isSame(moment(), "day")
-                                  ? "New Conversation"
-                                  : `Conversation from ${new Date(
-                                      c.created
-                                    ).toLocaleDateString()}`)
-                              }
-                              className="px-2"
-                              link={
-                                isMultiSelect
-                                  ? undefined
-                                  : {
-                                      href: `/w/${owner.sId}/assistant/${c.sId}`,
-                                    }
-                              }
-                            />
-                          );
-                        })}
+                        {conversations.map((c: ConversationType) => (
+                          <RenderConversation
+                            key={c.sId}
+                            conversation={c}
+                            isMultiSelect={isMultiSelect}
+                            selectedConversations={selectedConversations}
+                            toggleConversationSelection={
+                              toggleConversationSelection
+                            }
+                            setSidebarOpen={setSidebarOpen}
+                            router={router}
+                            owner={owner}
+                          />
+                        ))}
                       </Item.List>
                     </React.Fragment>
                   )
@@ -351,3 +340,60 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     </>
   );
 }
+
+const RenderConversation = ({
+  conversation,
+  isMultiSelect,
+  selectedConversations,
+  toggleConversationSelection,
+  setSidebarOpen,
+  router,
+  owner,
+}: {
+  conversation: ConversationType;
+  isMultiSelect: boolean;
+  selectedConversations: ConversationType[];
+  toggleConversationSelection: (c: ConversationType) => void;
+  setSidebarOpen: (open: boolean) => void;
+  router: NextRouter;
+  owner: WorkspaceType;
+}) => {
+  const conversationLabel =
+    conversation.title ||
+    (moment(conversation.created).isSame(moment(), "day")
+      ? "New Conversation"
+      : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
+
+  const conversationAction = isMultiSelect
+    ? () => (
+        <Checkbox
+          className="bg-white"
+          checked={selectedConversations.includes(conversation)}
+        />
+      )
+    : undefined;
+
+  return (
+    <Item
+      style="item"
+      action={conversationAction}
+      hasAction="hover"
+      key={conversation.sId}
+      onClick={() => {
+        isMultiSelect
+          ? toggleConversationSelection(conversation)
+          : setSidebarOpen(false);
+      }}
+      selected={isMultiSelect ? false : router.query.cId === conversation.sId}
+      label={conversationLabel}
+      className="px-2"
+      link={
+        isMultiSelect
+          ? undefined
+          : {
+              href: `/w/${owner.sId}/assistant/${conversation.sId}`,
+            }
+      }
+    />
+  );
+};
