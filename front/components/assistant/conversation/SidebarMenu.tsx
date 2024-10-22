@@ -197,36 +197,25 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               <div className={classNames("flex items-center pt-2")}>
                 <div className="flex-grow" />
                 <Button
-                  label=""
                   size="sm"
                   icon={MoreIcon}
-                  variant="tertiary"
-                  disabledTooltip
-                  labelVisible={false}
+                  variant="ghost"
                   className="invisible"
                 />
                 <Button
-                  label=""
-                  labelVisible={false}
                   size="xs"
-                  variant="tertiary"
+                  variant="ghost"
                   icon={XMarkIcon}
                   onClick={toggleMultiSelect}
                   className="mr-2"
-                  disabledTooltip
                 />
                 <Button
-                  label=""
-                  labelVisible={false}
                   icon={TrashIcon}
                   size="xs"
                   variant={
-                    selectedConversations.length === 0
-                      ? "tertiary"
-                      : "secondaryWarning"
+                    selectedConversations.length === 0 ? "ghost" : "warning"
                   }
                   disabled={selectedConversations.length === 0}
-                  disabledTooltip
                   onClick={() => setShowDeleteDialog("selection")}
                 />
               </div>
@@ -235,14 +224,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 <div className="flex-grow" />
                 <DropdownMenu className="mr-2">
                   <DropdownMenu.Button>
-                    <Button
-                      label=""
-                      size="sm"
-                      icon={MoreIcon}
-                      variant="tertiary"
-                      disabledTooltip
-                      labelVisible={false}
-                    />
+                    <Button size="sm" icon={MoreIcon} variant="ghost" />
                   </DropdownMenu.Button>
                   <DropdownMenu.Items width={250}>
                     {isBuilder(owner) && (

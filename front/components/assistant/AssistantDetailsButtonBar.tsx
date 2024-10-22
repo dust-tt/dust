@@ -75,12 +75,8 @@ export function AssistantDetailsButtonBar({
                 <Button
                   key="show_details"
                   icon={MoreIcon}
-                  label="Actions"
-                  labelVisible={false}
-                  disabledTooltip
                   size="sm"
-                  variant="tertiary"
-                  hasMagnifying={false}
+                  variant="ghost"
                 />
               </DropdownMenu.Button>
               {/* TODO: get rid of the hardcoded value */}
@@ -136,23 +132,17 @@ export function AssistantDetailsButtonBar({
       <div className="group">
         <Button
           icon={agentConfiguration.userFavorite ? StarIcon : StarStrokeIcon}
-          label={`${agentConfiguration.userFavorite ? "Remove from" : "Add to"} favorites`}
-          labelVisible={false}
           size="sm"
           className="group-hover:hidden"
-          variant="tertiary"
-          hasMagnifying={false}
+          variant="ghost"
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />
 
         <Button
           icon={agentConfiguration.userFavorite ? StarStrokeIcon : StarIcon}
-          label={`${agentConfiguration.userFavorite ? "Remove from" : "Add to"} favorites`}
-          labelVisible={false}
           size="sm"
           className="hidden group-hover:block"
-          variant="tertiary"
-          hasMagnifying={false}
+          variant="ghost"
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />
       </div>
@@ -164,11 +154,8 @@ export function AssistantDetailsButtonBar({
       >
         <Button
           icon={ChatBubbleBottomCenterTextIcon}
-          label="Chat with this assistant"
-          labelVisible={false}
           size="sm"
-          variant="tertiary"
-          hasMagnifying={false}
+          variant="ghost"
         />
       </Link>
 
@@ -183,16 +170,9 @@ export function AssistantDetailsButtonBar({
           }`}
         >
           <Button
-            label={
-              canEditAssistant
-                ? "Edit this assistant"
-                : "Edition of this assistant is restricted"
-            }
-            labelVisible={false}
             size="sm"
             disabled={!canEditAssistant}
-            variant="tertiary"
-            hasMagnifying={false}
+            variant="ghost"
             icon={PencilSquareIcon}
           />
         </Link>

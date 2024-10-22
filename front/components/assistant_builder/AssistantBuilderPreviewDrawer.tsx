@@ -290,7 +290,7 @@ const TemplateAddActionButton = ({
         icon={spec.cardIcon}
         label={`Add tool “${spec.label}”`}
         size="sm"
-        variant="secondary"
+        variant="outline"
         onClick={() => addAction(action)}
       />
     </div>
@@ -315,15 +315,7 @@ const TemplateDropDownMenu = ({
   return (
     <DropdownMenu className="text-element-700">
       <DropdownMenu.Button>
-        <Button
-          icon={MoreIcon}
-          label="Actions"
-          labelVisible={false}
-          disabledTooltip
-          size="sm"
-          variant="tertiary"
-          hasMagnifying={false}
-        />
+        <Button icon={MoreIcon} size="sm" variant="ghost" />
       </DropdownMenu.Button>
       <DropdownMenu.Items width={320} origin="topRight">
         <DropdownMenu.Item

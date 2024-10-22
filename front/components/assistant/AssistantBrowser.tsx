@@ -145,7 +145,7 @@ export function AssistantBrowser({
           onChange={setAssistantSearch}
         />
         <div className="hidden sm:block">
-          <Button.List>
+          <div className="flex gap-2">
             <Tooltip
               label="Create your own assistant"
               tooltipTriggerAsChild
@@ -163,8 +163,6 @@ export function AssistantBrowser({
                     <Button
                       variant="primary"
                       icon={PlusIcon}
-                      label="Create"
-                      labelVisible={false}
                       size="sm"
                       className="sm:hidden"
                     />
@@ -188,7 +186,7 @@ export function AssistantBrowser({
                 }
               />
             )}
-          </Button.List>
+          </div>
         </div>
       </div>
 

@@ -462,7 +462,7 @@ export default function AssistantBuilder({
             <>
               <IconButton
                 size="md"
-                variant="tertiary"
+                variant="ghost"
                 icon={
                   rightPanelStatus.tab !== null
                     ? ChevronRightIcon
@@ -494,13 +494,13 @@ export default function AssistantBuilder({
                     icon={ChatBubbleBottomCenterTextIcon}
                     onClick={() => openRightPanelTab("Preview")}
                     size="md"
-                    variant="tertiary"
+                    variant="ghost"
                   />
                   <IconButton
                     icon={MagicIcon}
                     onClick={() => openRightPanelTab("Template")}
                     size="md"
-                    variant="tertiary"
+                    variant="ghost"
                   />
                 </div>
               )}

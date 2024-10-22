@@ -78,9 +78,6 @@ export function SubscriptionContactUsDrawer({
                 variant="primary"
                 size="md"
                 icon={ArrowRightIcon}
-                label=""
-                labelVisible={false}
-                disabledTooltip={true}
                 onClick={() => submit.submit()}
               />
             </Page.Horizontal>

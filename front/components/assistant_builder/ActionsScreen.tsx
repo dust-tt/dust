@@ -357,7 +357,7 @@ export default function ActionsScreen({
                 <Button
                   label="Read our guide"
                   size="sm"
-                  variant="secondary"
+                  variant="outline"
                   icon={BookOpenIcon}
                   onClick={() => {
                     window.open("https://docs.dust.tt/docs/tools", "_blank");
@@ -606,7 +606,7 @@ function ActionCard({
           <div className="w-full truncate">{spec.label}</div>
           <IconButton
             icon={XMarkIcon}
-            variant="tertiary"
+            variant="ghost"
             size="sm"
             onClick={(e) => {
               deleteAction();
@@ -843,14 +843,7 @@ function ActionEditor({
             {shouldDisplayAdvancedSettings && (
               <DropdownMenu className="pr-2">
                 <DropdownMenu.Button>
-                  <Button
-                    label=""
-                    labelVisible={false}
-                    icon={MoreIcon}
-                    size="sm"
-                    variant="tertiary"
-                    disabledTooltip={true}
-                  />
+                  <Button icon={MoreIcon} size="sm" variant="ghost" />
                 </DropdownMenu.Button>
                 <DropdownMenu.Items width={320} overflow="visible">
                   <div className="flex flex-col gap-4">
@@ -962,12 +955,7 @@ function AdvancedSettings({
   return (
     <Popover
       trigger={
-        <Button
-          label="Advanced settings"
-          variant="tertiary"
-          size="sm"
-          type="menu"
-        />
+        <Button label="Advanced settings" variant="ghost" size="sm" isSelect />
       }
       content={
         <div className="flex flex-col gap-4">

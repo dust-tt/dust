@@ -263,7 +263,7 @@ export function CreateOrEditVaultModal({
                 <Button
                   size="sm"
                   label="Delete Space"
-                  variant="primaryWarning"
+                  variant="warning"
                   className="mr-2"
                   onClick={() => setShowDeleteConfirmDialog(true)}
                 />
@@ -340,12 +340,9 @@ function MembersSearchAndList({
           return (
             <div className="flex w-full justify-end">
               <Button
-                label=""
-                labelVisible={false}
                 icon={XMarkIcon}
-                variant="tertiary"
+                variant="ghost"
                 onClick={() => removeMember(info.row.original.userId)}
-                disabledTooltip={true}
               />
             </div>
           );

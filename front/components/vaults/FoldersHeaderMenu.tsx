@@ -104,7 +104,7 @@ const AddDataDropDownButton = ({
           label="Add data"
           icon={PlusIcon}
           variant="primary"
-          type="menu"
+          isSelect
           disabled={!canWriteInVault}
         />
       </DropdownMenu.Button>

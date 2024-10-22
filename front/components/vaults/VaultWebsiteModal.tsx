@@ -571,16 +571,15 @@ export default function VaultWebsiteModal({
                 <div className="flex gap-6">
                   <Button
                     label="Advanced settings"
-                    variant="secondary"
+                    variant="outline"
                     onClick={() => {
                       setAdvancedSettingsOpened(true);
                     }}
-                    hasMagnifying={false}
                   ></Button>
                   {webCrawlerConfiguration && dataSourceView && (
                     <>
                       <Button
-                        variant="secondaryWarning"
+                        variant="warning"
                         icon={TrashIcon}
                         label={"Delete this website"}
                         onClick={() => {
@@ -692,7 +691,7 @@ const AdvancedSettingsModal = ({
           <div className="flex">
             <Button
               variant="secondary"
-              className="shrink"
+              className="outline"
               label="Add Header"
               onClick={() => {
                 onSave([...headers, { key: "", value: "" }]);

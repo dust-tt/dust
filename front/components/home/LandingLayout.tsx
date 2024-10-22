@@ -100,7 +100,7 @@ export default function LandingLayout({
           <MainNavigation />
           <div className="flex flex-grow justify-end">
             <Button
-              variant="tertiary"
+              variant="ghost"
               size="sm"
               label="Sign in"
               icon={LoginIcon}
@@ -203,7 +203,7 @@ const CookieBanner = ({
       </div>
       <div className="flex gap-2">
         <Button
-          variant="tertiary"
+          variant="ghost"
           size="sm"
           label="Reject"
           onClick={onClickRefuse}

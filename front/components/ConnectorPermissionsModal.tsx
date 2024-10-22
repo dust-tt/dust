@@ -320,7 +320,7 @@ function DataSourceEditionModal({
               <Button
                 label={"Edit Permissions"}
                 icon={LockIcon}
-                variant="primaryWarning"
+                variant="warning"
                 onClick={() => {
                   setShowConfirmDialog(true);
                 }}
@@ -333,7 +333,7 @@ function DataSourceEditionModal({
             <Button
               label={"Edit Permissions"}
               icon={LockIcon}
-              variant="primaryWarning"
+              variant="warning"
               onClick={() => {
                 setShowConfirmDialog(true);
               }}
@@ -348,7 +348,7 @@ function DataSourceEditionModal({
             void onEditPermissionsClick();
             setShowConfirmDialog(false);
           }}
-          validateVariant="primaryWarning"
+          validateVariant="warning"
           cancelLabel="Cancel"
           validateLabel="Continue"
         >
@@ -461,7 +461,7 @@ function DataSourceDeletionModal({
           <Button
             label="Delete Connection"
             icon={LockIcon}
-            variant="primaryWarning"
+            variant="warning"
             onClick={() => {
               setShowConfirmDialog(true);
             }}
@@ -476,7 +476,7 @@ function DataSourceDeletionModal({
             void handleDelete();
             setShowConfirmDialog(false);
           }}
-          validateVariant="primaryWarning"
+          validateVariant="warning"
           cancelLabel="Cancel"
           validateLabel="Continue"
           isSaving={isLoading}
@@ -702,7 +702,7 @@ export function ConnectorPermissionsModal({
               <Button
                 className="ml-auto justify-self-end"
                 label="Edit permissions"
-                variant="tertiary"
+                variant="ghost"
                 icon={LockIcon}
                 onClick={() => {
                   setModalToShow("edition");
@@ -713,7 +713,7 @@ export function ConnectorPermissionsModal({
               <Button
                 className="ml-auto justify-self-end"
                 label="Delete connection"
-                variant="secondaryWarning"
+                variant="warning"
                 icon={TrashIcon}
                 onClick={() => {
                   setModalToShow("deletion");

@@ -403,9 +403,9 @@ const DocumentUploadOrEditModal = ({
                           </div>
                           <div className="flex">
                             <Button
-                              label="Remove"
+                              tooltip="Remove"
                               icon={TrashIcon}
-                              variant="secondaryWarning"
+                              variant="warning"
                               onClick={() => {
                                 const newTags = [...documentState.tags];
                                 newTags.splice(index, 1);
@@ -414,7 +414,6 @@ const DocumentUploadOrEditModal = ({
                                   tags: newTags,
                                 }));
                               }}
-                              labelVisible={false}
                             />
                           </div>
                         </div>

@@ -212,7 +212,7 @@ export const CarousselContentBlock = ({
         <Link href={href} shallow={true} className="block w-full">
           <Button
             label={"Discover Dust for " + title}
-            variant="tertiary"
+            variant="ghost"
             size="md"
             icon={ArrowRightIcon}
             className="max-w-full"

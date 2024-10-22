@@ -286,7 +286,7 @@ function ContentNodeTreeChildren({
                 icon={ListCheckIcon}
                 label={selectAllClicked ? "Unselect All" : "Select All"}
                 size="sm"
-                variant="tertiary"
+                variant="ghost"
                 onClick={() => {
                   const isSelected = !selectAllClicked;
                   setSelectAllClicked(isSelected);

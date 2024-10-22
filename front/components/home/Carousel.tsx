@@ -204,13 +204,10 @@ const CarouselPrevious = React.forwardRef<
 
   return (
     <Button
-      // TODO(2024-04-10 flav) Support ref in the Button.
-      // ref={ref}
+      ref={ref}
       variant={variant}
       size={size}
-      labelVisible={false}
       icon={ChevronLeftIcon}
-      disabledTooltip={true}
       className={className}
       disabled={!isLooping && !canScrollPrev}
       onClick={scrollPrev}
@@ -229,13 +226,10 @@ const CarouselNext = React.forwardRef<
 
   return (
     <Button
-      // TODO(2024-04-10 flav) Support ref in the Button.
-      // ref={ref}
+      ref={ref}
       variant={variant}
       size={size}
-      labelVisible={false}
       icon={ChevronRightIcon}
-      disabledTooltip={true}
       className={className}
       disabled={!isLooping && !canScrollNext}
       onClick={scrollNext}

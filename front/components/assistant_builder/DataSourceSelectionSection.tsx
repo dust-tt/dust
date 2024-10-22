@@ -67,13 +67,11 @@ export default function DataSourceSelectionSection({
           <div>
             {Object.keys(dataSourceConfigurations).length > 0 && (
               <Button
-                labelVisible={true}
                 label="Manage selection"
                 variant="primary"
                 size="sm"
                 onClick={openDataSourceModal}
                 disabled={!canAddDataSource}
-                hasMagnifying={false}
               />
             )}
           </div>

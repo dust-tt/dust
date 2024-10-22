@@ -79,12 +79,8 @@ export function AssistantDropdownMenu({
           <Button
             key="show_details"
             icon={MoreIcon}
-            label="Actions"
-            labelVisible={false}
-            disabledTooltip
             size="sm"
-            variant="tertiary"
-            hasMagnifying={false}
+            variant="ghost"
           />
         );
       case "plain":

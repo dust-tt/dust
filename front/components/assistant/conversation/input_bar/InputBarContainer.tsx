@@ -178,7 +178,7 @@ const InputBarContainer = ({
           {actions.includes("fullscreen") && (
             <div className="hidden sm:flex">
               <IconButton
-                variant={"tertiary"}
+                variant="ghost"
                 icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
                 size="sm"
                 className="flex"
@@ -190,10 +190,8 @@ const InputBarContainer = ({
         <Button
           size="sm"
           icon={ArrowUpIcon}
-          label="Send"
+          variant="highlight"
           disabled={editorService.isEmpty() || disableSendButton}
-          labelVisible={false}
-          disabledTooltip
           onClick={async () => {
             const jsonContent = editorService.getTextAndMentions();
             onEnterKeyDown(editorService.isEmpty(), jsonContent, () => {

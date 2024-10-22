@@ -84,7 +84,7 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
           fullWidth
           trigger={
             <Button
-              variant="tertiary"
+              variant="ghost"
               icon={EmotionLaughIcon}
               label="Pick an Emoji"
             />
@@ -109,11 +109,7 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
           fullWidth
           trigger={
             <div ref={colorButtonRef}>
-              <Button
-                variant="tertiary"
-                icon={PaintIcon}
-                label="Pick a color"
-              />
+              <Button variant="ghost" icon={PaintIcon} label="Pick a color" />
             </div>
           }
           content={

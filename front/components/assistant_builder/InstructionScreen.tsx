@@ -370,12 +370,7 @@ function AdvancedSettings({
   return (
     <Popover
       trigger={
-        <Button
-          label="Advanced settings"
-          variant="tertiary"
-          size="sm"
-          type="menu"
-        />
+        <Button label="Advanced settings" variant="ghost" size="sm" isSelect />
       }
       content={
         <div className="flex flex-col gap-4">
@@ -386,14 +381,12 @@ function AdvancedSettings({
             <DropdownMenu>
               <DropdownMenu.Button>
                 <Button
-                  type="select"
-                  labelVisible={true}
+                  isSelect
                   label={
                     getSupportedModelConfig(generationSettings.modelSettings)
                       .displayName
                   }
-                  variant="secondary"
-                  hasMagnifying={false}
+                  variant="outline"
                   size="sm"
                 />
               </DropdownMenu.Button>
@@ -434,15 +427,13 @@ function AdvancedSettings({
             <DropdownMenu>
               <DropdownMenu.Button>
                 <Button
-                  type="select"
-                  labelVisible={true}
+                  isSelect
                   label={
                     getCreativityLevelFromTemperature(
                       generationSettings?.temperature
                     ).label
                   }
-                  variant="secondary"
-                  hasMagnifying={false}
+                  variant="outline"
                   size="sm"
                 />
               </DropdownMenu.Button>

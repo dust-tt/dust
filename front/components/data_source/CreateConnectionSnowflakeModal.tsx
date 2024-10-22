@@ -137,7 +137,7 @@ export function CreateConnectionSnowflakeModal({
               <Button
                 label="Read our guide"
                 size="xs"
-                variant="secondary"
+                variant="outline"
                 icon={BookOpenIcon}
               />
             </a>
@@ -215,7 +215,7 @@ export function CreateConnectionSnowflakeModal({
             </div>
 
             <div className="flex justify-center pt-2">
-              <Button.List isWrapping={true}>
+              <div className="flex gap-2">
                 <Button
                   variant="primary"
                   size="md"
@@ -229,7 +229,7 @@ export function CreateConnectionSnowflakeModal({
                     isLoading ? "Connecting..." : "Connect and select tables"
                   }
                 />
-              </Button.List>
+              </div>
             </div>
           </Page.Vertical>
         </div>

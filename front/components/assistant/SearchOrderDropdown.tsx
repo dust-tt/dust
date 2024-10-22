@@ -25,11 +25,10 @@ export function SearchOrderDropdown({
     <DropdownMenu>
       <DropdownMenu.Button>
         <Button
-          type="select"
+          isSelect
           labelVisible={true}
           label={`Order by: ${prettyfiedSearchOrder[orderBy]}`}
-          variant="tertiary"
-          hasMagnifying={false}
+          variant="ghost"
           size="sm"
           disabled={disabled}
         />
