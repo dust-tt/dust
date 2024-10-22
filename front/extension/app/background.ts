@@ -1,13 +1,13 @@
-import type {
-  Auth0AuthorizeResponse,
-  AuthBackgroundResponse,
-  AuthBackroundMessage,
-} from "./src/lib/auth";
 import {
   AUTH0_AUDIENCE,
   AUTH0_CLIENT_DOMAIN,
   AUTH0_CLIENT_ID,
-} from "./src/lib/auth";
+} from "./src/lib/config";
+import type {
+  Auth0AuthorizeResponse,
+  AuthBackgroundResponse,
+  AuthBackroundMessage,
+} from "./src/lib/messages";
 import { generatePKCE } from "./src/lib/utils";
 
 const log = console.error;

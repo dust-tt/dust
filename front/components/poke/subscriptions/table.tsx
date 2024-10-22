@@ -239,7 +239,7 @@ export function ActiveSubscriptionTable({
                 </PokeTableRow>
 
                 <PokeTableRow>
-                  <PokeTableCell>Max number of vaults</PokeTableCell>
+                  <PokeTableCell>Max number of spaces</PokeTableCell>
                   <PokeTableCell>
                     {activePlan.limits.vaults.maxVaults === -1
                       ? "unlimited"

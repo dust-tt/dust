@@ -59,7 +59,7 @@ export const AddToVaultDialog = ({
 
   const addToVault = async () => {
     if (!vault) {
-      return "Please select a vault to add the data to.";
+      return "Please select a space to add the data to.";
     }
 
     const existingViewForVault = dataSourceViews.find(
@@ -100,22 +100,22 @@ export const AddToVaultDialog = ({
       if (!res.ok) {
         const rawError: { error: APIError } = await res.json();
         sendNotification({
-          title: `Error while adding data to vault`,
+          title: `Error while adding data to space`,
           description: rawError.error.message,
           type: "error",
         });
         onClose(false);
       } else {
         sendNotification({
-          title: `Data added to vault`,
+          title: `Data added to space`,
           type: "success",
         });
         onClose(true);
       }
     } catch (e) {
       sendNotification({
-        title: `Error while adding data to vault`,
-        description: `An Unknown error ${e} occurred while adding data to vault.`,
+        title: `Error while adding data to space`,
+        description: `An Unknown error ${e} occurred while adding data to space.`,
         type: "error",
       });
       onClose(false);
@@ -128,19 +128,19 @@ export const AddToVaultDialog = ({
       isOpen={isOpen}
       onCancel={() => onClose(false)}
       onValidate={addToVault}
-      title="Add to vault"
+      title="Add to Space"
       validateLabel="Save"
     >
       {availableVaults.length === 0 ? (
         <div className="mt-1 text-left">
-          This data is already available in all vaults.
+          This data is already available in all spaces.
         </div>
       ) : (
         <DropdownMenu>
           <DropdownMenu.Button>
             <Button
               hasMagnifying={false}
-              label={vault ? vault.name : "Select vault"}
+              label={vault ? vault.name : "Select space"}
               size="sm"
               type="select"
               variant="secondary"

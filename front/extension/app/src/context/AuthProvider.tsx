@@ -1,3 +1,4 @@
+import type { StoredUser } from "@app/extension/app/src/lib/storage";
 import type { ReactNode } from "react";
 import React, { createContext, useContext } from "react";
 
@@ -5,21 +6,41 @@ import { useAuthHook } from "../hooks/useAuth";
 
 type AuthContextType = {
   token: string | null;
-  isLoading: boolean;
   isAuthenticated: boolean;
+  user: StoredUser | null;
+  isUserSetup: boolean;
+  isLoading: boolean;
   handleLogin: () => void;
   handleLogout: () => void;
+  handleSelectWorkspace: (workspaceId: string) => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const { token, isLoading, isAuthenticated, handleLogin, handleLogout } =
-    useAuthHook();
+  const {
+    token,
+    isAuthenticated,
+    user,
+    isUserSetup,
+    isLoading,
+    handleLogin,
+    handleLogout,
+    handleSelectWorkspace,
+  } = useAuthHook();
 
   return (
     <AuthContext.Provider
-      value={{ token, isLoading, isAuthenticated, handleLogin, handleLogout }}
+      value={{
+        token,
+        isAuthenticated,
+        user,
+        isUserSetup,
+        isLoading,
+        handleLogin,
+        handleLogout,
+        handleSelectWorkspace,
+      }}
     >
       {children}
     </AuthContext.Provider>

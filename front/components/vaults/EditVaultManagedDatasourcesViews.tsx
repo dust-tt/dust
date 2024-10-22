@@ -13,26 +13,28 @@ import React, { useMemo, useState } from "react";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import VaultManagedDataSourcesViewsModal from "@app/components/vaults/VaultManagedDatasourcesViewsModal";
-import { isManaged } from "@app/lib/data_sources";
+import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import {
   useVaultDataSourceViews,
   useVaultDataSourceViewsWithDetails,
 } from "@app/lib/swr/vaults";
 
 interface EditVaultManagedDataSourcesViewsProps {
+  dataSourceView?: DataSourceViewType;
   isAdmin: boolean;
+  onSelectedDataUpdated: () => Promise<void>;
   owner: WorkspaceType;
   systemVault: VaultType;
   vault: VaultType;
-  dataSourceView?: DataSourceViewType;
 }
 
 export function EditVaultManagedDataSourcesViews({
+  dataSourceView,
   isAdmin,
+  onSelectedDataUpdated,
   owner,
   systemVault,
   vault,
-  dataSourceView,
 }: EditVaultManagedDataSourcesViewsProps) {
   const sendNotification = React.useContext(SendNotificationsContext);
 
@@ -172,7 +174,7 @@ export function EditVaultManagedDataSourcesViews({
               return rawError.error.message;
             }
           } catch (e) {
-            return `An Unknown error ${e} occurred while adding data to vault.`;
+            return `An Unknown error ${e} occurred while adding data to space.`;
           }
           return null;
         }
@@ -184,7 +186,7 @@ export function EditVaultManagedDataSourcesViews({
     );
     if (errors.length) {
       sendNotification({
-        title: "Error Adding Data to Vault",
+        title: "Error Adding Data to Space",
         type: "error",
         description: errors[0],
       });
@@ -192,10 +194,12 @@ export function EditVaultManagedDataSourcesViews({
       sendNotification({
         title: "Data Successfully Updated",
         type: "success",
-        description: "All data sources were successfully updated in the Vault.",
+        description: "All data sources were successfully updated in the Space.",
       });
     }
+
     await mutateVaultDataSourceViews();
+    await onSelectedDataUpdated();
   };
 
   if (isSystemVaultDataSourceViewsLoading || isVaultDataSourceViewsLoading) {
@@ -231,7 +235,11 @@ export function EditVaultManagedDataSourcesViews({
         <p>You have no connection set up.</p>
       </Dialog>
       <Button
-        label="Add data from connections"
+        label={
+          dataSourceView
+            ? `Add data from ${getDisplayNameForDataSource(dataSourceView.dataSource)}`
+            : "Add data from connections"
+        }
         variant="primary"
         icon={PlusIcon}
         size="sm"

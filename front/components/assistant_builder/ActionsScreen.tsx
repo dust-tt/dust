@@ -382,11 +382,7 @@ export default function ActionsScreen({
             <Chip
               color="amber"
               size="sm"
-              label={
-                nonGlobalVaultsUsedInActions.length > 1
-                  ? `Based on the sources you selected, this assistant can only be used by users with access to vaults : ${nonGlobalVaultsUsedInActions.map((v) => v.name).join(", ")}.`
-                  : `Based on the sources you selected, this assistant can only be used by users with access to vault : ${nonGlobalVaultsUsedInActions[0].name}.`
-              }
+              label={`Based on the sources you selected, this assistant can only be used by users with access to space${nonGlobalVaultsUsedInActions.length > 1 ? "s" : ""} : ${nonGlobalVaultsUsedInActions.map((v) => v.name).join(", ")}.`}
             />
           </div>
         )}

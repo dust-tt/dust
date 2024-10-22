@@ -174,21 +174,20 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   snowflake: {
     name: "Snowflake",
     connectorProvider: "snowflake",
-    status: "rolling_out",
+    status: "built",
     hide: true,
     description: "Query a Snowflake database.",
     limitations: null,
     logoComponent: SnowflakeLogo,
     isNested: true,
     isSearchEnabled: false,
-    guideLink: "https://docs.dust.tt/", // TODO(SNOWFLAKE): Add a doc for snowflake and point.
+    guideLink: "https://docs.dust.tt/docs/snowflake-connection",
     selectLabel: "Select tables",
-    rollingOutFlag: "snowflake_connector_feature",
   },
   zendesk: {
     name: "Zendesk",
     connectorProvider: "zendesk",
-    status: "rolling_out",
+    status: "preview",
     hide: false,
     description:
       "Authorize access to Zendesk for indexing tickets from your support center and articles from your help center.",

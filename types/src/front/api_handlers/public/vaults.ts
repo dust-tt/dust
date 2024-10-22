@@ -2,13 +2,6 @@ import * as t from "io-ts";
 
 import { ContentNodeType } from "../../lib/connectors_api";
 
-export const PostDataSourceViewSchema = t.type({
-  dataSourceId: t.string,
-  parentsIn: t.array(t.string),
-});
-
-export type PostDataSourceViewType = t.TypeOf<typeof PostDataSourceViewSchema>;
-
 const ParentsToAddRemoveSchema = t.type({
   parentsToAdd: t.union([t.array(t.string), t.undefined]),
   parentsToRemove: t.union([t.array(t.string), t.undefined]),

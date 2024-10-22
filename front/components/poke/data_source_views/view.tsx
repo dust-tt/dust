@@ -46,13 +46,13 @@ export function ViewDataSourceViewTable({
                 <PokeTableCell>{dataSourceView.kind}</PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
-                <PokeTableHead>Vault</PokeTableHead>
+                <PokeTableHead>Space</PokeTableHead>
                 <PokeTableCell>
                   {dataSourceView.vault.name} ({dataSourceView.vault.sId})
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
-                <PokeTableHead>Vault Type</PokeTableHead>
+                <PokeTableHead>Space Type</PokeTableHead>
                 <PokeTableCell>{dataSourceView.vault.kind}</PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>

@@ -181,7 +181,7 @@ export function DataSourceViewsSelector({
             : dataSourceViews;
 
           if (dataSourceViewsForVault.length === 0) {
-            return <>No data source in this vault.</>;
+            return <>No data source in this space.</>;
           }
 
           return (

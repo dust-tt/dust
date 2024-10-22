@@ -7,7 +7,6 @@ export const WHITELISTABLE_FEATURES = [
   "use_app_for_header_detection",
   "openai_o1_feature",
   "openai_o1_mini_feature",
-  "snowflake_connector_feature",
   "zendesk_connector_feature",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];

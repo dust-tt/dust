@@ -1,19 +1,16 @@
 import {
   Button,
   DataTable,
+  ExclamationCircleStrokeIcon,
   Icon,
   Input,
   Modal,
   Page,
-  PlusIcon,
-  Searchbar,
   SliderToggle,
-  Spinner,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, UserType, VaultType } from "@dust-tt/types";
-import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import type { CellContext, PaginationState } from "@tanstack/react-table";
-import { MinusIcon } from "lucide-react";
+import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import React, {
   useCallback,
@@ -25,7 +22,7 @@ import React, {
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { ConfirmDeleteVaultDialog } from "@app/components/vaults/ConfirmDeleteVaultDialog";
-import { useSearchMembers } from "@app/lib/swr/memberships";
+import { SearchMembersPopover } from "@app/components/vaults/SearchMembersPopover";
 import {
   useCreateVault,
   useDeleteVault,
@@ -53,6 +50,7 @@ function getTableRows(allUsers: UserType[]): RowData[] {
 }
 
 interface CreateOrEditVaultModalProps {
+  defaultRestricted?: boolean;
   isAdmin: boolean;
   isOpen: boolean;
   onClose: () => void;
@@ -62,6 +60,7 @@ interface CreateOrEditVaultModalProps {
 }
 
 export function CreateOrEditVaultModal({
+  defaultRestricted,
   isAdmin,
   isOpen,
   onClose,
@@ -72,13 +71,11 @@ export function CreateOrEditVaultModal({
   const [vaultName, setVaultName] = useState<string | null>(
     vault?.name ?? null
   );
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<UserType[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isRestricted, setIsRestricted] = useState(
-    vault?.isRestricted ?? false
-  );
+  const [isRestricted, setIsRestricted] = useState(false);
 
   const doCreate = useCreateVault({ owner });
   const doUpdate = useUpdateVault({ owner });
@@ -96,14 +93,16 @@ export function CreateOrEditVaultModal({
       const vaultMembers = vaultInfo?.members ?? null;
 
       if (vaultMembers && vaultInfo?.isRestricted) {
-        setSelectedMembers(vaultMembers.map((vm) => vm.sId));
+        setSelectedMembers(vaultMembers);
       }
 
       setVaultName(vaultInfo?.name ?? null);
 
-      setIsRestricted(vaultInfo?.isRestricted ?? false);
+      setIsRestricted(
+        vaultInfo ? vaultInfo.isRestricted : defaultRestricted ?? false
+      );
     }
-  }, [isOpen, vaultInfo]);
+  }, [defaultRestricted, isOpen, vaultInfo]);
 
   const handleClose = useCallback(() => {
     // Call the original onClose function.
@@ -123,11 +122,11 @@ export function CreateOrEditVaultModal({
   const onSave = useCallback(async () => {
     setIsSaving(true);
 
-    if (selectedMembers.length > 0 && vault) {
+    if (vault) {
       if (isRestricted) {
         await doUpdate(vault, {
           isRestricted: true,
-          memberIds: selectedMembers,
+          memberIds: selectedMembers.map((vm) => vm.sId),
           name: vaultName,
         });
       } else {
@@ -147,7 +146,7 @@ export function CreateOrEditVaultModal({
         createdVault = await doCreate({
           name: vaultName,
           isRestricted: true,
-          memberIds: selectedMembers, // must be a string[] when isRestricted is true
+          memberIds: selectedMembers.map((vm) => vm.sId),
         });
       } else {
         createdVault = await doCreate({
@@ -198,7 +197,7 @@ export function CreateOrEditVaultModal({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={vault ? `Edit ${vault.name}` : "Create a Vault"}
+      title={vault ? `Edit ${vault.name}` : "Create a Space"}
       saveLabel={vault ? "Save" : "Create"}
       variant="side-md"
       hasChanged={
@@ -214,15 +213,15 @@ export function CreateOrEditVaultModal({
           <div className="mb-4 flex w-full flex-col gap-y-2 pt-2">
             <Page.SectionHeader title="Name" />
             <Input
-              placeholder="Vault's name"
+              placeholder="Space's name"
               value={vaultName}
               name="vaultName"
               onChange={(e) => setVaultName(e.target.value)}
             />
             {!vault && (
               <div className="flex gap-1 text-xs text-element-700">
-                <Icon visual={InformationCircleIcon} size="xs" />
-                <span>Vault name must be unique</span>
+                <Icon visual={ExclamationCircleStrokeIcon} size="xs" />
+                <span>Space name must be unique</span>
               </div>
             )}
           </div>
@@ -245,16 +244,14 @@ export function CreateOrEditVaultModal({
               )}
             </div>
             <MembersSearchAndList
-              isAdmin={isAdmin}
               isRestricted={isRestricted}
-              onMembersUpdated={setSelectedMembers}
               owner={owner}
+              onMembersUpdated={setSelectedMembers}
               selectedMembers={selectedMembers}
             />
           </div>
           {isAdmin && vault && vault.kind === "regular" && (
             <>
-              <Page.Separator />
               <ConfirmDeleteVaultDialog
                 vault={vault}
                 handleDelete={onDelete}
@@ -265,7 +262,7 @@ export function CreateOrEditVaultModal({
               <div className="flex w-full justify-end">
                 <Button
                   size="sm"
-                  label="Delete Vault"
+                  label="Delete Space"
                   variant="primaryWarning"
                   className="mr-2"
                   onClick={() => setShowDeleteConfirmDialog(true)}
@@ -280,51 +277,31 @@ export function CreateOrEditVaultModal({
 }
 
 interface MembersSearchAndListProps {
-  isAdmin: boolean;
   isRestricted: boolean;
-  onMembersUpdated: (members: string[]) => void;
+  onMembersUpdated: (members: UserType[]) => void;
   owner: LightWorkspaceType;
-  selectedMembers: string[];
+  selectedMembers: UserType[];
 }
 
 function MembersSearchAndList({
-  isAdmin,
   isRestricted,
   onMembersUpdated,
   owner,
   selectedMembers,
 }: MembersSearchAndListProps) {
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [pagination, setPagination] = React.useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 25,
-  });
-
   const sendNotifications = useContext(SendNotificationsContext);
 
-  const { members, totalMembersCount, isLoading } = useSearchMembers({
-    workspaceId: owner.sId,
-    searchTerm,
-    pageIndex: pagination.pageIndex,
-    pageSize: pagination.pageSize,
-    disabled: !isAdmin,
-  });
-
   const getTableColumns = useCallback(() => {
-    const manageMembers = (userId: string, addOrRemove: "add" | "remove") => {
-      if (addOrRemove === "remove") {
-        if (selectedMembers.length === 1) {
-          sendNotifications({
-            title: "Cannot remove last member.",
-            description: "You cannot remove the last group member.",
-            type: "error",
-          });
-          return;
-        }
-        onMembersUpdated(selectedMembers.filter((m) => m !== userId));
-      } else {
-        onMembersUpdated([...selectedMembers, userId]);
+    const removeMember = (userId: string) => {
+      if (selectedMembers.length === 1) {
+        sendNotifications({
+          title: "Cannot remove last member.",
+          description: "You cannot remove the last group member.",
+          type: "error",
+        });
+        return;
       }
+      onMembersUpdated(selectedMembers.filter((m) => m.sId !== userId));
     };
     return [
       {
@@ -359,34 +336,16 @@ function MembersSearchAndList({
       },
       {
         id: "action",
-        meta: {
-          width: "10rem",
-        },
         cell: (info: Info) => {
-          const isSelected = selectedMembers.includes(info.row.original.userId);
-          if (isSelected) {
-            return (
-              <div className="ml-4 flex w-full justify-end pr-2">
-                <Button
-                  label="Remove"
-                  onClick={() =>
-                    manageMembers(info.row.original.userId, "remove")
-                  }
-                  variant="tertiary"
-                  size="sm"
-                  icon={MinusIcon}
-                />
-              </div>
-            );
-          }
           return (
-            <div className="ml-4 flex w-full justify-end pr-2">
+            <div className="flex w-full justify-end">
               <Button
-                label="Add"
-                onClick={() => manageMembers(info.row.original.userId, "add")}
-                variant="secondary"
-                size="sm"
-                icon={PlusIcon}
+                label=""
+                labelVisible={false}
+                icon={XMarkIcon}
+                variant="tertiary"
+                onClick={() => removeMember(info.row.original.userId)}
+                disabledTooltip={true}
               />
             </div>
           );
@@ -395,7 +354,7 @@ function MembersSearchAndList({
     ];
   }, [onMembersUpdated, selectedMembers, sendNotifications]);
 
-  const rows = useMemo(() => getTableRows(members), [members]);
+  const rows = useMemo(() => getTableRows(selectedMembers), [selectedMembers]);
 
   const columns = useMemo(() => getTableColumns(), [getTableColumns]);
 
@@ -404,33 +363,19 @@ function MembersSearchAndList({
   }
 
   return (
-    <>
-      <div className="flex w-full">
-        <Searchbar
-          name="search"
-          placeholder="Search members (email)"
-          value={searchTerm}
-          onChange={setSearchTerm}
-        />
-      </div>
-      {isLoading ? (
-        <div className="mt-8 flex justify-center">
-          <Spinner size="lg" variant="color" />
-        </div>
-      ) : (
-        <div className="flex grow flex-col overflow-y-auto scrollbar-hide">
-          <DataTable
-            data={rows}
-            columns={columns}
-            pagination={pagination}
-            setPagination={setPagination}
-            totalRowCount={totalMembersCount}
-            columnsBreakpoints={{
-              email: "md",
-            }}
-          />
-        </div>
-      )}
-    </>
+    <div className="flex flex-col items-end gap-2">
+      <SearchMembersPopover
+        owner={owner}
+        selectedMembers={selectedMembers}
+        onMembersUpdated={onMembersUpdated}
+      />
+      <DataTable
+        data={rows}
+        columns={columns}
+        columnsBreakpoints={{
+          email: "md",
+        }}
+      />
+    </div>
   );
 }

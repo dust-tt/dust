@@ -4,7 +4,7 @@ import type {
   DataSourceViewType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { PostDataSourceViewSchema } from "@dust-tt/types";
+import { ContentSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -34,6 +34,8 @@ export type GetVaultDataSourceViewsResponseBody<
 export type PostVaultDataSourceViewsResponseBody = {
   dataSourceView: DataSourceViewType;
 };
+
+const PostDataSourceViewSchema = ContentSchema;
 
 async function handler(
   req: NextApiRequest,

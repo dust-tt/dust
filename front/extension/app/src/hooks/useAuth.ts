@@ -1,72 +1,48 @@
+import { login, logout, refreshToken } from "@app/extension/app/src/lib/auth";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { StoredTokens } from "../lib/auth";
-import {
-  clearStoredTokens,
-  getStoredTokens,
-  saveTokens,
-  sendAuthMessage,
-  sendRefreshTokenMessage,
-  sentLogoutMessage,
-} from "../lib/auth";
+import type { StoredTokens, StoredUser } from "../lib/storage";
+import { getStoredTokens, saveSelectedWorkspace } from "../lib/storage";
 
 const log = console.error;
 
 export const useAuthHook = () => {
   const [tokens, setTokens] = useState<StoredTokens | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
-
   const isAuthenticated = useMemo(
     () => !!(tokens?.accessToken && tokens.expiresAt > Date.now()),
     [tokens]
   );
 
-  // Logout sends a message to the background script to call the auth0 logout endpoint.
-  // It also clears the stored tokens in the extension.
+  const [user, setUser] = useState<StoredUser | null>(null);
+  const isUserSetup = !!(user && user.userId && user.selectedWorkspace);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const handleLogout = useCallback(async () => {
     setIsLoading(true);
-    try {
-      const response = await sentLogoutMessage();
-      if (!response?.success) {
-        log("Logout failed: No success response received.");
-        return;
-      }
-      await clearStoredTokens();
-      setTokens(null);
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current);
-      }
-    } catch (error) {
-      log("Logout failed: Unknown error.", error);
-    } finally {
+    const success = await logout();
+    if (!success) {
+      // TODO(EXT): User facing error message if logout failed.
       setIsLoading(false);
-    }
-  }, []);
-
-  // Refresh token sends a message to the background script to call the auth0 refresh token endpoint.
-  // It updates the stored tokens with the new access token.
-  // If the refresh token is invalid, it will call handleLogout.
-  const handleRefreshToken = useCallback(async () => {
-    if (!tokens?.refreshToken) {
       return;
     }
-    try {
-      const response = await sendRefreshTokenMessage(tokens.refreshToken);
-      if (!response?.accessToken) {
-        log("Refresh token: No access token received.");
-        await handleLogout();
-        return;
-      }
-      const savedTokens = await saveTokens(response);
-      setTokens(savedTokens);
-    } catch (error) {
-      log("Refresh token: unknown error.", error);
-      await handleLogout();
+    setTokens(null);
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
     }
-  }, [tokens, handleLogout]);
+    setIsLoading(false);
+  }, []);
 
-  // Schedule token refresh sets a timeout to call handleRefreshToken before the token expires.
+  const handleRefreshToken = useCallback(async () => {
+    const savedTokens = await refreshToken();
+    if (!savedTokens) {
+      log("Refresh token: No access token received.");
+      await handleLogout();
+      return;
+    }
+    setTokens(savedTokens);
+  }, [handleLogout]);
+
   const scheduleTokenRefresh = useCallback(
     (expiresAt: number) => {
       if (refreshTimerRef.current) {
@@ -78,27 +54,23 @@ export const useAuthHook = () => {
     [handleRefreshToken]
   );
 
-  // Initialize auth checks if there are stored tokens and if they are still valid.
-  // It is called on component mount.
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        const storedTokens = await getStoredTokens();
-        if (storedTokens) {
-          setTokens(storedTokens);
-          if (storedTokens.expiresAt > Date.now()) {
-            scheduleTokenRefresh(storedTokens.expiresAt);
-          } else {
-            await handleRefreshToken();
-          }
-        }
-      } catch (error) {
-        log("Unknown error retrieving tokens.", error);
-      } finally {
+    void (async () => {
+      setIsLoading(true);
+      const storedTokens = await getStoredTokens();
+      if (!storedTokens) {
+        // TODO(EXT): User facing error message if no tokens found.
         setIsLoading(false);
+        return;
       }
-    };
-    void initializeAuth();
+      setTokens(storedTokens);
+      if (storedTokens.expiresAt > Date.now()) {
+        scheduleTokenRefresh(storedTokens.expiresAt);
+      } else {
+        await handleRefreshToken();
+      }
+      setIsLoading(false);
+    })();
 
     return () => {
       if (refreshTimerRef.current) {
@@ -107,31 +79,34 @@ export const useAuthHook = () => {
     };
   }, [handleRefreshToken, scheduleTokenRefresh]);
 
-  // Login sends a message to the background script to call the auth0 login endpoint.
-  // It saves the tokens in the extension and schedules a token refresh.
   const handleLogin = useCallback(async () => {
     setIsLoading(true);
-    try {
-      const response = await sendAuthMessage();
-      if (response.accessToken) {
-        const savedTokens = await saveTokens(response);
-        setTokens(savedTokens);
-        scheduleTokenRefresh(savedTokens.expiresAt);
-      } else {
-        log("Login failed: No access token received.");
-      }
-    } catch (error) {
-      log("Login failed: Unknown error.", error);
-    } finally {
+
+    const response = await login();
+    if (!response) {
+      // TODO(EXT): User facing error message if login failed.
       setIsLoading(false);
+      return;
     }
+    setTokens(response.tokens);
+    scheduleTokenRefresh(response.tokens.expiresAt);
+    setUser(response.user);
+    setIsLoading(false);
   }, [scheduleTokenRefresh]);
+
+  const handleSelectWorkspace = async (workspaceId: string) => {
+    const updatedUser = await saveSelectedWorkspace(workspaceId);
+    setUser(updatedUser);
+  };
 
   return {
     token: tokens?.accessToken ?? null,
-    isLoading,
     isAuthenticated,
+    user,
+    isUserSetup,
+    isLoading,
     handleLogin,
     handleLogout,
+    handleSelectWorkspace,
   };
 };

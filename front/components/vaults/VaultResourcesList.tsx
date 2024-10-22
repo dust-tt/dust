@@ -32,7 +32,7 @@ import type {
 } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useRef } from "react";
 import { useState } from "react";
 import * as React from "react";
@@ -373,6 +373,21 @@ export const VaultResourcesList = ({
     ]
   );
 
+  const onSelectedDataUpdated = useCallback(async () => {
+    await mutateVaultDataSourceViews();
+  }, [mutateVaultDataSourceViews]);
+
+  const onDeleteFolderOrWebsite = useCallback(async () => {
+    if (selectedDataSourceView?.dataSource) {
+      const res = await doDelete(selectedDataSourceView);
+      if (res) {
+        await router.push(
+          `/w/${owner.sId}/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`
+        );
+      }
+    }
+  }, [selectedDataSourceView, doDelete, router, owner.sId, vault.sId]);
+
   if (
     isDataSourcesLoading ||
     isVaultDataSourceViewsLoading ||
@@ -384,17 +399,6 @@ export const VaultResourcesList = ({
       </div>
     );
   }
-
-  const onDeleteFolderOrWebsite = async () => {
-    if (selectedDataSourceView?.dataSource) {
-      const res = await doDelete(selectedDataSourceView);
-      if (res) {
-        await router.push(
-          `/w/${owner.sId}/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`
-        );
-      }
-    }
-  };
 
   return (
     <>
@@ -440,6 +444,7 @@ export const VaultResourcesList = ({
               onCreated={async (dataSource) => {
                 const updateDataSourceViews =
                   await mutateVaultDataSourceViews();
+
                 if (updateDataSourceViews) {
                   const view = updateDataSourceViews.dataSourceViews.find(
                     (v: DataSourceViewType) =>
@@ -465,10 +470,11 @@ export const VaultResourcesList = ({
         )}
         {!isSystemVault && isManagedCategory && (
           <EditVaultManagedDataSourcesViews
-            owner={owner}
-            vault={vault}
-            systemVault={systemVault}
             isAdmin={isAdmin}
+            onSelectedDataUpdated={onSelectedDataUpdated}
+            owner={owner}
+            systemVault={systemVault}
+            vault={vault}
           />
         )}
         {isFolder && selectedDataSourceView && (

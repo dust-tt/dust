@@ -174,7 +174,7 @@ export const VaultCategoriesList = ({
             />
             {isAdmin && onButtonClick && vault.kind === "regular" && (
               <Button
-                label="Settings and Members"
+                label="Space settings"
                 icon={Cog6ToothIcon}
                 onClick={onButtonClick}
                 variant="tertiary"

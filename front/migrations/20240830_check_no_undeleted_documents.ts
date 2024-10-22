@@ -1,7 +1,7 @@
 import { QueryTypes } from "sequelize";
 
 import {
-  getConnectorReplicaDbConnection,
+  getConnectorsReplicaDbConnection,
   getCoreReplicaDbConnection,
 } from "@app/lib/production_checks/utils";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
@@ -72,7 +72,7 @@ async function checkCoreDeleted(
 }
 
 async function checkGoogleDriveDeleted(logger: Logger) {
-  const connectorsReplica = getConnectorReplicaDbConnection();
+  const connectorsReplica = getConnectorsReplicaDbConnection();
   const frontReplica = getFrontReplicaDbConnection();
 
   const gDriveDataSources: DataSource[] = await frontReplica.query(
@@ -102,7 +102,7 @@ async function checkGoogleDriveDeleted(logger: Logger) {
 }
 
 async function checkNotionDeleted(logger: Logger) {
-  const connectorsReplica = getConnectorReplicaDbConnection();
+  const connectorsReplica = getConnectorsReplicaDbConnection();
   const frontReplica = getFrontReplicaDbConnection();
 
   const notionDataSources: {

@@ -46,8 +46,8 @@ export const FoldersHeaderMenu = ({
         <Tooltip
           label={
             vault.kind === "global"
-              ? `Only builders of the workspace can add data in the Company Data vault.`
-              : `Only members of the vault can add data.`
+              ? `Only builders of the workspace can add data in the Company Data space.`
+              : `Only members of the space can add data.`
           }
           side="top"
           trigger={
@@ -69,8 +69,8 @@ export const FoldersHeaderMenu = ({
         <Tooltip
           label={
             vault.kind === "global"
-              ? `Only builders of the workspace can edit a folder in the Company Data vault.`
-              : `Only members of the vault can edit a folder.`
+              ? `Only builders of the workspace can edit a folder in the Company Data space.`
+              : `Only members of the space can edit a folder.`
           }
           side="top"
           trigger={

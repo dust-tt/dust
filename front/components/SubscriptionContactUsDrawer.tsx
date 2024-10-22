@@ -27,7 +27,7 @@ export function SubscriptionContactUsDrawer({
   const submit = useSubmitFunction(async () => {
     if (isEmailValid(email)) {
       setEmailError(null);
-      const formURL = `https://docs.google.com/forms/d/e/1FAIpQLSdZdNPHm0J1k5SoKAoDdmnFZCzVDHUKnDE3MVM_1ii2fLrp8w/viewform?usp=pp_url&entry.1203449999=${encodeURIComponent(
+      const formURL = `https://docs.google.com/forms/d/e/1FAIpQLSf0uBhpw8G6RZe7BYQO-0lmHyb4-apAiO2uEDTEX6hxMDQI5Q/viewform?usp=pp_url&entry.1203449999=${encodeURIComponent(
         email
       )}`;
       void ClientSideTracking.trackClickEnterpriseContactUs({ email }).finally(

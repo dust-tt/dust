@@ -95,7 +95,7 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
     display: ["landing", "subscribe"],
   },
   {
-    label: "Unlimited secure vaults",
+    label: "Unlimited spaces",
     variant: "check",
     display: ["landing", "subscribe"],
   },
@@ -193,7 +193,7 @@ export function ProPriceTable({
       display: ["landing", "subscribe"],
     },
     {
-      label: "One secure vault",
+      label: "One space",
       variant: "dash",
       display: ["landing"],
     },

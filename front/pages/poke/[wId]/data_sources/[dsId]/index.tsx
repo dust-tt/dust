@@ -27,6 +27,7 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
@@ -333,7 +334,13 @@ const DataSourcePage = ({
               🔒 search data
             </div>
           </div>
-
+          <PluginList
+            resourceType="data_sources"
+            workspaceResource={{
+              workspace: owner,
+              resourceId: dataSource.sId,
+            }}
+          />
           <ViewDataSourceTable
             dataSource={dataSource}
             temporalWorkspace={temporalWorkspace}

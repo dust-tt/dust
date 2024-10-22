@@ -3,7 +3,7 @@ import { isWebhookBasedProvider } from "@dust-tt/types";
 import { QueryTypes } from "sequelize";
 
 import type { CheckFunction } from "@app/lib/production_checks/types";
-import { getConnectorReplicaDbConnection } from "@app/lib/production_checks/utils";
+import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 
 interface ConnectorBlob {
   id: number;
@@ -16,10 +16,10 @@ interface ConnectorBlob {
   lastSyncStartTime: Date | null;
 }
 
-const connectorsReplica = getConnectorReplicaDbConnection();
+const connectorsDb = getConnectorsPrimaryDbConnection();
 
 async function listAllConnectors() {
-  const connectors: ConnectorBlob[] = await connectorsReplica.query(
+  const connectors: ConnectorBlob[] = await connectorsDb.query(
     `SELECT id, "dataSourceId", "workspaceId", "pausedAt", "lastSyncSuccessfulTime", "lastSyncStartTime", "createdAt", "type" FROM connectors WHERE "errorType" IS NULL AND "pausedAt" IS NULL AND "type" <> 'webcrawler'`,
     {
       type: QueryTypes.SELECT,

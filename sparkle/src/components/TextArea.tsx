@@ -1,40 +1,66 @@
 import React from "react";
 
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
-export interface TextAreaProps
+const RESIZE_DIRECTIONS = ["none", "vertical", "horizontal", "both"] as const;
+
+type ResizeDirectionType = (typeof RESIZE_DIRECTIONS)[number];
+
+export interface TextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  resize?: ResizeDirectionType;
   error?: string | null;
   showErrorLabel?: boolean;
   minRows?: number;
-  className?: string;
 }
 
-export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
+const textAreaStyles = cn(
+  "s-flex s-w-full s-px-3 s-py-2",
+  "s-transition s-duration-100",
+  "s-text-sm placeholder:s-text-muted-foreground s-text-foreground",
+  "s-ring-offset-background s-border s-border-border-dark s-bg-background s-rounded-xl",
+  "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2 ",
+  "disabled:s-cursor-not-allowed disabled:s-opacity-50 disabled:s-text-muted-foreground"
+);
+
+const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   (
     {
-      error,
-      showErrorLabel = false,
       className,
+      resize = "both",
       minRows = 10,
+      error,
+      showErrorLabel,
       ...props
-    }: TextAreaProps,
+    },
     ref
   ) => {
+    const resizeClass = {
+      none: "s-resize-none",
+      vertical: "s-resize-y",
+      horizontal: "s-resize-x",
+      both: "s-resize",
+    };
+
     return (
       <div className="s-flex s-flex-col s-gap-1 s-p-px">
         <textarea
-          rows={minRows}
-          ref={ref}
-          className={classNames(
-            "overflow-y-auto s-block s-w-full s-min-w-0 s-rounded-xl s-text-sm s-placeholder-element-700 s-transition-all s-scrollbar-hide s-duration-200",
+          className={cn(
+            textAreaStyles,
+            resizeClass[resize],
+            className,
             !error
-              ? "s-border-structure-100 focus:s-border-action-300 focus:s-ring-action-300"
-              : "s-border-red-500 focus:s-border-red-500 focus:s-ring-red-500",
-            "s-border-structure-200 s-bg-structure-50",
-            "s-resize-y",
-            className ?? ""
+              ? cn(
+                  "s-ring-structure-200 focus:s-ring-action-300",
+                  "dark:s-ring-structure-300-dark dark:focus:s-ring-action-300-dark"
+                )
+              : cn(
+                  "s-ring-warning-200 focus:s-ring-warning-300",
+                  "dark:s-ring-warning-200-dark dark:focus:s-ring-warning-300-dark"
+                )
           )}
+          ref={ref}
+          rows={minRows}
           {...props}
         />
         {error && showErrorLabel && (
@@ -44,3 +70,6 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
     );
   }
 );
+TextArea.displayName = "TextArea";
+
+export { TextArea };
