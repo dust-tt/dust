@@ -18,10 +18,9 @@ spec:
     spec:
       containers:
         - name: proxy
-          image: rpardini/nginx-proxy-connect-stable-alpine:nginx-1.16.1-alpine-3.11
+          image: gcr.io/or1g1n-186209/nginx-proxy-image:latest
           ports:
           - containerPort: 80
-          - containerPort: 1080
           volumeMounts:
           - name: nginx-config
             mountPath: /etc/nginx/nginx.conf
