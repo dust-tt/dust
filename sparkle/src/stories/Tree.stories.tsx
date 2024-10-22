@@ -118,7 +118,7 @@ export const TreeExample = () => {
                         <IconButton
                           size="xs"
                           icon={EyeIcon}
-                          variant="tertiary"
+                          variant="outline"
                         />
                       </>
                     }
@@ -645,9 +645,8 @@ export const SelectDataSourceExample = () => {
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}
-                      variant="tertiary"
+                      variant="outline"
                       size="sm"
-                      hasMagnifying={false}
                     />
                   </div>
                 }
@@ -666,9 +665,8 @@ export const SelectDataSourceExample = () => {
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}
-                      variant="tertiary"
+                      variant="outline"
                       size="sm"
-                      hasMagnifying={false}
                     />
                   </div>
                 }
@@ -686,9 +684,8 @@ export const SelectDataSourceExample = () => {
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}
-                      variant="tertiary"
+                      variant="outline"
                       size="sm"
-                      hasMagnifying={false}
                     />
                   </div>
                 }
@@ -715,9 +712,8 @@ export const SelectDataSourceExample = () => {
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}
-                      variant="tertiary"
+                      variant="outline"
                       size="sm"
-                      hasMagnifying={false}
                     />
                   </div>
                 }
@@ -838,7 +834,7 @@ const TreeItem = ({
           <span className="s-text-xs s-text-element-700">
             last updated Jan 6
           </span>
-          <IconButton icon={CloudArrowDownIcon} size="xs" variant="tertiary" />
+          <IconButton icon={CloudArrowDownIcon} size="xs" variant="outline" />
           <IconButton icon={PlusCircleIcon} size="xs" />
         </div>
       }

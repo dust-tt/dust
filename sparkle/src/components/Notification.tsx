@@ -57,7 +57,7 @@ export function Notification({
           <IconButton
             icon={XMarkIcon}
             size="sm"
-            variant="tertiary"
+            variant="outline"
             onClick={onClick}
           />
         </div>

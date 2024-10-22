@@ -282,7 +282,7 @@ export const AssistantBuilder = () => {
             size="xl"
             visual="https://dust.tt/static/droidavatar/Droid_Black_2.jpg/"
           />
-          <Button size="sm" variant="tertiary" label="Change" />
+          <Button size="sm" variant="outline" label="Change" />
         </Page.Layout>
       </Page.Layout>
       <Page.Separator />
