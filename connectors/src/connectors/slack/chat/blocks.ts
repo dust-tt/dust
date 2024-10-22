@@ -1,10 +1,10 @@
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { truncate } from "@dust-tt/types";
+import type { ChatPostMessageResponse } from "@slack/web-api";
 
 import { STATIC_AGENT_CONFIG } from "@connectors/api/webhooks/webhook_slack_interaction";
 import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
-import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 
 /*
  * This length threshold is set to prevent the "msg_too_long" error
@@ -78,14 +78,12 @@ function makeContextSectionBlocks(
   return resultBlocks;
 }
 
-function makeAssistantSelectionBlock(
+function makeThinkingBlock(
   assistantName: string,
-  agentConfigurations: LightAgentConfigurationType[],
-  slackUserInfo: SlackUserInfo,
   isThinking: boolean,
   thinkingText: string
 ) {
-  return assistantName && !slackUserInfo.is_bot
+  return assistantName
     ? [
         {
           type: "section",
@@ -95,30 +93,41 @@ function makeAssistantSelectionBlock(
               ? `@${assistantName}: _${thinkingText}_`
               : `@${assistantName}`,
           },
-          accessory:
-            agentConfigurations && agentConfigurations.length > 0
-              ? {
-                  type: "static_select",
-                  placeholder: {
-                    type: "plain_text",
-                    text: "Switch to another assistant",
-                    emoji: true,
-                  },
-                  options: agentConfigurations.map((ac) => {
-                    return {
-                      text: {
-                        type: "plain_text",
-                        text: ac.name,
-                      },
-                      value: ac.sId,
-                    };
-                  }),
-                  action_id: STATIC_AGENT_CONFIG,
-                }
-              : undefined,
         },
       ]
     : [];
+}
+
+export function makeAssistantSelectionBlock(
+  agentConfigurations: LightAgentConfigurationType[],
+  id: string
+) {
+  return [
+    {
+      type: "actions",
+      block_id: id,
+      elements: [
+        {
+          type: "static_select",
+          placeholder: {
+            type: "plain_text",
+            text: "Ask another assistant",
+            emoji: true,
+          },
+          options: agentConfigurations.map((ac) => {
+            return {
+              text: {
+                type: "plain_text",
+                text: ac.name,
+              },
+              value: ac.sId,
+            };
+          }),
+          action_id: STATIC_AGENT_CONFIG,
+        },
+      ],
+    },
+  ];
 }
 
 export type SlackMessageUpdate = {
@@ -153,7 +162,6 @@ export function makeFooterBlock(
 export function makeMessageUpdateBlocksAndText(
   conversationUrl: string | null,
   workspaceId: string,
-  slackUserInfo: SlackUserInfo,
   messageUpdate: SlackMessageUpdate
 ) {
   const {
@@ -161,7 +169,6 @@ export function makeMessageUpdateBlocksAndText(
     isThinking,
     thinkingAction,
     assistantName,
-    agentConfigurations,
     text,
     footnotes,
   } = messageUpdate;
@@ -172,10 +179,8 @@ export function makeMessageUpdateBlocksAndText(
 
   return {
     blocks: [
-      ...makeAssistantSelectionBlock(
+      ...makeThinkingBlock(
         assistantName,
-        agentConfigurations,
-        slackUserInfo,
         isThinking ?? false,
         thinkingTextWithAction
       ),
