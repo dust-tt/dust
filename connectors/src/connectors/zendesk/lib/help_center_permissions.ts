@@ -103,7 +103,7 @@ export async function revokeSyncBrand({
   return brand;
 }
 
-export async function retrieveZendeskBrandsPermissions({
+export async function retrieveZendeskHelpCenterPermissions({
   connectorId,
   parentInternalId,
   filterPermission,

@@ -10,7 +10,7 @@ import { Ok } from "@dust-tt/types";
 
 import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
-import { retrieveZendeskBrandsPermissions } from "@connectors/connectors/zendesk/lib/brand_permissions";
+import { retrieveZendeskHelpCenterPermissions } from "@connectors/connectors/zendesk/lib/help_center_permissions";
 import { retrieveSelectedNodes } from "@connectors/connectors/zendesk/lib/permissions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import logger from "@connectors/logger/logger";
@@ -96,13 +96,13 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
 
     try {
-      const brandNodes = await retrieveZendeskBrandsPermissions({
+      const helpCenterNodes = await retrieveZendeskHelpCenterPermissions({
         connectorId: this.connectorId,
         parentInternalId,
         filterPermission,
         viewType: "documents",
       });
-      return new Ok(brandNodes);
+      return new Ok(helpCenterNodes);
     } catch (e) {
       return new Err(e as Error);
     }
