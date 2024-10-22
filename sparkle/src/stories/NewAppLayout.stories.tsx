@@ -2,26 +2,11 @@ import { Meta } from "@storybook/react";
 import React, { useEffect, useState } from "react";
 
 import {
-  ArrowUpOnSquareIcon,
   Avatar,
-  BookOpenIcon,
-  ChatBubbleBottomCenterTextIcon,
-  ChatBubbleLeftRightIcon,
-  ChevronDoubleLeftIcon,
-  ChevronDoubleRightIcon,
-  CloudArrowLeftRightIcon,
-  Cog6ToothIcon,
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-  FolderIcon,
-  GlobeAltIcon,
-  HandThumbUpIcon,
-  HeartAltIcon,
-  LockIcon,
-  LogoutIcon,
-  MoreIcon,
   NewButton,
   NewButtonBar,
   NewDropdownMenu,
@@ -34,29 +19,45 @@ import {
   NewNavigationListItem,
   NewNavigationListLabel,
   NewSearchInput,
-  NotionLogo,
-  PencilSquareIcon,
-  PlusIcon,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-  RobotIcon,
   ScrollArea,
   Separator,
-  ServerIcon,
-  SlackLogo,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  TrashIcon,
   Tree,
+} from "@sparkle/components";
+import {
+  ArrowUpOnSquareIcon,
+  BookOpenIcon,
+  ChatBubbleBottomCenterTextIcon,
+  ChatBubbleLeftRightIcon,
+  ChevronDoubleLeftIcon,
+  ChevronDoubleRightIcon,
+  CloudArrowLeftRightIcon,
+  Cog6ToothIcon,
+  FolderIcon,
+  GlobeAltIcon,
+  HandThumbUpIcon,
+  HeartAltIcon,
+  LockIcon,
+  LogoutIcon,
+  MoreIcon,
+  PencilSquareIcon,
+  PlusIcon,
+  RobotIcon,
+  ServerIcon,
+  TrashIcon,
   UserIcon,
-} from "@sparkle/index_with_tw_base";
+} from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
+import { NotionLogo, SlackLogo } from "@sparkle/logo";
 
 const meta = {
-  title: "NewLayouts/MainLayout",
+  title: "NewLayouts/AppLayout",
 } satisfies Meta;
 
 export default meta;
@@ -338,7 +339,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       <div className="s-grow" />
       {isFixed ? (
         <NewButton
-          variant={"ghost-secondary"}
+          variant={"ghost"}
           size="sm"
           icon={ChevronDoubleLeftIcon}
           tooltip="Hide the navigation panel"
@@ -346,7 +347,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         />
       ) : (
         <NewButton
-          variant={"ghost-secondary"}
+          variant={"ghost"}
           size="sm"
           icon={ChevronDoubleRightIcon}
           tooltip="Pin the navigation panel"
@@ -476,7 +477,6 @@ export const KnowledgeNav: React.FC<NavTabProps> = ({ className = "" }) => {
           visual={CloudArrowLeftRightIcon}
           onItemClick={() => console.log("Clickable")}
           isSelected={true}
-          size="md"
         >
           <Tree variant="navigator">
             <Tree.Item label="Notion" visual={NotionLogo}>
@@ -521,7 +521,6 @@ export const KnowledgeNav: React.FC<NavTabProps> = ({ className = "" }) => {
           label="Drive"
           visual={ServerIcon}
           onItemClick={() => console.log("Clickable")}
-          size="md"
         >
           <Tree variant="navigator">
             <Tree.Item label="Notion" visual={NotionLogo}>
@@ -580,7 +579,6 @@ export const KnowledgeNav: React.FC<NavTabProps> = ({ className = "" }) => {
           label="Finance"
           visual={LockIcon}
           onItemClick={() => console.log("Clickable")}
-          size="md"
         >
           <Tree variant="navigator">
             <Tree.Item label="Notion" visual={NotionLogo}>
@@ -622,7 +620,6 @@ export const KnowledgeNav: React.FC<NavTabProps> = ({ className = "" }) => {
           label="HR"
           visual={LockIcon}
           onItemClick={() => console.log("Clickable")}
-          size="md"
         >
           <Tree variant="navigator">
             <Tree.Item label="Notion" visual={NotionLogo}>
@@ -664,7 +661,6 @@ export const KnowledgeNav: React.FC<NavTabProps> = ({ className = "" }) => {
           label="SeriesA"
           visual={LockIcon}
           onItemClick={() => console.log("Clickable")}
-          size="md"
         >
           <Tree variant="navigator">
             <Tree.Item label="Notion" visual={NotionLogo}>

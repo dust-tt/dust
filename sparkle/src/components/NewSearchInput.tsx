@@ -1,11 +1,8 @@
 import React, { forwardRef } from "react";
 
-import { Icon } from "@sparkle/components/Icon";
+import { Icon, Input, NewButton } from "@sparkle/components";
 import { MagnifyingGlassIcon, XMarkIcon } from "@sparkle/icons";
-import { NewButton } from "@sparkle/index_with_tw_base";
 import { classNames, cn } from "@sparkle/lib/utils";
-
-import { NewInput } from "./NewInput";
 
 interface NewSearchInputProps {
   placeholder?: string;
@@ -36,7 +33,7 @@ export const NewSearchInput = forwardRef<HTMLInputElement, NewSearchInputProps>(
 
     return (
       <div className={cn("s-relative s-m-px s-flex-grow", className)}>
-        <NewInput
+        <Input
           type="text"
           name={name}
           placeholder={placeholder}
@@ -50,7 +47,7 @@ export const NewSearchInput = forwardRef<HTMLInputElement, NewSearchInputProps>(
         />
         <div
           className={classNames(
-            "s-absolute s-inset-y-0 s-right-0 s-flex s-items-center s-pr-1"
+            "s-absolute s-inset-y-0 s-right-0 -s-mt-1 s-flex s-items-center s-pr-2"
           )}
         >
           {value && onChange ? (
