@@ -6,13 +6,16 @@ import type {
 } from "@dust-tt/types";
 
 import {
+  getBrandIdFromInternalId,
   getBrandInternalId,
+  getCategoryInternalId,
   getHelpCenterInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskBrand,
   fetchZendeskBrands,
+  fetchZendeskCategories,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import {
   ZendeskArticle,
@@ -188,10 +191,55 @@ export async function retrieveZendeskHelpCenterPermissions({
           lastUpdatedAt: null,
         }));
     }
-    nodes.sort((a, b) => a.title.localeCompare(b.title));
-    return nodes;
   }
-  // TODO: handle other types of parent here
 
+  // If the parent is a Brand, we retrieve the list of Categories for this brand.
+  // If isReadPermissionsOnly = true, we retrieve the list of Categories from the DB that have permission == "read"
+  // If isReadPermissionsOnly = false, we retrieve the list of Categories from Zendesk
+  const brandId = getBrandIdFromInternalId(connectorId, parentInternalId);
+  if (brandId) {
+    const categoriesInDatabase = await ZendeskCategory.findAll({
+      where: { connectorId, brandId, permission: "read" },
+    });
+    if (isReadPermissionsOnly) {
+      nodes = categoriesInDatabase.map((category) => ({
+        provider: connector.type,
+        internalId: getCategoryInternalId(connectorId, category.categoryId),
+        parentInternalId: parentInternalId,
+        type: "folder",
+        title: category.name,
+        sourceUrl: category.url,
+        expandable: false,
+        permission: category.permission,
+        dustDocumentId: null,
+        lastUpdatedAt: category.updatedAt.getTime(),
+      }));
+    } else {
+      const categories = await fetchZendeskCategories({
+        subdomain,
+        accessToken,
+        brandId,
+      });
+      nodes = categories.map((category) => {
+        const matchingDbEntry = categoriesInDatabase.find(
+          (c) => c.categoryId === category.id.toString()
+        );
+        return {
+          provider: connector.type,
+          internalId: category.id.toString(),
+          parentInternalId: brandId,
+          type: "folder",
+          title: category.name,
+          sourceUrl: category.html_url,
+
+          expandable: false,
+          permission: matchingDbEntry ? "read" : "none",
+          dustDocumentId: null,
+          lastUpdatedAt: matchingDbEntry?.updatedAt.getTime() ?? null,
+        };
+      });
+    }
+  }
+  nodes.sort((a, b) => a.title.localeCompare(b.title));
   return nodes;
 }
