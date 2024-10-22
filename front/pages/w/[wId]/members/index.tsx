@@ -168,7 +168,7 @@ export default function WorkspaceAdmin({
                 <Button
                   label="De-activate Auto-join"
                   size="sm"
-                  variant="secondaryWarning"
+                  variant="warning"
                   disabled={!domainAutoJoinEnabled}
                   onClick={() => {
                     if (!isUpgraded(plan)) {

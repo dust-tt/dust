@@ -135,7 +135,7 @@ export default function NoWorkspace({
           <Button
             size="sm"
             label="Create a new workspace"
-            variant="primaryWarning"
+            variant="warning"
             onClick={onCreateWorkspace}
           />
         }
@@ -206,7 +206,7 @@ export default function NoWorkspace({
           <Button
             size="sm"
             label="Create a new workspace"
-            variant="primaryWarning"
+            variant="warning"
             onClick={onCreateWorkspace}
           />
         </div>

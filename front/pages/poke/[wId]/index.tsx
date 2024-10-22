@@ -197,11 +197,9 @@ const WorkspacePage = ({
               <DropdownMenu>
                 <DropdownMenu.Button>
                   <Button
-                    type="select"
-                    labelVisible={true}
+                    isSelect
                     label={`Segmentation: ${owner.segmentation ?? "none"}`}
-                    variant="secondary"
-                    hasMagnifying={false}
+                    variant="outline"
                     size="sm"
                   />
                 </DropdownMenu.Button>
@@ -392,7 +390,7 @@ function DeleteWorkspaceModal({
             ) : (
               <Button
                 label="Delete the workspace"
-                variant="secondaryWarning"
+                variant="outline"
                 onClick={onDeleteWorkspace}
                 disabled={
                   subscription.plan.code !== FREE_NO_PLAN_CODE ||

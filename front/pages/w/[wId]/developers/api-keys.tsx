@@ -206,7 +206,7 @@ export function APIKeys({
         <Button
           label="Read the API reference"
           size="sm"
-          variant="secondary"
+          variant="outline"
           icon={BookOpenIcon}
           onClick={() => {
             window.open("https://docs.dust.tt/reference", "_blank");
@@ -290,7 +290,7 @@ export function APIKeys({
                   {key.status === "active" ? (
                     <div>
                       <Button
-                        variant="secondaryWarning"
+                        variant="warning"
                         disabled={
                           key.status != "active" || isRevoking || isGenerating
                         }

@@ -229,10 +229,9 @@ export default function CreateAssistant({
                   .map((tagName) => (
                     <Button
                       label={templateTagsMapping[tagName].label}
-                      variant="tertiary"
+                      variant="ghost"
                       key={tagName}
                       size="xs"
-                      hasMagnifying={false}
                       onClick={() => scrollToTag(tagName)}
                     />
                   ))}

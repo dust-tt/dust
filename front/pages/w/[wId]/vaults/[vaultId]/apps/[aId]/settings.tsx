@@ -261,7 +261,7 @@ export default function SettingsView({
               <div className="flex-1"></div>
               <div className="ml-2 flex">
                 <Button
-                  variant="secondaryWarning"
+                  variant="warning"
                   onClick={handleDelete}
                   disabled={isDeleting || isUpdating}
                   label={isDeleting ? "Deleting..." : "Delete"}
