@@ -28,7 +28,6 @@ const { SENDGRID_API_KEY } = process.env;
 const MINIMUM_POSITIVE_DIFF_LENGTH = 20;
 const MAX_DIFF_TOKENS = 4000;
 const TOTAL_TARGET_TOKENS = 6000;
-const RETRIEVAL_MIN_SCORE = 0.78;
 
 const logger = mainLogger.child({
   postProcessHook: "document_tracker_suggest_changes",
@@ -263,14 +262,6 @@ export async function documentTrackerSuggestChangesOnUpsert({
   // TODO: maybe not just look at top1, look at top 3 chunks and do on multiple docs if needed
   const top1 = retrievedTrackedDocuments[0];
   const score = top1.chunks[0].score;
-
-  if (score < RETRIEVAL_MIN_SCORE) {
-    localLogger.info(
-      { score },
-      "Score is too low, not calling doc tracker suggest changes action."
-    );
-    return;
-  }
 
   localLogger.info({ score }, "Calling doc tracker suggest changes action.");
 
