@@ -146,13 +146,9 @@ const MinimalVariantContent = ({
 }: MinimalVariantAssistantPreviewProps) => {
   const actionButton = actionElement ?? (
     <Button
-      label=""
       icon={MoreIcon}
-      variant="tertiary"
+      variant="outline"
       size="sm"
-      labelVisible={false}
-      hasMagnifying={false}
-      disabledTooltip={true}
       onClick={(e) => {
         e.stopPropagation();
         onActionClick?.();
