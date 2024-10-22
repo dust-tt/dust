@@ -174,19 +174,28 @@ async function getContentNodesForStaticDataSourceView(
     }
 
     const documentsAsContentNodes: DataSourceViewContentNode[] =
-      documentsRes.value.documents.map((doc) => ({
-        dustDocumentId: doc.document_id,
-        expandable: false,
-        internalId: doc.document_id,
-        lastUpdatedAt: doc.timestamp,
-        parentInternalId: null,
-        parentInternalIds: [],
-        permission: "read",
-        preventSelection: false,
-        sourceUrl: doc.source_url ?? null,
-        title: doc.document_id,
-        type: "file",
-      }));
+      documentsRes.value.documents.map((doc) => {
+        let title = doc.document_id;
+        for (const t of doc.tags) {
+          if (t.startsWith("title:")) {
+            title = t.slice(6);
+            break;
+          }
+        }
+        return {
+          dustDocumentId: doc.document_id,
+          expandable: false,
+          internalId: doc.document_id,
+          lastUpdatedAt: doc.timestamp,
+          parentInternalId: null,
+          parentInternalIds: [],
+          permission: "read",
+          preventSelection: false,
+          sourceUrl: doc.source_url ?? null,
+          title,
+          type: "file",
+        };
+      });
 
     return new Ok({
       nodes: documentsAsContentNodes,
