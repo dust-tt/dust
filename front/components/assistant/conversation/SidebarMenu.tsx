@@ -298,6 +298,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                                 isMultiSelect
                                   ? () => (
                                       <Checkbox
+                                        className="bg-white"
                                         checked={selectedConversations.includes(
                                           c
                                         )}
