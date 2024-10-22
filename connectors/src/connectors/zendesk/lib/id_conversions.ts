@@ -5,7 +5,7 @@ import type { ModelId } from "@dust-tt/types";
  */
 export function getBrandInternalId(
   connectorId: ModelId,
-  brandId: string
+  brandId: number
 ): string {
   return `zendesk-brand-${connectorId}-${brandId}`;
 }
@@ -16,14 +16,14 @@ export function getHelpCenterInternalId(connectorId: ModelId): string {
 
 export function getCategoryInternalId(
   connectorId: ModelId,
-  categoryId: string
+  categoryId: number
 ): string {
   return `zendesk-category-${connectorId}-${categoryId}`;
 }
 
 export function getArticleInternalId(
   connectorId: ModelId,
-  articleId: string
+  articleId: number
 ): string {
   return `zendesk-article-${connectorId}-${articleId}`;
 }
@@ -34,14 +34,14 @@ export function getTicketsInternalId(connectorId: ModelId): string {
 
 export function getTicketInternalId(
   connectorId: ModelId,
-  teamId: string
+  teamId: number
 ): string {
   return `zendesk-ticket-${connectorId}-${teamId}`;
 }
 
 export function getConversationInternalId(
   connectorId: ModelId,
-  conversationId: string
+  conversationId: number
 ): string {
   return `zendesk-category-${connectorId}-${conversationId}`;
 }
@@ -49,14 +49,16 @@ export function getConversationInternalId(
 /**
  * Conversion from an internalId to an id.
  */
-function _getIdFromInternal(internalId: string, prefix: string): string | null {
-  return internalId.startsWith(prefix) ? internalId.replace(prefix, "") : null;
+function _getIdFromInternal(internalId: string, prefix: string): number | null {
+  return internalId.startsWith(prefix)
+    ? parseInt(internalId.replace(prefix, ""))
+    : null;
 }
 
 export function getBrandIdFromInternalId(
   connectorId: ModelId,
   internalId: string
-): string | null {
+): number | null {
   return _getIdFromInternal(internalId, `zendesk-brand-${connectorId}-`);
 }
 
@@ -70,14 +72,14 @@ export function isInternalIdOnWholeHelpCenter(
 export function getCategoryIdFromInternalId(
   connectorId: ModelId,
   internalId: string
-): string | null {
+): number | null {
   return _getIdFromInternal(internalId, `zendesk-category-${connectorId}-`);
 }
 
 export function getArticleIdFromInternalId(
   connectorId: ModelId,
   internalId: string
-): string | null {
+): number | null {
   return _getIdFromInternal(internalId, `zendesk-article-${connectorId}-`);
 }
 
@@ -91,6 +93,6 @@ export function isInternalIdOnAllTickets(
 export function getTicketIdFromInternalId(
   connectorId: ModelId,
   internalId: string
-): string | null {
+): number | null {
   return _getIdFromInternal(internalId, `zendesk-ticket-${connectorId}-`);
 }

@@ -70,7 +70,7 @@ export class ZendeskBrand extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare brandId: string;
+  declare brandId: number;
   declare permission: "read" | "none";
 
   declare name: string;
@@ -101,7 +101,7 @@ ZendeskBrand.init(
       defaultValue: DataTypes.NOW,
     },
     brandId: {
-      type: DataTypes.STRING,
+      type: DataTypes.NUMBER,
       allowNull: false,
     },
     name: {
@@ -153,8 +153,8 @@ export class ZendeskCategory extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare categoryId: string;
-  declare brandId: string;
+  declare categoryId: number;
+  declare brandId: number;
   declare permission: "read" | "none";
 
   declare name: string;
@@ -183,11 +183,11 @@ ZendeskCategory.init(
       defaultValue: DataTypes.NOW,
     },
     categoryId: {
-      type: DataTypes.STRING,
+      type: DataTypes.NUMBER,
       allowNull: false,
     },
     brandId: {
-      type: DataTypes.STRING,
+      type: DataTypes.NUMBER,
       allowNull: false,
     },
     name: {
@@ -231,9 +231,9 @@ export class ZendeskArticle extends Model<
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare articleId: string;
-  declare brandId: string;
-  declare categoryId: string;
+  declare articleId: number;
+  declare brandId: number;
+  declare categoryId: number;
   declare permission: "read" | "none";
 
   declare name: string;
@@ -262,11 +262,11 @@ ZendeskArticle.init(
       defaultValue: DataTypes.NOW,
     },
     articleId: {
-      type: DataTypes.STRING,
+      type: DataTypes.NUMBER,
       allowNull: false,
     },
     brandId: {
-      type: DataTypes.STRING,
+      type: DataTypes.NUMBER,
       allowNull: false,
     },
     categoryId: {
