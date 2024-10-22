@@ -229,7 +229,7 @@ export const PageExample = () => {
         </ContextItem>
         <ContextItem
           title="@SalesFr"
-          action={<Button variant="ghost" label="Manage" size="sm" />}
+          action={<Button variant="highlight" label="Manage" size="sm" />}
           visual={
             <Avatar
               visual="https://dust.tt/static/droidavatar/Droid_Indigo_4.jpg"
@@ -241,7 +241,7 @@ export const PageExample = () => {
         </ContextItem>
         <ContextItem
           title="@SupportFr"
-          action={<Button variant="ghost" label="Manage" size="sm" />}
+          action={<Button variant="highlight" label="Manage" size="sm" />}
           visual={
             <Avatar
               visual="https://dust.tt/static/droidavatar/Droid_Pink_4.jpg"
@@ -365,17 +365,17 @@ export const HelpExample = () => {
         <Page.SectionHeader title="Frequently asked questions" />
         <Page.Layout direction="fluid" gap="sm">
           <Button
-            variant="ghost"
+            variant="highlight"
             label="Hey @helper, how do I use the assistant?"
             icon={ChatBubbleLeftRightIcon}
           />
           <Button
-            variant="ghost"
+            variant="highlight"
             label="Hey @helper, What is assistant not good at?"
             icon={ChatBubbleLeftRightIcon}
           />
           <Button
-            variant="ghost"
+            variant="highlight"
             label="Hey @helper, Anything I should know?"
             icon={ChatBubbleLeftRightIcon}
           />

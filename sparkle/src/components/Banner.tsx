@@ -50,7 +50,7 @@ export function Banner({
           <IconButton
             icon={XMarkIcon}
             size="sm"
-            variant="ghost"
+            variant="highlight"
             onClick={() => {
               setIsDismissed(true);
               if (onDismiss) {
