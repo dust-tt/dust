@@ -40,7 +40,7 @@ export const getStoredTokens = async (): Promise<StoredTokens | null> => {
     "refreshToken",
     "expiresAt",
   ]);
-  if (result.accessToken && result.refreshToken && result.expiresAt) {
+  if (result.accessToken && result.expiresAt) {
     return {
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
