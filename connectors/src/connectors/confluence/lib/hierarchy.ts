@@ -12,7 +12,10 @@ interface RawConfluencePage {
   spaceId: string;
 }
 
-export async function getSpaceHierarchy(connectorId: ModelId, spaceId: string) {
+export async function getSpaceHierarchy(
+  connectorId: ModelId,
+  spaceId: string
+): Promise<Record<string, string | null>> {
   // Currently opting for a best-effort strategy to reduce database queries,
   // this logic may be enhanced later for important Confluence connections.
   // By fetching all pages within a space, we reconstruct parent-child
@@ -31,13 +34,13 @@ export async function getSpaceHierarchy(connectorId: ModelId, spaceId: string) {
     allPages.map((page) => [page.pageId, page.parentId])
   );
 
-  return pageIdToParentIdMap;
+  return Object.fromEntries(pageIdToParentIdMap);
 }
 
 export async function getConfluencePageParentIds(
   connectorId: ModelId,
   page: RawConfluencePage,
-  cachedHierarchy?: Map<string, string | null>
+  cachedHierarchy?: Record<string, string | null>
 ) {
   const pageIdToParentIdMap =
     cachedHierarchy ?? (await getSpaceHierarchy(connectorId, page.spaceId));
@@ -45,14 +48,14 @@ export async function getConfluencePageParentIds(
   const parentIds = [];
   let currentId = page.pageId;
 
-  // If the page has not been saved yet. Let's add it to the set.
-  if (!pageIdToParentIdMap.has(currentId)) {
-    pageIdToParentIdMap.set(currentId, page.parentId);
+  // If the page has not been saved yet. Let's add it to the object.
+  if (!(currentId in pageIdToParentIdMap)) {
+    pageIdToParentIdMap[currentId] = page.parentId;
   }
 
   // Traverse the hierarchy upwards until no further parent IDs are found.
-  while (pageIdToParentIdMap.has(currentId)) {
-    const parentId = pageIdToParentIdMap.get(currentId);
+  while (currentId in pageIdToParentIdMap) {
+    const parentId = pageIdToParentIdMap[currentId];
     if (parentId) {
       parentIds.push(parentId);
       // Move up the hierarchy.

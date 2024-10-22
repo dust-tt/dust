@@ -1,5 +1,36 @@
 import { redisClient } from "../shared/redis_client";
 
+// JSON-serializable primitive types.
+type JsonPrimitive = string | number | boolean | null;
+
+// Recursive type to check if a type is JSON-serializable.
+type RecursiveJsonSerializable<T> = T extends JsonPrimitive
+  ? T
+  : T extends Array<infer U>
+  ? RecursiveJsonSerializable<U>[]
+  : T extends object
+  ? { [K in keyof T]: RecursiveJsonSerializable<T[K]> }
+  : never;
+
+// Helper type to check if a type is 'never'.
+type IsNever<T> = [T] extends [never] ? true : false;
+
+/**
+ * Ensures that a type is strictly JSON-serializable.
+ * If T is not JSON-serializable, this type resolves to 'never'.
+ */
+export type JsonSerializable<T> = IsNever<
+  Exclude<RecursiveJsonSerializable<T>, T>
+> extends true
+  ? T
+  : never;
+
+type CacheableFunction<T, Args extends unknown[]> = (
+  ...args: Args
+) => Promise<T>;
+
+type KeyResolver<Args extends unknown[]> = (...args: Args) => string;
+
 // Wrapper function to cache the result of a function with Redis.
 // Usage:
 // const cachedFn = cacheWithRedis(fn, (fnArg1, fnArg2, ...) => `${fnArg1}-${fnArg2}`, 60 * 10 * 1000);
@@ -7,24 +38,18 @@ import { redisClient } from "../shared/redis_client";
 
 // if caching big objects, there is a possible race condition (mulitple calls to
 // caching), therefore, we use a lock
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-export function cacheWithRedis<
-  T extends (...args: any[]) => Promise<Awaited<ReturnType<T>>>
->(
-  fn: T,
-  resolver: (...args: Parameters<T>) => string,
+export function cacheWithRedis<T, Args extends unknown[]>(
+  fn: CacheableFunction<JsonSerializable<T>, Args>,
+  resolver: KeyResolver<Args>,
   ttlMs: number,
   redisUri?: string,
   lockCaching?: boolean
-): (
-  ...args: Parameters<T>
-) => Promise<Awaited<ReturnType<T>>> | Promise<ReturnType<T>> {
+): (...args: Args) => Promise<JsonSerializable<T>> {
   if (ttlMs > 60 * 60 * 24 * 1000) {
     throw new Error("ttlMs should be less than 24 hours");
   }
 
-  return async function (...args: Parameters<T>) {
+  return async function (...args: Args): Promise<JsonSerializable<T>> {
     if (!redisUri) {
       const REDIS_CACHE_URI = process.env.REDIS_CACHE_URI;
       if (!REDIS_CACHE_URI) {
@@ -44,7 +69,7 @@ export function cacheWithRedis<
       });
       let cacheVal = await redisCli.get(key);
       if (cacheVal) {
-        return JSON.parse(cacheVal) as Awaited<ReturnType<T>>;
+        return JSON.parse(cacheVal) as JsonSerializable<T>;
       }
 
       // specific try-finally to ensure unlock is called only after lock
@@ -55,7 +80,7 @@ export function cacheWithRedis<
           await lock(key);
           cacheVal = await redisCli.get(key);
           if (cacheVal) {
-            return JSON.parse(cacheVal) as Awaited<ReturnType<T>>;
+            return JSON.parse(cacheVal) as JsonSerializable<T>;
           }
         }
 
