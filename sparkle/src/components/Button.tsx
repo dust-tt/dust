@@ -14,7 +14,13 @@ import { SpinnerProps } from "@sparkle/components/Spinner";
 import { ChevronDownIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
-const BUTTON_VARIANTS = ["primary", "highlight", "warning", "outline", "ghost"];
+const BUTTON_VARIANTS = [
+  "primary",
+  "highlight",
+  "warning",
+  "outline",
+  "ghost",
+] as const;
 
 type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
@@ -60,7 +66,6 @@ const spinnerVariantsMap: Record<ButtonVariantType, SpinnerVariant> = {
   highlight: "light",
   warning: "light",
   outline: "dark",
-  secondary: "dark",
   ghost: "dark",
 };
 
@@ -69,7 +74,6 @@ const spinnerVariantsMapIsLoading: Record<ButtonVariantType, SpinnerVariant> = {
   highlight: "light",
   warning: "light",
   outline: "slate400",
-  secondary: "slate400",
   ghost: "slate400",
 };
 
@@ -101,7 +105,7 @@ const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
 );
 MetaButton.displayName = "MetaButton";
 
-interface ButtonProps extends MetaButtonProps {
+export interface ButtonProps extends MetaButtonProps {
   label?: string;
   icon?: React.ComponentType;
   isSelect?: boolean;
