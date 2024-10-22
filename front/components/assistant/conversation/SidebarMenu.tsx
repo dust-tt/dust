@@ -154,7 +154,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         validateVariant="primaryWarning"
         isSaving={isDeleting}
       >
-        Are you sure you want to delete theses {selectedConversations.length}{" "}
+        Are you sure you want to delete these{selectedConversations.length}{" "}
         conversations&nbsp;?
         <br />
         <b>This action cannot be undone.</b>
