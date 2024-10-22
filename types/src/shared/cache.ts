@@ -39,7 +39,7 @@ type KeyResolver<Args extends unknown[]> = (...args: Args) => string;
 // if caching big objects, there is a possible race condition (mulitple calls to
 // caching), therefore, we use a lock
 export function cacheWithRedis<T, Args extends unknown[]>(
-  fn: CacheableFunction<T, Args>,
+  fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
   ttlMs: number,
   redisUri?: string,
@@ -88,7 +88,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
         await redisCli.set(key, JSON.stringify(result), {
           PX: ttlMs,
         });
-        return result as JsonSerializable<T>;
+        return result;
       } finally {
         if (lockCaching) {
           unlock(key);
