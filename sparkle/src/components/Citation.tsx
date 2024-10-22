@@ -128,7 +128,7 @@ export function Citation({
           >
             <IconButton
               icon={XCircleIcon}
-              variant={type === "image" ? "ghost" : "outline"}
+              variant={type === "image" ? "primary" : "ghost"}
               onClick={onClose}
             />
           </div>

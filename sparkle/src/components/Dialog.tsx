@@ -95,7 +95,7 @@ export function Dialog({
                         {props.onCancel && (
                           <Button
                             label={props.cancelLabel ?? "Cancel"}
-                            variant="outline"
+                            variant="ghost"
                             onClick={props.onCancel}
                           />
                         )}

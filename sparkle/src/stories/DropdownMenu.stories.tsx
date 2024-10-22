@@ -203,7 +203,7 @@ export const DropdownExample = () => {
                     <div className="s-flex-grow" />
                     <Button
                       label="New"
-                      variant="highlight"
+                      variant="outline"
                       size="xs"
                       icon={PlusIcon}
                       onClick={close}
