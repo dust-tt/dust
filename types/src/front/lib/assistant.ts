@@ -92,6 +92,8 @@ export const O1_MINI_MODEL_ID = "o1-mini" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
   "claude-3-5-sonnet-20240620" as const;
+export const CLAUDE_3_5_SONNET_20241022_MODEL_ID =
+  "claude-3-5-sonnet-20241022" as const;
 export const CLAUDE_3_HAIKU_20240307_MODEL_ID =
   "claude-3-haiku-20240307" as const;
 export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
@@ -114,6 +116,7 @@ export const MODEL_IDS = [
   O1_MINI_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   CLAUDE_3_HAIKU_20240307_MODEL_ID,
   CLAUDE_2_1_MODEL_ID,
   CLAUDE_INSTANT_1_2_MODEL_ID,
@@ -341,9 +344,27 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
 };
+
+export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "anthropic",
+    modelId: CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+    displayName: "Claude 3.5 Sonnet",
+    contextSize: 180_000,
+    recommendedTopK: 32,
+    recommendedExhaustiveTopK: 128, // 65_536
+    largeModel: true,
+    description: "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
+    shortDescription: "Anthropic's latest model.",
+    isLegacy: false,
+    delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+    supportsVision: true,
+    toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  };
+
 export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
-  modelId: CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+  modelId: CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   displayName: "Claude 3.5 Sonnet",
   contextSize: 180_000,
   recommendedTopK: 32,
@@ -492,6 +513,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   O1_PREVIEW_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
