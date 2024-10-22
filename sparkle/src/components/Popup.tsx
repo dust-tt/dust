@@ -51,7 +51,7 @@ export function Popup({
               <IconButton
                 icon={XMarkIcon}
                 onClick={onClose}
-                variant="secondary"
+                variant="ghost"
                 size="sm"
               />
             </div>

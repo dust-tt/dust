@@ -215,14 +215,14 @@ export const DropdownExample = () => {
                   <div className="s-flex s-border-t s-border-structure-50 s-p-2">
                     <Button
                       label="Manage"
-                      variant="tertiary"
+                      variant="outline"
                       size="xs"
                       icon={ListIcon}
                     />
                     <div className="s-flex-grow" />
                     <Button
                       label="New"
-                      variant="secondary"
+                      variant="ghost"
                       size="xs"
                       icon={PlusIcon}
                       onClick={close}
