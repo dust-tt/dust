@@ -199,6 +199,10 @@ module.exports = {
           dark: colors.emerald[500],
         },
         highlight: {
+          DEFAULT: colors.blue[500],
+          light: { DEFAULT: colors.blue[400], dark: colors.blue[600] },
+          dark: { DEFAULT: colors.blue[600], dark: colors.blue[400] },
+          muted: { DEFAULT: colors.blue[300], dark: colors.blue[700] },
           950: { DEFAULT: colors.blue[950], dark: colors.blue[50] },
           900: { DEFAULT: colors.blue[900], dark: colors.blue[100] },
           800: { DEFAULT: colors.blue[800], dark: colors.blue[200] },
