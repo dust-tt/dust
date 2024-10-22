@@ -33,12 +33,14 @@ import {
 import {
   ArrowUpOnSquareIcon,
   BookOpenIcon,
+  BracesIcon,
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
   CloudArrowLeftRightIcon,
   Cog6ToothIcon,
+  CompanyIcon,
   FolderIcon,
   GlobeAltIcon,
   HandThumbUpIcon,
@@ -48,8 +50,10 @@ import {
   MoreIcon,
   PencilSquareIcon,
   PlusIcon,
+  PuzzleIcon,
   RobotIcon,
   ServerIcon,
+  ShapesIcon,
   TrashIcon,
   UserIcon,
 } from "@sparkle/icons";
@@ -141,7 +145,7 @@ export const LayoutDemo = () => {
           <KnowledgeNav />
         </TabsContent>
         <TabsContent value="settings" className="s-h-full s-w-full">
-          Settings
+          <SettingTab />
         </TabsContent>
       </Tabs>
       <BottomNav
@@ -700,5 +704,20 @@ export const KnowledgeNav: React.FC<NavTabProps> = ({ className = "" }) => {
         </Tree.Item>
       </Tree>
     </div>
+  );
+};
+
+export const SettingTab = () => {
+  return (
+    <NewNavigationList className="s-w-full s-px-2">
+      <NewNavigationListLabel label="Workspace" />
+      <NewNavigationListItem label="Members" icon={UserIcon} selected />
+      <NewNavigationListItem label="Workspace" icon={CompanyIcon} />
+      <NewNavigationListItem label="Subscription" icon={ShapesIcon} />
+      <NewNavigationListLabel label="Developers" />
+      <NewNavigationListItem label="Providers" icon={PuzzleIcon} />
+      <NewNavigationListItem label="API Keys" icon={LockIcon} />
+      <NewNavigationListItem label="Secrets" icon={BracesIcon} />
+    </NewNavigationList>
   );
 };

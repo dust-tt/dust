@@ -1,22 +1,22 @@
 import * as React from "react";
 
-import { NewButton } from "@sparkle/components/";
+import { Icon, NewButton } from "@sparkle/components/";
 import { MoreIcon } from "@sparkle/icons";
-import { classNames, cn } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 export const listStyleClasses = {
   container: "s-gap-1 s-flex s-flex-col s-overflow-hidden",
-  item: classNames(
-    "s-box-border s-items-center s-w-full s-flex s-gap-1 s-cursor-pointer s-select-none s-items-center s-outline-none",
+  item: cn(
+    "s-box-border s-items-center s-w-full s-flex s-gap-1.5 s-cursor-pointer s-select-none s-items-center s-outline-none",
     "s-rounded-xl s-text-sm s-px-3 s-py-2",
     "s-transition-colors s-duration-300",
     "data-[disabled]:s-pointer-events-none data-[disabled]:s-text-muted-foreground",
-    "hover:s-text-foreground hover:s-bg-white hover:s-ring-1 hover:s-ring-border-dark"
+    "hover:s-text-foreground hover:s-bg-structure-150"
   ),
   "item-idle": "",
-  "item-active": "s-bg-primary-200 s-ring-1 s-ring-border",
+  "item-active": "s-bg-primary-200",
   "item-unselected": "s-text-muted-foreground",
-  "item-selected": "s-text-foreground s-bg-white s-ring-1 s-ring-border-dark",
+  "item-selected": "s-text-foreground s-font-medium s-bg-structure-150",
   label:
     "s-font-semibold s-pt-6 s-pb-2 s-text-xs s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
 };
@@ -35,8 +35,12 @@ NewNavigationList.displayName = "NewNavigationList";
 
 const NewNavigationListItem = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { selected?: boolean; label?: string }
->(({ className, selected, label, ...props }, ref) => {
+  React.HTMLAttributes<HTMLDivElement> & {
+    selected?: boolean;
+    label?: string;
+    icon?: React.ComponentType;
+  }
+>(({ className, selected, label, icon, ...props }, ref) => {
   const [isHovered, setIsHovered] = React.useState(false);
   const [isPressed, setIsPressed] = React.useState(false);
 
@@ -75,6 +79,7 @@ const NewNavigationListItem = React.forwardRef<
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
       >
+        {icon && <Icon visual={icon} size="sm" />}
         {label && (
           <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap">
             {label}
