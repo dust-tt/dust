@@ -534,7 +534,7 @@ function CancelFreeTrialDialog({
       title={`Cancel subscription`}
       onCancel={onClose}
       validateLabel="Yes, cancel subscription"
-      validateVariant="primaryWarning"
+      validateVariant="warning"
       onValidate={onValidate}
       isSaving={isSaving}
     >

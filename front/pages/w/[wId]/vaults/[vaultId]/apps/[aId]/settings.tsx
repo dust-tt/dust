@@ -97,7 +97,7 @@ export default function SettingsView({
       await confirm({
         title: "Double checking",
         message: "Are you sure you want to delete this app?",
-        validateVariant: "primaryWarning",
+        validateVariant: "warning",
       })
     ) {
       setIsDeleting(true);
