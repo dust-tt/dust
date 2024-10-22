@@ -18,15 +18,10 @@ export const SlackInteractionPayloadSchema = t.type({
     id: t.string,
     name: t.string,
   }),
-  message: t.type({
-    ts: t.string,
+  container: t.type({
+    message_ts: t.string,
+    channel_id: t.string,
     thread_ts: t.string,
-    bot_id: t.string,
-    metadata: t.type({
-      event_payload: t.type({
-        message_id: t.number,
-      }),
-    }),
   }),
   user: t.type({
     id: t.string,
@@ -81,22 +76,24 @@ const _webhookSlackInteractionsAPIHandler = async (
 
   const payload = bodyValidation.right;
 
-  const params = {
-    slackTeamId: payload.team.id,
-    slackChannel: payload.channel.id,
-    slackUserId: payload.user.id,
-    slackBotId: payload.message.bot_id,
-    slackMessageTs: payload.message.ts,
-    slackThreadTs: payload.message.thread_ts,
-  };
-
   for (const action of payload.actions) {
     if (action.action_id === STATIC_AGENT_CONFIG) {
-      const messageId = payload.message.metadata.event_payload.message_id;
+      const { slackChatBotMessage, slackThreadTs, messageTs, botId } =
+        JSON.parse(action.block_id);
+
+      const params = {
+        slackTeamId: payload.team.id,
+        slackChannel: payload.channel.id,
+        slackUserId: payload.user.id,
+        slackBotId: botId,
+        slackThreadTs: slackThreadTs,
+        slackMessageTs: messageTs,
+      };
+
       const selectedOption = action.selected_option?.value;
-      if (selectedOption && messageId) {
+      if (selectedOption && slackChatBotMessage) {
         const botRes = await botReplaceMention(
-          messageId,
+          slackChatBotMessage,
           selectedOption,
           params
         );

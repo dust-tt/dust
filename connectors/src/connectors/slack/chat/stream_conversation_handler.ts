@@ -13,12 +13,14 @@ import slackifyMarkdown from "slackify-markdown";
 
 import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
 import {
+  makeAssistantSelectionBlock,
   makeMessageUpdateBlocksAndText,
   MAX_SLACK_MESSAGE_LENGTH,
 } from "@connectors/connectors/slack/chat/blocks";
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
+import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -32,8 +34,10 @@ interface StreamConversationToSlackParams {
     slackClient: WebClient;
     slackMessageTs: string;
     slackUserInfo: SlackUserInfo;
+    slackUserId: string | null;
   };
   userMessage: UserMessageType;
+  slackChatBotMessage: SlackChatBotMessage;
   agentConfigurations: LightAgentConfigurationType[];
 }
 
@@ -50,10 +54,17 @@ export async function streamConversationToSlack(
     mainMessage,
     slack,
     userMessage,
+    slackChatBotMessage,
     agentConfigurations,
   }: StreamConversationToSlackParams
 ): Promise<Result<undefined, Error>> {
-  const { slackChannelId, slackClient, slackMessageTs, slackUserInfo } = slack;
+  const {
+    slackChannelId,
+    slackClient,
+    slackMessageTs,
+    slackUserInfo,
+    slackUserId,
+  } = slack;
 
   let lastSentDate = new Date();
   let backoffTime = initialBackoffTime;
@@ -81,7 +92,6 @@ export async function streamConversationToSlack(
       ...makeMessageUpdateBlocksAndText(
         conversationUrl,
         connector.workspaceId,
-        slackUserInfo,
         messageUpdate
       ),
       channel: slackChannelId,
@@ -245,6 +255,26 @@ export async function streamConversationToSlack(
           },
           { adhereToRateLimit: false }
         );
+        if (
+          slackUserId &&
+          !slackUserInfo.is_bot &&
+          agentConfigurations.length > 0
+        ) {
+          await slackClient.chat.postEphemeral({
+            channel: slackChannelId,
+            user: slackUserId,
+            blocks: makeAssistantSelectionBlock(
+              agentConfigurations,
+              JSON.stringify({
+                slackChatBotMessage: slackChatBotMessage.id,
+                slackThreadTs: mainMessage.message?.thread_ts,
+                messageTs: mainMessage.message?.ts,
+                botId: mainMessage.message?.bot_id,
+              })
+            ),
+            thread_ts: slackMessageTs,
+          });
+        }
 
         return new Ok(undefined);
       }
