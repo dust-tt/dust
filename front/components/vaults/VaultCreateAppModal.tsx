@@ -121,7 +121,11 @@ export const VaultCreateAppModal = ({
                 name="name"
                 value={name}
                 onChange={(e) => {
-                  setName(e.target.value);
+                  setName(
+                    e.target.value
+                      .replace(/[^a-zA-Z0-9_-]/g, "")
+                      .substring(0, 64)
+                  );
                   if (errors.name) {
                     setErrors({ ...errors, name: null });
                   }
@@ -130,8 +134,8 @@ export const VaultCreateAppModal = ({
                 showErrorLabel
               />
               <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-                <ExclamationCircleStrokeIcon /> Must be unique and not use
-                spaces or special characters.
+                <ExclamationCircleStrokeIcon /> Must be unique and only use
+                alphanumeric, - or _ characters.
               </p>
             </div>
 

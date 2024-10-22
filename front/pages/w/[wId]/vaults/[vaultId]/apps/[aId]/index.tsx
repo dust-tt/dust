@@ -1,4 +1,10 @@
-import { Button, DocumentTextIcon, PlayIcon, Tab } from "@dust-tt/sparkle";
+import {
+  BracesIcon,
+  Button,
+  DocumentTextIcon,
+  PlayIcon,
+  Tab,
+} from "@dust-tt/sparkle";
 import type {
   APIErrorResponse,
   AppType,
@@ -361,7 +367,15 @@ export default function AppView({
             ) : null}
             <div className="flex-1"></div>
             {!readOnly ? (
-              <div className="hidden flex-initial sm:block">
+              <div className="hidden flex-initial space-x-2 sm:block">
+                <Button
+                  variant="tertiary"
+                  icon={BracesIcon}
+                  label="Secrets"
+                  onClick={() => {
+                    void router.push(`/w/${owner.sId}/developers/dev-secrets`);
+                  }}
+                />
                 <Button
                   variant="tertiary"
                   icon={DocumentTextIcon}

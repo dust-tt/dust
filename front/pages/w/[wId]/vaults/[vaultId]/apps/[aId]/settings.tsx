@@ -205,8 +205,20 @@ export default function SettingsView({
                             : "border-gray-300 focus:border-action-500 focus:ring-action-500"
                         )}
                         value={appName}
-                        onChange={(e) => setAppName(e.target.value)}
+                        onChange={(e) =>
+                          setAppName(
+                            e.target.value
+                              .replace(/[^a-zA-Z0-9_-]/g, "")
+                              .substring(0, 64)
+                          )
+                        }
                       />
+                    </div>
+                    <div>
+                      <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+                        Must be unique and only use alphanumeric, - or _
+                        characters.
+                      </p>
                     </div>
                   </div>
 
@@ -232,7 +244,7 @@ export default function SettingsView({
                         onChange={(e) => setAppDescription(e.target.value)}
                       />
                     </div>
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
                       This description guides assistants in understanding how to
                       use your app effectively and determines its relevance in
                       responding to user inquiries. If you don't provide a
