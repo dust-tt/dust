@@ -18,6 +18,7 @@ import {
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { sendEmail } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
 import {
   Conversation,
@@ -29,7 +30,6 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { sendEmail } from "@app/lib/api/email";
 
 function renderUserType(user: User): UserType {
   return {
