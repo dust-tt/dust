@@ -146,11 +146,12 @@ export function Markdown({
               {childrenContent && (
                 <Button
                   size="xs"
-                  variant="outline"
+                  variant="ghost"
                   onClick={async (e) => {
                     e.preventDefault();
                     await handleCopy();
                   }}
+                  tooltip="Copy"
                   icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
                 />
               )}

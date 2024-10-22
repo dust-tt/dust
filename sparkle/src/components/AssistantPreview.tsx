@@ -147,7 +147,7 @@ const MinimalVariantContent = ({
   const actionButton = actionElement ?? (
     <Button
       icon={MoreIcon}
-      variant="outline"
+      variant="ghost"
       size="sm"
       onClick={(e) => {
         e.stopPropagation();

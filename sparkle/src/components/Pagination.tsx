@@ -75,7 +75,7 @@ export function Pagination({
         )}
       >
         <Button
-          variant="outline"
+          variant="ghost"
           size={size === "xs" ? "xs" : "sm"}
           disabled={!canPreviousPage}
           icon={ChevronLeftIcon}
@@ -93,7 +93,7 @@ export function Pagination({
         </div>
 
         <Button
-          variant="outline"
+          variant="ghost"
           size={size === "xs" ? "xs" : "sm"}
           disabled={!canNextPage}
           icon={ChevronRightIcon}

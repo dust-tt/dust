@@ -358,7 +358,7 @@ DataTable.Row = function Row({
               <IconButton
                 icon={MoreIcon}
                 size="sm"
-                variant="outline"
+                variant="ghost"
                 className="s-m-1"
               />
             </DropdownMenu.Button>
@@ -518,7 +518,7 @@ DataTable.CellContentWithCopy = function CellContentWithCopy({
       <span className="s-truncate">{children}</span>
       <IconButton
         icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-        variant="outline"
+        variant="ghost"
         onClick={async (e) => {
           e.stopPropagation();
           await handleCopy();
