@@ -5,7 +5,9 @@ import type {
   ModelId,
 } from "@dust-tt/types";
 
+import { allowSyncZendeskHelpCenter } from "@connectors/connectors/zendesk/lib/help_center_permissions";
 import { getBrandInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
+import { allowSyncZendeskTickets } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
@@ -15,18 +17,16 @@ import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 /**
  * Mark a brand as permission "read" and all children (help center and tickets) if specified.
  */
-export async function allowSyncBrand({
+export async function allowSyncZendeskBrand({
   subdomain,
   connectorId,
   connectionId,
   brandId,
-  withChildren = false,
 }: {
   subdomain: string;
   connectorId: ModelId;
   connectionId: string;
   brandId: number;
-  withChildren?: boolean;
 }): Promise<ZendeskBrandResource> {
   let brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
@@ -61,9 +61,18 @@ export async function allowSyncBrand({
     }
   }
 
-  if (withChildren) {
-    throw new Error("withChildren not implemented yet.");
-  }
+  await allowSyncZendeskHelpCenter({
+    subdomain,
+    connectorId,
+    connectionId,
+    brandId,
+  });
+  await allowSyncZendeskTickets({
+    subdomain,
+    connectorId,
+    connectionId,
+    brandId,
+  });
 
   return brand;
 }
@@ -71,7 +80,7 @@ export async function allowSyncBrand({
 /**
  * Mark a help center as permission "none" and all children (collections & articles).
  */
-export async function revokeSyncBrand({
+export async function revokeSyncZendeskBrand({
   connectorId,
   brandId,
 }: {

@@ -26,6 +26,8 @@ export interface ZendeskConfigurationResource
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ZendeskConfigurationResource extends BaseResource<ZendeskConfiguration> {
+  static model: ModelStatic<ZendeskConfiguration> = ZendeskConfiguration;
+
   constructor(
     model: ModelStatic<ZendeskConfiguration>,
     blob: Attributes<ZendeskConfiguration>
@@ -125,6 +127,11 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }
 
   async revokePermissions(): Promise<void> {
+    await this.revokeHelpCenterPermissions();
+    await this.revokeTicketsPermissions();
+  }
+
+  async revokeHelpCenterPermissions(): Promise<void> {
     if (this?.permission === "read") {
       await this.update({ permission: "none" });
     }
@@ -136,6 +143,12 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       { permission: "none" },
       { where: { brandId: this.brandId } }
     );
+  }
+
+  async revokeTicketsPermissions(): Promise<void> {
+    if (this?.permission === "read") {
+      await this.update({ permission: "none" });
+    }
     await ZendeskTicket.update(
       { permission: "none" },
       { where: { brandId: this.brandId } }
@@ -183,10 +196,14 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }: {
     connectorId: number;
     brandId: number;
-  }): Promise<ZendeskCategory[]> {
+  }): Promise<ZendeskCategoryResource[]> {
     return ZendeskCategory.findAll({
       where: { connectorId, brandId, permission: "read" },
-    });
+    }).then((categories) =>
+      categories.map(
+        (category) => new ZendeskCategoryResource(ZendeskCategory, category)
+      )
+    );
   }
 
   static async fetchBrandsWithHelpCenter({
@@ -220,6 +237,22 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     super(ZendeskCategory, blob);
   }
 
+  static async makeNew({
+    blob,
+    transaction,
+  }: {
+    blob: CreationAttributes<ZendeskCategory>;
+    transaction?: Transaction;
+  }): Promise<ZendeskCategoryResource> {
+    let category;
+    if (transaction) {
+      category = await ZendeskCategory.create({ ...blob }, { transaction });
+    } else {
+      category = await ZendeskCategory.create({ ...blob });
+    }
+    return new this(this.model, category.get());
+  }
+
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -250,6 +283,19 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     };
   }
 
+  static async fetchByCategoryId({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }): Promise<ZendeskCategoryResource | null> {
+    const blob = await ZendeskCategory.findOne({
+      where: { connectorId, categoryId },
+    });
+    return blob && new this(this.model, blob.get());
+  }
+
   static async fetchAllReadOnly({
     connectorId,
   }: {
@@ -272,5 +318,11 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return ZendeskArticle.findAll({
       where: { connectorId, categoryId, permission: "read" },
     });
+  }
+
+  async revokePermissions(): Promise<void> {
+    if (this?.permission === "read") {
+      await this.update({ permission: "none" });
+    }
   }
 }

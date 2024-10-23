@@ -11,9 +11,90 @@ import {
   getTicketInternalId,
   getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
+import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
+import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
+
+export async function allowSyncZendeskTickets({
+  subdomain,
+  connectorId,
+  connectionId,
+  brandId,
+  withChildren = false,
+}: {
+  subdomain: string;
+  connectorId: ModelId;
+  connectionId: string;
+  brandId: number;
+  withChildren?: boolean;
+}): Promise<ZendeskBrandResource> {
+  let brand = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  if (brand?.permission === "none") {
+    await brand.update({ permission: "read" });
+  }
+
+  const token = await getZendeskAccessToken(connectionId);
+  const zendeskApiClient = createZendeskClient({ token, subdomain });
+
+  if (!brand) {
+    const {
+      result: { brand: fetchedBrand },
+    } = await zendeskApiClient.brand.show(brandId);
+    if (fetchedBrand) {
+      brand = await ZendeskBrandResource.makeNew({
+        blob: {
+          subdomain: fetchedBrand.subdomain,
+          connectorId: connectorId,
+          brandId: fetchedBrand.id,
+          name: fetchedBrand.name || "Brand",
+          permission: "read",
+          hasHelpCenter: fetchedBrand.has_help_center,
+          url: fetchedBrand.url,
+        },
+      });
+    } else {
+      logger.error({ brandId }, "[Zendesk] Brand could not be fetched.");
+      throw new Error("Brand could not be fetched.");
+    }
+  }
+
+  if (withChildren) {
+    throw new Error("withChildren not implemented yet.");
+  }
+
+  return brand;
+}
+
+/**
+ * Mark a help center as permission "none" and all children (collections & articles).
+ */
+export async function revokeSyncZendeskTickets({
+  connectorId,
+  brandId,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+}): Promise<ZendeskBrandResource | null> {
+  const brand = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  if (!brand) {
+    logger.error(
+      { brandId },
+      "[Zendesk] Brand not found, could not revoke sync."
+    );
+    return null;
+  }
+
+  await brand.revokeTicketsPermissions();
+  return brand;
+}
 
 export async function retrieveZendeskTicketPermissions({
   connectorId,
