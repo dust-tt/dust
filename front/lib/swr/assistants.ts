@@ -7,6 +7,7 @@ import type {
 } from "@dust-tt/types";
 import { useCallback, useContext, useMemo } from "react";
 import type { Fetcher } from "swr";
+import { useSWRConfig } from "swr";
 
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
@@ -78,6 +79,7 @@ export function useAgentConfigurations({
   limit,
   sort,
   disabled,
+  loadOnceOnly,
 }: {
   workspaceId: string;
   agentsGetView: AgentsGetViewType | null;
@@ -85,6 +87,7 @@ export function useAgentConfigurations({
   limit?: number;
   sort?: "alphabetical" | "priority";
   disabled?: boolean;
+  loadOnceOnly?: boolean;
 }) {
   const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
     fetcher;
@@ -114,6 +117,10 @@ export function useAgentConfigurations({
       params.append("sort", sort);
     }
 
+    if (loadOnceOnly) {
+      params.append("no-cache-flush", "true");
+    }
+
     return params.toString();
   }
 
@@ -121,10 +128,16 @@ export function useAgentConfigurations({
 
   const key = `/api/w/${workspaceId}/assistant/agent_configurations?${queryString}`;
 
+  const { cache } = useSWRConfig();
+  const shouldNotRevalidate =
+    loadOnceOnly && cache.get(key) && cache.get(key)?.data;
+
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(agentsGetView ? key : null, agentConfigurationsFetcher, {
       disabled,
       revalidateIfStale: false,
+      revalidateOnFocus: shouldNotRevalidate ? false : undefined,
+      revalidateOnMount: shouldNotRevalidate ? false : undefined,
       keepPreviousData: true,
     });
 
@@ -156,6 +169,7 @@ export function useProgressiveAgentConfigurations({
     limit: 24,
     includes: ["usage"],
     disabled,
+    loadOnceOnly: true,
   });
 
   const {
