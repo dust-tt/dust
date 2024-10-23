@@ -23,9 +23,6 @@ export const ConversationExample = () => {
             type="user"
             name="Edouard"
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
-            renderName={(name) => (
-              <div className="text-base font-medium">{name}</div>
-            )}
           >
             I only want to show citations if a citations reactnode has been
             passed
@@ -35,9 +32,6 @@ export const ConversationExample = () => {
             type="agent"
             name="@assistant"
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-            renderName={(name) => (
-              <div className="text-base font-medium">{name}</div>
-            )}
             buttons={[
               {
                 icon: MagnifyingGlassIcon,
@@ -67,9 +61,6 @@ export const ConversationExample = () => {
             type="user"
             name="Edouard"
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
-            renderName={(name) => (
-              <div className="text-base font-medium">{name}</div>
-            )}
           >
             In the invitation email to members sent by their companies, I'm
             trying to write a description of dust. I want it convey that: Dust
@@ -84,9 +75,6 @@ export const ConversationExample = () => {
             type="user"
             name="Edouard"
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
-            renderName={(name) => (
-              <div className="text-base font-medium">{name}</div>
-            )}
           >
             I only want to show citations if a citations reactnode has been
             passed
@@ -96,9 +84,6 @@ export const ConversationExample = () => {
             type="agent"
             name="@assistant"
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-            renderName={(name) => (
-              <div className="text-base font-medium">{name}</div>
-            )}
             buttons={[
               {
                 icon: MagnifyingGlassIcon,
@@ -128,9 +113,6 @@ export const ConversationExample = () => {
             type="user"
             name="Edouard"
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
-            renderName={(name) => (
-              <div className="text-base font-medium">{name}</div>
-            )}
           >
             In the invitation email to members sent by their companies, I'm
             trying to write a description of dust. I want it convey that: Dust
