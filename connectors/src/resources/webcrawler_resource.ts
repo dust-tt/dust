@@ -90,19 +90,25 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       {} as Record<ModelId, WebCrawlerConfigurationResource>
     );
 
-    (
-      await WebCrawlerConfigurationHeader.findAll({
-        where: {
-          webcrawlerConfigurationId: blobs.map((b) => b.id),
-        },
-      })
-    ).forEach((header) => {
-      const r = resources[header.webcrawlerConfigurationId];
-      if (r) {
-        r.headers[header.key] = header.value;
-      }
-    });
+    const configurationHeaders = await WebCrawlerConfigurationHeader.findAll({
+      where: {
+        webcrawlerConfigurationId: blobs.map((b) => b.id),
+      },
+    })
 
+    const configToConnectorMap = blobs.reduce((acc, blob) => {
+      acc[blob.id] = blob.connectorId;
+      return acc;
+    }, {} as Record<ModelId, ModelId>);
+
+    configurationHeaders.forEach((header) => {
+      const connectorId = configToConnectorMap[header.webcrawlerConfigurationId];
+      if (connectorId){
+        const r = resources[connectorId];
+        if (r) {
+          r.headers[header.key] = header.value;
+        }
+    }});
     return resources;
   }
 

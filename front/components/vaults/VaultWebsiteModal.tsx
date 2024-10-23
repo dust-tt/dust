@@ -360,14 +360,12 @@ export default function VaultWebsiteModal({
       });
     }
   };
-  console.log(headers);
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       onSave={() => {
         setIsSubmitted(true);
-        console.log(headers);
         if (!isSaving) {
           if (dataSourceView) {
             void handleUpdate();
