@@ -272,6 +272,13 @@ export class VaultResource extends BaseResource<VaultModel> {
   ): Promise<Result<undefined, Error>> {
     const { hardDelete, transaction } = options;
 
+    await GroupVaultModel.destroy({
+      where: {
+        vaultId: this.id,
+      },
+      transaction,
+    });
+
     await VaultModel.destroy({
       where: {
         id: this.id,
