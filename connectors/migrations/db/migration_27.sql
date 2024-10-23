@@ -1,15 +1,4 @@
 -- Migration created on Oct 23, 2024
-CREATE TABLE IF NOT EXISTS "zendesk_configurations"
-(
-    "id"                         SERIAL,
-    "createdAt"                  TIMESTAMP WITH TIME ZONE NOT NULL,
-    "updatedAt"                  TIMESTAMP WITH TIME ZONE NOT NULL,
-    "subdomain"                  VARCHAR(255)             NOT NULL,
-    "conversationsSlidingWindow" INTEGER                  NOT NULL DEFAULT 90,
-    "connectorId"                INTEGER                  NOT NULL REFERENCES "connectors" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    PRIMARY KEY ("id")
-);
-
 CREATE TABLE IF NOT EXISTS "zendesk_brands"
 (
     "id"             SERIAL,
