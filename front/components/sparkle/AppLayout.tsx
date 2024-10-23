@@ -1,7 +1,6 @@
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import Head from "next/head";
 import type { NextRouter } from "next/router";
-import { useRouter } from "next/router";
 import Script from "next/script";
 import React, { useEffect, useState } from "react";
 
@@ -11,7 +10,6 @@ import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/con
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
 import { useUser } from "@app/lib/swr/user";
-import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
@@ -54,20 +52,11 @@ export default function AppLayout({
   hideHelpOnMobile?: boolean;
 }) {
   const [loaded, setLoaded] = useState(false);
-  const router = useRouter();
   const user = useUser();
 
   useEffect(() => {
     setLoaded(true);
   }, []);
-
-  useEffect(() => {
-    ClientSideTracking.trackPageView({
-      user: user?.user ?? undefined,
-      workspaceId: owner.sId,
-      pathname: router.pathname,
-    });
-  }, [owner.sId, router.pathname, user?.user]);
 
   return (
     <>

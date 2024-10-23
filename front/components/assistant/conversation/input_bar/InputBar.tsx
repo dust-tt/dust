@@ -19,7 +19,6 @@ import InputBarContainer, {
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
@@ -160,12 +159,6 @@ export function AssistantInputBar({
     const mentions: MentionType[] = [
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
-
-    if (fileUploaderService.fileBlobs.length > 0) {
-      void ClientSideTracking.trackInputBarFileUploadUsed({
-        fileCount: fileUploaderService.fileBlobs.length,
-      });
-    }
 
     onSubmit(
       text,

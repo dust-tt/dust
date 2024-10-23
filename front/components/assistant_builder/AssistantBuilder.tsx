@@ -61,7 +61,6 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
 export default function AssistantBuilder({
@@ -346,36 +345,6 @@ export default function AssistantBuilder({
       })),
     [screen]
   );
-
-  useEffect(() => {
-    void ClientSideTracking.trackAssistantBuilderOpened({
-      isNew: !agentConfigurationId,
-      templateName: defaultTemplate?.handle,
-      assistantName: builderState.handle || undefined,
-      workspaceId: owner.sId,
-    });
-  }, [
-    agentConfigurationId,
-    builderState.handle,
-    defaultTemplate?.handle,
-    owner.sId,
-  ]);
-
-  useEffect(() => {
-    void ClientSideTracking.trackAssistantBuilderStepViewed({
-      step: screen,
-      isNew: !agentConfigurationId,
-      templateName: defaultTemplate?.handle,
-      assistantName: builderState.handle || undefined,
-      workspaceId: owner.sId,
-    });
-  }, [
-    agentConfigurationId,
-    builderState.handle,
-    defaultTemplate?.handle,
-    owner.sId,
-    screen,
-  ]);
 
   const [doTypewriterEffect, setDoTypewriterEffect] = useState(
     Boolean(template !== null && builderState.instructions)
