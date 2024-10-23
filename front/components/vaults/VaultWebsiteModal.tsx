@@ -109,7 +109,6 @@ export default function VaultWebsiteModal({
   let webCrawlerConfiguration: WebCrawlerConfigurationType | null = null;
   if (isWebCrawlerConfiguration(configuration)) {
     webCrawlerConfiguration = configuration;
-    console.log(webCrawlerConfiguration);
   }
 
   useEffect(() => {

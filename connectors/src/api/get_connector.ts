@@ -27,7 +27,6 @@ const _getConnector = async (
   }
 
   const connector = await ConnectorResource.fetchById(req.params.connector_id);
-  console.log(">>>> connector", connector?.toJSON());
   if (!connector) {
     return apiError(req, res, {
       api_error: {
