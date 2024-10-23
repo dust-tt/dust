@@ -222,21 +222,14 @@ export function AssistantBrowser({
               variant="minimal"
               onClick={() => handleAssistantClick(agent)}
               actionElement={
-                <>
-                  {/* TODO: get rid of the ugly hack */}
-                  {/* Theses 2 divs are an ugly hack to align the button while making the dropdown menu visible above the container, it has the size of the button hardcoded -- Let's fix it asap */}
-                  <div style={{ width: "56px" }}></div>{" "}
-                  <div className="absolute">
-                    <AssistantDropdownMenu
-                      agentConfiguration={agent}
-                      owner={owner}
-                      variant="button"
-                      isMoreInfoVisible
-                      showAddRemoveToFavorite
-                      canDelete
-                    />
-                  </div>
-                </>
+                <AssistantDropdownMenu
+                  agentConfiguration={agent}
+                  owner={owner}
+                  variant="button"
+                  isMoreInfoVisible
+                  showAddRemoveToFavorite
+                  canDelete
+                />
               }
             />
           ))}

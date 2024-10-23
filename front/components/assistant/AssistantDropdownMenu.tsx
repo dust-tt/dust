@@ -86,6 +86,7 @@ export function AssistantDropdownMenu({
             icon={MoreIcon}
             size="sm"
             variant="outline"
+            className="rounded-2xl"
           />
         );
       case "plain":
