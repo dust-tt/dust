@@ -12,8 +12,8 @@ import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 export async function callDocTrackerSuggestChangesAction(
   auth: Authenticator,
   sourceDocument: string,
-  targetDocument: string
-): Promise<t.TypeOf<typeof DocTrackerSuggestChangesActionValueSchema>> {
+  trackedDocument: string
+): Promise<DocTrackerSuggestChangesActionResult> {
   const action = DustProdActionRegistry["doc-tracker-suggest-changes"];
 
   const model = getLargeWhitelistedModel(auth.getNonNullableWorkspace());
@@ -28,8 +28,11 @@ export async function callDocTrackerSuggestChangesAction(
   const res = await callAction(auth, {
     action,
     config,
-    input: { source_document: sourceDocument, target_document: targetDocument },
-    responseValueSchema: DocTrackerSuggestChangesActionValueSchema,
+    input: {
+      modified_document_diff: sourceDocument,
+      tracked_document: trackedDocument,
+    },
+    responseValueSchema: DocTrackerSuggestChangesActionResultSchema,
   });
 
   if (res.isErr()) {
@@ -39,14 +42,12 @@ export async function callDocTrackerSuggestChangesAction(
   return res.value;
 }
 
-const DocTrackerSuggestChangesActionValueSchema = t.union([
-  t.type({
-    match: t.literal(false),
-    reason: t.string,
-  }),
-  t.type({
-    match: t.literal(true),
-    suggested_changes: t.string,
-    reason: t.string,
-  }),
-]);
+const DocTrackerSuggestChangesActionResultSchema = t.partial({
+  thinking: t.union([t.string, t.null, t.undefined]),
+  confidence_score: t.union([t.number, t.null, t.undefined]),
+  suggestion: t.union([t.string, t.null, t.undefined]),
+});
+
+type DocTrackerSuggestChangesActionResult = t.TypeOf<
+  typeof DocTrackerSuggestChangesActionResultSchema
+>;
