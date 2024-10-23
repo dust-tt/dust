@@ -1,4 +1,4 @@
-import { fetcher, useSWRWithDefaults } from "@app/extension/app/src/swr/swr";
+import { fetcher, useSWRWithDefaults } from "@app/extension/app/src/lib/swr";
 import type {
   AgentsGetViewType,
   LightAgentConfigurationType,

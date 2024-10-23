@@ -1,4 +1,4 @@
-import { ProtectedRoute } from "@extension/context/ProtectedRoute";
+import { ProtectedRoute } from "@extension/components/auth/ProtectedRoute";
 import { ConversationPage } from "@extension/pages/ConversationPage";
 import { LoginPage } from "@extension/pages/LoginPage";
 import { MainPage } from "@extension/pages/MainPage";
