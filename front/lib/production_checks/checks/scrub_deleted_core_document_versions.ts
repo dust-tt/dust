@@ -30,7 +30,7 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
       `SELECT dsd.id, dsd.created, dsd.document_id, dsd.hash, ds.data_source_id, ds.project
         FROM data_sources_documents dsd
         JOIN data_sources ds ON ds.id = dsd.data_source
-        WHERE dsd.status = 'deleted' AND dsd.id > 0
+        WHERE dsd.status = 'deleted' AND dsd.id > ${lastSeenId}
         ORDER BY dsd.id LIMIT 1000`
     );
 
