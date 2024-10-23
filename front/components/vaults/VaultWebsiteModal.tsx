@@ -388,7 +388,7 @@ export default function VaultWebsiteModal({
             advancedSettingsOpened={advancedSettingsOpened}
             setAdvancedSettingsOpened={setAdvancedSettingsOpened}
             headers={headers}
-            setHeaders={setHeaders}
+            onSave={setHeaders}
           />
           <div className="flex flex-col gap-2">
             {isConfigurationLoading ? (
@@ -615,14 +615,14 @@ interface AdvancedSettingsModalProps {
   advancedSettingsOpened: boolean;
   setAdvancedSettingsOpened: (open: boolean) => void;
   headers: { key: string; value: string }[];
-  setHeaders: (headers: { key: string; value: string }[]) => void;
+  onSave: (headers: { key: string; value: string }[]) => void;
 }
 
 const AdvancedSettingsModal = ({
   advancedSettingsOpened,
   setAdvancedSettingsOpened,
   headers,
-  setHeaders,
+  onSave,
 }: AdvancedSettingsModalProps) => {
   const [hasEdited, setHasEdited] = useState(false);
 
@@ -655,7 +655,7 @@ const AdvancedSettingsModal = ({
                       setHasEdited(true);
                       const newHeaders = [...headers];
                       newHeaders[index].key = e.target.value;
-                      setHeaders(newHeaders);
+                      onSave(newHeaders);
                     }}
                     disabled={header.value === WebCrawlerHeaderRedactedValue}
                     className="grow"
@@ -668,7 +668,7 @@ const AdvancedSettingsModal = ({
                       setHasEdited(true);
                       const newHeaders = [...headers];
                       newHeaders[index].value = e.target.value;
-                      setHeaders(newHeaders);
+                      onSave(newHeaders);
                     }}
                     disabled={header.value === WebCrawlerHeaderRedactedValue}
                     className="flex-1"
@@ -682,7 +682,7 @@ const AdvancedSettingsModal = ({
                   disabledTooltip={true}
                   onClick={() => {
                     const newHeaders = headers.filter((_, i) => i !== index);
-                    setHeaders(newHeaders);
+                    onSave(newHeaders);
                     setHasEdited(true);
                   }}
                 />
@@ -695,7 +695,7 @@ const AdvancedSettingsModal = ({
               className="shrink"
               label="Add Header"
               onClick={() => {
-                setHeaders([...headers, { key: "", value: "" }]);
+                onSave([...headers, { key: "", value: "" }]);
               }}
             />
           </div>
