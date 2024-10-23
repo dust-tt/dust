@@ -1939,16 +1939,12 @@ async fn data_sources_documents_scrub_deleted_versions(
                     "Failed to scrub document deleted versions",
                     Some(e),
                 ),
-                Ok(_) => (
+                Ok(versions) => (
                     StatusCode::OK,
                     Json(APIResponse {
                         error: None,
                         response: Some(json!({
-                            "data_source": {
-                                "created": ds.created(),
-                                "data_source_id": ds.data_source_id(),
-                                "config": ds.config(),
-                            },
+                            "versions": versions,
                         })),
                     }),
                 ),
