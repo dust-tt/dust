@@ -9,7 +9,6 @@ import {
 import type { ComponentType, MouseEventHandler } from "react";
 import { useRef } from "react";
 
-import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
 
 type MessageActionsProps = {
@@ -44,6 +43,7 @@ export function MessageActions({
       <MessageEmojiSelector
         reactions={messageEmoji.reactions}
         onSubmitEmoji={messageEmoji.onSubmitEmoji}
+        isSubmittingEmoji={messageEmoji.isSubmittingEmoji}
       />
     );
   }
@@ -65,18 +65,15 @@ export type EmojoReaction = {
 export interface MessageEmojiSelectorProps {
   reactions: EmojoReaction[];
   onSubmitEmoji: (p: { emoji: string; isToRemove: boolean }) => Promise<void>;
+  isSubmittingEmoji: boolean;
 }
 
 function MessageEmojiSelector({
   reactions,
   onSubmitEmoji,
+  isSubmittingEmoji,
 }: MessageEmojiSelectorProps) {
-  // TODO(2024-05-27 flav) Use mutate from `useConversationReactions` instead.
-
   const emojiData = DataEmojiMart as EmojiMartData;
-
-  const { submit: handleEmoji, isSubmitting: isSubmittingEmoji } =
-    useSubmitFunction(onSubmitEmoji);
 
   let slicedReactions = [...reactions];
   let hasMoreReactions = null;
@@ -89,9 +86,9 @@ function MessageEmojiSelector({
     <>
       <EmojiSelector
         reactions={reactions}
-        handleEmoji={handleEmoji}
+        onSubmitEmoji={onSubmitEmoji}
         emojiData={emojiData}
-        disabled={isSubmittingEmoji}
+        isSubmittingEmoji={isSubmittingEmoji}
       />
       {slicedReactions.map((reaction) => {
         const hasReacted = reaction.hasReacted;
@@ -107,7 +104,7 @@ function MessageEmojiSelector({
             emoji={nativeEmoji}
             count={reaction.count.toString()}
             onClick={async () =>
-              handleEmoji({
+              onSubmitEmoji({
                 emoji: reaction.emoji,
                 isToRemove: hasReacted,
               })
@@ -153,21 +150,12 @@ export function ButtonEmoji({
 
 function EmojiSelector({
   reactions,
-  handleEmoji,
+  onSubmitEmoji,
   emojiData,
-  disabled = false,
+  isSubmittingEmoji = false,
 }: {
-  reactions: EmojoReaction[];
-  handleEmoji: ({
-    emoji,
-    isToRemove,
-  }: {
-    emoji: string;
-    isToRemove: boolean;
-  }) => void;
   emojiData: EmojiMartData | null;
-  disabled?: boolean;
-}) {
+} & MessageEmojiSelectorProps) {
   const buttonRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -184,7 +172,7 @@ function EmojiSelector({
             label="Reaction picker"
             disabledTooltip
             type="menu"
-            disabled={disabled}
+            disabled={isSubmittingEmoji}
           />
         </div>
       }
@@ -193,10 +181,10 @@ function EmojiSelector({
           theme="light"
           previewPosition="none"
           data={emojiData ?? undefined}
-          onEmojiSelect={(emojiData) => {
+          onEmojiSelect={async (emojiData) => {
             const reaction = reactions.find((r) => r.emoji === emojiData.id);
             const hasReacted = reaction ? reaction.hasReacted : false;
-            handleEmoji({
+            await onSubmitEmoji({
               emoji: emojiData.id,
               isToRemove: hasReacted,
             });

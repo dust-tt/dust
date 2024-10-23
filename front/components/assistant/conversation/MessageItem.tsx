@@ -11,6 +11,7 @@ import { useSWRConfig } from "swr";
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import { useSubmitFunction } from "@app/lib/client/utils";
 
 interface MessageItemProps {
   conversationId: string;
@@ -42,6 +43,34 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     const convoReactions = reactions.find((r) => r.messageId === sId);
     const messageReactions = convoReactions?.reactions || [];
     const { mutate } = useSWRConfig();
+    const { submit: onSubmitEmoji, isSubmitting: isSubmittingEmoji } =
+      useSubmitFunction(
+        async ({
+          emoji,
+          isToRemove,
+        }: {
+          emoji: string;
+          isToRemove: boolean;
+        }) => {
+          const res = await fetch(
+            `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/reactions`,
+            {
+              method: isToRemove ? "DELETE" : "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                reaction: emoji,
+              }),
+            }
+          );
+          if (res.ok) {
+            await mutate(
+              `/api/w/${owner.sId}/assistant/conversations/${conversationId}/reactions`
+            );
+          }
+        }
+      );
 
     if (message.visibility === "deleted") {
       return null;
@@ -55,31 +84,8 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             hasReacted: reaction.users.some((u) => u.userId === user.id),
             count: reaction.users.length,
           })),
-          onSubmitEmoji: async ({
-            emoji,
-            isToRemove,
-          }: {
-            emoji: string;
-            isToRemove: boolean;
-          }) => {
-            const res = await fetch(
-              `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/reactions`,
-              {
-                method: isToRemove ? "DELETE" : "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  reaction: emoji,
-                }),
-              }
-            );
-            if (res.ok) {
-              await mutate(
-                `/api/w/${owner.sId}/assistant/conversations/${conversationId}/reactions`
-              );
-            }
-          },
+          onSubmitEmoji,
+          isSubmittingEmoji,
         };
 
     switch (type) {
@@ -98,6 +104,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 avatarSrc:
                   contentFragment.context.profilePictureUrl || undefined,
                 citationType,
+                id: contentFragment.sId,
                 isZoomable,
                 sourceUrl: isZoomable
                   ? `${contentFragment.sourceUrl}?action=view`

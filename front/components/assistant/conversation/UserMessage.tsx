@@ -1,5 +1,4 @@
-import type { ContentFragmentType, WorkspaceType } from "@dust-tt/types";
-import type { UserMessageType } from "@dust-tt/types";
+import type { UserMessageType, WorkspaceType } from "@dust-tt/types";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import type { ConversationCitationType } from "@app/components/assistant/conversation/messages/ConverationCitationComponent";

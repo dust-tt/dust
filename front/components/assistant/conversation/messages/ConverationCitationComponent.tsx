@@ -4,6 +4,7 @@ import type { CitationType } from "@dust-tt/sparkle/dist/esm/components/Citation
 export type ConversationCitationType = {
   avatarSrc?: string;
   citationType: CitationType;
+  id: string;
   isZoomable: boolean;
   sourceUrl?: string;
   title: string;
