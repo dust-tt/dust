@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt;
+use std::str::FromStr;
 use tokio_stream::{self as stream};
 use tracing::{error, info};
 use uuid::Uuid;
@@ -206,10 +207,31 @@ pub fn make_document_id_hash(document_id: &str) -> String {
     format!("{}", hasher.finalize().to_hex())
 }
 
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DocumentStatus {
+    Latest,
+    Superseded,
+    Deleted,
+}
+
+impl FromStr for DocumentStatus {
+    type Err = utils::ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "latest" => Ok(DocumentStatus::Latest),
+            "superseded" => Ok(DocumentStatus::Superseded),
+            "deleted" => Ok(DocumentStatus::Deleted),
+            _ => Err(utils::ParseError::with_message("Unknown DocumentStatus"))?,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Clone)]
 pub struct DocumentVersion {
     pub created: u64,
     pub hash: String,
+    pub status: DocumentStatus,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -1713,6 +1735,63 @@ impl DataSource {
         qdrant_client
             .delete_points(embedder_config, &self.internal_id, filter)
             .await?;
+
+        Ok(())
+    }
+
+    pub async fn scrub_document_deleted_versions(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        document_id: &str,
+    ) -> Result<()> {
+        let store = store.clone();
+
+        let (versions, _) = store
+            .list_data_source_document_versions(
+                &self.project,
+                &self.data_source_id,
+                document_id,
+                None,
+                &None,
+                &None,
+            )
+            .await?;
+
+        let versions = versions
+            .into_iter()
+            .filter(|v| v.status == DocumentStatus::Deleted)
+            .collect::<Vec<_>>();
+
+        println!("Document versions for scrubbing {:?}", versions);
+
+        for v in versions {
+            let document_id_hash = make_document_id_hash(document_id);
+
+            FileStorageDocument::scrub_document_version_from_file_storage(
+                &self,
+                document_id,
+                &document_id_hash,
+                &v,
+            )
+            .await?;
+
+            store
+                .scrub_data_source_document_version(
+                    &self.project,
+                    &self.data_source_id,
+                    document_id,
+                    &v,
+                )
+                .await?;
+
+            info!(
+                data_source_internal_id = self.internal_id,
+                document_id = document_id,
+                version_created = v.created,
+                version_hash = v.hash,
+                "Scrubbed deleted document version"
+            );
+        }
 
         Ok(())
     }
