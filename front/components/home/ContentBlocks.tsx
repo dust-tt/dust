@@ -229,8 +229,8 @@ export const CarousselContentBlock = ({
         ))}
       </CarouselContent>
       <div className="flex w-full flex-row items-center justify-end gap-3 px-8">
-        <CarouselPrevious variant="highlight" />
-        <CarouselNext variant="highlight" />
+        <CarouselPrevious variant="white" />
+        <CarouselNext variant="white" />
       </div>
     </Carousel>
   </div>
