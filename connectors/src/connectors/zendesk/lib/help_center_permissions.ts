@@ -172,19 +172,24 @@ export async function retrieveZendeskHelpCenterPermissions({
     let brandId = getBrandIdFromInternalId(connectorId, parentInternalId);
     // If the parent is a Brand, we return a single node for its help center.
     if (brandId) {
-      const helpCenterNode: ContentNode = {
-        provider: connector.type,
-        internalId: getHelpCenterInternalId(connectorId, brandId),
-        parentInternalId: parentInternalId,
-        type: "database",
-        title: "Help Center",
-        sourceUrl: null,
-        expandable: true,
-        permission: "none",
-        dustDocumentId: null,
-        lastUpdatedAt: null,
-      };
-      return [helpCenterNode];
+      const brandInDatabase = await ZendeskBrand.findOne({
+        where: { connectorId, brandId },
+      });
+      if (brandInDatabase?.hasHelpCenter) {
+        const helpCenterNode: ContentNode = {
+          provider: connector.type,
+          internalId: getHelpCenterInternalId(connectorId, brandId),
+          parentInternalId: parentInternalId,
+          type: "database",
+          title: "Help Center",
+          sourceUrl: null,
+          expandable: true,
+          permission: "none",
+          dustDocumentId: null,
+          lastUpdatedAt: null,
+        };
+        return [helpCenterNode];
+      }
     }
     brandId = getBrandIdFromHelpCenterId(connectorId, parentInternalId);
     // If the parent is a brand's help center, we retrieve the list of Categories for this brand.
