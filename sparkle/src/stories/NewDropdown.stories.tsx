@@ -38,7 +38,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "NewPrimitives/Dropdown",
+  title: "Primitives/Dropdown",
   component: NewDropdownMenu,
 } satisfies Meta<typeof NewDropdownMenu>;
 

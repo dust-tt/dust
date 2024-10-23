@@ -46,7 +46,7 @@ const RadioGroup = React.forwardRef<
 >(({ className, ...props }, ref) => {
   return (
     <RadioGroupPrimitive.Root
-      className={cn("s-grid", className)}
+      className={cn("s-grid s-gap-2", className)}
       {...props}
       ref={ref}
     />
@@ -69,34 +69,33 @@ const RadioGroupItem = React.forwardRef<
     { tooltipMessage, className, size, tooltipAsChild = false, ...props },
     ref
   ) => {
+    const item = (
+      <RadioGroupPrimitive.Item
+        ref={ref}
+        className={cn(radioStyles({ size }), className)}
+        {...props}
+      >
+        <RadioGroupPrimitive.Indicator
+          className={radioIndicatorStyles({ size })}
+        />
+      </RadioGroupPrimitive.Item>
+    );
+
     return (
-      <div className="s-group">
+      <div
+        className={cn(
+          "s-group",
+          size === "sm" ? "s-h-5 s-w-5" : "-s-mt-1.5 s-h-4 s-w-4"
+        )}
+      >
         {tooltipMessage ? (
           <Tooltip
             triggerAsChild={tooltipAsChild}
-            trigger={
-              <RadioGroupPrimitive.Item
-                ref={ref}
-                className={cn(radioStyles({ size }), className)}
-                {...props}
-              >
-                <RadioGroupPrimitive.Indicator
-                  className={radioIndicatorStyles({ size })}
-                />
-              </RadioGroupPrimitive.Item>
-            }
+            trigger={item}
             label={<span>{tooltipMessage}</span>}
           />
         ) : (
-          <RadioGroupPrimitive.Item
-            ref={ref}
-            className={cn(radioStyles({ size }), className)}
-            {...props}
-          >
-            <RadioGroupPrimitive.Indicator
-              className={radioIndicatorStyles({ size })}
-            />
-          </RadioGroupPrimitive.Item>
+          item
         )}
       </div>
     );

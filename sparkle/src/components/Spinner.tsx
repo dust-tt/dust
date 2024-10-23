@@ -13,7 +13,7 @@ import animSimpleLight from "@sparkle/lottie/spinnerLightXS";
 
 export interface SpinnerProps {
   size?: "xs" | "sm" | "md" | "lg" | "xl" | "xxl";
-  variant?: "color" | "light" | "dark" | "pink900" | "purple900";
+  variant?: "color" | "light" | "dark" | "pink900" | "purple900" | "slate400";
 }
 
 const pxSizeClasses = {
@@ -33,6 +33,7 @@ const colors: { [key: string]: LottieColorType } = {
   slate900: [0.0588, 0.0902, 0.1647, 1], // #0F172A
   purple900: [0.298, 0.1137, 0.5843, 1], // #4C1D95
   sky900: [0.0471, 0.2902, 0.4314, 1], // #0C4A6E
+  slate400: [0.5804, 0.6392, 0.7216, 1], // #94A3B8
   pink900: [0.5137, 0.0941, 0.2627, 1], // #831843
   red900: [0.498, 0.1137, 0.1137, 1], // #7F1D1D
   warning900: [0.498, 0.1137, 0.1137, 1], // #7F1D1D

@@ -41,7 +41,7 @@ export const RadioGroupExample = () => {
             size="sm"
             tooltipMessage="This is a nice tooltip message"
           />
-          <Label htmlFor="option-one">Option One</Label>
+          <Label htmlFor="option-one">Option 1</Label>
         </div>
         <div className="s-flex s-items-center s-space-x-2">
           <RadioGroupItem
@@ -50,11 +50,11 @@ export const RadioGroupExample = () => {
             size="sm"
             disabled
           />
-          <Label htmlFor="option-two">Option Two</Label>
+          <Label htmlFor="option-two">Option 2</Label>
         </div>
         <div className="s-flex s-items-center s-space-x-2">
           <RadioGroupItem value="option-six" id="option-three" size="sm" />
-          <Label htmlFor="option-three">Option Three</Label>
+          <Label htmlFor="option-three">Option 3</Label>
         </div>
       </RadioGroup>
     </div>

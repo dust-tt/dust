@@ -1,3 +1,4 @@
+import { cva } from "class-variance-authority";
 import React, { forwardRef } from "react";
 
 import { cn } from "@sparkle/lib/utils";
@@ -13,51 +14,60 @@ export interface InputProps
   label?: string;
 }
 
-const inputStyleClasses = cn(
-  "s-text-sm s-bg-background s-rounded-xl s-border s-border-border-dark s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
-  "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
-  "placeholder:s-text-muted-foreground",
-  "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2 focus-visible:s-ring-ring focus-visible:s-border-primary-400",
-  "disabled:s-cursor-not-allowed disabled:s-opacity-50 disabled:s-text-muted-foreground"
+const inputStyleClasses = cva(
+  cn(
+    "s-text-sm s-bg-background s-rounded-xl s-border s-border-border-dark s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
+    "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
+    "placeholder:s-text-muted-foreground",
+    "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2 focus-visible:s-border-border-dark"
+  ),
+  {
+    variants: {
+      state: {
+        idle: "focus-visible:s-ring-ring",
+        disabled:
+          "disabled:s-cursor-not-allowed disabled:s-opacity-50 disabled:s-text-muted-foreground",
+        error: "s-border-border-warning focus:s-ring-ring-warning",
+      },
+    },
+    defaultVariants: {
+      state: "idle",
+    },
+  }
 );
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
-    { className, error, value, label, showErrorLabel = false, ...props },
+    {
+      className,
+      error,
+      value,
+      label,
+      showErrorLabel = false,
+      disabled,
+      ...props
+    },
     ref
   ) => {
+    // Determine input state
+    const state = error ? "error" : disabled ? "disabled" : "idle";
+
     return (
-      <div className="s-flex s-flex-col s-gap-1 s-px-1">
-        {label && (
-          <Label
-            htmlFor={props.name}
-            className="s-pb-1 s-text-element-700 dark:s-text-element-700-dark"
-          >
-            {label}
-          </Label>
-        )}
+      <div className="s-flex s-flex-col s-gap-1.5">
+        {label && <Label htmlFor={props.name}>{label}</Label>}
         <input
           ref={ref}
-          className={cn(
-            inputStyleClasses,
-            className,
-            !error
-              ? cn(
-                  "s-ring-structure-200 focus:s-ring-action-300",
-                  "dark:s-ring-structure-300-dark dark:focus:s-ring-action-300-dark"
-                )
-              : cn(
-                  "s-ring-warning-200 focus:s-ring-warning-300",
-                  "dark:s-ring-warning-200-dark dark:focus:s-ring-warning-300-dark"
-                )
-          )}
+          className={cn(inputStyleClasses({ state }), className)}
           data-1p-ignore={props.type !== "password"}
           value={value ?? undefined}
+          disabled={disabled}
           {...props}
         />
-        <div className="s-ml-2 s-text-sm s-text-warning-500">
-          {showErrorLabel && error ? error : null}
-        </div>
+        {showErrorLabel && error && (
+          <div className="s-text-foreground-warning s-ml-3.5 s-text-xs">
+            {error}
+          </div>
+        )}
       </div>
     );
   }
