@@ -1,5 +1,5 @@
+import { useAuth } from "@app/extension/app/src/components/auth/AuthProvider";
 import { AssistantInputBar } from "@app/extension/app/src/components/input_bar/InputBar";
-import { useAuth } from "@app/extension/app/src/context/AuthProvider";
 import { Page, Spinner } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { useNavigate } from "react-router-dom";
