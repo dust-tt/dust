@@ -1,7 +1,14 @@
 import { isAPIErrorResponse } from "@dust-tt/types";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback } from "react";
-import type { Fetcher, Key, SWRConfiguration } from "swr";
+import type {
+  Fetcher,
+  Key,
+  KeyedMutator,
+  MutatorCallback,
+  MutatorOptions,
+  SWRConfiguration,
+} from "swr";
 import useSWR, { useSWRConfig } from "swr";
 import type {
   SWRInfiniteConfiguration,
@@ -51,7 +58,7 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
   }, []);
 
   const mutateKeysWithSameUrl = useCallback(
-    (key: any, options?: any) => {
+    (key: TKey, opts?: boolean | MutatorOptions<TData> | undefined) => {
       const keyAsUrl = tryMakeUrlWithoutParams(key);
       if (keyAsUrl) {
         // Cycle through all the keys in the cache that start with the same url
@@ -63,7 +70,7 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
             k !== key &&
             !k.includes("no-cache-flush=true")
           ) {
-            void globalMutate<TData>(k, undefined, options);
+            void globalMutate<TData>(k, undefined, opts);
           }
         }
       }
@@ -75,18 +82,33 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
     return globalMutate(key);
   }, [key, globalMutate]);
 
-  const myMutateWhenDisabledRegardlessOfQueryParams = useCallback(
-    (_?: any, options?: any) => {
-      mutateKeysWithSameUrl(key, options);
-      return globalMutate(key, undefined, options);
-    },
-    [key, mutateKeysWithSameUrl, globalMutate]
-  );
+  const myMutateWhenDisabledRegardlessOfQueryParams: KeyedMutator<TData> =
+    useCallback(
+      (
+        _:
+          | TData
+          | MutatorCallback<TData>
+          | Promise<TData | undefined>
+          | undefined,
+        opts: boolean | MutatorOptions<any> | undefined
+      ) => {
+        mutateKeysWithSameUrl(key, opts);
+        return globalMutate<TData>(key, undefined, opts);
+      },
+      [key, mutateKeysWithSameUrl, globalMutate]
+    );
 
-  const myMutateRegardlessOfQueryParams = useCallback(
-    (data?: any, options?: any) => {
-      mutateKeysWithSameUrl(key, options);
-      return result.mutate(data, options);
+  const myMutateRegardlessOfQueryParams: KeyedMutator<TData> = useCallback(
+    (
+      data:
+        | TData
+        | MutatorCallback<TData>
+        | Promise<TData | undefined>
+        | undefined,
+      opts: boolean | MutatorOptions<any> | undefined
+    ) => {
+      mutateKeysWithSameUrl(key, opts);
+      return result.mutate(data, opts);
     },
     [key, mutateKeysWithSameUrl, result]
   );
