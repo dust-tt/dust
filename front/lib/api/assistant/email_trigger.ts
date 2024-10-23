@@ -6,7 +6,7 @@ import type {
   Result,
   UserType,
 } from "@dust-tt/types";
-import { Err, isAgentMessageType, Ok } from "@dust-tt/types";
+import { Err, isAgentMessageType, isDevelopment, Ok } from "@dust-tt/types";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { Op } from "sequelize";
@@ -46,7 +46,9 @@ function renderUserType(user: User): UserType {
   };
 }
 
-export const ASSISTANT_EMAIL_SUBDOMAIN = "run.dust.help";
+export const ASSISTANT_EMAIL_SUBDOMAIN = isDevelopment()
+  ? "dev.dust.help"
+  : "run.dust.help";
 
 export type InboundEmail = {
   subject: string;
