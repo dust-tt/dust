@@ -369,7 +369,7 @@ export default function AppView({
             {!readOnly ? (
               <div className="hidden flex-initial space-x-2 sm:block">
                 <Button
-                  variant="tertiary"
+                  variant="outline"
                   icon={BracesIcon}
                   label="Secrets"
                   onClick={() => {
