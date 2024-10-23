@@ -79,7 +79,7 @@ export const refreshToken = async (): Promise<StoredTokens | undefined> => {
 
 // Fetch me sends a request to the /me route to get the user info.
 const fetchMe = async (token: string): Promise<UserTypeWithWorkspaces> => {
-  const response = await fetch(`${process.env.API_URL_OVERRIDE}/me`, {
+  const response = await fetch(`${process.env.DUST_DOMAIN}/api/v1/me`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!response.ok) {

@@ -1,10 +1,11 @@
 import { Button, StopIcon } from "@dust-tt/sparkle";
+import type { AgentMention, MentionType } from "@dust-tt/types";
+import type { UploadedContentFragment } from "@dust-tt/types";
 import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { AgentMention, MentionType } from "@dust-tt/types";
-import type { UploadedContentFragment } from "@dust-tt/types";
+import { compareAgentsForSort } from "@dust-tt/types";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
@@ -17,7 +18,6 @@ import InputBarContainer, {
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import { compareAgentsForSort } from "@app/lib/assistant";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";

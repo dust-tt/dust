@@ -67,16 +67,17 @@ export async function googleDriveFullSync({
   startSyncTs: number | undefined;
   mimeTypeFilter?: string[];
 }) {
-  await syncStarted(connectorId);
+  if (!startSyncTs) {
+    await syncStarted(connectorId);
+    startSyncTs = new Date().getTime();
+  }
 
   // Running the incremental sync workflow before the full sync to populate the
   // Google Drive sync tokens.
   await populateSyncTokens(connectorId);
 
   let nextPageToken: string | undefined = undefined;
-  if (startSyncTs === undefined) {
-    startSyncTs = new Date().getTime();
-  }
+
   if (!foldersToBrowse) {
     foldersToBrowse = await getFoldersToSync(connectorId);
   }
@@ -152,6 +153,11 @@ export function googleDriveFullSyncWorkflowId(connectorId: ModelId) {
   return `googleDrive-fullSync-${connectorId}`;
 }
 
+type DrivesToSyncType = {
+  id: string;
+  isShared: boolean;
+}[];
+
 /**
  * The Google incremental sync workflow is running at a fixed interval and synchronize the delta changes.
  * We use the drive.changes API to get the list of files that have been created / deleted / updated since the last sync,
@@ -160,37 +166,65 @@ export function googleDriveFullSyncWorkflowId(connectorId: ModelId) {
  */
 export async function googleDriveIncrementalSync(
   connectorId: ModelId,
-  dataSourceConfig: DataSourceConfig
+  dataSourceConfig: DataSourceConfig,
+  startSyncTs: number | undefined = undefined,
+  drivesToSync: DrivesToSyncType | undefined = undefined,
+  nextPageToken: string | undefined = undefined
 ) {
-  await syncStarted(connectorId);
+  if (!startSyncTs) {
+    await syncStarted(connectorId);
+    startSyncTs = new Date().getTime();
+  }
 
-  const drives = await getDrivesToSync(connectorId);
-  const startSyncTs = new Date().getTime();
-  for (const googleDrive of drives) {
-    let nextPageToken: undefined | string = undefined;
+  if (drivesToSync === undefined) {
+    const drives = await getDrivesToSync(connectorId);
+    drivesToSync = drives
+      .map((drive) => ({
+        id: drive.id,
+        isShared: drive.isSharedDrive,
+      }))
+      // Run incremental sync for "userspace" (aka non shared drives, non "my drive").
+      .concat({
+        id: GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
+        isShared: false,
+      });
+  }
+
+  while (drivesToSync.length > 0) {
+    const googleDrive = drivesToSync[0];
+    if (!googleDrive) {
+      throw new Error("googleDrive should be defined");
+    }
+
     do {
       nextPageToken = await incrementalSync(
         connectorId,
         dataSourceConfig,
         googleDrive.id,
-        googleDrive.isSharedDrive,
+        googleDrive.isShared,
         startSyncTs,
         nextPageToken
       );
+
+      // Will restart exactly where it was.
+      if (workflowInfo().historyLength > 4000) {
+        await continueAsNew<typeof googleDriveIncrementalSync>(
+          connectorId,
+          dataSourceConfig,
+          startSyncTs,
+          drivesToSync,
+          nextPageToken
+        );
+      }
     } while (nextPageToken);
+
+    // We have completed a drive, move to the next one.
+    // Clear the nextPageToken to start from the beginning of the next drive.
+    // Remove the drive from the list of drives to sync.
+    nextPageToken = undefined;
+    drivesToSync.shift();
   }
-  // Run incremental sync for "userspace" (aka non shared drives, non "my drive").
-  let nextPageToken: undefined | string = undefined;
-  do {
-    nextPageToken = await incrementalSync(
-      connectorId,
-      dataSourceConfig,
-      GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID,
-      false,
-      startSyncTs,
-      nextPageToken
-    );
-  } while (nextPageToken);
+
   const shouldGc = await shouldGarbageCollect(connectorId);
   if (shouldGc) {
     await executeChild(googleDriveGarbageCollectorWorkflow, {

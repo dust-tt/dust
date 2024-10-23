@@ -25,9 +25,20 @@ import { callDocTrackerSuggestChangesAction } from "./actions/doc_tracker_sugges
 
 const { SENDGRID_API_KEY } = process.env;
 
-const MINIMUM_POSITIVE_DIFF_LENGTH = 20;
-const MAX_DIFF_TOKENS = 4000;
-const TOTAL_TARGET_TOKENS = 6000;
+// If the sum of all INSERT diffs is less than this number, we skip the hook.
+const MINIMUM_POSITIVE_DIFF_LENGTH = 32;
+
+// If a diff line is less than this number of characters, we don't include it in the diff shown to the model.
+const MINIMUM_DIFF_LINE_LENGTH = 8;
+
+// If the diff string is more than this number of tokens, we skip the hook.
+const MAX_DIFF_TOKENS = 4096;
+
+// The total number of tokens we want to show to the model, including both the diff and the tracked document.
+const TOTAL_TARGET_TOKENS = 8192;
+
+// The maximum number of tracked documents that we process for one diff.
+const MAX_TRACKED_DOCUMENTS = 3;
 
 const logger = mainLogger.child({
   postProcessHook: "document_tracker_suggest_changes",
@@ -169,42 +180,58 @@ export async function documentTrackerSuggestChangesOnUpsert({
       documentId,
     },
   }));
-  // TODO: see how we want to support this. Obviously the action in the current form will
-  // just match the document that was just upserted if it's tracked.
-  // We check this in the filter, but there could be a race condition.
+
   if (isDocTracked) {
-    localLogger.info("Document is tracked: not searching for matches.");
+    localLogger.info(
+      "Modified document is tracked: not searching for matches."
+    );
     return;
   }
-  const documentDiff = await getDocumentDiff({
+
+  const modifiedDocumentDiffs = await getDocumentDiff({
     dataSource,
     documentId,
     hash: documentHash,
   });
 
-  const positiveDiff = documentDiff
+  const positiveDiff = modifiedDocumentDiffs
     .filter(({ type }) => type === "insert")
     .map(({ value }) => value)
     .join("");
+
   if (positiveDiff.length < MINIMUM_POSITIVE_DIFF_LENGTH) {
     localLogger.info(
-      {
-        positiveDiffLength: positiveDiff.length,
-      },
+      { positiveDiffLength: positiveDiff.length },
       "Positive diff is too short, not searching for matches."
     );
-
     return;
   }
 
-  const diffText = documentDiff
-    .filter(({ type }) => type !== "equal")
-    .map(({ value, type }) => `[[**${type}**:\n${value}]]`)
+  const diffString = modifiedDocumentDiffs
+    .map(({ value, type }) => {
+      if (type === "equal") {
+        // For unchanged parts, show a context line (if not empty)
+        const contextLine = value.split("\n")[0];
+        return contextLine ? " " + contextLine + "\n..." : "";
+      }
+      if (value.trim().length <= MINIMUM_DIFF_LINE_LENGTH) {
+        return ""; // Skip diffs that are 16 characters or less
+      }
+      const prefix = type === "insert" ? "+" : "-";
+      return (
+        value
+          .split("\n")
+          // Empty lines should still have a prefix
+          .map((line) => prefix + (line || " "))
+          .join("\n")
+      );
+    })
+    .filter(Boolean)
     .join("\n");
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const tokensInDiff = await coreAPI.tokenize({
-    text: diffText,
+    text: diffString,
     providerId: "openai",
     modelId: "gpt-3.5-turbo",
   });
@@ -221,7 +248,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     return;
   }
 
-  const targetDocumentTokens = TOTAL_TARGET_TOKENS - tokensInDiffCount;
+  const targetTrackedDocumentTokens = TOTAL_TARGET_TOKENS - tokensInDiffCount;
 
   localLogger.info(
     {
@@ -232,8 +259,8 @@ export async function documentTrackerSuggestChangesOnUpsert({
   );
   const retrievalResult = await callDocTrackerRetrievalAction(
     auth,
-    diffText,
-    targetDocumentTokens
+    diffString,
+    targetTrackedDocumentTokens
   );
 
   if (!retrievalResult.length) {
@@ -259,167 +286,186 @@ export async function documentTrackerSuggestChangesOnUpsert({
     "Retrieved tracked documents."
   );
 
-  // TODO: maybe not just look at top1, look at top 3 chunks and do on multiple docs if needed
-  const top1 = retrievedTrackedDocuments[0];
-  const score = top1.chunks[0].score;
+  for (const trackedDoc of retrievedTrackedDocuments.slice(
+    0,
+    MAX_TRACKED_DOCUMENTS
+  )) {
+    let trackedDocLocalLogger = localLogger.child({
+      trackedDocDataSourceId: trackedDoc.data_source_id,
+      trackedDocId: trackedDoc.document_id,
+      trackedDocScore: trackedDoc.chunks[0].score,
+      diffTokens: tokensInDiffCount,
+    });
 
-  localLogger.info({ score }, "Calling doc tracker suggest changes action.");
+    trackedDocLocalLogger.info("Calling doc tracker suggest changes action.");
 
-  const suggestChangesResult = await callDocTrackerSuggestChangesAction(
-    auth,
-    diffText,
-    top1.chunks.map((c) => c.text).join("\n-------\n")
-  );
+    const suggestChangesResult = await callDocTrackerSuggestChangesAction(
+      auth,
+      diffString,
+      trackedDoc.chunks.map((c) => c.text).join("\n-------\n")
+    );
 
-  if (!suggestChangesResult.match) {
-    localLogger.info({ score }, "No match found.");
-    return;
-  }
+    if (!suggestChangesResult.suggestion) {
+      trackedDocLocalLogger.info("No match found.");
+      return;
+    }
 
-  const suggestedChanges = suggestChangesResult.suggested_changes;
-  const reason = suggestChangesResult.reason;
-  const {
-    data_source_id: matchedDsDustAPIDataSourceId,
-    document_id: matchedDocId,
-    source_url: matchedDocUrl,
-  } = top1;
-  const matchedDocTitle = getDocumentTitle(top1.tags);
+    const suggestedChanges = suggestChangesResult.suggestion;
+    const thinking = suggestChangesResult.thinking;
+    const confidenceScore = suggestChangesResult.confidence_score;
 
-  localLogger.info(
-    {
-      matchedDsDustAPIDataSourceId,
-      matchedDocId,
-      matchedDocUrl,
-      matchedDocTitle,
-      score,
-    },
-    "Match found."
-  );
+    trackedDocLocalLogger = trackedDocLocalLogger.child({
+      confidenceScore,
+      hasChanges: !!suggestedChanges,
+    });
 
-  const matchedDs = await DataSourceResource.fetchByDustAPIDataSourceId(
-    auth,
-    matchedDsDustAPIDataSourceId
-  );
+    const {
+      data_source_id: trackedDocDataSourceId,
+      document_id: trackedDocId,
+      source_url: trackedDocSourceUrl,
+    } = trackedDoc;
 
-  if (!matchedDs) {
-    localLogger.warn(
+    const trackedDocTitle = getDocumentTitle(trackedDoc.tags);
+
+    trackedDocLocalLogger.info(
       {
-        matchedDsDustAPIDataSourceId,
+        trackedDocDataSourceId,
+        trackedDocId,
+        trackedDocSourceUrl,
+        trackedDocTitle,
       },
-      "Could not find data source for matched document."
+      "Match found."
     );
-    return;
-  }
 
-  // again, checking for race condition here and skipping if the
-  // matched doc is the doc that was just upserted.
-  if (matchedDs.id === dataSource.id && matchedDocId === documentId) {
-    localLogger.info(
+    const trackedDocDataSource =
+      await DataSourceResource.fetchByDustAPIDataSourceId(
+        auth,
+        trackedDocDataSourceId
+      );
+
+    if (!trackedDocDataSource) {
+      trackedDocLocalLogger.warn(
+        {
+          trackedDocDataSourceId,
+        },
+        "Could not find data source for tracked document."
+      );
+      return;
+    }
+
+    // again, checking for race condition here and skipping if the
+    // tracked doc is the doc that was just upserted.
+    if (
+      trackedDocDataSource.id === dataSource.id &&
+      trackedDocId === documentId
+    ) {
+      trackedDocLocalLogger.info(
+        {
+          trackedDocDataSourceId,
+          trackedDocId,
+        },
+        "Matched tracked document is the document that was just upserted."
+      );
+      return;
+    }
+
+    const trackedDocuments = await TrackedDocument.findAll({
+      where: {
+        documentId: trackedDocId,
+        dataSourceId: trackedDocDataSourceId,
+      },
+    });
+    if (!trackedDocuments.length) {
+      localLogger.warn(
+        {
+          trackedDocDataSourceId,
+          trackedDocId,
+        },
+        "Could not find tracked documents for matched document."
+      );
+      return;
+    }
+
+    logger.info(
       {
-        matchedDsDustAPIDataSourceId,
-        matchedDocId,
+        trackedDocDataSourceId,
+        trackedDocId,
       },
-      "Matched document is the document that was just upserted."
+      "Creating change suggestions in database."
     );
-    return;
-  }
-
-  const trackedDocuments = await TrackedDocument.findAll({
-    where: {
-      documentId: matchedDocId,
-      dataSourceId: matchedDs.id,
-    },
-  });
-  if (!trackedDocuments.length) {
-    localLogger.warn(
-      {
-        matchedDsDustAPIDataSourceId,
-        matchedDocId,
-      },
-      "Could not find tracked documents for matched document."
+    await Promise.all(
+      trackedDocuments.map((td) =>
+        DocumentTrackerChangeSuggestion.create({
+          trackedDocumentId: td.id,
+          sourceDataSourceId: dataSource.id,
+          sourceDocumentId: documentId,
+          suggestion: suggestedChanges,
+          status: "pending",
+          reason: thinking,
+        })
+      )
     );
-    return;
-  }
 
-  logger.info(
-    {
-      matchedDsDustAPIDataSourceId,
-      matchedDocId,
-    },
-    "Creating change suggestions in database."
-  );
-  await Promise.all(
-    trackedDocuments.map((td) =>
-      DocumentTrackerChangeSuggestion.create({
-        trackedDocumentId: td.id,
-        sourceDataSourceId: dataSource.id,
-        sourceDocumentId: documentId,
-        suggestion: suggestedChanges,
-        status: "pending",
-        reason,
-      })
-    )
-  );
-
-  const users = await User.findAll({
-    where: {
-      id: {
-        [Op.in]: trackedDocuments.map((td) => td.userId),
+    const users = await User.findAll({
+      where: {
+        id: {
+          [Op.in]: trackedDocuments.map((td) => td.userId),
+        },
       },
-    },
-  });
-  const emails = users.map((u) => u.email);
+    });
+    const emails = users.map((u) => u.email);
 
-  const incomingDocument = await coreAPI.getDataSourceDocument({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-    documentId,
-  });
-  if (incomingDocument.isErr()) {
-    throw new Error(
-      `Could not get document ${documentId} from data source ${dataSource.name}`
+    const modifiedDocument = await coreAPI.getDataSourceDocument({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      documentId,
+    });
+    if (modifiedDocument.isErr()) {
+      throw new Error(
+        `Could not get document ${documentId} from data source ${dataSource.name}`
+      );
+    }
+
+    const modifiedDocumentTitle = getDocumentTitle(
+      modifiedDocument.value.document.tags
+    );
+
+    await Promise.all(
+      emails.map((email) =>
+        sendSuggestionEmail({
+          recipientEmail: email,
+          trackedDocumentTitle: trackedDocTitle,
+          trackedDocumentUrl: trackedDocSourceUrl,
+          modifiedDocumentTitle,
+          modifiedDocumentUrl: documentSourceUrl,
+          suggestedChanges: suggestedChanges,
+        })
+      )
     );
   }
-
-  const incomingDocumentTitle = getDocumentTitle(
-    incomingDocument.value.document.tags
-  );
-
-  await Promise.all(
-    emails.map((email) =>
-      sendSuggestionEmail({
-        recipientEmail: email,
-        matchedDocumentTitle: matchedDocTitle,
-        matchedDocumentUrl: matchedDocUrl,
-        incomingDocumentTitle: incomingDocumentTitle,
-        incomingDocumentUrl: documentSourceUrl,
-        suggestedChanges: suggestedChanges,
-      })
-    )
-  );
 }
 
 async function sendSuggestionEmail({
   recipientEmail,
-  matchedDocumentTitle,
-  matchedDocumentUrl,
-  incomingDocumentTitle,
-  incomingDocumentUrl,
+  trackedDocumentTitle,
+  trackedDocumentUrl,
+  modifiedDocumentTitle,
+  modifiedDocumentUrl,
   suggestedChanges,
 }: {
   recipientEmail: string;
-  matchedDocumentTitle: string | null;
-  matchedDocumentUrl: string | null;
-  incomingDocumentTitle: string | null;
-  incomingDocumentUrl: string;
+  trackedDocumentTitle: string | null;
+  trackedDocumentUrl: string | null;
+  modifiedDocumentTitle: string | null;
+  modifiedDocumentUrl: string;
   suggestedChanges: string;
 }) {
   const localLogger = logger.child({
     recipientEmail,
-    matchedDocumentTitle,
-    matchedDocumentUrl,
-    incomingDocumentTitle,
-    incomingDocumentUrl,
+    trackedDocumentTitle,
+    trackedDocumentUrl,
+    modifiedDocumentTitle,
+    modifiedDocumentUrl,
   });
 
   if (!SENDGRID_API_KEY) {
@@ -429,24 +475,24 @@ async function sendSuggestionEmail({
 
   localLogger.info("Sending email to user.");
 
-  const matchedDocumentName = matchedDocumentTitle || matchedDocumentUrl;
-  const incomingDocumentName = incomingDocumentTitle || incomingDocumentUrl;
+  const trackedDocumentName = trackedDocumentTitle || trackedDocumentUrl;
+  const modifiedDocumentName = modifiedDocumentTitle || modifiedDocumentUrl;
 
-  const matchedDocumentLink = matchedDocumentUrl
-    ? `<a href="${matchedDocumentUrl}">${matchedDocumentName}</a>`
+  const trackedDocumentLink = trackedDocumentUrl
+    ? `<a href="${trackedDocumentUrl}">${trackedDocumentName}</a>`
     : "<No link>";
-  const incomingDocumentLink = `<a href="${incomingDocumentUrl}">${incomingDocumentName}</a>`;
+  const modifiedDocumentLink = `<a href="${modifiedDocumentUrl}">${modifiedDocumentName}</a>`;
 
   const htmlSuggestion = new showdown.Converter().makeHtml(suggestedChanges);
 
   const msg = {
     to: recipientEmail,
     from: "support@dust.tt",
-    subject: `DUST: Document update suggestion for ${matchedDocumentName}`,
+    subject: `DUST: Document update suggestion for ${trackedDocumentName}`,
     html:
       "Hello!<br>" +
-      `We have a suggestion for you to update the document ${matchedDocumentLink} ` +
-      `based on the new document ${incomingDocumentLink}:<br>` +
+      `We have a suggestion for you to update the document ${trackedDocumentLink} ` +
+      `based on the modified document ${modifiedDocumentLink}:<br>` +
       `${htmlSuggestion}<br>` +
       `The Dust team`,
   };

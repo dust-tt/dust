@@ -1,3 +1,4 @@
+import { useAuth } from "@app/extension/app/src/components/auth/AuthProvider";
 import {
   Button,
   ExternalLinkIcon,
@@ -8,8 +9,6 @@ import {
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
-import { useAuth } from "./AuthProvider";
 
 export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const { isLoading, isAuthenticated, isUserSetup, handleLogout } = useAuth();

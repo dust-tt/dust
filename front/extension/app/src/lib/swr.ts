@@ -1,5 +1,5 @@
-import { isAPIErrorResponse } from "@dust-tt/types";
-import type { PaginationState } from "@tanstack/react-table";
+import { getAccessToken } from "@app/extension/app/src/lib/storage";
+import { COMMIT_HASH } from "@app/lib/commit-hash";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
 import useSWR, { useSWRConfig } from "swr";
@@ -8,8 +8,6 @@ import type {
   SWRInfiniteKeyLoader,
 } from "swr/infinite";
 import useSWRInfinite from "swr/infinite";
-
-import { COMMIT_HASH } from "@app/lib/commit-hash";
 
 const DEFAULT_SWR_CONFIG: SWRConfiguration = {
   errorRetryCount: 16,
@@ -129,58 +127,19 @@ const resHandler = async (res: Response) => {
 
 export const fetcher = async (...args: Parameters<typeof fetch>) => {
   const [url, config] = args;
-  const res = await fetch(url, {
+
+  const token = await getAccessToken();
+  if (!token) {
+    // TODO(ext): Handle this error in a better way.
+    // We want to silently refresh or redirect to login page.
+    throw new Error("No access token found");
+  }
+  const res = await fetch(`${process.env.DUST_DOMAIN}/${url}`, {
     ...config,
-    headers: addCommitHashToHeaders(config?.headers),
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...addCommitHashToHeaders(config?.headers),
+    },
   });
   return resHandler(res);
 };
-
-export const postFetcher = async ([url, body]: [string, object]) => {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: addCommitHashToHeaders({
-      "Content-Type": "application/json",
-    }),
-    body: JSON.stringify(body),
-  });
-
-  return resHandler(res);
-};
-
-type UrlsAndOptions = { url: string; options: RequestInit };
-
-export const fetcherMultiple = <T>(urlsAndOptions: UrlsAndOptions[]) => {
-  const f = async (url: string, options: RequestInit) => fetcher(url, options);
-
-  return Promise.all<T>(
-    urlsAndOptions.map(({ url, options }) => f(url, options))
-  );
-};
-
-export const appendPaginationParams = (
-  params: URLSearchParams,
-  pagination?: PaginationState
-) => {
-  if (pagination && pagination.pageIndex) {
-    params.set(
-      "offset",
-      (pagination.pageSize * pagination.pageIndex).toString()
-    );
-  }
-  if (pagination && pagination.pageSize) {
-    params.set("limit", pagination.pageSize.toString());
-  }
-};
-
-export async function getErrorFromResponse(response: Response) {
-  const errorData = await response.json();
-
-  if (isAPIErrorResponse(errorData)) {
-    return errorData.error.connectors_error
-      ? errorData.error.connectors_error
-      : errorData.error;
-  }
-
-  return { message: "An error occurred" };
-}
