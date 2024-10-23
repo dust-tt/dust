@@ -11,7 +11,6 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
-import { ClientSideTracking } from "@app/lib/tracking/client";
 
 const UPLOAD_ACCEPT = [".txt", ".pdf", ".md", ".csv"];
 
@@ -143,10 +142,6 @@ export const MultipleDocumentsUpload = ({
               return;
             }
             const files = e.target.files;
-            ClientSideTracking.trackMultiFilesUploadUsed({
-              fileCount: files.length,
-              workspaceId: owner.sId,
-            });
             let i = 0;
             for (const file of files) {
               setIsBulkFilesUploading({

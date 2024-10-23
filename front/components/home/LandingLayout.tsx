@@ -10,7 +10,6 @@ import {
 import { Transition } from "@headlessui/react";
 import Head from "next/head";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import Script from "next/script";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
@@ -22,7 +21,6 @@ import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 import Particles, { shapeNamesArray } from "@app/components/home/Particles";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
-import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
 export interface LandingLayoutProps {
@@ -39,7 +37,6 @@ export default function LandingLayout({
 }) {
   const { postLoginReturnToUrl = "/api/login", shape } = pageProps;
 
-  const router = useRouter();
   const [currentShape, setCurrentShape] = useState(shape);
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(true);
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
@@ -78,12 +75,6 @@ export default function LandingLayout({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
-
-  useEffect(() => {
-    ClientSideTracking.trackPageView({
-      pathname: router.pathname,
-    });
-  }, [router.pathname]);
 
   return (
     <RootLayout>

@@ -3,7 +3,7 @@ import type { BillingPeriod, WorkspaceType } from "@dust-tt/types";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import React, { useContext, useEffect } from "react";
+import React, { useContext } from "react";
 
 import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
@@ -13,7 +13,6 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
-import { ClientSideTracking } from "@app/lib/tracking/client";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   owner: WorkspaceType;
@@ -53,16 +52,6 @@ export default function Subscribe({
   // Current plan is always FREE_NO_PLAN if you're on this paywall.
   // Since FREE_NO_PLAN is not on the database, we check if there is at least 1 subscription.
   const hasPreviouSubscription = subscriptions?.length > 0;
-
-  useEffect(() => {
-    if (user?.id) {
-      ClientSideTracking.trackPageView({
-        user,
-        pathname: router.pathname,
-        workspaceId: owner.sId,
-      });
-    }
-  }, [owner.sId, router.pathname, user]);
 
   const { submit: handleSubscribePlan } = useSubmitFunction(
     async (billingPeriod) => {
