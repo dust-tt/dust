@@ -126,17 +126,20 @@ async function handler(
         });
       }
 
-      const usageRes = await dataSourceView.getUsagesByAgents(auth);
-      if (usageRes.isErr() || usageRes.value.count > 0) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "data_source_error",
-            message: usageRes.isOk()
-              ? `The data source view is in use by ${usageRes.value.agentNames.join(", ")} and cannot be deleted.`
-              : "The data source view is in use and cannot be deleted.",
-          },
-        });
+      const force = req.query.force === "true";
+      if (!force) {
+        const usageRes = await dataSourceView.getUsagesByAgents(auth);
+        if (usageRes.isErr() || usageRes.value.count > 0) {
+          return apiError(req, res, {
+            status_code: 401,
+            api_error: {
+              type: "data_source_error",
+              message: usageRes.isOk()
+                ? `The data source view is in use by ${usageRes.value.agentNames.join(", ")} and cannot be deleted.`
+                : "The data source view is in use and cannot be deleted.",
+            },
+          });
+        }
       }
 
       // Directly, hard delete the data source view.
