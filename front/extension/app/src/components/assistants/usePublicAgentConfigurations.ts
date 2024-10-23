@@ -5,7 +5,6 @@ import type {
 } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
-import { useSWRConfig } from "swr";
 
 export function usePublicAgentConfigurations({
   workspaceId,
@@ -14,7 +13,6 @@ export function usePublicAgentConfigurations({
   limit,
   sort,
   disabled,
-  revalidate,
 }: {
   workspaceId: string;
   agentsGetView: AgentsGetViewType | null;
@@ -22,7 +20,6 @@ export function usePublicAgentConfigurations({
   limit?: number;
   sort?: "alphabetical" | "priority";
   disabled?: boolean;
-  revalidate?: boolean;
 }) {
   const agentConfigurationsFetcher: Fetcher<{
     agentConfigurations: LightAgentConfigurationType[];
@@ -55,14 +52,10 @@ export function usePublicAgentConfigurations({
   const queryString = getQueryString();
 
   const key = `/api/v1/w/${workspaceId}/assistant/agent_configurations?${queryString}`;
-  const { cache } = useSWRConfig();
-  const inCache = typeof cache.get(key) !== "undefined";
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(agentsGetView ? key : null, agentConfigurationsFetcher, {
       disabled,
-      revalidateOnMount: !inCache || revalidate,
-      revalidateOnFocus: !inCache || revalidate,
     });
 
   return {
