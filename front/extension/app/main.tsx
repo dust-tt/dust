@@ -6,7 +6,7 @@ import "@dust-tt/sparkle/dist/sparkle.css";
 import "@app/styles/components.css";
 
 import { AuthProvider } from "@app/extension/app/src/components/auth/AuthProvider";
-import { routes } from "@app/extension/app/src/routes";
+import { routes } from "@app/extension/app/src/pages/routes";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
