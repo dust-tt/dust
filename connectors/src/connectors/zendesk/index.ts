@@ -10,6 +10,7 @@ import { Ok } from "@dust-tt/types";
 
 import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
+import { retrieveZendeskBrandPermissions } from "@connectors/connectors/zendesk/lib/brand_permissions";
 import { retrieveZendeskHelpCenterPermissions } from "@connectors/connectors/zendesk/lib/help_center_permissions";
 import { retrieveSelectedNodes } from "@connectors/connectors/zendesk/lib/permissions";
 import { retrieveZendeskTicketPermissions } from "@connectors/connectors/zendesk/lib/ticket_permissions";
@@ -97,6 +98,12 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
 
     try {
+      const brandNodes = await retrieveZendeskBrandPermissions({
+        connectorId: this.connectorId,
+        parentInternalId,
+        filterPermission,
+        viewType: "documents",
+      });
       const helpCenterNodes = await retrieveZendeskHelpCenterPermissions({
         connectorId: this.connectorId,
         parentInternalId,
@@ -109,7 +116,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         filterPermission,
         viewType: "documents",
       });
-      return new Ok([...helpCenterNodes, ...ticketNodes]);
+      return new Ok([...brandNodes, ...helpCenterNodes, ...ticketNodes]);
     } catch (e) {
       return new Err(e as Error);
     }

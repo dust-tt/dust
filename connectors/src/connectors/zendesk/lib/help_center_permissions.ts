@@ -8,7 +8,6 @@ import type {
 import {
   getBrandIdFromHelpCenterId,
   getBrandIdFromInternalId,
-  getBrandInternalId,
   getCategoryInternalId,
   getHelpCenterInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
@@ -17,92 +16,9 @@ import {
   changeZendeskClientSubdomain,
   createZendeskClient,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
-import {
-  ZendeskArticle,
-  ZendeskBrand,
-  ZendeskCategory,
-} from "@connectors/lib/models/zendesk";
+import { ZendeskBrand, ZendeskCategory } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-
-/**
- * Mark a brand as permission "read" and all children (help center and tickets) if specified.
- */
-export async function allowSyncBrand({
-  subdomain,
-  connectorId,
-  connectionId,
-  brandId,
-  withChildren = false,
-}: {
-  subdomain: string;
-  connectorId: ModelId;
-  connectionId: string;
-  brandId: number;
-  withChildren?: boolean;
-}): Promise<ZendeskBrand> {
-  let brand = await ZendeskBrand.findOne({ where: { connectorId, brandId } });
-  if (brand?.permission === "none") {
-    await brand.update({ permission: "read" });
-  }
-
-  const token = await getZendeskAccessToken(connectionId);
-  const zendeskApiClient = createZendeskClient({ token, subdomain });
-
-  if (!brand) {
-    const {
-      result: { brand: fetchedBrand },
-    } = await zendeskApiClient.brand.show(brandId);
-    if (fetchedBrand) {
-      brand = await ZendeskBrand.create({
-        subdomain: fetchedBrand.subdomain,
-        connectorId: connectorId,
-        brandId: fetchedBrand.id,
-        name: fetchedBrand.name || "Brand",
-        permission: "read",
-        hasHelpCenter: fetchedBrand.has_help_center,
-        url: fetchedBrand.url,
-      });
-    } else {
-      logger.error({ brandId }, "[Zendesk] Brand could not be fetched.");
-      throw new Error("Brand could not be fetched.");
-    }
-  }
-
-  if (withChildren) {
-    throw new Error("withChildren not implemented yet.");
-  }
-
-  return brand;
-}
-
-/**
- * Mark a help center as permission "none" and all children (collections & articles).
- */
-export async function revokeSyncBrand({
-  connectorId,
-  brandId,
-}: {
-  connectorId: ModelId;
-  brandId: string;
-}): Promise<ZendeskBrand | null> {
-  const brand = await ZendeskBrand.findOne({ where: { connectorId, brandId } });
-
-  // revoking permissions for the brand, the categories and the articles
-  if (brand?.permission === "read") {
-    await brand.update({ permission: "none" });
-  }
-  await ZendeskCategory.update(
-    { permission: "none" },
-    { where: { brandId: brandId } }
-  );
-  await ZendeskArticle.update(
-    { permission: "none" },
-    { where: { brandId: brandId } }
-  );
-
-  return brand;
-}
 
 export async function retrieveZendeskHelpCenterPermissions({
   connectorId,
@@ -127,48 +43,8 @@ export async function retrieveZendeskHelpCenterPermissions({
   const isRootLevel = !parentInternalId;
   let nodes: ContentNode[] = [];
 
-  // At the root level, we show one node for each brand that has a help center.
-  if (isRootLevel) {
-    if (isReadPermissionsOnly) {
-      const brandsInDatabase = await ZendeskBrand.findAll({
-        where: {
-          connectorId: connectorId,
-          permission: "read",
-          hasHelpCenter: true,
-        },
-      });
-      nodes = brandsInDatabase
-        .filter((brand) => brand.hasHelpCenter)
-        .map((brand) => ({
-          provider: connector.type,
-          internalId: getBrandInternalId(connectorId, brand.brandId),
-          parentInternalId: null,
-          type: "folder",
-          title: brand.name,
-          sourceUrl: brand.url,
-          expandable: true,
-          permission: brand.permission,
-          dustDocumentId: null,
-          lastUpdatedAt: brand.updatedAt.getTime(),
-        }));
-    } else {
-      const { result: brands } = await zendeskApiClient.brand.list();
-      nodes = brands
-        .filter((brand) => brand.has_help_center)
-        .map((brand) => ({
-          provider: connector.type,
-          internalId: getBrandInternalId(connectorId, brand.id),
-          parentInternalId: null,
-          type: "folder",
-          title: brand.name || "Brand",
-          sourceUrl: brand.brand_url,
-          expandable: true,
-          permission: "none",
-          dustDocumentId: null,
-          lastUpdatedAt: null,
-        }));
-    }
-  } else {
+  // There is no help center at the root level.
+  if (!isRootLevel) {
     let brandId = getBrandIdFromInternalId(connectorId, parentInternalId);
     // If the parent is a Brand, we return a single node for its help center.
     if (brandId) {
