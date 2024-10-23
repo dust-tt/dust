@@ -327,10 +327,10 @@ export default function AssistantBuilder({
         });
       } else {
         if (slackDataSource) {
-          await mutateSlackChannels();
+          void mutateSlackChannels();
         }
 
-        await mutateAgentConfigurations();
+        void mutateAgentConfigurations();
 
         // Redirect to the assistant list once saved.
         if (flow === "personal_assistants") {
