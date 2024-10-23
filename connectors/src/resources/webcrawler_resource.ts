@@ -96,7 +96,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       },
     });
 
-    const configToConnectorMap = blobs.reduce(
+    const configIdToConnectorId = blobs.reduce(
       (acc, blob) => {
         acc[blob.id] = blob.connectorId;
         return acc;
@@ -106,7 +106,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
 
     configurationHeaders.forEach((header) => {
       const connectorId =
-        configToConnectorMap[header.webcrawlerConfigurationId];
+        configIdToConnectorId[header.webcrawlerConfigurationId];
       if (connectorId) {
         const r = resources[connectorId];
         if (r) {
