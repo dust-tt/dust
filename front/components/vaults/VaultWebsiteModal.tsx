@@ -22,7 +22,9 @@ import type {
   UpdateConnectorConfigurationType,
   VaultType,
   WebCrawlerConfigurationType,
-  WorkspaceType,
+  WorkspaceType} from "@dust-tt/types";
+import {
+  WebCrawlerHeaderRedactedValue
 } from "@dust-tt/types";
 import {
   CrawlingFrequencies,
@@ -657,6 +659,7 @@ const AdvancedSettingsModal = ({
                       newHeaders[index].key = e.target.value;
                       setHeaders(newHeaders);
                     }}
+                    disabled={header.value === WebCrawlerHeaderRedactedValue}
                     className="grow"
                   />
                   <Input
@@ -669,6 +672,7 @@ const AdvancedSettingsModal = ({
                       newHeaders[index].value = e.target.value;
                       setHeaders(newHeaders);
                     }}
+                    disabled={header.value === WebCrawlerHeaderRedactedValue}
                     className="flex-1"
                   />
                 </div>
@@ -678,6 +682,11 @@ const AdvancedSettingsModal = ({
                   label=""
                   icon={XMarkIcon}
                   disabledTooltip={true}
+                  onClick={() => {
+                    const newHeaders = headers.filter((_, i) => i !== index);
+                    setHeaders(newHeaders);
+                    setHasEdited(true);
+                  }}
                 />
               </div>
             ))}
