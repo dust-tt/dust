@@ -4,7 +4,6 @@ import {
   Button,
   FullscreenExitIcon,
   FullscreenIcon,
-  IconButton,
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
