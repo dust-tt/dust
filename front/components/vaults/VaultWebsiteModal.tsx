@@ -22,10 +22,9 @@ import type {
   UpdateConnectorConfigurationType,
   VaultType,
   WebCrawlerConfigurationType,
-  WorkspaceType} from "@dust-tt/types";
-import {
-  WebCrawlerHeaderRedactedValue
+  WorkspaceType,
 } from "@dust-tt/types";
+import { WebCrawlerHeaderRedactedValue } from "@dust-tt/types";
 import {
   CrawlingFrequencies,
   DepthOptions,
