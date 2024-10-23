@@ -2,10 +2,14 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   ClipboardIcon,
-  DropdownMenu,
   EyeIcon,
   Icon,
   MoreIcon,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuLabel,
+  NewDropdownMenuTrigger,
   PencilSquareIcon,
   StarIcon,
   StarStrokeIcon,
@@ -16,6 +20,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, isBuilder } from "@dust-tt/types";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
@@ -108,113 +113,109 @@ export function AssistantDropdownMenu({
         isPrivateAssistant={agentConfiguration.scope === "private"}
       />
 
-      <DropdownMenu className="text-element-700">
-        {({ close }) => (
-          <>
-            <DropdownMenu.Button>{dropdownButton}</DropdownMenu.Button>
-            {/* TODO: get rid of the hardcoded value */}
-            <DropdownMenu.Items width={230}>
-              <DropdownMenu.SectionHeader label={agentConfiguration.name} />
-              <DropdownMenu.Item
-                label="Start new conversation"
-                link={{
-                  href: `/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`,
-                }}
-                icon={ChatBubbleBottomCenterTextIcon}
+      <NewDropdownMenu>
+        <NewDropdownMenuTrigger>{dropdownButton}</NewDropdownMenuTrigger>
+        <NewDropdownMenuContent>
+          <NewDropdownMenuLabel label={agentConfiguration.name} />
+          <Link
+            href={`/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`}
+          >
+            <NewDropdownMenuItem
+              label="Start new conversation"
+              icon={ChatBubbleBottomCenterTextIcon}
+            />
+          </Link>
+          {isMoreInfoVisible ? (
+            <NewDropdownMenuItem
+              label="More info"
+              onClick={(e) => {
+                e.stopPropagation();
+                setQueryParam(
+                  router,
+                  "assistantDetails",
+                  agentConfiguration.sId
+                );
+              }}
+              icon={EyeIcon}
+            />
+          ) : (
+            <NewDropdownMenuItem
+              label="Copy assistant ID"
+              onClick={async (e) => {
+                e.stopPropagation();
+                await navigator.clipboard.writeText(agentConfiguration.sId);
+              }}
+              icon={ClipboardIcon}
+            />
+          )}
+
+          {showAddRemoveToFavorite && (
+            <>
+              <NewDropdownMenuItem
+                label={
+                  isFavorite ? "Remove from favorites" : "Add to favorites"
+                }
+                disabled={isUpdatingFavorites}
                 onClick={(e) => {
                   e.stopPropagation();
-                  close();
+                  void updateFavorite(isFavorite ? false : true);
                 }}
+                icon={isFavorite ? StarIcon : StarStrokeIcon}
               />
-              {isMoreInfoVisible ? (
-                <DropdownMenu.Item
-                  label="More info"
-                  onClick={() =>
-                    setQueryParam(
-                      router,
-                      "assistantDetails",
-                      agentConfiguration.sId
-                    )
-                  }
-                  icon={EyeIcon}
-                />
-              ) : (
-                <DropdownMenu.Item
-                  label={`Copy assistant ID`}
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    await navigator.clipboard.writeText(agentConfiguration.sId);
-                    close();
-                  }}
-                  icon={ClipboardIcon}
-                />
-              )}
-              {showAddRemoveToFavorite && (
-                <>
-                  <DropdownMenu.Item
-                    label={
-                      isFavorite ? "Remove from favorites" : "Add to favorites"
-                    }
-                    disabled={isUpdatingFavorites}
-                    onClick={() => {
-                      void updateFavorite(isFavorite ? false : true);
-                    }}
-                    icon={isFavorite ? StarIcon : StarStrokeIcon}
-                  />
-                </>
-              )}
+            </>
+          )}
 
-              {!isGlobalAgent && (
-                <>
-                  <DropdownMenu.SectionHeader label="Edition" />
+          {!isGlobalAgent && (
+            <>
+              <NewDropdownMenuLabel label="Edition" />
 
-                  {/* Should use the router to have a better navigation experience */}
-                  {(isBuilder(owner) || !isAgentWorkspace) && (
-                    <DropdownMenu.Item
-                      label="Edit"
-                      link={{
-                        href: `/w/${owner.sId}/builder/assistants/${
-                          agentConfiguration.sId
-                        }?flow=${
-                          isAgentWorkspace
-                            ? "workspace_assistants"
-                            : "personal_assistants"
-                        }`,
-                      }}
-                      icon={PencilSquareIcon}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        close();
-                      }}
-                    />
-                  )}
-                  <DropdownMenu.Item
-                    label="Duplicate (New)"
-                    link={{
-                      href: `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`,
-                    }}
-                    icon={ClipboardIcon}
+              {/* Should use the router to have a better navigation experience */}
+              {(isBuilder(owner) || !isAgentWorkspace) && (
+                <Link
+                  href={`/w/${owner.sId}/builder/assistants/${
+                    agentConfiguration.sId
+                  }?flow=${
+                    isAgentWorkspace
+                      ? "workspace_assistants"
+                      : "personal_assistants"
+                  }`}
+                >
+                  <NewDropdownMenuItem
+                    label="Edit"
+                    icon={PencilSquareIcon}
                     onClick={(e) => {
                       e.stopPropagation();
-                      close();
                     }}
                   />
-                  {allowDeletion && (
-                    <DropdownMenu.Item
-                      label="Delete"
-                      icon={TrashIcon}
-                      variant="warning"
-                      onClick={() => {
-                        setShowDeletionModal(true);
-                      }}
-                    />
-                  )}
-                </>
+                </Link>
               )}
-            </DropdownMenu.Items>
-          </>
-        )}
-      </DropdownMenu>
+              <Link
+                href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`}
+              >
+                <NewDropdownMenuItem
+                  label="Duplicate (New)"
+                  icon={ClipboardIcon}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                />
+              </Link>
+              {allowDeletion && (
+                <NewDropdownMenuItem
+                  label="Delete"
+                  icon={TrashIcon}
+                  // TODO:
+                  variant="warning"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDeletionModal(true);
+                  }}
+                />
+              )}
+            </>
+          )}
+        </NewDropdownMenuContent>
+      </NewDropdownMenu>
     </>
   );
 }
