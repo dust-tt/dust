@@ -70,6 +70,48 @@ interface Article {
   user_segment_ids: number[];
 }
 
+interface Ticket {
+  assignee_id: number;
+  collaborator_ids: number[];
+  created_at: string; // ISO 8601 date string
+  custom_fields: {
+    id: number;
+    value: string;
+  }[];
+  custom_status_id: number;
+  description: string;
+  due_at: string | null; // null or ISO 8601 date string
+  external_id: string;
+  follower_ids: number[];
+  from_messaging_channel: boolean;
+  generated_timestamp: number;
+  group_id: number;
+  has_incidents: boolean;
+  id: number;
+  organization_id: number;
+  priority: string;
+  problem_id: number;
+  raw_subject: string;
+  recipient: string;
+  requester_id: number;
+  satisfaction_rating: {
+    comment: string;
+    id: number;
+    score: string;
+  };
+  sharing_agreement_ids: number[];
+  status: string;
+  subject: string;
+  submitter_id: number;
+  tags: string[];
+  type: string;
+  updated_at: string; // ISO 8601 date string
+  url: string;
+  via: {
+    channel: string;
+  };
+}
+
 declare module "node-zendesk" {
   interface Client {
     config: ZendeskClientOptions;
@@ -96,6 +138,12 @@ declare module "node-zendesk" {
         ) => Promise<{ response: Response; result: Article }>;
         listByCategory: (categoryId: number) => Promise<Article[]>;
         listSinceStartTime: (startTime: number) => Promise<Article[]>;
+      };
+      tickets: {
+        list: () => Promise<Ticket[]>;
+        show: (
+          ticketId: number
+        ) => Promise<{ response: Response; result: Ticket }>;
       };
     };
   }
