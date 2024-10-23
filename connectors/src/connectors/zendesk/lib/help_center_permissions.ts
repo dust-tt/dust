@@ -5,7 +5,6 @@ import type {
   ModelId,
 } from "@dust-tt/types";
 
-import { getHelpCenterArticleInternalId } from "@connectors/connectors/intercom/lib/utils";
 import {
   getArticleInternalId,
   getBrandIdFromHelpCenterId,
@@ -19,7 +18,6 @@ import {
   changeZendeskClientSubdomain,
   createZendeskClient,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
-import { IntercomArticle } from "@connectors/lib/models/intercom";
 import {
   ZendeskArticle,
   ZendeskBrand,
