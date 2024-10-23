@@ -12,6 +12,7 @@ import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { retrieveZendeskHelpCenterPermissions } from "@connectors/connectors/zendesk/lib/help_center_permissions";
 import { retrieveSelectedNodes } from "@connectors/connectors/zendesk/lib/permissions";
+import { retrieveZendeskTicketPermissions } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -102,7 +103,13 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         filterPermission,
         viewType: "documents",
       });
-      return new Ok(helpCenterNodes);
+      const ticketNodes = await retrieveZendeskTicketPermissions({
+        connectorId: this.connectorId,
+        parentInternalId,
+        filterPermission,
+        viewType: "documents",
+      });
+      return new Ok([...helpCenterNodes, ...ticketNodes]);
     } catch (e) {
       return new Err(e as Error);
     }
