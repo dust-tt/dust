@@ -107,6 +107,7 @@ export default function VaultWebsiteModal({
   let webCrawlerConfiguration: WebCrawlerConfigurationType | null = null;
   if (isWebCrawlerConfiguration(configuration)) {
     webCrawlerConfiguration = configuration;
+    console.log(webCrawlerConfiguration);
   }
 
   useEffect(() => {
@@ -359,13 +360,14 @@ export default function VaultWebsiteModal({
       });
     }
   };
-
+  console.log(headers);
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       onSave={() => {
         setIsSubmitted(true);
+        console.log(headers);
         if (!isSaving) {
           if (dataSourceView) {
             void handleUpdate();
@@ -384,76 +386,12 @@ export default function VaultWebsiteModal({
     >
       <div className="w-full pt-6">
         <div className="overflow-x-auto">
-          <Modal
-            isOpen={advancedSettingsOpened}
-            title="Advanced settings"
-            onClose={() => {
-              setAdvancedSettingsOpened(false);
-            }}
-            hasChanged={false}
-            isSaving={false}
-            variant="side-sm"
-          >
-            <div className="w-full pt-6">
-              <Page.Layout direction="vertical" gap="xl">
-                <Page.H variant="h3">Custom Headers</Page.H>
-                <Page.P>Add custom request headers for the web crawler.</Page.P>
-                <div className="flex flex-col gap-4">
-                  {headers.map((header, index) => (
-                    <div key={index} className="flex gap-2">
-                      <div className="flex grow flex-col gap-1">
-                        <Input
-                          placeholder="Header Name"
-                          value={header.key}
-                          name="headerName"
-                          onChange={(e) => {
-                            const newHeaders = [...headers];
-                            newHeaders[index].key = e.target.value;
-                            setHeaders(newHeaders);
-                          }}
-                          className="grow"
-                        />
-                        <Input
-                          name="headerValue"
-                          placeholder="Header Value"
-                          value={header.value}
-                          onChange={(e) => {
-                            const newHeaders = [...headers];
-                            newHeaders[index].value = e.target.value;
-                            setHeaders(newHeaders);
-                          }}
-                          className="flex-1"
-                        />
-                      </div>
-                      <Button
-                        variant="tertiary"
-                        labelVisible={false}
-                        label=""
-                        icon={XMarkIcon}
-                        disabledTooltip={true}
-                        onClick={() => {
-                          const newHeaders = headers.filter(
-                            (_, i) => i !== index
-                          );
-                          setHeaders(newHeaders);
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <div className="flex">
-                  <Button
-                    variant="secondary"
-                    className="shrink"
-                    label="Add Header"
-                    onClick={() => {
-                      setHeaders([...headers, { key: "", value: "" }]);
-                    }}
-                  />
-                </div>
-              </Page.Layout>
-            </div>
-          </Modal>
+          <AdvancedSettingsModal
+            advancedSettingsOpened={advancedSettingsOpened}
+            setAdvancedSettingsOpened={setAdvancedSettingsOpened}
+            headers={headers}
+            setHeaders={setHeaders}
+          />
           <div className="flex flex-col gap-2">
             {isConfigurationLoading ? (
               <Spinner />
@@ -674,3 +612,90 @@ export default function VaultWebsiteModal({
     </Modal>
   );
 }
+
+interface AdvancedSettingsModalProps {
+  advancedSettingsOpened: boolean;
+  setAdvancedSettingsOpened: (open: boolean) => void;
+  headers: { key: string; value: string }[];
+  setHeaders: (headers: { key: string; value: string }[]) => void;
+}
+
+const AdvancedSettingsModal = ({
+  advancedSettingsOpened,
+  setAdvancedSettingsOpened,
+  headers,
+  setHeaders,
+}: AdvancedSettingsModalProps) => {
+  const [hasEdited, setHasEdited] = useState(false);
+
+  return (
+    <Modal
+      isOpen={advancedSettingsOpened}
+      title="Advanced settings"
+      onClose={() => {
+        setAdvancedSettingsOpened(false);
+      }}
+      hasChanged={hasEdited}
+      variant="side-sm"
+      onSave={() => {
+        setAdvancedSettingsOpened(false);
+      }}
+    >
+      <div className="w-full pt-6">
+        <Page.Layout direction="vertical" gap="xl">
+          <Page.H variant="h3">Custom Headers</Page.H>
+          <Page.P>Add custom request headers for the web crawler.</Page.P>
+          <div className="flex flex-col gap-4">
+            {headers.map((header, index) => (
+              <div key={index} className="flex gap-2">
+                <div className="flex grow flex-col gap-1">
+                  <Input
+                    placeholder="Header Name"
+                    value={header.key}
+                    name="headerName"
+                    onChange={(e) => {
+                      setHasEdited(true);
+                      const newHeaders = [...headers];
+                      newHeaders[index].key = e.target.value;
+                      setHeaders(newHeaders);
+                    }}
+                    className="grow"
+                  />
+                  <Input
+                    name="headerValue"
+                    placeholder="Header Value"
+                    value={header.value}
+                    onChange={(e) => {
+                      setHasEdited(true);
+                      const newHeaders = [...headers];
+                      newHeaders[index].value = e.target.value;
+                      setHeaders(newHeaders);
+                    }}
+                    className="flex-1"
+                  />
+                </div>
+                <Button
+                  variant="tertiary"
+                  labelVisible={false}
+                  label=""
+                  icon={XMarkIcon}
+                  disabledTooltip={true}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex">
+            <Button
+              variant="secondary"
+              className="shrink"
+              label="Add Header"
+              onClick={() => {
+                setHeaders([...headers, { key: "", value: "" }]);
+              }}
+            />
+          </div>
+        </Page.Layout>
+      </div>
+    </Modal>
+  );
+};
