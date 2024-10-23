@@ -126,7 +126,7 @@ export const DustProdActionRegistry = createActionRegistry({
         data_sources: [],
         // top k will probably need to be
         // proportional to the number of documents
-        top_k: 64,
+        top_k: 256,
         filter: {
           tags: null,
           timestamp: null,

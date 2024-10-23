@@ -226,6 +226,10 @@ export async function documentTrackerSuggestChangesOnUpsert({
     .filter(Boolean)
     .join("\n");
 
+  if (diffString.includes("__DUST_DEBUG")) {
+    localLogger.info({ diffString }, "Found __DUST_DEBUG in diff.");
+  }
+
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const tokensInDiff = await coreAPI.tokenize({
     text: diffString,
