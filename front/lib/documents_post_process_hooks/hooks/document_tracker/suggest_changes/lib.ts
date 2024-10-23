@@ -44,6 +44,9 @@ const logger = mainLogger.child({
   postProcessHook: "document_tracker_suggest_changes",
 });
 
+// Temporary
+const DISABLE_DOC_TRACKER = true;
+
 export async function shouldDocumentTrackerSuggestChangesRun(
   params: DocumentsPostProcessHookFilterParams
 ): Promise<boolean> {
@@ -148,6 +151,10 @@ export async function documentTrackerSuggestChangesOnUpsert({
   documentHash,
   documentSourceUrl,
 }: DocumentsPostProcessHookOnUpsertParams): Promise<void> {
+  if (DISABLE_DOC_TRACKER) {
+    return;
+  }
+
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Workspace not found.");
