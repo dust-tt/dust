@@ -314,3 +314,148 @@ ConnectorModel.hasMany(ZendeskArticle, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
+
+export class ZendeskTicket extends Model<
+  InferAttributes<ZendeskTicket>,
+  InferCreationAttributes<ZendeskTicket>
+> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare ticketId: number;
+  declare brandId: number;
+  declare permission: "read" | "none";
+
+  declare assigneeId: number;
+  declare groupId: number;
+  declare organizationId: number;
+
+  declare name: string;
+  declare description: string;
+  declare subject: string;
+  declare requesterMail: string;
+  declare url: string;
+
+  declare satisfactionScore: string;
+  declare satisfactionComment: string;
+
+  declare status: "new" | "open" | "pending" | "hold" | "solved" | "closed";
+  declare tags: string[];
+  declare type: "problem" | "incident" | "question" | "task";
+  declare customFields: string[];
+
+  declare lastUpsertedTs: Date;
+
+  declare connectorId: ForeignKey<ConnectorModel["id"]>;
+}
+
+ZendeskTicket.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    ticketId: {
+      type: DataTypes.NUMBER,
+      allowNull: false,
+    },
+    brandId: {
+      type: DataTypes.NUMBER,
+      allowNull: false,
+    },
+    groupId: {
+      type: DataTypes.NUMBER,
+      allowNull: false,
+    },
+    assigneeId: {
+      type: DataTypes.NUMBER,
+      allowNull: false,
+    },
+    organizationId: {
+      type: DataTypes.NUMBER,
+      allowNull: false,
+    },
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    satisfactionScore: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    satisfactionComment: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    subject: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    requesterMail: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    tags: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+    },
+    url: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    type: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    customFields: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+      defaultValue: [],
+    },
+    permission: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    lastUpsertedTs: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    modelName: "zendesk_tickets",
+    indexes: [
+      {
+        fields: ["connectorId", "ticketId"],
+        unique: true,
+        name: "zendesk_connector_ticket_idx",
+      },
+      { fields: ["ticketId"] },
+      { fields: ["connectorId"] },
+    ],
+  }
+);
+ConnectorModel.hasMany(ZendeskTicket, {
+  foreignKey: { allowNull: false },
+  onDelete: "RESTRICT",
+});
