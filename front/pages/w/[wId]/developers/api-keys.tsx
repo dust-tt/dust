@@ -7,6 +7,10 @@ import {
   IconButton,
   Input,
   Modal,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
   Page,
   PlusIcon,
   ShapesIcon,
@@ -184,21 +188,24 @@ export function APIKeys({
           <span className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
             Assign permissions to space:{" "}
           </span>
-          <DropdownMenu>
-            <DropdownMenu.Button
-              type="select"
-              label={prettifyGroupName(newApiKeyGroup)}
-            />
-            <DropdownMenu.Items width={220}>
+          <NewDropdownMenu>
+            <NewDropdownMenuTrigger>
+              <Button
+                label={prettifyGroupName(newApiKeyGroup)}
+                size="sm"
+                variant="tertiary"
+              />
+            </NewDropdownMenuTrigger>
+            <NewDropdownMenuContent>
               {groups.map((group: GroupType) => (
-                <DropdownMenu.Item
+                <NewDropdownMenuItem
                   key={group.id}
                   label={prettifyGroupName(group)}
                   onClick={() => setNewApiKeyGroup(group)}
                 />
               ))}
-            </DropdownMenu.Items>
-          </DropdownMenu>
+            </NewDropdownMenuContent>
+          </NewDropdownMenu>
         </div>
       </Dialog>
       <Page.Horizontal align="stretch">
