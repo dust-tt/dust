@@ -25,17 +25,7 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
 ) {
   const { mutate: globalMutate, cache } = useSWRConfig();
 
-  const inCache = key && cache.get(key.toString())?.data;
-
-  const { serveFromCache, ...mergedConfig } = {
-    ...DEFAULT_SWR_CONFIG,
-    ...config,
-  };
-
-  if (serveFromCache && inCache) {
-    mergedConfig.revalidateOnMount = false;
-    mergedConfig.revalidateOnFocus = false;
-  }
+  const mergedConfig = { ...DEFAULT_SWR_CONFIG, ...config };
 
   const disabled = !!mergedConfig.disabled;
 
