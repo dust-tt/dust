@@ -13,13 +13,13 @@ export type ConversationCitationType = {
   title: string;
 };
 
-type ConverationCitationComponentProps = {
+type ConversationCitationComponentProps = {
   citation: ConversationCitationType;
 };
 
-export function ConverationCitationComponent({
+export function ConversationCitationComponent({
   citation,
-}: ConverationCitationComponentProps) {
+}: ConversationCitationComponentProps) {
   if (citation.isZoomable && citation.sourceUrl) {
     return (
       <ZoomableImageCitationWrapper

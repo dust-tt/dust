@@ -1,9 +1,9 @@
 import React from "react";
 
 import {
-  ConverationCitationComponent,
+  ConversationCitationComponent,
   ConversationCitationType,
-} from "@sparkle/components/ConverationCitationComponent";
+} from "@sparkle/components/ConversationCitationComponent";
 import { ConversationMessageSizeType } from "@sparkle/components/ConversationMessage";
 import { cn } from "@sparkle/lib/utils";
 
@@ -41,7 +41,7 @@ export function ConversationMessageContent({
           )}
         >
           {citations.map((c) => {
-            return <ConverationCitationComponent citation={c} key={c.id} />;
+            return <ConversationCitationComponent citation={c} key={c.id} />;
           })}
         </div>
       )}

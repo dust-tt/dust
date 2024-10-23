@@ -1,6 +1,6 @@
 import React, { ComponentType, MouseEventHandler } from "react";
 
-import { ConversationCitationType } from "@sparkle/components/ConverationCitationComponent";
+import { ConversationCitationType } from "@sparkle/components/ConversationCitationComponent";
 import {
   ConversationMessageActions,
   ConversationMessageEmojiSelectorProps,
