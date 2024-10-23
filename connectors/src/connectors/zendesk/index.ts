@@ -76,10 +76,6 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>> {
-    logger.info(
-      { parentInternalId, filterPermission },
-      "Retrieving permissions"
-    );
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error(
