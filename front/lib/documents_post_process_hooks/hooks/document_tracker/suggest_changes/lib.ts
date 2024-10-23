@@ -47,6 +47,12 @@ const logger = mainLogger.child({
 export async function shouldDocumentTrackerSuggestChangesRun(
   params: DocumentsPostProcessHookFilterParams
 ): Promise<boolean> {
+  const auth = params.auth;
+  const owner = auth.getNonNullableWorkspace();
+  if (!owner.flags.includes("document_tracker")) {
+    return false;
+  }
+
   if (params.verb !== "upsert") {
     logger.info(
       "document_tracker_suggest_changes post process hook should only run for upsert."
@@ -56,14 +62,12 @@ export async function shouldDocumentTrackerSuggestChangesRun(
 
   const {
     upsertContext,
-    auth,
     dataSourceId,
     documentId,
     dataSourceConnectorProvider,
   } = params;
   const isBatchSync = upsertContext?.sync_type === "batch";
 
-  const owner = auth.getNonNullableWorkspace();
   const localLogger = logger.child({
     workspaceId: owner.sId,
     dataSourceId,
@@ -75,10 +79,6 @@ export async function shouldDocumentTrackerSuggestChangesRun(
     localLogger.info(
       "document_tracker_suggest_changes post process hook should not run for batch sync."
     );
-    return false;
-  }
-
-  if (!owner.flags.includes("document_tracker")) {
     return false;
   }
 
