@@ -1,11 +1,10 @@
+import { usePublicAgentConfigurations } from "@app/extension/app/src/components/assistants/usePublicAgentConfigurations";
 import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { compareAgentsForSort } from "@dust-tt/types";
 import { useMemo } from "react";
-
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
 
 function makeEditorSuggestions(
   agentConfigurations: LightAgentConfigurationType[]
@@ -20,11 +19,11 @@ function makeEditorSuggestions(
     }));
 }
 
-const useAssistantSuggestions = (
+export const usePublicAssistantSuggestions = (
   inListAgentConfigurations: LightAgentConfigurationType[],
   owner: WorkspaceType
 ) => {
-  const { agentConfigurations } = useAgentConfigurations({
+  const { agentConfigurations } = usePublicAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "list",
   });
@@ -40,5 +39,3 @@ const useAssistantSuggestions = (
 
   return allSuggestions;
 };
-
-export default useAssistantSuggestions;
