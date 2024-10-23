@@ -67,16 +67,17 @@ export async function googleDriveFullSync({
   startSyncTs: number | undefined;
   mimeTypeFilter?: string[];
 }) {
-  await syncStarted(connectorId);
+  if (!startSyncTs) {
+    await syncStarted(connectorId);
+    startSyncTs = new Date().getTime();
+  }
 
   // Running the incremental sync workflow before the full sync to populate the
   // Google Drive sync tokens.
   await populateSyncTokens(connectorId);
 
   let nextPageToken: string | undefined = undefined;
-  if (startSyncTs === undefined) {
-    startSyncTs = new Date().getTime();
-  }
+
   if (!foldersToBrowse) {
     foldersToBrowse = await getFoldersToSync(connectorId);
   }
@@ -166,12 +167,14 @@ type DrivesToSyncType = {
 export async function googleDriveIncrementalSync(
   connectorId: ModelId,
   dataSourceConfig: DataSourceConfig,
+  startSyncTs: number | undefined = undefined,
   drivesToSync: DrivesToSyncType | undefined = undefined,
   nextPageToken: string | undefined = undefined
 ) {
-  await syncStarted(connectorId);
-
-  const startSyncTs = new Date().getTime();
+  if (!startSyncTs) {
+    await syncStarted(connectorId);
+    startSyncTs = new Date().getTime();
+  }
 
   if (drivesToSync === undefined) {
     const drives = await getDrivesToSync(connectorId);
@@ -208,6 +211,7 @@ export async function googleDriveIncrementalSync(
         await continueAsNew<typeof googleDriveIncrementalSync>(
           connectorId,
           dataSourceConfig,
+          startSyncTs,
           drivesToSync,
           nextPageToken
         );
