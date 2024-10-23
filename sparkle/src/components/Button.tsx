@@ -34,7 +34,7 @@ const styleVariants: Record<ButtonVariantType, string> = {
   highlight:
     "s-bg-highlight s-text-white hover:s-bg-highlight-light active:s-bg-highlight-dark disabled:s-bg-highlight-muted",
   warning:
-    "s-bg-warning s-text-primary hover:s-bg-warning-light active:s-bg-warning-dark disabled:s-bg-warning-muted",
+    "s-bg-warning s-text-white hover:s-bg-warning-light active:s-bg-warning-dark disabled:s-bg-warning-muted",
   outline:
     "s-border s-text-primary-dark s-border-border-dark hover:s-text-primary hover:s-bg-primary-100 hover:s-border-primary-200 active:s-bg-primary-300 disabled:s-text-primary-muted disabled:s-border-structure-100",
   ghost:
