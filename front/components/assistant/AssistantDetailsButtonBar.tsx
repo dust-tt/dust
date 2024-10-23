@@ -108,7 +108,7 @@ export function AssistantDetailsButtonBar({
                     label="Delete"
                     icon={TrashIcon}
                     // TODO:
-                    variant="warning"
+                    // variant="warning"
                     onClick={() => {
                       setShowDeletionModal(true);
                     }}

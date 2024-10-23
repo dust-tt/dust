@@ -205,7 +205,7 @@ export function AssistantDropdownMenu({
                   label="Delete"
                   icon={TrashIcon}
                   // TODO:
-                  variant="warning"
+                  // variant="warning"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowDeletionModal(true);

@@ -1,6 +1,5 @@
 import {
   Button,
-  DropdownMenu,
   Modal,
   NewDropdownMenu,
   NewDropdownMenuContent,

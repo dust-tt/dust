@@ -1,7 +1,6 @@
 import {
   AssistantPreview,
   ColorPicker,
-  DropdownMenu,
   EmojiPicker,
   Markdown,
   NewDropdownMenu,

@@ -3,7 +3,6 @@ import {
   CardIcon,
   Chip,
   Dialog,
-  DropdownMenu,
   MoreIcon,
   NewDropdownMenu,
   NewDropdownMenuContent,
