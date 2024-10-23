@@ -121,7 +121,7 @@ export async function retrieveZendeskHelpCenterPermissions({
 
   const isRootLevel = !parentInternalId;
 
-  // At the root level, we show two nodes: Help Center and Tickets.
+  // At the root level, we show one node for the entire Help Center.
   if (isRootLevel) {
     const helpCenterNode: ContentNode = {
       provider: connector.type,
@@ -157,19 +157,20 @@ export async function retrieveZendeskHelpCenterPermissions({
           hasHelpCenter: true,
         },
       });
-      nodes = brandsInDatabase.map((brand) => ({
-        provider: connector.type,
-        internalId: getBrandInternalId(connectorId, brand.brandId),
-        parentInternalId: getHelpCenterInternalId(connectorId),
-        type: "channel",
-        title: brand.name,
-        sourceUrl: brand.url,
-        expandable: true,
-        preventSelection: !brand.hasHelpCenter,
-        permission: brand.permission,
-        dustDocumentId: null,
-        lastUpdatedAt: brand.updatedAt.getTime(),
-      }));
+      nodes = brandsInDatabase
+        .filter((brand) => brand.hasHelpCenter)
+        .map((brand) => ({
+          provider: connector.type,
+          internalId: getBrandInternalId(connectorId, brand.brandId),
+          parentInternalId: getHelpCenterInternalId(connectorId),
+          type: "folder",
+          title: brand.name,
+          sourceUrl: brand.url,
+          expandable: true,
+          permission: brand.permission,
+          dustDocumentId: null,
+          lastUpdatedAt: brand.updatedAt.getTime(),
+        }));
     } else {
       const { result: brands } = await zendeskApiClient.brand.list();
       nodes = brands
@@ -182,7 +183,6 @@ export async function retrieveZendeskHelpCenterPermissions({
           title: brand.name || "Brand",
           sourceUrl: brand.brand_url,
           expandable: true,
-          preventSelection: !brand.has_help_center,
           permission: "none",
           dustDocumentId: null,
           lastUpdatedAt: null,
