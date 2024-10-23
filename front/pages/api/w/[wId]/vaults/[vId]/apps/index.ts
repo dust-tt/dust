@@ -1,5 +1,5 @@
 import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
+import { APP_NAME_REGEXP, CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
@@ -76,6 +76,17 @@ async function handler(
             type: "invalid_request_error",
             message:
               "The request body is invalid, expects { name: string, description: string }.",
+          },
+        });
+      }
+
+      if (!APP_NAME_REGEXP.test(req.body.name)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The app name is invalid, expects a string with a length of 1-64 characters, containing only alphanumeric characters, underscores, and dashes.",
           },
         });
       }

@@ -1,7 +1,10 @@
 import { BlockType } from "../front/run";
 import { VaultType } from "../front/vault";
 import { ModelId } from "../shared/model_id";
+
 export type AppVisibility = "private" | "deleted";
+
+export const APP_NAME_REGEXP = /^[a-zA-Z0-9_-]{1,64}$/;
 
 export type BlockRunConfig = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

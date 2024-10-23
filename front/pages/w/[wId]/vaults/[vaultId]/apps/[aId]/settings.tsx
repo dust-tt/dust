@@ -1,8 +1,9 @@
-import { Button, Tab } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import { Button, Input, Tab } from "@dust-tt/sparkle";
 import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import { APP_NAME_REGEXP } from "@dust-tt/types";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -78,9 +79,9 @@ export default function SettingsView({
       setAppNameError("");
       return false;
       // eslint-disable-next-line no-useless-escape
-    } else if (!appName.match(/^[a-zA-Z0-9\._\-]+$/)) {
+    } else if (!appName.match(APP_NAME_REGEXP)) {
       setAppNameError(
-        "App name must only contain letters, numbers, and the characters `._-`"
+        "Name must be only contain letters, numbers, and the characters `_-` and be less than 64 characters."
       );
       return false;
     } else {
@@ -131,7 +132,7 @@ export default function SettingsView({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: appName.slice(0, MODELS_STRING_MAX_LENGTH),
+          name: appName,
           description: appDescription.slice(0, MODELS_STRING_MAX_LENGTH),
         }),
       }
@@ -194,7 +195,7 @@ export default function SettingsView({
                           aria-hidden="true"
                         />
                       </span>
-                      <input
+                      <Input
                         type="text"
                         name="name"
                         id="appName"
@@ -206,7 +207,15 @@ export default function SettingsView({
                         )}
                         value={appName}
                         onChange={(e) => setAppName(e.target.value)}
+                        showErrorLabel
+                        error={appNameError}
                       />
+                    </div>
+                    <div>
+                      <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+                        Must be unique and only use alphanumeric, - or _
+                        characters.
+                      </p>
                     </div>
                   </div>
 
@@ -232,7 +241,7 @@ export default function SettingsView({
                         onChange={(e) => setAppDescription(e.target.value)}
                       />
                     </div>
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
                       This description guides assistants in understanding how to
                       use your app effectively and determines its relevance in
                       responding to user inquiries. If you don't provide a
