@@ -65,11 +65,7 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
         // and mutate them too
         for (const k of cache.keys()) {
           const kAsUrl = tryMakeUrlWithoutParams(k as TKey);
-          if (
-            kAsUrl === keyAsUrl &&
-            k !== key &&
-            !k.includes("no-cache-flush=true")
-          ) {
+          if (kAsUrl === keyAsUrl && k !== key) {
             void globalMutate<TData>(k, undefined, opts);
           }
         }
