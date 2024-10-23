@@ -34,7 +34,7 @@ export async function retrieveSelectedNodes({
     return {
       provider: connector.type,
       internalId: getBrandInternalId(connectorId, brand.brandId),
-      parentInternalId: getHelpCenterInternalId(connectorId),
+      parentInternalId: null,
       type: "folder",
       title: brand.name,
       sourceUrl: brand.url,
@@ -45,6 +45,21 @@ export async function retrieveSelectedNodes({
     };
   });
 
+  const helpCenterNodes: ContentNode[] = brands
+    .filter((brand) => brand.hasHelpCenter)
+    .map((brand) => ({
+      provider: connector.type,
+      internalId: getHelpCenterInternalId(connectorId, brand.id),
+      parentInternalId: getBrandInternalId(connectorId, brand.brandId),
+      type: "database",
+      title: "Help Center",
+      sourceUrl: null,
+      expandable: true,
+      permission: brand.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: brand.updatedAt.getTime(),
+    }));
+
   const categories = await ZendeskCategory.findAll({
     where: { connectorId: connectorId, permission: "read" },
   });
@@ -52,7 +67,7 @@ export async function retrieveSelectedNodes({
     return {
       provider: connector.type,
       internalId: getCategoryInternalId(connectorId, category.categoryId),
-      parentInternalId: getBrandInternalId(connectorId, category.brandId),
+      parentInternalId: getHelpCenterInternalId(connectorId, category.brandId),
       type: "folder",
       title: category.name,
       sourceUrl: category.url,
@@ -63,5 +78,5 @@ export async function retrieveSelectedNodes({
     };
   });
 
-  return [...brandNodes, ...categoriesNodes];
+  return [...brandNodes, ...helpCenterNodes, ...categoriesNodes];
 }
