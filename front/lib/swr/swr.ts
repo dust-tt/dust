@@ -20,23 +20,11 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
   fetcher: Fetcher<TData, TKey> | null,
   config?: SWRConfiguration & {
     disabled?: boolean;
-    serveFromCache?: boolean;
   }
 ) {
   const { mutate: globalMutate, cache } = useSWRConfig();
 
-  const inCache = key && cache.get(key.toString())?.data;
-
-  const { serveFromCache, ...mergedConfig } = {
-    ...DEFAULT_SWR_CONFIG,
-    ...config,
-  };
-
-  if (serveFromCache && inCache) {
-    mergedConfig.revalidateOnMount = false;
-    mergedConfig.revalidateOnFocus = false;
-  }
-
+  const mergedConfig = { ...DEFAULT_SWR_CONFIG, ...config };
   const disabled = !!mergedConfig.disabled;
 
   const result = useSWR(disabled ? null : key, fetcher, mergedConfig);
@@ -61,7 +49,7 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
   }, []);
 
   const mutateKeysWithSameUrl = useCallback(
-    (key: any, options?: any) => {
+    (key: TKey) => {
       const keyAsUrl = tryMakeUrlWithoutParams(key);
       if (keyAsUrl) {
         // Cycle through all the keys in the cache that start with the same url
@@ -69,7 +57,7 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
         for (const k of cache.keys()) {
           const kAsUrl = tryMakeUrlWithoutParams(k as TKey);
           if (kAsUrl === keyAsUrl && k !== key) {
-            void globalMutate<TData>(k, undefined, options);
+            void globalMutate<TData>(k);
           }
         }
       }
@@ -81,18 +69,15 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
     return globalMutate(key);
   }, [key, globalMutate]);
 
-  const myMutateWhenDisabledRegardlessOfQueryParams = useCallback(
-    (_?: any, options?: any) => {
-      mutateKeysWithSameUrl(key, options);
-      return globalMutate(key, undefined, options);
-    },
-    [key, mutateKeysWithSameUrl, globalMutate]
-  );
+  const myMutateWhenDisabledRegardlessOfQueryParams = useCallback(() => {
+    mutateKeysWithSameUrl(key);
+    return globalMutate(key);
+  }, [key, mutateKeysWithSameUrl, globalMutate]);
 
-  const myMutateRegardlessOfQueryParams = useCallback(
-    (data?: any, options?: any) => {
-      mutateKeysWithSameUrl(key, options);
-      return result.mutate(data, options);
+  const myMutateRegardlessOfQueryParams: typeof result.mutate = useCallback(
+    (...args) => {
+      mutateKeysWithSameUrl(key);
+      return result.mutate(...args);
     },
     [key, mutateKeysWithSameUrl, result]
   );
