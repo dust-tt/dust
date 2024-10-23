@@ -6,7 +6,6 @@ import {
   Popover,
   ReactionIcon,
 } from "@dust-tt/sparkle";
-import type { MessageReactionType, UserType } from "@dust-tt/types";
 import type { ComponentType, MouseEventHandler } from "react";
 import { useRef } from "react";
 
@@ -44,7 +43,6 @@ export function MessageActions({
     buttonNodes.push(
       <MessageEmojiSelector
         reactions={messageEmoji.reactions}
-        user={messageEmoji.user}
         onSubmitEmoji={messageEmoji.onSubmitEmoji}
       />
     );
@@ -59,15 +57,18 @@ export function MessageActions({
 
 const MAX_MORE_REACTIONS_TO_SHOW = 9;
 
+export type EmojoReaction = {
+  emoji: string;
+  hasReacted: boolean;
+  count: number;
+};
 export interface MessageEmojiSelectorProps {
-  reactions: MessageReactionType[];
-  user: UserType;
+  reactions: EmojoReaction[];
   onSubmitEmoji: (p: { emoji: string; isToRemove: boolean }) => Promise<void>;
 }
 
 function MessageEmojiSelector({
   reactions,
-  user,
   onSubmitEmoji,
 }: MessageEmojiSelectorProps) {
   // TODO(2024-05-27 flav) Use mutate from `useConversationReactions` instead.
@@ -87,14 +88,13 @@ function MessageEmojiSelector({
   return (
     <>
       <EmojiSelector
-        user={user}
         reactions={reactions}
         handleEmoji={handleEmoji}
         emojiData={emojiData}
         disabled={isSubmittingEmoji}
       />
       {slicedReactions.map((reaction) => {
-        const hasReacted = reaction.users.some((u) => u.userId === user.id);
+        const hasReacted = reaction.hasReacted;
         const emoji = emojiData?.emojis[reaction.emoji];
         const nativeEmoji = emoji?.skins[0].native;
         if (!nativeEmoji) {
@@ -105,7 +105,7 @@ function MessageEmojiSelector({
             key={reaction.emoji}
             variant={hasReacted ? "selected" : "unselected"}
             emoji={nativeEmoji}
-            count={reaction.users.length.toString()}
+            count={reaction.count.toString()}
             onClick={async () =>
               handleEmoji({
                 emoji: reaction.emoji,
@@ -152,14 +152,12 @@ export function ButtonEmoji({
 }
 
 function EmojiSelector({
-  user,
   reactions,
   handleEmoji,
   emojiData,
   disabled = false,
 }: {
-  user: UserType;
-  reactions: MessageReactionType[];
+  reactions: EmojoReaction[];
   handleEmoji: ({
     emoji,
     isToRemove,
@@ -197,11 +195,7 @@ function EmojiSelector({
           data={emojiData ?? undefined}
           onEmojiSelect={(emojiData) => {
             const reaction = reactions.find((r) => r.emoji === emojiData.id);
-            const hasReacted =
-              (reaction &&
-                reaction.users.find((u) => u.userId === user.id) !==
-                  undefined) ||
-              false;
+            const hasReacted = reaction ? reaction.hasReacted : false;
             handleEmoji({
               emoji: emojiData.id,
               isToRemove: hasReacted,

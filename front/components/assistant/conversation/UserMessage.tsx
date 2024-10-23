@@ -2,13 +2,14 @@ import type { ContentFragmentType, WorkspaceType } from "@dust-tt/types";
 import type { UserMessageType } from "@dust-tt/types";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
+import type { ConversationCitationType } from "@app/components/assistant/conversation/messages/ConverationCitationComponent";
 import type { MessageSizeType } from "@app/components/assistant/conversation/messages/ConversationMessage";
 import { ConversationMessage } from "@app/components/assistant/conversation/messages/ConversationMessage";
 import type { MessageEmojiSelectorProps } from "@app/components/assistant/conversation/messages/MessageActions";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 
 interface UserMessageProps {
-  contentFragments?: ContentFragmentType[];
+  citations?: ConversationCitationType[];
   conversationId: string;
   isLastMessage: boolean;
   message: UserMessageType;
@@ -18,7 +19,7 @@ interface UserMessageProps {
 }
 
 export function UserMessage({
-  contentFragments,
+  citations,
   conversationId,
   isLastMessage,
   message,
@@ -33,7 +34,7 @@ export function UserMessage({
       messageEmoji={messageEmoji}
       renderName={(name) => <div className="text-base font-medium">{name}</div>}
       type="user"
-      citations={contentFragments}
+      citations={citations}
       size={size}
     >
       <div className="flex flex-col gap-4">

@@ -1,8 +1,10 @@
+import type { CitationType } from "@dust-tt/sparkle/dist/esm/components/Citation";
 import type {
   ConversationMessageReactions,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isSupportedImageContentType } from "@dust-tt/types";
 import React from "react";
 import { useSWRConfig } from "swr";
 
@@ -48,8 +50,11 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     const messageEmoji = hideReactions
       ? undefined
       : {
-          reactions: messageReactions,
-          user,
+          reactions: messageReactions.map((reaction) => ({
+            emoji: reaction.emoji,
+            hasReacted: reaction.users.some((u) => u.userId === user.id),
+            count: reaction.users.length,
+          })),
           onSubmitEmoji: async ({
             emoji,
             isToRemove,
@@ -79,10 +84,33 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     switch (type) {
       case "user_message":
+        const citations = message.contenFragments
+          ? message.contenFragments.map((contentFragment) => {
+              const isZoomable = isSupportedImageContentType(
+                contentFragment.contentType
+              );
+              const citationType: CitationType = [
+                "dust-application/slack",
+              ].includes(contentFragment.contentType)
+                ? "slack"
+                : "document";
+              return {
+                avatarSrc:
+                  contentFragment.context.profilePictureUrl || undefined,
+                citationType,
+                isZoomable,
+                sourceUrl: isZoomable
+                  ? `${contentFragment.sourceUrl}?action=view`
+                  : contentFragment.sourceUrl || undefined,
+                title: contentFragment.title,
+              };
+            })
+          : undefined;
+
         return (
           <div key={`message-id-${sId}`} ref={ref}>
             <UserMessage
-              contentFragments={message.contenFragments}
+              citations={citations}
               conversationId={conversationId}
               isLastMessage={isLastMessage}
               message={message}

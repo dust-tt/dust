@@ -1,7 +1,7 @@
-import type { ContentFragmentType } from "@dust-tt/types";
 import type { ComponentType, MouseEventHandler } from "react";
 import React from "react";
 
+import type { ConversationCitationType } from "@app/components/assistant/conversation/messages/ConverationCitationComponent";
 import type { MessageEmojiSelectorProps } from "@app/components/assistant/conversation/messages/MessageActions";
 import { MessageActions } from "@app/components/assistant/conversation/messages/MessageActions";
 import { MessageContent } from "@app/components/assistant/conversation/messages/MessageContent";
@@ -31,8 +31,7 @@ type ConversationMessageProps = {
     onClick: MouseEventHandler<HTMLButtonElement>;
   }[];
   children?: React.ReactNode;
-  // TODO(2024-05-27 flav) Change type to support AgentMessage citations.
-  citations?: ContentFragmentType[];
+  citations?: ConversationCitationType[];
   messageEmoji?: MessageEmojiSelectorProps;
   name: string | null;
   pictureUrl?: string | React.ReactNode | null;

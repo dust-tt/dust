@@ -1,12 +1,11 @@
-import type { ContentFragmentType } from "@dust-tt/types";
-
-import { ContentFragment } from "@app/components/assistant/conversation/ContentFragment";
+import type { ConversationCitationType } from "@app/components/assistant/conversation/messages/ConverationCitationComponent";
+import { ConverationCitationComponent } from "@app/components/assistant/conversation/messages/ConverationCitationComponent";
 import type { MessageSizeType } from "@app/components/assistant/conversation/messages/ConversationMessage";
 import { classNames } from "@app/lib/utils";
 
 interface MessageContentProps {
   children: React.ReactNode;
-  citations?: ContentFragmentType[];
+  citations?: ConversationCitationType[];
   size: MessageSizeType;
 }
 
@@ -38,7 +37,7 @@ export function MessageContent({
           )}
         >
           {citations.map((c) => {
-            return <ContentFragment message={c} key={c.id} />;
+            return <ConverationCitationComponent citation={c} key={c.id} />;
           })}
         </div>
       )}
