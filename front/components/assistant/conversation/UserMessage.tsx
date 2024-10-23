@@ -1,48 +1,36 @@
-import type {
-  ContentFragmentType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import type { MessageReactionType, UserMessageType } from "@dust-tt/types";
+import type { ContentFragmentType, WorkspaceType } from "@dust-tt/types";
+import type { UserMessageType } from "@dust-tt/types";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
-import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
-import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
+import type { MessageSizeType } from "@app/components/assistant/conversation/messages/ConversationMessage";
+import { ConversationMessage } from "@app/components/assistant/conversation/messages/ConversationMessage";
+import type { MessageEmojiSelectorProps } from "@app/components/assistant/conversation/messages/MessageActions";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 
 interface UserMessageProps {
+  contentFragments?: ContentFragmentType[];
   conversationId: string;
-  hideReactions?: boolean;
   isLastMessage: boolean;
   message: UserMessageType;
+  messageEmoji?: MessageEmojiSelectorProps;
   owner: WorkspaceType;
-  reactions: MessageReactionType[];
-  user: UserType;
-  contentFragments?: ContentFragmentType[];
   size: MessageSizeType;
 }
 
 export function UserMessage({
+  contentFragments,
   conversationId,
-  hideReactions,
   isLastMessage,
   message,
+  messageEmoji,
   owner,
-  reactions,
-  user,
-  contentFragments,
   size,
 }: UserMessageProps) {
   return (
     <ConversationMessage
-      owner={owner}
-      user={user}
-      conversationId={conversationId}
-      messageId={message.sId}
       pictureUrl={message.user?.image || message.context.profilePictureUrl}
       name={message.context.fullName}
-      reactions={reactions}
-      enableEmojis={!hideReactions}
+      messageEmoji={messageEmoji}
       renderName={(name) => <div className="text-base font-medium">{name}</div>}
       type="user"
       citations={contentFragments}

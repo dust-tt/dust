@@ -6,7 +6,7 @@ import type {
 import React, { useEffect, useRef } from "react";
 
 import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
-import MessageItem from "@app/components/assistant/conversation/messages/MessageItem";
+import MessageItem from "@app/components/assistant/conversation/MessageItem";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 
 interface MessageGroupProps {

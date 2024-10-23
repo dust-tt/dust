@@ -1,14 +1,14 @@
 import type { EmojiMartData } from "@dust-tt/sparkle";
-import { DataEmojiMart } from "@dust-tt/sparkle";
-import { Button, EmojiPicker, Popover, ReactionIcon } from "@dust-tt/sparkle";
-import type {
-  MessageReactionType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
+import {
+  Button,
+  DataEmojiMart,
+  EmojiPicker,
+  Popover,
+  ReactionIcon,
+} from "@dust-tt/sparkle";
+import type { MessageReactionType, UserType } from "@dust-tt/types";
 import type { ComponentType, MouseEventHandler } from "react";
 import { useRef } from "react";
-import { useSWRConfig } from "swr";
 
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { classNames } from "@app/lib/utils";
@@ -20,26 +20,16 @@ type MessageActionsProps = {
     onClick: MouseEventHandler<HTMLButtonElement>;
     disabled?: boolean;
   }[];
-  enableEmojis: boolean;
-  messageId: string;
-} & MessageEmojiSelectorProps;
+  messageEmoji?: MessageEmojiSelectorProps;
+};
 
 export function MessageActions({
-  buttons,
-  conversationId,
-  enableEmojis,
-  messageId,
-  owner,
-  reactions,
-  user,
+  buttons = [],
+  messageEmoji,
 }: MessageActionsProps) {
-  if (!buttons) {
-    return <></>;
-  }
-
   const buttonNodes = buttons?.map((button, i) => (
     <Button
-      key={`message-${messageId}-button-${i}`}
+      key={`message-button-${i}`}
       variant="tertiary"
       size="xs"
       label={button.label}
@@ -50,17 +40,18 @@ export function MessageActions({
     />
   ));
 
-  if (enableEmojis) {
+  if (messageEmoji) {
     buttonNodes.push(
       <MessageEmojiSelector
-        key={`message-${messageId}-emoji-selector`}
-        conversationId={conversationId}
-        messageId={messageId}
-        owner={owner}
-        reactions={reactions}
-        user={user}
+        reactions={messageEmoji.reactions}
+        user={messageEmoji.user}
+        onSubmitEmoji={messageEmoji.onSubmitEmoji}
       />
     );
+  }
+
+  if (buttonNodes.length === 0) {
+    return false;
   }
 
   return <div className="flex justify-end gap-2">{buttonNodes}</div>;
@@ -68,48 +59,23 @@ export function MessageActions({
 
 const MAX_MORE_REACTIONS_TO_SHOW = 9;
 
-interface MessageEmojiSelectorProps {
-  conversationId: string;
-  messageId: string;
-  owner: WorkspaceType;
+export interface MessageEmojiSelectorProps {
   reactions: MessageReactionType[];
   user: UserType;
+  onSubmitEmoji: (p: { emoji: string; isToRemove: boolean }) => Promise<void>;
 }
 
 function MessageEmojiSelector({
-  conversationId,
-  messageId,
-  owner,
   reactions,
   user,
+  onSubmitEmoji,
 }: MessageEmojiSelectorProps) {
   // TODO(2024-05-27 flav) Use mutate from `useConversationReactions` instead.
-  const { mutate } = useSWRConfig();
 
   const emojiData = DataEmojiMart as EmojiMartData;
 
   const { submit: handleEmoji, isSubmitting: isSubmittingEmoji } =
-    useSubmitFunction(
-      async ({ emoji, isToRemove }: { emoji: string; isToRemove: boolean }) => {
-        const res = await fetch(
-          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/reactions`,
-          {
-            method: isToRemove ? "DELETE" : "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              reaction: emoji,
-            }),
-          }
-        );
-        if (res.ok) {
-          await mutate(
-            `/api/w/${owner.sId}/assistant/conversations/${conversationId}/reactions`
-          );
-        }
-      }
-    );
+    useSubmitFunction(onSubmitEmoji);
 
   let slicedReactions = [...reactions];
   let hasMoreReactions = null;

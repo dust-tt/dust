@@ -1,12 +1,8 @@
-import type {
-  ContentFragmentType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import type { MessageReactionType } from "@dust-tt/types";
+import type { ContentFragmentType } from "@dust-tt/types";
 import type { ComponentType, MouseEventHandler } from "react";
 import React from "react";
 
+import type { MessageEmojiSelectorProps } from "@app/components/assistant/conversation/messages/MessageActions";
 import { MessageActions } from "@app/components/assistant/conversation/messages/MessageActions";
 import { MessageContent } from "@app/components/assistant/conversation/messages/MessageContent";
 import { MessageHeader } from "@app/components/assistant/conversation/messages/MessageHeader";
@@ -26,49 +22,41 @@ const messageTypeClasses: Record<MessageType, string> = {
   agent: "",
 };
 
+type ConversationMessageProps = {
+  avatarBusy?: boolean;
+  buttons?: {
+    disabled?: boolean;
+    icon: ComponentType;
+    label: string;
+    onClick: MouseEventHandler<HTMLButtonElement>;
+  }[];
+  children?: React.ReactNode;
+  // TODO(2024-05-27 flav) Change type to support AgentMessage citations.
+  citations?: ContentFragmentType[];
+  messageEmoji?: MessageEmojiSelectorProps;
+  name: string | null;
+  pictureUrl?: string | React.ReactNode | null;
+  renderName: (name: string | null) => React.ReactNode;
+  size?: MessageSizeType;
+  type: MessageType;
+};
+
 /**
  * Parent component for both UserMessage and AgentMessage, to ensure avatar,
  * side buttons and spacing are consistent between the two
  */
 export function ConversationMessage({
-  owner,
-  user,
-  conversationId,
-  messageId,
+  avatarBusy = false,
+  buttons,
   children,
+  citations,
+  messageEmoji,
   name,
   pictureUrl,
-  buttons,
-  reactions,
-  avatarBusy = false,
-  enableEmojis = true,
   renderName,
-  type,
   size = "normal",
-  citations,
-}: {
-  owner: WorkspaceType;
-  user: UserType;
-  conversationId: string;
-  messageId: string;
-  children?: React.ReactNode;
-  name: string | null;
-  pictureUrl?: string | React.ReactNode | null;
-  buttons?: {
-    label: string;
-    icon: ComponentType;
-    onClick: MouseEventHandler<HTMLButtonElement>;
-    disabled?: boolean;
-  }[];
-  reactions: MessageReactionType[];
-  avatarBusy?: boolean;
-  enableEmojis?: boolean;
-  renderName: (name: string | null) => React.ReactNode;
-  type: MessageType;
-  size?: MessageSizeType;
-  // TODO(2024-05-27 flav) Change type to support AgentMessage citations.
-  citations?: ContentFragmentType[];
-}) {
+  type,
+}: ConversationMessageProps) {
   return (
     <div
       className={classNames(
@@ -89,15 +77,7 @@ export function ConversationMessage({
         {children}
       </MessageContent>
 
-      <MessageActions
-        buttons={buttons}
-        messageId={messageId}
-        enableEmojis={enableEmojis}
-        conversationId={conversationId}
-        owner={owner}
-        reactions={reactions}
-        user={user}
-      />
+      <MessageActions buttons={buttons} messageEmoji={messageEmoji} />
     </div>
   );
 }

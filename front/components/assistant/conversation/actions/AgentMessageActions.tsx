@@ -8,7 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { getActionSpecification } from "@app/components/actions/types";
 import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
-import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
+import type { MessageSizeType } from "@app/components/assistant/conversation/messages/ConversationMessage";
 import { classNames } from "@app/lib/utils";
 
 interface AgentMessageActionsProps {

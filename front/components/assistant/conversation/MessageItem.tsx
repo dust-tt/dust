@@ -4,6 +4,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import React from "react";
+import { useSWRConfig } from "swr";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
@@ -38,24 +39,54 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     const convoReactions = reactions.find((r) => r.messageId === sId);
     const messageReactions = convoReactions?.reactions || [];
+    const { mutate } = useSWRConfig();
 
     if (message.visibility === "deleted") {
       return null;
     }
+
+    const messageEmoji = hideReactions
+      ? undefined
+      : {
+          reactions: messageReactions,
+          user,
+          onSubmitEmoji: async ({
+            emoji,
+            isToRemove,
+          }: {
+            emoji: string;
+            isToRemove: boolean;
+          }) => {
+            const res = await fetch(
+              `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/reactions`,
+              {
+                method: isToRemove ? "DELETE" : "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  reaction: emoji,
+                }),
+              }
+            );
+            if (res.ok) {
+              await mutate(
+                `/api/w/${owner.sId}/assistant/conversations/${conversationId}/reactions`
+              );
+            }
+          },
+        };
 
     switch (type) {
       case "user_message":
         return (
           <div key={`message-id-${sId}`} ref={ref}>
             <UserMessage
+              contentFragments={message.contenFragments}
               conversationId={conversationId}
-              hideReactions={hideReactions}
               isLastMessage={isLastMessage}
               message={message}
               owner={owner}
-              reactions={messageReactions}
-              user={user}
-              contentFragments={message.contenFragments}
               size={isInModal ? "compact" : "normal"}
             />
           </div>
@@ -65,15 +96,13 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         return (
           <div key={`message-id-${sId}`} ref={ref}>
             <AgentMessage
-              message={message}
-              owner={owner}
-              user={user}
               conversationId={conversationId}
-              reactions={messageReactions}
-              hideReactions={hideReactions}
               isInModal={isInModal}
-              size={isInModal ? "compact" : "normal"}
               isLastMessage={isLastMessage}
+              message={message}
+              messageEmoji={messageEmoji}
+              owner={owner}
+              size={isInModal ? "compact" : "normal"}
             />
           </div>
         );

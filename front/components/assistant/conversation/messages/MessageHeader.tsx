@@ -1,6 +1,6 @@
 import { Avatar } from "@dust-tt/sparkle";
 
-import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
+import type { MessageSizeType } from "@app/components/assistant/conversation/messages/ConversationMessage";
 import { classNames } from "@app/lib/utils";
 
 interface MessageHeaderProps {
