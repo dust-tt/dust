@@ -1,10 +1,12 @@
+import type {
+  ConversationCitationType,
+  ConversationMessageEmojiSelectorProps,
+  ConversationMessageSizeType,
+} from "@dust-tt/sparkle";
+import { ConversationMessage } from "@dust-tt/sparkle";
 import type { UserMessageType, WorkspaceType } from "@dust-tt/types";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
-import type { ConversationCitationType } from "@app/components/assistant/conversation/messages/ConverationCitationComponent";
-import type { MessageSizeType } from "@app/components/assistant/conversation/messages/ConversationMessage";
-import { ConversationMessage } from "@app/components/assistant/conversation/messages/ConversationMessage";
-import type { MessageEmojiSelectorProps } from "@app/components/assistant/conversation/messages/MessageActions";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 
 interface UserMessageProps {
@@ -12,9 +14,9 @@ interface UserMessageProps {
   conversationId: string;
   isLastMessage: boolean;
   message: UserMessageType;
-  messageEmoji?: MessageEmojiSelectorProps;
+  messageEmoji?: ConversationMessageEmojiSelectorProps;
   owner: WorkspaceType;
-  size: MessageSizeType;
+  size: ConversationMessageSizeType;
 }
 
 export function UserMessage({

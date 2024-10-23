@@ -1,3 +1,7 @@
+import type {
+  ConversationMessageEmojiSelectorProps,
+  ConversationMessageSizeType,
+} from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
@@ -6,6 +10,7 @@ import {
   Citation,
   ClipboardIcon,
   ContentMessage,
+  ConversationMessage,
   DocumentDuplicateIcon,
   EyeIcon,
   Popover,
@@ -47,9 +52,6 @@ import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdo
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import type { MessageSizeType } from "@app/components/assistant/conversation/messages/ConversationMessage";
-import { ConversationMessage } from "@app/components/assistant/conversation/messages/ConversationMessage";
-import type { MessageEmojiSelectorProps } from "@app/components/assistant/conversation/messages/MessageActions";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -64,9 +66,9 @@ interface AgentMessageProps {
   isInModal: boolean;
   isLastMessage: boolean;
   message: AgentMessageType;
-  messageEmoji?: MessageEmojiSelectorProps;
+  messageEmoji?: ConversationMessageEmojiSelectorProps;
   owner: WorkspaceType;
-  size: MessageSizeType;
+  size: ConversationMessageSizeType;
 }
 
 /**
