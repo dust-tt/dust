@@ -114,7 +114,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }: {
     blob: CreationAttributes<ZendeskBrand>;
     transaction?: Transaction;
-  }) {
+  }): Promise<ZendeskBrandResource> {
     let brand;
     if (transaction) {
       brand = await ZendeskBrand.create({ ...blob }, { transaction });
@@ -124,22 +124,21 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return new this(this.model, brand.get());
   }
 
-  static async revokePermissions({
-    brandId,
-  }: {
-    brandId: number;
-  }): Promise<void> {
+  async revokePermissions(): Promise<void> {
+    if (this?.permission === "read") {
+      await this.update({ permission: "none" });
+    }
     await ZendeskCategory.update(
       { permission: "none" },
-      { where: { brandId: brandId } }
+      { where: { brandId: this.brandId } }
     );
     await ZendeskArticle.update(
       { permission: "none" },
-      { where: { brandId: brandId } }
+      { where: { brandId: this.brandId } }
     );
     await ZendeskTicket.update(
       { permission: "none" },
-      { where: { brandId: brandId } }
+      { where: { brandId: this.brandId } }
     );
   }
 
@@ -149,18 +148,21 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }: {
     connectorId: number;
     brandId: number;
-  }): Promise<ZendeskBrand | null> {
-    return ZendeskBrand.findOne({ where: { connectorId, brandId } });
+  }): Promise<ZendeskBrandResource | null> {
+    const blob = await ZendeskBrand.findOne({
+      where: { connectorId, brandId },
+    });
+    return blob && new this(this.model, blob.get());
   }
 
   static async fetchAllReadOnly({
     connectorId,
   }: {
     connectorId: number;
-  }): Promise<ZendeskBrand[]> {
+  }): Promise<ZendeskBrandResource[]> {
     return ZendeskBrand.findAll({
       where: { connectorId, permission: "read" },
-    });
+    }).then((brands) => brands.map((brand) => new this(this.model, brand)));
   }
 
   static async fetchReadOnlyTickets({
@@ -191,14 +193,14 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     connectorId,
   }: {
     connectorId: number;
-  }): Promise<ZendeskBrand[]> {
+  }): Promise<ZendeskBrandResource[]> {
     return ZendeskBrand.findAll({
       where: {
         connectorId: connectorId,
         permission: "read",
         hasHelpCenter: true,
       },
-    });
+    }).then((brands) => brands.map((brand) => new this(this.model, brand)));
   }
 }
 
@@ -252,10 +254,23 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     connectorId,
   }: {
     connectorId: number;
-    brandId: number;
-  }): Promise<ZendeskCategory[]> {
+  }): Promise<ZendeskCategoryResource[]> {
     return ZendeskCategory.findAll({
       where: { connectorId, permission: "read" },
+    }).then((categories) =>
+      categories.map((category) => new this(this.model, category))
+    );
+  }
+
+  static async fetchReadOnlyArticles({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }): Promise<ZendeskArticle[]> {
+    return ZendeskArticle.findAll({
+      where: { connectorId, categoryId, permission: "read" },
     });
   }
 }
