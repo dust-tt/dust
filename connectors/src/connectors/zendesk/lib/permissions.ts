@@ -40,7 +40,11 @@ export async function retrieveSelectedNodes({
       title: brand.name,
       sourceUrl: brand.url,
       expandable: true,
-      permission: brand.permission,
+      permission:
+        brand.helpCenterPermission === "read" &&
+        brand.ticketsPermission === "read"
+          ? "read"
+          : "none",
       dustDocumentId: null,
       lastUpdatedAt: brand.updatedAt.getTime() ?? null,
     };
@@ -56,7 +60,7 @@ export async function retrieveSelectedNodes({
       title: "Help Center",
       sourceUrl: null,
       expandable: true,
-      permission: brand.permission,
+      permission: brand.helpCenterPermission,
       dustDocumentId: null,
       lastUpdatedAt: brand.updatedAt.getTime(),
     }));

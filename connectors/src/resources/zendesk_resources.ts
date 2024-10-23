@@ -104,8 +104,8 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       hasHelpCenter: this.hasHelpCenter,
       subdomain: this.subdomain,
       brandId: this.brandId,
-      permission: this.permission,
-
+      helpCenterPermission: this.helpCenterPermission,
+      ticketsPermission: this.ticketsPermission,
       connectorId: this.connectorId,
     };
   }
@@ -132,8 +132,8 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }
 
   async revokeHelpCenterPermissions(): Promise<void> {
-    if (this?.permission === "read") {
-      await this.update({ permission: "none" });
+    if (this.helpCenterPermission === "read") {
+      await this.update({ helpCenterPermission: "none" });
     }
     await ZendeskCategory.update(
       { permission: "none" },
@@ -146,8 +146,8 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }
 
   async revokeTicketsPermissions(): Promise<void> {
-    if (this?.permission === "read") {
-      await this.update({ permission: "none" });
+    if (this.ticketsPermission === "read") {
+      await this.update({ ticketsPermission: "none" });
     }
     await ZendeskTicket.update(
       { permission: "none" },
@@ -174,7 +174,11 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     connectorId: number;
   }): Promise<ZendeskBrandResource[]> {
     return ZendeskBrand.findAll({
-      where: { connectorId, permission: "read" },
+      where: {
+        connectorId,
+        helpCenterPermission: "read",
+        ticketsPermission: "read",
+      },
     }).then((brands) => brands.map((brand) => new this(this.model, brand)));
   }
 
@@ -204,20 +208,6 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
         (category) => new ZendeskCategoryResource(ZendeskCategory, category)
       )
     );
-  }
-
-  static async fetchBrandsWithHelpCenter({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): Promise<ZendeskBrandResource[]> {
-    return ZendeskBrand.findAll({
-      where: {
-        connectorId: connectorId,
-        permission: "read",
-        hasHelpCenter: true,
-      },
-    }).then((brands) => brands.map((brand) => new this(this.model, brand)));
   }
 }
 

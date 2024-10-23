@@ -32,8 +32,11 @@ export async function allowSyncZendeskBrand({
     connectorId,
     brandId,
   });
-  if (brand?.permission === "none") {
-    await brand.update({ permission: "read" });
+  if (brand?.helpCenterPermission === "none") {
+    await brand.update({ helpCenterPermission: "read" });
+  }
+  if (brand?.ticketsPermission === "none") {
+    await brand.update({ ticketsPermission: "read" });
   }
 
   const token = await getZendeskAccessToken(connectionId);
@@ -50,7 +53,8 @@ export async function allowSyncZendeskBrand({
           connectorId: connectorId,
           brandId: fetchedBrand.id,
           name: fetchedBrand.name || "Brand",
-          permission: "read",
+          helpCenterPermission: "read",
+          ticketsPermission: "read",
           hasHelpCenter: fetchedBrand.has_help_center,
           url: fetchedBrand.url,
         },
@@ -78,7 +82,7 @@ export async function allowSyncZendeskBrand({
 }
 
 /**
- * Mark a help center as permission "none" and all children (collections & articles).
+ * Mark a help center as permission "none" and all children (collections and articles).
  */
 export async function revokeSyncZendeskBrand({
   connectorId,
@@ -123,11 +127,12 @@ export async function retrieveZendeskBrandPermissions({
   const isRootLevel = !parentInternalId;
   let nodes: ContentNode[] = [];
 
-  // At the root level, we show one node for each brand that has a help center.
+  // At the root level, we show one node for each brand.
   if (isRootLevel) {
     if (isReadPermissionsOnly) {
-      const brandsInDatabase =
-        await ZendeskBrandResource.fetchBrandsWithHelpCenter({ connectorId });
+      const brandsInDatabase = await ZendeskBrandResource.fetchAllReadOnly({
+        connectorId,
+      });
       nodes = brandsInDatabase.map((brand) => ({
         provider: connector.type,
         internalId: getBrandInternalId(connectorId, brand.brandId),
@@ -136,7 +141,11 @@ export async function retrieveZendeskBrandPermissions({
         title: brand.name,
         sourceUrl: brand.url,
         expandable: true,
-        permission: brand.permission,
+        permission:
+          brand.helpCenterPermission === "read" &&
+          brand.ticketsPermission === "read"
+            ? "read"
+            : "none",
         dustDocumentId: null,
         lastUpdatedAt: brand.updatedAt.getTime(),
       }));

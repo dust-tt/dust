@@ -34,8 +34,8 @@ export async function allowSyncZendeskTickets({
     connectorId,
     brandId,
   });
-  if (brand?.permission === "none") {
-    await brand.update({ permission: "read" });
+  if (brand?.ticketsPermission === "none") {
+    await brand.update({ ticketsPermission: "read" });
   }
 
   const token = await getZendeskAccessToken(connectionId);
@@ -52,7 +52,8 @@ export async function allowSyncZendeskTickets({
           connectorId: connectorId,
           brandId: fetchedBrand.id,
           name: fetchedBrand.name || "Brand",
-          permission: "read",
+          helpCenterPermission: "none",
+          ticketsPermission: "read",
           hasHelpCenter: fetchedBrand.has_help_center,
           url: fetchedBrand.url,
         },
@@ -71,7 +72,7 @@ export async function allowSyncZendeskTickets({
 }
 
 /**
- * Mark a help center as permission "none" and all children (collections & articles).
+ * Mark a help center as permission "none" and all children (collections and articles).
  */
 export async function revokeSyncZendeskTickets({
   connectorId,

@@ -40,8 +40,9 @@ export async function allowSyncZendeskHelpCenter({
     connectorId,
     brandId,
   });
-  if (brand?.permission === "none") {
-    await brand.update({ permission: "read" });
+
+  if (brand?.helpCenterPermission === "none") {
+    await brand.update({ helpCenterPermission: "read" });
   }
 
   const token = await getZendeskAccessToken(connectionId);
@@ -58,7 +59,8 @@ export async function allowSyncZendeskHelpCenter({
           connectorId: connectorId,
           brandId: fetchedBrand.id,
           name: fetchedBrand.name || "Brand",
-          permission: "read",
+          helpCenterPermission: "read",
+          ticketsPermission: "none",
           hasHelpCenter: fetchedBrand.has_help_center,
           url: fetchedBrand.url,
         },
@@ -91,7 +93,7 @@ export async function allowSyncZendeskHelpCenter({
 }
 
 /**
- * Mark a help center as permission "none" and all children (collections & articles).
+ * Mark a help center as permission "none" and all children (collections and articles).
  */
 export async function revokeSyncZendeskHelpCenter({
   connectorId,
