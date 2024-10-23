@@ -1743,7 +1743,7 @@ impl DataSource {
         &self,
         store: Box<dyn Store + Sync + Send>,
         document_id: &str,
-    ) -> Result<()> {
+    ) -> Result<Vec<DocumentVersion>> {
         let store = store.clone();
 
         let (versions, _) = store
@@ -1762,8 +1762,7 @@ impl DataSource {
             .filter(|v| v.status == DocumentStatus::Deleted)
             .collect::<Vec<_>>();
 
-        println!("Document versions for scrubbing {:?}", versions);
-
+        let mut scrubbed_hashes: Vec<DocumentVersion> = vec![];
         for v in versions {
             let document_id_hash = make_document_id_hash(document_id);
 
@@ -1791,9 +1790,11 @@ impl DataSource {
                 version_hash = v.hash,
                 "Scrubbed deleted document version"
             );
+
+            scrubbed_hashes.push(v);
         }
 
-        Ok(())
+        Ok(scrubbed_hashes)
     }
 
     pub async fn delete(

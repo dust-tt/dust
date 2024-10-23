@@ -1502,7 +1502,7 @@ impl Store for PostgresStore {
                     .query(&stmt, &[&data_source_row_id, &document_id, &latest_hash])
                     .await?;
                 match r.len() {
-                    0 => Err(anyhow!("Unknown Document: {}", document_id))?,
+                    0 => Err(anyhow!("Unknown document hash"))?,
                     1 => r[0].get(0),
                     _ => unreachable!(),
                 }
@@ -1519,7 +1519,9 @@ impl Store for PostgresStore {
                     .await?;
                 let r = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
                 match r.len() {
-                    0 => Err(anyhow!("Unknown Document: {}", document_id))?,
+                    // If no hash was specified and there are no versions, just return an empty
+                    // array.
+                    0 => return Ok((vec![], 0)),
                     1 => r[0].get(0),
                     _ => unreachable!(),
                 }
