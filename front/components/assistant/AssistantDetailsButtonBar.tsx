@@ -2,8 +2,11 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   ClipboardIcon,
-  DropdownMenu,
   MoreIcon,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
   PencilSquareIcon,
   Separator,
   StarIcon,
@@ -68,61 +71,53 @@ export function AssistantDetailsButtonBar({
           isPrivateAssistant={agentConfiguration.scope === "private"}
         />
 
-        <DropdownMenu className="text-element-700">
-          {({ close }) => (
-            <>
-              <DropdownMenu.Button>
-                <Button
-                  key="show_details"
-                  icon={MoreIcon}
-                  label="Actions"
-                  labelVisible={false}
-                  disabledTooltip
-                  size="sm"
-                  variant="tertiary"
-                  hasMagnifying={false}
-                />
-              </DropdownMenu.Button>
-              {/* TODO: get rid of the hardcoded value */}
-              <DropdownMenu.Items width={230}>
-                <DropdownMenu.Item
-                  label={`Copy assistant ID`}
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    await navigator.clipboard.writeText(agentConfiguration.sId);
-                    close();
-                  }}
-                  icon={ClipboardIcon}
-                />
-                {agentConfiguration.scope !== "global" && (
-                  <>
-                    <DropdownMenu.Item
-                      label="Duplicate (New)"
-                      link={{
-                        href: `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`,
-                      }}
-                      icon={ClipboardIcon}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        close();
-                      }}
-                    />
-                    {allowDeletion && (
-                      <DropdownMenu.Item
-                        label="Delete"
-                        icon={TrashIcon}
-                        variant="warning"
-                        onClick={() => {
-                          setShowDeletionModal(true);
-                        }}
-                      />
-                    )}
-                  </>
+        <NewDropdownMenu>
+          <NewDropdownMenuTrigger>
+            <Button
+              key="show_details"
+              icon={MoreIcon}
+              label="Actions"
+              labelVisible={false}
+              disabledTooltip
+              size="sm"
+              variant="tertiary"
+              hasMagnifying={false}
+            />
+          </NewDropdownMenuTrigger>
+          <NewDropdownMenuContent>
+            <NewDropdownMenuItem
+              label="Copy assistant ID"
+              onClick={async (e) => {
+                await navigator.clipboard.writeText(agentConfiguration.sId);
+              }}
+              icon={ClipboardIcon}
+            />
+            {agentConfiguration.scope !== "global" && (
+              <>
+                <Link
+                  href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`}
+                >
+                  <NewDropdownMenuItem
+                    label="Duplicate (New)"
+                    icon={ClipboardIcon}
+                  />
+                </Link>
+
+                {allowDeletion && (
+                  <NewDropdownMenuItem
+                    label="Delete"
+                    icon={TrashIcon}
+                    // TODO:
+                    variant="warning"
+                    onClick={() => {
+                      setShowDeletionModal(true);
+                    }}
+                  />
                 )}
-              </DropdownMenu.Items>
-            </>
-          )}
-        </DropdownMenu>
+              </>
+            )}
+          </NewDropdownMenuContent>
+        </NewDropdownMenu>
       </>
     );
   }
