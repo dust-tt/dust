@@ -36,7 +36,7 @@ type ConversationMessageProps = {
   messageEmoji?: ConversationMessageEmojiSelectorProps;
   name: string | null;
   pictureUrl?: string | React.ReactNode | null;
-  renderName: (name: string | null) => React.ReactNode;
+  renderName?: (name: string | null) => React.ReactNode;
   size?: ConversationMessageSizeType;
   type: MessageType;
 };
@@ -53,7 +53,9 @@ export function ConversationMessage({
   messageEmoji,
   name,
   pictureUrl,
-  renderName,
+  renderName = (name) => (
+    <div className="s-text-base s-font-medium">{name}</div>
+  ),
   size = "normal",
   type,
 }: ConversationMessageProps) {
