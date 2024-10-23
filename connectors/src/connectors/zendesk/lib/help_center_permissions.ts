@@ -48,10 +48,25 @@ export async function retrieveZendeskHelpCenterPermissions({
     let brandId = getBrandIdFromInternalId(connectorId, parentInternalId);
     // If the parent is a Brand, we return a single node for its help center.
     if (brandId) {
-      const brandInDatabase = await ZendeskBrand.findOne({
-        where: { connectorId, brandId },
-      });
-      if (brandInDatabase?.hasHelpCenter) {
+      let hasHelpCenter = false;
+      if (isReadPermissionsOnly) {
+        const brandInDatabase = await ZendeskBrand.findOne({
+          where: { connectorId, brandId },
+        });
+        hasHelpCenter =
+          brandInDatabase !== null && brandInDatabase.hasHelpCenter;
+      } else {
+        try {
+          const fetchedBrand = await zendeskApiClient.brand.show(brandId);
+          hasHelpCenter = fetchedBrand.result.brand.has_help_center;
+        } catch (e) {
+          logger.error(
+            { connectorId, brandId },
+            "[Zendesk] Could not fetch brand."
+          );
+        }
+      }
+      if (hasHelpCenter) {
         const helpCenterNode: ContentNode = {
           provider: connector.type,
           internalId: getHelpCenterInternalId(connectorId, brandId),
