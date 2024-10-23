@@ -21,7 +21,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "s-bg-primary s-text-white hover:s-bg-primary-light active:s-bg-primary-dark disabled:s-bg-primary-muted",
+          "s-bg-primary s-text-white hover:s-bg-primary-light active:s-bg-primary-dark disabled:s-bg-primary-muted dark:s-bg-primary-dark dark:s-text-primary-950-dark dark::hover:s-bg-primary-light-dark dark:active:s-bg-primary-dark-dark dark:disabled:s-bg-primary-muted-dark",
         highlight:
           "s-bg-highlight s-text-white hover:s-bg-highlight-light active:s-bg-highlight-dark disabled:s-bg-highlight-muted",
         warning:
@@ -162,6 +162,7 @@ export const NewButton = React.forwardRef<HTMLButtonElement, NewButtonProps>(
     );
   }
 );
+NewButton.displayName = "NewButton";
 
 interface NewButtonBarProps {
   children: React.ReactNode;
@@ -205,6 +206,7 @@ const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
     );
   }
 );
-MetaButton.displayName = "Button";
+MetaButton.displayName = "MetaButton";
 
 export { buttonVariants, MetaButton };
+export type { NewButtonProps };
