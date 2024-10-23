@@ -1673,10 +1673,17 @@ impl DataSource {
             None => Ok(()),
         }?;
 
-        // Delete document (SQL)
+        // Delete document (SQL). This one marks the document as deleted.
         store
             .delete_data_source_document(&self.project, &self.data_source_id, document_id)
-            .await
+            .await?;
+
+        // We also scrub it directly. We used to scrub async but now that we store a GCS version
+        // for each data_source_documents entry we can scrub directly at the time of delete.
+        self.scrub_document_deleted_versions(store, document_id)
+            .await?;
+
+        Ok(())
     }
 
     async fn delete_document_for_embedder(
