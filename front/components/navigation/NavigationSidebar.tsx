@@ -87,7 +87,6 @@ export const NavigationSidebar = React.forwardRef<
                   user={user}
                   workspace={owner}
                   readOnly={false}
-                  displayDropDownOrigin="topLeft"
                   onWorkspaceUpdate={(workspace) => {
                     const assistantRoute = `/w/${workspace.sId}/assistant/new`;
                     if (workspace.id !== owner.id) {

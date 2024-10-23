@@ -114,7 +114,6 @@ export default function Subscribe({
                       user={user}
                       workspace={owner}
                       readOnly={false}
-                      displayDropDownOrigin="topRight"
                       onWorkspaceUpdate={(workspace) => {
                         const assistantRoute = `/w/${workspace.sId}/assistant/new`;
                         if (workspace.id !== owner.id) {
