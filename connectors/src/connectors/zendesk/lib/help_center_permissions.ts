@@ -18,13 +18,12 @@ import {
   changeZendeskClientSubdomain,
   createZendeskClient,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
-import {
-  ZendeskArticle,
-  ZendeskBrand,
-  ZendeskCategory,
-} from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import {
+  ZendeskBrandResource,
+  ZendeskCategoryResource,
+} from "@connectors/resources/zendesk_resources";
 
 export async function retrieveZendeskHelpCenterPermissions({
   connectorId,
@@ -59,8 +58,9 @@ export async function retrieveZendeskHelpCenterPermissions({
   if (brandId) {
     let hasHelpCenter = false;
     if (isReadPermissionsOnly) {
-      const brandInDatabase = await ZendeskBrand.findOne({
-        where: { connectorId, brandId },
+      const brandInDatabase = await ZendeskBrandResource.fetchByBrandId({
+        connectorId,
+        brandId,
       });
       hasHelpCenter = brandInDatabase !== null && brandInDatabase.hasHelpCenter;
     } else {
@@ -96,9 +96,11 @@ export async function retrieveZendeskHelpCenterPermissions({
   // If isReadPermissionsOnly, we retrieve the list of Categories from Zendesk
   brandId = getBrandIdFromHelpCenterId(connectorId, parentInternalId);
   if (brandId) {
-    const categoriesInDatabase = await ZendeskCategory.findAll({
-      where: { connectorId, brandId, permission: "read" },
-    });
+    const categoriesInDatabase =
+      await ZendeskBrandResource.fetchReadOnlyCategories({
+        connectorId,
+        brandId,
+      });
     if (isReadPermissionsOnly) {
       nodes = categoriesInDatabase.map((category) => ({
         provider: connector.type,
@@ -144,9 +146,11 @@ export async function retrieveZendeskHelpCenterPermissions({
   // If isReadPermissionsOnly = false, we do not show anything.
   const categoryId = getCategoryIdFromInternalId(connectorId, parentInternalId);
   if (categoryId && isReadPermissionsOnly) {
-    const articlesInDatabase = await ZendeskArticle.findAll({
-      where: { connectorId, categoryId, permission: "read" },
-    });
+    const articlesInDatabase =
+      await ZendeskCategoryResource.fetchReadOnlyArticles({
+        connectorId,
+        categoryId,
+      });
     nodes = articlesInDatabase.map((article) => ({
       provider: connector.type,
       internalId: getArticleInternalId(connectorId, article.categoryId),

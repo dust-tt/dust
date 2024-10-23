@@ -6,15 +6,14 @@ import type {
 } from "@dust-tt/types";
 
 import {
-  getBrandIdFromHelpCenterId,
   getBrandIdFromInternalId,
   getBrandIdFromTicketsId,
   getTicketInternalId,
   getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
-import { ZendeskTicket } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 export async function retrieveZendeskTicketPermissions({
   connectorId,
@@ -62,10 +61,11 @@ export async function retrieveZendeskTicketPermissions({
   // Otherwise, we do not show anything.
   brandId = getBrandIdFromTicketsId(connectorId, parentInternalId);
   if (brandId && filterPermission === "read") {
-    const articlesInDatabase = await ZendeskTicket.findAll({
-      where: { connectorId, brandId, permission: "read" },
+    const ticketsInDatabase = await ZendeskBrandResource.fetchReadOnlyTickets({
+      connectorId,
+      brandId,
     });
-    const nodes: ContentNode[] = articlesInDatabase.map((ticket) => ({
+    const nodes: ContentNode[] = ticketsInDatabase.map((ticket) => ({
       provider: connector.type,
       internalId: getTicketInternalId(connectorId, ticket.ticketId),
       parentInternalId: parentInternalId,

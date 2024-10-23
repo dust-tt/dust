@@ -5,9 +5,12 @@ import {
   getCategoryInternalId,
   getHelpCenterInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
-import { ZendeskBrand, ZendeskCategory } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import {
+  ZendeskBrandResource,
+  ZendeskCategoryResource,
+} from "@connectors/resources/zendesk_resources";
 
 /**
  * Retrieve all selected nodes by the admin when setting permissions.
@@ -27,9 +30,7 @@ export async function retrieveSelectedNodes({
     throw new Error("Connector not found");
   }
 
-  const brands = await ZendeskBrand.findAll({
-    where: { connectorId, permission: "read" },
-  });
+  const brands = await ZendeskBrandResource.fetchAllReadOnly({ connectorId });
   const brandNodes: ContentNode[] = brands.map((brand) => {
     return {
       provider: connector.type,
@@ -60,8 +61,8 @@ export async function retrieveSelectedNodes({
       lastUpdatedAt: brand.updatedAt.getTime(),
     }));
 
-  const categories = await ZendeskCategory.findAll({
-    where: { connectorId: connectorId, permission: "read" },
+  const categories = await ZendeskCategoryResource.fetchAllReadOnly({
+    connectorId,
   });
   const categoriesNodes: ContentNode[] = categories.map((category) => {
     return {
