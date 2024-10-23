@@ -1,4 +1,5 @@
 import {
+  assertNever,
   ConnectorsAPI,
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
@@ -516,6 +517,22 @@ const productionCheck = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
+export const CLI_OBJECT_TYPES = [
+  "workspace",
+  "user",
+  "data-source",
+  "conversation",
+  "transcripts",
+  "registry",
+  "production-check",
+] as const;
+
+export type CliObjectType = (typeof CLI_OBJECT_TYPES)[number];
+
+export function isCliObjectType(val: string): val is CliObjectType {
+  return (CLI_OBJECT_TYPES as unknown as string[]).includes(val);
+}
+
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -527,6 +544,13 @@ const main = async () => {
   }
 
   const [objectType, command] = argv._;
+
+  if (!isCliObjectType(objectType)) {
+    console.log(
+      "Unknown object type, possible values: " + CLI_OBJECT_TYPES.join(", ")
+    );
+    return;
+  }
 
   switch (objectType) {
     case "workspace":
@@ -547,12 +571,7 @@ const main = async () => {
     case "production-check":
       return productionCheck(command, argv);
     default:
-      console.log(
-        "Unknown object type, possible values: " +
-          "`workspace`, `user`, `data-source`, `event-schema`, `conversation`, " +
-          "`transcripts`, `registry`, `production-check`"
-      );
-      return;
+      assertNever(objectType);
   }
 };
 
