@@ -13,9 +13,8 @@ import {
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
-  fetchZendeskBrand,
-  fetchZendeskBrands,
-  fetchZendeskCategories,
+  changeZendeskClientSubdomain,
+  createZendeskClient,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import {
   ZendeskArticle,
@@ -38,28 +37,26 @@ export async function allowSyncBrand({
   subdomain: string;
   connectorId: ModelId;
   connectionId: string;
-  brandId: string;
+  brandId: number;
   withChildren?: boolean;
 }): Promise<ZendeskBrand> {
   let brand = await ZendeskBrand.findOne({ where: { connectorId, brandId } });
-
-  const accessToken = await getZendeskAccessToken(connectionId);
   if (brand?.permission === "none") {
-    await brand.update({
-      permission: "read",
-    });
+    await brand.update({ permission: "read" });
   }
+
+  const token = await getZendeskAccessToken(connectionId);
+  const zendeskApiClient = createZendeskClient({ token, subdomain });
+
   if (!brand) {
-    const fetchedBrand = await fetchZendeskBrand({
-      subdomain,
-      accessToken,
-      brandId,
-    });
+    const {
+      result: { brand: fetchedBrand },
+    } = await zendeskApiClient.brand.show(brandId);
     if (fetchedBrand) {
       brand = await ZendeskBrand.create({
         subdomain: fetchedBrand.subdomain,
         connectorId: connectorId,
-        brandId: fetchedBrand.id.toString(),
+        brandId: fetchedBrand.id,
         name: fetchedBrand.name || "Brand",
         permission: "read",
         hasHelpCenter: fetchedBrand.has_help_center,
@@ -142,8 +139,8 @@ export async function retrieveZendeskHelpCenterPermissions({
     return [helpCenterNode];
   }
 
-  const subdomain = "d3v-dust"; // TODO: get subdomain from connector
-  const accessToken = await getZendeskAccessToken(connector.connectionId);
+  const token = await getZendeskAccessToken(connector.connectionId);
+  const zendeskApiClient = createZendeskClient({ token });
 
   const isReadPermissionsOnly = filterPermission === "read";
   let nodes: ContentNode[] = [];
@@ -174,12 +171,12 @@ export async function retrieveZendeskHelpCenterPermissions({
         lastUpdatedAt: brand.updatedAt.getTime(),
       }));
     } else {
-      const brands = await fetchZendeskBrands({ subdomain, accessToken });
+      const { result: brands } = await zendeskApiClient.brand.list();
       nodes = brands
         .filter((brand) => brand.has_help_center)
         .map((brand) => ({
           provider: connector.type,
-          internalId: getBrandInternalId(connectorId, brand.id.toString()),
+          internalId: getBrandInternalId(connectorId, brand.id),
           parentInternalId: getHelpCenterInternalId(connectorId),
           type: "folder",
           title: brand.name || "Brand",
@@ -215,19 +212,16 @@ export async function retrieveZendeskHelpCenterPermissions({
         lastUpdatedAt: category.updatedAt.getTime(),
       }));
     } else {
-      const categories = await fetchZendeskCategories({
-        subdomain,
-        accessToken,
-        brandId,
-      });
+      await changeZendeskClientSubdomain({ client: zendeskApiClient, brandId });
+      const categories = await zendeskApiClient.helpcenter.categories.list();
       nodes = categories.map((category) => {
         const matchingDbEntry = categoriesInDatabase.find(
-          (c) => c.categoryId === category.id.toString()
+          (c) => c.categoryId === category.id
         );
         return {
           provider: connector.type,
-          internalId: category.id.toString(),
-          parentInternalId: brandId,
+          internalId: getCategoryInternalId(connectorId, category.id),
+          parentInternalId: getBrandInternalId(connectorId, brandId),
           type: "folder",
           title: category.name,
           sourceUrl: category.html_url,
