@@ -1,4 +1,13 @@
-import { Button, DropdownMenu, Modal, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  DropdownMenu,
+  Modal,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type {
   DataSourceType,
   WhitelistableFeature,
@@ -194,8 +203,8 @@ const WorkspacePage = ({
               </div>
             </div>
             <div>
-              <DropdownMenu>
-                <DropdownMenu.Button>
+              <NewDropdownMenu>
+                <NewDropdownMenuTrigger>
                   <Button
                     type="select"
                     labelVisible={true}
@@ -204,10 +213,10 @@ const WorkspacePage = ({
                     hasMagnifying={false}
                     size="sm"
                   />
-                </DropdownMenu.Button>
-                <DropdownMenu.Items origin="auto" width={240}>
+                </NewDropdownMenuTrigger>
+                <NewDropdownMenuContent>
                   {[null, "interesting"].map((segment) => (
-                    <DropdownMenu.Item
+                    <NewDropdownMenuItem
                       label={segment ?? "none"}
                       key={segment ?? "all"}
                       onClick={() => {
@@ -215,10 +224,10 @@ const WorkspacePage = ({
                           segment as WorkspaceSegmentationType
                         );
                       }}
-                    ></DropdownMenu.Item>
+                    />
                   ))}
-                </DropdownMenu.Items>
-              </DropdownMenu>
+                </NewDropdownMenuContent>
+              </NewDropdownMenu>
             </div>
           </div>
 
