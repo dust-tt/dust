@@ -64,7 +64,7 @@ export function AssistantPicker({
   pickerButton?: React.ReactNode;
   showMoreDetailsButtons?: boolean;
   showFooterButtons?: boolean;
-  size?: "sm" | "md";
+  size?: "xs" | "sm" | "md";
 }) {
   const [searchText, setSearchText] = useState("");
   const [searchedAssistants, setSearchedAssistants] = useState<

@@ -120,8 +120,8 @@ const InputBarContainer = ({
         )}
       />
 
-      <div className="flex flex-row items-end justify-between gap-2 self-stretch py-2 pr-2 sm:flex-col sm:border-0">
-        <div className="flex px-4 py-2 sm:px-2">
+      <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-2 pr-2 sm:flex-col sm:border-0">
+        <div className="flex py-2">
           {actions.includes("attachment") && (
             <>
               <input
@@ -141,7 +141,7 @@ const InputBarContainer = ({
               <Button
                 variant="ghost"
                 icon={AttachmentIcon}
-                size="sm"
+                size="xs"
                 tooltip={`Add a document to the conversation (${supportedFileExtensions.join(", ")}).`}
                 onClick={() => {
                   fileInputRef.current?.click();
@@ -153,7 +153,7 @@ const InputBarContainer = ({
             actions.includes("assistants-list-with-actions")) && (
             <AssistantPicker
               owner={owner}
-              size="sm"
+              size="xs"
               onItemClick={(c) => {
                 editorService.insertMention({ id: c.sId, label: c.name });
               }}
@@ -171,7 +171,7 @@ const InputBarContainer = ({
               <Button
                 variant="ghost"
                 icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
-                size="sm"
+                size="xs"
                 onClick={handleExpansionToggle}
               />
             </div>
