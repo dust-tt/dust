@@ -674,11 +674,8 @@ const AdvancedSettingsModal = ({
                   />
                 </div>
                 <Button
-                  variant="tertiary"
-                  labelVisible={false}
-                  label=""
+                  variant="outline"
                   icon={XMarkIcon}
-                  disabledTooltip={true}
                   onClick={() => {
                     const newHeaders = headers.filter((_, i) => i !== index);
                     onSave(newHeaders);
@@ -690,7 +687,7 @@ const AdvancedSettingsModal = ({
           </div>
           <div className="flex">
             <Button
-              variant="secondary"
+              variant="outline"
               className="outline"
               label="Add Header"
               onClick={() => {
