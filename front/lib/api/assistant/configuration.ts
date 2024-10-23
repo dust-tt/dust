@@ -19,6 +19,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  compareAgentsForSort,
   Err,
   isTimeFrame,
   MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -49,7 +50,6 @@ import {
   isGlobalAgentId,
 } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
-import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
