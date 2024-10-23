@@ -61,7 +61,13 @@ import {
   WebCrawlerFolder,
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
-import { ZendeskConfiguration } from "@connectors/lib/models/zendesk";
+import {
+  ZendeskArticle,
+  ZendeskBrand,
+  ZendeskCategory,
+  ZendeskConfiguration,
+  ZendeskTicket,
+} from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
@@ -115,6 +121,10 @@ async function main(): Promise<void> {
   await RemoteSchemaModel.sync({ alter: true });
   await RemoteTableModel.sync({ alter: true });
   await ZendeskConfiguration.sync({ alter: true });
+  await ZendeskBrand.sync({ alter: true });
+  await ZendeskCategory.sync({ alter: true });
+  await ZendeskArticle.sync({ alter: true });
+  await ZendeskTicket.sync({ alter: true });
 
   // enable the `unaccent` extension
   await sequelizeConnection.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
