@@ -6,9 +6,13 @@ import type {
 } from "@dust-tt/types";
 
 import {
+  getBrandIdFromHelpCenterId,
   getBrandIdFromInternalId,
+  getBrandIdFromTicketsId,
+  getTicketInternalId,
   getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
+import { ZendeskTicket } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -31,25 +35,50 @@ export async function retrieveZendeskTicketPermissions({
   const isRootLevel = !parentInternalId;
 
   // There is no ticket at the root level, only the brands.
-  if (!isRootLevel) {
-    const brandId = getBrandIdFromInternalId(connectorId, parentInternalId);
-    // If the parent is a Brand, we return a single node for its help center.
-    if (brandId) {
-      const ticketsNode: ContentNode = {
-        provider: connector.type,
-        internalId: getTicketsInternalId(connectorId),
-        parentInternalId: parentInternalId,
-        type: "folder",
-        title: "Tickets",
-        sourceUrl: null,
-        expandable: false,
-        permission: "none",
-        dustDocumentId: null,
-        lastUpdatedAt: null,
-      };
+  if (isRootLevel) {
+    return [];
+  }
+  let brandId = getBrandIdFromInternalId(connectorId, parentInternalId);
+  // If the parent is a Brand, we return a single node for its help center.
+  if (brandId) {
+    const ticketsNode: ContentNode = {
+      provider: connector.type,
+      internalId: getTicketsInternalId(connectorId, brandId),
+      parentInternalId: parentInternalId,
+      type: "database",
+      title: "Tickets",
+      sourceUrl: null,
+      expandable: false,
+      permission: "none",
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+    };
 
-      return [ticketsNode];
-    }
+    return [ticketsNode];
+  }
+
+  // If the parent is a brand's tickets, we retrieve the list of tickets for the brand.
+  // In read-only mode, we retrieve the list of Tickets from the DB that have permission == "read"
+  // Otherwise, we do not show anything.
+  brandId = getBrandIdFromTicketsId(connectorId, parentInternalId);
+  if (brandId && filterPermission === "read") {
+    const articlesInDatabase = await ZendeskTicket.findAll({
+      where: { connectorId, brandId, permission: "read" },
+    });
+    const nodes: ContentNode[] = articlesInDatabase.map((ticket) => ({
+      provider: connector.type,
+      internalId: getTicketInternalId(connectorId, ticket.ticketId),
+      parentInternalId: parentInternalId,
+      type: "file",
+      title: ticket.name,
+      sourceUrl: ticket.url,
+      expandable: false,
+      permission: ticket.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: ticket.updatedAt.getTime(),
+    }));
+    nodes.sort((a, b) => a.title.localeCompare(b.title));
+    return nodes;
   }
   return [];
 }

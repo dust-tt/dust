@@ -31,8 +31,11 @@ export function getArticleInternalId(
   return `zendesk-article-${connectorId}-${articleId}`;
 }
 
-export function getTicketsInternalId(connectorId: ModelId): string {
-  return `zendesk-tickets-${connectorId}`;
+export function getTicketsInternalId(
+  connectorId: ModelId,
+  brandId: number
+): string {
+  return `zendesk-tickets-${connectorId}-${brandId}`;
 }
 
 export function getTicketInternalId(
@@ -89,11 +92,14 @@ export function getArticleIdFromInternalId(
   return _getIdFromInternal(internalId, `zendesk-article-${connectorId}-`);
 }
 
-export function isInternalIdOnAllTickets(
+export function getBrandIdFromTicketsId(
   connectorId: ModelId,
-  internalId: string
-): boolean {
-  return internalId === `zendesk-tickets-${connectorId}`;
+  ticketsInternalId: string
+): number | null {
+  return _getIdFromInternal(
+    ticketsInternalId,
+    `zendesk-tickets-${connectorId}-`
+  );
 }
 
 export function getTicketIdFromInternalId(
