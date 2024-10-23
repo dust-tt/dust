@@ -103,7 +103,7 @@ export function IntroSection() {
         >
           <Button
             icon={PlayIcon}
-            variant="primary"
+            variant="highlight"
             size="md"
             label="Watch Product Tour"
             className="shadow-xl"
@@ -139,7 +139,7 @@ export function IntroSection() {
           <div>
             <Link href="/home/pricing" shallow={true}>
               <Button
-                variant="primary"
+                variant="highlight"
                 size="md"
                 label="Get started"
                 icon={RocketIcon}

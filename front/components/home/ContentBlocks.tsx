@@ -159,7 +159,7 @@ export const HeaderContentBlock = ({
         <div>
           <Link href="/pricing" shallow={true}>
             <Button
-              variant="primary"
+              variant="highlight"
               size="md"
               label="Get started"
               icon={RocketIcon}
@@ -229,8 +229,8 @@ export const CarousselContentBlock = ({
         ))}
       </CarouselContent>
       <div className="flex w-full flex-row items-center justify-end gap-3 px-8">
-        <CarouselPrevious label="previous" />
-        <CarouselNext label="next" />
+        <CarouselPrevious variant="highlight" />
+        <CarouselNext variant="highlight" />
       </div>
     </Carousel>
   </div>
