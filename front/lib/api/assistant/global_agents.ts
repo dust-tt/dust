@@ -61,7 +61,7 @@ const dummyModelConfiguration = {
 };
 
 type PrefetchedDataSourcesType = {
-  dataSourceViews: DataSourceViewType[];
+  dataSourceViews: (DataSourceViewType & { isInGlobalVault: boolean })[];
   workspaceId: string;
 };
 
@@ -97,10 +97,7 @@ class HelperAssistantPrompt {
 
 async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   auth: Authenticator
-): Promise<{
-  dataSourceViews: DataSourceViewType[];
-  workspaceId: string;
-}> {
+): Promise<PrefetchedDataSourcesType> {
   const owner = auth.getNonNullableWorkspace();
 
   const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
@@ -120,6 +117,7 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
       return {
         ...dsv.toJSON(),
         assistantDefaultSelected: dsv.dataSource.assistantDefaultSelected,
+        isInGlobalVault: dsv.vault.isGlobal(),
       };
     }),
     workspaceId: owner.sId,
@@ -1043,12 +1041,17 @@ function _getDustGlobalAgent(
     },
   ];
 
-  // Then we push one action per managed data source to have better results when users ask "search in <data_source>"
-  // Hack: We prefix the action names with "hidden_" to hide it from the user in the UI otherwise data sources are displayed twice.
+  // Add one action per managed data source to improve search results for queries like
+  // "search in <data_source>".
+  // Only include data sources from the global vault to limit actions for the same
+  // data source.
+  // Hack: Prefix action names with "hidden_" to prevent them from appearing in the UI,
+  // avoiding duplicate display of data sources.
   dataSourceViews.forEach((dsView) => {
     if (
       dsView.dataSource.connectorProvider &&
-      dsView.dataSource.connectorProvider !== "webcrawler"
+      dsView.dataSource.connectorProvider !== "webcrawler" &&
+      dsView.isInGlobalVault
     ) {
       actions.push({
         id: -1,
