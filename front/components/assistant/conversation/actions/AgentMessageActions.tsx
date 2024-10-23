@@ -1,5 +1,5 @@
+import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
 import { Button, Chip, EyeIcon, Spinner } from "@dust-tt/sparkle";
-import type { ConversationMessageSizeType } from "@dust-tt/sparkle/dist/esm/components/ConversationMessage";
 import type {
   AgentActionType,
   AgentMessageType,
