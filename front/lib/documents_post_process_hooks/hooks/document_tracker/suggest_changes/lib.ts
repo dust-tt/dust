@@ -38,7 +38,7 @@ const MAX_DIFF_TOKENS = 4096;
 const TOTAL_TARGET_TOKENS = 8192;
 
 // The maximum number of tracked documents that we process for one diff.
-const MAX_TRACKED_DOCUMENTS = 3;
+const MAX_TRACKED_DOCUMENTS = 1;
 
 const logger = mainLogger.child({
   postProcessHook: "document_tracker_suggest_changes",
@@ -258,11 +258,11 @@ export async function documentTrackerSuggestChangesOnUpsert({
     },
     "Calling doc tracker retrieval action."
   );
-  const retrievalResult = await callDocTrackerRetrievalAction(
-    auth,
-    diffString,
-    targetTrackedDocumentTokens
-  );
+  const retrievalResult = await callDocTrackerRetrievalAction(auth, {
+    inputText: diffString,
+    targetDocumentTokens: targetTrackedDocumentTokens,
+    topK: MAX_TRACKED_DOCUMENTS,
+  });
 
   if (!retrievalResult.length) {
     localLogger.warn("No documents found.");
