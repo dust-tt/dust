@@ -63,23 +63,20 @@ export async function shouldDocumentTrackerSuggestChangesRun(
   } = params;
   const isBatchSync = upsertContext?.sync_type === "batch";
 
-  if (isBatchSync) {
-    logger.info(
-      "document_tracker_suggest_changes post process hook should not run for batch sync."
-    );
-    return false;
-  }
-
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Workspace not found.");
-  }
-
+  const owner = auth.getNonNullableWorkspace();
   const localLogger = logger.child({
     workspaceId: owner.sId,
     dataSourceId,
     documentId,
+    dataSourceConnectorProvider,
   });
+
+  if (isBatchSync) {
+    localLogger.info(
+      "document_tracker_suggest_changes post process hook should not run for batch sync."
+    );
+    return false;
+  }
 
   if (!owner.flags.includes("document_tracker")) {
     return false;
