@@ -101,7 +101,7 @@ ZendeskBrand.init(
       defaultValue: DataTypes.NOW,
     },
     brandId: {
-      type: DataTypes.NUMBER,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     name: {
@@ -186,11 +186,11 @@ ZendeskCategory.init(
       defaultValue: DataTypes.NOW,
     },
     categoryId: {
-      type: DataTypes.NUMBER,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     brandId: {
-      type: DataTypes.NUMBER,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     name: {
@@ -268,15 +268,15 @@ ZendeskArticle.init(
       defaultValue: DataTypes.NOW,
     },
     articleId: {
-      type: DataTypes.NUMBER,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     brandId: {
-      type: DataTypes.NUMBER,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     categoryId: {
-      type: DataTypes.STRING,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     name: {
@@ -368,23 +368,23 @@ ZendeskTicket.init(
       defaultValue: DataTypes.NOW,
     },
     ticketId: {
-      type: DataTypes.NUMBER,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     brandId: {
-      type: DataTypes.NUMBER,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     groupId: {
-      type: DataTypes.NUMBER,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     assigneeId: {
-      type: DataTypes.NUMBER,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     organizationId: {
-      type: DataTypes.NUMBER,
+      type: DataTypes.INTEGER,
       allowNull: false,
     },
     name: {
