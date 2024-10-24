@@ -17,27 +17,27 @@ export const InputExample = () => (
       <Input
         placeholder="placeholder"
         name="input"
-        value={"value"}
-        error={"errored because it's a very long message"}
+        value="value"
+        error="errored because it's a very long message"
         showErrorLabel
       />
       <Input
         placeholder="placeholder"
         name="input"
-        value={"value"}
-        error={"errored"}
+        value="value"
+        error="errored"
       />
       <Input
         placeholder="placeholder"
         name="input"
-        value={"value"}
-        error={"errored because it's a very long message"}
+        value="value"
+        error="errored because it's a very long message"
         showErrorLabel
       />
       <Input
         placeholder="placeholder"
         name="input"
-        value={"disabled"}
+        value="disabled"
         disabled={true}
         showErrorLabel
       />
@@ -47,27 +47,27 @@ export const InputExample = () => (
       <Input
         placeholder="placeholder"
         name="input"
-        value={"value"}
-        error={"errored because it's a very long message"}
+        value="value"
+        error="errored because it's a very long message"
         showErrorLabel
       />
       <Input
         placeholder="placeholder"
         name="input"
-        value={"value"}
-        error={"errored"}
+        value="value"
+        error="errored"
       />
       <Input
         placeholder="placeholder"
         name="input"
-        value={"value"}
-        error={"errored because it's a very long message"}
+        value="value"
+        error="errored because it's a very long message"
         showErrorLabel
       />
       <Input
         placeholder="placeholder"
         name="input"
-        value={"disabled"}
+        value="test"
         showErrorLabel
       />
     </div>
