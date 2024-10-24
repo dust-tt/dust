@@ -96,6 +96,7 @@ interface DataSourceViewsSelectorProps {
   >;
   viewType: ContentNodesViewType;
   isRootSelectable: boolean;
+  hideLeafNodes?: boolean;
 }
 
 export function DataSourceViewsSelector({
@@ -107,6 +108,7 @@ export function DataSourceViewsSelector({
   setSelectionConfigurations,
   viewType,
   isRootSelectable,
+  hideLeafNodes,
 }: DataSourceViewsSelectorProps) {
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
 
@@ -194,6 +196,7 @@ export function DataSourceViewsSelector({
               setSelectionConfigurations={setSelectionConfigurations}
               viewType={viewType}
               isRootSelectable={isRootSelectable}
+              hideLeafNodes={hideLeafNodes}
             />
           );
         }}
@@ -223,6 +226,7 @@ export function DataSourceViewsSelector({
                   viewType={viewType}
                   isRootSelectable={isRootSelectable}
                   defaultCollapsed={filteredDSVs.length > 1}
+                  hideLeafNodes={hideLeafNodes}
                 />
               ))}
           </Tree.Item>
@@ -241,6 +245,7 @@ export function DataSourceViewsSelector({
               viewType={viewType}
               isRootSelectable={false}
               defaultCollapsed={filteredDSVs.length > 1}
+              hideLeafNodes={hideLeafNodes}
             />
           ))}
         {folders.length > 0 && (
@@ -262,6 +267,7 @@ export function DataSourceViewsSelector({
                 viewType={viewType}
                 isRootSelectable={isRootSelectable}
                 defaultCollapsed={filteredDSVs.length > 1}
+                hideLeafNodes={hideLeafNodes}
               />
             ))}
           </Tree.Item>
@@ -285,6 +291,7 @@ export function DataSourceViewsSelector({
                 viewType={viewType}
                 isRootSelectable={isRootSelectable}
                 defaultCollapsed={filteredDSVs.length > 1}
+                hideLeafNodes={hideLeafNodes}
               />
             ))}
           </Tree.Item>
@@ -305,6 +312,7 @@ interface DataSourceViewSelectorProps {
   viewType: ContentNodesViewType;
   isRootSelectable: boolean;
   defaultCollapsed?: boolean;
+  hideLeafNodes?: boolean;
 }
 
 export function DataSourceViewSelector({
@@ -316,6 +324,7 @@ export function DataSourceViewSelector({
   viewType,
   isRootSelectable,
   defaultCollapsed = true,
+  hideLeafNodes = false,
 }: DataSourceViewSelectorProps) {
   const dataSourceView = selectionConfiguration.dataSourceView;
 
@@ -484,19 +493,21 @@ export function DataSourceViewSelector({
           )
         }
       >
-        <ContentNodeTree
-          selectedNodes={selectedNodes}
-          setSelectedNodes={readonly ? undefined : setSelectedNodes}
-          parentIsSelected={selectionConfiguration.isSelectAll}
-          useResourcesHook={useResourcesHook}
-          emptyComponent={
-            viewType === "tables" ? (
-              <Tree.Empty label="No tables" />
-            ) : (
-              <Tree.Empty label="No documents" />
-            )
-          }
-        />
+        {!hideLeafNodes && (
+          <ContentNodeTree
+            selectedNodes={selectedNodes}
+            setSelectedNodes={readonly ? undefined : setSelectedNodes}
+            parentIsSelected={selectionConfiguration.isSelectAll}
+            useResourcesHook={useResourcesHook}
+            emptyComponent={
+              viewType === "tables" ? (
+                <Tree.Empty label="No tables" />
+              ) : (
+                <Tree.Empty label="No documents" />
+              )
+            }
+          />
+        )}
       </Tree.Item>
     </div>
   );

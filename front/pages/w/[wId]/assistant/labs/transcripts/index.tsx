@@ -1,16 +1,20 @@
 import {
   BookOpenIcon,
   Button,
-  ChevronDownIcon,
+  Checkbox,
   CloudArrowLeftRightIcon,
   Dialog,
-  DropdownMenu,
   Page,
   SliderToggle,
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
+import type {
+  DataSourceViewSelectionConfigurations,
+  VaultType,
+} from "@dust-tt/types";
+import type { LightAgentConfigurationType } from "@dust-tt/types";
 import type {
   DataSourceViewType,
   LabsTranscriptsProviderType,
@@ -24,6 +28,7 @@ import { useEffect, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -48,10 +53,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dataSourcesViews: DataSourceViewType[];
+  vaults: VaultType[];
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
   const user = auth.user();
+  const vaults: VaultType[] = [];
 
   const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const globalDataSourceViews = await DataSourceViewResource.listBySpace(
@@ -82,6 +89,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       dataSourcesViews,
+      vaults,
     },
   };
 });
@@ -90,11 +98,17 @@ export default function LabsTranscriptsIndex({
   owner,
   subscription,
   dataSourcesViews,
+  vaults,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useSendNotification();
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [isDeleteProviderDialogOpened, setIsDeleteProviderDialogOpened] =
     useState(false);
+  const [selectionConfigurations, setSelectionConfigurations] =
+    useState<DataSourceViewSelectionConfigurations>(
+      {} as DataSourceViewSelectionConfigurations
+    );
+  const [storeInFolder, setStoreInFolder] = useState(false);
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -250,32 +264,32 @@ export default function LabsTranscriptsIndex({
     return updateAssistant(transcriptConfigurationId, assistant);
   };
 
-  const handleSetDataSource = async (
-    transcriptConfigurationId: number,
-    dataSource: DataSourceViewType | null
-  ) => {
-    setTranscriptsConfigurationState((prev) => {
-      return {
-        ...prev,
-        dataSource,
-      };
-    });
+  // const handleSetDataSource = async (
+  //   transcriptConfigurationId: number,
+  //   dataSource: DataSourceViewType | null
+  // ) => {
+  //   setTranscriptsConfigurationState((prev) => {
+  //     return {
+  //       ...prev,
+  //       dataSource,
+  //     };
+  //   });
 
-    let successMessage = "The transcripts will not be stored.";
+  //   let successMessage = "The transcripts will not be stored.";
 
-    if (dataSource) {
-      successMessage =
-        "The transcripts will be stored in the folder " +
-        dataSource.dataSource.name;
-    }
-    await makePatchRequest(
-      transcriptConfigurationId,
-      {
-        dataSourceId: dataSource ? dataSource.dataSource.sId : null,
-      },
-      successMessage
-    );
-  };
+  //   if (dataSource) {
+  //     successMessage =
+  //       "The transcripts will be stored in the folder " +
+  //       dataSource.dataSource.name;
+  //   }
+  //   await makePatchRequest(
+  //     transcriptConfigurationId,
+  //     {
+  //       dataSourceId: dataSource ? dataSource.dataSource.sId : null,
+  //     },
+  //     successMessage
+  //   );
+  // };
 
   const handleSetIsActive = async (
     transcriptConfigurationId: number,
@@ -630,43 +644,23 @@ export default function LabsTranscriptsIndex({
                         your workspace.
                       </small>
                     </Page.P>
-                    {dataSourcesViews.length > 0 && (
-                      <DropdownMenu>
-                        <DropdownMenu.Button
-                          className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-4 py-2 text-left text-sm font-medium shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                          disabled={!transcriptsConfigurationState.isActive}
-                        >
-                          {transcriptsConfigurationState?.dataSource?.dataSource
-                            .name || "Do not store transcripts"}
-                          <ChevronDownIcon
-                            className="-mr-1 ml-2 h-5 w-5"
-                            aria-hidden="true"
-                          />
-                        </DropdownMenu.Button>
-                        <DropdownMenu.Items origin="topLeft" width={220}>
-                          <DropdownMenu.Item
-                            label="Do not store transcripts"
-                            onClick={() =>
-                              handleSetDataSource(
-                                transcriptsConfiguration.id,
-                                null
-                              )
-                            }
-                          />
-                          {dataSourcesViews.map((dsv) => (
-                            <DropdownMenu.Item
-                              key={dsv.id}
-                              label={dsv.dataSource.name}
-                              onClick={() =>
-                                handleSetDataSource(
-                                  transcriptsConfiguration.id,
-                                  dsv
-                                )
-                              }
-                            />
-                          ))}
-                        </DropdownMenu.Items>
-                      </DropdownMenu>
+                    <div onClick={() => setStoreInFolder(!storeInFolder)}>
+                      <Checkbox checked={storeInFolder} />
+                    </div>
+                  </Page.Layout>
+                  <Page.Layout direction="horizontal">
+                    {storeInFolder && selectionConfigurations && (
+                      <DataSourceViewsSelector
+                        useCase="assistantBuilder"
+                        dataSourceViews={dataSourcesViews}
+                        allowedVaults={vaults}
+                        owner={owner}
+                        selectionConfigurations={selectionConfigurations}
+                        setSelectionConfigurations={setSelectionConfigurations}
+                        viewType={"documents"}
+                        isRootSelectable={true}
+                        hideLeafNodes={true}
+                      />
                     )}
                   </Page.Layout>
                 </Page.Layout>
