@@ -28,10 +28,9 @@ export function ConversationMessageActions({
   const buttonNodes = buttons?.map((button, i) => (
     <Button
       key={`message-button-${i}`}
-      variant="tertiary"
+      variant="outline"
       size="xs"
       label={button.label}
-      labelVisible={false}
       icon={button.icon}
       onClick={button.onClick}
       disabled={button.disabled || false}
@@ -165,13 +164,10 @@ function EmojiSelector({
       trigger={
         <div ref={buttonRef}>
           <Button
-            variant="tertiary"
+            variant="outline"
             size="xs"
             icon={ReactionIcon}
-            labelVisible={false}
-            label="Reaction picker"
-            disabledTooltip
-            type="menu"
+            isSelect
             disabled={isSubmittingEmoji}
           />
         </div>
