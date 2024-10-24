@@ -112,7 +112,6 @@ export class Authenticator {
     };
 
     return groupIds.map((groupId) => ({
-      roles: [],
       groups: [
         {
           id: getIdFromSIdOrThrow(groupId),
