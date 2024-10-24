@@ -178,7 +178,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return tooltip ? (
       <TooltipProvider>
         <TooltipRoot>
-          <TooltipTrigger>{buttonElement}</TooltipTrigger>
+          <TooltipTrigger asChild ref={ref}>
+            {buttonElement}
+          </TooltipTrigger>
           <TooltipContent>{tooltip}</TooltipContent>
         </TooltipRoot>
       </TooltipProvider>
