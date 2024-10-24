@@ -5,12 +5,12 @@ import {
 import type {
   ConversationType,
   ConversationVisibility,
+  LightWorkspaceType,
   MentionType,
   PublicPostConversationsRequestBody,
   Result,
   SubmitMessageError,
   UserMessageWithRankType,
-  WorkspaceType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
@@ -20,7 +20,7 @@ export async function postConversation({
   visibility = "unlisted",
   title,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   messageData: {
     input: string;
     mentions: MentionType[];
@@ -96,7 +96,7 @@ export async function postMessage({
   conversationId,
   messageData,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   conversationId: string;
   messageData: {
     input: string;

@@ -1,3 +1,4 @@
+import { ConversationViewer } from "@app/extension/app/src/components/conversation/ConversationViewer";
 import { ReachedLimitPopup } from "@app/extension/app/src/components/conversation/ReachedLimitPopup";
 import { AssistantInputBar } from "@app/extension/app/src/components/input_bar/InputBar";
 import { InputBarContext } from "@app/extension/app/src/components/input_bar/InputBarContext";
@@ -6,18 +7,20 @@ import {
   postConversation,
   postMessage,
 } from "@app/extension/app/src/lib/conversation";
-import type { MentionType, WorkspaceType } from "@dust-tt/types";
+import type { LightWorkspaceType, MentionType } from "@dust-tt/types";
 import { useCallback, useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface ConversationContainerProps {
   conversationId: string | null;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
 }
 
 export function ConversationContainer({
   conversationId,
   owner,
 }: ConversationContainerProps) {
+  const navigate = useNavigate();
   const [activeConversationId, setActiveConversationId] =
     useState(conversationId);
   const [planLimitReached, setPlanLimitReached] = useState(false);
@@ -33,6 +36,14 @@ export function ConversationContainer({
       setTimeout(() => setAnimate(false), 500);
     }
   });
+
+  useEffect(() => {
+    if (activeConversationId) {
+      navigate(`/conversations/${activeConversationId}`, {
+        replace: true,
+      });
+    }
+  }, [activeConversationId, navigate]);
 
   const handlePostMessage = async (input: string, mentions: MentionType[]) => {
     if (!activeConversationId) {
@@ -82,8 +93,6 @@ export function ConversationContainer({
           }
         } else {
           setActiveConversationId(conversationRes.value.sId);
-          // Probably here we want to navigate to /conversations/id
-          // navigate(`/conversations/${conversationRes.value.sId}`);
         }
       },
       [owner, sendNotification, setActiveConversationId]
@@ -92,7 +101,12 @@ export function ConversationContainer({
 
   return (
     <>
-      {activeConversationId && <p>Congrats you just posted a conversation</p>}
+      {activeConversationId && (
+        <ConversationViewer
+          conversationId={activeConversationId}
+          owner={owner}
+        />
+      )}
       <AssistantInputBar
         owner={owner}
         onSubmit={

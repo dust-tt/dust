@@ -9,7 +9,7 @@ import { ArrowUpIcon, Button } from "@dust-tt/sparkle";
 import type {
   AgentMention,
   LightAgentConfigurationType,
-  WorkspaceType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
 import React, { useContext, useEffect } from "react";
@@ -18,7 +18,7 @@ export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
   agentConfigurations: LightAgentConfigurationType[];
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   selectedAssistant: AgentMention | null;
   stickyMentions?: AgentMention[];
   disableAutoFocus: boolean;

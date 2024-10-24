@@ -1,7 +1,7 @@
 import { usePublicAgentConfigurations } from "@app/extension/app/src/components/assistants/usePublicAgentConfigurations";
 import type {
   LightAgentConfigurationType,
-  WorkspaceType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
 import { compareAgentsForSort } from "@dust-tt/types";
 import { useMemo } from "react";
@@ -21,7 +21,7 @@ function makeEditorSuggestions(
 
 export const usePublicAssistantSuggestions = (
   inListAgentConfigurations: LightAgentConfigurationType[],
-  owner: WorkspaceType
+  owner: LightWorkspaceType
 ) => {
   const { agentConfigurations } = usePublicAgentConfigurations({
     workspaceId: owner.sId,
