@@ -114,7 +114,7 @@ async fn clean_all_documents_for_data_source_id(
 
     println!(
         "Processing: data_source={} document_count={:}",
-        data_source_internal_id
+        data_source_internal_id,
         document_ids.len(),
     );
 
