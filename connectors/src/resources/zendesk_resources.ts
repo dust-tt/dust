@@ -181,9 +181,10 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     connectorId: number;
     brandIds: number[];
   }): Promise<ZendeskBrandResource[]> {
-    return ZendeskBrand.findAll({
+    const brands = await ZendeskBrand.findAll({
       where: { connectorId, brandId: { [Op.in]: brandIds } },
-    }).then((brands) => brands.map((brand) => new this(this.model, brand)));
+    });
+    return brands.map((brand) => new this(this.model, brand.get()));
   }
 
   static async fetchAllReadOnly({
@@ -191,13 +192,14 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }: {
     connectorId: number;
   }): Promise<ZendeskBrandResource[]> {
-    return ZendeskBrand.findAll({
+    const brands = await ZendeskBrand.findAll({
       where: {
         connectorId,
         helpCenterPermission: "read",
         ticketsPermission: "read",
       },
-    }).then((brands) => brands.map((brand) => new this(this.model, brand)));
+    });
+    return brands.map((brand) => new this(this.model, brand.get()));
   }
 
   static async fetchReadOnlyTickets({
@@ -219,13 +221,12 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     connectorId: number;
     brandId: number;
   }): Promise<ZendeskCategoryResource[]> {
-    return ZendeskCategory.findAll({
+    const categories = await ZendeskCategory.findAll({
       where: { connectorId, brandId, permission: "read" },
-    }).then((categories) =>
-      categories.map(
-        (category) =>
-          category && new ZendeskCategoryResource(ZendeskCategory, category)
-      )
+    });
+    return categories.map(
+      (category) =>
+        category && new ZendeskCategoryResource(ZendeskCategory, category)
     );
   }
 
@@ -234,13 +235,14 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }: {
     connectorId: number;
   }): Promise<ZendeskBrandResource[]> {
-    return ZendeskBrand.findAll({
+    const brands = await ZendeskBrand.findAll({
       where: {
         connectorId: connectorId,
         helpCenterPermission: "read",
         hasHelpCenter: true,
       },
-    }).then((brands) => brands.map((brand) => new this(this.model, brand)));
+    });
+    return brands.map((brand) => new this(this.model, brand.get()));
   }
 
   toContentNode({ connectorId }: { connectorId: number }): ContentNode {
@@ -332,9 +334,10 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     connectorId: number;
     categoryId: number;
   }): Promise<ZendeskCategoryResource | null> {
-    return ZendeskCategory.findOne({
+    const category = await ZendeskCategory.findOne({
       where: { connectorId, categoryId },
-    }).then((category) => category && new this(this.model, category));
+    });
+    return category && new this(this.model, category.get());
   }
 
   static async fetchByCategoryIds({
@@ -344,10 +347,11 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     connectorId: number;
     categoryIds: number[];
   }): Promise<ZendeskCategoryResource[]> {
-    return ZendeskCategory.findAll({
+    const categories = await ZendeskCategory.findAll({
       where: { connectorId, categoryId: { [Op.in]: categoryIds } },
-    }).then((categories) =>
-      categories.map((category) => category && new this(this.model, category))
+    });
+    return categories.map(
+      (category) => category && new this(this.model, category.get())
     );
   }
 
@@ -356,11 +360,10 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
   }: {
     connectorId: number;
   }): Promise<ZendeskCategoryResource[]> {
-    return ZendeskCategory.findAll({
+    const categories = await ZendeskCategory.findAll({
       where: { connectorId, permission: "read" },
-    }).then((categories) =>
-      categories.map((category) => new this(this.model, category))
-    );
+    });
+    return categories.map((category) => new this(this.model, category.get()));
   }
 
   static async fetchReadOnlyArticles({
@@ -450,9 +453,10 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     connectorId: number;
     ticketId: number;
   }): Promise<ZendeskTicketResource | null> {
-    return ZendeskTicket.findOne({
+    const ticket = await ZendeskTicket.findOne({
       where: { connectorId, ticketId },
-    }).then((ticketId) => ticketId && new this(this.model, ticketId));
+    });
+    return ticket && new this(this.model, ticket.get());
   }
 }
 
@@ -510,8 +514,9 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     connectorId: number;
     articleId: number;
   }): Promise<ZendeskArticleResource | null> {
-    return ZendeskArticle.findOne({
+    const article = await ZendeskArticle.findOne({
       where: { connectorId, articleId },
-    }).then((category) => category && new this(this.model, category));
+    });
+    return article && new this(this.model, article.get());
   }
 }
