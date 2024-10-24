@@ -417,7 +417,7 @@ export class VaultResource extends BaseResource<VaultModel> {
     if (this.isSystem()) {
       return {
         workspaceId: this.workspaceId,
-        roles: [{ name: "admin", permissions: ["list", "write"] }],
+        roles: [{ name: "admin", permissions: ["write"] }],
         groups: [],
       };
     }
@@ -426,12 +426,13 @@ export class VaultResource extends BaseResource<VaultModel> {
       return {
         workspaceId: this.workspaceId,
         roles: [
-          { name: "admin", permissions: ["admin", "list", "read", "write"] },
-          { name: "builder", permissions: ["list", "read", "write"] },
-          { name: "user", permissions: ["list", "read", "write"] },
-          { name: "public", permissions: ["read"] },
+          { name: "admin", permissions: ["admin", "read", "write"] },
+          { name: "builder", permissions: ["read", "write"] },
+          { name: "user", permissions: ["read", "write"] },
+          // Everyone can read.
+          { name: "none", permissions: ["read"] },
         ],
-        groups: this.mapGroupPermissions(["list", "read", "write"]),
+        groups: this.mapGroupPermissions(["read", "write"]),
       };
     }
 
@@ -439,10 +440,10 @@ export class VaultResource extends BaseResource<VaultModel> {
       return {
         workspaceId: this.workspaceId,
         roles: [
-          { name: "admin", permissions: ["list", "read", "write"] },
-          { name: "builder", permissions: ["list", "read", "write"] },
+          { name: "admin", permissions: ["read", "write"] },
+          { name: "builder", permissions: ["read", "write"] },
         ],
-        groups: this.mapGroupPermissions(["list", "read"]),
+        groups: this.mapGroupPermissions(["read"]),
       };
     }
 
@@ -451,18 +452,18 @@ export class VaultResource extends BaseResource<VaultModel> {
       return {
         workspaceId: this.workspaceId,
         roles: [
-          { name: "admin", permissions: ["list", "read", "write", "admin"] },
-          { name: "builder", permissions: ["list", "read", "write"] },
-          { name: "user", permissions: ["list", "read"] },
+          { name: "admin", permissions: ["read", "write", "admin"] },
+          { name: "builder", permissions: ["read", "write"] },
+          { name: "user", permissions: ["read"] },
         ],
-        groups: this.mapGroupPermissions(["list", "read"]),
+        groups: this.mapGroupPermissions(["read"]),
       };
     }
 
     return {
       workspaceId: this.workspaceId,
-      roles: [{ name: "admin", permissions: ["list", "write", "admin"] }],
-      groups: this.mapGroupPermissions(["list", "read", "write"]),
+      roles: [{ name: "admin", permissions: ["write", "admin"] }],
+      groups: this.mapGroupPermissions(["read", "write"]),
     };
   }
 
@@ -479,7 +480,7 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   canList(auth: Authenticator) {
-    return auth.canList([this.acl()]);
+    return this.canRead(auth) || this.canAdministrate(auth);
   }
 
   isGlobal() {

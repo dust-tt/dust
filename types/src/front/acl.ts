@@ -3,12 +3,7 @@ import { GroupType } from "./groups";
 import { LightWorkspaceType, UserRole } from "./user";
 
 // Supported permissions
-export const SUPPORTED_PERMISSIONS = [
-  "admin",
-  "list",
-  "read",
-  "write",
-] as const;
+export const SUPPORTED_PERMISSIONS = ["admin", "read", "write"] as const;
 
 export type Permission = (typeof SUPPORTED_PERMISSIONS)[number];
 
@@ -18,7 +13,7 @@ export type GroupPermission = {
 };
 
 export type RolePermission = {
-  name: UserRole | "public";
+  name: UserRole;
   permissions: Permission[];
 };
 
@@ -62,7 +57,7 @@ export function hasResourcePermission(
   if (hasRoles(acl)) {
     // Public access check (across all workspaces).
     const publicPermission = acl.roles
-      .find((r) => r.name === "public")
+      .find((r) => r.name === "none")
       ?.permissions.includes(permission);
     if (publicPermission) {
       return true;
