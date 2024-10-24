@@ -1,12 +1,13 @@
 import type {
-  ACLType,
+  GroupAndRoleACL,
   ModelId,
+  Permission,
   PokeVaultType,
   Result,
   VaultType,
 } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
-import { assertNever, Ok } from "@dust-tt/types";
+import { Ok } from "@dust-tt/types";
 import assert from "assert";
 import type {
   Attributes,
@@ -391,107 +392,95 @@ export class VaultResource extends BaseResource<VaultModel> {
     });
   }
 
+  private mapGroupPermissions(permissions: Permission[]) {
+    return this.groups.map((group) => ({
+      id: group.id,
+      permissions,
+    }));
+  }
+
   /**
-   * Determine ACL entries based on vault type and group configuration:
-   * 1. For regular vaults with a global group:
-   *    - Return only the global group with full permissions
-   *    - Ignore regular groups as they're not used in non-restricted vaults
-   * 2. For all the other vaults:
-   *    - Return all associated groups with full permissions
+   * Computes Access Control List (ACL) entries based on vault type and group configuration.
+   *
+   * Permission patterns:
+   * - System vaults: admin-only write access
+   * - Public vaults: anyone can read, workspace members can write
+   * - Global vaults: admin and builder have read/write access
+   * - Regular vaults with global group: hierarchical access (admin > builder > user)
+   * - Restricted vaults: admin access + explicit group permissions
    */
-  acl(): ACLType {
+  acl(): GroupAndRoleACL {
     const globalGroup = this.isRegular()
       ? this.groups.find((group) => group.isGlobal())
       : undefined;
+
+    if (this.isSystem()) {
+      return {
+        workspaceId: this.workspaceId,
+        roles: [{ name: "admin", permissions: ["admin", "write"] }],
+        groups: [],
+      };
+    }
+
+    if (this.isPublic()) {
+      return {
+        workspaceId: this.workspaceId,
+        roles: [
+          { name: "admin", permissions: ["admin", "read", "write"] },
+          { name: "builder", permissions: ["read", "write"] },
+          { name: "user", permissions: ["read"] },
+          // Everyone can read.
+          { name: "none", permissions: ["read"] },
+        ],
+        groups: this.mapGroupPermissions(["read", "write"]),
+      };
+    }
+
+    if (this.isGlobal()) {
+      return {
+        workspaceId: this.workspaceId,
+        roles: [
+          { name: "admin", permissions: ["read", "write"] },
+          { name: "builder", permissions: ["read", "write"] },
+        ],
+        groups: this.mapGroupPermissions(["read"]),
+      };
+    }
+
+    // Open vaults.
     if (globalGroup) {
       return {
-        aclEntries: [
-          {
-            groupId: globalGroup.id,
-            permissions: ["read", "write"],
-          },
+        workspaceId: this.workspaceId,
+        roles: [
+          { name: "admin", permissions: ["read", "write", "admin"] },
+          { name: "builder", permissions: ["read", "write"] },
+          { name: "user", permissions: ["read"] },
         ],
+        groups: this.mapGroupPermissions(["read"]),
       };
     }
 
     return {
-      aclEntries: this.groups.map((group) => ({
-        groupId: group.id,
-        permissions: ["read", "write"],
-      })),
+      workspaceId: this.workspaceId,
+      roles: [{ name: "admin", permissions: ["admin"] }],
+      groups: this.mapGroupPermissions(["read", "write"]),
     };
   }
 
   canAdministrate(auth: Authenticator) {
-    return auth.isAdmin();
+    return auth.canAdministrate([this.acl()]);
   }
 
   canWrite(auth: Authenticator) {
-    switch (this.kind) {
-      case "system":
-        return auth.isAdmin() && auth.canWrite([this.acl()]);
-
-      case "global":
-        return auth.isBuilder() && auth.canWrite([this.acl()]);
-
-      case "regular":
-        // TODO(SPACE_INFRA): Represent this in ACL.
-        // In the meantime, if the vault has a global group, only builders can write.
-        if (this.groups.some((group) => group.isGlobal())) {
-          return auth.isBuilder() && auth.canWrite([this.acl()]);
-        }
-
-        return auth.canWrite([this.acl()]);
-
-      case "public":
-        return auth.canWrite([this.acl()]);
-
-      default:
-        assertNever(this.kind);
-    }
+    return auth.canWrite([this.acl()]);
   }
 
-  // Ensure thorough testing when modifying this method, as it is crucial for
-  // the integrity of the permissions system. It acts as the gatekeeper,
-  // determining who has the right to read resources from a vault.
   canRead(auth: Authenticator) {
-    switch (this.kind) {
-      case "global":
-      case "system":
-        return auth.canRead([this.acl()]);
-
-      case "regular":
-        return auth.canRead([this.acl()]);
-
-      case "public":
-        return true;
-
-      default:
-        assertNever(this.kind);
-    }
+    return auth.canRead([this.acl()]);
   }
 
   canList(auth: Authenticator) {
-    const isWorkspaceAdmin =
-      auth.isAdmin() && auth.getNonNullableWorkspace().id === this.workspaceId;
-
-    switch (this.kind) {
-      case "global":
-        return auth.canRead([this.acl()]);
-
-      // Public vaults can be listed by anyone.
-      case "public":
-        return true;
-
-      case "regular":
-        return isWorkspaceAdmin || auth.canRead([this.acl()]);
-
-      case "system":
-        return isWorkspaceAdmin;
-
-      default:
-        assertNever(this.kind);
-    }
+    return this.canRead(auth) || this.canAdministrate(auth);
   }
 
   isGlobal() {

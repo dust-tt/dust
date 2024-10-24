@@ -1,5 +1,5 @@
 import type {
-  ACLType,
+  GroupAndRoleACL,
   GroupType,
   LightWorkspaceType,
   ModelId,
@@ -680,11 +680,11 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // Permissions
 
-  acl(): ACLType {
+  acl(): GroupAndRoleACL {
     return {
-      aclEntries: [
+      groups: [
         {
-          groupId: this.id,
+          id: this.id,
           permissions: ["read"],
         },
       ],

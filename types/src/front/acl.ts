@@ -1,29 +1,36 @@
 import { ModelId } from "../shared/model_id";
+import { RoleType } from "./user";
 
 // Supported permissions
-export const SUPPORTED_PERMISSIONS = ["read", "write"] as const;
+export const SUPPORTED_PERMISSIONS = ["admin", "read", "write"] as const;
 
 export type Permission = (typeof SUPPORTED_PERMISSIONS)[number];
 
-// Access Control Entry
-export type ACEType = {
-  groupId: ModelId;
+export type GroupPermission = {
+  id: ModelId;
   permissions: Permission[];
 };
 
-// Access Control List
-export type ACLType = {
-  aclEntries: Array<ACEType>;
+export type RolePermission = {
+  name: RoleType;
+  permissions: Permission[];
 };
 
-export function groupHasPermission(
-  acl: ACLType,
-  permission: Permission,
-  groupId: ModelId
-): boolean {
-  const entry = acl.aclEntries.find((ace) => ace.groupId === groupId);
-  if (entry) {
-    return entry.permissions.includes(permission);
-  }
-  return false;
+export type GroupOnlyACL = {
+  groups: GroupPermission[];
+  roles?: never[];
+};
+
+export type RoleBasedACL = {
+  groups: GroupPermission[];
+  roles: RolePermission[];
+  workspaceId: ModelId; // Required when roles are defined.
+};
+
+export type GroupAndRoleACL = GroupOnlyACL | RoleBasedACL;
+
+export function hasRoleBasedPermissions(
+  acl: GroupAndRoleACL
+): acl is RoleBasedACL {
+  return "roles" in acl;
 }

@@ -1,7 +1,7 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import type { DustAPICredentials } from "@dust-tt/client";
 import type {
-  ACLType,
+  GroupAndRoleACL,
   GroupType,
   LightWorkspaceType,
   Permission,
@@ -15,7 +15,7 @@ import type { Result } from "@dust-tt/types";
 import type { APIErrorWithStatusCode } from "@dust-tt/types";
 import {
   Err,
-  groupHasPermission,
+  hasRoleBasedPermissions,
   isAdmin,
   isBuilder,
   isDevelopment,
@@ -102,7 +102,7 @@ export class Authenticator {
     this._key = key;
   }
 
-  static aclsFromGroupIds(groupIds: string[]): ACLType[] {
+  static aclsFromGroupIds(groupIds: string[]): GroupAndRoleACL[] {
     const getIdFromSIdOrThrow = (groupId: string) => {
       const id = getResourceIdFromSId(groupId);
       if (!id) {
@@ -112,9 +112,9 @@ export class Authenticator {
     };
 
     return groupIds.map((groupId) => ({
-      aclEntries: [
+      groups: [
         {
-          groupId: getIdFromSIdOrThrow(groupId),
+          id: getIdFromSIdOrThrow(groupId),
           permissions: ["read", "write"],
         },
       ],
@@ -797,20 +797,68 @@ export class Authenticator {
     return this._groups.map((g) => g.toJSON());
   }
 
-  hasPermission(acls: ACLType[], permission: Permission): boolean {
+  hasPermission(acls: GroupAndRoleACL[], permission: Permission): boolean {
     // For each acl, does the user belongs to a group that has the permission?
-    return acls.every((acl) =>
-      this.groups().some((group) =>
-        groupHasPermission(acl, permission, group.id)
+    return acls.every((acl) => this.hasResourcePermission(acl, permission));
+  }
+
+  /**
+   * Determines if a user has a specific permission on a resource based on their role and group memberships.
+   *
+   * Permission is granted if either:
+   * 1. Role-based access:
+   *    - Resource has role-based ACLs
+   *    - Either:
+   *      • Resource has public access for the permission
+   *      • User's role has the permission AND resource belongs to user's workspace
+   * 2. Group-based access:
+   *    - User belongs to a group that has the permission
+   */
+  private hasResourcePermission(
+    acl: GroupAndRoleACL,
+    permission: Permission
+  ): boolean {
+    // Check role-based permissions if applicable.
+    if (hasRoleBasedPermissions(acl)) {
+      const workspace = this.getNonNullableWorkspace();
+
+      // Public access check (across all workspaces).
+      const publicPermission = acl.roles
+        .find((r) => r.name === "none")
+        ?.permissions.includes(permission);
+      if (publicPermission) {
+        return true;
+      }
+
+      // Workspace-specific role permission check.
+      const hasRolePermission = acl.roles.some(
+        (r) => this.role() === r.name && r.permissions.includes(permission)
+      );
+
+      if (hasRolePermission && workspace.id === acl.workspaceId) {
+        return true;
+      }
+    }
+
+    // Group-based permission check.
+    return this.groups().some((userGroup) =>
+      acl.groups.some(
+        (aclGroup) =>
+          aclGroup.id === userGroup.id &&
+          aclGroup.permissions.includes(permission)
       )
     );
   }
 
-  canRead(acls: ACLType[]): boolean {
+  canAdministrate(acls: GroupAndRoleACL[]): boolean {
+    return this.hasPermission(acls, "admin");
+  }
+
+  canRead(acls: GroupAndRoleACL[]): boolean {
     return this.hasPermission(acls, "read");
   }
 
-  canWrite(acls: ACLType[]): boolean {
+  canWrite(acls: GroupAndRoleACL[]): boolean {
     return this.hasPermission(acls, "write");
   }
 
