@@ -40,11 +40,11 @@ async fn clean_stored_versions_for_document_id(
     let document_versions = c.query("SELECT hash, created, status FROM data_sources_documents WHERE data_source = $1 AND document_id = $2", &[&data_source_id, &document_id]).await?;
     let document_id_hash = make_document_id_hash(document_id);
 
-    println!(
-        "Found {:} document versions for document {:} to clean-up.",
-        document_versions.len(),
-        document_id_hash
-    );
+    // println!(
+    //     "Found {:} document versions for document {:} to clean-up.",
+    //     document_versions.len(),
+    //     document_id_hash
+    // );
 
     FileStorageDocument::delete_if_exists(&FileStorageDocument::get_legacy_document_id_path(
         &data_source,
@@ -64,10 +64,10 @@ async fn clean_stored_versions_for_document_id(
             // IF we are after this date we just skip version deletion as no legacy version was
             // created after this date. https://github.com/dust-tt/dust/pull/6405
             if version_created > 1721952000000 {
-                println!(
-                    "Skipping version {:} for document {:}.",
-                    version_hash, document_id_hash
-                );
+                // println!(
+                //     "Skipping version {:} for document {:}.",
+                //     version_hash, document_id_hash
+                // );
                 return Ok::<(), anyhow::Error>(());
             }
             FileStorageDocument::delete_if_exists(&FileStorageDocument::get_legacy_content_path(
@@ -95,8 +95,6 @@ async fn clean_all_documents_for_data_source_id(
     data_source_internal_id: &str,
     data_source_id: i64,
 ) -> Result<()> {
-    println!("ds: {:?}", data_source_internal_id);
-
     let data_source = match store
         .load_data_source_by_internal_id(&data_source_internal_id)
         .await?
@@ -114,7 +112,11 @@ async fn clean_all_documents_for_data_source_id(
         )
         .await?;
 
-    println!("Found {:} document ids to clean-up.", document_ids.len());
+    println!(
+        "Processing: document_count={:} data_source={}",
+        document_ids.len(),
+        data_source_internal_id
+    );
 
     stream::iter(document_ids.into_iter().map(|row| {
         let data_source = data_source.clone();
@@ -173,19 +175,19 @@ async fn main() -> Result<(), anyhow::Error> {
         .await?;
 
         if rows.len() < limit {
-            println!("Updated all data_sources");
+            println!("Done");
             break;
         }
 
         last_data_source_id = match rows.last() {
             Some(r) => {
                 let id: i64 = r.get(0);
-                println!("LAST_DATA_SOURCE_ID_UDPATE: {}", id);
+                println!("Loop: last_data_source_id={}", id);
 
                 id as u64
             }
             None => {
-                println!("Updated all data_sources");
+                println!("Done");
                 break;
             }
         };
