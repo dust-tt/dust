@@ -12,10 +12,6 @@ import {
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   DataSourceViewSelectionConfigurations,
-  VaultType,
-} from "@dust-tt/types";
-import type { LightAgentConfigurationType } from "@dust-tt/types";
-import type {
   DataSourceViewType,
   LabsTranscriptsProviderType,
   LightAgentConfigurationType,
@@ -37,6 +33,7 @@ import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/la
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
+import { useSpaces } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
@@ -53,12 +50,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dataSourcesViews: DataSourceViewType[];
-  vaults: VaultType[];
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
   const user = auth.user();
-  const vaults: VaultType[] = [];
 
   const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const globalDataSourceViews = await DataSourceViewResource.listBySpace(
@@ -89,7 +84,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       dataSourcesViews,
-      vaults,
     },
   };
 });
@@ -98,7 +92,6 @@ export default function LabsTranscriptsIndex({
   owner,
   subscription,
   dataSourcesViews,
-  vaults,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useSendNotification();
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
@@ -109,6 +102,9 @@ export default function LabsTranscriptsIndex({
       {} as DataSourceViewSelectionConfigurations
     );
   const [storeInFolder, setStoreInFolder] = useState(false);
+  const { vaults, isVaultsLoading } = useSpaces({
+    workspaceId: owner.sId,
+  });
 
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -649,19 +645,22 @@ export default function LabsTranscriptsIndex({
                     </div>
                   </Page.Layout>
                   <Page.Layout direction="horizontal">
-                    {storeInFolder && selectionConfigurations && (
-                      <DataSourceViewsSelector
-                        useCase="assistantBuilder"
-                        dataSourceViews={dataSourcesViews}
-                        allowedVaults={vaults}
-                        owner={owner}
-                        selectionConfigurations={selectionConfigurations}
-                        setSelectionConfigurations={setSelectionConfigurations}
-                        viewType={"documents"}
-                        isRootSelectable={true}
-                        hideLeafNodes={true}
-                      />
-                    )}
+                    {!isVaultsLoading &&
+                      storeInFolder &&
+                      selectionConfigurations && (
+                        <DataSourceViewsSelector
+                          useCase="transcriptsProcessing"
+                          dataSourceViews={dataSourcesViews}
+                          allowedVaults={vaults}
+                          owner={owner}
+                          selectionConfigurations={selectionConfigurations}
+                          setSelectionConfigurations={
+                            setSelectionConfigurations
+                          }
+                          viewType={"documents"}
+                          isRootSelectable={true}
+                        />
+                      )}
                   </Page.Layout>
                 </Page.Layout>
               )}
