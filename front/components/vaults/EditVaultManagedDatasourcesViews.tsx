@@ -101,7 +101,7 @@ export function EditVaultManagedDataSourcesViews({
         title: "Data sources in use",
         validateLabel: "Delete anyway",
         cancelLabel: "Cancel",
-        validateVariant: "primaryWarning",
+        validateVariant: "warning",
         alertDialog: true,
         children: (
           <div className="space-y-4 text-slate-900">
