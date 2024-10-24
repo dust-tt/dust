@@ -55,16 +55,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const subscription = auth.subscription();
   const user = auth.user();
 
-  const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-  const globalDataSourceViews = await DataSourceViewResource.listBySpace(
-    auth,
-    globalVault
-  );
-
-  const dataSourcesViews = globalDataSourceViews
-    .map((dsv) => dsv.toJSON())
-    .filter((dsv) => !dsv.dataSource.connectorId)
-    .sort((a, b) => a.dataSource.name.localeCompare(b.dataSource.name));
+  const dataSourcesViews = (
+    await DataSourceViewResource.listByWorkspace(auth)
+  ).map((dsv) => dsv.toJSON());
 
   if (!owner || !subscription || !user) {
     return {
@@ -632,35 +625,34 @@ export default function LabsTranscriptsIndex({
                   <Page.SectionHeader title="3. Store transcripts in Folder" />
                   <Page.Layout direction="horizontal" gap="xl">
                     <Page.P>
-                      Store transcripts in a Folder to keep using them in your
-                      assistants?
-                      <br />
-                      <small>
-                        Warning: this can make your transcripts public within
-                        your workspace.
-                      </small>
+                      Store transcripts in a Folder to use them with Dust
+                      assistants.
                     </Page.P>
                     <div onClick={() => setStoreInFolder(!storeInFolder)}>
                       <Checkbox checked={storeInFolder} />
                     </div>
                   </Page.Layout>
                   <Page.Layout direction="horizontal">
-                    {!isVaultsLoading &&
-                      storeInFolder &&
-                      selectionConfigurations && (
-                        <DataSourceViewsSelector
-                          useCase="transcriptsProcessing"
-                          dataSourceViews={dataSourcesViews}
-                          allowedVaults={vaults}
-                          owner={owner}
-                          selectionConfigurations={selectionConfigurations}
-                          setSelectionConfigurations={
-                            setSelectionConfigurations
-                          }
-                          viewType={"documents"}
-                          isRootSelectable={true}
-                        />
-                      )}
+                    <div className="w-full">
+                      <div className="overflow-x-auto">
+                        {!isVaultsLoading &&
+                          storeInFolder &&
+                          selectionConfigurations && (
+                            <DataSourceViewsSelector
+                              useCase="transcriptsProcessing"
+                              dataSourceViews={dataSourcesViews}
+                              allowedVaults={vaults}
+                              owner={owner}
+                              selectionConfigurations={selectionConfigurations}
+                              setSelectionConfigurations={
+                                setSelectionConfigurations
+                              }
+                              viewType={"documents"}
+                              isRootSelectable={true}
+                            />
+                          )}
+                      </div>
+                    </div>
                   </Page.Layout>
                 </Page.Layout>
               )}

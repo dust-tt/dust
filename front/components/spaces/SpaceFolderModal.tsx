@@ -165,7 +165,7 @@ export default function SpaceFolderModal({
                 <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
                   <ExclamationCircleStrokeIcon />{" "}
                   {!dataSourceView
-                    ? "Folder name must be unique and not use spaces."
+                    ? "Folder name must be unique."
                     : "Folder name cannot be changed."}
                 </p>
               </div>

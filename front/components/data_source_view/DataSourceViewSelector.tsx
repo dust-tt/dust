@@ -272,7 +272,7 @@ export function DataSourceViewsSelector({
             ))}
           </Tree.Item>
         )}
-        {websites.length > 0 && (
+        {websites.length > 0 && useCase !== "transcriptsProcessing" && (
           <Tree.Item
             key="websites"
             label="Websites"
