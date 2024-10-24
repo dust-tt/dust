@@ -27,8 +27,10 @@ export type RoleBasedACL = {
   workspaceId: ModelId; // Required when roles are defined.
 };
 
-export function hasRoleBasedPermissions(acl: ACLType): acl is RoleBasedACL {
+export type GroupAndRoleACL = GroupOnlyACL | RoleBasedACL;
+
+export function hasRoleBasedPermissions(
+  acl: GroupAndRoleACL
+): acl is RoleBasedACL {
   return "roles" in acl;
 }
-
-export type ACLType = GroupOnlyACL | RoleBasedACL;

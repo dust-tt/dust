@@ -1,5 +1,5 @@
 import type {
-  ACLType,
+  GroupAndRoleACL,
   ModelId,
   Permission,
   PokeVaultType,
@@ -409,7 +409,7 @@ export class VaultResource extends BaseResource<VaultModel> {
    * - Regular vaults with global group: hierarchical access (admin > builder > user)
    * - Restricted vaults: admin access + explicit group permissions
    */
-  acl(): ACLType {
+  acl(): GroupAndRoleACL {
     const globalGroup = this.isRegular()
       ? this.groups.find((group) => group.isGlobal())
       : undefined;

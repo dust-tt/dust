@@ -1,7 +1,7 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import type { DustAPICredentials } from "@dust-tt/client";
 import type {
-  ACLType,
+  GroupAndRoleACL,
   GroupType,
   LightWorkspaceType,
   Permission,
@@ -15,7 +15,6 @@ import type { Result } from "@dust-tt/types";
 import type { APIErrorWithStatusCode } from "@dust-tt/types";
 import {
   Err,
-  hasResourcePermission,
   hasRoleBasedPermissions,
   isAdmin,
   isBuilder,
@@ -103,7 +102,7 @@ export class Authenticator {
     this._key = key;
   }
 
-  static aclsFromGroupIds(groupIds: string[]): ACLType[] {
+  static aclsFromGroupIds(groupIds: string[]): GroupAndRoleACL[] {
     const getIdFromSIdOrThrow = (groupId: string) => {
       const id = getResourceIdFromSId(groupId);
       if (!id) {
@@ -798,7 +797,7 @@ export class Authenticator {
     return this._groups.map((g) => g.toJSON());
   }
 
-  hasPermission(acls: ACLType[], permission: Permission): boolean {
+  hasPermission(acls: GroupAndRoleACL[], permission: Permission): boolean {
     // For each acl, does the user belongs to a group that has the permission?
     return acls.every((acl) => this.hasResourcePermission(acl, permission));
   }
@@ -815,7 +814,10 @@ export class Authenticator {
    * 2. Group-based access:
    *    - User belongs to a group that has the permission
    */
-  private hasResourcePermission(acl: ACLType, permission: Permission): boolean {
+  private hasResourcePermission(
+    acl: GroupAndRoleACL,
+    permission: Permission
+  ): boolean {
     // Check role-based permissions if applicable.
     if (hasRoleBasedPermissions(acl)) {
       const workspace = this.getNonNullableWorkspace();
@@ -848,15 +850,15 @@ export class Authenticator {
     );
   }
 
-  canAdministrate(acls: ACLType[]): boolean {
+  canAdministrate(acls: GroupAndRoleACL[]): boolean {
     return this.hasPermission(acls, "admin");
   }
 
-  canRead(acls: ACLType[]): boolean {
+  canRead(acls: GroupAndRoleACL[]): boolean {
     return this.hasPermission(acls, "read");
   }
 
-  canWrite(acls: ACLType[]): boolean {
+  canWrite(acls: GroupAndRoleACL[]): boolean {
     return this.hasPermission(acls, "write");
   }
 
