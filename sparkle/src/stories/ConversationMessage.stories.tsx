@@ -2,6 +2,7 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import {
+  Citation,
   ConversationMessage,
   MagnifyingGlassIcon,
 } from "../index_with_tw_base";
@@ -40,13 +41,11 @@ export const ConversationExample = () => {
               },
             ]}
             citations={[
-              {
-                citationType: "slack",
-                id: "1",
-                isZoomable: false,
-                sourceUrl: "https://www.google.com",
-                title: "Source: Thread on #general message from @ed",
-              },
+              <Citation
+                type="slack"
+                href="https://www.google.com"
+                title="Source: Thread on #general message from @ed"
+              />,
             ]}
           >
             To conditionally render the citations only if a citations React node
@@ -92,13 +91,11 @@ export const ConversationExample = () => {
               },
             ]}
             citations={[
-              {
-                citationType: "slack",
-                id: "1",
-                isZoomable: false,
-                sourceUrl: "https://www.google.com",
-                title: "Source: Thread on #general message from @ed",
-              },
+              <Citation
+                type="slack"
+                href="https://www.google.com"
+                title="Source: Thread on #general message from @ed"
+              />,
             ]}
           >
             To conditionally render the citations only if a citations React node
