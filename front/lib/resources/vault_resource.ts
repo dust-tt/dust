@@ -417,7 +417,7 @@ export class VaultResource extends BaseResource<VaultModel> {
     if (this.isSystem()) {
       return {
         workspaceId: this.workspaceId,
-        roles: [{ name: "admin", permissions: ["write"] }],
+        roles: [{ name: "admin", permissions: ["admin", "write"] }],
         groups: [],
       };
     }
@@ -428,7 +428,7 @@ export class VaultResource extends BaseResource<VaultModel> {
         roles: [
           { name: "admin", permissions: ["admin", "read", "write"] },
           { name: "builder", permissions: ["read", "write"] },
-          { name: "user", permissions: ["read", "write"] },
+          { name: "user", permissions: ["read"] },
           // Everyone can read.
           { name: "none", permissions: ["read"] },
         ],
@@ -462,7 +462,7 @@ export class VaultResource extends BaseResource<VaultModel> {
 
     return {
       workspaceId: this.workspaceId,
-      roles: [{ name: "admin", permissions: ["write", "admin"] }],
+      roles: [{ name: "admin", permissions: ["admin"] }],
       groups: this.mapGroupPermissions(["read", "write"]),
     };
   }

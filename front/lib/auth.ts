@@ -16,6 +16,7 @@ import type { APIErrorWithStatusCode } from "@dust-tt/types";
 import {
   Err,
   hasResourcePermission,
+  hasRoleBasedPermissions,
   isAdmin,
   isBuilder,
   isDevelopment,
@@ -799,13 +800,50 @@ export class Authenticator {
 
   hasPermission(acls: ACLType[], permission: Permission): boolean {
     // For each acl, does the user belongs to a group that has the permission?
-    return acls.every((acl) =>
-      hasResourcePermission(
-        acl,
-        this.getNonNullableWorkspace(),
-        permission,
-        this.groups(),
-        this.role()
+    return acls.every((acl) => this.hasResourcePermission(acl, permission));
+  }
+
+  /**
+   * Determines if a user has a specific permission on a resource based on their role and group memberships.
+   *
+   * Permission is granted if either:
+   * 1. Role-based access:
+   *    - Resource has role-based ACLs
+   *    - Either:
+   *      • Resource has public access for the permission
+   *      • User's role has the permission AND resource belongs to user's workspace
+   * 2. Group-based access:
+   *    - User belongs to a group that has the permission
+   */
+  private hasResourcePermission(acl: ACLType, permission: Permission): boolean {
+    // Check role-based permissions if applicable.
+    if (hasRoleBasedPermissions(acl)) {
+      const workspace = this.getNonNullableWorkspace();
+
+      // Public access check (across all workspaces).
+      const publicPermission = acl.roles
+        .find((r) => r.name === "none")
+        ?.permissions.includes(permission);
+      if (publicPermission) {
+        return true;
+      }
+
+      // Workspace-specific role permission check.
+      const hasRolePermission = acl.roles.some(
+        (r) => this.role() === r.name && r.permissions.includes(permission)
+      );
+
+      if (hasRolePermission && workspace.id === acl.workspaceId) {
+        return true;
+      }
+    }
+
+    // Group-based permission check.
+    return this.groups().some((userGroup) =>
+      acl.groups.some(
+        (aclGroup) =>
+          aclGroup.id === userGroup.id &&
+          aclGroup.permissions.includes(permission)
       )
     );
   }
