@@ -1,4 +1,4 @@
-import { Button, Dialog, PlusIcon } from "@dust-tt/sparkle";
+import { Button, ContentMessage, Dialog, PlusIcon } from "@dust-tt/sparkle";
 import type {
   APIError,
   DataSourceViewSelectionConfigurations,
@@ -102,28 +102,30 @@ export function EditVaultManagedDataSourcesViews({
         validateLabel: "Delete anyway",
         cancelLabel: "Cancel",
         validateVariant: "primaryWarning",
+        alertDialog: true,
         children: (
-          <div className="space-y-4">
+          <div className="space-y-4 text-slate-900">
             <p>The following data sources are currently in use:</p>
 
             {deletedViewsWithUsage.map((view) => (
-              <p key={view.sId} className="font-medium text-gray-700">
-                {getDisplayNameForDataSource(view.dataSource)}™
-                <span className="text-gray-500">
+              <p key={view.sId} className="font-medium">
+                {getDisplayNameForDataSource(view.dataSource)}{" "}
+                <span className="italic text-slate-500">
                   (used by {view.usage.count} assistant
                   {view.usage.count > 1 ? "s" : ""})
                 </span>
               </p>
             ))}
 
-            <div>
-              <p>Are you sure you want to remove them?</p>
-              <p className="mt-2 text-amber-600">
-                Warning: Deleting these data sources will affect the assistants
-                using them. These assistants will no longer have access to this
-                data and may not work as expected.
+            <ContentMessage size="md" variant="warning" title="Warning">
+              <p>
+                Deleting these data sources will affect the assistants using
+                them. These assistants will no longer have access to this data
+                and may not work as expected.
               </p>
-            </div>
+            </ContentMessage>
+
+            <p>Are you sure you want to remove them?</p>
           </div>
         ),
       });
