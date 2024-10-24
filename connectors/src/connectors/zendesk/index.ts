@@ -352,7 +352,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           title: "Help Center",
           sourceUrl: null,
           expandable: true,
-          permission: "none", // TODO: use the new permission system
+          permission: brand.helpCenterPermission,
           dustDocumentId: null,
           lastUpdatedAt: null,
         })
@@ -366,7 +366,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           title: "Tickets",
           sourceUrl: null,
           expandable: false,
-          permission: "none", // TODO: use the new permission system
+          permission: brand.ticketsPermission,
           dustDocumentId: null,
           lastUpdatedAt: null,
         })
