@@ -80,7 +80,9 @@ async function handler(
 
       const { view, limit, withUsage, withAuthors, sort } =
         queryValidation.right;
-      const viewParam = view ? view : "all";
+      let viewParam = view ? view : "all";
+      // @ts-expect-error: added for backwards compatibility
+      viewParam = viewParam === "assistant-search" ? "list" : viewParam;
       if (viewParam === "admin_internal" && !auth.isDustSuperUser()) {
         return apiError(req, res, {
           status_code: 404,
