@@ -228,7 +228,7 @@ export function AssistantInputBar({
         <div className="flex justify-center px-4 pb-4">
           <Button
             className="mt-4"
-            variant="tertiary"
+            variant="ghost"
             label={isProcessing ? "Stopping generation..." : "Stop generation"}
             icon={StopIcon}
             onClick={handleStopGeneration}
@@ -250,7 +250,7 @@ export function AssistantInputBar({
               "border-struture-200 border-t bg-white/90 backdrop-blur focus-within:border-structure-300",
               "transition-all",
               isFloating
-                ? "sm:rounded-3xl sm:border-b sm:border-l sm:border-r sm:border-element-500 sm:focus-within:border-action-300 sm:focus-within:shadow-md sm:focus-within:ring-1"
+                ? "sm:rounded-2xl sm:border-b sm:border-l sm:border-r sm:border-element-500 sm:focus-within:border-action-300 sm:focus-within:shadow-md sm:focus-within:ring-1"
                 : "",
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}

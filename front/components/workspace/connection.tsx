@@ -124,7 +124,7 @@ export function EnterpriseConnectionDetails({
             <Button
               label="De-activate Single Sign On"
               size="sm"
-              variant="secondaryWarning"
+              variant="warning"
               disabled={!enterpriseConnection}
               onClick={() => {
                 setIsDisableEnterpriseConnectionModalOpened(true);
@@ -334,7 +334,7 @@ function CreateOktaEnterpriseConnectionModal({
         <Page.Separator />
         <div className="flex items-start">
           <Button
-            variant="primaryWarning"
+            variant="warning"
             size="sm"
             disabled={
               !(
@@ -351,7 +351,6 @@ function CreateOktaEnterpriseConnectionModal({
               );
               onConnectionCreated();
             }}
-            hasMagnifying={true}
           />
         </div>
       </Page.Layout>
@@ -470,7 +469,7 @@ function CreateWAADEnterpriseConnectionModal({
         <Page.Separator />
         <div className="flex items-start">
           <Button
-            variant="primaryWarning"
+            variant="warning"
             size="sm"
             disabled={
               !(
@@ -487,7 +486,6 @@ function CreateWAADEnterpriseConnectionModal({
               );
               onConnectionCreated();
             }}
-            hasMagnifying={true}
           />
         </div>
       </Page.Layout>
@@ -692,7 +690,7 @@ function ToggleEnforceEnterpriseConnectionModal({
       }}
       onCancel={() => onClose(false)}
       validateLabel={dialog.validateLabel}
-      validateVariant="primaryWarning"
+      validateVariant="warning"
     >
       <div>{dialog.content}</div>
     </Dialog>
@@ -750,7 +748,7 @@ function DisableEnterpriseConnectionModal({
       }}
       onCancel={() => onClose(false)}
       validateLabel={`Disable ${strategyHumanReadable} Single Sign On`}
-      validateVariant="primaryWarning"
+      validateVariant="warning"
     >
       <div>
         Anyone with an {strategyHumanReadable} account won't be able to access

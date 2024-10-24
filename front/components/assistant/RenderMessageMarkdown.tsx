@@ -694,7 +694,7 @@ function PreBlock({ children }: { children: React.ReactNode }) {
                       </a>
                     </div>
                     <IconButton
-                      variant="tertiary"
+                      variant="ghost"
                       size="xs"
                       icon={showMermaid ? WrenchIcon : SparklesIcon}
                       onClick={() => setShowMermaid(!showMermaid)}

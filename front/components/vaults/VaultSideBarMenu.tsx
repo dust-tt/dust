@@ -124,7 +124,7 @@ export default function VaultSideBarMenu({
                       <Button
                         className="mt-4"
                         size="xs"
-                        variant="tertiary"
+                        variant="outline"
                         label="New"
                         icon={PlusIcon}
                         onClick={() =>

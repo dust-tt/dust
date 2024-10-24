@@ -199,7 +199,7 @@ const PlansPage = () => {
             <Button
               icon={PlusIcon}
               label="Create a new plan"
-              variant="secondary"
+              variant="outline"
               onClick={() => createNewPlan()}
               disabled={editingPlan?.isNewPlan || !!editingPlan}
             />

@@ -40,10 +40,9 @@ export function MessageActions({
   const buttonNodes = buttons?.map((button, i) => (
     <Button
       key={`message-${messageId}-button-${i}`}
-      variant="tertiary"
+      variant="ghost"
       size="xs"
-      label={button.label}
-      labelVisible={false}
+      tooltip={button.label}
       icon={button.icon}
       onClick={button.onClick}
       disabled={button.disabled || false}
@@ -213,13 +212,10 @@ function EmojiSelector({
       trigger={
         <div ref={buttonRef}>
           <Button
-            variant="tertiary"
+            variant="ghost"
             size="xs"
             icon={ReactionIcon}
-            labelVisible={false}
-            label="Reaction picker"
-            disabledTooltip
-            type="menu"
+            isSelect
             disabled={disabled}
           />
         </div>

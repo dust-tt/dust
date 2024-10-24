@@ -450,7 +450,7 @@ const DataSourcePage = ({
                   <div className="flex flex-row">
                     <div className="flex flex-initial gap-x-2">
                       <Button
-                        variant="tertiary"
+                        variant="ghost"
                         disabled={offset < limit}
                         onClick={() => {
                           if (offset >= limit) {
@@ -462,7 +462,7 @@ const DataSourcePage = ({
                         label="Previous"
                       />
                       <Button
-                        variant="tertiary"
+                        variant="ghost"
                         label="Next"
                         disabled={offset + limit >= total}
                         onClick={() => {
@@ -505,17 +505,16 @@ const DataSourcePage = ({
                         />
                       }
                       action={
-                        <Button.List>
+                        <div className="flex gap-2">
                           <Button
-                            variant="secondary"
+                            variant="outline"
                             icon={EyeIcon}
                             onClick={() =>
                               onDisplayDocumentSource(d.document_id)
                             }
-                            label="View"
-                            labelVisible={false}
+                            tooltip="View"
                           />
-                        </Button.List>
+                        </div>
                       }
                     >
                       <ContextItem.Description>
@@ -649,8 +648,8 @@ function NotionUrlCheckOrFind({
           />
         </div>
         <Button
-          variant="secondary"
-          label={"Check"}
+          variant="outline"
+          label="Check"
           onClick={async () => {
             setCommand("check-url");
             setUrlDetails(
@@ -664,8 +663,8 @@ function NotionUrlCheckOrFind({
           }}
         />
         <Button
-          variant="secondary"
-          label={"Find"}
+          variant="outline"
+          label="Find"
           onClick={async () => {
             setCommand("find-url");
             setUrlDetails(
@@ -883,7 +882,7 @@ function SlackWhitelistBot({
           </DropdownMenu>
         </div>
         <Button
-          variant="secondary"
+          variant="outline"
           label="Whitelist"
           onClick={async () => {
             if (!botName) {

@@ -462,12 +462,13 @@ export default function AssistantBuilder({
             <>
               <IconButton
                 size="md"
-                variant="tertiary"
+                variant="outline"
                 icon={
                   rightPanelStatus.tab !== null
                     ? ChevronRightIcon
                     : ChevronLeftIcon
                 }
+                disabled={isBuilderStateEmpty}
                 onClick={toggleRightPanel}
               />
               {rightPanelStatus.tab === null && template === null && (
@@ -475,12 +476,11 @@ export default function AssistantBuilder({
                   icon={ChatBubbleBottomCenterTextIcon}
                   onClick={() => openRightPanelTab("Preview")}
                   size="md"
-                  label={
+                  tooltip={
                     isBuilderStateEmpty
                       ? "Add instructions or tools to Preview"
                       : "Preview"
                   }
-                  labelVisible={false}
                   variant="primary"
                   disabled={isBuilderStateEmpty}
                   className={classNames(
@@ -494,13 +494,13 @@ export default function AssistantBuilder({
                     icon={ChatBubbleBottomCenterTextIcon}
                     onClick={() => openRightPanelTab("Preview")}
                     size="md"
-                    variant="tertiary"
+                    variant="ghost"
                   />
                   <IconButton
                     icon={MagicIcon}
                     onClick={() => openRightPanelTab("Template")}
                     size="md"
-                    variant="tertiary"
+                    variant="ghost"
                   />
                 </div>
               )}

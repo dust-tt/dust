@@ -149,7 +149,7 @@ export default function Join({
       headerTitle="Welcome to Dust"
       headerRightActions={
         <Button
-          variant="tertiary"
+          variant="ghost"
           size="sm"
           label="Sign up"
           icon={LoginIcon}

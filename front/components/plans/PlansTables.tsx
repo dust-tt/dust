@@ -223,7 +223,7 @@ export function ProPriceTable({
         {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
           <PriceTable.ActionContainer position="top">
             <Button
-              variant="primary"
+              variant="highlight"
               size={biggerButtonSize}
               label="Start now, 15 days free"
               icon={RocketIcon}
@@ -244,7 +244,7 @@ export function ProPriceTable({
         {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
           <PriceTable.ActionContainer>
             <Button
-              variant="primary"
+              variant="highlight"
               size={biggerButtonSize}
               label="Start now, 15 days free"
               icon={RocketIcon}
@@ -272,7 +272,7 @@ function EnterprisePriceTable({
       <PriceTable.ActionContainer position="top">
         {onClick && (
           <Button
-            variant="primary"
+            variant="highlight"
             size={biggerButtonSize}
             label="Contact us"
             disabled={isProcessing}
@@ -290,7 +290,7 @@ function EnterprisePriceTable({
       <PriceTable.ActionContainer>
         {onClick && (
           <Button
-            variant="primary"
+            variant="highlight"
             size={biggerButtonSize}
             label="Contact us"
             disabled={isProcessing}

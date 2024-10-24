@@ -336,7 +336,7 @@ export default function NamingScreen({
                     .map((suggestion, index) => (
                       <Button
                         label={`@${suggestion.replace(/\s/g, "")}`}
-                        variant="secondary"
+                        variant="outline"
                         key={`naming-suggestion-${index}`}
                         size="xs"
                         onClick={() => {
@@ -373,9 +373,8 @@ export default function NamingScreen({
           <div className="flex flex-col items-center space-y-2">
             <Avatar size="xl" visual={builderState.avatarUrl} />
             <Button
-              labelVisible={true}
-              label={"Change"}
-              variant="tertiary"
+              label="Change"
+              variant="outline"
               size="xs"
               icon={PencilSquareIcon}
               onClick={() => {

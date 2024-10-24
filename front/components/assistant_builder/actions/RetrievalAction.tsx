@@ -189,12 +189,11 @@ export function ActionRetrievalExhaustive({
         <DropdownMenu>
           <DropdownMenu.Button tooltipPosition="top">
             <Button
-              type="select"
-              labelVisible={true}
+              isSelect
               label={
                 TIME_FRAME_UNIT_TO_LABEL[actionConfiguration.timeFrame.unit]
               }
-              variant="secondary"
+              variant="outline"
               size="sm"
             />
           </DropdownMenu.Button>

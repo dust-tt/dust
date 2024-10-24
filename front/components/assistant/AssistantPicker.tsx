@@ -1,12 +1,16 @@
 import {
   Button,
-  DropdownMenu,
   IconButton,
   Item,
   MoreIcon,
   PlusIcon,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
   RobotIcon,
+  ScrollArea,
   Searchbar,
+  Separator,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
@@ -39,7 +43,7 @@ const ShowAssistantDetailsButton = ({
         close();
         showAssistantDetails(assistant);
       }}
-      variant="tertiary"
+      variant="ghost"
       size="sm"
     />
   );
@@ -60,7 +64,7 @@ export function AssistantPicker({
   pickerButton?: React.ReactNode;
   showMoreDetailsButtons?: boolean;
   showFooterButtons?: boolean;
-  size?: "sm" | "md";
+  size?: "xs" | "sm" | "md";
 }) {
   const [searchText, setSearchText] = useState("");
   const [searchedAssistants, setSearchedAssistants] = useState<
@@ -73,109 +77,85 @@ export function AssistantPicker({
 
   const searchbarRef = (element: HTMLInputElement) => {
     if (element) {
-      // it turned out that the events are not properly propagated, leading
-      // to a conflict with the InputBarContainer a hack around it is
-      // adding a small timeout
-      setTimeout(() => {
-        element.focus();
-      }, 200);
+      element.focus();
     }
   };
 
   return (
-    // TODO(2024-10-09 jules): use Popover when new Button has been released
-    <DropdownMenu>
-      {({ close }) => (
+    <PopoverRoot>
+      <PopoverTrigger>
         <>
-          <div onClick={() => setSearchText("")} className="flex">
-            {pickerButton ? (
-              <DropdownMenu.Button size={size}>
-                {pickerButton}
-              </DropdownMenu.Button>
-            ) : (
-              <DropdownMenu.Button
-                icon={RobotIcon}
-                size={size}
+          {pickerButton ? (
+            { pickerButton }
+          ) : (
+            <Button
+              icon={RobotIcon}
+              variant="ghost"
+              isSelect
+              size={size}
+              tooltip="Pick an assistant"
+            />
+          )}
+        </>
+      </PopoverTrigger>
+      <PopoverContent className="mr-2 p-2">
+        <Searchbar
+          ref={searchbarRef}
+          placeholder="Search"
+          name="input"
+          size="xs"
+          value={searchText}
+          onChange={setSearchText}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && searchedAssistants.length > 0) {
+              onItemClick(searchedAssistants[0]);
+              setSearchText("");
+              close();
+            }
+          }}
+        />
+        <ScrollArea className="mt-2 h-[300px]">
+          {searchedAssistants.map((c) => (
+            <div
+              key={`assistant-picker-container-${c.sId}`}
+              className="flex flex-row items-center justify-between px-2"
+            >
+              <Item.Avatar
+                key={`assistant-picker-${c.sId}`}
+                label={c.name}
+                visual={c.pictureUrl}
+                hasAction={false}
                 onClick={() => {
+                  onItemClick(c);
                   setSearchText("");
                 }}
-                tooltip="Pick an assistant"
-                tooltipPosition="top"
+                className="truncate"
               />
-            )}
-          </div>
-          <DropdownMenu.Items
-            variant="no-padding"
-            origin="auto"
-            width={280}
-            topBar={
-              <>
-                {assistants.length > 7 && (
-                  <div className="flex flex-grow flex-row border-b border-structure-50 p-2">
-                    <Searchbar
-                      ref={searchbarRef}
-                      placeholder="Search"
-                      name="input"
-                      size="xs"
-                      value={searchText}
-                      onChange={setSearchText}
-                      onKeyDown={(e) => {
-                        if (
-                          e.key === "Enter" &&
-                          searchedAssistants.length > 0
-                        ) {
-                          onItemClick(searchedAssistants[0]);
-                          setSearchText("");
-                          close();
-                        }
-                      }}
-                    />
-                  </div>
-                )}
-              </>
-            }
-            bottomBar={
-              showFooterButtons && (
-                <div className="flex justify-end border-t border-structure-50 p-2">
-                  <Link
-                    href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-                  >
-                    <Button
-                      label="Create"
-                      size="xs"
-                      variant="primary"
-                      icon={PlusIcon}
-                      className="mr-2"
-                    />
-                  </Link>
-                </div>
-              )
-            }
-          >
-            {searchedAssistants.map((c) => (
-              <div
-                key={`assistant-picker-container-${c.sId}`}
-                className="flex flex-row items-center justify-between px-4"
+              {showMoreDetailsButtons && (
+                <ShowAssistantDetailsButton assistant={c} />
+              )}
+            </div>
+          ))}
+        </ScrollArea>
+        {showFooterButtons && (
+          <>
+            <Separator />
+            <div className="mt-2 flex justify-end">
+              <Link
+                href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
               >
-                <Item.Avatar
-                  key={`assistant-picker-${c.sId}`}
-                  label={c.name}
-                  visual={c.pictureUrl}
-                  hasAction={false}
-                  onClick={() => {
-                    onItemClick(c);
-                    setSearchText("");
-                  }}
-                  className="truncate"
+                <Button
+                  label="Create"
+                  size="xs"
+                  variant="primary"
+                  icon={PlusIcon}
+                  className="mr-2"
                 />
-                {showMoreDetailsButtons && (
-                  <ShowAssistantDetailsButton assistant={c} />
-                )}
-              </div>
-            ))}
-          </DropdownMenu.Items>
-        </>
-      )}
-    </DropdownMenu>
+              </Link>
+            </div>
+          </>
+        )}
+      </PopoverContent>
+    </PopoverRoot>
   );
 }

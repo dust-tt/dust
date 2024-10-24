@@ -94,7 +94,7 @@ export default function AppRun({
       !(await confirm({
         title: "Double checking",
         message: `This will revert the app specification to the state it was in when this run was saved (${run.run_id}). Are you sure?`,
-        validateVariant: "primaryWarning",
+        validateVariant: "warning",
       }))
     ) {
       return;
@@ -201,7 +201,7 @@ export default function AppRun({
                   disabled={true}
                   icon={CheckCircleIcon}
                   label="Latest version"
-                  variant="secondary"
+                  variant="outline"
                 />
               )}
               <CopyRun

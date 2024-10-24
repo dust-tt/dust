@@ -34,7 +34,7 @@ export async function updateInvitation({
       title: "Revoke invitation",
       message: `Are you sure you want to revoke the invitation for ${invitation.inviteEmail}?`,
       validateLabel: "Yes, revoke",
-      validateVariant: "primaryWarning",
+      validateVariant: "warning",
     });
     if (!confirmation) {
       return;

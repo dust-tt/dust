@@ -472,10 +472,10 @@ export function DataSourceViewSelector({
         actions={
           !isRootSelectable && (
             <Button
-              variant="tertiary"
+              variant="ghost"
               size="xs"
               disabled={rootNodes.length === 0}
-              className="mr-4 h-5 text-xs"
+              className="mr-4 text-xs"
               label={hasActiveSelection ? "Unselect All" : "Select All"}
               icon={ListCheckIcon}
               onClick={handleSelectAll}

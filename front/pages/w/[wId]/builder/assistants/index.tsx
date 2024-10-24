@@ -235,7 +235,7 @@ export default function WorkspaceAssistants({
                 setAssistantSearch(s);
               }}
             />
-            <Button.List>
+            <div className="flex gap-2">
               <Link
                 href={`/w/${owner.sId}/builder/assistants/create?flow=workspace_assistants`}
               >
@@ -245,7 +245,7 @@ export default function WorkspaceAssistants({
                   label="Create an assistant"
                 />
               </Link>
-            </Button.List>
+            </div>
           </div>
           <div className="flex flex-col gap-4 pt-3">
             <div className="flex flex-row gap-2">
@@ -366,7 +366,7 @@ function AgentViewForScope({
     if (agent.sId === "dust") {
       return (
         <Button
-          variant="secondary"
+          variant="outline"
           icon={Cog6ToothIcon}
           label="Manage"
           size="sm"

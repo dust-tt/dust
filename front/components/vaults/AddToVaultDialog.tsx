@@ -142,8 +142,8 @@ export const AddToVaultDialog = ({
               hasMagnifying={false}
               label={vault ? vault.name : "Select space"}
               size="sm"
-              type="select"
-              variant="secondary"
+              isSelect
+              variant="outline"
             />
           </DropdownMenu.Button>
           <DropdownMenu.Items>

@@ -86,7 +86,7 @@ export function ChangeMemberModal({
           <div className="flex flex-none flex-col gap-2">
             <div className="flex-none">
               <Button
-                variant="primaryWarning"
+                variant="warning"
                 label="Revoke member access"
                 size="sm"
                 onClick={() => setRevokeMemberModalOpen(true)}
@@ -113,7 +113,7 @@ export function ChangeMemberModal({
           onClose();
         }}
         validateLabel="Yes, revoke"
-        validateVariant="primaryWarning"
+        validateVariant="warning"
         onCancel={() => {
           setRevokeMemberModalOpen(false);
         }}

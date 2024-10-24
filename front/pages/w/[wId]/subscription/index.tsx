@@ -329,13 +329,7 @@ export default function Subscription({
                     subscription.stripeSubscriptionId && (
                       <DropdownMenu>
                         <DropdownMenu.Button>
-                          <Button
-                            icon={MoreIcon}
-                            variant="tertiary"
-                            labelVisible={false}
-                            disabledTooltip={true}
-                            label=""
-                          />
+                          <Button icon={MoreIcon} variant="ghost" />
                         </DropdownMenu.Button>
                         <DropdownMenu.Items origin="auto" width={210}>
                           <DropdownMenu.Item
@@ -358,7 +352,7 @@ export default function Subscription({
                 />
                 <Button
                   label="Cancel subscription"
-                  variant="tertiary"
+                  variant="ghost"
                   onClick={() => setShowCancelFreeTrialDialog(true)}
                 />
               </Page.Horizontal>
@@ -407,7 +401,7 @@ export default function Subscription({
                 <Button
                   icon={CardIcon}
                   label="Your billing dashboard on Stripe"
-                  variant="tertiary"
+                  variant="ghost"
                   onClick={handleGoToStripePortal}
                 />
               </div>
@@ -540,7 +534,7 @@ function CancelFreeTrialDialog({
       title={`Cancel subscription`}
       onCancel={onClose}
       validateLabel="Yes, cancel subscription"
-      validateVariant="primaryWarning"
+      validateVariant="warning"
       onValidate={onValidate}
       isSaving={isSaving}
     >
