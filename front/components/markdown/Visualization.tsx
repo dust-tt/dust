@@ -1,7 +1,7 @@
 import { useContext, useMemo } from "react";
 
+import { MarkdownContentContext } from "@app/components/assistant/markdown/MarkdownContentContext";
 import type { CustomRenderers } from "@app/components/assistant/markdown/RenderMessageMarkdown";
-import { MarkDownContentContext } from "@app/components/assistant/markdown/RenderMessageMarkdown";
 
 const VISUALIZATION_MAGIC_LINE = "{/** visualization-complete */}";
 
@@ -12,7 +12,7 @@ export function VisualizationBlock({
   position: { start: { line: number }; end: { line: number } };
   customRenderer?: CustomRenderers;
 }) {
-  const { content } = useContext(MarkDownContentContext);
+  const { content } = useContext(MarkdownContentContext);
 
   const visualizationRenderer = useMemo(() => {
     return (

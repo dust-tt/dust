@@ -11,9 +11,9 @@ import { useCallback, useContext } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
+import { CodeBlock } from "@app/components/assistant/markdown/CodeBlock";
 import { ContentBlockWrapper } from "@app/components/assistant/markdown/ContentBlockWrapper";
 import { RenderMessageMarkdown } from "@app/components/assistant/markdown/RenderMessageMarkdown";
-import { CodeBlock } from "@app/components/markdown/CodeBlock";
 import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 export function TablesQueryActionDetails({

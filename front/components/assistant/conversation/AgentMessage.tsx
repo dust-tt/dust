@@ -413,7 +413,6 @@ export function AgentMessage({
 
   const additionalMarkdownComponents = useMemo(
     () => ({
-      code: CodeBlockWithExtendedSupport,
       // @ts-expect-error - `visualization` is a custom tag, currently refused by
       // react-markdown types although the functionality is supported
       visualization: ({ position }) => {

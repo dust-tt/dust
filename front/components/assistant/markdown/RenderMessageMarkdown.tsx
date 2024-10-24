@@ -10,9 +10,11 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 
+import { CodeBlockWithExtendedSupport } from "@app/components/assistant/markdown/CodeBlockWithExtendedSupport";
 import type { GetContentToDownloadFunction } from "@app/components/assistant/markdown/ContentBlockWrapper";
 import { ContentBlockWrapper } from "@app/components/assistant/markdown/ContentBlockWrapper";
 import type { MarkdownCitation } from "@app/components/assistant/markdown/MarkdownCitation";
+import { MarkdownContentContext } from "@app/components/assistant/markdown/MarkdownContentContext";
 import { classNames } from "@app/lib/utils";
 
 const supportedDirectives = ["mention", "cite", "visualization"];
@@ -172,16 +174,6 @@ export const CitationsContext = React.createContext<CitationsContextType>({
   setHoveredReference: () => null,
 });
 
-export const MarkDownContentContext = React.createContext<{
-  content: string;
-  isStreaming: boolean;
-  isLastMessage: boolean;
-}>({
-  content: "",
-  isStreaming: false,
-  isLastMessage: false,
-});
-
 export type CustomRenderers = {
   visualization: (
     code: string,
@@ -224,8 +216,8 @@ export function RenderMessageMarkdown({
   // can be selected without blinking.
 
   // Memoize markdown components to avoid unnecessary re-renders that disrupt text selection
-  const markdownComponents: Components = useMemo(
-    () => ({
+  const markdownComponents: Components = useMemo(() => {
+    return {
       pre: ({ children }) => <PreBlock>{children}</PreBlock>,
       a: LinkBlock,
       ul: UlBlock,
@@ -284,10 +276,10 @@ export function RenderMessageMarkdown({
       mention: ({ agentName }) => {
         return <MentionBlock agentName={agentName} />;
       },
+      code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
-    }),
-    [textSize, textColor, additionalMarkdownComponents]
-  );
+    };
+  }, [textSize, textColor, additionalMarkdownComponents]);
 
   const markdownPlugins: PluggableList = useMemo(
     () => [
@@ -313,7 +305,7 @@ export function RenderMessageMarkdown({
           }
         }
       >
-        <MarkDownContentContext.Provider
+        <MarkdownContentContext.Provider
           value={{ content: processedContent, isStreaming, isLastMessage }}
         >
           {/* <MermaidDisplayProvider> */}
@@ -328,7 +320,7 @@ export function RenderMessageMarkdown({
             {processedContent}
           </ReactMarkdown>
           {/* </MermaidDisplayProvider> */}
-        </MarkDownContentContext.Provider>
+        </MarkdownContentContext.Provider>
       </CitationsContext.Provider>
     </div>
   );
