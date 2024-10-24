@@ -46,6 +46,9 @@ export const credentialsFromProviders = (
       case "textsynth":
         credentials["TEXTSYNTH_API_KEY"] = config.api_key;
         break;
+      case "searchapi":
+        credentials["SEARCHAPI_API_KEY"] = config.api_key;
+        break;
       case "serpapi":
         credentials["SERP_API_KEY"] = config.api_key;
         break;
