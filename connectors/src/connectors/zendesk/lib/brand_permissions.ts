@@ -119,18 +119,9 @@ export async function retrieveZendeskBrandPermissions({
     if (isReadPermissionsOnly) {
       const brandsInDatabase =
         await ZendeskBrandResource.fetchBrandsWithHelpCenter({ connectorId });
-      nodes = brandsInDatabase.map((brand) => ({
-        provider: connector.type,
-        internalId: getBrandInternalId(connectorId, brand.brandId),
-        parentInternalId: null,
-        type: "folder",
-        title: brand.name,
-        sourceUrl: brand.url,
-        expandable: true,
-        permission: brand.permission,
-        dustDocumentId: null,
-        lastUpdatedAt: brand.updatedAt.getTime(),
-      }));
+      nodes = brandsInDatabase.map((brand) =>
+        brand.toContentNode({ connectorId })
+      );
     } else {
       const token = await getZendeskAccessToken(connector.connectionId);
       const zendeskApiClient = createZendeskClient({ token });

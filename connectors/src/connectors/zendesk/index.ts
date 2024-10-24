@@ -31,6 +31,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskArticleResource,
+  ZendeskBrandResource,
   ZendeskCategoryResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
@@ -150,8 +151,87 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     internalIds: string[];
     viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>> {
-    logger.info({ internalIds }, "Retrieving batch content nodes");
-    throw new Error("Method not implemented.");
+    const brandIds: number[] = [];
+    const brandHelpCenterIds: number[] = [];
+    const brandTicketsIds: number[] = [];
+    const categoryIds: number[] = [];
+    internalIds.forEach((internalId) => {
+      let brandId = getBrandIdFromInternalId(this.connectorId, internalId);
+      if (brandId) {
+        brandIds.push(brandId);
+        return;
+      }
+      brandId = getBrandIdFromTicketsId(this.connectorId, internalId);
+      if (brandId) {
+        brandTicketsIds.push(brandId);
+        return;
+      }
+      brandId = getBrandIdFromHelpCenterId(this.connectorId, internalId);
+      if (brandId) {
+        brandHelpCenterIds.push(brandId);
+        return;
+      }
+      const categoryId = getCategoryIdFromInternalId(
+        this.connectorId,
+        internalId
+      );
+      if (categoryId) {
+        categoryIds.push(categoryId);
+      }
+    });
+
+    const [brands, helpCenters, tickets, categories] = await Promise.all([
+      ZendeskBrandResource.fetchByBrandIds({
+        connectorId: this.connectorId,
+        brandIds,
+      }),
+      ZendeskBrandResource.fetchByBrandIds({
+        connectorId: this.connectorId,
+        brandIds: brandHelpCenterIds,
+      }),
+      ZendeskBrandResource.fetchByBrandIds({
+        connectorId: this.connectorId,
+        brandIds: brandTicketsIds,
+      }),
+      ZendeskCategoryResource.fetchByCategoryIds({
+        connectorId: this.connectorId,
+        categoryIds,
+      }),
+    ]);
+
+    const connectorId = this.connectorId;
+    return new Ok([
+      ...brands.map((brand) => brand.toContentNode({ connectorId })),
+      ...helpCenters.map(
+        (brand): ContentNode => ({
+          provider: "zendesk",
+          internalId: getHelpCenterInternalId(connectorId, brand.brandId),
+          parentInternalId: getBrandInternalId(connectorId, brand.brandId),
+          type: "database",
+          title: "Help Center",
+          sourceUrl: null,
+          expandable: true,
+          permission: "none", // TODO: use the new permission system
+          dustDocumentId: null,
+          lastUpdatedAt: null,
+        })
+      ),
+      ...tickets.map(
+        (brand): ContentNode => ({
+          provider: "zendesk",
+          internalId: getTicketsInternalId(connectorId, brand.brandId),
+          parentInternalId: getBrandInternalId(connectorId, brand.brandId),
+          type: "database",
+          title: "Tickets",
+          sourceUrl: null,
+          expandable: false,
+          permission: "none", // TODO: use the new permission system
+          dustDocumentId: null,
+          lastUpdatedAt: null,
+        })
+      ),
+      ...categories.map((category) => category.toContentNode({ connectorId })),
+    ]);
   }
 
   /**

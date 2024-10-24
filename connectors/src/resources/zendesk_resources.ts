@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/types";
+import type { ContentNode, Result } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -6,7 +6,13 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
+import {
+  getBrandInternalId,
+  getCategoryInternalId,
+  getHelpCenterInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
   ZendeskArticle,
   ZendeskBrand,
@@ -155,6 +161,18 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return blob && new this(this.model, blob.get());
   }
 
+  static async fetchByBrandIds({
+    connectorId,
+    brandIds,
+  }: {
+    connectorId: number;
+    brandIds: number[];
+  }): Promise<ZendeskBrandResource[]> {
+    return ZendeskBrand.findAll({
+      where: { connectorId, brandId: { [Op.in]: brandIds } },
+    }).then((brands) => brands.map((brand) => new this(this.model, brand)));
+  }
+
   static async fetchAllReadOnly({
     connectorId,
   }: {
@@ -183,10 +201,15 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }: {
     connectorId: number;
     brandId: number;
-  }): Promise<ZendeskCategory[]> {
+  }): Promise<ZendeskCategoryResource[]> {
     return ZendeskCategory.findAll({
       where: { connectorId, brandId, permission: "read" },
-    });
+    }).then((categories) =>
+      categories.map(
+        (category) =>
+          category && new ZendeskCategoryResource(ZendeskCategory, category)
+      )
+    );
   }
 
   static async fetchBrandsWithHelpCenter({
@@ -201,6 +224,21 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
         hasHelpCenter: true,
       },
     }).then((brands) => brands.map((brand) => new this(this.model, brand)));
+  }
+
+  toContentNode({ connectorId }: { connectorId: number }): ContentNode {
+    return {
+      provider: "zendesk",
+      internalId: getBrandInternalId(connectorId, this.brandId),
+      parentInternalId: null,
+      type: "folder",
+      title: this.name,
+      sourceUrl: this.url,
+      expandable: true,
+      permission: this.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: this.updatedAt.getTime(),
+    };
   }
 }
 
@@ -262,6 +300,20 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     }).then((category) => category && new this(this.model, category));
   }
 
+  static async fetchByCategoryIds({
+    connectorId,
+    categoryIds,
+  }: {
+    connectorId: number;
+    categoryIds: number[];
+  }): Promise<ZendeskCategoryResource[]> {
+    return ZendeskCategory.findAll({
+      where: { connectorId, categoryId: { [Op.in]: categoryIds } },
+    }).then((categories) =>
+      categories.map((category) => category && new this(this.model, category))
+    );
+  }
+
   static async fetchAllReadOnly({
     connectorId,
   }: {
@@ -284,6 +336,21 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return ZendeskArticle.findAll({
       where: { connectorId, categoryId, permission: "read" },
     });
+  }
+
+  toContentNode({ connectorId }: { connectorId: number }): ContentNode {
+    return {
+      provider: "zendesk",
+      internalId: getCategoryInternalId(connectorId, this.categoryId),
+      parentInternalId: getHelpCenterInternalId(connectorId, this.brandId),
+      type: "folder",
+      title: this.name,
+      sourceUrl: this.url,
+      expandable: false,
+      permission: this.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: this.updatedAt.getTime(),
+    };
   }
 }
 
@@ -394,9 +461,9 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
   }
 
   static async fetchByArticleId({
-                                  connectorId,
-                                  articleId,
-                                }: {
+    connectorId,
+    articleId,
+  }: {
     connectorId: number;
     articleId: number;
   }): Promise<ZendeskArticleResource | null> {
