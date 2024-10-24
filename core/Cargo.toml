@@ -36,7 +36,7 @@ name = "oauth_generate_key"
 path = "bin/oauth_generate_key.rs"
 
 [[bin]]
-name = "backfill_stored_documents"
+name = "migration_clean_legacy_gcs"
 path = "bin/migrations/20241024_clean_legacy_gcs.rs"
 
 [[test]]

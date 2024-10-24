@@ -57,18 +57,30 @@ async fn clean_stored_versions_for_document_id(
         let document_id_hash = document_id_hash.to_string();
 
         async move {
-            let document_hash: String = d.get(0);
+            let version_hash: String = d.get(0);
+            let version_created: i64 = d.get(1);
+
+            // 2024-07-26:00:00.000Z
+            // IF we are after this date we just skip version deletion as no legacy version was
+            // created after this date. https://github.com/dust-tt/dust/pull/6405
+            if version_created > 1721952000000 {
+                println!(
+                    "Skipping version {:} for document {:}.",
+                    version_hash, document_id_hash
+                );
+                return Ok::<(), anyhow::Error>(());
+            }
             FileStorageDocument::delete_if_exists(&FileStorageDocument::get_legacy_content_path(
                 &data_source,
                 &document_id_hash,
-                document_hash.as_str(),
+                version_hash.as_str(),
             ))
             .await?;
             Ok::<(), anyhow::Error>(())
         }
     });
 
-    let mut stream = stream::iter(tasks).buffer_unordered(16); // Run up to 16 in parallel.
+    let mut stream = stream::iter(tasks).buffer_unordered(16);
 
     while let Some(result) = stream.next().await {
         result?; // Check for errors.
@@ -102,7 +114,7 @@ async fn clean_all_documents_for_data_source_id(
         )
         .await?;
 
-    println!("Found {:} document ids to update.", document_ids.len());
+    println!("Found {:} document ids to clean-up.", document_ids.len());
 
     stream::iter(document_ids.into_iter().map(|row| {
         let data_source = data_source.clone();
@@ -114,7 +126,7 @@ async fn clean_all_documents_for_data_source_id(
                 .await
         }
     }))
-    .buffer_unordered(16)
+    .buffer_unordered(32)
     .try_collect::<Vec<_>>()
     .await?;
 
