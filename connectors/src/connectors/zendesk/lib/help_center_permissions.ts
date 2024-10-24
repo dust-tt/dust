@@ -247,7 +247,7 @@ export async function retrieveZendeskHelpCenterPermissions({
         provider: connector.type,
         internalId: getHelpCenterInternalId(connectorId, brandId),
         parentInternalId: parentInternalId,
-        type: "database",
+        type: "folder",
         title: "Help Center",
         sourceUrl: null,
         expandable: true,
@@ -270,18 +270,9 @@ export async function retrieveZendeskHelpCenterPermissions({
         brandId,
       });
     if (isReadPermissionsOnly) {
-      nodes = categoriesInDatabase.map((category) => ({
-        provider: connector.type,
-        internalId: getCategoryInternalId(connectorId, category.categoryId),
-        parentInternalId: parentInternalId,
-        type: "folder",
-        title: category.name,
-        sourceUrl: category.url,
-        expandable: false,
-        permission: category.permission,
-        dustDocumentId: null,
-        lastUpdatedAt: category.updatedAt.getTime(),
-      }));
+      nodes = categoriesInDatabase.map((category) =>
+        category.toContentNode({ connectorId })
+      );
     } else {
       await changeZendeskClientSubdomain({
         client: zendeskApiClient,

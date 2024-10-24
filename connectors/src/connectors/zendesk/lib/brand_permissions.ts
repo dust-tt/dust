@@ -130,25 +130,11 @@ export async function retrieveZendeskBrandPermissions({
   // At the root level, we show one node for each brand.
   if (isRootLevel) {
     if (isReadPermissionsOnly) {
-      const brandsInDatabase = await ZendeskBrandResource.fetchAllReadOnly({
-        connectorId,
-      });
-      nodes = brandsInDatabase.map((brand) => ({
-        provider: connector.type,
-        internalId: getBrandInternalId(connectorId, brand.brandId),
-        parentInternalId: null,
-        type: "folder",
-        title: brand.name,
-        sourceUrl: brand.url,
-        expandable: true,
-        permission:
-          brand.helpCenterPermission === "read" &&
-          brand.ticketsPermission === "read"
-            ? "read"
-            : "none",
-        dustDocumentId: null,
-        lastUpdatedAt: brand.updatedAt.getTime(),
-      }));
+      const brandsInDatabase =
+        await ZendeskBrandResource.fetchBrandsWithHelpCenter({ connectorId });
+      nodes = brandsInDatabase.map((brand) =>
+        brand.toContentNode({ connectorId })
+      );
     } else {
       const token = await getZendeskAccessToken(connector.connectionId);
       const zendeskApiClient = createZendeskClient({ token });
