@@ -14,12 +14,12 @@ export interface InputProps
   label?: string;
 }
 
-const INPUT_STATES = ["error", "disabled", "idle"];
+const INPUT_STATES = ["error", "disabled", "default"];
 
 type InputStateType = (typeof INPUT_STATES)[number];
 
 const stateVariantStyles: Record<InputStateType, string> = {
-  idle: "focus-visible:s-ring-ring",
+  default: "focus-visible:s-ring-ring",
   disabled:
     "disabled:s-cursor-not-allowed disabled:s-opacity-50 disabled:s-text-muted-foreground",
   error: "s-border-border-warning focus:s-ring-ring-warning",
@@ -36,7 +36,7 @@ const inputStyleClasses = cva(
       state: stateVariantStyles,
     },
     defaultVariants: {
-      state: "idle",
+      state: "default",
     },
   }
 );
@@ -54,7 +54,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     },
     ref
   ) => {
-    const state = error ? "error" : disabled ? "disabled" : "idle";
+    const state = error ? "error" : disabled ? "disabled" : "default";
     return (
       <div className="s-flex s-flex-col s-gap-1 s-px-1">
         {label && <Label htmlFor={props.name}>{label}</Label>}
