@@ -19,8 +19,6 @@ export { ColorPicker } from "./ColorPicker";
 export { default as ConfettiBackground } from "./ConfettiBackground";
 export { ContentMessage } from "./ContentMessage";
 export { ContextItem } from "./ContextItem";
-export type { ConversationCitationType } from "./ConversationCitationComponent";
-export { ConversationCitationComponent as ConverationCitationComponent } from "./ConversationCitationComponent";
 export type { ConversationMessageSizeType } from "./ConversationMessage";
 export { ConversationMessage } from "./ConversationMessage";
 export type { ConversationMessageEmojiSelectorProps } from "./ConversationMessageActions";

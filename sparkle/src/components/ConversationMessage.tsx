@@ -1,6 +1,5 @@
 import React, { ComponentType, MouseEventHandler } from "react";
 
-import { ConversationCitationType } from "@sparkle/components/ConversationCitationComponent";
 import {
   ConversationMessageActions,
   ConversationMessageEmojiSelectorProps,
@@ -32,7 +31,7 @@ type ConversationMessageProps = {
     onClick: MouseEventHandler<HTMLButtonElement>;
   }[];
   children?: React.ReactNode;
-  citations?: ConversationCitationType[];
+  citations?: React.ReactElement[];
   messageEmoji?: ConversationMessageEmojiSelectorProps;
   name: string | null;
   pictureUrl?: string | React.ReactNode | null;
