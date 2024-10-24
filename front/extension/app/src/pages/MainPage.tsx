@@ -1,7 +1,6 @@
 import { useAuth } from "@app/extension/app/src/components/auth/AuthProvider";
 import { ConversationContainer } from "@app/extension/app/src/components/conversation/ConversationContainer";
 import { Page, Spinner } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import { useNavigate } from "react-router-dom";
 
 export const MainPage = () => {
@@ -32,21 +31,10 @@ export const MainPage = () => {
     return;
   }
 
-  const owner: WorkspaceType = {
-    id: workspace.id,
-    sId: workspace.sId,
-    name: workspace.name,
-    role: workspace.role,
-    segmentation: workspace.segmentation,
-    whiteListedProviders: workspace.whiteListedProviders,
-    defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
-    flags: [],
-  };
-
   return (
-    <div className="h-full w-full">
+    <div className="h-full w-full pt-4">
       <Page.SectionHeader title="Conversation" />
-      <ConversationContainer owner={owner} conversationId={null} />
+      <ConversationContainer owner={workspace} conversationId={null} />
     </div>
   );
 };

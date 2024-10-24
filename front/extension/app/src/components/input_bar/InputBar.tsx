@@ -3,11 +3,12 @@ import type { InputBarContainerProps } from "@app/extension/app/src/components/i
 import { InputBarContainer } from "@app/extension/app/src/components/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/extension/app/src/components/input_bar/InputBarContext";
 import { classNames } from "@app/extension/app/src/lib/utils";
-import type { AgentMention, MentionType } from "@dust-tt/types";
 import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
+  AgentMention,
+  LightWorkspaceType,
+  MentionType,
 } from "@dust-tt/types";
+import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { compareAgentsForSort } from "@dust-tt/types";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -45,7 +46,7 @@ export function AssistantInputBar({
   isFloating = true,
   isFloatingWithoutMargin = false,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   onSubmit: (input: string, mentions: MentionType[]) => void;
   stickyMentions?: AgentMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;

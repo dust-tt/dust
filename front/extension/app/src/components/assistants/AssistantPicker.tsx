@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
-  WorkspaceType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
@@ -21,7 +21,7 @@ export function AssistantPicker({
   pickerButton,
   size = "md",
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   assistants: LightAgentConfigurationType[];
   onItemClick: (assistant: LightAgentConfigurationType) => void;
   pickerButton?: React.ReactNode;

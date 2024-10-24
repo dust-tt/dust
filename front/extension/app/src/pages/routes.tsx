@@ -17,7 +17,7 @@ export const routes = [
     ),
   },
   {
-    path: "/conversations/*",
+    path: "/conversations/:conversationId",
     element: (
       <ProtectedRoute>
         <ConversationPage />
