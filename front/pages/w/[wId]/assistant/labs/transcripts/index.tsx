@@ -513,7 +513,7 @@ export default function LabsTranscriptsIndex({
                     label="Disconnect"
                     icon={XMarkIcon}
                     size="sm"
-                    variant="secondary"
+                    variant="outline"
                     onClick={() => setIsDeleteProviderDialogOpened(true)}
                   />
                 </Page.Layout>
@@ -551,7 +551,7 @@ export default function LabsTranscriptsIndex({
                     label="Disconnect"
                     icon={XMarkIcon}
                     size="sm"
-                    variant="secondary"
+                    variant="outline"
                     onClick={() => setIsDeleteProviderDialogOpened(true)}
                   />
                 </Page.Layout>

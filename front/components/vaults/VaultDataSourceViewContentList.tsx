@@ -385,8 +385,8 @@ export const VaultDataSourceViewContentList = ({
                   <Button
                     size="sm"
                     label={viewType === "documents" ? "Documents" : "Tables"}
-                    variant="secondary"
-                    type="menu"
+                    variant="outline"
+                    isSelect
                   />
                 </DropdownMenu.Button>
 

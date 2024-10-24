@@ -34,10 +34,9 @@ export function FilterChips<T extends string>({
       {filters.map((filterName) => (
         <Button
           label={filterName}
-          variant={selectedFilter === filterName ? "primary" : "tertiary"}
+          variant={selectedFilter === filterName ? "primary" : "ghost"}
           key={filterName}
           size="xs"
-          hasMagnifying={false}
           onClick={() => handleFilterClick(filterName)}
         />
       ))}

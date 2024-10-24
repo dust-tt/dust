@@ -667,7 +667,7 @@ function ErrorMessage({
         <Popover
           trigger={
             <Button
-              variant="tertiary"
+              variant="ghost"
               size="xs"
               icon={EyeIcon}
               label="See the error"
@@ -680,7 +680,7 @@ function ErrorMessage({
               </div>
               <div className="self-end">
                 <Button
-                  variant="tertiary"
+                  variant="ghost"
                   size="xs"
                   icon={DocumentDuplicateIcon}
                   label={"Copy"}
@@ -695,7 +695,7 @@ function ErrorMessage({
       </div>
       <div>
         <Button
-          variant="tertiary"
+          variant="ghost"
           size="sm"
           icon={ArrowPathIcon}
           label="Retry"

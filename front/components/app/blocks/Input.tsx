@@ -128,7 +128,7 @@ export default function Input({
                 {block.config && block.config.dataset ? (
                   <>
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       onClick={() => setIsDatasetModalOpen(true)}
                       icon={readOnly ? EyeIcon : PencilSquareIcon}
                       label={readOnly ? "View" : "Edit"}
@@ -152,12 +152,12 @@ export default function Input({
               {readOnly ? null : (
                 <Button
                   className="ml-1 mt-2"
-                  variant="secondary"
+                  variant="outline"
                   onClick={() => {
                     window.location.href = `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${block.config.dataset}`;
                   }}
                   icon={PencilSquareIcon}
-                  label={"Edit schema"}
+                  label="Edit schema"
                 />
               )}
               <DatasetView

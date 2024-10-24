@@ -34,7 +34,7 @@ export function RemoveAssistantFromFavoritesDialog({
       title={`Remove from favorites`}
       onCancel={onClose}
       validateLabel="Remove"
-      validateVariant="primaryWarning"
+      validateVariant="warning"
       onValidate={async () => {
         void doUpdate(false);
         onClose();
@@ -74,7 +74,7 @@ export function RemoveAssistantFromWorkspaceDialog({
       title={`Remove from Company assistants`}
       onCancel={onClose}
       validateLabel="Remove"
-      validateVariant="primaryWarning"
+      validateVariant="warning"
       onValidate={async () => {
         if (!detailedConfiguration) {
           throw new Error("Agent configuration not found");

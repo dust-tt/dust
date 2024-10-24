@@ -1,15 +1,11 @@
 import React from "react";
 
-import {
-  ConversationCitationComponent,
-  ConversationCitationType,
-} from "@sparkle/components/ConversationCitationComponent";
 import { ConversationMessageSizeType } from "@sparkle/components/ConversationMessage";
 import { cn } from "@sparkle/lib/utils";
 
 interface ConversationMessageContentProps {
   children: React.ReactNode;
-  citations?: ConversationCitationType[];
+  citations?: React.ReactElement[];
   size: ConversationMessageSizeType;
 }
 
@@ -40,9 +36,7 @@ export function ConversationMessageContent({
             size === "compact" ? "s-grid-cols-2" : "s-grid-cols-4"
           )}
         >
-          {citations.map((c) => {
-            return <ConversationCitationComponent citation={c} key={c.id} />;
-          })}
+          {citations}
         </div>
       )}
     </div>

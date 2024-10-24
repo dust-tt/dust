@@ -101,11 +101,11 @@ export function AgentSuggestion({
             }}
             pickerButton={
               <Button
-                variant="tertiary"
+                variant="ghost"
                 size="xs"
                 icon={RobotIcon}
                 label="Select another"
-                type="menu"
+                isSelect
               />
             }
           />

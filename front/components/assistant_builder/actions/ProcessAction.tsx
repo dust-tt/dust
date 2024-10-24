@@ -203,10 +203,9 @@ function PropertiesFields({
                   <DropdownMenu>
                     <DropdownMenu.Button tooltipPosition="top">
                       <Button
-                        type="select"
-                        labelVisible={true}
+                        isSelect
                         label={prop["type"]}
-                        variant="tertiary"
+                        variant="ghost"
                         size="sm"
                       />
                     </DropdownMenu.Button>
@@ -231,7 +230,7 @@ function PropertiesFields({
                   <IconButton
                     icon={XMarkIcon}
                     tooltip="Remove Property"
-                    variant="tertiary"
+                    variant="ghost"
                     onClick={async () => {
                       handleRemoveProperty(index);
                     }}
@@ -244,9 +243,9 @@ function PropertiesFields({
       )}
       <div className="col-span-12">
         <Button
-          label={"Add a field"}
+          label="Add a field"
           size="sm"
-          variant="secondary"
+          variant="outline"
           icon={PlusIcon}
           onClick={handleAddProperty}
           disabled={readOnly}
@@ -422,8 +421,8 @@ export function ActionProcess({
             </div>
             <div>
               <Button
-                label={"Add tag filter"}
-                variant="tertiary"
+                label="Add tag filter"
+                variant="ghost"
                 size="xs"
                 onClick={() => {
                   setEdited(true);
@@ -482,7 +481,7 @@ export function ActionProcess({
                   <IconButton
                     icon={XCircleIcon}
                     tooltip="Remove Property"
-                    variant="tertiary"
+                    variant="ghost"
                     onClick={async () => {
                       setEdited(true);
                       updateAction((previousAction) => {
@@ -561,12 +560,11 @@ export function ActionProcess({
         <DropdownMenu>
           <DropdownMenu.Button tooltipPosition="top">
             <Button
-              type="select"
-              labelVisible={true}
+              isSelect
               label={
                 TIME_FRAME_UNIT_TO_LABEL[actionConfiguration.timeFrame.unit]
               }
-              variant="secondary"
+              variant="outline"
               size="sm"
             />
           </DropdownMenu.Button>
@@ -605,7 +603,7 @@ export function ActionProcess({
                 trigger={
                   <Button
                     label="Re-generate from Instructions"
-                    variant="tertiary"
+                    variant="ghost"
                     icon={SparklesIcon}
                     size="xs"
                     disabled={isGeneratingSchema}

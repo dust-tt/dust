@@ -38,7 +38,7 @@ const MAX_DIFF_TOKENS = 4096;
 const TOTAL_TARGET_TOKENS = 8192;
 
 // The maximum number of tracked documents that we process for one diff.
-const MAX_TRACKED_DOCUMENTS = 3;
+const MAX_TRACKED_DOCUMENTS = 1;
 
 const logger = mainLogger.child({
   postProcessHook: "document_tracker_suggest_changes",
@@ -258,11 +258,11 @@ export async function documentTrackerSuggestChangesOnUpsert({
     },
     "Calling doc tracker retrieval action."
   );
-  const retrievalResult = await callDocTrackerRetrievalAction(
-    auth,
-    diffString,
-    targetTrackedDocumentTokens
-  );
+  const retrievalResult = await callDocTrackerRetrievalAction(auth, {
+    inputText: diffString,
+    targetDocumentTokens: targetTrackedDocumentTokens,
+    topK: MAX_TRACKED_DOCUMENTS,
+  });
 
   if (!retrievalResult.length) {
     localLogger.warn("No documents found.");
@@ -338,13 +338,13 @@ export async function documentTrackerSuggestChangesOnUpsert({
       "Match found."
     );
 
-    const trackedDocDataSource =
+    const trackedDocumentDataSource =
       await DataSourceResource.fetchByDustAPIDataSourceId(
         auth,
         trackedDocDataSourceId
       );
 
-    if (!trackedDocDataSource) {
+    if (!trackedDocumentDataSource) {
       trackedDocLocalLogger.warn(
         {
           trackedDocDataSourceId,
@@ -357,7 +357,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     // again, checking for race condition here and skipping if the
     // tracked doc is the doc that was just upserted.
     if (
-      trackedDocDataSource.id === dataSource.id &&
+      trackedDocumentDataSource.id === dataSource.id &&
       trackedDocId === documentId
     ) {
       trackedDocLocalLogger.info(
@@ -373,7 +373,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     const trackedDocuments = await TrackedDocument.findAll({
       where: {
         documentId: trackedDocId,
-        dataSourceId: trackedDocDataSourceId,
+        dataSourceId: trackedDocumentDataSource.id,
       },
     });
     if (!trackedDocuments.length) {

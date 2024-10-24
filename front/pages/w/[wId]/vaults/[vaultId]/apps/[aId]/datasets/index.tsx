@@ -71,7 +71,7 @@ export default function DatasetsView({
       await confirm({
         title: "Double checking",
         message: "Are you sure you want to delete this dataset entirely?",
-        validateVariant: "primaryWarning",
+        validateVariant: "warning",
       })
     ) {
       await fetch(

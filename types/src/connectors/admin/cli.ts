@@ -8,6 +8,7 @@ export const ConnectorsCommandSchema = t.type({
     t.literal("stop"),
     t.literal("delete"),
     t.literal("pause"),
+    t.literal("unpause"),
     t.literal("resume"),
     t.literal("full-resync"),
     t.literal("set-error"),

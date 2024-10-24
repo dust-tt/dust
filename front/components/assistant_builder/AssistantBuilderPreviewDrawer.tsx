@@ -290,7 +290,7 @@ const TemplateAddActionButton = ({
         icon={spec.cardIcon}
         label={`Add tool “${spec.label}”`}
         size="sm"
-        variant="secondary"
+        variant="outline"
         onClick={() => addAction(action)}
       />
     </div>
@@ -315,15 +315,7 @@ const TemplateDropDownMenu = ({
   return (
     <DropdownMenu className="text-element-700">
       <DropdownMenu.Button>
-        <Button
-          icon={MoreIcon}
-          label="Actions"
-          labelVisible={false}
-          disabledTooltip
-          size="sm"
-          variant="tertiary"
-          hasMagnifying={false}
-        />
+        <Button icon={MoreIcon} size="sm" variant="ghost" />
       </DropdownMenu.Button>
       <DropdownMenu.Items width={320} origin="topRight">
         <DropdownMenu.Item
@@ -333,7 +325,7 @@ const TemplateDropDownMenu = ({
               title: "Are you sure you want to close the template?",
               message:
                 "Your assistant will remain as it is but will not display template's help any more.",
-              validateVariant: "primaryWarning",
+              validateVariant: "warning",
             });
             if (confirmed) {
               openRightPanelTab("Preview");
@@ -351,7 +343,7 @@ const TemplateDropDownMenu = ({
                 title: "Are you sure?",
                 message:
                   "You will lose the changes you have made to the assistant's instructions and go back to the template's default settings.",
-                validateVariant: "primaryWarning",
+                validateVariant: "warning",
               });
               if (confirmed) {
                 await resetToTemplateInstructions();
@@ -369,7 +361,7 @@ const TemplateDropDownMenu = ({
                 title: "Are you sure?",
                 message:
                   "You will lose the changes you have made to the assistant's tools.",
-                validateVariant: "primaryWarning",
+                validateVariant: "warning",
               });
               if (confirmed) {
                 await resetToTemplateActions();

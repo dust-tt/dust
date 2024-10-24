@@ -103,7 +103,7 @@ function ActionDetails({
       size={size === "normal" ? "sm" : "xs"}
       label="Tools inspection"
       icon={EyeIcon}
-      variant="tertiary"
+      variant="ghost"
       onClick={onClick}
     />
   );

@@ -45,7 +45,7 @@ export default function Pricing() {
             <br />
             <br />
             <Button
-              variant="primary"
+              variant="highlight"
               size="md"
               label="Start with Pro, 15 Days free"
               icon={RocketIcon}

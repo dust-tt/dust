@@ -138,7 +138,7 @@ export function InviteEmailModal({
         title: "Some users are already in the workspace",
         message: ReinviteUsersMessage,
         validateLabel: "Yes, proceed",
-        validateVariant: "primaryWarning",
+        validateVariant: "warning",
       }));
 
     if (shouldProceedWithInvites) {

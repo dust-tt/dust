@@ -219,7 +219,7 @@ const getTableColumns = ({
         return (
           <DataTable.CellContent>
             <Button
-              variant="secondary"
+              variant="outline"
               icon={Cog6ToothIcon}
               disabled={disabled}
               hasMagnifying={false}

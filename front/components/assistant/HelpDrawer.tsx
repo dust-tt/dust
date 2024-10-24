@@ -223,17 +223,16 @@ export function HelpDrawer({
 
         <div className="flex flex-col gap-4 [&>*]:pl-px">
           <Page.SectionHeader title="Ask questions to @help" />
-          <Button.List isWrapping={true}>
+          <div className="flex gap-2">
             <div className="flex flex-col gap-8">
               <div className="flex flex-wrap gap-2">
                 {userContent[owner.role].helpIceBreakers.map(
                   (iceBreaker, index) => (
                     <Button
-                      variant="tertiary"
+                      variant="ghost"
                       icon={ChatBubbleBottomCenterTextIcon}
                       label={iceBreaker}
                       size="sm"
-                      hasMagnifying={false}
                       onClick={() => {
                         void handleHelpSubmit(`@help ${iceBreaker}`, [
                           { configurationId: GLOBAL_AGENTS_SID.HELPER },
@@ -245,7 +244,7 @@ export function HelpDrawer({
                 )}
               </div>
             </div>
-          </Button.List>
+          </div>
           <AssistantInputBar
             owner={owner}
             onSubmit={handleHelpSubmit}
