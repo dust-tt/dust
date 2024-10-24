@@ -126,7 +126,7 @@ export async function retrieveZendeskTicketPermissions({
       provider: connector.type,
       internalId: getTicketsInternalId(connectorId, brandId),
       parentInternalId: parentInternalId,
-      type: "database",
+      type: "folder",
       title: "Tickets",
       sourceUrl: null,
       expandable: false,

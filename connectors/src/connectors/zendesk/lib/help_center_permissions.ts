@@ -247,7 +247,7 @@ export async function retrieveZendeskHelpCenterPermissions({
         provider: connector.type,
         internalId: getHelpCenterInternalId(connectorId, brandId),
         parentInternalId: parentInternalId,
-        type: "database",
+        type: "folder",
         title: "Help Center",
         sourceUrl: null,
         expandable: true,
