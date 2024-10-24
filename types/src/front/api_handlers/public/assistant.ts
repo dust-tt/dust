@@ -29,6 +29,7 @@ export const PublicPostMessagesRequestBodySchema = t.intersection([
         t.literal("make"),
         t.literal("zendesk"),
         t.literal("raycast"),
+        t.literal("extension"),
         t.null,
         t.undefined,
       ]),

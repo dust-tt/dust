@@ -4,6 +4,7 @@ import type {
   InternalPostConversationsRequestBodySchema,
   MentionType,
   Result,
+  SubmitMessageError,
   UserMessageWithRankType,
   UserType,
   WorkspaceType,
@@ -23,16 +24,6 @@ import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assis
 export const CONVERSATION_PARENT_SCROLL_DIV_ID = {
   modal: "modal-content",
   page: "main-content",
-};
-
-export type ConversationErrorType = {
-  type:
-    | "attachment_upload_error"
-    | "message_send_error"
-    | "plan_limit_reached_error"
-    | "content_too_large";
-  title: string;
-  message: string;
 };
 
 export type ContentFragmentInput = {
@@ -91,9 +82,7 @@ export async function submitMessage({
     mentions: MentionType[];
     contentFragments: UploadedContentFragment[];
   };
-}): Promise<
-  Result<{ message: UserMessageWithRankType }, ConversationErrorType>
-> {
+}): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const { input, mentions, contentFragments } = messageData;
   // Create a new content fragment.
   if (contentFragments.length > 0) {
@@ -219,7 +208,7 @@ export async function createConversationWithMessage({
   };
   visibility?: ConversationVisibility;
   title?: string;
-}): Promise<Result<ConversationType, ConversationErrorType>> {
+}): Promise<Result<ConversationType, SubmitMessageError>> {
   const { input, mentions, contentFragments } = messageData;
 
   const body: t.TypeOf<typeof InternalPostConversationsRequestBodySchema> = {

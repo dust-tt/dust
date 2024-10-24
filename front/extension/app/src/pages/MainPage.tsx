@@ -1,5 +1,5 @@
 import { useAuth } from "@app/extension/app/src/components/auth/AuthProvider";
-import { AssistantInputBar } from "@app/extension/app/src/components/input_bar/InputBar";
+import { ConversationContainer } from "@app/extension/app/src/components/conversation/ConversationContainer";
 import { Page, Spinner } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { useNavigate } from "react-router-dom";
@@ -46,12 +46,7 @@ export const MainPage = () => {
   return (
     <div className="h-full w-full">
       <Page.SectionHeader title="Conversation" />
-      <AssistantInputBar
-        owner={owner}
-        onSubmit={() => {}}
-        stickyMentions={[]}
-        disableAutoFocus={false}
-      />
+      <ConversationContainer owner={owner} conversationId={null} />
     </div>
   );
 };

@@ -12,7 +12,9 @@ export type StoredTokens = {
 
 export type StoredUser = {
   userId: string;
-  firstName: string;
+  email: string;
+  username: string;
+  fullName: string;
   selectedWorkspace: string | null;
   workspaces: LightWorkspaceType[];
 };
@@ -65,7 +67,9 @@ export const saveUser = async (
 ): Promise<StoredUser> => {
   const storedUser: StoredUser = {
     userId: user.sId,
-    firstName: user.firstName,
+    email: user.email,
+    username: user.username,
+    fullName: user.fullName,
     selectedWorkspace:
       user.workspaces.length === 1 ? user.workspaces[0].sId : null,
     workspaces: user.workspaces,

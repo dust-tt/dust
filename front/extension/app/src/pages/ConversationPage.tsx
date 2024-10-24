@@ -8,6 +8,7 @@ export const ConversationPage = () => {
       leftActions={
         <Link to="/main.html">
           <ChevronLeftIcon />
+          You're in the conversation page!
         </Link>
       }
     />
