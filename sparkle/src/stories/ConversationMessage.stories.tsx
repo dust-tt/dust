@@ -5,6 +5,7 @@ import {
   Citation,
   ConversationMessage,
   MagnifyingGlassIcon,
+  ZoomableImageCitationWrapper,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -42,9 +43,27 @@ export const ConversationExample = () => {
             ]}
             citations={[
               <Citation
-                type="slack"
-                href="https://www.google.com"
                 title="Source: Thread on #general message from @ed"
+                size="xs"
+                sizing="fluid"
+                type="slack"
+                index="1"
+                href="https://www.google.com"
+              />,
+              <Citation
+                title="Title"
+                type="github"
+                size="xs"
+                sizing="fluid"
+                index="2"
+                href="https://www.google.com"
+              />,
+
+              <ZoomableImageCitationWrapper
+                size="xs"
+                title="Title"
+                imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
+                alt={"Image"}
               />,
             ]}
           >
@@ -92,9 +111,27 @@ export const ConversationExample = () => {
             ]}
             citations={[
               <Citation
-                type="slack"
-                href="https://www.google.com"
                 title="Source: Thread on #general message from @ed"
+                size="xs"
+                sizing="fluid"
+                type="slack"
+                index="1"
+                href="https://www.google.com"
+              />,
+              <Citation
+                title="Title"
+                type="github"
+                size="xs"
+                sizing="fluid"
+                index="2"
+                href="https://www.google.com"
+              />,
+
+              <ZoomableImageCitationWrapper
+                size="xs"
+                title="Title"
+                imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
+                alt={"Image"}
               />,
             ]}
           >
