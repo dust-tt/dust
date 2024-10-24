@@ -1,5 +1,4 @@
 import type {
-  ConversationCitationType,
   ConversationMessageEmojiSelectorProps,
   ConversationMessageSizeType,
 } from "@dust-tt/sparkle";
@@ -10,7 +9,7 @@ import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSug
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 
 interface UserMessageProps {
-  citations?: ConversationCitationType[];
+  citations?: React.ReactElement[];
   conversationId: string;
   isLastMessage: boolean;
   message: UserMessageType;
