@@ -5,22 +5,22 @@ import {
   getTitleFromRetrievedDocument,
 } from "@dust-tt/types";
 
-interface RetrievedDocumentCitation {
+export interface RetrievedDocumentCitation {
   href?: string;
   title: string;
   type: Exclude<React.ComponentProps<typeof Citation>["type"], undefined>;
 }
 
+export function makeDocumentCitation(document: RetrievalDocumentType) {
+  return {
+    href: document.sourceUrl ?? undefined,
+    title: getTitleFromRetrievedDocument(document),
+    type: getProviderFromRetrievedDocument(document),
+  };
+}
+
 export function makeDocumentCitations(
   documents: RetrievalDocumentType[]
 ): RetrievedDocumentCitation[] {
-  return documents.reduce((acc, doc) => {
-    acc.push({
-      href: doc.sourceUrl ?? undefined,
-      title: getTitleFromRetrievedDocument(doc),
-      type: getProviderFromRetrievedDocument(doc),
-    });
-
-    return acc;
-  }, [] as RetrievedDocumentCitation[]);
+  return documents.map(makeDocumentCitation);
 }

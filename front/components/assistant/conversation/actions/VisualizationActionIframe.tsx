@@ -19,7 +19,7 @@ import {
 import {
   MarkDownContentContext,
   RenderMessageMarkdown,
-} from "@app/components/assistant/RenderMessageMarkdown";
+} from "@app/components/assistant/markdown/RenderMessageMarkdown";
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 

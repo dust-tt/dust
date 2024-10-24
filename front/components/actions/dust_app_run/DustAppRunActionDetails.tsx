@@ -5,9 +5,9 @@ import { useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import { CodeBlock } from "@app/components/assistant/RenderMessageMarkdown";
-import type { GetContentToDownloadFunction } from "@app/components/misc/ContentBlockWrapper";
-import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
+import type { GetContentToDownloadFunction } from "@app/components/assistant/markdown/ContentBlockWrapper";
+import { ContentBlockWrapper } from "@app/components/assistant/markdown/ContentBlockWrapper";
+import { CodeBlock } from "@app/components/markdown/CodeBlock";
 
 export function DustAppRunActionDetails({
   action,

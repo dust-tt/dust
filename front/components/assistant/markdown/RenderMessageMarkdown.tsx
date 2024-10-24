@@ -1,10 +1,5 @@
-import { IconButton, SparklesIcon, WrenchIcon } from "@dust-tt/sparkle";
-import type { WebsearchResultType } from "@dust-tt/types";
-import type { RetrievalDocumentType } from "@dust-tt/types";
-import mermaid from "mermaid";
-import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
-import React, { useContext, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
@@ -13,32 +8,14 @@ import rehypeKatex from "rehype-katex";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import {
-  amber,
-  blue,
-  emerald,
-  pink,
-  slate,
-  violet,
-  yellow,
-} from "tailwindcss/colors";
 import { visit } from "unist-util-visit";
 
-import {
-  MermaidDisplayProvider,
-  MermaidGraph,
-  useMermaidDisplay,
-} from "@app/components/assistant/RenderMermaid";
-import type { GetContentToDownloadFunction } from "@app/components/misc/ContentBlockWrapper";
-import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
+import type { GetContentToDownloadFunction } from "@app/components/assistant/markdown/ContentBlockWrapper";
+import { ContentBlockWrapper } from "@app/components/assistant/markdown/ContentBlockWrapper";
+import type { MarkdownCitation } from "@app/components/assistant/markdown/MarkdownCitation";
 import { classNames } from "@app/lib/utils";
 
 const supportedDirectives = ["mention", "cite", "visualization"];
-
-const SyntaxHighlighter = dynamic(
-  () => import("react-syntax-highlighter").then((mod) => mod.Light),
-  { ssr: false }
-);
 
 const VISUALIZATION_MAGIC_LINE = "{/** visualization-complete */}";
 
@@ -183,12 +160,9 @@ function sanitizeContent(str: string): string {
 
 type CitationsContextType = {
   references: {
-    [key: string]: RetrievalDocumentType | WebsearchResultType;
+    [key: string]: MarkdownCitation;
   };
-  updateActiveReferences: (
-    doc: RetrievalDocumentType | WebsearchResultType,
-    index: number
-  ) => void;
+  updateActiveReferences: (doc: MarkdownCitation, index: number) => void;
   setHoveredReference: (index: number | null) => void;
 };
 
@@ -222,16 +196,16 @@ export function RenderMessageMarkdown({
   citationsContext,
   textSize,
   textColor,
-  customRenderer,
   isLastMessage,
+  additionalMarkdownComponents,
 }: {
   content: string;
   isStreaming: boolean;
   citationsContext?: CitationsContextType;
   textSize?: "sm" | "base";
   textColor?: string;
-  customRenderer?: CustomRenderers;
   isLastMessage: boolean;
+  additionalMarkdownComponents?: Components;
 }) {
   const processedContent = useMemo(() => sanitizeContent(content), [content]);
 
@@ -253,7 +227,6 @@ export function RenderMessageMarkdown({
   const markdownComponents: Components = useMemo(
     () => ({
       pre: ({ children }) => <PreBlock>{children}</PreBlock>,
-      code: CodeBlockWithExtendedSupport,
       a: LinkBlock,
       ul: UlBlock,
       ol: OlBlock,
@@ -311,18 +284,9 @@ export function RenderMessageMarkdown({
       mention: ({ agentName }) => {
         return <MentionBlock agentName={agentName} />;
       },
-      // @ts-expect-error - `visualization` is a custom tag, currently refused by
-      // react-markdown types although the functionality is supported
-      visualization: ({ position }) => {
-        return (
-          <VisualizationBlock
-            position={position}
-            customRenderer={customRenderer}
-          />
-        );
-      },
+      ...additionalMarkdownComponents,
     }),
-    [textSize, textColor, customRenderer]
+    [textSize, textColor, additionalMarkdownComponents]
   );
 
   const markdownPlugins: PluggableList = useMemo(
@@ -352,54 +316,22 @@ export function RenderMessageMarkdown({
         <MarkDownContentContext.Provider
           value={{ content: processedContent, isStreaming, isLastMessage }}
         >
-          <MermaidDisplayProvider>
-            <ReactMarkdown
-              linkTarget="_blank"
-              components={markdownComponents}
-              remarkPlugins={markdownPlugins}
-              rehypePlugins={
-                [[rehypeKatex, { output: "mathml" }]] as PluggableList
-              }
-            >
-              {processedContent}
-            </ReactMarkdown>
-          </MermaidDisplayProvider>
+          {/* <MermaidDisplayProvider> */}
+          <ReactMarkdown
+            linkTarget="_blank"
+            components={markdownComponents}
+            remarkPlugins={markdownPlugins}
+            rehypePlugins={
+              [[rehypeKatex, { output: "mathml" }]] as PluggableList
+            }
+          >
+            {processedContent}
+          </ReactMarkdown>
+          {/* </MermaidDisplayProvider> */}
         </MarkDownContentContext.Provider>
       </CitationsContext.Provider>
     </div>
   );
-}
-
-function VisualizationBlock({
-  position,
-  customRenderer,
-}: {
-  position: { start: { line: number }; end: { line: number } };
-  customRenderer?: CustomRenderers;
-}) {
-  const { content } = useContext(MarkDownContentContext);
-
-  const visualizationRenderer = useMemo(() => {
-    return (
-      customRenderer?.visualization ||
-      (() => (
-        <div className="pb-2 pt-4 font-medium text-red-600">
-          Visualization not available
-        </div>
-      ))
-    );
-  }, [customRenderer]);
-
-  let code = content
-    .split("\n")
-    .slice(position.start.line, position.end.line - 1)
-    .join("\n");
-  let complete = false;
-  if (code.includes(VISUALIZATION_MAGIC_LINE)) {
-    code = code.replace(VISUALIZATION_MAGIC_LINE, "");
-    complete = true;
-  }
-  return visualizationRenderer(code, complete, position.start.line);
 }
 
 function MentionBlock({ agentName }: { agentName: string }) {
@@ -443,7 +375,7 @@ function CiteBlock(props: ReactMarkdownProps) {
       <span className="inline-flex space-x-1">
         {refs.map((r, i) => {
           const document = references[r.ref];
-          const link = "link" in document ? document.link : document.sourceUrl;
+          const link = document.href;
 
           return (
             <sup key={`${r.ref}-${i}`}>
@@ -613,7 +545,7 @@ function PreBlock({ children }: { children: React.ReactNode }) {
   if (!validChildrenContent) {
     fallbackData =
       Array.isArray(children) && children[0]
-        ? children[0].props?.node.data?.meta
+        ? children[0].props?.node?.data?.meta
         : null;
   }
 
@@ -632,41 +564,9 @@ function PreBlock({ children }: { children: React.ReactNode }) {
         }
       : undefined;
 
-  const { isValidMermaid, showMermaid, setIsValidMermaid, setShowMermaid } =
-    useMermaidDisplay();
-
-  const { isStreaming } = useContext(MarkDownContentContext);
-
-  useEffect(() => {
-    if (isStreaming || !validChildrenContent || isValidMermaid || showMermaid) {
-      return;
-    }
-
-    void mermaid
-      .parse(validChildrenContent)
-      .then(() => {
-        setIsValidMermaid(true);
-        setShowMermaid(true);
-      })
-      .catch(() => {
-        setIsValidMermaid(false);
-        setShowMermaid(false);
-      });
-  }, [
-    isStreaming,
-    isValidMermaid,
-    showMermaid,
-    setIsValidMermaid,
-    setShowMermaid,
-    validChildrenContent,
-  ]);
-
   return (
     <pre
-      className={classNames(
-        "my-2 w-full break-all rounded-lg",
-        showMermaid ? "bg-slate-100" : "bg-slate-800"
-      )}
+      className={classNames("my-2 w-full break-all rounded-lg bg-slate-800")}
     >
       <div className="relative">
         <ContentBlockWrapper
@@ -675,35 +575,6 @@ function PreBlock({ children }: { children: React.ReactNode }) {
           }}
           getContentToDownload={getContentToDownload}
         >
-          <div className="absolute right-2 top-2">
-            {(validChildrenContent || fallbackData) && (
-              <div className="flex gap-2 align-bottom">
-                {isValidMermaid && (
-                  <>
-                    <div
-                      className={classNames(
-                        "text-xs",
-                        showMermaid ? "text-slate-400" : "text-slate-300"
-                      )}
-                    >
-                      <a
-                        onClick={() => setShowMermaid(!showMermaid)}
-                        className="cursor-pointer"
-                      >
-                        {showMermaid ? "See Markdown" : "See Graph"}
-                      </a>
-                    </div>
-                    <IconButton
-                      variant="ghost"
-                      size="xs"
-                      icon={showMermaid ? WrenchIcon : SparklesIcon}
-                      onClick={() => setShowMermaid(!showMermaid)}
-                    />
-                  </>
-                )}
-              </div>
-            )}
-          </div>
           <div className="overflow-auto pt-8 text-sm">
             {validChildrenContent ? children : fallbackData || children}
           </div>
@@ -763,170 +634,5 @@ function ParagraphBlock({
     >
       {children}
     </div>
-  );
-}
-
-function CodeBlockWithExtendedSupport({
-  children,
-  className,
-  inline,
-}: {
-  children?: React.ReactNode;
-  className?: string;
-  inline?: boolean;
-}) {
-  const { isValidMermaid, showMermaid } = useMermaidDisplay();
-
-  const validChildrenContent = String(children).trim();
-  if (!inline && isValidMermaid && showMermaid) {
-    return <MermaidGraph chart={validChildrenContent} />;
-  }
-
-  return (
-    <CodeBlock className={className} inline={inline}>
-      {children}
-    </CodeBlock>
-  );
-}
-
-export function CodeBlock({
-  children,
-  className,
-  inline,
-  wrapLongLines = false,
-}: {
-  children?: React.ReactNode;
-  className?: string;
-  inline?: boolean;
-  wrapLongLines?: boolean;
-}): JSX.Element {
-  const match = /language-(\w+)/.exec(className || "");
-  const language = match ? match[1] : "text";
-  const slate900 = slate["900"];
-  const slate50 = slate["50"];
-  const emerald500 = emerald["500"];
-  const amber400 = amber["400"];
-  const amber200 = amber["200"];
-  const pink400 = pink["400"];
-  const yellow300 = yellow["300"];
-  const blue400 = blue["400"];
-  const violet400 = violet["400"];
-
-  const languageOverrides: { [key: string]: string } = {
-    jsx: "javascript",
-    tsx: "typescript",
-  };
-
-  const languageToUse = languageOverrides[language] || language;
-
-  return !inline && language ? (
-    <SyntaxHighlighter
-      wrapLongLines={wrapLongLines}
-      className="rounded-lg"
-      style={{
-        "hljs-comment": {
-          color: amber200,
-        },
-        "hljs-quote": {
-          color: amber200,
-        },
-        "hljs-variable": {
-          color: emerald500,
-        },
-        "hljs-template-variable": {
-          color: pink400,
-        },
-        "hljs-tag": {
-          color: pink400,
-        },
-        "hljs-name": {
-          color: pink400,
-        },
-        "hljs-selector-id": {
-          color: pink400,
-        },
-        "hljs-selector-class": {
-          color: pink400,
-        },
-        "hljs-regexp": {
-          color: pink400,
-        },
-        "hljs-deletion": {
-          color: pink400,
-        },
-        "hljs-number": {
-          color: amber400,
-        },
-        "hljs-built_in": {
-          color: amber400,
-        },
-        "hljs-builtin-name": {
-          color: amber400,
-        },
-        "hljs-literal": {
-          color: amber400,
-        },
-        "hljs-type": {
-          color: amber400,
-        },
-        "hljs-params": {
-          color: amber400,
-        },
-        "hljs-meta": {
-          color: amber400,
-        },
-        "hljs-link": {
-          color: amber400,
-        },
-        "hljs-attribute": {
-          color: yellow300,
-        },
-        "hljs-string": {
-          color: emerald500,
-        },
-        "hljs-symbol": {
-          color: emerald500,
-        },
-        "hljs-bullet": {
-          color: emerald500,
-        },
-        "hljs-addition": {
-          color: emerald500,
-        },
-        "hljs-title": {
-          color: blue400,
-        },
-        "hljs-section": {
-          color: blue400,
-        },
-        "hljs-keyword": {
-          color: violet400,
-        },
-        "hljs-selector-tag": {
-          color: violet400,
-        },
-        hljs: {
-          display: "block",
-          overflowX: "auto",
-          background: slate900,
-          color: slate50,
-          padding: "1em",
-        },
-        "hljs-emphasis": {
-          fontStyle: "italic",
-        },
-        "hljs-strong": {
-          fontWeight: "bold",
-        },
-      }}
-      language={languageToUse}
-      PreTag="div"
-    >
-      {String(children).replace(/\n$/, "")}
-    </SyntaxHighlighter>
-  ) : (
-    <code className="rounded-lg border-structure-200 bg-structure-100 px-1.5 py-1 text-sm text-amber-600 dark:border-structure-200-dark dark:bg-structure-100-dark dark:text-amber-400">
-      {children}
-    </code>
   );
 }

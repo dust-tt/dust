@@ -6,7 +6,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback } from "react";
 
-import { useCopyToClipboard } from "@app/hooks/useCopyToClipboard";
+import { useCopyToClipboard } from "@app/components/assistant/markdown/useCopyToClipboard";
 import { classNames } from "@app/lib/utils";
 
 type SupportedContentType = "application/json" | "text/csv";
