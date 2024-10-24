@@ -5,7 +5,9 @@ import type {
   ModelId,
 } from "@dust-tt/types";
 
+import { allowSyncZendeskHelpCenter } from "@connectors/connectors/zendesk/lib/help_center_permissions";
 import { getBrandInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
+import { allowSyncZendeskTickets } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
@@ -15,25 +17,26 @@ import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 /**
  * Mark a brand as permission "read" and all children (help center and tickets) if specified.
  */
-export async function allowSyncBrand({
+export async function allowSyncZendeskBrand({
   subdomain,
   connectorId,
   connectionId,
   brandId,
-  withChildren = false,
 }: {
   subdomain: string;
   connectorId: ModelId;
   connectionId: string;
   brandId: number;
-  withChildren?: boolean;
-}): Promise<ZendeskBrandResource> {
+}): Promise<ZendeskBrandResource | null> {
   let brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
-  if (brand?.permission === "none") {
-    await brand.update({ permission: "read" });
+  if (brand?.helpCenterPermission === "none") {
+    await brand.update({ helpCenterPermission: "read" });
+  }
+  if (brand?.ticketsPermission === "none") {
+    await brand.update({ ticketsPermission: "read" });
   }
 
   const token = await getZendeskAccessToken(connectionId);
@@ -50,28 +53,38 @@ export async function allowSyncBrand({
           connectorId: connectorId,
           brandId: fetchedBrand.id,
           name: fetchedBrand.name || "Brand",
-          permission: "read",
+          helpCenterPermission: "read",
+          ticketsPermission: "read",
           hasHelpCenter: fetchedBrand.has_help_center,
           url: fetchedBrand.url,
         },
       });
     } else {
       logger.error({ brandId }, "[Zendesk] Brand could not be fetched.");
-      throw new Error("Brand could not be fetched.");
+      return null;
     }
   }
 
-  if (withChildren) {
-    throw new Error("withChildren not implemented yet.");
-  }
+  await allowSyncZendeskHelpCenter({
+    subdomain,
+    connectorId,
+    connectionId,
+    brandId,
+  });
+  await allowSyncZendeskTickets({
+    subdomain,
+    connectorId,
+    connectionId,
+    brandId,
+  });
 
   return brand;
 }
 
 /**
- * Mark a help center as permission "none" and all children (collections & articles).
+ * Mark a help center as permission "none" and all children (collections and articles).
  */
-export async function revokeSyncBrand({
+export async function revokeSyncZendeskBrand({
   connectorId,
   brandId,
 }: {
@@ -114,11 +127,12 @@ export async function retrieveZendeskBrandPermissions({
   const isRootLevel = !parentInternalId;
   let nodes: ContentNode[] = [];
 
-  // At the root level, we show one node for each brand that has a help center.
+  // At the root level, we show one node for each brand.
   if (isRootLevel) {
     if (isReadPermissionsOnly) {
-      const brandsInDatabase =
-        await ZendeskBrandResource.fetchBrandsWithHelpCenter({ connectorId });
+      const brandsInDatabase = await ZendeskBrandResource.fetchAllReadOnly({
+        connectorId,
+      });
       nodes = brandsInDatabase.map((brand) => ({
         provider: connector.type,
         internalId: getBrandInternalId(connectorId, brand.brandId),
@@ -127,7 +141,11 @@ export async function retrieveZendeskBrandPermissions({
         title: brand.name,
         sourceUrl: brand.url,
         expandable: true,
-        permission: brand.permission,
+        permission:
+          brand.helpCenterPermission === "read" &&
+          brand.ticketsPermission === "read"
+            ? "read"
+            : "none",
         dustDocumentId: null,
         lastUpdatedAt: brand.updatedAt.getTime(),
       }));
