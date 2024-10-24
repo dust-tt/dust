@@ -86,7 +86,6 @@ interface MetaButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
-  hasVisual?: boolean;
   variant?: ButtonVariantType;
 }
 
@@ -163,7 +162,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         size={buttonSize}
         variant={variant}
         disabled={isLoading || props.disabled}
-        hasVisual={!!icon || isLoading}
         className={isPulsing ? "s-animate-pulse" : ""}
         style={
           {
@@ -180,7 +178,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return tooltip ? (
       <TooltipProvider>
         <TooltipRoot>
-          <TooltipTrigger>{buttonElement}</TooltipTrigger>
+          <TooltipTrigger asChild ref={ref}>
+            {buttonElement}
+          </TooltipTrigger>
           <TooltipContent>{tooltip}</TooltipContent>
         </TooltipRoot>
       </TooltipProvider>
