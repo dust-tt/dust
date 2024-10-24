@@ -71,7 +71,8 @@ export class ZendeskBrand extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   declare brandId: number;
-  declare permission: "read" | "none";
+  declare helpCenterPermission: "read" | "none";
+  declare ticketsPermission: "read" | "none";
 
   declare name: string;
   declare url: string;
@@ -116,7 +117,11 @@ ZendeskBrand.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    permission: {
+    helpCenterPermission: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    ticketsPermission: {
       type: DataTypes.STRING,
       allowNull: false,
     },

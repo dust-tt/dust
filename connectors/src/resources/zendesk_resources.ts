@@ -32,6 +32,8 @@ export interface ZendeskConfigurationResource
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ZendeskConfigurationResource extends BaseResource<ZendeskConfiguration> {
+  static model: ModelStatic<ZendeskConfiguration> = ZendeskConfiguration;
+
   constructor(
     model: ModelStatic<ZendeskConfiguration>,
     blob: Attributes<ZendeskConfiguration>
@@ -108,8 +110,8 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       hasHelpCenter: this.hasHelpCenter,
       subdomain: this.subdomain,
       brandId: this.brandId,
-      permission: this.permission,
-
+      helpCenterPermission: this.helpCenterPermission,
+      ticketsPermission: this.ticketsPermission,
       connectorId: this.connectorId,
     };
   }
@@ -131,8 +133,13 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }
 
   async revokePermissions(): Promise<void> {
-    if (this?.permission === "read") {
-      await this.update({ permission: "none" });
+    await this.revokeHelpCenterPermissions();
+    await this.revokeTicketsPermissions();
+  }
+
+  async revokeHelpCenterPermissions(): Promise<void> {
+    if (this.helpCenterPermission === "read") {
+      await this.update({ helpCenterPermission: "none" });
     }
     await ZendeskCategory.update(
       { permission: "none" },
@@ -142,6 +149,12 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       { permission: "none" },
       { where: { brandId: this.brandId } }
     );
+  }
+
+  async revokeTicketsPermissions(): Promise<void> {
+    if (this.ticketsPermission === "read") {
+      await this.update({ ticketsPermission: "none" });
+    }
     await ZendeskTicket.update(
       { permission: "none" },
       { where: { brandId: this.brandId } }
@@ -179,7 +192,11 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     connectorId: number;
   }): Promise<ZendeskBrandResource[]> {
     return ZendeskBrand.findAll({
-      where: { connectorId, permission: "read" },
+      where: {
+        connectorId,
+        helpCenterPermission: "read",
+        ticketsPermission: "read",
+      },
     }).then((brands) => brands.map((brand) => new this(this.model, brand)));
   }
 
@@ -220,7 +237,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return ZendeskBrand.findAll({
       where: {
         connectorId: connectorId,
-        permission: "read",
+        helpCenterPermission: "read",
         hasHelpCenter: true,
       },
     }).then((brands) => brands.map((brand) => new this(this.model, brand)));
@@ -235,7 +252,11 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       title: this.name,
       sourceUrl: this.url,
       expandable: true,
-      permission: this.permission,
+      permission:
+        this.helpCenterPermission === "read" &&
+        this.ticketsPermission === "read"
+          ? "read"
+          : "none",
       dustDocumentId: null,
       lastUpdatedAt: this.updatedAt.getTime(),
     };
@@ -256,6 +277,22 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     blob: Attributes<ZendeskCategory>
   ) {
     super(ZendeskCategory, blob);
+  }
+
+  static async makeNew({
+    blob,
+    transaction,
+  }: {
+    blob: CreationAttributes<ZendeskCategory>;
+    transaction?: Transaction;
+  }): Promise<ZendeskCategoryResource> {
+    let category;
+    if (transaction) {
+      category = await ZendeskCategory.create({ ...blob }, { transaction });
+    } else {
+      category = await ZendeskCategory.create({ ...blob });
+    }
+    return new this(this.model, category.get());
   }
 
   async postFetchHook(): Promise<void> {
@@ -336,6 +373,12 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return ZendeskArticle.findAll({
       where: { connectorId, categoryId, permission: "read" },
     });
+  }
+
+  async revokePermissions(): Promise<void> {
+    if (this.permission === "read") {
+      await this.update({ permission: "none" });
+    }
   }
 
   toContentNode({ connectorId }: { connectorId: number }): ContentNode {

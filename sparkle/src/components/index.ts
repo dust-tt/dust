@@ -45,6 +45,11 @@ export { Label } from "./Label";
 export { Markdown } from "./Markdown";
 export { Modal } from "./Modal";
 export {
+  NavigationList,
+  NavigationListItem,
+  NavigationListLabel,
+} from "./NavigationList";
+export {
   NewDropdownMenu,
   NewDropdownMenuCheckboxItem,
   NewDropdownMenuContent,
@@ -74,7 +79,7 @@ export {
 export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupChoice, RadioGroupItem } from "./RadioGroup";
-export { ScrollArea } from "./ScrollArea";
+export { ScrollArea, ScrollBar } from "./ScrollArea";
 export { Searchbar } from "./Searchbar";
 export { Separator } from "./Separator";
 export { SliderToggle } from "./SliderToggle";
