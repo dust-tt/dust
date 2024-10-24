@@ -58,7 +58,6 @@ const NavigationListItem = React.forwardRef<
 
   const handleMouseDown = (event: React.MouseEvent) => {
     if (!(event.target as HTMLElement).closest(".new-button-class")) {
-      console.log("HELLo");
       setIsPressed(true);
     }
   };
