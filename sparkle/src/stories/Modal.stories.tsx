@@ -60,9 +60,8 @@ export const ModalExample = () => {
         isOpen={isOpenWithActionAndChange}
         onClose={() => setIsOpenWithActionAndChange(false)}
         action={{
-          labelVisible: true,
           label: "An action",
-          variant: "tertiary",
+          variant: "outline",
           size: "xs",
         }}
         saveLabel="Save (custom name possible)"

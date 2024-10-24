@@ -82,7 +82,7 @@ export const Searchbar = forwardRef<HTMLInputElement, SearchbarProps>(
           {value && onChange ? (
             <IconButton
               icon={XMarkIcon}
-              variant="secondary"
+              variant="outline"
               size={size}
               onClick={clearInputField}
             />

@@ -5,7 +5,7 @@ import ConfettiBackground from "@sparkle/components/ConfettiBackground";
 import Spinner from "@sparkle/components/Spinner";
 import { classNames } from "@sparkle/lib/utils";
 
-import { Button, ButtonVariantType } from "./Button";
+import { Button } from "./Button";
 
 export type BaseDialogProps = {
   backgroundType?: "confetti" | "snow" | "none";
@@ -16,7 +16,7 @@ export type BaseDialogProps = {
   onValidate: () => void;
   title: string;
   validateLabel?: string;
-  validateVariant?: ButtonVariantType;
+  validateVariant?: React.ComponentProps<typeof Button>["variant"];
   cancelLabel?: string;
 };
 
@@ -89,13 +89,13 @@ export function Dialog({
                 </HeadlessDialog.Title>
                 <div className="s-text-base s-text-element-700">{children}</div>
                 <div className="s-flex s-w-full s-justify-end">
-                  <Button.List>
+                  <div className="s-flex s-gap-2">
                     {!isSaving && (
                       <>
                         {props.onCancel && (
                           <Button
                             label={props.cancelLabel ?? "Cancel"}
-                            variant="tertiary"
+                            variant="ghost"
                             onClick={props.onCancel}
                           />
                         )}
@@ -108,7 +108,7 @@ export function Dialog({
                       </>
                     )}
                     {isSaving && <Spinner variant="color" />}
-                  </Button.List>
+                  </div>
                 </div>
                 {backgroundType !== "none" && (
                   <div className="s-absolute s-bottom-0 s-left-0 s-right-0 s-top-0 s-z-0">

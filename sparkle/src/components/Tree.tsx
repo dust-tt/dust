@@ -161,7 +161,7 @@ Tree.Item = function ({
           <IconButton
             icon={isExpanded ? ArrowDownSIcon : ArrowRightSIcon}
             size="xs"
-            variant="secondary"
+            variant="outline"
             onClick={(e) => {
               e.stopPropagation();
               if (effectiveOnChevronClick) {
