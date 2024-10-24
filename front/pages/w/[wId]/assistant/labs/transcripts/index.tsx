@@ -20,6 +20,7 @@ import type {
 } from "@dust-tt/types";
 import { setupOAuthConnection } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
+import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
@@ -30,7 +31,6 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -98,12 +98,33 @@ export default function LabsTranscriptsIndex({
   const { vaults, isVaultsLoading } = useSpaces({
     workspaceId: owner.sId,
   });
-
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "list",
     sort: "priority",
   });
+
+  const handleSetSelectionConfigurations: Dispatch<
+    SetStateAction<DataSourceViewSelectionConfigurations>
+  > = (newValue) => {
+    const newSelectionConfigurations =
+      typeof newValue === "function"
+        ? newValue(selectionConfigurations)
+        : newValue;
+
+    const keys = Object.keys(newSelectionConfigurations);
+
+    if (keys.length > 0) {
+      const lastKey = keys[keys.length - 1];
+      const finalConfigurations: DataSourceViewSelectionConfigurations = {
+        [lastKey]: newSelectionConfigurations[lastKey],
+      };
+
+      setSelectionConfigurations(finalConfigurations);
+    } else {
+      setSelectionConfigurations({});
+    }
+  };
 
   const {
     transcriptsConfiguration,
@@ -645,7 +666,7 @@ export default function LabsTranscriptsIndex({
                               owner={owner}
                               selectionConfigurations={selectionConfigurations}
                               setSelectionConfigurations={
-                                setSelectionConfigurations
+                                handleSetSelectionConfigurations
                               }
                               viewType={"documents"}
                               isRootSelectable={true}
