@@ -1,3 +1,4 @@
+import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
 import { Button, Chip, EyeIcon, Spinner } from "@dust-tt/sparkle";
 import type {
   AgentActionType,
@@ -8,12 +9,10 @@ import { useEffect, useMemo, useState } from "react";
 
 import { getActionSpecification } from "@app/components/actions/types";
 import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
-import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
 import { classNames } from "@app/lib/utils";
-
 interface AgentMessageActionsProps {
   agentMessage: AgentMessageType;
-  size?: MessageSizeType;
+  size?: ConversationMessageSizeType;
   owner: LightWorkspaceType;
 }
 
@@ -78,7 +77,7 @@ function ActionDetails({
   label?: string;
   isActionStepDone: boolean;
   onClick: () => void;
-  size: MessageSizeType;
+  size: ConversationMessageSizeType;
 }) {
   if (!label && (!isActionStepDone || !hasActions)) {
     return null;
