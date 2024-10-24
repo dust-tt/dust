@@ -86,7 +86,7 @@ export function AssistantPicker({
       <PopoverTrigger>
         <>
           {pickerButton ? (
-            { pickerButton }
+            pickerButton
           ) : (
             <Button
               icon={RobotIcon}
