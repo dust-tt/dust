@@ -35,7 +35,7 @@ type ConfirmationModalDataType = {
   text: string;
   confirmText: string;
   showUsage?: boolean;
-  variant: "primary" | "primaryWarning";
+  variant: "primary" | "warning";
 };
 
 export const SCOPE_INFO: Record<
@@ -85,7 +85,7 @@ export const SCOPE_INFO: Record<
       title: "Moving to Personal Assistants",
       text: `The assistant is only editable, viewable and usable by you.`,
       confirmText: "Move to Personal",
-      variant: "primaryWarning",
+      variant: "warning",
       showUsage: true,
     },
   },
@@ -175,8 +175,8 @@ export function SharingButton({
             size="sm"
             label="Sharing"
             icon={ArrowUpOnSquareIcon}
-            variant="tertiary"
-            type="menu"
+            variant="outline"
+            isSelect
             onClick={() => setIsPopoverOpen(!isPopoverOpen)}
           />
         </PopoverTrigger>
@@ -224,7 +224,7 @@ export function SharingButton({
                       <div className="pt-3">
                         <Button
                           size="xs"
-                          variant="secondary"
+                          variant="outline"
                           label="Manage channels"
                           onClick={() => {
                             setIsPopoverOpen(false);
@@ -271,7 +271,7 @@ export function SharingButton({
                     <Button
                       size="sm"
                       label={copyLinkSuccess ? "Copied!" : "Copy link"}
-                      variant="secondary"
+                      variant="outline"
                       onClick={async () => {
                         await navigator.clipboard.writeText(shareLink);
                         setCopyLinkSuccess(true);
@@ -382,7 +382,7 @@ export function SharingDropdown({
               <IconButton
                 icon={ChevronDownIcon}
                 size="sm"
-                variant="secondary"
+                variant="outline"
                 className="group-hover:text-action-400"
               />
             )}

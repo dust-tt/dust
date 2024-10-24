@@ -121,7 +121,7 @@ export function ViewFolderAPIModal({
               <div className="flex-grow"></div>
               <div className="flex">
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   onClick={() => handleCopyClick("upsert")}
                   label={copyUpsertButtonText}
                   icon={ClipboardIcon}
@@ -155,7 +155,7 @@ export function ViewFolderAPIModal({
               <div className="flex-grow"></div>
               <div className="flex">
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   onClick={() => handleCopyClick("search")}
                   label={copySearchButtonText}
                   icon={ClipboardIcon}

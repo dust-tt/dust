@@ -1,5 +1,5 @@
+import { useAuth } from "@app/extension/app/src/components/auth/AuthProvider";
 import { Button, DropdownMenu, LoginIcon } from "@dust-tt/sparkle";
-import { useAuth } from "@extension/context/AuthProvider";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 

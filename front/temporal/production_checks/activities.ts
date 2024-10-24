@@ -10,40 +10,41 @@ import { scrubDeletedCoreDocumentVersionsCheck } from "@app/lib/production_check
 import type { Check } from "@app/lib/production_checks/types";
 import mainLogger from "@app/logger/logger";
 
+export const REGISTERED_CHECKS: Check[] = [
+  {
+    name: "managed_data_source_gdrive_gc",
+    check: managedDataSourceGCGdriveCheck,
+    everyHour: 1,
+  },
+  {
+    name: "scrub_deleted_core_document_versions",
+    check: scrubDeletedCoreDocumentVersionsCheck,
+    everyHour: 8,
+  },
+  {
+    name: "check_notion_active_workflows",
+    check: checkNotionActiveWorkflows,
+    everyHour: 1,
+  },
+  {
+    name: "check_active_workflows_for_connector",
+    check: checkActiveWorkflows,
+    everyHour: 1,
+  },
+  {
+    name: "check_connectors_last_sync_success",
+    check: checkConnectorsLastSyncSuccess,
+    everyHour: 1,
+  },
+  {
+    name: "check_data_sources_consistency",
+    check: checkDataSourcesConsistency,
+    everyHour: 8,
+  },
+];
+
 export async function runAllChecksActivity() {
-  const checks: Check[] = [
-    {
-      name: "managed_data_source_gdrive_gc",
-      check: managedDataSourceGCGdriveCheck,
-      everyHour: 1,
-    },
-    {
-      name: "scrub_deleted_core_document_versions",
-      check: scrubDeletedCoreDocumentVersionsCheck,
-      everyHour: 8,
-    },
-    {
-      name: "check_notion_active_workflows",
-      check: checkNotionActiveWorkflows,
-      everyHour: 1,
-    },
-    {
-      name: "check_active_workflows_for_connector",
-      check: checkActiveWorkflows,
-      everyHour: 1,
-    },
-    {
-      name: "check_connectors_last_sync_success",
-      check: checkConnectorsLastSyncSuccess,
-      everyHour: 1,
-    },
-    {
-      name: "check_data_sources_consistency",
-      check: checkDataSourcesConsistency,
-      everyHour: 8,
-    },
-  ];
-  await runAllChecks(checks);
+  await runAllChecks(REGISTERED_CHECKS);
 }
 
 async function runAllChecks(checks: Check[]) {

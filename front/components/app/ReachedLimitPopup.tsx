@@ -3,11 +3,9 @@ import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { FairUsageModal } from "@app/components/FairUsageModal";
-import { isTrial } from "@app/lib/plans/trial";
-import { ClientSideTracking } from "@app/lib/tracking/client";
 
 export type WorkspaceLimit =
   | "cant_invite_no_seats_available"
@@ -162,7 +160,6 @@ export function ReachedLimitPopup({
   const [isFairUsageModalOpened, setIsFairUsageModalOpened] = useState(false);
 
   const router = useRouter();
-  const trialing = isTrial(subscription);
   const { title, children, validateLabel, onValidate } = getLimitPromptForCode(
     router,
     owner,
@@ -170,16 +167,6 @@ export function ReachedLimitPopup({
     subscription,
     () => setIsFairUsageModalOpened(true)
   );
-
-  useEffect(() => {
-    if (isOpened) {
-      void ClientSideTracking.trackFairUsageDialogViewed({
-        workspaceId: owner.sId,
-        workspaceName: owner.name,
-        trialing,
-      });
-    }
-  }, [isOpened, owner.name, owner.sId, trialing]);
 
   return (
     <>

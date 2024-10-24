@@ -74,7 +74,7 @@ export function makeColumnsForInvitations(
           <IconButton
             icon={TrashIcon}
             size="xs"
-            variant="tertiary"
+            variant="ghost"
             onClick={async () => {
               await onRevokeInvitation(invitation.inviteEmail);
             }}

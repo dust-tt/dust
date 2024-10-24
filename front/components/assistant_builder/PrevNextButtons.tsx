@@ -16,7 +16,7 @@ export function PrevNextButtons({
         <Button
           label="Previous"
           size="md"
-          variant="secondary"
+          variant="outline"
           onClick={() => {
             if (screen === "actions") {
               setScreen("instructions");

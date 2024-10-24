@@ -26,7 +26,7 @@ export function AgentSuggestion({
 }: AgentSuggestionProps) {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: { conversationId: conversationId },
+    agentsGetView: "list",
     includes: ["authors", "usage"],
   });
   const sendNotification = useContext(SendNotificationsContext);
@@ -101,11 +101,11 @@ export function AgentSuggestion({
             }}
             pickerButton={
               <Button
-                variant="tertiary"
+                variant="ghost"
                 size="xs"
                 icon={RobotIcon}
                 label="Select another"
-                type="menu"
+                isSelect
               />
             }
           />

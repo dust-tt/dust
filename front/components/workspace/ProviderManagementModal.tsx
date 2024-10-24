@@ -198,15 +198,13 @@ export function ProviderManagementModal({
               label="Please contact us if you are willing to change this setting."
               trigger={
                 <Button
-                  type="select"
-                  labelVisible={true}
+                  isSelect
                   label={
                     embeddingProvider
                       ? prettyfiedProviderNames[embeddingProvider]
                       : prettyfiedProviderNames["openai"]
                   }
-                  variant="secondary"
-                  hasMagnifying={false}
+                  variant="outline"
                   size="sm"
                   disabled={true}
                 />

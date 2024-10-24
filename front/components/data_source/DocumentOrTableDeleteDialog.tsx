@@ -64,7 +64,7 @@ export const DocumentOrTableDeleteDialog = ({
       onCancel={() => onClose(false)}
       onValidate={handleDelete}
       title="Confirm deletion"
-      validateVariant="primaryWarning"
+      validateVariant="warning"
       validateLabel="Delete"
     >
       <div className="mt-1 text-left">

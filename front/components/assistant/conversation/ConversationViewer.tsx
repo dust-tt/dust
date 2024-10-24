@@ -19,7 +19,7 @@ import { useInView } from "react-intersection-observer";
 
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
-import MessageGroup from "@app/components/assistant/conversation/messages/MessageGroup";
+import MessageGroup from "@app/components/assistant/conversation/MessageGroup";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useLastMessageGroupObserver } from "@app/hooks/useLastMessageGroupObserver";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";

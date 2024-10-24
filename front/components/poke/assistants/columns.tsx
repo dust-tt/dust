@@ -37,7 +37,7 @@ export function makeColumnsForAssistants(
           <div className="flex space-x-2">
             <p>Id</p>
             <IconButton
-              variant="tertiary"
+              variant="ghost"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -54,7 +54,7 @@ export function makeColumnsForAssistants(
           <div className="flex space-x-2">
             <p>Name</p>
             <IconButton
-              variant="tertiary"
+              variant="ghost"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -96,7 +96,7 @@ export function makeColumnsForAssistants(
               assistant.status !== "archived" ? TrashIcon : EmotionLaughIcon
             }
             size="xs"
-            variant="tertiary"
+            variant="ghost"
             onClick={async () => {
               await (assistant.status !== "archived"
                 ? archiveAssistant(owner, reload, assistant)

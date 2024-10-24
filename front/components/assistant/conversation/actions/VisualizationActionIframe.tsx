@@ -259,7 +259,7 @@ export function VisualizationActionIframe({
 
                   {canRetry && !retryClicked && (
                     <Button
-                      variant="secondary"
+                      variant="outline"
                       size="sm"
                       label="Retry Visualization"
                       onClick={handleRetryClick}

@@ -1,6 +1,5 @@
-import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import { useAuth } from "@app/extension/app/src/context/AuthProvider";
+import { useAuth } from "@app/extension/app/src/components/auth/AuthProvider";
+import { AssistantInputBar } from "@app/extension/app/src/components/input_bar/InputBar";
 import { Page, Spinner } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { useNavigate } from "react-router-dom";
@@ -47,15 +46,12 @@ export const MainPage = () => {
   return (
     <div className="h-full w-full">
       <Page.SectionHeader title="Conversation" />
-      <GenerationContextProvider>
-        <FixedAssistantInputBar
-          owner={owner}
-          onSubmit={() => {}}
-          stickyMentions={[]}
-          actions={["attachment", "assistants-list"]}
-          conversationId={null}
-        />
-      </GenerationContextProvider>
+      <AssistantInputBar
+        owner={owner}
+        onSubmit={() => {}}
+        stickyMentions={[]}
+        disableAutoFocus={false}
+      />
     </div>
   );
 };

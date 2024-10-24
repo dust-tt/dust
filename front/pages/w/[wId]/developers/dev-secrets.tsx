@@ -187,7 +187,7 @@ export default function SecretsPage({
               <Button
                 label="Read the API reference"
                 size="sm"
-                variant="secondary"
+                variant="outline"
                 icon={BookOpenIcon}
                 onClick={() => {
                   window.open(
@@ -230,7 +230,7 @@ export default function SecretsPage({
                       </div>
                       <div className="flex-none px-2">
                         <Button
-                          variant="secondary"
+                          variant="outline"
                           disabled={isRevoking || isGenerating}
                           onClick={async () => {
                             handleUpdate(secret);
@@ -240,7 +240,7 @@ export default function SecretsPage({
                       </div>
                       <div className="flex-none">
                         <Button
-                          variant="secondaryWarning"
+                          variant="warning"
                           disabled={isRevoking || isGenerating}
                           onClick={async () => {
                             setSecretToRevoke(secret);

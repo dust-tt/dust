@@ -93,7 +93,7 @@ export function EditInvitationModal({
             />
             <Button
               className="mt-4"
-              variant="primaryWarning"
+              variant="warning"
               label="Revoke invitation"
               icon={XMarkIcon}
               disabled={owner.ssoEnforced}

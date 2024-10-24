@@ -132,7 +132,15 @@ export const connectors = async ({
       await throwOnError(manager.pause());
       return { success: true };
     }
+    case "unpause": {
+      await throwOnError(manager.unpause());
+      return { success: true };
+    }
     case "resume": {
+      if (connector.pausedAt) {
+        throw new Error("Cannot resume a paused connector");
+      }
+
       await throwOnError(manager.resume());
       return { success: true };
     }
@@ -158,6 +166,10 @@ export const connectors = async ({
     }
 
     case "restart": {
+      if (connector.pausedAt) {
+        throw new Error("Cannot restart a paused connector");
+      }
+
       await throwOnError(manager.stop());
       await throwOnError(manager.resume());
       return { success: true };

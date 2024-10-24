@@ -7,42 +7,14 @@ import {
   Page,
 } from "@dust-tt/sparkle";
 import { CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
-import { useEffect, useRef } from "react";
-
-import { ClientSideTracking } from "@app/lib/tracking/client";
 
 export function QuickStartGuide({
-  owner,
-  user,
   show,
   onClose,
 }: {
-  owner: WorkspaceType;
-  user: UserType;
   show: boolean;
   onClose: () => void;
 }) {
-  const showedStartTimeRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    // Track view duration on amplitude
-    if (show) {
-      showedStartTimeRef.current = Date.now();
-    } else {
-      if (showedStartTimeRef.current) {
-        const duration = Date.now() - showedStartTimeRef.current;
-        showedStartTimeRef.current = null;
-
-        ClientSideTracking.trackQuickGuideViewed({
-          user,
-          workspace: owner,
-          duration,
-        });
-      }
-    }
-  }, [owner, show, user]);
-
   return (
     <Modal
       isOpen={show}

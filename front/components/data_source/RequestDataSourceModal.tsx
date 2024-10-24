@@ -80,7 +80,7 @@ export function RequestDataSourceModal({
                   <DropdownMenu.Button>
                     {selectedDataSource && isManaged(selectedDataSource) ? (
                       <Button
-                        variant="tertiary"
+                        variant="ghost"
                         label={getDisplayNameForDataSource(selectedDataSource)}
                         icon={getConnectorProviderLogoWithFallback(
                           selectedDataSource.connectorProvider
@@ -89,9 +89,9 @@ export function RequestDataSourceModal({
                     ) : (
                       <Button
                         label="Pick your platform"
-                        variant="tertiary"
+                        variant="ghost"
                         size="sm"
-                        type="select"
+                        isSelect
                       />
                     )}
                   </DropdownMenu.Button>

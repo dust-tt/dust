@@ -17,6 +17,7 @@ import { NotionConnectorManager } from "@connectors/connectors/notion";
 import { SlackConnectorManager } from "@connectors/connectors/slack";
 import { SnowflakeConnectorManager } from "@connectors/connectors/snowflake";
 import { WebcrawlerConnectorManager } from "@connectors/connectors/webcrawler";
+import { ZendeskConnectorManager } from "@connectors/connectors/zendesk";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 type ConnectorManager =
@@ -57,7 +58,7 @@ export function getConnectorManager({
     case "snowflake":
       return new SnowflakeConnectorManager(connectorId);
     case "zendesk":
-      throw new Error("Zendesk connector not implemented yet");
+      return new ZendeskConnectorManager(connectorId);
     default:
       assertNever(connectorProvider);
   }
@@ -111,7 +112,7 @@ export function createConnector({
     case "snowflake":
       return SnowflakeConnectorManager.create(params);
     case "zendesk":
-      throw new Error("Zendesk connector not implemented yet");
+      return ZendeskConnectorManager.create(params);
     default:
       assertNever(connectorProvider);
   }

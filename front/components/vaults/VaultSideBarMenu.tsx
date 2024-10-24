@@ -124,7 +124,7 @@ export default function VaultSideBarMenu({
                       <Button
                         className="mt-4"
                         size="xs"
-                        variant="tertiary"
+                        variant="outline"
                         label="New"
                         icon={PlusIcon}
                         onClick={() =>
@@ -291,7 +291,6 @@ const SystemVaultItem = ({
       isSelected={router.asPath === itemPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={visual}
-      size="md"
       areActionsFading={false}
     >
       {isExpanded && (
@@ -367,7 +366,6 @@ const VaultMenuItem = ({
       onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={getVaultIcon(vault)}
       tailwindIconTextColor={isMember ? undefined : "text-warning-400"}
-      size="md"
       areActionsFading={false}
     >
       {isExpanded && (

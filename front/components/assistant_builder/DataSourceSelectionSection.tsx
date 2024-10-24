@@ -67,13 +67,11 @@ export default function DataSourceSelectionSection({
           <div>
             {Object.keys(dataSourceConfigurations).length > 0 && (
               <Button
-                labelVisible={true}
                 label="Manage selection"
                 variant="primary"
                 size="sm"
                 onClick={openDataSourceModal}
                 disabled={!canAddDataSource}
-                hasMagnifying={false}
               />
             )}
           </div>
@@ -144,7 +142,7 @@ export default function DataSourceSelectionSection({
                                   : "pointer-events-none opacity-0"
                               )}
                               disabled={!node.sourceUrl}
-                              variant="tertiary"
+                              variant="ghost"
                             />
                             <IconButton
                               size="xs"
@@ -163,7 +161,7 @@ export default function DataSourceSelectionSection({
                                   : "pointer-events-none opacity-0"
                               )}
                               disabled={!node.dustDocumentId}
-                              variant="tertiary"
+                              variant="ghost"
                             />
                           </div>
                         }

@@ -168,7 +168,7 @@ export default function WorkspaceAdmin({
                 <Button
                   label="De-activate Auto-join"
                   size="sm"
-                  variant="secondaryWarning"
+                  variant="warning"
                   disabled={!domainAutoJoinEnabled}
                   onClick={() => {
                     if (!isUpgraded(plan)) {
@@ -268,7 +268,7 @@ function DomainAutoJoinModal({
     ? "De-activate Auto-join"
     : "Activate Auto-join";
   const validateLabel = domainAutoJoinEnabled ? "De-activate" : "Activate";
-  const validateVariant = domainAutoJoinEnabled ? "primaryWarning" : "primary";
+  const validateVariant = domainAutoJoinEnabled ? "warning" : "primary";
   const description = domainAutoJoinEnabled ? (
     "New members will need to be invited in order to gain access to your Dust Workspace."
   ) : (

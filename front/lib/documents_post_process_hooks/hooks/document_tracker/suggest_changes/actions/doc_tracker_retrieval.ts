@@ -10,8 +10,11 @@ import { cloneBaseConfig, DustProdActionRegistry } from "@app/lib/registry";
 // and returns an array of DocTrackerRetrievalActionValue as output
 export async function callDocTrackerRetrievalAction(
   auth: Authenticator,
-  inputText: string,
-  targetDocumentTokens = 2000
+  {
+    inputText,
+    targetDocumentTokens,
+    topK,
+  }: { inputText: string; targetDocumentTokens: number; topK: number }
 ): Promise<t.TypeOf<typeof DocTrackerRetrievalActionValueSchema>> {
   const action = DustProdActionRegistry["doc-tracker-retrieval"];
   const config = cloneBaseConfig(action.config);
@@ -28,7 +31,13 @@ export async function callDocTrackerRetrievalAction(
       data_source_id: view.sId,
     })
   );
+
   config.SEMANTIC_SEARCH.target_document_tokens = targetDocumentTokens;
+  config.SEMANTIC_SEARCH.top_k = topK;
+  config.SEMANTIC_SEARCH.filter = {
+    tags: { in: ["__DUST_TRACKED"], not: null },
+    timestamp: null,
+  };
 
   const res = await callAction(auth, {
     action,

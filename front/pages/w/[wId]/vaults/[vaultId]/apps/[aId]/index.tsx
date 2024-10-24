@@ -1,4 +1,10 @@
-import { Button, DocumentTextIcon, PlayIcon, Tab } from "@dust-tt/sparkle";
+import {
+  BracesIcon,
+  Button,
+  DocumentTextIcon,
+  PlayIcon,
+  Tab,
+} from "@dust-tt/sparkle";
 import type {
   APIErrorResponse,
   AppType,
@@ -337,7 +343,7 @@ export default function AppView({
               small={false}
             />
             <Button
-              variant="secondary"
+              variant="outline"
               disabled={
                 !runnable || runRequested || run?.status.run == "running"
               }
@@ -361,9 +367,17 @@ export default function AppView({
             ) : null}
             <div className="flex-1"></div>
             {!readOnly ? (
-              <div className="hidden flex-initial sm:block">
+              <div className="hidden flex-initial space-x-2 sm:block">
                 <Button
-                  variant="tertiary"
+                  variant="outline"
+                  icon={BracesIcon}
+                  label="Secrets"
+                  onClick={() => {
+                    void router.push(`/w/${owner.sId}/developers/dev-secrets`);
+                  }}
+                />
+                <Button
+                  variant="ghost"
                   icon={DocumentTextIcon}
                   label="Documentation"
                   onClick={() => {
@@ -410,7 +424,7 @@ export default function AppView({
               <p className="mt-4">To get started, add your first block or:</p>
               <p className="mt-4">
                 <Button
-                  variant="tertiary"
+                  variant="ghost"
                   icon={DocumentTextIcon}
                   label="Follow the QuickStart Guide"
                   onClick={() => {
@@ -439,7 +453,7 @@ export default function AppView({
               </div>
               <div className="flex">
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   disabled={
                     !runnable || runRequested || run?.status.run == "running"
                   }

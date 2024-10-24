@@ -195,9 +195,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                 </div>
                 <div>
                   <Button
-                    variant={
-                      configs[provider.providerId] ? "tertiary" : "secondary"
-                    }
+                    variant={configs[provider.providerId] ? "ghost" : "outline"}
                     disabled={!provider.built}
                     onClick={() => {
                       switch (provider.providerId) {
@@ -268,9 +266,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
                 <div>
                   <Button
                     disabled={!provider.built}
-                    variant={
-                      configs[provider.providerId] ? "tertiary" : "secondary"
-                    }
+                    variant={configs[provider.providerId] ? "ghost" : "outline"}
                     onClick={() => {
                       switch (provider.providerId) {
                         case "serpapi":

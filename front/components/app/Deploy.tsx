@@ -139,7 +139,7 @@ export function ViewAppAPIModal({
               <div className="flex-grow"></div>
               <div className="flex">
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   onClick={() => handleCopyClick("run")}
                   label={copyRunButtonText}
                   icon={ClipboardIcon}

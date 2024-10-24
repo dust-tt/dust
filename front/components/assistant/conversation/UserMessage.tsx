@@ -1,51 +1,40 @@
 import type {
-  ContentFragmentType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import type { MessageReactionType, UserMessageType } from "@dust-tt/types";
+  ConversationMessageEmojiSelectorProps,
+  ConversationMessageSizeType,
+} from "@dust-tt/sparkle";
+import { ConversationMessage } from "@dust-tt/sparkle";
+import type { UserMessageType, WorkspaceType } from "@dust-tt/types";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
-import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
-import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 
 interface UserMessageProps {
+  citations?: React.ReactElement[];
   conversationId: string;
-  hideReactions?: boolean;
   isLastMessage: boolean;
   message: UserMessageType;
+  messageEmoji?: ConversationMessageEmojiSelectorProps;
   owner: WorkspaceType;
-  reactions: MessageReactionType[];
-  user: UserType;
-  contentFragments?: ContentFragmentType[];
-  size: MessageSizeType;
+  size: ConversationMessageSizeType;
 }
 
 export function UserMessage({
+  citations,
   conversationId,
-  hideReactions,
   isLastMessage,
   message,
+  messageEmoji,
   owner,
-  reactions,
-  user,
-  contentFragments,
   size,
 }: UserMessageProps) {
   return (
     <ConversationMessage
-      owner={owner}
-      user={user}
-      conversationId={conversationId}
-      messageId={message.sId}
       pictureUrl={message.user?.image || message.context.profilePictureUrl}
       name={message.context.fullName}
-      reactions={reactions}
-      enableEmojis={!hideReactions}
+      messageEmoji={messageEmoji}
       renderName={(name) => <div className="text-base font-medium">{name}</div>}
       type="user"
-      citations={contentFragments}
+      citations={citations}
       size={size}
     >
       <div className="flex flex-col gap-4">

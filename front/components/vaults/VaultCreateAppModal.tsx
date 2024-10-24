@@ -6,6 +6,7 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import type { APIError, VaultType, WorkspaceType } from "@dust-tt/types";
+import { APP_NAME_REGEXP } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
@@ -47,9 +48,11 @@ export const VaultCreateAppModal = ({
 
     if (!name || name.trim() === "") {
       nameError = "Name is required.";
-    } else if (!name.match(/^[a-zA-Z0-9._-]+$/)) {
+    } else if (!name.match(APP_NAME_REGEXP)) {
       nameError =
-        "Name must only contain letters, numbers, and the characters `._-`";
+        "Name must be only contain letters, numbers, and the characters `_-` and be less than 64 characters.";
+    } else if (name.length > 64) {
+      nameError = "Name must be less or equal to 64 characters.";
     } else if (apps.find((app) => app.name === name)) {
       nameError = "An App with this name already exists.";
     }
@@ -130,8 +133,8 @@ export const VaultCreateAppModal = ({
                 showErrorLabel
               />
               <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-                <ExclamationCircleStrokeIcon /> Must be unique and not use
-                spaces or special characters.
+                <ExclamationCircleStrokeIcon /> Must be unique and only use
+                alphanumeric, - or _ characters.
               </p>
             </div>
 

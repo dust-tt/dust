@@ -1,4 +1,5 @@
 import {
+  assertNever,
   ConnectorsAPI,
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
@@ -35,6 +36,7 @@ import {
   launchRetrieveTranscriptsWorkflow,
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/client";
+import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -477,6 +479,60 @@ const registry = async (command: string) => {
   }
 };
 
+const productionCheck = async (command: string, args: parseArgs.ParsedArgs) => {
+  switch (command) {
+    case "run": {
+      if (!args.check) {
+        throw new Error("Missing --check argument");
+      }
+
+      const check = REGISTERED_CHECKS.find((c) => c.name === args.check);
+      if (!check) {
+        console.log(args.check);
+        throw new Error(
+          `Invalid check, possible values: ${REGISTERED_CHECKS.map((c) => c.name).join(", ")}`
+        );
+      }
+
+      const reportSuccess = (reportPayload: unknown) => {
+        logger.info({ reportPayload }, "Check succeeded");
+      };
+      const reportFailure = (reportPayload: unknown, message: string) => {
+        logger.error(
+          { reportPayload, errorMessage: message },
+          "Production check failed"
+        );
+      };
+      const heartbeat = () => {};
+
+      await check.check(
+        check.name,
+        logger,
+        reportSuccess,
+        reportFailure,
+        heartbeat
+      );
+      return;
+    }
+  }
+};
+
+export const CLI_OBJECT_TYPES = [
+  "workspace",
+  "user",
+  "data-source",
+  "conversation",
+  "transcripts",
+  "registry",
+  "production-check",
+] as const;
+
+export type CliObjectType = (typeof CLI_OBJECT_TYPES)[number];
+
+export function isCliObjectType(val: string): val is CliObjectType {
+  return (CLI_OBJECT_TYPES as unknown as string[]).includes(val);
+}
+
 const main = async () => {
   const argv = parseArgs(process.argv.slice(2));
 
@@ -484,13 +540,17 @@ const main = async () => {
     console.log(
       "Expects object type and command as first two arguments, eg: `cli workspace create ...`"
     );
-    console.log(
-      "Possible object types: `workspace`, `user`, `data-source`, `conversation`"
-    );
     return;
   }
 
   const [objectType, command] = argv._;
+
+  if (!isCliObjectType(objectType)) {
+    console.log(
+      "Unknown object type, possible values: " + CLI_OBJECT_TYPES.join(", ")
+    );
+    return;
+  }
 
   switch (objectType) {
     case "workspace":
@@ -508,11 +568,10 @@ const main = async () => {
       return transcripts(command, argv);
     case "registry":
       return registry(command);
+    case "production-check":
+      return productionCheck(command, argv);
     default:
-      console.log(
-        "Unknown object type, possible values: `workspace`, `user`, `data-source`, `event-schema`, `conversation`, `transcripts`"
-      );
-      return;
+      assertNever(objectType);
   }
 };
 

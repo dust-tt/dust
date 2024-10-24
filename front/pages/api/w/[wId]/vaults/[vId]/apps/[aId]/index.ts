@@ -1,4 +1,5 @@
 import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
+import { APP_NAME_REGEXP } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -79,6 +80,17 @@ async function handler(
       }
 
       const { name, description } = bodyValidation.right;
+
+      if (!APP_NAME_REGEXP.test(name)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The app name is invalid, expects a string with a length of 1-64 characters, containing only alphanumeric characters, underscores, and dashes.",
+          },
+        });
+      }
 
       await app.updateSettings(auth, {
         name,

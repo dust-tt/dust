@@ -107,7 +107,11 @@ function ComplexDropdownDemo() {
         <NewDropdownMenuItem icon={UserIcon} label="Support" />
         <NewDropdownMenuItem icon={CloudArrowDownIcon} label="API" disabled />
         <NewDropdownMenuSeparator />
-        <NewDropdownMenuItem icon={LogoutIcon} label="Log out" />
+        <NewDropdownMenuItem
+          icon={LogoutIcon}
+          label="Log out"
+          variant="warning"
+        />
       </NewDropdownMenuContent>
     </NewDropdownMenu>
   );

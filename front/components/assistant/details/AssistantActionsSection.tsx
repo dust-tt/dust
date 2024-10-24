@@ -21,6 +21,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  GLOBAL_AGENTS_SID,
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
@@ -33,7 +34,6 @@ import { useMemo, useState } from "react";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
-import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import {
@@ -370,7 +370,7 @@ function DataSourceViewSelectedNodes({
                   node.sourceUrl ? "" : "pointer-events-none opacity-0"
                 )}
                 disabled={!node.sourceUrl}
-                variant="tertiary"
+                variant="ghost"
               />
               <IconButton
                 size="xs"
@@ -385,7 +385,7 @@ function DataSourceViewSelectedNodes({
                   node.dustDocumentId ? "" : "pointer-events-none opacity-0"
                 )}
                 disabled={!node.dustDocumentId}
-                variant="tertiary"
+                variant="ghost"
               />
             </div>
           }

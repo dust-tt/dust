@@ -62,26 +62,24 @@ export default function DustAppSelectionSection({
               title={dustAppConfiguration.app.name}
               visual={<ContextItem.Visual visual={CommandLineIcon} />}
               action={
-                <Button.List>
+                <div className="flex gap-2">
                   <Button
                     icon={PencilSquareIcon}
-                    variant="secondary"
-                    label="Edit"
-                    labelVisible={false}
+                    variant="outline"
+                    tooltip="Edit"
                     onClick={() => router.push(appPath)}
                   />
                   <Button
                     icon={TrashIcon}
-                    variant="secondaryWarning"
-                    label="Remove"
-                    labelVisible={false}
+                    variant="warning"
+                    tooltip="Remove"
                     onClick={() => {
                       if (dustAppConfiguration.app) {
                         onDelete?.(dustAppConfiguration.app.sId);
                       }
                     }}
                   />
-                </Button.List>
+                </div>
               }
             >
               <ContextItem.Description
