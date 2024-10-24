@@ -1,7 +1,7 @@
 import { Button, Cog6ToothIcon } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
-  VaultType,
+  SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useState } from "react";
@@ -11,7 +11,7 @@ import { useDataSources } from "@app/lib/swr/data_sources";
 
 type WebsitesHeaderMenuProps = {
   owner: WorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   canWriteInVault: boolean;
   dataSourceView: DataSourceViewType;
 };

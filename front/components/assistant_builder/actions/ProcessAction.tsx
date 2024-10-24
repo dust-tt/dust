@@ -12,7 +12,7 @@ import {
   XCircleIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { Result, TimeframeUnit, VaultType } from "@dust-tt/types";
+import type { Result, SpaceType, TimeframeUnit } from "@dust-tt/types";
 import type { ProcessSchemaPropertyType, WorkspaceType } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import React, { useContext, useEffect, useState } from "react";
@@ -259,7 +259,7 @@ type ActionProcessProps = {
   owner: WorkspaceType;
   instructions: string | null;
   actionConfiguration: AssistantBuilderProcessConfiguration | null;
-  allowedVaults: VaultType[];
+  allowedVaults: SpaceType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderProcessConfiguration

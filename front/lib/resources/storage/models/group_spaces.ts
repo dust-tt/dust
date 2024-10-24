@@ -8,18 +8,18 @@ import { DataTypes, Model } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
-import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 
-export class GroupVaultModel extends Model<
-  InferAttributes<GroupVaultModel>,
-  InferCreationAttributes<GroupVaultModel>
+export class GroupSpaceModel extends Model<
+  InferAttributes<GroupSpaceModel>,
+  InferCreationAttributes<GroupSpaceModel>
 > {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare groupId: ForeignKey<GroupModel["id"]>;
-  declare vaultId: ForeignKey<VaultModel["id"]>;
+  declare vaultId: ForeignKey<SpaceModel["id"]>;
 }
-GroupVaultModel.init(
+GroupSpaceModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -42,9 +42,11 @@ GroupVaultModel.init(
   }
 );
 
-VaultModel.belongsToMany(GroupModel, {
-  through: GroupVaultModel,
+SpaceModel.belongsToMany(GroupModel, {
+  through: GroupSpaceModel,
+  foreignKey: "vaultId",
 });
-GroupModel.belongsToMany(VaultModel, {
-  through: GroupVaultModel,
+GroupModel.belongsToMany(SpaceModel, {
+  through: GroupSpaceModel,
+  foreignKey: "groupId",
 });

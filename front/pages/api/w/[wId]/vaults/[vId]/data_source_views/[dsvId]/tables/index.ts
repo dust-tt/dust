@@ -35,7 +35,7 @@ async function handler(
 
   if (
     !dataSourceView ||
-    vId !== dataSourceView.vault.sId ||
+    vId !== dataSourceView.space.sId ||
     !dataSourceView.canList(auth)
   ) {
     return apiError(req, res, {

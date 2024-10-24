@@ -14,7 +14,7 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
   LightWorkspaceType,
-  VaultType,
+  SpaceType,
 } from "@dust-tt/types";
 import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@dust-tt/types";
 import { sortBy, uniqBy } from "lodash";
@@ -64,7 +64,7 @@ export default function VaultSideBarMenu({
 
   // Vaults that are in the vaultsAsUser list should be displayed first, use the name as a tiebreaker.
   const compareVaults = useCallback(
-    (v1: VaultType, v2: VaultType) => {
+    (v1: SpaceType, v2: SpaceType) => {
       const v1IsMember = !!vaultsAsUser.find((v) => v.sId === v1.sId);
       const v2IsMember = !!vaultsAsUser.find((v) => v.sId === v2.sId);
 
@@ -153,8 +153,8 @@ export default function VaultSideBarMenu({
 
 // Function to render vault items.
 const renderVaultItems = (
-  vaults: VaultType[],
-  vaultsAsUser: VaultType[],
+  vaults: SpaceType[],
+  vaultsAsUser: SpaceType[],
   owner: LightWorkspaceType
 ) => {
   return vaults.map((vault) => (
@@ -227,7 +227,7 @@ const SystemVaultMenu = ({
   vault,
 }: {
   owner: LightWorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
 }) => {
   return (
     <Tree variant="navigator">
@@ -257,7 +257,7 @@ const SystemVaultItem = ({
   category: Exclude<DataSourceViewCategory, "apps">;
   label: string;
   owner: LightWorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   visual: IconType;
 }) => {
   const router = useRouter();
@@ -317,7 +317,7 @@ const VaultMenu = ({
   isMember,
 }: {
   owner: LightWorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   isMember: boolean;
 }) => {
   return (
@@ -333,7 +333,7 @@ const VaultMenuItem = ({
   isMember,
 }: {
   owner: LightWorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   isMember: boolean;
 }) => {
   const router = useRouter();
@@ -436,7 +436,7 @@ const VaultDataSourceViewItem = ({
 }: {
   item: DataSourceViewType;
   owner: LightWorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   node?: DataSourceViewContentNode;
 }): ReactElement => {
   const router = useRouter();
@@ -536,7 +536,7 @@ const VaultDataSourceViewSubMenu = ({
   category,
 }: {
   owner: LightWorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   category: Exclude<DataSourceViewCategory, "apps">;
 }) => {
   const router = useRouter();
@@ -608,7 +608,7 @@ const VaultAppItem = ({
 }): ReactElement => {
   const router = useRouter();
 
-  const appPath = `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`;
+  const appPath = `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}`;
 
   return (
     <Tree.Item
@@ -633,7 +633,7 @@ const VaultAppSubMenu = ({
   category,
 }: {
   owner: LightWorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   category: "apps";
 }) => {
   const router = useRouter();

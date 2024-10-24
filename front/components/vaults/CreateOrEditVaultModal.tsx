@@ -9,7 +9,7 @@ import {
   SliderToggle,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, UserType, VaultType } from "@dust-tt/types";
+import type { LightWorkspaceType, SpaceType, UserType } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import React, {
@@ -54,9 +54,9 @@ interface CreateOrEditVaultModalProps {
   isAdmin: boolean;
   isOpen: boolean;
   onClose: () => void;
-  onCreated?: (vault: VaultType) => void;
+  onCreated?: (vault: SpaceType) => void;
   owner: LightWorkspaceType;
-  vault?: VaultType;
+  vault?: SpaceType;
 }
 
 export function CreateOrEditVaultModal({

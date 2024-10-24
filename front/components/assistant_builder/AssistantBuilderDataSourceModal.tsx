@@ -2,7 +2,7 @@ import { Modal } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
-  VaultType,
+  SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { SetStateAction } from "react";
@@ -18,7 +18,7 @@ import {
 
 interface AssistantBuilderDataSourceModalProps {
   initialDataSourceConfigurations: DataSourceViewSelectionConfigurations;
-  allowedVaults: VaultType[];
+  allowedVaults: SpaceType[];
   isOpen: boolean;
   onSave: (dsConfigs: DataSourceViewSelectionConfigurations) => void;
   owner: WorkspaceType;

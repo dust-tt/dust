@@ -17,7 +17,7 @@ import {
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { VaultType, WorkspaceType } from "@dust-tt/types";
+import type { SpaceType, WorkspaceType } from "@dust-tt/types";
 import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import assert from "assert";
 import type { ReactNode } from "react";
@@ -162,7 +162,7 @@ export default function ActionsScreen({
       switch (actionType) {
         case "TABLES_QUERY":
           Object.values(action.configuration).forEach((config) => {
-            addActionToVault(config.dataSourceView.vaultId);
+            addActionToVault(config.dataSourceView.spaceId);
           });
           break;
 
@@ -171,13 +171,13 @@ export default function ActionsScreen({
         case "PROCESS":
           Object.values(action.configuration.dataSourceConfigurations).forEach(
             (config) => {
-              addActionToVault(config.dataSourceView.vaultId);
+              addActionToVault(config.dataSourceView.spaceId);
             }
           );
           break;
 
         case "DUST_APP_RUN":
-          addActionToVault(action.configuration.app?.vault.sId);
+          addActionToVault(action.configuration.app?.space.sId);
           break;
 
         case "WEB_NAVIGATION":
@@ -672,7 +672,7 @@ function ActionConfigEditor({
 
   // Only allow one vault across all actions.
   const allowedVaults = useMemo(() => {
-    const isVaultUsedInOtherActions = (vault: VaultType) => {
+    const isVaultUsedInOtherActions = (vault: SpaceType) => {
       const actionsUsingVault = vaultsUsedInActions[vault.sId] ?? [];
 
       return actionsUsingVault.some((a) => {

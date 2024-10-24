@@ -3,7 +3,7 @@ import type {
   DataSourceType,
   DataSourceViewType,
   PlanType,
-  VaultType,
+  SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
@@ -17,7 +17,7 @@ interface EditVaultStaticDatasourcesViewsProps {
   canWriteInVault: boolean;
   isOpen: boolean;
   plan: PlanType;
-  vault: VaultType;
+  vault: SpaceType;
   dataSources: DataSourceType[];
   dataSourceView: DataSourceViewType | null;
   category: "folder" | "website";

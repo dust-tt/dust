@@ -20,7 +20,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetVaultDataSourceViewsResponseBody<
@@ -46,7 +46,7 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const vault = await VaultResource.fetchById(auth, req.query.vId as string);
+  const vault = await SpaceResource.fetchById(auth, req.query.vId as string);
 
   if (!vault || !vault.canList(auth)) {
     return apiError(req, res, {
@@ -66,7 +66,7 @@ async function handler(
           : null;
 
       const dataSourceViews = (
-        await DataSourceViewResource.listByVault(auth, vault, {
+        await DataSourceViewResource.listBySpace(auth, vault, {
           includeEditedBy: !!req.query.includeEditedBy,
         })
       )

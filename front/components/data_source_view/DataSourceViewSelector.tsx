@@ -13,7 +13,7 @@ import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   LightWorkspaceType,
-  VaultType,
+  SpaceType,
 } from "@dust-tt/types";
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
@@ -89,7 +89,7 @@ interface DataSourceViewsSelectorProps {
   owner: LightWorkspaceType;
   useCase: "vaultDatasourceManagement" | "assistantBuilder";
   dataSourceViews: DataSourceViewType[];
-  allowedVaults?: VaultType[];
+  allowedVaults?: SpaceType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
   setSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
@@ -156,12 +156,12 @@ export function DataSourceViewsSelector({
   const defaultVault = useMemo(() => {
     const firstKey = Object.keys(selectionConfigurations)[0] ?? null;
     return firstKey
-      ? selectionConfigurations[firstKey]?.dataSourceView?.vaultId ?? ""
+      ? selectionConfigurations[firstKey]?.dataSourceView?.spaceId ?? ""
       : "";
   }, [selectionConfigurations]);
 
   const filteredVaults = useMemo(() => {
-    const vaultIds = [...new Set(dataSourceViews.map((dsv) => dsv.vaultId))];
+    const vaultIds = [...new Set(dataSourceViews.map((dsv) => dsv.spaceId))];
     return vaults.filter((v) => vaultIds.includes(v.sId));
   }, [vaults, dataSourceViews]);
 
@@ -177,7 +177,7 @@ export function DataSourceViewsSelector({
         defaultVault={defaultVault}
         renderChildren={(vault) => {
           const dataSourceViewsForVault = vault
-            ? dataSourceViews.filter((dsv) => dsv.vaultId === vault.sId)
+            ? dataSourceViews.filter((dsv) => dsv.spaceId === vault.sId)
             : dataSourceViews;
 
           if (dataSourceViewsForVault.length === 0) {
@@ -337,11 +337,11 @@ export function DataSourceViewSelector({
         return config;
       }
 
-      const { vaultId, sId } = dataSourceView;
+      const { spaceId, sId } = dataSourceView;
       return Object.fromEntries(
         Object.entries(config).filter(
           ([key, value]) =>
-            key === sId || value.dataSourceView.vaultId === vaultId
+            key === sId || value.dataSourceView.spaceId === spaceId
         )
       );
     },

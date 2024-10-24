@@ -1,4 +1,4 @@
-import type { VaultType, WithAPIErrorResponse } from "@dust-tt/types";
+import type { SpaceType, WithAPIErrorResponse } from "@dust-tt/types";
 import { PostVaultRequestBodySchema, removeNulls } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -7,18 +7,18 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import { isPrivateVaultsLimitReached } from "@app/lib/vaults";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetVaultsResponseBody = {
-  vaults: VaultType[];
+  vaults: SpaceType[];
 };
 
 export type PostVaultsResponseBody = {
-  vault: VaultType;
+  vault: SpaceType;
 };
 
 async function handler(
@@ -47,7 +47,7 @@ async function handler(
         });
       }
 
-      let vaults: VaultResource[] = [];
+      let vaults: SpaceResource[] = [];
 
       if (role && role === "admin") {
         if (!auth.isAdmin()) {
@@ -62,13 +62,13 @@ async function handler(
         }
         if (kind && kind === "system") {
           const systemVault =
-            await VaultResource.fetchWorkspaceSystemVault(auth);
+            await SpaceResource.fetchWorkspaceSystemVault(auth);
           vaults = systemVault ? [systemVault] : [];
         } else {
-          vaults = await VaultResource.listWorkspaceVaults(auth);
+          vaults = await SpaceResource.listWorkspaceVaults(auth);
         }
       } else {
-        vaults = await VaultResource.listWorkspaceVaultsAsMember(auth);
+        vaults = await SpaceResource.listWorkspaceVaultsAsMember(auth);
       }
 
       return res.status(200).json({
@@ -101,7 +101,7 @@ async function handler(
       }
 
       const plan = auth.getNonNullablePlan();
-      const all = await VaultResource.listWorkspaceVaults(auth);
+      const all = await SpaceResource.listWorkspaceVaults(auth);
       const isLimitReached = isPrivateVaultsLimitReached(
         all.map((v) => v.toJSON()),
         plan
@@ -119,7 +119,7 @@ async function handler(
 
       const { name, memberIds, isRestricted } = bodyValidation.right;
 
-      const nameAvailable = await VaultResource.isNameAvailable(auth, name);
+      const nameAvailable = await SpaceResource.isNameAvailable(auth, name);
       if (!nameAvailable) {
         return apiError(req, res, {
           status_code: 400,
@@ -145,7 +145,7 @@ async function handler(
         globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
       ]);
 
-      const vault = await VaultResource.makeNew(
+      const vault = await SpaceResource.makeNew(
         {
           name,
           kind: "regular",
