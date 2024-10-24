@@ -1,7 +1,7 @@
 import { useAuth } from "@app/extension/app/src/components/auth/AuthProvider";
 import { ConversationContainer } from "@app/extension/app/src/components/conversation/ConversationContainer";
-import { Page, Spinner } from "@dust-tt/sparkle";
-import { useNavigate, useParams } from "react-router-dom";
+import { BarHeader, ChevronLeftIcon, Page, Spinner } from "@dust-tt/sparkle";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 export const ConversationPage = () => {
   const navigate = useNavigate();
@@ -40,12 +40,22 @@ export const ConversationPage = () => {
   }
 
   return (
-    <div className="h-full w-full">
-      <Page.SectionHeader title="Conversation" />
-      <ConversationContainer
-        owner={workspace}
-        conversationId={conversationId}
+    <>
+      <BarHeader
+        title="Back"
+        leftActions={
+          <Link to="/">
+            <ChevronLeftIcon />
+          </Link>
+        }
       />
-    </div>
+      <div className="h-full w-full pt-4">
+        <Page.SectionHeader title="Conversation" />
+        <ConversationContainer
+          owner={workspace}
+          conversationId={conversationId}
+        />
+      </div>
+    </>
   );
 };

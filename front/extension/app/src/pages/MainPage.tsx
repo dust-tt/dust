@@ -32,7 +32,7 @@ export const MainPage = () => {
   }
 
   return (
-    <div className="h-full w-full">
+    <div className="h-full w-full pt-4">
       <Page.SectionHeader title="Conversation" />
       <ConversationContainer owner={workspace} conversationId={null} />
     </div>
