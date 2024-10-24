@@ -9,18 +9,18 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import type { VaultResource } from "@app/lib/resources/vault_resource";
 import { launchScrubVaultWorkflow } from "@app/poke/temporal/client";
 
-export async function softDeleteVaultAndLaunchScrubWorkflow(
+export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
-  vault: VaultResource
+  space: SpaceResource
 ) {
-  assert(auth.isAdmin(), "Only admins can delete vaults.");
-  assert(vault.isRegular(), "Cannot delete non regular vaults.");
+  assert(auth.isAdmin(), "Only admins can delete spaces.");
+  assert(space.isRegular(), "Cannot delete non regular spaces.");
 
-  const dataSourceViews = await DataSourceViewResource.listByVault(auth, vault);
+  const dataSourceViews = await DataSourceViewResource.listBySpace(auth, space);
 
   const usages: DataSourceWithAgentsUsageType[] = [];
   for (const view of dataSourceViews) {
@@ -32,7 +32,7 @@ export async function softDeleteVaultAndLaunchScrubWorkflow(
     }
   }
 
-  const dataSources = await DataSourceResource.listByVault(auth, vault);
+  const dataSources = await DataSourceResource.listBySpace(auth, space);
   for (const ds of dataSources) {
     const usage = await ds.getUsagesByAgents(auth);
     if (usage.isErr()) {
@@ -46,14 +46,14 @@ export async function softDeleteVaultAndLaunchScrubWorkflow(
     const agentNames = uniq(usages.map((u) => u.agentNames).flat());
     return new Err(
       new Error(
-        `Cannot delete vault with data source in use by assistant(s): ${agentNames.join(", ")}.`
+        `Cannot delete space with data source in use by assistant(s): ${agentNames.join(", ")}.`
       )
     );
   }
 
   const groupHasKeys = await KeyResource.countActiveForGroups(
     auth,
-    vault.groups.filter((g) => !vault.isRegular() || !g.isGlobal())
+    space.groups.filter((g) => !space.isRegular() || !g.isGlobal())
   );
   if (groupHasKeys > 0) {
     return new Err(
@@ -84,34 +84,34 @@ export async function softDeleteVaultAndLaunchScrubWorkflow(
       }
     }
 
-    // Finally, soft delete the vault.
-    const res = await vault.delete(auth, { hardDelete: false, transaction: t });
+    // Finally, soft delete the space.
+    const res = await space.delete(auth, { hardDelete: false, transaction: t });
     if (res.isErr()) {
       throw res.error;
     }
 
-    await launchScrubVaultWorkflow(auth, vault);
+    await launchScrubVaultWorkflow(auth, space);
   });
 
   return new Ok(undefined);
 }
 
-// This method is invoked as part of the workflow to permanently delete a vault.
-// It ensures that all data associated with the vault is irreversibly removed from the system,
+// This method is invoked as part of the workflow to permanently delete a space.
+// It ensures that all data associated with the space is irreversibly removed from the system,
 // EXCEPT for data sources that are handled and deleted directly within the workflow.
-export async function hardDeleteVault(
+export async function hardDeleteSpace(
   auth: Authenticator,
-  vault: VaultResource
+  space: SpaceResource
 ): Promise<Result<void, Error>> {
-  assert(auth.isAdmin(), "Only admins can delete vaults.");
+  assert(auth.isAdmin(), "Only admins can delete spaces.");
 
   const isDeletableVault =
-    vault.isDeleted() || vault.isGlobal() || vault.isSystem();
+    space.isDeleted() || space.isGlobal() || space.isSystem();
   assert(isDeletableVault, "Vault is not soft deleted.");
 
-  const dataSourceViews = await DataSourceViewResource.listByVault(
+  const dataSourceViews = await DataSourceViewResource.listBySpace(
     auth,
-    vault,
+    space,
     { includeDeleted: true }
   );
   for (const dsv of dataSourceViews) {
@@ -121,7 +121,7 @@ export async function hardDeleteVault(
     }
   }
 
-  const apps = await AppResource.listByVault(auth, vault, {
+  const apps = await AppResource.listBySpace(auth, space, {
     includeDeleted: true,
   });
   for (const app of apps) {
@@ -132,10 +132,10 @@ export async function hardDeleteVault(
   }
 
   await frontSequelize.transaction(async (t) => {
-    // Delete all vaults groups.
-    for (const group of vault.groups) {
-      // Skip deleting global groups for regular vaults.
-      if (vault.isRegular() && group.isGlobal()) {
+    // Delete all spaces groups.
+    for (const group of space.groups) {
+      // Skip deleting global groups for regular spaces.
+      if (space.isRegular() && group.isGlobal()) {
         continue;
       }
 
@@ -145,7 +145,7 @@ export async function hardDeleteVault(
       }
     }
 
-    const res = await vault.delete(auth, { hardDelete: true, transaction: t });
+    const res = await space.delete(auth, { hardDelete: true, transaction: t });
     if (res.isErr()) {
       throw res.error;
     }

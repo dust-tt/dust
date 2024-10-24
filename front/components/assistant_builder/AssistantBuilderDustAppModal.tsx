@@ -1,5 +1,5 @@
 import { CommandLineIcon, Item, Modal, Page, Spinner } from "@dust-tt/sparkle";
-import type { AppType, LightWorkspaceType, VaultType } from "@dust-tt/types";
+import type { AppType, LightWorkspaceType, SpaceType } from "@dust-tt/types";
 import { Transition } from "@headlessui/react";
 import { sortBy } from "lodash";
 import { useMemo } from "react";
@@ -8,7 +8,7 @@ import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSel
 import { useVaults } from "@app/lib/swr/vaults";
 
 interface AssistantBuilderDustAppModalProps {
-  allowedVaults: VaultType[];
+  allowedVaults: SpaceType[];
   dustApps: AppType[];
   isOpen: boolean;
   onSave: (app: AppType) => void;
@@ -53,7 +53,7 @@ export default function AssistantBuilderDustAppModal({
 }
 
 interface PickDustAppProps {
-  allowedVaults: VaultType[];
+  allowedVaults: SpaceType[];
   dustApps: AppType[];
   onPick: (app: AppType) => void;
   owner: LightWorkspaceType;
@@ -72,7 +72,7 @@ function PickDustApp({
   const filteredVaults = useMemo(
     () =>
       vaults.filter((vault) =>
-        dustApps.some((app) => app.vault.sId === vault.sId)
+        dustApps.some((app) => app.space.sId === vault.sId)
       ),
     [vaults, dustApps]
   );
@@ -100,7 +100,7 @@ function PickDustApp({
             defaultVault={allowedVaults[0].sId}
             renderChildren={(vault) => {
               const allowedDustApps = vault
-                ? dustApps.filter((app) => app.vault.sId === vault.sId)
+                ? dustApps.filter((app) => app.space.sId === vault.sId)
                 : dustApps;
 
               if (allowedDustApps.length === 0) {

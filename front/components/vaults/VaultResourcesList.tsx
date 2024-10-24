@@ -21,7 +21,7 @@ import type {
   DataSourceWithAgentsUsageType,
   DataSourceWithConnectorDetailsType,
   PlanType,
-  VaultType,
+  SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { isWebsiteOrFolderCategory } from "@dust-tt/types";
@@ -80,8 +80,8 @@ type VaultResourcesListProps = {
   plan: PlanType;
   isAdmin: boolean;
   canWriteInVault: boolean;
-  vault: VaultType;
-  systemVault: VaultType;
+  vault: SpaceType;
+  systemVault: SpaceType;
   category: Exclude<DataSourceViewCategory, "apps">;
   onSelect: (sId: string) => void;
   integrations: DataSourceIntegration[];
@@ -94,7 +94,7 @@ const getTableColumns = ({
 }: {
   isManaged: boolean;
   isWebsite: boolean;
-  vault: VaultType;
+  vault: SpaceType;
 }) => {
   const nameColumn: ColumnDef<RowData, string> = {
     header: "Name",

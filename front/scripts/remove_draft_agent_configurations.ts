@@ -135,14 +135,14 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
   // Delete the table query configurations.
   await deleteTableQueryConfigurationForAgent(agent);
 
-  // Delete the agent user relation.
-  // @pr to @flavien => that would destroy the relation for the active agent too right?
-  await AgentUserRelation.destroy({
-    where: {
-      // It uses the `sId` for the relation.
-      agentConfiguration: agent.sId,
-    },
-  });
+  // // Delete the agent user relation.
+  // // @pr to @flavien => that would destroy the relation for the active agent too right?
+  // await AgentUserRelation.destroy({
+  //   where: {
+  //     // It uses the `sId` for the relation.
+  //     agentConfiguration: agent.sId,
+  //   },
+  // });
 
   // Finally delete the agent configuration.
   await AgentConfiguration.destroy({

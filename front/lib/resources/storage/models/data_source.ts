@@ -5,7 +5,7 @@ import { DataTypes } from "sequelize";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
 export class DataSourceModel extends SoftDeletableModel<DataSourceModel> {
@@ -25,10 +25,10 @@ export class DataSourceModel extends SoftDeletableModel<DataSourceModel> {
   declare connectorId: string | null;
   declare connectorProvider: ConnectorProvider | null;
   declare workspaceId: ForeignKey<Workspace["id"]>;
-  declare vaultId: ForeignKey<VaultModel["id"]>;
+  declare vaultId: ForeignKey<SpaceModel["id"]>;
 
   declare editedByUser: NonAttribute<User>;
-  declare vault: NonAttribute<VaultModel>;
+  declare space: NonAttribute<SpaceModel>;
   declare workspace: NonAttribute<Workspace>;
 }
 
@@ -109,7 +109,7 @@ DataSourceModel.belongsTo(User, {
   foreignKey: { name: "editedByUserId", allowNull: false },
 });
 
-DataSourceModel.belongsTo(VaultModel, {
+DataSourceModel.belongsTo(SpaceModel, {
   foreignKey: { name: "vaultId", allowNull: false },
   onDelete: "RESTRICT",
 });

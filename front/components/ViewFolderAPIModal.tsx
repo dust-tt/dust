@@ -1,7 +1,7 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Button, ClipboardIcon, Modal, Page } from "@dust-tt/sparkle";
-import type { DataSourceType, VaultType, WorkspaceType } from "@dust-tt/types";
+import type { DataSourceType, SpaceType, WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -14,7 +14,7 @@ const CodeEditor = dynamic(
 
 interface ViewFolderAPIModalProps {
   owner: WorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   dataSource: DataSourceType;
   isOpen: boolean;
   onClose: () => void;

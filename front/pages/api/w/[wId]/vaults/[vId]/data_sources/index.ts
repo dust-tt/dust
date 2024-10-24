@@ -38,7 +38,7 @@ import {
 } from "@app/lib/connector_providers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
@@ -100,7 +100,7 @@ async function handler(
       },
     });
   }
-  const vault = await VaultResource.fetchById(auth, req.query.vId);
+  const vault = await SpaceResource.fetchById(auth, req.query.vId);
 
   if (!vault) {
     return apiError(req, res, {
@@ -217,7 +217,7 @@ const handleDataSourceWithProvider = async ({
   auth: Authenticator;
   plan: PlanType;
   owner: WorkspaceType;
-  vault: VaultResource;
+  vault: SpaceResource;
   body: t.TypeOf<typeof PostDataSourceWithProviderRequestBodySchema>;
   req: NextApiRequest;
   res: NextApiResponse<WithAPIErrorResponse<PostVaultDataSourceResponseBody>>;
@@ -514,7 +514,7 @@ const handleDataSourceWithoutProvider = async ({
   auth: Authenticator;
   plan: PlanType;
   owner: WorkspaceType;
-  vault: VaultResource;
+  vault: SpaceResource;
   body: t.TypeOf<typeof PostDataSourceWithoutProviderRequestBodySchema>;
   req: NextApiRequest;
   res: NextApiResponse<WithAPIErrorResponse<PostVaultDataSourceResponseBody>>;

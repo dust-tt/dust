@@ -1,5 +1,5 @@
 import { Button, DropdownMenu } from "@dust-tt/sparkle";
-import type { VaultType, WorkspaceType } from "@dust-tt/types";
+import type { SpaceType, WorkspaceType } from "@dust-tt/types";
 import type { TimeframeUnit } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
@@ -26,7 +26,7 @@ export function hasErrorActionRetrievalSearch(
 type ActionRetrievalSearchProps = {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
-  allowedVaults: VaultType[];
+  allowedVaults: SpaceType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderRetrievalConfiguration
@@ -95,7 +95,7 @@ export function hasErrorActionRetrievalExhaustive(
 type ActionRetrievalExhaustiveProps = {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
-  allowedVaults: VaultType[];
+  allowedVaults: SpaceType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderRetrievalConfiguration

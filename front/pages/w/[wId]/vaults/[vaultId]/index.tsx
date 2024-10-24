@@ -9,7 +9,7 @@ import { VaultCategoriesList } from "@app/components/vaults/VaultCategoriesList"
 import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
 import { VaultLayout } from "@app/components/vaults/VaultLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useVaultInfo } from "@app/lib/swr/vaults";
 import { getVaultIcon, getVaultName } from "@app/lib/vaults";
 
@@ -27,7 +27,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  const vault = await VaultResource.fetchById(
+  const vault = await SpaceResource.fetchById(
     auth,
     context.query.vaultId as string
   );

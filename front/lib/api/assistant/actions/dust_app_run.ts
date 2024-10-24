@@ -315,7 +315,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       {
         workspaceId: actionConfiguration.appWorkspaceId,
         appId: actionConfiguration.appId,
-        appVaultId: app.vault.sId,
+        appVaultId: app.space.sId,
         appHash: "latest",
       },
       appConfig,

@@ -1,7 +1,7 @@
 import { DropdownMenu, Input } from "@dust-tt/sparkle";
 import type {
   DataSourceViewContentNode,
-  VaultType,
+  SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
@@ -26,7 +26,7 @@ export default function TablePicker({
   };
   currentTableId?: string;
   readOnly: boolean;
-  vault: VaultType;
+  vault: SpaceType;
   onTableUpdate: (table: DataSourceViewContentNode) => void;
 }) {
   void owner;

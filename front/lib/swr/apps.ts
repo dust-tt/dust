@@ -2,7 +2,7 @@ import type {
   AppType,
   LightWorkspaceType,
   RunRunType,
-  VaultType,
+  SpaceType,
 } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -23,7 +23,7 @@ export function useApp({
 }: {
   owner: LightWorkspaceType;
   appId: string;
-  vault: VaultType;
+  vault: SpaceType;
 }) {
   const appFetcher: Fetcher<{ app: AppType }> = fetcher;
 
@@ -46,7 +46,7 @@ export function useApps({
   disabled,
 }: {
   owner: LightWorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   disabled?: boolean;
 }) {
   const appsFetcher: Fetcher<GetAppsResponseBody> = fetcher;
@@ -74,7 +74,7 @@ export function useSavedRunStatus(
 ) {
   const runStatusFetcher: Fetcher<GetRunStatusResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs/saved/status`,
+    `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/runs/saved/status`,
     runStatusFetcher,
     {
       refreshInterval: refresh,
@@ -98,7 +98,7 @@ export function useRunBlock(
 ) {
   const runBlockFetcher: Fetcher<GetRunBlockResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs/${runId}/blocks/${type}/${name}`,
+    `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/runs/${runId}/blocks/${type}/${name}`,
     runBlockFetcher,
     {
       refreshInterval: refresh,
@@ -135,7 +135,7 @@ export function useRuns(
   wIdTarget: string | null
 ) {
   const runsFetcher: Fetcher<GetRunsResponseBody> = fetcher;
-  let url = `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs?limit=${limit}&offset=${offset}&runType=${runType}`;
+  let url = `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/runs?limit=${limit}&offset=${offset}&runType=${runType}`;
   if (wIdTarget) {
     url += `&wIdTarget=${wIdTarget}`;
   }

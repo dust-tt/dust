@@ -6,41 +6,41 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DatasetResource } from "@app/lib/resources/dataset_resource";
-import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
+import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { RunResource } from "@app/lib/resources/run_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { AppModel, Clone } from "@app/lib/resources/storage/models/apps";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { VaultResource } from "@app/lib/resources/vault_resource";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface AppResource extends ReadonlyAttributesType<AppModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class AppResource extends ResourceWithVault<AppModel> {
+export class AppResource extends ResourceWithSpace<AppModel> {
   static model: ModelStatic<AppModel> = AppModel;
 
   constructor(
     model: ModelStatic<AppModel>,
     blob: Attributes<AppModel>,
-    vault: VaultResource
+    space: SpaceResource
   ) {
-    super(AppModel, blob, vault);
+    super(AppModel, blob, space);
   }
 
   static async makeNew(
     blob: Omit<CreationAttributes<AppModel>, "vaultId">,
-    vault: VaultResource
+    space: SpaceResource
   ) {
     const app = await AppModel.create({
       ...blob,
-      vaultId: vault.id,
+      vaultId: space.id,
       visibility: "private",
     });
 
-    return new this(AppModel, app.get(), vault);
+    return new this(AppModel, app.get(), space);
   }
 
   // Fetching.
@@ -85,14 +85,14 @@ export class AppResource extends ResourceWithVault<AppModel> {
     });
   }
 
-  static async listByVault(
+  static async listBySpace(
     auth: Authenticator,
-    vault: VaultResource,
+    space: SpaceResource,
     { includeDeleted }: { includeDeleted?: boolean } = {}
   ) {
     return this.baseFetch(auth, {
       where: {
-        vaultId: vault.id,
+        vaultId: space.id,
       },
       includeDeleted,
     });
@@ -198,7 +198,7 @@ export class AppResource extends ResourceWithVault<AppModel> {
       savedConfig: this.savedConfig,
       savedRun: this.savedRun,
       dustAPIProjectId: this.dustAPIProjectId,
-      vault: this.vault.toJSON(),
+      space: this.space.toJSON(),
     };
   }
 }

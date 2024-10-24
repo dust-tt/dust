@@ -3,8 +3,8 @@ import type {
   DataSourceViewCategory,
   DataSourceViewType,
   PlanType,
+  SpaceType,
   SubscriptionType,
-  VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
@@ -27,7 +27,7 @@ export interface VaultLayoutProps {
   plan: PlanType;
   isAdmin: boolean;
   subscription: SubscriptionType;
-  vault: VaultType;
+  vault: SpaceType;
   category?: DataSourceViewCategory;
   dataSourceView?: DataSourceViewType;
   parentId?: string;
@@ -136,7 +136,7 @@ function VaultBreadCrumbs({
   parentId,
 }: {
   owner: WorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   category?: DataSourceViewCategory;
   dataSourceView?: DataSourceViewType;
   parentId?: string;

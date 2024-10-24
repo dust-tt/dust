@@ -1,7 +1,7 @@
 import { DropdownMenu, Input } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
-  VaultType,
+  SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
@@ -19,7 +19,7 @@ export default function DataSourcePicker({
   onDataSourcesUpdate,
 }: {
   owner: WorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   currentDataSources: {
     workspace_id: string;
     data_source_id: string;
@@ -83,7 +83,7 @@ export default function DataSourcePicker({
   ]);
 
   const getEditLink = (dsv: DataSourceViewType) => {
-    return `/w/${owner.sId}/vaults/${dsv.vaultId}/categories/${dsv.category}/data_source_views/${dsv.sId}`;
+    return `/w/${owner.sId}/vaults/${dsv.spaceId}/categories/${dsv.category}/data_source_views/${dsv.sId}`;
   };
 
   useEffect(() => {

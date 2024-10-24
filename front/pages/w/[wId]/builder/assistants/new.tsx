@@ -3,9 +3,9 @@ import type {
   AppType,
   DataSourceViewType,
   PlanType,
+  SpaceType,
   SubscriptionType,
   TemplateAgentConfigurationType,
-  VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { throwIfInvalidAgentConfiguration } from "@dust-tt/types";
@@ -44,7 +44,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
-  vaults: VaultType[];
+  vaults: SpaceType[];
   dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
   actions: AssistantBuilderInitialState["actions"];

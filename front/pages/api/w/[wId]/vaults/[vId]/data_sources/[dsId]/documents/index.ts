@@ -46,7 +46,7 @@ async function handler(
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (
     !dataSource ||
-    vId !== dataSource.vault.sId ||
+    vId !== dataSource.space.sId ||
     !dataSource.canRead(auth)
   ) {
     return apiError(req, res, {

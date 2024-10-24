@@ -1,5 +1,5 @@
 import { LockIcon, PlanetIcon, ServerIcon } from "@dust-tt/sparkle";
-import type { PlanType, VaultType, WorkspaceType } from "@dust-tt/types";
+import type { PlanType, SpaceType, WorkspaceType } from "@dust-tt/types";
 import { groupBy } from "lodash";
 import type React from "react";
 
@@ -13,7 +13,7 @@ const VAULT_SECTION_GROUP_ORDER = [
 export type VaultSectionGroupType = (typeof VAULT_SECTION_GROUP_ORDER)[number];
 
 export function getVaultIcon(
-  vault: VaultType
+  vault: SpaceType
 ): (props: React.SVGProps<SVGSVGElement>) => React.ReactElement {
   if (vault.kind === "public") {
     return PlanetIcon;
@@ -26,18 +26,18 @@ export function getVaultIcon(
   return ServerIcon;
 }
 
-export const getVaultName = (vault: VaultType) => {
+export const getVaultName = (vault: SpaceType) => {
   return vault.kind === "global" ? "Company Data" : vault.name;
 };
 
 export const dustAppsListUrl = (
   owner: WorkspaceType,
-  vault: VaultType
+  vault: SpaceType
 ): string => {
   return `/w/${owner.sId}/vaults/${vault.sId}/categories/apps`;
 };
 
-export const groupVaults = (vaults: VaultType[]) => {
+export const groupVaults = (vaults: SpaceType[]) => {
   // Group by kind and sort.
   const groupedVaults = groupBy(vaults, (vault): VaultSectionGroupType => {
     switch (vault.kind) {
@@ -58,7 +58,7 @@ export const groupVaults = (vaults: VaultType[]) => {
 };
 
 export const isPrivateVaultsLimitReached = (
-  vaults: VaultType[],
+  vaults: SpaceType[],
   plan: PlanType
 ) =>
   plan.limits.vaults.maxVaults !== -1 &&

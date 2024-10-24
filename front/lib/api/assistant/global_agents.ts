@@ -50,7 +50,7 @@ import {
 } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 
 // Used when returning an agent with status 'disabled_by_admin'
@@ -103,11 +103,11 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
   assert(globalGroup.isOk(), "Failed to fetch global group");
 
-  const defaultVaults = await VaultResource.listForGroups(auth, [
+  const defaultVaults = await SpaceResource.listForGroups(auth, [
     globalGroup.value,
   ]);
 
-  const dataSourceViews = await DataSourceViewResource.listByVaults(
+  const dataSourceViews = await DataSourceViewResource.listBySpaces(
     auth,
     defaultVaults
   );
@@ -117,7 +117,7 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
       return {
         ...dsv.toJSON(),
         assistantDefaultSelected: dsv.dataSource.assistantDefaultSelected,
-        isInGlobalVault: dsv.vault.isGlobal(),
+        isInGlobalVault: dsv.space.isGlobal(),
       };
     }),
     workspaceId: owner.sId,

@@ -38,7 +38,7 @@ async function handler(
   const user = auth.getNonNullableUser();
 
   const app = await AppResource.fetchById(auth, req.query.aId as string);
-  if (!app || app.vault.sId !== vaultId) {
+  if (!app || app.space.sId !== vaultId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

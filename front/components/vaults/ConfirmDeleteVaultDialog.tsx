@@ -1,10 +1,10 @@
 import { Dialog } from "@dust-tt/sparkle";
-import type { VaultType } from "@dust-tt/types";
+import type { SpaceType } from "@dust-tt/types";
 
 import { getVaultName } from "@app/lib/vaults";
 
 interface ConfirmDeleteVaultDialogProps {
-  vault: VaultType;
+  vault: SpaceType;
   handleDelete: () => void;
   dataSourceUsage?: number;
   isOpen: boolean;

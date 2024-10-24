@@ -121,7 +121,7 @@ export default function AppRun({
     }
 
     await fetch(
-      `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/state`,
+      `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/state`,
       {
         method: "POST",
         headers: {
@@ -150,7 +150,7 @@ export default function AppRun({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.vault));
+            void router.push(dustAppsListUrl(owner, app.space));
           }}
         />
       }

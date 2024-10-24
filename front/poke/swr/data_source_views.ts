@@ -69,7 +69,7 @@ export function usePokeDataSourceViewContentNodes({
 
   const url =
     dataSourceView && viewType
-      ? `/api/poke/workspaces/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
+      ? `/api/poke/workspaces/${owner.sId}/vaults/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
       : null;
 
   const body = JSON.stringify({
@@ -138,7 +138,7 @@ export function usePokeDataSourceViewContentNodesWithInfiniteScroll({
 } {
   const url =
     dataSourceView && viewType
-      ? `/api/poke/workspaces/${owner.sId}/vaults/${dataSourceView.vaultId}/data_source_views/${dataSourceView.sId}/content-nodes`
+      ? `/api/poke/workspaces/${owner.sId}/vaults/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes`
       : null;
 
   const body = {

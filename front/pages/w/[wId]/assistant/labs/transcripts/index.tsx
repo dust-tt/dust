@@ -27,7 +27,7 @@ import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
@@ -50,8 +50,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const subscription = auth.subscription();
   const user = auth.user();
 
-  const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
-  const globalDataSourceViews = await DataSourceViewResource.listByVault(
+  const globalVault = await SpaceResource.fetchWorkspaceGlobalVault(auth);
+  const globalDataSourceViews = await DataSourceViewResource.listBySpace(
     auth,
     globalVault
   );

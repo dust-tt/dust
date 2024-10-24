@@ -4,7 +4,7 @@ import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { VaultResource } from "@app/lib/resources/vault_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 
@@ -49,7 +49,7 @@ export async function launchScrubDataSourceWorkflow(
 
 export async function launchScrubVaultWorkflow(
   auth: Authenticator,
-  vault: VaultResource
+  vault: SpaceResource
 ) {
   const client = await getTemporalClient();
   const owner = auth.getNonNullableWorkspace();

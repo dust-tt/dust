@@ -1,4 +1,4 @@
-import type { VaultKind } from "@dust-tt/types";
+import type { SpaceKind } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -7,18 +7,18 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import type { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
-export class VaultModel extends SoftDeletableModel<VaultModel> {
+export class SpaceModel extends SoftDeletableModel<SpaceModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare name: string;
-  declare kind: VaultKind;
+  declare kind: SpaceKind;
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
   declare groups: NonAttribute<GroupModel[]>;
 }
-VaultModel.init(
+SpaceModel.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -48,7 +48,8 @@ VaultModel.init(
     },
   },
   {
-    modelName: "vaults",
+    modelName: "spaces",
+    tableName: "vaults",
     sequelize: frontSequelize,
     indexes: [
       { unique: true, fields: ["workspaceId", "name", "deletedAt"] },
@@ -57,11 +58,11 @@ VaultModel.init(
   }
 );
 
-Workspace.hasMany(VaultModel, {
+Workspace.hasMany(SpaceModel, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });
-VaultModel.belongsTo(Workspace, {
+SpaceModel.belongsTo(Workspace, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
 });

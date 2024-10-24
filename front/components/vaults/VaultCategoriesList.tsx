@@ -16,7 +16,7 @@ import {
 import type {
   DataSourceViewCategory,
   DataSourceWithAgentsUsageType,
-  VaultType,
+  SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
@@ -104,7 +104,7 @@ type VaultCategoriesListProps = {
   onButtonClick?: () => void;
   onSelect: (category: string) => void;
   owner: WorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
 };
 
 export const VaultCategoriesList = ({

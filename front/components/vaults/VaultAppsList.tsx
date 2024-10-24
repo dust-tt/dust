@@ -8,7 +8,7 @@ import {
   Spinner,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
-import type { ConnectorType, VaultType, WorkspaceType } from "@dust-tt/types";
+import type { ConnectorType, SpaceType, WorkspaceType } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { sortBy } from "lodash";
 import { useRouter } from "next/router";
@@ -32,7 +32,7 @@ type RowData = {
 
 type VaultAppListProps = {
   owner: WorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   canWriteInVault: boolean;
   onSelect: (sId: string) => void;
 };

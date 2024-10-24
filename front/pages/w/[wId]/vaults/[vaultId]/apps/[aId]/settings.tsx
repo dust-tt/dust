@@ -102,13 +102,13 @@ export default function SettingsView({
     ) {
       setIsDeleting(true);
       const res = await fetch(
-        `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`,
+        `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}`,
         {
           method: "DELETE",
         }
       );
       if (res.ok) {
-        await router.push(dustAppsListUrl(owner, app.vault));
+        await router.push(dustAppsListUrl(owner, app.space));
       } else {
         setIsDeleting(false);
         const err = (await res.json()) as { error: APIError };
@@ -125,7 +125,7 @@ export default function SettingsView({
   const handleUpdate = async () => {
     setIsUpdating(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`,
+      `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}`,
       {
         method: "POST",
         headers: {
@@ -139,7 +139,7 @@ export default function SettingsView({
     );
     if (res.ok) {
       await router.push(
-        `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`
+        `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}`
       );
     } else {
       setIsUpdating(false);
@@ -165,7 +165,7 @@ export default function SettingsView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.vault));
+            void router.push(dustAppsListUrl(owner, app.space));
           }}
         />
       }

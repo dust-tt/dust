@@ -6,8 +6,8 @@ import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -36,7 +36,7 @@ async function handler(
       },
     });
   }
-  const vault = await VaultResource.fetchById(auth, vaultId);
+  const vault = await SpaceResource.fetchById(auth, vaultId);
   if (!vault || !vault.canList(auth)) {
     return apiError(req, res, {
       status_code: 404,
@@ -50,7 +50,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       return res.status(200).json({
-        apps: (await AppResource.listByVault(auth, vault)).map((app) =>
+        apps: (await AppResource.listBySpace(auth, vault)).map((app) =>
           app.toJSON()
         ),
       });

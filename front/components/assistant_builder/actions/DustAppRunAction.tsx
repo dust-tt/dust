@@ -1,5 +1,5 @@
 import { ContentMessage } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, VaultType } from "@dust-tt/types";
+import type { LightWorkspaceType, SpaceType } from "@dust-tt/types";
 import { assertNever, slugify } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
@@ -25,7 +25,7 @@ export function isActionDustAppRunValid(
 
 interface ActionDustAppRunProps {
   action: AssistantBuilderActionConfiguration;
-  allowedVaults: VaultType[];
+  allowedVaults: SpaceType[];
   owner: LightWorkspaceType;
   setEdited: (edited: boolean) => void;
   updateAction: (args: {

@@ -2,8 +2,8 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Workspace, WorkspaceHasDomain } from "@app/lib/models/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
@@ -45,7 +45,7 @@ export async function createWorkspaceInternal({
   const auth = await Authenticator.internalAdminForWorkspace(
     lightWorkspace.sId
   );
-  await VaultResource.makeDefaultsForWorkspace(auth, {
+  await SpaceResource.makeDefaultsForWorkspace(auth, {
     systemGroup,
     globalGroup,
   });

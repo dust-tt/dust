@@ -72,7 +72,7 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vaults";
+import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 // Labs - Can be removed at all times if a solution is dropped
@@ -85,8 +85,8 @@ import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
-import { VaultModel } from "@app/lib/resources/storage/models/vaults";
 import logger from "@app/logger/logger";
 
 async function main() {
@@ -103,7 +103,7 @@ async function main() {
   await GroupModel.sync({ alter: true });
   await GroupMembershipModel.sync({ alter: true });
 
-  await VaultModel.sync({ alter: true });
+  await SpaceModel.sync({ alter: true });
   await AppModel.sync({ alter: true });
   await Dataset.sync({ alter: true });
   await Provider.sync({ alter: true });
@@ -111,7 +111,7 @@ async function main() {
   await KeyModel.sync({ alter: true });
   await FileModel.sync({ alter: true });
   await DustAppSecret.sync({ alter: true });
-  await GroupVaultModel.sync({ alter: true });
+  await GroupSpaceModel.sync({ alter: true });
   await DataSourceModel.sync({ alter: true });
   await DataSourceViewModel.sync({ alter: true });
   await RunModel.sync({ alter: true });
