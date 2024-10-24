@@ -814,10 +814,6 @@ export class Authenticator {
     return this.hasPermission(acls, "admin");
   }
 
-  canList(acls: ACLType[]): boolean {
-    return this.hasPermission(acls, "list");
-  }
-
   canRead(acls: ACLType[]): boolean {
     return this.hasPermission(acls, "read");
   }
