@@ -1,4 +1,5 @@
-import type { CoreAPITablePublic, WithAPIErrorResponse } from "@dust-tt/types";
+import type { GetTableResponseType } from "@dust-tt/client";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { assertNever, CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -10,10 +11,6 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-
-export type GetTableResponseBody = {
-  table: CoreAPITablePublic;
-};
 
 /**
  * @swagger
@@ -104,7 +101,7 @@ export type GetTableResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetTableResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetTableResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();

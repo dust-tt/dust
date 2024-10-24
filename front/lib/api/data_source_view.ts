@@ -1,8 +1,10 @@
 import type {
+  APIErrorWithStatusCode,
   ContentNodesViewType,
   CoreAPIError,
   DataSourceViewContentNode,
   DataSourceViewType,
+  PatchDataSourceViewType,
   Result,
 } from "@dust-tt/types";
 import { ConnectorsAPI, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
@@ -11,6 +13,7 @@ import assert from "assert";
 import config from "@app/lib/api/config";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import type { OffsetPaginationParams } from "@app/lib/api/pagination";
+import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
@@ -284,4 +287,52 @@ export async function getContentNodesForDataSourceView(
     nodes: contentNodesInView,
     total: contentNodesResult.total,
   });
+}
+
+export async function handlePatchDataSourceView(
+  patchBody: PatchDataSourceViewType,
+  auth: Authenticator,
+  dataSourceView: DataSourceViewResource
+): Promise<Result<DataSourceViewResource, APIErrorWithStatusCode>> {
+  if (!auth.isAdmin() && !auth.isBuilder()) {
+    throw new Err({
+      status_code: 403,
+      api_error: {
+        message:
+          "Only users that are `admins` or `builder` can administrate vaults.",
+        type: "workspace_auth_error",
+      },
+    });
+  }
+
+  let updateResultRes;
+  if ("parentsIn" in patchBody) {
+    const { parentsIn } = patchBody;
+    updateResultRes = await dataSourceView.setParents(parentsIn ?? []);
+  } else {
+    const parentsToAdd =
+      "parentsToAdd" in patchBody ? patchBody.parentsToAdd : [];
+    const parentsToRemove =
+      "parentsToRemove" in patchBody ? patchBody.parentsToRemove : [];
+
+    updateResultRes = await dataSourceView.updateParents(
+      parentsToAdd,
+      parentsToRemove
+    );
+  }
+
+  if (updateResultRes.isErr()) {
+    return new Err({
+      status_code: 500,
+      api_error: {
+        message: "The data source view cannot be updated.",
+        type: "internal_server_error",
+      },
+    });
+  }
+
+  if (auth.user()) {
+    await dataSourceView.setEditedBy(auth);
+  }
+  return new Ok(dataSourceView);
 }

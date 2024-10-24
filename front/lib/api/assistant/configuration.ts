@@ -118,7 +118,7 @@ export async function getAgentConfiguration(
 export async function searchAgentConfigurationsByName(
   auth: Authenticator,
   name: string
-): Promise<AgentConfiguration[] | []> {
+): Promise<LightAgentConfigurationType[]> {
   const owner = auth.getNonNullableWorkspace();
 
   const agentConfigurations = await AgentConfiguration.findAll({
@@ -131,7 +131,13 @@ export async function searchAgentConfigurationsByName(
       },
     },
   });
-  return agentConfigurations || [];
+  const r = (
+    await Promise.all(
+      agentConfigurations.map((c) => getLightAgentConfiguration(auth, c.sId))
+    )
+  ).filter((c) => c !== null) as LightAgentConfigurationType[];
+
+  return r;
 }
 
 function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {

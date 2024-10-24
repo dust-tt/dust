@@ -14,7 +14,8 @@
     "build": "dts build",
     "lint": "dts lint",
     "format": "dts lint --fix",
-    "start": "dts watch"
+    "start": "dts watch",
+    "tsc": "tsc"
   },
   "engines": {
     "node": ">=20"
@@ -23,15 +24,15 @@
     "@tsconfig/recommended": "^1.0.3",
     "@types/node": "^22.7.5",
     "@types/uuid": "^9.0.7",
-    "tslib": "^2.6.2",
-    "typescript": "^5.4.5",
     "dts-cli": "^2.0.5",
-    "eslint-plugin-simple-import-sort": "^12.1.0"
+    "eslint-plugin-simple-import-sort": "^12.1.0",
+    "tslib": "^2.6.2",
+    "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@dust-tt/types": "file:../../types",
     "eventsource-parser": "^1.1.1",
-    "moment-timezone": "^0.5.46"
+    "moment-timezone": "^0.5.46",
+    "zod": "^3.23.8"
   },
   "browser": {
     "tls": false,

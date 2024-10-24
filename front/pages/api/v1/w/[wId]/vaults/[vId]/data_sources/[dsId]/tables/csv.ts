@@ -1,11 +1,17 @@
+import type {
+  PostTableCSVAsyncResponseType,
+  PostTableCSVResponseType,
+} from "@dust-tt/client";
+import { UpsertTableFromCsvRequestSchema } from "@dust-tt/client";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { handleDataSourceTableCSVUpsert } from "@app/lib/api/data_sources";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { VaultResource } from "@app/lib/resources/vault_resource";
 import { apiError } from "@app/logger/withlogging";
-import { handleDataSourceTableCSVUpsert } from "@app/pages/api/w/[wId]/data_sources/[dsId]/tables/csv";
 
 export const config = {
   api: {
@@ -22,7 +28,11 @@ export const config = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      PostTableCSVAsyncResponseType | PostTableCSVResponseType
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isSystemKey()) {
@@ -79,8 +89,31 @@ async function handler(
   }
 
   switch (req.method) {
-    case "POST":
-      return handleDataSourceTableCSVUpsert({ auth, req, res, dataSource });
+    case "POST": {
+      const r = UpsertTableFromCsvRequestSchema.safeParse(req.body);
+
+      if (r.error) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${r.error.message}`,
+          },
+        });
+      }
+      const upsertRes = await handleDataSourceTableCSVUpsert({
+        auth,
+        params: r.data,
+        dataSource,
+      });
+
+      if (upsertRes.isErr()) {
+        return apiError(req, res, upsertRes.error);
+      } else {
+        res.status(200).json(upsertRes.value);
+        return;
+      }
+    }
 
     default:
       return apiError(req, res, {

@@ -56,7 +56,6 @@
     "@tiptap/starter-kit": "^2.1.13",
     "@types/emoji-mart": "^3.0.10",
     "@uiw/react-textarea-code-editor": "^3.0.2",
-    "ajv": "^8.12.0",
     "auth0": "^4.3.1",
     "blake3": "^2.1.7",
     "class-variance-authority": "^0.7.0",

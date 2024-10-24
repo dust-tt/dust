@@ -1,8 +1,10 @@
+import type {
+  GetWorkspaceUsageRequestType,
+  UsageTableType,
+} from "@dust-tt/client";
+import { GetWorkspaceUsageRequestSchema } from "@dust-tt/client";
 import { assertNever } from "@dust-tt/types";
 import { endOfMonth } from "date-fns/endOfMonth";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -15,37 +17,6 @@ import {
   getUserUsageData,
 } from "@app/lib/workspace_usage";
 import { apiError } from "@app/logger/withlogging";
-import { getSupportedUsageTablesCodec } from "@app/pages/api/w/[wId]/workspace-usage";
-
-export const usageTables = [
-  "users",
-  "assistant_messages",
-  "builders",
-  "assistants",
-  "all",
-];
-type usageTableType = (typeof usageTables)[number];
-
-const DateSchema = t.refinement(
-  t.string,
-  (s): s is string => /^\d{4}-(0[1-9]|1[0-2])(-([0-2]\d|3[01]))?$/.test(s),
-  "YYYY-MM or YYYY-MM-DD"
-);
-
-const GetWorkspaceUsageSchema = t.union([
-  t.type({
-    start: DateSchema,
-    end: t.undefined,
-    mode: t.literal("month"),
-    table: getSupportedUsageTablesCodec(),
-  }),
-  t.type({
-    start: DateSchema,
-    end: DateSchema,
-    mode: t.literal("range"),
-    table: getSupportedUsageTablesCodec(),
-  }),
-]);
 
 /**
  * @swagger
@@ -135,19 +106,18 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const queryValidation = GetWorkspaceUsageSchema.decode(req.query);
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
+      const r = GetWorkspaceUsageRequestSchema.safeParse(req.query);
+      if (r.error) {
         return apiError(req, res, {
+          status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request query: ${pathError}`,
+            message: `Invalid request body: ${r.error.message}`,
           },
-          status_code: 400,
         });
       }
 
-      const query = queryValidation.right;
+      const query = r.data;
       const { endDate, startDate } = resolveDates(query);
       const csvData = await fetchUsageData({
         table: query.table,
@@ -198,16 +168,7 @@ async function handler(
   }
 }
 
-function resolveDates(query: t.TypeOf<typeof GetWorkspaceUsageSchema>) {
-  const parseDate = (dateString: string) => {
-    const parts = dateString.split("-");
-    return new Date(
-      parseInt(parts[0]),
-      parseInt(parts[1]) - 1,
-      parts[2] ? parseInt(parts[2]) : 1
-    );
-  };
-
+function resolveDates(query: GetWorkspaceUsageRequestType) {
   switch (query.mode) {
     case "month":
       const date = parseDate(query.start);
@@ -228,11 +189,11 @@ async function fetchUsageData({
   end,
   workspaceId,
 }: {
-  table: usageTableType;
+  table: UsageTableType;
   start: Date;
   end: Date;
   workspaceId: string;
-}): Promise<Partial<Record<usageTableType, string>>> {
+}): Promise<Partial<Record<UsageTableType, string>>> {
   switch (table) {
     case "users":
       return { users: await getUserUsageData(start, end, workspaceId) };

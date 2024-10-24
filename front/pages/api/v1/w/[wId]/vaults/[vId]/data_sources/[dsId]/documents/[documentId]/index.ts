@@ -1,18 +1,13 @@
 import type {
-  CoreAPILightDocument,
-  DataSourceType,
-  DocumentType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  PostDataSourceDocumentRequestBodySchema,
-  rateLimiter,
-  sectionFullText,
-} from "@dust-tt/types";
+  DeleteDocumentResponseType,
+  GetDocumentResponseType,
+  UpsertDocumentResponseType,
+} from "@dust-tt/client";
+import { PostDataSourceDocumentRequestSchema } from "@dust-tt/client";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { rateLimiter, sectionFullText } from "@dust-tt/types";
 import { dustManagedCredentials } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import apiConfig from "@app/lib/api/config";
@@ -36,20 +31,6 @@ export const config = {
       sizeLimit: "8mb",
     },
   },
-};
-
-export type GetDocumentResponseBody = {
-  document: DocumentType;
-};
-export type DeleteDocumentResponseBody = {
-  document: {
-    document_id: string;
-  };
-};
-export type UpsertDocumentResponseBody = {
-  // depending on `light_document_output` in the request body
-  document: DocumentType | CoreAPILightDocument | { document_id: string };
-  data_source: DataSourceType;
 };
 
 /**
@@ -265,9 +246,9 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | GetDocumentResponseBody
-      | DeleteDocumentResponseBody
-      | UpsertDocumentResponseBody
+      | GetDocumentResponseType
+      | DeleteDocumentResponseType
+      | UpsertDocumentResponseType
     >
   >,
   auth: Authenticator
@@ -372,24 +353,22 @@ async function handler(
         }
       }
 
-      const bodyValidation = PostDataSourceDocumentRequestBodySchema.decode(
-        req.body
-      );
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const r = PostDataSourceDocumentRequestSchema.safeParse(req.body);
+
+      if (r.error) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${r.error.message}`,
           },
         });
       }
 
       let sourceUrl: string | null = null;
-      if (bodyValidation.right.source_url) {
+      if (r.data.source_url) {
         const { valid: isSourceUrlValid, standardized: standardizedSourceUrl } =
-          validateUrl(bodyValidation.right.source_url);
+          validateUrl(r.data.source_url);
 
         if (!isSourceUrlValid) {
           return apiError(req, res, {
@@ -405,13 +384,13 @@ async function handler(
       }
 
       const section =
-        typeof bodyValidation.right.text === "string"
+        typeof r.data.text === "string"
           ? {
               prefix: null,
-              content: bodyValidation.right.text,
+              content: r.data.text,
               sections: [],
             }
-          : bodyValidation.right.section || null;
+          : r.data.section || null;
 
       if (!section) {
         return apiError(req, res, {
@@ -484,18 +463,18 @@ async function handler(
         });
       }
 
-      if (bodyValidation.right.async === true) {
+      if (r.data.async === true) {
         const enqueueRes = await enqueueUpsertDocument({
           upsertDocument: {
             workspaceId: owner.sId,
             dataSourceId: dataSource.sId,
             documentId: req.query.documentId as string,
-            tags: bodyValidation.right.tags || [],
-            parents: bodyValidation.right.parents || [],
-            timestamp: bodyValidation.right.timestamp || null,
+            tags: r.data.tags || [],
+            parents: r.data.parents || [],
+            timestamp: r.data.timestamp || null,
             sourceUrl,
             section,
-            upsertContext: bodyValidation.right.upsert_context || null,
+            upsertContext: r.data.upsert_context || null,
           },
         });
         if (enqueueRes.isErr()) {
@@ -527,14 +506,13 @@ async function handler(
           projectId: dataSource.dustAPIProjectId,
           dataSourceId: dataSource.dustAPIDataSourceId,
           documentId: req.query.documentId as string,
-          tags: bodyValidation.right.tags || [],
-          parents: bodyValidation.right.parents || [],
+          tags: r.data.tags || [],
+          parents: r.data.parents || [],
           sourceUrl,
-          timestamp: bodyValidation.right.timestamp || null,
+          timestamp: r.data.timestamp || null,
           section,
           credentials,
-          lightDocumentOutput:
-            bodyValidation.right.light_document_output === true,
+          lightDocumentOutput: r.data.light_document_output === true,
         });
 
         if (upsertRes.isErr()) {
@@ -560,7 +538,7 @@ async function handler(
           section,
           document: upsertRes.value.document,
           sourceUrl,
-          upsertContext: bodyValidation.right.upsert_context || undefined,
+          upsertContext: r.data.upsert_context || undefined,
         });
         return;
       }

@@ -6,6 +6,7 @@ import type {
 } from "@dust-tt/types";
 import { ContentSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
