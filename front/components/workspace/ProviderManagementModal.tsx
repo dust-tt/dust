@@ -1,8 +1,11 @@
 import {
   Button,
   ContextItem,
-  DropdownMenu,
   Modal,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
   SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -192,8 +195,8 @@ export function ProviderManagementModal({
       </div>
       <div className="flex flex-row items-center gap-4 px-4 pt-4">
         <div className="s-text-sm font-semibold">Embedding Provider:</div>
-        <DropdownMenu>
-          <DropdownMenu.Button>
+        <NewDropdownMenu>
+          <NewDropdownMenuTrigger>
             <Tooltip
               label="Please contact us if you are willing to change this setting."
               trigger={
@@ -208,14 +211,13 @@ export function ProviderManagementModal({
                   variant="secondary"
                   hasMagnifying={false}
                   size="sm"
-                  disabled={true}
                 />
               }
             />
-          </DropdownMenu.Button>
-          <DropdownMenu.Items origin="topRight">
+          </NewDropdownMenuTrigger>
+          <NewDropdownMenuContent>
             {EMBEDDING_PROVIDER_IDS.map((provider) => (
-              <DropdownMenu.Item
+              <NewDropdownMenuItem
                 key={provider}
                 label={prettyfiedProviderNames[provider]}
                 onClick={() => {
@@ -223,8 +225,8 @@ export function ProviderManagementModal({
                 }}
               />
             ))}
-          </DropdownMenu.Items>
-        </DropdownMenu>
+          </NewDropdownMenuContent>
+        </NewDropdownMenu>
       </div>
       <div className="px-4 pt-2 text-sm text-gray-500">
         Embedding models are used to create numerical representations of your

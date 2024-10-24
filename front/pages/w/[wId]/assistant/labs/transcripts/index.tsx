@@ -4,7 +4,10 @@ import {
   ChevronDownIcon,
   CloudArrowLeftRightIcon,
   Dialog,
-  DropdownMenu,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
   Page,
   SliderToggle,
   Spinner,
@@ -625,20 +628,23 @@ export default function LabsTranscriptsIndex({
                       </small>
                     </Page.P>
                     {dataSourcesViews.length > 0 && (
-                      <DropdownMenu>
-                        <DropdownMenu.Button
-                          className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-4 py-2 text-left text-sm font-medium shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                      <NewDropdownMenu>
+                        <NewDropdownMenuTrigger
                           disabled={!transcriptsConfigurationState.isActive}
                         >
-                          {transcriptsConfigurationState?.dataSource?.dataSource
-                            .name || "Do not store transcripts"}
-                          <ChevronDownIcon
-                            className="-mr-1 ml-2 h-5 w-5"
-                            aria-hidden="true"
+                          <Button
+                            label={
+                              transcriptsConfigurationState?.dataSource
+                                ?.dataSource.name || "Do not store transcripts"
+                            }
+                            size="sm"
+                            variant="tertiary"
+                            icon={ChevronDownIcon}
+                            disabled={!transcriptsConfigurationState.isActive}
                           />
-                        </DropdownMenu.Button>
-                        <DropdownMenu.Items origin="topLeft" width={220}>
-                          <DropdownMenu.Item
+                        </NewDropdownMenuTrigger>
+                        <NewDropdownMenuContent>
+                          <NewDropdownMenuItem
                             label="Do not store transcripts"
                             onClick={() =>
                               handleSetDataSource(
@@ -648,7 +654,7 @@ export default function LabsTranscriptsIndex({
                             }
                           />
                           {dataSourcesViews.map((dsv) => (
-                            <DropdownMenu.Item
+                            <NewDropdownMenuItem
                               key={dsv.id}
                               label={dsv.dataSource.name}
                               onClick={() =>
@@ -659,8 +665,8 @@ export default function LabsTranscriptsIndex({
                               }
                             />
                           ))}
-                        </DropdownMenu.Items>
-                      </DropdownMenu>
+                        </NewDropdownMenuContent>
+                      </NewDropdownMenu>
                     )}
                   </Page.Layout>
                 </Page.Layout>
