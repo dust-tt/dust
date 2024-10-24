@@ -45,13 +45,6 @@ export function getTicketInternalId(
   return `zendesk-ticket-${connectorId}-${teamId}`;
 }
 
-export function getConversationInternalId(
-  connectorId: ModelId,
-  conversationId: number
-): string {
-  return `zendesk-category-${connectorId}-${conversationId}`;
-}
-
 /**
  * Conversion from an internalId to an id.
  */
