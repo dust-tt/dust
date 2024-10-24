@@ -33,6 +33,8 @@ export function isActiveRoleType(role: string): role is ActiveRoleType {
   return ACTIVE_ROLES.includes(role as ActiveRoleType);
 }
 
+export type UserRole = "admin" | "builder" | "user" | "none";
+
 export type LightWorkspaceType = {
   id: ModelId;
   sId: string;

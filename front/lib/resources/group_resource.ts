@@ -682,9 +682,10 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   acl(): ACLType {
     return {
-      aclEntries: [
+      roles: [],
+      groups: [
         {
-          groupId: this.id,
+          id: this.id,
           permissions: ["read"],
         },
       ],

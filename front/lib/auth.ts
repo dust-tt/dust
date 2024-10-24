@@ -15,7 +15,7 @@ import type { Result } from "@dust-tt/types";
 import type { APIErrorWithStatusCode } from "@dust-tt/types";
 import {
   Err,
-  groupHasPermission,
+  hasResourcePermission,
   isAdmin,
   isBuilder,
   isDevelopment,
@@ -112,9 +112,10 @@ export class Authenticator {
     };
 
     return groupIds.map((groupId) => ({
-      aclEntries: [
+      roles: [],
+      groups: [
         {
-          groupId: getIdFromSIdOrThrow(groupId),
+          id: getIdFromSIdOrThrow(groupId),
           permissions: ["read", "write"],
         },
       ],
@@ -800,10 +801,22 @@ export class Authenticator {
   hasPermission(acls: ACLType[], permission: Permission): boolean {
     // For each acl, does the user belongs to a group that has the permission?
     return acls.every((acl) =>
-      this.groups().some((group) =>
-        groupHasPermission(acl, permission, group.id)
+      hasResourcePermission(
+        acl,
+        this.getNonNullableWorkspace(),
+        permission,
+        this.groups(),
+        this.role()
       )
     );
+  }
+
+  canAdministrate(acls: ACLType[]): boolean {
+    return this.hasPermission(acls, "admin");
+  }
+
+  canList(acls: ACLType[]): boolean {
+    return this.hasPermission(acls, "list");
   }
 
   canRead(acls: ACLType[]): boolean {
