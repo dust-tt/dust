@@ -113,9 +113,9 @@ async fn clean_all_documents_for_data_source_id(
         .await?;
 
     println!(
-        "Processing: document_count={:} data_source={}",
-        document_ids.len(),
+        "Processing: data_source={} document_count={:}",
         data_source_internal_id
+        document_ids.len(),
     );
 
     stream::iter(document_ids.into_iter().map(|row| {
