@@ -10,8 +10,11 @@ export function getBrandInternalId(
   return `zendesk-brand-${connectorId}-${brandId}`;
 }
 
-export function getHelpCenterInternalId(connectorId: ModelId): string {
-  return `zendesk-help-center-${connectorId}`;
+export function getHelpCenterInternalId(
+  connectorId: ModelId,
+  brandId: number
+): string {
+  return `zendesk-help-center-${connectorId}-${brandId}`;
 }
 
 export function getCategoryInternalId(
@@ -28,8 +31,11 @@ export function getArticleInternalId(
   return `zendesk-article-${connectorId}-${articleId}`;
 }
 
-export function getTicketsInternalId(connectorId: ModelId): string {
-  return `zendesk-tickets-${connectorId}`;
+export function getTicketsInternalId(
+  connectorId: ModelId,
+  brandId: number
+): string {
+  return `zendesk-tickets-${connectorId}-${brandId}`;
 }
 
 export function getTicketInternalId(
@@ -62,11 +68,14 @@ export function getBrandIdFromInternalId(
   return _getIdFromInternal(internalId, `zendesk-brand-${connectorId}-`);
 }
 
-export function isInternalIdOnWholeHelpCenter(
+export function getBrandIdFromHelpCenterId(
   connectorId: ModelId,
-  internalId: string
-): boolean {
-  return internalId === `zendesk-help-center-${connectorId}`;
+  helpCenterInternalId: string
+): number | null {
+  return _getIdFromInternal(
+    helpCenterInternalId,
+    `zendesk-help-center-${connectorId}-`
+  );
 }
 
 export function getCategoryIdFromInternalId(
@@ -83,11 +92,14 @@ export function getArticleIdFromInternalId(
   return _getIdFromInternal(internalId, `zendesk-article-${connectorId}-`);
 }
 
-export function isInternalIdOnAllTickets(
+export function getBrandIdFromTicketsId(
   connectorId: ModelId,
-  internalId: string
-): boolean {
-  return internalId === `zendesk-tickets-${connectorId}`;
+  ticketsInternalId: string
+): number | null {
+  return _getIdFromInternal(
+    ticketsInternalId,
+    `zendesk-tickets-${connectorId}-`
+  );
 }
 
 export function getTicketIdFromInternalId(
