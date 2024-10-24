@@ -455,7 +455,7 @@ async function handler(
           documents.value.total >= plan.limits.dataSources.documents.count
         ) {
           return apiError(req, res, {
-            status_code: 401,
+            status_code: 403,
             api_error: {
               type: "data_source_quota_error",
               message:
@@ -472,7 +472,7 @@ async function handler(
         fullText.length > 1024 * 1024 * plan.limits.dataSources.documents.sizeMb
       ) {
         return apiError(req, res, {
-          status_code: 401,
+          status_code: 403,
           api_error: {
             type: "data_source_quota_error",
             message:
