@@ -22,7 +22,7 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
   const coreReplica = getCoreReplicaDbConnection();
 
   let lastSeenId = 0;
-  let totalDeletedCount = 0;
+  let totalScrubbedCount = 0;
 
   do {
     // paginate by id
@@ -55,7 +55,7 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
       chunks.push(deletedDocuments.slice(i, i + 32));
     }
 
-    let deletedCount = 0;
+    let scrubbedCount = 0;
 
     for (let i = 0; i < chunks.length; i++) {
       heartbeat();
@@ -63,15 +63,13 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
       await Promise.all(
         chunk.map((d) => {
           return (async () => {
-            const done = await scrubDocument({
+            const count = await scrubDocument({
               logger,
               project: d.project,
               dataSourceId: d.data_source_id,
               documentId: d.document_id,
             });
-            if (done) {
-              deletedCount++;
-            }
+            scrubbedCount += count;
           })();
         })
       );
@@ -79,11 +77,11 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
 
     logger.info(
       {
-        deletedCount,
+        deletedCount: scrubbedCount,
       },
       "Done scrubbing deleted core document versions for this page"
     );
-    totalDeletedCount += deletedCount;
+    totalScrubbedCount += scrubbedCount;
     lastSeenId =
       deletedDocuments.length > 0
         ? deletedDocuments[deletedDocuments.length - 1].id
@@ -91,7 +89,7 @@ export const scrubDeletedCoreDocumentVersionsCheck: CheckFunction = async (
   } while (lastSeenId !== -1);
 
   reportSuccess({
-    totalDeletedCount,
+    totalScrubbedCount,
   });
 };
 
@@ -123,9 +121,10 @@ async function scrubDocument({
       documentId,
       dataSourceProject: project,
       dataSourceId: dataSourceId,
+      versionsScrubbed: sRes.value.versions.length,
     },
     "Scrubbed deleted versions"
   );
 
-  return true;
+  return sRes.value.versions.length;
 }
