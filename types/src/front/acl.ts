@@ -1,6 +1,6 @@
 import { ModelId } from "../shared/model_id";
 import { GroupType } from "./groups";
-import { LightWorkspaceType, UserRole } from "./user";
+import { LightWorkspaceType, RoleType } from "./user";
 
 // Supported permissions
 export const SUPPORTED_PERMISSIONS = ["admin", "read", "write"] as const;
@@ -13,7 +13,7 @@ export type GroupPermission = {
 };
 
 export type RolePermission = {
-  name: UserRole;
+  name: RoleType;
   permissions: Permission[];
 };
 
@@ -51,7 +51,7 @@ export function hasResourcePermission(
   workspace: LightWorkspaceType,
   permission: Permission,
   groups: GroupType[],
-  userRole: UserRole
+  userRole: RoleType
 ): boolean {
   // Check role-based permissions if applicable.
   if (hasRoles(acl)) {
