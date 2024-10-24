@@ -148,7 +148,7 @@ export const DustProdActionRegistry = createActionRegistry({
     config: {
       SUGGEST_CHANGES: {
         // `provider_id` and `model_id` must be set by caller.
-        use_cache: false,
+        use_cache: true,
         function_call: "suggest_changes",
       },
     },

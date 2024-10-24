@@ -44,9 +44,6 @@ const logger = mainLogger.child({
   postProcessHook: "document_tracker_suggest_changes",
 });
 
-// Temporary
-const DISABLE_DOC_TRACKER = true;
-
 export async function shouldDocumentTrackerSuggestChangesRun(
   params: DocumentsPostProcessHookFilterParams
 ): Promise<boolean> {
@@ -151,10 +148,6 @@ export async function documentTrackerSuggestChangesOnUpsert({
   documentHash,
   documentSourceUrl,
 }: DocumentsPostProcessHookOnUpsertParams): Promise<void> {
-  if (DISABLE_DOC_TRACKER) {
-    return;
-  }
-
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Workspace not found.");
@@ -345,13 +338,13 @@ export async function documentTrackerSuggestChangesOnUpsert({
       "Match found."
     );
 
-    const trackedDocDataSource =
+    const trackedDocumentDataSource =
       await DataSourceResource.fetchByDustAPIDataSourceId(
         auth,
         trackedDocDataSourceId
       );
 
-    if (!trackedDocDataSource) {
+    if (!trackedDocumentDataSource) {
       trackedDocLocalLogger.warn(
         {
           trackedDocDataSourceId,
@@ -364,7 +357,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     // again, checking for race condition here and skipping if the
     // tracked doc is the doc that was just upserted.
     if (
-      trackedDocDataSource.id === dataSource.id &&
+      trackedDocumentDataSource.id === dataSource.id &&
       trackedDocId === documentId
     ) {
       trackedDocLocalLogger.info(
@@ -380,7 +373,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     const trackedDocuments = await TrackedDocument.findAll({
       where: {
         documentId: trackedDocId,
-        dataSourceId: trackedDocDataSourceId,
+        dataSourceId: trackedDocumentDataSource.id,
       },
     });
     if (!trackedDocuments.length) {
