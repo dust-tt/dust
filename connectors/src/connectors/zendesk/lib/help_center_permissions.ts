@@ -35,7 +35,7 @@ export async function allowSyncZendeskHelpCenter({
   connectorId: ModelId;
   connectionId: string;
   brandId: number;
-}): Promise<ZendeskBrandResource> {
+}): Promise<ZendeskBrandResource | null> {
   let brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
@@ -66,8 +66,11 @@ export async function allowSyncZendeskHelpCenter({
         },
       });
     } else {
-      logger.error({ brandId }, "[Zendesk] Brand could not be fetched.");
-      throw new Error("Brand could not be fetched.");
+      logger.error(
+        { connectorId, brandId },
+        "[Zendesk] Brand could not be fetched."
+      );
+      return null;
     }
   }
 
@@ -85,8 +88,9 @@ export async function allowSyncZendeskHelpCenter({
   } catch (e) {
     logger.error(
       { connectorId, brandId },
-      "[Zendesk] Could not fetch categories."
+      "[Zendesk] Categories could not be fetched."
     );
+    return null;
   }
 
   return brand;
@@ -128,7 +132,7 @@ export async function allowSyncZendeskCategory({
   connectorId: ModelId;
   connectionId: string;
   categoryId: number;
-}): Promise<ZendeskCategoryResource> {
+}): Promise<ZendeskCategoryResource | null> {
   let category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
     categoryId,
@@ -156,7 +160,7 @@ export async function allowSyncZendeskCategory({
       });
     } else {
       logger.error({ categoryId }, "[Zendesk] Category could not be fetched.");
-      throw new Error("Category could not be fetched.");
+      return null;
     }
   }
 
