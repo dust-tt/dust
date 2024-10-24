@@ -250,6 +250,18 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     };
   }
 
+  static async fetchByCategoryId({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }): Promise<ZendeskCategoryResource | null> {
+    return ZendeskCategory.findOne({
+      where: { connectorId, categoryId },
+    }).then((category) => category && new this(this.model, category));
+  }
+
   static async fetchAllReadOnly({
     connectorId,
   }: {
@@ -272,5 +284,124 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return ZendeskArticle.findAll({
       where: { connectorId, categoryId, permission: "read" },
     });
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface ZendeskTicketResource
+  extends ReadonlyAttributesType<ZendeskTicket> {}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
+  static model: ModelStatic<ZendeskTicket> = ZendeskTicket;
+
+  constructor(
+    model: ModelStatic<ZendeskTicket>,
+    blob: Attributes<ZendeskTicket>
+  ) {
+    super(ZendeskTicket, blob);
+  }
+
+  async postFetchHook(): Promise<void> {
+    return;
+  }
+
+  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+    await this.model.destroy({
+      where: {
+        connectorId: this.connectorId,
+      },
+      transaction,
+    });
+    return new Ok(undefined);
+  }
+
+  toJSON(): Record<string, unknown> {
+    return {
+      id: this.id,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+
+      name: this.name,
+      url: this.url,
+      ticketId: this.ticketId,
+      brandId: this.brandId,
+      permission: this.permission,
+
+      connectorId: this.connectorId,
+    };
+  }
+
+  static async fetchByTicketId({
+    connectorId,
+    ticketId,
+  }: {
+    connectorId: number;
+    ticketId: number;
+  }): Promise<ZendeskTicketResource | null> {
+    return ZendeskTicket.findOne({
+      where: { connectorId, ticketId },
+    }).then((ticketId) => ticketId && new this(this.model, ticketId));
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface ZendeskArticleResource
+  extends ReadonlyAttributesType<ZendeskArticle> {}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
+  static model: ModelStatic<ZendeskArticle> = ZendeskArticle;
+
+  constructor(
+    model: ModelStatic<ZendeskArticle>,
+    blob: Attributes<ZendeskArticle>
+  ) {
+    super(ZendeskArticle, blob);
+  }
+
+  async postFetchHook(): Promise<void> {
+    return;
+  }
+
+  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+    await this.model.destroy({
+      where: {
+        connectorId: this.connectorId,
+      },
+      transaction,
+    });
+    return new Ok(undefined);
+  }
+
+  toJSON(): Record<string, unknown> {
+    return {
+      id: this.id,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+
+      name: this.name,
+      url: this.url,
+      articleId: this.articleId,
+      categoryId: this.categoryId,
+      brandId: this.brandId,
+      permission: this.permission,
+
+      connectorId: this.connectorId,
+    };
+  }
+
+  static async fetchByArticleId({
+                                  connectorId,
+                                  articleId,
+                                }: {
+    connectorId: number;
+    articleId: number;
+  }): Promise<ZendeskArticleResource | null> {
+    return ZendeskArticle.findOne({
+      where: { connectorId, articleId },
+    }).then((category) => category && new this(this.model, category));
   }
 }

@@ -12,11 +12,28 @@ import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { retrieveZendeskBrandPermissions } from "@connectors/connectors/zendesk/lib/brand_permissions";
 import { retrieveZendeskHelpCenterPermissions } from "@connectors/connectors/zendesk/lib/help_center_permissions";
+import {
+  getArticleIdFromInternalId,
+  getBrandIdFromHelpCenterId,
+  getBrandIdFromInternalId,
+  getBrandIdFromTicketsId,
+  getBrandInternalId,
+  getCategoryIdFromInternalId,
+  getCategoryInternalId,
+  getHelpCenterInternalId,
+  getTicketIdFromInternalId,
+  getTicketsInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import { retrieveSelectedNodes } from "@connectors/connectors/zendesk/lib/permissions";
 import { retrieveZendeskTicketPermissions } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import {
+  ZendeskArticleResource,
+  ZendeskCategoryResource,
+  ZendeskTicketResource,
+} from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export class ZendeskConnectorManager extends BaseConnectorManager<null> {
@@ -147,8 +164,104 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    logger.info({ internalId }, "Retrieving content node parents");
-    throw new Error("Method not implemented.");
+    /// Brands are at the top level, so they have no parents.
+    let brandId = getBrandIdFromInternalId(this.connectorId, internalId);
+    if (brandId) {
+      return new Ok([internalId]);
+    }
+
+    /// Tickets are just beneath their brands, so they have one parent.
+    brandId = getBrandIdFromTicketsId(this.connectorId, internalId);
+    if (brandId) {
+      return new Ok([
+        internalId,
+        getBrandInternalId(this.connectorId, brandId),
+      ]);
+    }
+
+    /// Help Centers are just beneath their brands, so they have one parent.
+    brandId = getBrandIdFromHelpCenterId(this.connectorId, internalId);
+    if (brandId) {
+      return new Ok([
+        internalId,
+        getBrandInternalId(this.connectorId, brandId),
+      ]);
+    }
+
+    /// Categories have two parents: the Help Center and the brand.
+    const categoryId = getCategoryIdFromInternalId(
+      this.connectorId,
+      internalId
+    );
+    if (categoryId) {
+      const category = await ZendeskCategoryResource.fetchByCategoryId({
+        connectorId: this.connectorId,
+        categoryId,
+      });
+      if (category) {
+        return new Ok([
+          internalId,
+          getHelpCenterInternalId(this.connectorId, category.brandId),
+          getBrandInternalId(this.connectorId, category.brandId),
+        ]);
+      } else {
+        logger.error(
+          { connectorId: this.connectorId, categoryId },
+          "[Zendesk] Category not found"
+        );
+        return new Err(new Error("Category not found"));
+      }
+    }
+
+    /// Articles have three parents: the category, the Help Center and the brand.
+    const articleId = getArticleIdFromInternalId(this.connectorId, internalId);
+    if (articleId) {
+      const article = await ZendeskArticleResource.fetchByArticleId({
+        connectorId: this.connectorId,
+        articleId,
+      });
+      if (article) {
+        return new Ok([
+          internalId,
+          getCategoryInternalId(this.connectorId, article.categoryId),
+          getHelpCenterInternalId(this.connectorId, article.brandId),
+          getBrandInternalId(this.connectorId, article.brandId),
+        ]);
+      } else {
+        logger.error(
+          { connectorId: this.connectorId, categoryId },
+          "[Zendesk] Article not found"
+        );
+        return new Err(new Error("Article not found"));
+      }
+    }
+
+    /// Tickets have two parents: the Tickets and the brand.
+    const ticketId = getTicketIdFromInternalId(this.connectorId, internalId);
+    if (ticketId) {
+      const ticket = await ZendeskTicketResource.fetchByTicketId({
+        connectorId: this.connectorId,
+        ticketId,
+      });
+      if (ticket) {
+        return new Ok([
+          internalId,
+          getTicketsInternalId(this.connectorId, ticket.brandId),
+          getBrandInternalId(this.connectorId, ticket.brandId),
+        ]);
+      } else {
+        logger.error(
+          { connectorId: this.connectorId, categoryId },
+          "[Zendesk] Ticket not found"
+        );
+        return new Err(new Error("Ticket not found"));
+      }
+    }
+    logger.error(
+      { connectorId: this.connectorId, internalId },
+      "[Zendesk] Internal ID not recognized"
+    );
+    return new Err(new Error("Internal ID not recognized"));
   }
 
   async setConfigurationKey({
