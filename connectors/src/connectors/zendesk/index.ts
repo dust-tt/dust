@@ -23,15 +23,10 @@ import {
   revokeSyncZendeskHelpCenter,
 } from "@connectors/connectors/zendesk/lib/help_center_permissions";
 import {
-  getArticleIdFromInternalId,
-  getBrandIdFromHelpCenterId,
-  getBrandIdFromInternalId,
-  getBrandIdFromTicketsId,
   getBrandInternalId,
-  getCategoryIdFromInternalId,
   getCategoryInternalId,
   getHelpCenterInternalId,
-  getTicketIdFromInternalId,
+  getIdFromInternalId,
   getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { retrieveSelectedNodes } from "@connectors/connectors/zendesk/lib/permissions";
@@ -109,38 +104,34 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
+    const connectorId = this.connectorId;
+    const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
-      logger.error(
-        { connectorId: this.connectorId },
-        "[Zendesk] Connector not found."
-      );
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
       return new Err(new Error("Connector not found"));
     }
 
     if (filterPermission === "read" && parentInternalId === null) {
       // We want all selected nodes despite the hierarchy
-      const selectedNodes = await retrieveSelectedNodes({
-        connectorId: this.connectorId,
-      });
+      const selectedNodes = await retrieveSelectedNodes({ connectorId });
       return new Ok(selectedNodes);
     }
 
     try {
       const brandNodes = await retrieveZendeskBrandPermissions({
-        connectorId: this.connectorId,
+        connectorId,
         parentInternalId,
         filterPermission,
         viewType: "documents",
       });
       const helpCenterNodes = await retrieveZendeskHelpCenterPermissions({
-        connectorId: this.connectorId,
+        connectorId,
         parentInternalId,
         filterPermission,
         viewType: "documents",
       });
       const ticketNodes = await retrieveZendeskTicketPermissions({
-        connectorId: this.connectorId,
+        connectorId,
         parentInternalId,
         filterPermission,
         viewType: "documents",
@@ -156,12 +147,11 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }: {
     permissions: Record<string, ConnectorPermission>;
   }): Promise<Result<void, Error>> {
+    const connectorId = this.connectorId;
+
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
-      logger.error(
-        { connectorId: this.connectorId },
-        "[Zendesk] Connector not found."
-      );
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
       return new Err(new Error("Connector not found"));
     }
 
@@ -171,7 +161,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     );
     if (!zendeskConfiguration) {
       logger.error(
-        { connectorId: this.connectorId },
+        { connectorId },
         "[Zendesk] ZendeskConfiguration not found. Cannot set permissions."
       );
       return new Err(new Error("ZendeskConfiguration not found"));
@@ -182,102 +172,106 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const toBeSignaledTicketsIds = new Set<number>();
     const toBeSignaledHelpCenterIds = new Set<number>();
     const toBeSignaledCategoryIds = new Set<number>();
+
     for (const [id, permission] of Object.entries(permissions)) {
       if (permission !== "none" && permission !== "read") {
         return new Err(
           new Error(
-            `Invalid permission ${permission} for connector ${this.connectorId}`
+            `Invalid permission ${permission} for connector ${connectorId}`
           )
         );
       }
 
-      const brandId = getBrandIdFromInternalId(this.connectorId, id);
-      const brandHelpCenterId = getBrandIdFromHelpCenterId(
-        this.connectorId,
-        id
-      );
-      const brandTicketsId = getBrandIdFromTicketsId(this.connectorId, id);
-      const categoryId = getCategoryIdFromInternalId(this.connectorId, id);
-
-      if (brandId) {
-        toBeSignaledBrandIds.add(brandId);
-        if (permission === "none") {
-          await revokeSyncZendeskBrand({
-            connectorId: this.connectorId,
-            brandId,
-          });
-        }
-        if (permission === "read") {
-          await allowSyncZendeskBrand({
-            subdomain,
-            connectorId: this.connectorId,
-            connectionId,
-            brandId,
-          });
-        }
-      } else if (brandHelpCenterId) {
-        if (permission === "none") {
-          const revokedCollection = await revokeSyncZendeskHelpCenter({
-            connectorId: this.connectorId,
-            brandId: brandHelpCenterId,
-          });
-          if (revokedCollection) {
-            toBeSignaledHelpCenterIds.add(revokedCollection.brandId);
+      const { type, objectId } = getIdFromInternalId(connectorId, id);
+      switch (type) {
+        case "brand": {
+          toBeSignaledBrandIds.add(objectId);
+          if (permission === "none") {
+            await revokeSyncZendeskBrand({
+              connectorId,
+              brandId: objectId,
+            });
           }
-        }
-        if (permission === "read") {
-          const newBrand = await allowSyncZendeskHelpCenter({
-            connectorId: this.connectorId,
-            connectionId,
-            brandId: brandHelpCenterId,
-            subdomain,
-          });
-          if (newBrand) {
-            toBeSignaledHelpCenterIds.add(newBrand.brandId);
+          if (permission === "read") {
+            await allowSyncZendeskBrand({
+              subdomain,
+              connectorId,
+              connectionId,
+              brandId: objectId,
+            });
           }
+          break;
         }
-      } else if (brandTicketsId) {
-        if (permission === "none") {
-          const revokedCollection = await revokeSyncZendeskTickets({
-            connectorId: this.connectorId,
-            brandId: brandTicketsId,
-          });
-          if (revokedCollection) {
-            toBeSignaledTicketsIds.add(revokedCollection.brandId);
+        case "help-center": {
+          if (permission === "none") {
+            const revokedCollection = await revokeSyncZendeskHelpCenter({
+              connectorId,
+              brandId: objectId,
+            });
+            if (revokedCollection) {
+              toBeSignaledHelpCenterIds.add(revokedCollection.brandId);
+            }
           }
-        }
-        if (permission === "read") {
-          const newBrand = await allowSyncZendeskTickets({
-            connectorId: this.connectorId,
-            connectionId,
-            brandId: brandTicketsId,
-            subdomain,
-          });
-          if (newBrand) {
-            toBeSignaledTicketsIds.add(newBrand.brandId);
+          if (permission === "read") {
+            const newBrand = await allowSyncZendeskHelpCenter({
+              connectorId,
+              connectionId,
+              brandId: objectId,
+              subdomain,
+            });
+            if (newBrand) {
+              toBeSignaledHelpCenterIds.add(newBrand.brandId);
+            }
           }
+          break;
         }
-      } else if (categoryId) {
-        if (permission === "none") {
-          const revokedCategory = await revokeSyncZendeskCategory({
-            connectorId: this.connectorId,
-            categoryId,
-          });
-          if (revokedCategory) {
-            toBeSignaledCategoryIds.add(revokedCategory.categoryId);
+        case "tickets": {
+          if (permission === "none") {
+            const revokedCollection = await revokeSyncZendeskTickets({
+              connectorId,
+              brandId: objectId,
+            });
+            if (revokedCollection) {
+              toBeSignaledTicketsIds.add(revokedCollection.brandId);
+            }
           }
-        }
-        if (permission === "read") {
-          const newCategory = await allowSyncZendeskCategory({
-            subdomain,
-            connectorId: this.connectorId,
-            connectionId,
-            categoryId,
-          });
-          if (newCategory) {
-            toBeSignaledCategoryIds.add(newCategory.categoryId);
+          if (permission === "read") {
+            const newBrand = await allowSyncZendeskTickets({
+              connectorId,
+              connectionId,
+              brandId: objectId,
+              subdomain,
+            });
+            if (newBrand) {
+              toBeSignaledTicketsIds.add(newBrand.brandId);
+            }
           }
+          break;
         }
+        case "category": {
+          if (permission === "none") {
+            const revokedCategory = await revokeSyncZendeskCategory({
+              connectorId,
+              categoryId: objectId,
+            });
+            if (revokedCategory) {
+              toBeSignaledCategoryIds.add(revokedCategory.categoryId);
+            }
+          }
+          if (permission === "read") {
+            const newCategory = await allowSyncZendeskCategory({
+              subdomain,
+              connectorId,
+              connectionId,
+              categoryId: objectId,
+            });
+            if (newCategory) {
+              toBeSignaledCategoryIds.add(newCategory.categoryId);
+            }
+          }
+          break;
+        }
+        // we do not set permissions for single articles and tickets
       }
     }
 
@@ -297,27 +291,30 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const brandTicketsIds: number[] = [];
     const categoryIds: number[] = [];
     internalIds.forEach((internalId) => {
-      let brandId = getBrandIdFromInternalId(this.connectorId, internalId);
-      if (brandId) {
-        brandIds.push(brandId);
-        return;
-      }
-      brandId = getBrandIdFromTicketsId(this.connectorId, internalId);
-      if (brandId) {
-        brandTicketsIds.push(brandId);
-        return;
-      }
-      brandId = getBrandIdFromHelpCenterId(this.connectorId, internalId);
-      if (brandId) {
-        brandHelpCenterIds.push(brandId);
-        return;
-      }
-      const categoryId = getCategoryIdFromInternalId(
+      const { type, objectId } = getIdFromInternalId(
         this.connectorId,
         internalId
       );
-      if (categoryId) {
-        categoryIds.push(categoryId);
+      switch (type) {
+        case "brand": {
+          brandIds.push(objectId);
+          return;
+        }
+        case "tickets": {
+          brandTicketsIds.push(objectId);
+          return;
+        }
+        case "help-center": {
+          brandHelpCenterIds.push(objectId);
+          return;
+        }
+        case "category": {
+          categoryIds.push(objectId);
+          return;
+        }
+        default: {
+          return;
+        }
       }
     });
 
@@ -385,104 +382,86 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    /// Brands are at the top level, so they have no parents.
-    let brandId = getBrandIdFromInternalId(this.connectorId, internalId);
-    if (brandId) {
-      return new Ok([internalId]);
-    }
+    const connectorId = this.connectorId;
 
-    /// Tickets are just beneath their brands, so they have one parent.
-    brandId = getBrandIdFromTicketsId(this.connectorId, internalId);
-    if (brandId) {
-      return new Ok([
-        internalId,
-        getBrandInternalId(this.connectorId, brandId),
-      ]);
-    }
-
-    /// Help Centers are just beneath their brands, so they have one parent.
-    brandId = getBrandIdFromHelpCenterId(this.connectorId, internalId);
-    if (brandId) {
-      return new Ok([
-        internalId,
-        getBrandInternalId(this.connectorId, brandId),
-      ]);
-    }
-
-    /// Categories have two parents: the Help Center and the brand.
-    const categoryId = getCategoryIdFromInternalId(
-      this.connectorId,
-      internalId
-    );
-    if (categoryId) {
-      const category = await ZendeskCategoryResource.fetchByCategoryId({
-        connectorId: this.connectorId,
-        categoryId,
-      });
-      if (category) {
-        return new Ok([
-          internalId,
-          getHelpCenterInternalId(this.connectorId, category.brandId),
-          getBrandInternalId(this.connectorId, category.brandId),
-        ]);
-      } else {
+    const { type, objectId } = getIdFromInternalId(connectorId, internalId);
+    switch (type) {
+      case "brand": {
+        return new Ok([internalId]);
+      }
+      /// Help Centers and tickets are just beneath their brands, so they have one parent.
+      case "help-center":
+      case "tickets": {
+        return new Ok([internalId, getBrandInternalId(connectorId, objectId)]);
+      }
+      /// Categories have two parents: the Help Center and the brand.
+      case "category": {
+        const category = await ZendeskCategoryResource.fetchByCategoryId({
+          connectorId,
+          categoryId: objectId,
+        });
+        if (category) {
+          return new Ok([
+            internalId,
+            getHelpCenterInternalId(connectorId, category.brandId),
+            getBrandInternalId(connectorId, category.brandId),
+          ]);
+        } else {
+          logger.error(
+            { connectorId, categoryId: objectId },
+            "[Zendesk] Category not found"
+          );
+          return new Err(new Error("Category not found"));
+        }
+      }
+      /// Articles have three parents: the category, the Help Center and the brand.
+      case "article": {
+        const article = await ZendeskArticleResource.fetchByArticleId({
+          connectorId,
+          articleId: objectId,
+        });
+        if (article) {
+          return new Ok([
+            internalId,
+            getCategoryInternalId(connectorId, article.categoryId),
+            getHelpCenterInternalId(connectorId, article.brandId),
+            getBrandInternalId(connectorId, article.brandId),
+          ]);
+        } else {
+          logger.error(
+            { connectorId, articleId: objectId },
+            "[Zendesk] Article not found"
+          );
+          return new Err(new Error("Article not found"));
+        }
+      }
+      case "ticket": {
+        const ticket = await ZendeskTicketResource.fetchByTicketId({
+          connectorId,
+          ticketId: objectId,
+        });
+        if (ticket) {
+          return new Ok([
+            internalId,
+            getTicketsInternalId(connectorId, ticket.brandId),
+            getBrandInternalId(connectorId, ticket.brandId),
+          ]);
+        } else {
+          logger.error(
+            { connectorId, ticketId: objectId },
+            "[Zendesk] Ticket not found"
+          );
+          return new Err(new Error("Ticket not found"));
+        }
+      }
+      case null: {
         logger.error(
-          { connectorId: this.connectorId, categoryId },
-          "[Zendesk] Category not found"
+          { connectorId, internalId },
+          "[Zendesk] Internal ID not recognized"
         );
-        return new Err(new Error("Category not found"));
+        return new Err(new Error("Internal ID not recognized"));
       }
     }
-
-    /// Articles have three parents: the category, the Help Center and the brand.
-    const articleId = getArticleIdFromInternalId(this.connectorId, internalId);
-    if (articleId) {
-      const article = await ZendeskArticleResource.fetchByArticleId({
-        connectorId: this.connectorId,
-        articleId,
-      });
-      if (article) {
-        return new Ok([
-          internalId,
-          getCategoryInternalId(this.connectorId, article.categoryId),
-          getHelpCenterInternalId(this.connectorId, article.brandId),
-          getBrandInternalId(this.connectorId, article.brandId),
-        ]);
-      } else {
-        logger.error(
-          { connectorId: this.connectorId, categoryId },
-          "[Zendesk] Article not found"
-        );
-        return new Err(new Error("Article not found"));
-      }
-    }
-
-    /// Tickets have two parents: the Tickets and the brand.
-    const ticketId = getTicketIdFromInternalId(this.connectorId, internalId);
-    if (ticketId) {
-      const ticket = await ZendeskTicketResource.fetchByTicketId({
-        connectorId: this.connectorId,
-        ticketId,
-      });
-      if (ticket) {
-        return new Ok([
-          internalId,
-          getTicketsInternalId(this.connectorId, ticket.brandId),
-          getBrandInternalId(this.connectorId, ticket.brandId),
-        ]);
-      } else {
-        logger.error(
-          { connectorId: this.connectorId, categoryId },
-          "[Zendesk] Ticket not found"
-        );
-        return new Err(new Error("Ticket not found"));
-      }
-    }
-    logger.error(
-      { connectorId: this.connectorId, internalId },
-      "[Zendesk] Internal ID not recognized"
-    );
-    return new Err(new Error("Internal ID not recognized"));
   }
 
   async setConfigurationKey({

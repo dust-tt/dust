@@ -54,6 +54,45 @@ function _getIdFromInternal(internalId: string, prefix: string): number | null {
     : null;
 }
 
+export type InternalIdType =
+  | "brand"
+  | "help-center"
+  | "tickets"
+  | "category"
+  | "article"
+  | "ticket";
+
+export function getIdFromInternalId(
+  connectorId: ModelId,
+  internalId: string
+): { type: InternalIdType | null; objectId: number } {
+  let objectId = getBrandIdFromInternalId(connectorId, internalId);
+  if (objectId) {
+    return { type: "brand", objectId };
+  }
+  objectId = getBrandIdFromHelpCenterId(connectorId, internalId);
+  if (objectId) {
+    return { type: "help-center", objectId };
+  }
+  objectId = getBrandIdFromTicketsId(connectorId, internalId);
+  if (objectId) {
+    return { type: "tickets", objectId };
+  }
+  objectId = getCategoryIdFromInternalId(connectorId, internalId);
+  if (objectId) {
+    return { type: "category", objectId };
+  }
+  objectId = getArticleIdFromInternalId(connectorId, internalId);
+  if (objectId) {
+    return { type: "article", objectId };
+  }
+  objectId = getTicketIdFromInternalId(connectorId, internalId);
+  if (objectId) {
+    return { type: "ticket", objectId };
+  }
+  return { type: null, objectId: -1 };
+}
+
 export function getBrandIdFromInternalId(
   connectorId: ModelId,
   internalId: string
