@@ -208,10 +208,13 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }: {
     connectorId: number;
     brandId: number;
-  }): Promise<ZendeskTicket[]> {
-    return ZendeskTicket.findAll({
+  }): Promise<ZendeskTicketResource[]> {
+    const tickets = await ZendeskTicket.findAll({
       where: { connectorId, brandId, permission: "read" },
     });
+    return tickets.map(
+      (ticket) => new ZendeskTicketResource(ZendeskTicket, ticket)
+    );
   }
 
   static async fetchReadOnlyCategories({
