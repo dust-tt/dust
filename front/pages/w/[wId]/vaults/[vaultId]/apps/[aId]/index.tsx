@@ -5,7 +5,7 @@ import {
   PlayIcon,
   Tabs,
   TabsList,
-TabsTrigger
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 import type {
   APIErrorResponse,
@@ -329,24 +329,23 @@ export default function AppView({
       }
     >
       <div className="flex w-full flex-col">
-        <Tabs
-          defaultValue="specification"
-          className="mt-2"
-        >
+        <Tabs defaultValue="specification" className="mt-2">
           <TabsList>
-            {subNavigationApp({ owner, app, current: "specification" }).map((tab) => (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                label={tab.label}
-                icon={tab.icon}
-                onClick={() => {
-                  if (tab.href) {
-                    void router.push(tab.href);
-                  }
-                }}
-              />
-            ))}
+            {subNavigationApp({ owner, app, current: "specification" }).map(
+              (tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  label={tab.label}
+                  icon={tab.icon}
+                  onClick={() => {
+                    if (tab.href) {
+                      void router.push(tab.href);
+                    }
+                  }}
+                />
+              )
+            )}
           </TabsList>
         </Tabs>
         <div className="mt-8 flex flex-auto flex-col">

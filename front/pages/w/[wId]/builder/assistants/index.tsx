@@ -10,6 +10,9 @@ import {
   Searchbar,
   SliderToggle,
   Tab,
+  Tabs,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
@@ -68,9 +71,12 @@ export default function WorkspaceAssistants({
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
+  const [activeTab, setActiveTab] =
+    useState<AgentConfigurationScope>("workspace");
   const [orderBy, setOrderBy] = useState<SearchOrderType>("name");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
+  const router = useRouter();
 
   const includes: ("authors" | "usage")[] = (() => {
     switch (tabScope) {
@@ -85,6 +91,13 @@ export default function WorkspaceAssistants({
     }
   })();
 
+  useEffect(() => {
+    if (router.isReady && router.route) {
+      setActiveTab(router.query["tabScope"]);
+    }
+  }, [router.route, router.isReady]);
+
+  console.log(activeTab);
   // only fetch the agents that are relevant to the current scope, except when
   // user searches: search across all agents
   const {
@@ -249,12 +262,26 @@ export default function WorkspaceAssistants({
           </div>
           <div className="flex flex-col gap-4 pt-3">
             <div className="flex flex-row gap-2">
-              <Tab
-                tabs={tabs}
-                tabClassName={classNames(
-                  assistantSearch ? disabledTablineClass : ""
-                )}
-              />
+              <Tabs defaultValue="company">
+                <TabsList>
+                  {tabs.map((tab) => (
+                    <TabsTrigger
+                      key={tab.label}
+                      value={tab.label}
+                      label={tab.label}
+                      icon={tab.icon}
+                      className={classNames(
+                        assistantSearch ? disabledTablineClass : ""
+                      )}
+                      onClick={() => {
+                        if (tab.href) {
+                          void router.push(tab.href);
+                        }
+                      }}
+                    />
+                  ))}
+                </TabsList>
+              </Tabs>
               <div className="flex grow items-end justify-end">
                 <SearchOrderDropdown
                   orderBy={orderBy}

@@ -94,24 +94,23 @@ export default function Specification({
       }
     >
       <div className="flex w-full flex-col">
-        <Tabs
-          defaultValue="specification"
-          className="mt-2"
-        >
+        <Tabs defaultValue="specification" className="mt-2">
           <TabsList>
-            {subNavigationApp({ owner, app, current: "specification" }).map((tab) => (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                label={tab.label}
-                icon={tab.icon}
-                onClick={() => {
-                  if (tab.href) {
-                    void router.push(tab.href);
-                  }
-                }}
-              />
-            ))}
+            {subNavigationApp({ owner, app, current: "specification" }).map(
+              (tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  label={tab.label}
+                  icon={tab.icon}
+                  onClick={() => {
+                    if (tab.href) {
+                      void router.push(tab.href);
+                    }
+                  }}
+                />
+              )
+            )}
           </TabsList>
         </Tabs>
         <div className="font-mono mt-8 whitespace-pre text-[13px] text-gray-700">

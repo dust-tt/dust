@@ -1,4 +1,11 @@
-import { CollapseButton, Item, Logo, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
+import {
+  CollapseButton,
+  Item,
+  Logo,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -6,7 +13,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
   AppLayoutNavigation,
-  SidebarNavigation, TabAppLayoutNavigation,
+  SidebarNavigation,
+  TabAppLayoutNavigation,
 } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { UserMenu } from "@app/components/UserMenu";
@@ -32,7 +40,9 @@ export const NavigationSidebar = React.forwardRef<
   const router = useRouter();
   const { user } = useUser();
   const [activePath, setActivePath] = useState("");
-  const [currentTab, setCurrentTab] = useState<TabAppLayoutNavigation | undefined>(undefined);
+  const [currentTab, setCurrentTab] = useState<
+    TabAppLayoutNavigation | undefined
+  >(undefined);
 
   useEffect(() => {
     if (router.isReady && router.route) {
@@ -58,10 +68,8 @@ export const NavigationSidebar = React.forwardRef<
           return prevNav.current === newNavs[index].current;
         });
 
-      const activeTab = nav.filter(
-        (n) => n.isCurrent(activePath)
-      )[0]
-      setCurrentTab(activeTab)
+      const activeTab = nav.filter((n) => n.isCurrent(activePath))[0];
+      setCurrentTab(activeTab);
       return isSameCurrent ? prevNavs : newNavs;
     });
   }, [nav, activePath]);
