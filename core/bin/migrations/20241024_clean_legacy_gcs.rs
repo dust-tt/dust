@@ -1,8 +1,9 @@
+use std::collections::HashSet;
+
 use anyhow::{anyhow, Context, Result};
 use dust::{
     data_sources::{
-        data_source::{make_document_id_hash, DataSource},
-        file_storage_document::FileStorageDocument,
+        data_source::make_document_id_hash, file_storage_document::FileStorageDocument,
     },
     stores::{postgres, store},
 };
@@ -26,72 +27,27 @@ async fn fetch_data_sources_batch(
         &[&(last_id as i64), &(limit as i64)],
     )
     .await
-    .context("Query execution failed")
+    .context("fetch_data_sources_batch")
 }
 
-async fn clean_stored_versions_for_document_id(
+async fn fetch_data_sources_documents_versions(
     pool: &Pool<PostgresConnectionManager<NoTls>>,
-    data_source: &DataSource,
     data_source_id: i64,
-    document_id: &str,
-) -> Result<()> {
+    last_id: u64,
+    limit: usize,
+) -> Result<Vec<Row>, anyhow::Error> {
     let c = pool.get().await?;
 
-    let document_versions = c.query("SELECT hash, created, status FROM data_sources_documents WHERE data_source = $1 AND document_id = $2", &[&data_source_id, &document_id]).await?;
-    let document_id_hash = make_document_id_hash(document_id);
-
-    // println!(
-    //     "Found {:} document versions for document {:} to clean-up.",
-    //     document_versions.len(),
-    //     document_id_hash
-    // );
-
-    FileStorageDocument::delete_if_exists(&FileStorageDocument::get_legacy_document_id_path(
-        &data_source,
-        &document_id_hash,
-    ))
-    .await?;
-
-    let tasks = document_versions.into_iter().map(|d| {
-        let data_source = data_source.clone();
-        let document_id_hash = document_id_hash.to_string();
-
-        async move {
-            let version_hash: String = d.get(0);
-            let version_created: i64 = d.get(1);
-
-            // 2024-07-26:00:00.000Z
-            // IF we are after this date we just skip version deletion as no legacy version was
-            // created after this date. https://github.com/dust-tt/dust/pull/6405
-            if version_created > 1721952000000 {
-                // println!(
-                //     "Skipping version {:} for document {:}.",
-                //     version_hash, document_id_hash
-                // );
-                return Ok::<(), anyhow::Error>(());
-            }
-            FileStorageDocument::delete_if_exists(&FileStorageDocument::get_legacy_content_path(
-                &data_source,
-                &document_id_hash,
-                version_hash.as_str(),
-            ))
-            .await?;
-            Ok::<(), anyhow::Error>(())
-        }
-    });
-
-    let mut stream = stream::iter(tasks).buffer_unordered(16);
-
-    while let Some(result) = stream.next().await {
-        result?; // Check for errors.
-    }
-
-    Ok(())
+    c.query(
+        "SELECT id, document_id, hash, created, status FROM data_sources_documents WHERE data_source = $1 AND id > $2 ORDER BY id ASC LIMIT $3",
+        &[&data_source_id, &(last_id as i64), &(limit as i64)],
+    )
+    .await
+    .context("fetch_data_sources_documents_versions")
 }
 
-async fn clean_all_documents_for_data_source_id(
+async fn clean_stored_versions_for_data_source(
     store: Box<dyn store::Store + Sync + Send>,
-    pool: &Pool<PostgresConnectionManager<NoTls>>,
     data_source_internal_id: &str,
     data_source_id: i64,
 ) -> Result<()> {
@@ -103,34 +59,94 @@ async fn clean_all_documents_for_data_source_id(
         None => Err(anyhow!("Data source not found"))?,
     };
 
-    let c = store.raw_pool().get().await?;
+    let pool = store.raw_pool();
 
-    let document_ids = c
-        .query(
-            "SELECT DISTINCT document_id from data_sources_documents WHERE data_source = $1",
-            &[&data_source_id],
+    let limit: usize = 64;
+    let mut last_data_source_document_id = 0;
+    let mut iteration = 0;
+    let mut document_id_hashs = HashSet::new();
+
+    loop {
+        let rows = fetch_data_sources_documents_versions(
+            pool,
+            data_source_id,
+            last_data_source_document_id,
+            limit,
         )
         .await?;
 
-    println!(
-        "Processing: data_source={} document_count={:}",
-        data_source_internal_id,
-        document_ids.len(),
-    );
+        rows.iter().for_each(|row| {
+            let document_id: String = row.get(1);
+            document_id_hashs.insert(make_document_id_hash(&document_id));
+        });
 
-    stream::iter(document_ids.into_iter().map(|row| {
-        let data_source = data_source.clone();
+        stream::iter(
+            rows.iter()
+                .filter(|row| {
+                    let version_created: i64 = row.get(3);
 
-        async move {
-            let document_id: String = row.get(0);
+                    // 2024-07-26:00:00.000Z
+                    // IF we are after this date we just skip version deletion as no legacy version was
+                    // created after this date. https://github.com/dust-tt/dust/pull/6405
+                    if version_created > 1721952000000 {
+                        return false;
+                    }
+                    return true;
+                })
+                .map(|row| {
+                    let document_id: String = row.get(1);
+                    let version_hash: String = row.get(2);
+                    let document_id_hash = make_document_id_hash(&document_id);
 
-            clean_stored_versions_for_document_id(&pool, &data_source, data_source_id, &document_id)
-                .await
+                    return FileStorageDocument::get_legacy_content_path(
+                        &data_source,
+                        &document_id_hash,
+                        version_hash.as_str(),
+                    );
+                })
+                .map(|p| async move {
+                    FileStorageDocument::delete_if_exists(&p).await?;
+                    Ok::<(), anyhow::Error>(())
+                }),
+        )
+        .buffer_unordered(16)
+        .try_collect::<Vec<_>>()
+        .await?;
+
+        if rows.len() < limit {
+            println!("Version loop done: data_source_id={}", data_source_id);
+            break;
         }
-    }))
-    .buffer_unordered(32)
-    .try_collect::<Vec<_>>()
-    .await?;
+
+        last_data_source_document_id = match rows.last() {
+            Some(r) => {
+                let id: i64 = r.get(0);
+                println!(
+                    "Version loop: data_source_id={} iteration={}, last_data_source_document_id={}",
+                    data_source_id, iteration, id
+                );
+
+                id as u64
+            }
+            None => {
+                println!(
+                    "Version loop done: data_source_id={} iteration={}",
+                    data_source_id, iteration
+                );
+                break;
+            }
+        };
+
+        iteration += 1;
+    }
+
+    for document_id_hash in document_id_hashs.iter() {
+        FileStorageDocument::delete_if_exists(&FileStorageDocument::get_legacy_document_id_path(
+            &data_source,
+            document_id_hash,
+        ))
+        .await?;
+    }
 
     Ok(())
 }
@@ -148,8 +164,9 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let pool = store.raw_pool();
 
-    let limit: usize = 50;
+    let limit: usize = 64;
     let mut last_data_source_id = 0;
+    let mut iteration = 0;
 
     loop {
         let rows = fetch_data_sources_batch(pool, last_data_source_id, limit).await?;
@@ -161,9 +178,8 @@ async fn main() -> Result<(), anyhow::Error> {
                 let data_source_id: i64 = row.get(0);
                 let data_source_internal_id: String = row.get(1);
 
-                clean_all_documents_for_data_source_id(
+                clean_stored_versions_for_data_source(
                     store,
-                    pool,
                     &data_source_internal_id,
                     data_source_id,
                 )
@@ -175,22 +191,27 @@ async fn main() -> Result<(), anyhow::Error> {
         .await?;
 
         if rows.len() < limit {
-            println!("Done");
+            println!("DataSource loop done: iteration={}", iteration);
             break;
         }
 
         last_data_source_id = match rows.last() {
             Some(r) => {
                 let id: i64 = r.get(0);
-                println!("Loop: last_data_source_id={}", id);
+                println!(
+                    "DataSource loop: iteration={} last_data_source_id={}",
+                    iteration, id
+                );
 
                 id as u64
             }
             None => {
-                println!("Done");
+                println!("DataSource loop done: iteration={}", iteration);
                 break;
             }
         };
+
+        iteration += 1;
     }
 
     Ok(())
