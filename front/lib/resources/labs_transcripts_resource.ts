@@ -131,22 +131,28 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ isActive });
   }
 
-  async setDataSourceId(auth: Authenticator, dataSourceId: string | null) {
-    if (dataSourceId === undefined) {
+  async setDataSourceViewId(
+    auth: Authenticator,
+    dataSourceViewId: string | null
+  ) {
+    if (dataSourceViewId === undefined) {
       return;
     }
 
-    if (dataSourceId === null) {
-      return this.update({ dataSourceId: null });
+    if (dataSourceViewId === null) {
+      return this.update({ dataSourceViewId: null });
     }
 
-    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+    const dataSource = await DataSourceResource.fetchById(
+      auth,
+      dataSourceViewId
+    );
 
-    if (!dataSource || this.dataSourceId === dataSource.id) {
+    if (!dataSource || this.dataSourceViewId === dataSource.id) {
       return;
     }
 
-    return this.update({ dataSourceId: dataSource.id });
+    return this.update({ dataSourceViewId: dataSource.id });
   }
 
   async delete(

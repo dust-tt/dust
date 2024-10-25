@@ -42,7 +42,7 @@ const defaultTranscriptConfigurationState = {
   isGongConnected: false,
   assistantSelected: null,
   isActive: false,
-  dataSource: null,
+  dataSourceView: null,
 };
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -145,14 +145,14 @@ export default function LabsTranscriptsIndex({
       isGongConnected: boolean;
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
-      dataSource: DataSourceViewType | null;
+      dataSourceView: DataSourceViewType | null;
     }>(defaultTranscriptConfigurationState);
 
   useEffect(() => {
     if (transcriptsConfiguration) {
-      if (transcriptsConfiguration?.dataSourceId) {
+      if (transcriptsConfiguration.dataSourceViewId) {
         const dataSourceView = dataSourcesViews.find(
-          (ds) => ds.id === transcriptsConfiguration.dataSourceId
+          (ds) => ds.id === transcriptsConfiguration.dataSourceViewId
         );
         if (dataSourceView) {
           setSelectionConfigurations({
@@ -164,7 +164,7 @@ export default function LabsTranscriptsIndex({
           });
         }
       }
-      setStoreInFolder(!!transcriptsConfiguration.dataSourceId);
+      setStoreInFolder(!!transcriptsConfiguration.dataSourceViewId);
       setTranscriptsConfigurationState((prev) => {
         return {
           ...prev,
@@ -177,9 +177,9 @@ export default function LabsTranscriptsIndex({
               (a) => a.sId === transcriptsConfiguration.agentConfigurationId
             ) || null,
           isActive: transcriptsConfiguration.isActive || false,
-          dataSource:
+          dataSourceView:
             dataSourcesViews.find(
-              (ds) => ds.id === transcriptsConfiguration.dataSourceId
+              (ds) => ds.id === transcriptsConfiguration.dataSourceViewId
             ) || null,
         };
       });
@@ -297,21 +297,21 @@ export default function LabsTranscriptsIndex({
 
   const handleSetDataSource = async (
     transcriptConfigurationId: number,
-    dataSource: DataSourceViewType | null
+    dataSourceView: DataSourceViewType | null
   ) => {
     setTranscriptsConfigurationState((prev) => {
       return {
         ...prev,
-        dataSource,
+        dataSourceView,
       };
     });
 
     let successMessage = "The transcripts will not be stored.";
 
-    if (dataSource) {
+    if (dataSourceView) {
       successMessage =
         "The transcripts will be stored in the folder " +
-        dataSource.dataSource.name;
+        dataSourceView.dataSource.name;
     } else {
       successMessage = "The transcripts will not be stored.";
     }
@@ -319,7 +319,7 @@ export default function LabsTranscriptsIndex({
     await makePatchRequest(
       transcriptConfigurationId,
       {
-        dataSourceId: dataSource ? dataSource.dataSource.sId : null,
+        dataSourceViewId: dataSourceView ? dataSourceView.dataSource.sId : null,
       },
       successMessage
     );
