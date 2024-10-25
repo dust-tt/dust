@@ -102,6 +102,10 @@ export class Authenticator {
     this._key = key;
   }
 
+  /**
+   * Builds the ACLs required to access a resource by converting group sIDs into the expected ACL
+   * format.
+   */
   static aclsFromGroupIds(groupIds: string[]): GroupAndRoleACL[] {
     const getIdFromSIdOrThrow = (groupId: string) => {
       const id = getResourceIdFromSId(groupId);
@@ -797,6 +801,11 @@ export class Authenticator {
     return this._groups.map((g) => g.toJSON());
   }
 
+  /**
+   * Checks if the authenticator has the specified permission across all ACLs.
+   * Returns true only if the authenticator belongs to a group with the required permission in
+   * every ACL entry.
+   */
   hasPermission(acls: GroupAndRoleACL[], permission: Permission): boolean {
     // For each acl, does the user belongs to a group that has the permission?
     return acls.every((acl) => this.hasResourcePermission(acl, permission));
@@ -824,7 +833,7 @@ export class Authenticator {
 
       // Public access check (across all workspaces).
       const publicPermission = acl.roles
-        .find((r) => r.name === "none")
+        .find((r) => r.role === "none")
         ?.permissions.includes(permission);
       if (publicPermission) {
         return true;
@@ -832,7 +841,7 @@ export class Authenticator {
 
       // Workspace-specific role permission check.
       const hasRolePermission = acl.roles.some(
-        (r) => this.role() === r.name && r.permissions.includes(permission)
+        (r) => this.role() === r.role && r.permissions.includes(permission)
       );
 
       if (hasRolePermission && workspace.id === acl.workspaceId) {

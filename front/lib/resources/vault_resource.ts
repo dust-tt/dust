@@ -392,6 +392,10 @@ export class VaultResource extends BaseResource<VaultModel> {
     });
   }
 
+  /**
+   * Maps permissions to all groups associated with this vault, creating permission assignments for
+   * each group-vault relationship.
+   */
   private mapGroupPermissions(permissions: Permission[]) {
     return this.groups.map((group) => ({
       id: group.id,
@@ -414,34 +418,37 @@ export class VaultResource extends BaseResource<VaultModel> {
       ? this.groups.find((group) => group.isGlobal())
       : undefined;
 
+    // System vaults.
     if (this.isSystem()) {
       return {
         workspaceId: this.workspaceId,
-        roles: [{ name: "admin", permissions: ["admin", "write"] }],
+        roles: [{ role: "admin", permissions: ["admin", "write"] }],
         groups: [],
       };
     }
 
+    // Public vaults.
     if (this.isPublic()) {
       return {
         workspaceId: this.workspaceId,
         roles: [
-          { name: "admin", permissions: ["admin", "read", "write"] },
-          { name: "builder", permissions: ["read", "write"] },
-          { name: "user", permissions: ["read"] },
+          { role: "admin", permissions: ["admin", "read", "write"] },
+          { role: "builder", permissions: ["read", "write"] },
+          { role: "user", permissions: ["read"] },
           // Everyone can read.
-          { name: "none", permissions: ["read"] },
+          { role: "none", permissions: ["read"] },
         ],
         groups: this.mapGroupPermissions(["read", "write"]),
       };
     }
 
+    // Default Workspace vault.
     if (this.isGlobal()) {
       return {
         workspaceId: this.workspaceId,
         roles: [
-          { name: "admin", permissions: ["read", "write"] },
-          { name: "builder", permissions: ["read", "write"] },
+          { role: "admin", permissions: ["read", "write"] },
+          { role: "builder", permissions: ["read", "write"] },
         ],
         groups: this.mapGroupPermissions(["read"]),
       };
@@ -452,17 +459,18 @@ export class VaultResource extends BaseResource<VaultModel> {
       return {
         workspaceId: this.workspaceId,
         roles: [
-          { name: "admin", permissions: ["read", "write", "admin"] },
-          { name: "builder", permissions: ["read", "write"] },
-          { name: "user", permissions: ["read"] },
+          { role: "admin", permissions: ["read", "write", "admin"] },
+          { role: "builder", permissions: ["read", "write"] },
+          { role: "user", permissions: ["read"] },
         ],
         groups: this.mapGroupPermissions(["read"]),
       };
     }
 
+    // Restricted vaults.
     return {
       workspaceId: this.workspaceId,
-      roles: [{ name: "admin", permissions: ["admin"] }],
+      roles: [{ role: "admin", permissions: ["admin"] }],
       groups: this.mapGroupPermissions(["read", "write"]),
     };
   }

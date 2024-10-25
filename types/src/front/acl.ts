@@ -12,7 +12,7 @@ export type GroupPermission = {
 };
 
 export type RolePermission = {
-  name: RoleType;
+  role: RoleType;
   permissions: Permission[];
 };
 
@@ -29,6 +29,7 @@ export type RoleBasedACL = {
 
 export type GroupAndRoleACL = GroupOnlyACL | RoleBasedACL;
 
+// Type guard to check if the ACL has role based permissions.
 export function hasRoleBasedPermissions(
   acl: GroupAndRoleACL
 ): acl is RoleBasedACL {
