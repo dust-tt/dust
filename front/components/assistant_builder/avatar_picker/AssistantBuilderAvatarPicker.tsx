@@ -4,7 +4,10 @@ import {
   EmotionLaughIcon,
   ImageIcon,
   Modal,
-  Tab,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { useMemo, useRef, useState } from "react";
@@ -164,18 +167,32 @@ export function AvatarPicker({
       onSave={async () => handleSave(parentRef)}
       isSaving={isSaving}
     >
-      <div className="h-full w-full overflow-visible">
-        <Tab
-          tabs={tabs}
-          setCurrentTab={(tab) => {
-            setCurrentTab(tab);
+      <div className="h-full w-full overflow-visible pt-3">
+        <Tabs
+          defaultValue={currentTab}
+          onValueChange={(tab) => {
+            setCurrentTab(tab as TabId);
             setIsStale(false);
           }}
-          className="pt-3"
-        />
-        <div className="h-full w-full overflow-y-auto">
-          {renderTabContent(currentTab)}
-        </div>
+        >
+          <TabsList className="h-10 items-center gap-2 flex-grow flex">
+            {tabs.map((tab) => (
+              <TabsTrigger
+                key={tab.id}
+                value={tab.id}
+                label={tab.label}
+                icon={tab.icon}
+              />
+            ))}
+          </TabsList>
+          <div className="h-full w-full overflow-y-auto">
+            {tabs.map((tab) => (
+              <TabsContent key={tab.id} value={tab.id}>
+                {renderTabContent(tab.id)}
+              </TabsContent>
+            ))}
+          </div>
+        </Tabs>
       </div>
     </Modal>
   );
