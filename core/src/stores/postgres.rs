@@ -12,7 +12,6 @@ use std::str::FromStr;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
 
-use crate::data_sources::data_source::DocumentStatus;
 use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
@@ -132,10 +131,6 @@ impl PostgresStore {
 
 #[async_trait]
 impl Store for PostgresStore {
-    fn raw_pool(&self) -> &Pool<PostgresConnectionManager<NoTls>> {
-        return &self.pool;
-    }
-
     async fn create_project(&self) -> Result<Project> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -1506,26 +1501,24 @@ impl Store for PostgresStore {
                     .query(&stmt, &[&data_source_row_id, &document_id, &latest_hash])
                     .await?;
                 match r.len() {
-                    0 => Err(anyhow!("Unknown document hash"))?,
+                    0 => Err(anyhow!("Unknown Document: {}", document_id))?,
                     1 => r[0].get(0),
                     _ => unreachable!(),
                 }
             }
 
-            // Get the latest version's created timestamp (accepting deleted versions).
+            // get the latest version's created timestamp
             None => {
                 let stmt = c
                     .prepare(
                         "SELECT created FROM data_sources_documents \
                            WHERE data_source = $1 AND document_id = $2 \
-                           ORDER BY created DESC LIMIT 1",
+                           AND status = 'latest' LIMIT 1",
                     )
                     .await?;
                 let r = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
                 match r.len() {
-                    // If no hash was specified and there are no versions, just return an empty
-                    // array.
-                    0 => return Ok((vec![], 0)),
+                    0 => Err(anyhow!("Unknown Document: {}", document_id))?,
                     1 => r[0].get(0),
                     _ => unreachable!(),
                 }
@@ -1549,7 +1542,7 @@ impl Store for PostgresStore {
         params.extend(filter_params);
 
         let sql = format!(
-            "SELECT hash, created, status FROM data_sources_documents \
+            "SELECT hash, created FROM data_sources_documents \
                WHERE {} ORDER BY created DESC",
             where_clauses.join(" AND ")
         );
@@ -1578,13 +1571,9 @@ impl Store for PostgresStore {
         for row in rows {
             let hash: String = row.get(0);
             let created: i64 = row.get(1);
-            let status_str: String = row.get(2);
-            let status = DocumentStatus::from_str(&status_str)?;
-
             versions.push(DocumentVersion {
                 hash,
                 created: created as u64,
-                status,
             });
         }
 
@@ -1934,49 +1923,6 @@ impl Store for PostgresStore {
             )
             .await?;
         let _ = c.query(&stmt, &[&data_source_row_id, &document_id]).await?;
-
-        Ok(())
-    }
-
-    async fn scrub_data_source_document_version(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        document_id: &str,
-        version: &DocumentVersion,
-    ) -> Result<()> {
-        let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
-        let document_id = document_id.to_string();
-        let created = version.created as i64;
-        let hash = version.hash.clone();
-
-        let pool = self.pool.clone();
-        let c = pool.get().await?;
-
-        let r = c
-            .query(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-                &[&project_id, &data_source_id],
-            )
-            .await?;
-
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        let stmt = c
-            .prepare(
-                "DELETE FROM data_sources_documents \
-                   WHERE data_source = $1 AND document_id = $2 \
-                   AND created = $3 AND hash = $4 AND status='deleted'",
-            )
-            .await?;
-        let _ = c
-            .query(&stmt, &[&data_source_row_id, &document_id, &created, &hash])
-            .await?;
 
         Ok(())
     }

@@ -35,10 +35,6 @@ path = "bin/oauth.rs"
 name = "oauth_generate_key"
 path = "bin/oauth_generate_key.rs"
 
-[[bin]]
-name = "migration_clean_legacy_gcs"
-path = "bin/migrations/20241024_clean_legacy_gcs.rs"
-
 [[test]]
 name = "oauth_connections_test"
 path = "src/oauth/tests/functional_connections.rs"

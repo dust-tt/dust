@@ -5,7 +5,6 @@ import {
   CoreAPIDataSourceConfig,
   CoreAPIDataSourceDocumentSection,
   CoreAPIDocument,
-  CoreAPIDocumentVersion,
   CoreAPILightDocument,
   EmbedderType,
 } from "../../core/data_source";
@@ -785,7 +784,7 @@ export class CoreAPI {
     latest_hash?: string | null;
   }): Promise<
     CoreAPIResponse<{
-      versions: CoreAPIDocumentVersion[];
+      versions: { hash: string; created: number }[];
       offset: number;
       limit: number;
       total: number;
@@ -963,33 +962,6 @@ export class CoreAPI {
       )}/documents/${encodeURIComponent(documentId)}`,
       {
         method: "DELETE",
-      }
-    );
-
-    return this._resultFromResponse(response);
-  }
-
-  async scrubDataSourceDocumentDeletedVersions({
-    projectId,
-    dataSourceId,
-    documentId,
-  }: {
-    projectId: string;
-    dataSourceId: string;
-    documentId: string;
-  }): Promise<
-    CoreAPIResponse<{
-      versions: CoreAPIDocumentVersion[];
-    }>
-  > {
-    const response = await this._fetchWithError(
-      `${this._url}/projects/${encodeURIComponent(
-        projectId
-      )}/data_sources/${encodeURIComponent(
-        dataSourceId
-      )}/documents/${encodeURIComponent(documentId)}/scrub_deleted_versions`,
-      {
-        method: "POST",
       }
     );
 
