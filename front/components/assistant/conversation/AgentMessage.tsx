@@ -59,7 +59,7 @@ import {
   getVisualizationPlugin,
   sanitizeVisualizationContent,
   visualizationDirective,
-} from "@app/components/markdown/Visualization";
+} from "@app/components/markdown/VisualizationBlock";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
 

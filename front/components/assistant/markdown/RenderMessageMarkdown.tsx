@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
-import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkDirective from "remark-directive";
@@ -10,65 +9,21 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 
+import type { CitationsContextType } from "@app/components/assistant/markdown/CiteBlock";
+import {
+  CitationsContext,
+  CiteBlock,
+  citeDirective,
+} from "@app/components/assistant/markdown/CiteBlock";
 import { CodeBlockWithExtendedSupport } from "@app/components/assistant/markdown/CodeBlockWithExtendedSupport";
 import type { GetContentToDownloadFunction } from "@app/components/assistant/markdown/ContentBlockWrapper";
 import { ContentBlockWrapper } from "@app/components/assistant/markdown/ContentBlockWrapper";
-import type { MarkdownCitation } from "@app/components/assistant/markdown/MarkdownCitation";
 import { MarkdownContentContext } from "@app/components/assistant/markdown/MarkdownContentContext";
+import {
+  MentionBlock,
+  mentionDirective,
+} from "@app/components/assistant/markdown/MentionBlock";
 import { classNames } from "@app/lib/utils";
-
-function mentionDirective() {
-  return (tree: any) => {
-    visit(tree, ["textDirective"], (node) => {
-      if (node.name === "mention" && node.children[0]) {
-        const data = node.data || (node.data = {});
-        data.hName = "mention";
-        data.hProperties = {
-          agentSId: node.attributes.sId,
-          agentName: node.children[0].value,
-        };
-      }
-    });
-  };
-}
-
-function citeDirective() {
-  // Initialize a counter to keep track of citation references, starting from 1.
-  let refCounter = 1;
-  const refSeen: { [ref: string]: number } = {};
-
-  const counter = (ref: string) => {
-    if (!refSeen[ref]) {
-      refSeen[ref] = refCounter++;
-    }
-    return refSeen[ref];
-  };
-
-  return () => {
-    return (tree: any) => {
-      visit(tree, ["textDirective"], (node) => {
-        if (node.name === "cite" && node.children[0]?.value) {
-          const data = node.data || (node.data = {});
-
-          const references = node.children[0]?.value
-            .split(",")
-            .map((s: string) => s.trim())
-            .filter((s: string) => s.length == 2)
-            .map((ref: string) => ({
-              counter: counter(ref),
-              ref,
-            }));
-
-          // `sup` will then be mapped to a custom component `CiteBlock`.
-          data.hName = "sup";
-          data.hProperties = {
-            references: JSON.stringify(references),
-          };
-        }
-      });
-    };
-  };
-}
 
 function showUnsupportedDirective() {
   return (tree: any) => {
@@ -115,20 +70,6 @@ function sanitizeContent(str: string): string {
 
   return str;
 }
-
-type CitationsContextType = {
-  references: {
-    [key: string]: MarkdownCitation;
-  };
-  updateActiveReferences: (doc: MarkdownCitation, index: number) => void;
-  setHoveredReference: (index: number | null) => void;
-};
-
-export const CitationsContext = React.createContext<CitationsContextType>({
-  references: {},
-  updateActiveReferences: () => null,
-  setHoveredReference: () => null,
-});
 
 export type CustomRenderers = {
   visualization: (
@@ -229,11 +170,7 @@ export function RenderMessageMarkdown({
       strong: ({ children }) => (
         <strong className="font-semibold text-element-900">{children}</strong>
       ),
-      // @ts-expect-error - `mention` is a custom tag, currently refused by
-      // react-markdown types although the functionality is supported
-      mention: ({ agentName }) => {
-        return <MentionBlock agentName={agentName} />;
-      },
+      mention: MentionBlock,
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
@@ -280,72 +217,6 @@ export function RenderMessageMarkdown({
       </CitationsContext.Provider>
     </div>
   );
-}
-
-function MentionBlock({ agentName }: { agentName: string }) {
-  return (
-    <span className="inline-block cursor-default font-medium text-brand">
-      @{agentName}
-    </span>
-  );
-}
-
-function isCiteProps(props: ReactMarkdownProps): props is ReactMarkdownProps & {
-  references: string;
-} {
-  return Object.prototype.hasOwnProperty.call(props, "references");
-}
-
-function CiteBlock(props: ReactMarkdownProps) {
-  const { references, updateActiveReferences, setHoveredReference } =
-    React.useContext(CitationsContext);
-  const refs =
-    isCiteProps(props) && props.references
-      ? (
-          JSON.parse(props.references) as {
-            counter: number;
-            ref: string;
-          }[]
-        ).filter((r) => r.ref in references)
-      : undefined;
-
-  useEffect(() => {
-    if (refs) {
-      refs.forEach((r) => {
-        const document = references[r.ref];
-        updateActiveReferences(document, r.counter);
-      });
-    }
-  }, [refs, references, updateActiveReferences]);
-
-  if (refs) {
-    return (
-      <span className="inline-flex space-x-1">
-        {refs.map((r, i) => {
-          const document = references[r.ref];
-          const link = document.href;
-
-          return (
-            <sup key={`${r.ref}-${i}`}>
-              <a
-                href={link ?? undefined}
-                target="_blank"
-                rel="noopener noreferrer"
-                onMouseEnter={() => setHoveredReference(r.counter)}
-              >
-                <div className="flex h-4 w-4 items-center justify-center rounded-full border border-violet-200 bg-violet-100 text-xs font-semibold text-element-800 hover:border-violet-400">
-                  {r.counter}
-                </div>
-              </a>
-            </sup>
-          );
-        })}
-      </span>
-    );
-  } else {
-    const { children } = props;
-    return <sup>{children}</sup>;
-  }
 }
 
 const getNodeText = (node: ReactNode): string => {
