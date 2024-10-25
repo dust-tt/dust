@@ -11,6 +11,7 @@ import {
   RadioGroupChoice,
   Spinner,
   TrashIcon,
+  useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -24,7 +25,6 @@ import type {
   WebCrawlerConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { WebCrawlerHeaderRedactedValue } from "@dust-tt/types";
 import {
   CrawlingFrequencies,
   DepthOptions,
@@ -32,13 +32,13 @@ import {
   isWebCrawlerConfiguration,
   WEBCRAWLER_DEFAULT_CONFIGURATION,
   WEBCRAWLER_MAX_PAGES,
+  WebCrawlerHeaderRedactedValue,
 } from "@dust-tt/types";
 import type * as t from "io-ts";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useState } from "react";
 
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
 import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
@@ -64,7 +64,7 @@ export default function VaultWebsiteModal({
   dataSourceView: DataSourceViewType | null;
 }) {
   const router = useRouter();
-  const sendNotification = React.useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);

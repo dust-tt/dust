@@ -1,17 +1,23 @@
-import { Button, EyeIcon, Modal, PencilSquareIcon } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import {
+  Button,
+  EyeIcon,
+  Modal,
+  PencilSquareIcon,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import type {
   AppType,
+  BlockType,
+  DatasetType,
+  RunType,
   SpecificationBlockType,
   SpecificationType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { BlockType, RunType } from "@dust-tt/types";
-import type { DatasetType } from "@dust-tt/types";
-import { useContext, useState } from "react";
+import { useState } from "react";
 
 import DatasetPicker from "@app/components/app/DatasetPicker";
 import DatasetView from "@app/components/app/DatasetView";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useDataset } from "@app/lib/swr/datasets";
 import { shallowBlockClone } from "@app/lib/utils";
 
@@ -59,7 +65,7 @@ export default function Input({
   const [datasetModalData, setDatasetModalData] = useState<DatasetType | null>(
     null
   );
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const handleSetDataset = async (dataset: string) => {
     const b = shallowBlockClone(block);

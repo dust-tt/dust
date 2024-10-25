@@ -5,6 +5,7 @@ import {
   Page,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ActiveRoleType,
   MembershipInvitationType,
@@ -15,7 +16,6 @@ import { useContext, useState } from "react";
 import { ConfirmContext } from "@app/components/Confirm";
 import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { sendInvitations, updateInvitation } from "@app/lib/invitations";
 
 export function EditInvitationModal({
@@ -30,7 +30,7 @@ export function EditInvitationModal({
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType>(
     invitation.initialRole
   );
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
   return (

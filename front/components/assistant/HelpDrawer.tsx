@@ -8,6 +8,7 @@ import {
   Modal,
   Page,
   UserGroupIcon,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
@@ -19,11 +20,10 @@ import type {
 import { GLOBAL_AGENTS_SID } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import { useCallback, useContext } from "react";
+import { useCallback } from "react";
 
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
 // describe the type of userContent where the
@@ -150,7 +150,7 @@ export function HelpDrawer({
   setShowQuickGuide: (show: boolean) => void;
 }) {
   const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const { submit: handleHelpSubmit } = useSubmitFunction(
     useCallback(

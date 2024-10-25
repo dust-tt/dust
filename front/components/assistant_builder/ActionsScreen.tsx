@@ -606,7 +606,7 @@ function ActionCard({
           <div className="w-full truncate">{spec.label}</div>
           <IconButton
             icon={XMarkIcon}
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={(e) => {
               deleteAction();

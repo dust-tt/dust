@@ -1,5 +1,4 @@
 import { getAccessToken } from "@app/extension/app/src/lib/storage";
-import { COMMIT_HASH } from "@app/lib/commit-hash";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
 import useSWR, { useSWRConfig } from "swr";
@@ -106,11 +105,6 @@ export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(
   return useSWRInfinite<TData>(getKey, fetcher, mergedConfig);
 }
 
-const addCommitHashToHeaders = (headers: HeadersInit = {}): HeadersInit => ({
-  ...headers,
-  "X-Commit-Hash": COMMIT_HASH,
-});
-
 const resHandler = async (res: Response) => {
   if (res.status >= 300) {
     const errorText = await res.text();
@@ -138,7 +132,6 @@ export const fetcher = async (...args: Parameters<typeof fetch>) => {
     ...config,
     headers: {
       Authorization: `Bearer ${token}`,
-      ...addCommitHashToHeaders(config?.headers),
     },
   });
   return resHandler(res);

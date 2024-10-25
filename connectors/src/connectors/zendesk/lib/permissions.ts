@@ -4,6 +4,7 @@ import {
   getBrandInternalId,
   getCategoryInternalId,
   getHelpCenterInternalId,
+  getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -40,7 +41,11 @@ export async function retrieveSelectedNodes({
       title: brand.name,
       sourceUrl: brand.url,
       expandable: true,
-      permission: brand.permission,
+      permission:
+        brand.helpCenterPermission === "read" &&
+        brand.ticketsPermission === "read"
+          ? "read"
+          : "none",
       dustDocumentId: null,
       lastUpdatedAt: brand.updatedAt.getTime() ?? null,
     };
@@ -56,7 +61,7 @@ export async function retrieveSelectedNodes({
       title: "Help Center",
       sourceUrl: null,
       expandable: true,
-      permission: brand.permission,
+      permission: brand.helpCenterPermission,
       dustDocumentId: null,
       lastUpdatedAt: brand.updatedAt.getTime(),
     }));
@@ -79,5 +84,23 @@ export async function retrieveSelectedNodes({
     };
   });
 
-  return [...brandNodes, ...helpCenterNodes, ...categoriesNodes];
+  const ticketNodes: ContentNode[] = brands.map((brand) => ({
+    provider: connector.type,
+    internalId: getTicketsInternalId(connectorId, brand.id),
+    parentInternalId: getBrandInternalId(connectorId, brand.brandId),
+    type: "database",
+    title: "Tickets",
+    sourceUrl: null,
+    expandable: true,
+    permission: brand.ticketsPermission,
+    dustDocumentId: null,
+    lastUpdatedAt: brand.updatedAt.getTime(),
+  }));
+
+  return [
+    ...brandNodes,
+    ...helpCenterNodes,
+    ...categoriesNodes,
+    ...ticketNodes,
+  ];
 }

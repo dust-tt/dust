@@ -153,8 +153,8 @@ export abstract class ResourceWithSpace<
 
   // Permissions.
 
-  acl() {
-    return this.space.acl();
+  requestedPermissions() {
+    return this.space.requestedPermissions();
   }
 
   canList(auth: Authenticator) {

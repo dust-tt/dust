@@ -177,7 +177,7 @@ export const VaultCategoriesList = ({
                 label="Space settings"
                 icon={Cog6ToothIcon}
                 onClick={onButtonClick}
-                variant="ghost"
+                variant="outline"
               />
             )}
             <DropdownMenu>

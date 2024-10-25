@@ -1,4 +1,5 @@
 import { Button, Dialog, DropdownMenu } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
   DataSourceViewContentNode,
@@ -6,9 +7,8 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@dust-tt/types";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useVaults } from "@app/lib/swr/vaults";
 
@@ -31,9 +31,9 @@ export const AddToVaultDialog = ({
 
   const dataSource = dataSourceView.dataSource;
   const { vaults } = useVaults({ workspaceId: owner.sId });
-  const { dataSourceViews } = useDataSourceViews(owner);
+  const { dataSourceViews, mutateDataSourceViews } = useDataSourceViews(owner);
 
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const allViews = dataSourceViews.filter(
     (dsv) => dsv.dataSource.sId === dataSource.sId && dsv.kind !== "default"
@@ -63,7 +63,7 @@ export const AddToVaultDialog = ({
     }
 
     const existingViewForVault = dataSourceViews.find(
-      (d) => d.spaceId === vault.sId
+      (d) => d.spaceId === vault.sId && d.dataSource.sId === dataSource.sId
     );
 
     try {
@@ -111,6 +111,7 @@ export const AddToVaultDialog = ({
           type: "success",
         });
         onClose(true);
+        await mutateDataSourceViews();
       }
     } catch (e) {
       sendNotification({

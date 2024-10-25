@@ -47,7 +47,7 @@ const colors: Record<Exclude<SpinnerVariantType, "color">, LottieColorType> = {
   dark: [0.0588, 0.0902, 0.1647, 1],
   purple900: [0.298, 0.1137, 0.5843, 1], // #4C1D95
   pink900: [0.5137, 0.0941, 0.2627, 1], // #831843
-  slate400: [0.5647, 0.6314, 0.7176, 1], // #94a3b8
+  slate400: [0.5804, 0.6392, 0.7216, 1], // #94A3B8
 };
 
 const isColorArray = (arr: unknown): arr is LottieColorType => {

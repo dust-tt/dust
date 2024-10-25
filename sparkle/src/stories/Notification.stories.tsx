@@ -1,11 +1,20 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { Notification } from "../index_with_tw_base";
+import { useSendNotification } from "@sparkle/components/Notification";
 
-const meta = {
+import { Button, Notification } from "../index_with_tw_base";
+
+const meta: Meta<typeof Notification> = {
   title: "Modules/Notification",
   component: Notification,
+  decorators: [
+    (Story) => (
+      <Notification.Area>
+        <Story />
+      </Notification.Area>
+    ),
+  ],
 } satisfies Meta<typeof Notification>;
 
 export default meta;
@@ -34,5 +43,21 @@ export const NotificationExample = () => {
         />
       </div>
     </>
+  );
+};
+
+export const NotificationAreaExample = () => {
+  const sendNotification = useSendNotification();
+  return (
+    <Button
+      onClick={() =>
+        sendNotification({
+          title: "Success",
+          description: "it works",
+          type: "success",
+        })
+      }
+      label="click"
+    />
   );
 };

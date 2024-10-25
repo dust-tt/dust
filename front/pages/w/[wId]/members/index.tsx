@@ -6,16 +6,19 @@ import {
   Popup,
   Searchbar,
 } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceDomain, WorkspaceType } from "@dust-tt/types";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   PlanType,
   SubscriptionPerSeatPricing,
   SubscriptionType,
+  UserType,
+  WorkspaceDomain,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import React, { useContext, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
@@ -24,7 +27,6 @@ import { InvitationsList } from "@app/components/members/InvitationsList";
 import { MembersList } from "@app/components/members/MembersList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/connection";
 import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
 import config from "@app/lib/api/config";
@@ -262,7 +264,7 @@ function DomainAutoJoinModal({
   onClose: () => void;
   owner: WorkspaceType;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const title = domainAutoJoinEnabled
     ? "De-activate Auto-join"
