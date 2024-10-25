@@ -13,7 +13,6 @@ import {
   MoreIcon,
   Page,
   PlusIcon,
-  Popover,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,

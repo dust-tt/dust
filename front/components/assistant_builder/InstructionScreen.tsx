@@ -3,7 +3,6 @@ import {
   ContentMessage,
   DropdownMenu,
   Page,
-  Popover,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
