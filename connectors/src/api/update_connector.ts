@@ -79,7 +79,7 @@ const _postConnectorUpdateAPIHandler = async (
     }
   }
 
-  await connector.update({ errorType: null });
+  await connector.update({ errorType: null, pausedAt: null });
 
   return res.status(200).json({
     connectorId: updateRes.value,
