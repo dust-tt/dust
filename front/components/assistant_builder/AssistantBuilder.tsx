@@ -391,7 +391,7 @@ export default function AssistantBuilder({
                 <Tabs
                   className="s-w-full"
                   onValueChange={(t) => {
-                    setQueryParam(router, "selectedTab", t);
+                    setQueryParam(router, "selectedTab", t, true);
                     setScreen(t as BuilderScreen);
                   }}
                   value={currentTab}
