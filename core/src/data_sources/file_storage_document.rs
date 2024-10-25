@@ -22,6 +22,59 @@ impl FileStorageDocument {
         }
     }
 
+    pub fn get_legacy_content_path(
+        data_source: &DataSource,
+        document_id_hash: &str,
+        document_hash: &str,
+    ) -> String {
+        let legacy_bucket_path = format!(
+            "{}/{}/{}",
+            data_source.project().project_id(),
+            data_source.internal_id(),
+            document_id_hash
+        );
+
+        format!("{}/{}/content.txt", legacy_bucket_path, document_hash)
+    }
+
+    pub fn get_legacy_document_id_path(data_source: &DataSource, document_id_hash: &str) -> String {
+        let legacy_bucket_path = format!(
+            "{}/{}/{}",
+            data_source.project().project_id(),
+            data_source.internal_id(),
+            document_id_hash
+        );
+
+        format!("{}/document_id.txt", legacy_bucket_path)
+    }
+
+    pub async fn path_exists(path: &str) -> Result<bool> {
+        let bucket = FileStorageDocument::get_bucket().await?;
+
+        match Object::read(&bucket, path).await {
+            Ok(_) => Ok(true),
+            Err(_err) => Ok(false),
+        }
+    }
+
+    pub async fn delete_if_exists(path: &str) -> Result<bool> {
+        let bucket = FileStorageDocument::get_bucket().await?;
+
+        match Object::delete(&bucket, &path).await {
+            Ok(_) => {
+                // println!("Deleted: path={}", path);
+                Ok(true)
+            }
+            Err(e) => match e {
+                cloud_storage::Error::Google(GoogleErrorResponse {
+                    error: ErrorList { code: 404, .. },
+                    ..
+                }) => Ok(false),
+                e => Err(e)?,
+            },
+        }
+    }
+
     pub async fn get_stored_document(
         data_source: &DataSource,
         document_created: u64,
