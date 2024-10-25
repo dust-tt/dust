@@ -40,7 +40,7 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
-import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
+import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
 import type { PostDataSourceWithProviderRequestBodySchema } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
@@ -153,7 +153,7 @@ export default function VaultWebsiteModal({
   }, [isOpen, dataSourceView, webCrawlerConfiguration]);
 
   const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
-    useVaultDataSourceViews({
+    useSpaceDataSourceViews({
       workspaceId: owner.sId,
       vaultId: vault.sId,
       category: WEBSITE_CAT,

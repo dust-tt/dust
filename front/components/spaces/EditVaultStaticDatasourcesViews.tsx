@@ -9,8 +9,8 @@ import type {
 import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
-import VaultFolderModal from "@app/components/vaults/VaultFolderModal";
-import VaultWebsiteModal from "@app/components/vaults/VaultWebsiteModal";
+import VaultFolderModal from "@app/components/spaces/VaultFolderModal";
+import VaultWebsiteModal from "@app/components/spaces/VaultWebsiteModal";
 
 interface EditVaultStaticDatasourcesViewsProps {
   owner: WorkspaceType;

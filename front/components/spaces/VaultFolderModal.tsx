@@ -16,9 +16,9 @@ import { DeleteStaticDataSourceDialog } from "@app/components/data_source/Delete
 import {
   useCreateFolder,
   useDeleteFolderOrWebsite,
+  useSpaceDataSourceView,
   useUpdateFolder,
-  useVaultDataSourceView,
-} from "@app/lib/swr/vaults";
+} from "@app/lib/swr/spaces";
 
 export default function VaultFolderModal({
   isOpen,
@@ -36,7 +36,7 @@ export default function VaultFolderModal({
   dataSourceViewId: string | null;
 }) {
   const { dataSourceView, isDataSourceViewLoading, mutate } =
-    useVaultDataSourceView({
+    useSpaceDataSourceView({
       owner,
       vaultId: vault.sId,
       dataSourceViewId: dataSourceViewId || undefined,

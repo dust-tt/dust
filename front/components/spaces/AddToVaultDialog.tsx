@@ -10,7 +10,7 @@ import type {
 import { useEffect, useState } from "react";
 
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
-import { useVaults } from "@app/lib/swr/vaults";
+import { useSpaces } from "@app/lib/swr/spaces";
 
 interface AddToVaultDialogProps {
   dataSourceView: DataSourceViewType;
@@ -30,7 +30,7 @@ export const AddToVaultDialog = ({
   const [vault, setVault] = useState<SpaceType | undefined>();
 
   const dataSource = dataSourceView.dataSource;
-  const { vaults } = useVaults({ workspaceId: owner.sId });
+  const { vaults } = useSpaces({ workspaceId: owner.sId });
   const { dataSourceViews, mutateDataSourceViews } = useDataSourceViews(owner);
 
   const sendNotification = useSendNotification();

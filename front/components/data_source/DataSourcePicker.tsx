@@ -8,7 +8,7 @@ import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
+import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
 export default function DataSourcePicker({
@@ -40,7 +40,7 @@ export default function DataSourcePicker({
     vaultDataSourceViews,
     isVaultDataSourceViewsLoading,
     isVaultDataSourceViewsError,
-  } = useVaultDataSourceViews({
+  } = useSpaceDataSourceViews({
     vaultId: vault.sId,
     workspaceId: owner.sId,
   });

@@ -14,11 +14,11 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
-import type { DataSourceIntegration } from "@app/components/vaults/AddConnectionMenu";
-import { VaultAppsList } from "@app/components/vaults/VaultAppsList";
-import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
-import { VaultLayout } from "@app/components/vaults/VaultLayout";
-import { VaultResourcesList } from "@app/components/vaults/VaultResourcesList";
+import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
+import { VaultAppsList } from "@app/components/spaces/VaultAppsList";
+import type { VaultLayoutProps } from "@app/components/spaces/VaultLayout";
+import { VaultLayout } from "@app/components/spaces/VaultLayout";
+import { VaultResourcesList } from "@app/components/spaces/VaultResourcesList";
 import {
   augmentDataSourceWithConnectorDetails,
   getDataSources,
@@ -33,7 +33,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     isAdmin: boolean;
     canWriteInVault: boolean;
     vault: SpaceType;
-    systemVault: SpaceType;
+    systemSpace: SpaceType;
     integrations: DataSourceIntegration[];
   }
 >(async (context, auth) => {
@@ -48,12 +48,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  const systemVault = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+  const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
   const vault = await SpaceResource.fetchById(
     auth,
     context.query.vaultId as string
   );
-  if (!vault || !systemVault || !vault.canList(auth)) {
+  if (!vault || !systemSpace || !vault.canList(auth)) {
     return {
       notFound: true,
     };
@@ -128,7 +128,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       plan,
       subscription,
       vault: vault.toJSON(),
-      systemVault: systemVault.toJSON(),
+      systemSpace: systemSpace.toJSON(),
       integrations,
     },
   };
@@ -141,7 +141,7 @@ export default function Vault({
   owner,
   plan,
   vault,
-  systemVault,
+  systemSpace,
   integrations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -168,7 +168,7 @@ export default function Vault({
           owner={owner}
           plan={plan}
           vault={vault}
-          systemVault={systemVault}
+          systemSpace={systemSpace}
           isAdmin={isAdmin}
           canWriteInVault={canWriteInVault}
           category={category}

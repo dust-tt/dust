@@ -21,7 +21,7 @@ import { DocumentOrTableDeleteDialog } from "@app/components/data_source/Documen
 import { DocumentOrTableUploadOrEditModal } from "@app/components/data_source/DocumentOrTableUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
-import { AddToVaultDialog } from "@app/components/vaults/AddToVaultDialog";
+import { AddToVaultDialog } from "@app/components/spaces/AddToVaultDialog";
 import {
   getDisplayNameForDataSource,
   isFolder,

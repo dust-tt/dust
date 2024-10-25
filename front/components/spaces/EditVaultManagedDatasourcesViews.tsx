@@ -12,20 +12,20 @@ import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
-import VaultManagedDataSourcesViewsModal from "@app/components/vaults/VaultManagedDatasourcesViewsModal";
+import VaultManagedDataSourcesViewsModal from "@app/components/spaces/VaultManagedDatasourcesViewsModal";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import {
-  useVaultDataSourceViews,
-  useVaultDataSourceViewsWithDetails,
-} from "@app/lib/swr/vaults";
+  useSpaceDataSourceViews,
+  useSpaceDataSourceViewsWithDetails,
+} from "@app/lib/swr/spaces";
 
 interface EditVaultManagedDataSourcesViewsProps {
   dataSourceView?: DataSourceViewType;
   isAdmin: boolean;
   onSelectedDataUpdated: () => Promise<void>;
   owner: WorkspaceType;
-  systemVault: SpaceType;
+  systemSpace: SpaceType;
   vault: SpaceType;
 }
 
@@ -34,7 +34,7 @@ export function EditVaultManagedDataSourcesViews({
   isAdmin,
   onSelectedDataUpdated,
   owner,
-  systemVault,
+  systemSpace,
   vault,
 }: EditVaultManagedDataSourcesViewsProps) {
   const sendNotification = useSendNotification();
@@ -50,7 +50,7 @@ export function EditVaultManagedDataSourcesViews({
     vaultDataSourceViews,
     isVaultDataSourceViewsLoading,
     mutateRegardlessOfQueryParams: mutateVaultDataSourceViews,
-  } = useVaultDataSourceViewsWithDetails({
+  } = useSpaceDataSourceViewsWithDetails({
     workspaceId: owner.sId,
     vaultId: vault.sId,
     category: "managed",
@@ -60,9 +60,9 @@ export function EditVaultManagedDataSourcesViews({
   const {
     vaultDataSourceViews: systemVaultDataSourceViews,
     isVaultDataSourceViewsLoading: isSystemVaultDataSourceViewsLoading,
-  } = useVaultDataSourceViews({
+  } = useSpaceDataSourceViews({
     workspaceId: owner.sId,
-    vaultId: systemVault.sId,
+    vaultId: systemSpace.sId,
     category: "managed",
     disabled: !isAdmin,
   });
@@ -272,7 +272,7 @@ export function EditVaultManagedDataSourcesViews({
         validateLabel="Go to connections management"
         onValidate={() => {
           void router.push(
-            `/w/${owner.sId}/vaults/${systemVault.sId}/categories/managed`
+            `/w/${owner.sId}/vaults/${systemSpace.sId}/categories/managed`
           );
         }}
         title="No connection set up"

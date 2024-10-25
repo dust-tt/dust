@@ -6,7 +6,7 @@ import type {
 } from "@dust-tt/types";
 import { useState } from "react";
 
-import VaultWebsiteModal from "@app/components/vaults/VaultWebsiteModal";
+import VaultWebsiteModal from "@app/components/spaces/VaultWebsiteModal";
 import { useDataSources } from "@app/lib/swr/data_sources";
 
 type WebsitesHeaderMenuProps = {

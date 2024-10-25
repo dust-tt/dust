@@ -8,7 +8,7 @@ import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 
 import { useDataSourceViewTables } from "@app/lib/swr/data_source_views";
-import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
+import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
 export default function TablePicker({
@@ -32,7 +32,7 @@ export default function TablePicker({
   void owner;
   void dataSource;
 
-  const { vaultDataSourceViews } = useVaultDataSourceViews({
+  const { vaultDataSourceViews } = useSpaceDataSourceViews({
     vaultId: vault.sId,
     workspaceId: owner.sId,
   });

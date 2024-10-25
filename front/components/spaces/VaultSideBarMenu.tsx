@@ -28,11 +28,11 @@ import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useApps } from "@app/lib/swr/apps";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
-  useVaultDataSourceViews,
-  useVaultInfo,
-  useVaults,
-  useVaultsAsAdmin,
-} from "@app/lib/swr/vaults";
+  useSpaceDataSourceViews,
+  useSpaceInfo,
+  useSpaces,
+  useSpacesAsAdmin,
+} from "@app/lib/swr/spaces";
 import type { VaultSectionGroupType } from "@app/lib/vaults";
 import { getVaultIcon, getVaultName, groupVaults } from "@app/lib/vaults";
 
@@ -52,13 +52,13 @@ export default function VaultSideBarMenu({
   openVaultCreationModal,
 }: VaultSideBarMenuProps) {
   const { vaults: vaultsAsAdmin, isVaultsLoading: isVaultsAsAdminLoading } =
-    useVaultsAsAdmin({
+    useSpacesAsAdmin({
       workspaceId: owner.sId,
       disabled: !isAdmin,
     });
 
   const { vaults: vaultsAsUser, isVaultsLoading: isVaultsAsUserLoading } =
-    useVaults({
+    useSpaces({
       workspaceId: owner.sId,
     });
 
@@ -273,7 +273,7 @@ const SystemVaultItem = ({
   }, [isAncestorToCurrentPage]);
 
   const { isVaultDataSourceViewsLoading, vaultDataSourceViews } =
-    useVaultDataSourceViews({
+    useSpaceDataSourceViews({
       workspaceId: owner.sId,
       vaultId: vault.sId,
       category,
@@ -348,7 +348,7 @@ const VaultMenuItem = ({
     }
   }, [isAncestorToCurrentPage]);
 
-  const { vaultInfo, isVaultInfoLoading } = useVaultInfo({
+  const { vaultInfo, isVaultInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
     vaultId: vault.sId,
     disabled: !isExpanded,
@@ -554,7 +554,7 @@ const VaultDataSourceViewSubMenu = ({
 
   const categoryDetails = DATA_SOURCE_OR_VIEW_SUB_ITEMS[category];
   const { isVaultDataSourceViewsLoading, vaultDataSourceViews } =
-    useVaultDataSourceViews({
+    useSpaceDataSourceViews({
       workspaceId: owner.sId,
       vaultId: vault.sId,
       category,

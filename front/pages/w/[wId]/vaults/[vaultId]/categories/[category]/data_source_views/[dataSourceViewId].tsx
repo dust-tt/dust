@@ -11,9 +11,9 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
-import { VaultDataSourceViewContentList } from "@app/components/vaults/VaultDataSourceViewContentList";
-import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
-import { VaultLayout } from "@app/components/vaults/VaultLayout";
+import { VaultDataSourceViewContentList } from "@app/components/spaces/VaultDataSourceViewContentList";
+import type { VaultLayoutProps } from "@app/components/spaces/VaultLayout";
+import { VaultLayout } from "@app/components/spaces/VaultLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -28,7 +28,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     canWriteInVault: boolean;
     canReadInVault: boolean;
     parentId?: string;
-    systemVault: SpaceType;
+    systemSpace: SpaceType;
     connector: ConnectorType | null;
   }
 >(async (context, auth) => {
@@ -74,7 +74,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  const systemVault = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+  const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
   const vault = dataSourceView.space;
   const canWriteInVault = vault.canWrite(auth);
   const canReadInVault = vault.canRead(auth);
@@ -107,7 +107,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       plan,
       subscription,
       vault: vault.toJSON(),
-      systemVault: systemVault.toJSON(),
+      systemSpace: systemSpace.toJSON(),
       connector,
     },
   };
@@ -123,7 +123,7 @@ export default function Vault({
   parentId,
   plan,
   isAdmin,
-  systemVault,
+  systemSpace,
   connector,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
@@ -143,7 +143,7 @@ export default function Vault({
           );
         }}
         isAdmin={isAdmin}
-        systemVault={systemVault}
+        systemSpace={systemSpace}
         connector={connector}
       />
     </Page.Vertical>

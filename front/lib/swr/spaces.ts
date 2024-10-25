@@ -27,18 +27,18 @@ import type { GetVaultDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]";
 import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
-export function useVaults({
+export function useSpaces({
   workspaceId,
   disabled,
 }: {
   workspaceId: string;
   disabled?: boolean;
 }) {
-  const vaultsFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
+  const spacesFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/vaults`,
-    vaultsFetcher,
+    spacesFetcher,
     { disabled }
   );
 
@@ -50,18 +50,18 @@ export function useVaults({
   };
 }
 
-export function useVaultsAsAdmin({
+export function useSpacesAsAdmin({
   workspaceId,
   disabled,
 }: {
   workspaceId: string;
   disabled?: boolean;
 }) {
-  const vaultsFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
+  const spacesFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/vaults?role=admin`,
-    vaultsFetcher,
+    spacesFetcher,
     { disabled }
   );
 
@@ -73,7 +73,7 @@ export function useVaultsAsAdmin({
   };
 }
 
-export function useVaultInfo({
+export function useSpaceInfo({
   workspaceId,
   vaultId,
   disabled,
@@ -100,7 +100,7 @@ export function useVaultInfo({
   };
 }
 
-export function useVaultDataSourceView({
+export function useSpaceDataSourceView({
   owner,
   vaultId,
   dataSourceViewId,
@@ -130,7 +130,7 @@ export function useVaultDataSourceView({
   };
 }
 
-export function useVaultDataSourceViews({
+export function useSpaceDataSourceViews({
   category,
   disabled,
   vaultId,
@@ -171,7 +171,7 @@ export function useVaultDataSourceViews({
   };
 }
 
-export function useVaultDataSourceViewsWithDetails({
+export function useSpaceDataSourceViewsWithDetails({
   category,
   disabled,
   vaultId,
@@ -223,7 +223,7 @@ export function useCreateFolder({
 }) {
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
-    useVaultDataSourceViews({
+    useSpaceDataSourceViews({
       workspaceId: owner.sId,
       vaultId: vaultId,
       category: "folder",
@@ -332,7 +332,7 @@ export function useDeleteFolderOrWebsite({
 }) {
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
-    useVaultDataSourceViews({
+    useSpaceDataSourceViews({
       workspaceId: owner.sId,
       vaultId: vaultId,
       category: category,
@@ -375,13 +375,13 @@ type DoCreateOrUpdateAllowedParams =
   | { name: string | null; memberIds: null; isRestricted: false }
   | { name: string | null; memberIds: string[]; isRestricted: true };
 
-export function useCreateVault({ owner }: { owner: LightWorkspaceType }) {
+export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
-  const { mutate: mutateVaults } = useVaults({
+  const { mutate: mutateVaults } = useSpaces({
     workspaceId: owner.sId,
     disabled: true, // Needed just to mutate.
   });
-  const { mutate: mutateVaultsAsAdmin } = useVaultsAsAdmin({
+  const { mutate: mutateVaultsAsAdmin } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: true, // Needed just to mutate.
   });
@@ -439,13 +439,13 @@ export function useCreateVault({ owner }: { owner: LightWorkspaceType }) {
   return doCreate;
 }
 
-export function useUpdateVault({ owner }: { owner: LightWorkspaceType }) {
+export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
-  const { mutate: mutateVaults } = useVaults({
+  const { mutate: mutateVaults } = useSpaces({
     workspaceId: owner.sId,
     disabled: true, // Needed just to mutate
   });
-  const { mutate: mutateVaultsAsAdmin } = useVaultsAsAdmin({
+  const { mutate: mutateVaultsAsAdmin } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: true, // Needed just to mutate
   });
@@ -522,13 +522,13 @@ export function useUpdateVault({ owner }: { owner: LightWorkspaceType }) {
   return doUpdate;
 }
 
-export function useDeleteVault({ owner }: { owner: LightWorkspaceType }) {
+export function useDeleteSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
-  const { mutate: mutateVaults } = useVaults({
+  const { mutate: mutateVaults } = useSpaces({
     workspaceId: owner.sId,
     disabled: true, // Needed just to mutate
   });
-  const { mutate: mutateVaultsAsAdmin } = useVaultsAsAdmin({
+  const { mutate: mutateVaultsAsAdmin } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: true, // Needed just to mutate
   });
@@ -566,25 +566,25 @@ export function useDeleteVault({ owner }: { owner: LightWorkspaceType }) {
   return doDelete;
 }
 
-export function useSystemVault({
+export function useSystemSpace({
   workspaceId,
   disabled = false,
 }: {
   workspaceId: string;
   disabled?: boolean;
 }) {
-  const systemVaultFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
+  const systemSpaceFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/vaults?role=admin&kind=system`,
-    systemVaultFetcher,
+    systemSpaceFetcher,
     { disabled }
   );
 
   return {
-    systemVault: data ? data.vaults[0] : null,
-    isSystemVaultLoading: !error && !data && !disabled,
-    isSystemVaultError: error,
-    mutateSystemVault: mutate,
+    systemSpace: data ? data.vaults[0] : null,
+    isSystemSpaceLoading: !error && !data && !disabled,
+    isSystemSpaceError: error,
+    mutateSystemSpace: mutate,
   };
 }

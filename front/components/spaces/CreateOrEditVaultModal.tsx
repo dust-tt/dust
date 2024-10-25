@@ -15,14 +15,14 @@ import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { ConfirmDeleteVaultDialog } from "@app/components/vaults/ConfirmDeleteVaultDialog";
-import { SearchMembersPopover } from "@app/components/vaults/SearchMembersPopover";
+import { ConfirmDeleteVaultDialog } from "@app/components/spaces/ConfirmDeleteVaultDialog";
+import { SearchMembersPopover } from "@app/components/spaces/SearchMembersPopover";
 import {
-  useCreateVault,
-  useDeleteVault,
-  useUpdateVault,
-  useVaultInfo,
-} from "@app/lib/swr/vaults";
+  useCreateSpace,
+  useDeleteSpace,
+  useSpaceInfo,
+  useUpdateSpace,
+} from "@app/lib/swr/spaces";
 
 type RowData = {
   icon: string;
@@ -71,13 +71,13 @@ export function CreateOrEditVaultModal({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestricted, setIsRestricted] = useState(false);
 
-  const doCreate = useCreateVault({ owner });
-  const doUpdate = useUpdateVault({ owner });
-  const doDelete = useDeleteVault({ owner });
+  const doCreate = useCreateSpace({ owner });
+  const doUpdate = useUpdateSpace({ owner });
+  const doDelete = useDeleteSpace({ owner });
 
   const router = useRouter();
 
-  const { vaultInfo, mutateVaultInfo } = useVaultInfo({
+  const { vaultInfo, mutateVaultInfo } = useSpaceInfo({
     workspaceId: owner.sId,
     vaultId: vault?.sId ?? null,
   });

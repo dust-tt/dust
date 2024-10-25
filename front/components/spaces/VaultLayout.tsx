@@ -12,14 +12,14 @@ import type { ComponentType } from "react";
 import React, { useCallback, useMemo, useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
+import { CreateOrEditVaultModal } from "@app/components/spaces/CreateOrEditVaultModal";
+import { CATEGORY_DETAILS } from "@app/components/spaces/VaultCategoriesList";
+import VaultSideBarMenu from "@app/components/spaces/VaultSideBarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { CreateOrEditVaultModal } from "@app/components/vaults/CreateOrEditVaultModal";
-import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
-import VaultSideBarMenu from "@app/components/vaults/VaultSideBarMenu";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { useVaultsAsAdmin } from "@app/lib/swr/vaults";
+import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { getVaultIcon, isPrivateVaultsLimitReached } from "@app/lib/vaults";
 
 export interface VaultLayoutProps {
@@ -57,7 +57,7 @@ export function VaultLayout({
   } = pageProps;
   const router = useRouter();
 
-  const { vaults } = useVaultsAsAdmin({
+  const { vaults } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: plan.limits.vaults.maxVaults === 0 || !isAdmin,
   });

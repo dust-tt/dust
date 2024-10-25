@@ -40,17 +40,17 @@ import * as React from "react";
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
-import type { DataSourceIntegration } from "@app/components/vaults/AddConnectionMenu";
-import { AddConnectionMenu } from "@app/components/vaults/AddConnectionMenu";
-import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
-import { EditVaultStaticDatasourcesViews } from "@app/components/vaults/EditVaultStaticDatasourcesViews";
+import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
+import { AddConnectionMenu } from "@app/components/spaces/AddConnectionMenu";
+import { EditVaultManagedDataSourcesViews } from "@app/components/spaces/EditVaultManagedDatasourcesViews";
+import { EditVaultStaticDatasourcesViews } from "@app/components/spaces/EditVaultStaticDatasourcesViews";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
 import { useDataSources } from "@app/lib/swr/data_sources";
 import {
   useDeleteFolderOrWebsite,
-  useVaultDataSourceViewsWithDetails,
-} from "@app/lib/swr/vaults";
+  useSpaceDataSourceViewsWithDetails,
+} from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
 import { ViewFolderAPIModal } from "../ViewFolderAPIModal";
@@ -81,7 +81,7 @@ type VaultResourcesListProps = {
   isAdmin: boolean;
   canWriteInVault: boolean;
   vault: SpaceType;
-  systemVault: SpaceType;
+  systemSpace: SpaceType;
   category: Exclude<DataSourceViewCategory, "apps">;
   onSelect: (sId: string) => void;
   integrations: DataSourceIntegration[];
@@ -108,12 +108,12 @@ const getTableColumns = ({
     ),
   };
 
-  const isGlobalOrSystemVault = ["global", "system"].includes(vault.kind);
+  const isGlobalOrSystemSpace = ["global", "system"].includes(vault.kind);
 
   const managedByColumn = {
     header: "Managed by",
     accessorFn: (row: RowData) =>
-      isGlobalOrSystemVault
+      isGlobalOrSystemSpace
         ? row.dataSourceView.dataSource.editedByUser?.imageUrl
         : row.dataSourceView.editedByUser?.imageUrl,
     meta: {
@@ -123,7 +123,7 @@ const getTableColumns = ({
     accessorKey: "managedBy",
     cell: (info: CellContext<RowData, string>) => {
       const dsv = info.row.original.dataSourceView;
-      const editedByUser = isGlobalOrSystemVault
+      const editedByUser = isGlobalOrSystemSpace
         ? dsv.dataSource.editedByUser
         : dsv.editedByUser;
 
@@ -252,7 +252,7 @@ export const VaultResourcesList = ({
   isAdmin,
   canWriteInVault,
   vault,
-  systemVault,
+  systemSpace,
   category,
   onSelect,
   integrations,
@@ -276,7 +276,7 @@ export const VaultResourcesList = ({
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
-  const isSystemVault = systemVault.sId === vault.sId;
+  const isSystemSpace = systemSpace.sId === vault.sId;
   const isManagedCategory = category === "managed";
   const isWebsite = category === "website";
   const isFolder = category === "folder";
@@ -301,7 +301,7 @@ export const VaultResourcesList = ({
     vaultDataSourceViews,
     isVaultDataSourceViewsLoading,
     mutateRegardlessOfQueryParams: mutateVaultDataSourceViews,
-  } = useVaultDataSourceViewsWithDetails({
+  } = useSpaceDataSourceViewsWithDetails({
     workspaceId: owner.sId,
     vaultId: vault.sId,
     category: category,
@@ -421,7 +421,7 @@ export const VaultResourcesList = ({
             }}
           />
         )}
-        {isSystemVault && category === "managed" && (
+        {isSystemSpace && category === "managed" && (
           <div className="flex items-center justify-center text-sm font-normal text-element-700">
             <AddConnectionMenu
               owner={owner}
@@ -432,7 +432,7 @@ export const VaultResourcesList = ({
                   .map(
                     (v) => v.dataSource
                   ) as DataSourceWithConnectorDetailsType[]
-                // We need to filter and then cast because useVaultDataSourceViewsWithDetails can return dataSources with connectorProvider as null
+                // We need to filter and then cast because useSpaceDataSourceViewsWithDetails can return dataSources with connectorProvider as null
               }
               setIsProviderLoading={(provider, isLoading) => {
                 setIsNewConnectorLoading(isLoading);
@@ -468,12 +468,12 @@ export const VaultResourcesList = ({
             />
           </div>
         )}
-        {!isSystemVault && isManagedCategory && (
+        {!isSystemSpace && isManagedCategory && (
           <EditVaultManagedDataSourcesViews
             isAdmin={isAdmin}
             onSelectedDataUpdated={onSelectedDataUpdated}
             owner={owner}
-            systemVault={systemVault}
+            systemSpace={systemSpace}
             vault={vault}
           />
         )}

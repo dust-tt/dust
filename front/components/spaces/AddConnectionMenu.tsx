@@ -28,7 +28,7 @@ import {
   isConnectionIdRequiredForProvider,
   isConnectorProviderAllowedForPlan,
 } from "@app/lib/connector_providers";
-import { useSystemVault } from "@app/lib/swr/vaults";
+import { useSystemSpace } from "@app/lib/swr/spaces";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 export type DataSourceIntegration = {
@@ -104,23 +104,23 @@ export const AddConnectionMenu = ({
       isConnectionIdRequiredForProvider(i.connectorProvider)
   );
 
-  const { systemVault } = useSystemVault({
+  const { systemSpace } = useSystemSpace({
     workspaceId: owner.sId,
   });
 
-  if (!systemVault) {
+  if (!systemSpace) {
     return null;
   }
 
   const postDataSource = async ({
     owner,
-    systemVault,
+    systemSpace,
     provider,
     connectionId,
     suffix,
   }: {
     owner: WorkspaceType;
-    systemVault: SpaceType;
+    systemSpace: SpaceType;
     provider: ConnectorProvider;
     connectionId: string;
     suffix: string | null;
@@ -129,8 +129,8 @@ export const AddConnectionMenu = ({
       suffix
         ? `/api/w/${
             owner.sId
-          }/vaults/${systemVault.sId}/data_sources?suffix=${encodeURIComponent(suffix)}`
-        : `/api/w/${owner.sId}/vaults/${systemVault.sId}/data_sources`,
+          }/vaults/${systemSpace.sId}/data_sources?suffix=${encodeURIComponent(suffix)}`
+        : `/api/w/${owner.sId}/vaults/${systemSpace.sId}/data_sources`,
       {
         method: "POST",
         headers: {
@@ -168,7 +168,7 @@ export const AddConnectionMenu = ({
 
       const res = await postDataSource({
         owner,
-        systemVault,
+        systemSpace,
         provider,
         connectionId: connectionIdRes.value,
         suffix,
@@ -213,7 +213,7 @@ export const AddConnectionMenu = ({
   }) => {
     return postDataSource({
       owner,
-      systemVault,
+      systemSpace,
       provider,
       connectionId,
       suffix,

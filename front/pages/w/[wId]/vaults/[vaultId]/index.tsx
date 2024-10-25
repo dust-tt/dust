@@ -4,13 +4,13 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useMemo, useState } from "react";
 
-import { CreateOrEditVaultModal } from "@app/components/vaults/CreateOrEditVaultModal";
-import { VaultCategoriesList } from "@app/components/vaults/VaultCategoriesList";
-import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
-import { VaultLayout } from "@app/components/vaults/VaultLayout";
+import { CreateOrEditVaultModal } from "@app/components/spaces/CreateOrEditVaultModal";
+import { VaultCategoriesList } from "@app/components/spaces/VaultCategoriesList";
+import type { VaultLayoutProps } from "@app/components/spaces/VaultLayout";
+import { VaultLayout } from "@app/components/spaces/VaultLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { useVaultInfo } from "@app/lib/swr/vaults";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getVaultIcon, getVaultName } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
@@ -65,7 +65,7 @@ export default function Vault({
   userId,
   vault,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { vaultInfo } = useVaultInfo({
+  const { vaultInfo } = useSpaceInfo({
     workspaceId: owner.sId,
     vaultId: vault.sId,
   });

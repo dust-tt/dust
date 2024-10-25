@@ -5,7 +5,7 @@ import { sortBy } from "lodash";
 import { useMemo } from "react";
 
 import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
-import { useVaults } from "@app/lib/swr/vaults";
+import { useSpaces } from "@app/lib/swr/spaces";
 
 interface AssistantBuilderDustAppModalProps {
   allowedVaults: SpaceType[];
@@ -67,7 +67,7 @@ function PickDustApp({
   show,
   onPick,
 }: PickDustAppProps) {
-  const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
+  const { vaults, isVaultsLoading } = useSpaces({ workspaceId: owner.sId });
 
   const filteredVaults = useMemo(
     () =>

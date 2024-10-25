@@ -25,7 +25,7 @@ import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useState } from "react";
 
-import { useVaultInfo } from "@app/lib/swr/vaults";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {
@@ -116,7 +116,7 @@ export const VaultCategoriesList = ({
 }: VaultCategoriesListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
 
-  const { vaultInfo, isVaultInfoLoading } = useVaultInfo({
+  const { vaultInfo, isVaultInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
     vaultId: vault.sId,
   });

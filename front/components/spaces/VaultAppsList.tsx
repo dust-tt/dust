@@ -17,7 +17,7 @@ import { useRef } from "react";
 import { useState } from "react";
 import * as React from "react";
 
-import { VaultCreateAppModal } from "@app/components/vaults/VaultCreateAppModal";
+import { VaultCreateAppModal } from "@app/components/spaces/VaultCreateAppModal";
 import { useApps } from "@app/lib/swr/apps";
 
 type RowData = {

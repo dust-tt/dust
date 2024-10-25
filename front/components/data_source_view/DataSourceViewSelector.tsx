@@ -38,7 +38,7 @@ import {
   isWebsite,
 } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { useVaults } from "@app/lib/swr/vaults";
+import { useSpaces } from "@app/lib/swr/spaces";
 
 const ONLY_ONE_VAULT_PER_SELECTION = true;
 
@@ -108,7 +108,7 @@ export function DataSourceViewsSelector({
   viewType,
   isRootSelectable,
 }: DataSourceViewsSelectorProps) {
-  const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
+  const { vaults, isVaultsLoading } = useSpaces({ workspaceId: owner.sId });
 
   const includesConnectorIDs: (string | null)[] = [];
   const excludesConnectorIDs: (string | null)[] = [];
