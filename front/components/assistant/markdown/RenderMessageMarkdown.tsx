@@ -17,10 +17,6 @@ import type { MarkdownCitation } from "@app/components/assistant/markdown/Markdo
 import { MarkdownContentContext } from "@app/components/assistant/markdown/MarkdownContentContext";
 import { classNames } from "@app/lib/utils";
 
-const supportedDirectives = ["mention", "cite", "visualization"];
-
-const VISUALIZATION_MAGIC_LINE = "{/** visualization-complete */}";
-
 function mentionDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
@@ -74,29 +70,13 @@ function citeDirective() {
   };
 }
 
-function visualizationDirective() {
-  return (tree: any) => {
-    visit(tree, ["containerDirective"], (node) => {
-      if (node.name === "visualization") {
-        const data = node.data || (node.data = {});
-        data.hName = "visualization";
-        data.hProperties = {
-          position: node.position,
-        };
-      }
-    });
-  };
-}
-
 function showUnsupportedDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
       if (node.type === "textDirective") {
-        if (!supportedDirectives.includes(node.name)) {
-          // it's not a valid directive, so we'll leave it as plain text
-          node.type = "text";
-          node.value = `:${node.name}${node.children ? node.children.map((c: any) => c.value).join("") : ""}`;
-        }
+        // it's not a valid directive, so we'll leave it as plain text
+        node.type = "text";
+        node.value = `:${node.name}${node.children ? node.children.map((c: any) => c.value).join("") : ""}`;
       }
     });
   };
@@ -133,31 +113,7 @@ function sanitizeContent(str: string): string {
     str += "`";
   }
 
-  const lines = str.split("\n");
-
-  let openVisualization = false;
-  for (let i = 0; i < lines.length; i++) {
-    // (2) Replace legacy <visualization> XML tags by the markdown directive syntax for backward
-    // compatibility with older <visualization> tags.
-    if (lines[i].trim() === "<visualization>") {
-      lines[i] = ":::visualization";
-    }
-    if (lines[i].trim() === "</visualization>") {
-      lines[i] = ":::";
-    }
-
-    // (3) Prepend closing visualization markdow directive with a magic word to detect that the
-    // visualization is complete solely based on its content during token streaming.
-    if (lines[i].trim().startsWith(":::visualization")) {
-      openVisualization = true;
-    }
-    if (openVisualization && lines[i].trim() === ":::") {
-      lines.splice(i, 0, VISUALIZATION_MAGIC_LINE);
-      openVisualization = false;
-    }
-  }
-
-  return lines.join("\n");
+  return str;
 }
 
 type CitationsContextType = {
@@ -190,6 +146,7 @@ export function RenderMessageMarkdown({
   textColor,
   isLastMessage,
   additionalMarkdownComponents,
+  additionalMarkdownPlugins,
 }: {
   content: string;
   isStreaming: boolean;
@@ -198,6 +155,7 @@ export function RenderMessageMarkdown({
   textColor?: string;
   isLastMessage: boolean;
   additionalMarkdownComponents?: Components;
+  additionalMarkdownPlugins?: PluggableList;
 }) {
   const processedContent = useMemo(() => sanitizeContent(content), [content]);
 
@@ -285,13 +243,13 @@ export function RenderMessageMarkdown({
     () => [
       remarkDirective,
       mentionDirective,
-      visualizationDirective,
       citeDirective(),
       remarkGfm,
       [remarkMath, { singleDollarTextMath: false }],
+      ...(additionalMarkdownPlugins || []),
       showUnsupportedDirective,
     ],
-    []
+    [additionalMarkdownPlugins]
   );
 
   return (
@@ -308,7 +266,6 @@ export function RenderMessageMarkdown({
         <MarkdownContentContext.Provider
           value={{ content: processedContent, isStreaming, isLastMessage }}
         >
-          {/* <MermaidDisplayProvider> */}
           <ReactMarkdown
             linkTarget="_blank"
             components={markdownComponents}
@@ -319,7 +276,6 @@ export function RenderMessageMarkdown({
           >
             {processedContent}
           </ReactMarkdown>
-          {/* </MermaidDisplayProvider> */}
         </MarkdownContentContext.Provider>
       </CitationsContext.Provider>
     </div>

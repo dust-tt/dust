@@ -45,17 +45,21 @@ import {
   useRef,
   useState,
 } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import type { RetrievedDocumentCitation } from "@app/components/actions/retrieval/utils";
 import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
-import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { RenderMessageMarkdown } from "@app/components/assistant/markdown/RenderMessageMarkdown";
-import { CodeBlockWithExtendedSupport } from "@app/components/markdown/CodeBlock";
-import { VisualizationBlock } from "@app/components/markdown/Visualization";
+import {
+  getVisualizationPlugin,
+  sanitizeVisualizationContent,
+  visualizationDirective,
+} from "@app/components/markdown/Visualization";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
@@ -408,43 +412,25 @@ export function AgentMessage({
     agentMessageToRender.status,
     agentMessageToRender.sId,
   ]);
-
   const { configuration: agentConfiguration } = agentMessageToRender;
 
-  const additionalMarkdownComponents = useMemo(
+  // @ts-expect-error - `visualization` is a custom tag, currently refused by
+  // react-markdown types although the functionality is supported
+  const additionalMarkdownComponents: Components = useMemo(
     () => ({
-      // @ts-expect-error - `visualization` is a custom tag, currently refused by
-      // react-markdown types although the functionality is supported
-      visualization: ({ position }) => {
-        return (
-          <VisualizationBlock
-            position={position}
-            customRenderer={{
-              visualization: (
-                code: string,
-                complete: boolean,
-                lineStart: number
-              ) => {
-                return (
-                  <VisualizationActionIframe
-                    owner={owner}
-                    visualization={{
-                      code,
-                      complete,
-                      identifier: `viz-${message.sId}-${lineStart}`,
-                    }}
-                    key={`viz-${message.sId}-${lineStart}`}
-                    conversationId={conversationId}
-                    agentConfigurationId={agentConfiguration.sId}
-                  />
-                );
-              },
-            }}
-          />
-        );
-      },
+      visualization: getVisualizationPlugin(
+        owner,
+        agentConfiguration.sId,
+        conversationId,
+        message.sId
+      ),
     }),
     [owner, conversationId, message.sId, agentConfiguration.sId]
+  );
+
+  const additionalMarkdownPlugins: PluggableList = useMemo(
+    () => [visualizationDirective],
+    []
   );
 
   return (
@@ -548,7 +534,7 @@ export function AgentMessage({
             ) : (
               <>
                 <RenderMessageMarkdown
-                  content={agentMessage.content}
+                  content={sanitizeVisualizationContent(agentMessage.content)}
                   isStreaming={
                     streaming && lastTokenClassification === "tokens"
                   }
@@ -559,6 +545,7 @@ export function AgentMessage({
                   }}
                   isLastMessage={isLastMessage}
                   additionalMarkdownComponents={additionalMarkdownComponents}
+                  additionalMarkdownPlugins={additionalMarkdownPlugins}
                 />
               </>
             )}
