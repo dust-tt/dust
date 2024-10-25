@@ -2045,5 +2045,7 @@ export function canAccessConversation(
       ? getConversationGroupIdsFromModel(owner, conversation)
       : conversation.groupIds;
 
-  return auth.canRead(Authenticator.aclsFromGroupIds(groupIds));
+  return auth.canRead(
+    Authenticator.createResourcePermissionsFromGroupIds(groupIds)
+  );
 }
