@@ -35,6 +35,10 @@ path = "bin/oauth.rs"
 name = "oauth_generate_key"
 path = "bin/oauth_generate_key.rs"
 
+[[bin]]
+name = "migration_scrub_old_superseded_versions"
+path = "bin/migrations/20241025_scrub_old_superseded_verions.rs"
+
 [[test]]
 name = "oauth_connections_test"
 path = "src/oauth/tests/functional_connections.rs"
