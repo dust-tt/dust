@@ -29,7 +29,6 @@ export function CodeBlockWithExtendedSupport({
   className?: string;
   inline?: boolean;
 }) {
-  //   const { isValidMermaid, showMermaid } = useMermaidDisplay();
   const validChildrenContent = String(children).trim();
 
   const [showMermaid, setShowMermaid] = useState<boolean>(false);

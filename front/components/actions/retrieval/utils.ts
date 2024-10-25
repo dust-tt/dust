@@ -4,7 +4,11 @@ import {
   getTitleFromRetrievedDocument,
 } from "@dust-tt/types";
 
-export function makeDocumentCitation(document: RetrievalDocumentType) {
+import type { MarkdownCitation } from "@app/components/assistant/markdown/MarkdownCitation";
+
+export function makeDocumentCitation(
+  document: RetrievalDocumentType
+): MarkdownCitation {
   return {
     href: document.sourceUrl ?? undefined,
     title: getTitleFromRetrievedDocument(document),
@@ -12,6 +16,8 @@ export function makeDocumentCitation(document: RetrievalDocumentType) {
   };
 }
 
-export function makeDocumentCitations(documents: RetrievalDocumentType[]) {
+export function makeDocumentCitations(
+  documents: RetrievalDocumentType[]
+): MarkdownCitation[] {
   return documents.map(makeDocumentCitation);
 }

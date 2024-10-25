@@ -1,6 +1,10 @@
 import type { WebsearchActionType, WebsearchResultType } from "@dust-tt/types";
 
-export function makeWebsearchResultsCitation(result: WebsearchResultType) {
+import type { MarkdownCitation } from "@app/components/assistant/markdown/MarkdownCitation";
+
+export function makeWebsearchResultsCitation(
+  result: WebsearchResultType
+): MarkdownCitation {
   return {
     description: result.snippet,
     href: result.link,
@@ -9,6 +13,8 @@ export function makeWebsearchResultsCitation(result: WebsearchResultType) {
   };
 }
 
-export function makeWebsearchResultsCitations(action: WebsearchActionType) {
+export function makeWebsearchResultsCitations(
+  action: WebsearchActionType
+): MarkdownCitation[] {
   return action.output?.results.map(makeWebsearchResultsCitation) ?? [];
 }
