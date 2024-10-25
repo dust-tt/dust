@@ -1,8 +1,8 @@
 import type {
-  ACLType,
   GroupType,
   LightWorkspaceType,
   ModelId,
+  ResourcePermission,
   Result,
   UserType,
 } from "@dust-tt/types";
@@ -680,23 +680,36 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // Permissions
 
-  acl(): ACLType {
-    return {
-      aclEntries: [
-        {
-          groupId: this.id,
-          permissions: ["read"],
-        },
-      ],
-    };
+  /**
+   * Returns the requested permissions for this resource.
+   *
+   * Configures two types of access:
+   * 1. Group-based: The group's members get read access
+   * 2. Role-based: Workspace admins get read and write access
+   *
+   * @returns Array of ResourcePermission objects defining the default access configuration
+   */
+  requestedPermissions(): ResourcePermission[] {
+    return [
+      {
+        groups: [
+          {
+            id: this.id,
+            permissions: ["read"],
+          },
+        ],
+        roles: [{ role: "admin", permissions: ["read", "write"] }],
+        workspaceId: this.workspaceId,
+      },
+    ];
   }
 
   canRead(auth: Authenticator): boolean {
-    return auth.isAdmin() || auth.canRead([this.acl()]);
+    return auth.canRead(this.requestedPermissions());
   }
 
   canWrite(auth: Authenticator): boolean {
-    return auth.isAdmin();
+    return auth.canWrite(this.requestedPermissions());
   }
 
   isSystem(): boolean {

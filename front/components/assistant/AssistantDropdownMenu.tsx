@@ -89,8 +89,14 @@ export function AssistantDropdownMenu({
             className="rounded-2xl"
           />
         );
+
       case "plain":
-        return <Icon visual={MoreIcon} />;
+        return (
+          <div>
+            <Icon visual={MoreIcon} />
+          </div>
+        );
+
       default:
         assertNever(variant);
     }
