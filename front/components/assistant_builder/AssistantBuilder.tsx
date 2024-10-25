@@ -8,7 +8,9 @@ import {
   IconButton,
   MagicIcon,
   useSendNotification,
-  Tabs, TabsList, TabsTrigger,
+  Tabs,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
