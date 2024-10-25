@@ -142,7 +142,7 @@ async fn clean_stored_versions_for_data_source(
                     Ok::<(), anyhow::Error>(())
                 }),
         )
-        .buffer_unordered(24)
+        .buffer_unordered(32)
         .try_collect::<Vec<_>>()
         .await?;
 
@@ -210,7 +210,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let pool = store.raw_pool();
 
-    let limit: usize = 256;
+    let limit: usize = 16000;
     let mut last_data_source_id = 0;
     let mut iteration = 0;
 
@@ -232,7 +232,7 @@ async fn main() -> Result<(), anyhow::Error> {
                 .await
             }
         }))
-        .buffer_unordered(12)
+        .buffer_unordered(16)
         .try_collect::<Vec<_>>()
         .await?;
 

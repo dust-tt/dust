@@ -62,7 +62,7 @@ impl FileStorageDocument {
 
         match Object::delete(&bucket, &path).await {
             Ok(_) => {
-                println!("Deleted: path={}", path);
+                // println!("Deleted: path={}", path);
                 Ok(true)
             }
             Err(e) => match e {
