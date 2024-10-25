@@ -16,8 +16,8 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ProcessSchemaPropertyType,
   Result,
-  TimeframeUnit,
   SpaceType,
+  TimeframeUnit,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
