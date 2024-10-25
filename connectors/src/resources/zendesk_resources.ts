@@ -13,6 +13,7 @@ import {
   getBrandInternalId,
   getCategoryInternalId,
   getHelpCenterInternalId,
+  getTicketInternalId,
   getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
@@ -485,6 +486,21 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       permission: this.permission,
 
       connectorId: this.connectorId,
+    };
+  }
+
+  toContentNode({ connectorId }: { connectorId: number }): ContentNode {
+    return {
+      provider: "zendesk",
+      internalId: getTicketInternalId(connectorId, this.ticketId),
+      parentInternalId: getBrandInternalId(connectorId, this.brandId),
+      type: "file",
+      title: this.name,
+      sourceUrl: this.url,
+      expandable: false,
+      permission: this.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: this.updatedAt.getTime(),
     };
   }
 

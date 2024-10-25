@@ -143,18 +143,9 @@ export async function retrieveZendeskTicketPermissions({
           connectorId,
           brandId: objectId,
         });
-        const nodes: ContentNode[] = ticketsInDb.map((ticket) => ({
-          provider: connector.type,
-          internalId: getTicketInternalId(connectorId, ticket.ticketId),
-          parentInternalId: parentInternalId,
-          type: "file",
-          title: ticket.name,
-          sourceUrl: ticket.url,
-          expandable: false,
-          permission: ticket.permission,
-          dustDocumentId: null,
-          lastUpdatedAt: ticket.updatedAt.getTime(),
-        }));
+        const nodes: ContentNode[] = ticketsInDb.map((ticket) =>
+          ticket.toContentNode({ connectorId })
+        );
         nodes.sort((a, b) => a.title.localeCompare(b.title));
         return nodes;
       }
