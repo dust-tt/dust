@@ -38,6 +38,14 @@ type AssistantSidebarMenuProps = {
   owner: WorkspaceType;
 };
 
+type GroupLabel =
+  | "Today"
+  | "Yesterday"
+  | "Last Week"
+  | "Last Month"
+  | "Last 12 Months"
+  | "Older";
+
 export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   const router = useRouter();
   const { setSidebarOpen } = useContext(SidebarContext);
@@ -122,12 +130,12 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     const lastMonth = moment().subtract(1, "months").startOf("day");
     const lastYear = moment().subtract(1, "years").startOf("day");
 
-    const groups: { [key: string]: ConversationType[] } = {
+    const groups: Record<GroupLabel, ConversationType[]> = {
       Today: [],
       Yesterday: [],
       "Last Week": [],
       "Last Month": [],
-      "Last Year": [],
+      "Last 12 Months": [],
       Older: [],
     };
 
@@ -153,7 +161,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   const conversationsByDate = conversations.length
     ? groupConversationsByDate(conversations)
-    : {};
+    : ({} as Record<GroupLabel, ConversationType[]>);
 
   const { setAnimate } = useContext(InputBarContext);
 
@@ -295,7 +303,8 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
             )}
             {conversationsByDate &&
               Object.keys(conversationsByDate).map((dateLabel) => {
-                const conversations = conversationsByDate[dateLabel];
+                const conversations =
+                  conversationsByDate[dateLabel as GroupLabel];
                 return (
                   conversations.length > 0 && (
                     <React.Fragment key={dateLabel}>
