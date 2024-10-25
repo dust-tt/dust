@@ -1,3 +1,4 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -5,11 +6,10 @@ import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { useCallback, useContext, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   fetcher,
   getErrorFromResponse,
@@ -279,7 +279,7 @@ export function useDeleteAgentConfiguration({
   owner: LightWorkspaceType;
   agentConfiguration: LightAgentConfigurationType;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
@@ -332,7 +332,7 @@ export function useUpdateAgentScope({
   owner: LightWorkspaceType;
   agentConfigurationId: string | null;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { mutateAgentConfiguration: mutateCurrentAgentConfiguration } =
     useAgentConfiguration({
       workspaceId: owner.sId,
@@ -413,7 +413,7 @@ export function useUpdateUserFavorite({
   owner: LightWorkspaceType;
   agentConfigurationId: string;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { mutateAgentConfiguration: mutateCurrentAgentConfiguration } =
     useAgentConfiguration({
       workspaceId: owner.sId,

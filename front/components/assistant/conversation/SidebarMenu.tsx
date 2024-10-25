@@ -16,6 +16,7 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { ConversationType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import { isBuilder, isOnlyUser } from "@dust-tt/types";
@@ -26,7 +27,6 @@ import { useRouter } from "next/router";
 import React, { useCallback, useContext, useState } from "react";
 
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
   useConversations,
@@ -54,7 +54,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     "all" | "selection" | null
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const toggleMultiSelect = useCallback(() => {
     setIsMultiSelect((prev) => !prev);

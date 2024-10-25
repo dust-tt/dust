@@ -1,3 +1,4 @@
+import type { NotificationType } from "@dust-tt/sparkle";
 import {
   Avatar,
   Button,
@@ -9,6 +10,7 @@ import {
   Page,
   TrashIcon,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
   ConnectorPermission,
@@ -25,7 +27,7 @@ import {
   MANAGED_DS_DELETABLE,
 } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -41,8 +43,6 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 import type { ContentNodeTreeItemStatus } from "./ContentNodeTree";
 import { ContentNodeTree } from "./ContentNodeTree";
-import type { NotificationType } from "./sparkle/Notification";
-import { SendNotificationsContext } from "./sparkle/Notification";
 
 const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "confluence",
@@ -374,7 +374,7 @@ function DataSourceDeletionModal({
   owner,
 }: DataSourceDeletionModalProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { user } = useUser();
   const { systemVault } = useSystemVault({
@@ -578,7 +578,7 @@ export function ConnectorPermissionsModal({
   const plan = activeSubscription ? activeSubscription.plan : null;
 
   const [saving, setSaving] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { user } = useUser();
 
   function closeModal(save: boolean) {

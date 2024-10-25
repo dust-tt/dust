@@ -1,11 +1,11 @@
 import { UserProvider } from "@auth0/nextjs-auth0/client";
 import { SparkleContext } from "@dust-tt/sparkle";
+import { Notification } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { MouseEvent } from "react";
 import type { UrlObject } from "url";
 
 import { ConfirmPopupArea } from "@app/components/Confirm";
-import { NotificationArea } from "@app/components/sparkle/Notification";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
 
 function NextLinkWrapper({
@@ -66,7 +66,7 @@ export default function RootLayout({
       <UserProvider>
         <SidebarProvider>
           <ConfirmPopupArea>
-            <NotificationArea>{children}</NotificationArea>
+            <Notification.Area>{children}</Notification.Area>
           </ConfirmPopupArea>
         </SidebarProvider>
       </UserProvider>

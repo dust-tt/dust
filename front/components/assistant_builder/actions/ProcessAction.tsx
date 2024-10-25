@@ -12,10 +12,16 @@ import {
   XCircleIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { Result, TimeframeUnit, VaultType } from "@dust-tt/types";
-import type { ProcessSchemaPropertyType, WorkspaceType } from "@dust-tt/types";
+import { useSendNotification } from "@dust-tt/sparkle";
+import type {
+  ProcessSchemaPropertyType,
+  Result,
+  TimeframeUnit,
+  VaultType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
@@ -25,7 +31,6 @@ import type {
   AssistantBuilderProcessConfiguration,
 } from "@app/components/assistant_builder/types";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { classNames } from "@app/lib/utils";
 
 export function hasErrorActionProcess(
@@ -293,7 +298,7 @@ export function ActionProcess({
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [timeFrameError, setTimeFrameError] = useState<string | null>(null);
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   useEffect(() => {
     if (actionConfiguration) {

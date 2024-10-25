@@ -1,3 +1,4 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   FileUploadedRequestResponseBody,
   FileUploadRequestResponseBody,
@@ -16,7 +17,6 @@ import {
 } from "@dust-tt/types";
 import { useContext, useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getMimeTypeFromFile } from "@app/lib/file";
 
 interface FileBlob {
@@ -58,7 +58,7 @@ export function useFileUploaderService({
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
 
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const handleFilesUpload = async (files: File[]) => {
     setIsProcessingFiles(true);

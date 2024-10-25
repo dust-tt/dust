@@ -7,20 +7,14 @@ import {
   Modal,
   Page,
   SliderToggle,
+  useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, UserType, VaultType } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { ConfirmDeleteVaultDialog } from "@app/components/vaults/ConfirmDeleteVaultDialog";
 import { SearchMembersPopover } from "@app/components/vaults/SearchMembersPopover";
 import {
@@ -289,7 +283,7 @@ function MembersSearchAndList({
   owner,
   selectedMembers,
 }: MembersSearchAndListProps) {
-  const sendNotifications = useContext(SendNotificationsContext);
+  const sendNotifications = useSendNotification();
 
   const getTableColumns = useCallback(() => {
     const removeMember = (userId: string) => {

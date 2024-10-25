@@ -12,6 +12,7 @@ import {
   Spinner,
   TextArea,
   TrashIcon,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
@@ -23,15 +24,16 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
+  BIG_FILE_SIZE,
+  Err,
+  isSlugified,
   MAX_FILE_LENGTH,
+  MAX_FILE_SIZES,
   maxFileSizeToHumanReadable,
   parseAndStringifyCsv,
 } from "@dust-tt/types";
-import { Err } from "@dust-tt/types";
-import { BIG_FILE_SIZE, isSlugified, MAX_FILE_SIZES } from "@dust-tt/types";
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useDataSourceViewDocument } from "@app/lib/swr/data_source_views";
 import { useTable } from "@app/lib/swr/tables";
@@ -91,7 +93,7 @@ const DocumentUploadOrEditModal = ({
   owner,
   plan,
 }: DocumentOrTableUploadOrEditModalProps) => {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [documentState, setDocumentState] = useState<Document>({
     name: "",
@@ -443,7 +445,7 @@ const TableUploadOrEditModal = ({
   onClose,
   owner,
 }: DocumentOrTableUploadOrEditModalProps) => {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [tableState, setTableState] = useState<Table>({

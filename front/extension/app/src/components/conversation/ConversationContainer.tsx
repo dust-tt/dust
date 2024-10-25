@@ -28,7 +28,7 @@ export function ConversationContainer({
   const { animate, setAnimate } = useContext(InputBarContext);
 
   // TODO use notification once they are in Sparkle.
-  // const sendNotification = useContext(SendNotificationsContext);
+  // const sendNotification = useSendNotification();
   const sendNotification = console.log;
 
   useEffect(() => {

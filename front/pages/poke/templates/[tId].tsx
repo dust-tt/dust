@@ -7,6 +7,7 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { Input } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   CreateTemplateFormType,
   TemplateTagCodeType,
@@ -56,7 +57,6 @@ import {
   PokeSelectValue,
 } from "@app/components/poke/shadcn/ui/select";
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
@@ -456,7 +456,7 @@ function TemplatesPage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
-  const sendNotification = React.useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const { assistantTemplate } = usePokeAssistantTemplate({
     templateId: templateId === "new" ? null : templateId,

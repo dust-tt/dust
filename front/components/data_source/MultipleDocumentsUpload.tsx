@@ -1,4 +1,5 @@
 import { Dialog } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   LightWorkspaceType,
@@ -9,7 +10,6 @@ import { Err, Ok } from "@dust-tt/types";
 import { useContext, useEffect, useRef, useState } from "react";
 
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 
 const UPLOAD_ACCEPT = [".txt", ".pdf", ".md", ".csv"];
@@ -46,7 +46,7 @@ export const MultipleDocumentsUpload = ({
     completed: number;
   }>(null);
 
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const handleUpsert = async (text: string, documentId: string) => {
     const body: PostDataSourceWithNameDocumentRequestBody = {

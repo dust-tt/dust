@@ -10,20 +10,21 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { DataSourceViewType, SubscriptionType } from "@dust-tt/types";
-import type { LightAgentConfigurationType } from "@dust-tt/types";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
+  DataSourceViewType,
   LabsTranscriptsProviderType,
+  LightAgentConfigurationType,
+  SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { setupOAuthConnection } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -86,7 +87,7 @@ export default function LabsTranscriptsIndex({
   subscription,
   dataSourcesViews,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const [isDeleteProviderDialogOpened, setIsDeleteProviderDialogOpened] =
     useState(false);
 

@@ -4,10 +4,11 @@ import {
   ContentMessage,
   InformationCircleIcon,
   TableIcon,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, TablesQueryActionType } from "@dust-tt/types";
 import { getTablesQueryResultsFileTitle } from "@dust-tt/types";
-import { useCallback, useContext } from "react";
+import { useCallback } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
@@ -16,7 +17,6 @@ import {
   RenderMessageMarkdown,
 } from "@app/components/assistant/RenderMessageMarkdown";
 import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 export function TablesQueryActionDetails({
   action,
@@ -101,7 +101,7 @@ function QueryTablesResults({
   action: TablesQueryActionType;
   owner: LightWorkspaceType;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { output } = action;
   const title = getTablesQueryResultsFileTitle({ output });
 
