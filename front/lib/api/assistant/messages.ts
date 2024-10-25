@@ -433,7 +433,7 @@ export async function fetchConversationMessages(
 
 export function canReadMessage(auth: Authenticator, message: AgentMessageType) {
   return auth.canRead(
-    Authenticator.resourcePermissionsFromGroupIds(
+    Authenticator.createResourcePermissionsFromGroupIds(
       message.configuration.groupIds
     )
   );

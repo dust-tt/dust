@@ -558,7 +558,9 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   const allowedAgentConfigurations = allAgentConfigurations
     .flat()
     .filter((a) =>
-      auth.canRead(Authenticator.resourcePermissionsFromGroupIds(a.groupIds))
+      auth.canRead(
+        Authenticator.createResourcePermissionsFromGroupIds(a.groupIds)
+      )
     );
 
   return applySortAndLimit(allowedAgentConfigurations.flat());

@@ -113,7 +113,7 @@ export class Authenticator {
    * @param groupIds - Array of group string identifiers
    * @returns Array of ResourcePermission objects, one per group, requiring membership in all groups
    */
-  static resourcePermissionsFromGroupIds(
+  static createResourcePermissionsFromGroupIds(
     groupIds: string[]
   ): ResourcePermission[] {
     const getIdFromSIdOrThrow = (groupId: string) => {
@@ -817,7 +817,7 @@ export class Authenticator {
    * This method applies a conjunction (AND) over all resource permission entries. The user
    * must have the required permission in EVERY entry for the check to pass.
    */
-  hasPermission(
+  hasPermissionForAllResources(
     resourcePermissions: ResourcePermission[],
     permission: PermissionType
   ): boolean {
@@ -856,7 +856,7 @@ export class Authenticator {
     if (hasRolePermissions(resourcePermission)) {
       const workspace = this.getNonNullableWorkspace();
 
-      // Check for public access first.
+      // Check for public access first. Only case of cross-workspace permission.
       const publicPermission = resourcePermission.roles
         .find((r) => r.role === "none")
         ?.permissions.includes(permission);
@@ -886,15 +886,15 @@ export class Authenticator {
   }
 
   canAdministrate(resourcePermissions: ResourcePermission[]): boolean {
-    return this.hasPermission(resourcePermissions, "admin");
+    return this.hasPermissionForAllResources(resourcePermissions, "admin");
   }
 
   canRead(resourcePermissions: ResourcePermission[]): boolean {
-    return this.hasPermission(resourcePermissions, "read");
+    return this.hasPermissionForAllResources(resourcePermissions, "read");
   }
 
   canWrite(resourcePermissions: ResourcePermission[]): boolean {
-    return this.hasPermission(resourcePermissions, "write");
+    return this.hasPermissionForAllResources(resourcePermissions, "write");
   }
 
   key(): KeyAuthType | null {
