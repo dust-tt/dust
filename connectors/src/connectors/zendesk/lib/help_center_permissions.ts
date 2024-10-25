@@ -231,15 +231,8 @@ export async function retrieveZendeskHelpCenterPermissions({
         hasHelpCenter =
           brandInDatabase !== null && brandInDatabase.hasHelpCenter;
       } else {
-        try {
-          const fetchedBrand = await zendeskApiClient.brand.show(objectId);
-          hasHelpCenter = fetchedBrand.result.brand.has_help_center;
-        } catch (e) {
-          logger.error(
-            { connectorId, brandId: objectId },
-            "[Zendesk] Could not fetch brand."
-          );
-        }
+        const fetchedBrand = await zendeskApiClient.brand.show(objectId);
+        hasHelpCenter = fetchedBrand.result.brand.has_help_center;
       }
       if (hasHelpCenter) {
         const helpCenterNode: ContentNode = {
