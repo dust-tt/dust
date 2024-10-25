@@ -132,8 +132,12 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   async setDataSourceId(auth: Authenticator, dataSourceId: string | null) {
-    if (!dataSourceId) {
+    if (dataSourceId === undefined) {
       return;
+    }
+
+    if (dataSourceId === null) {
+      return this.update({ dataSourceId: null });
     }
 
     const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);

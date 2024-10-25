@@ -103,26 +103,36 @@ export default function LabsTranscriptsIndex({
     sort: "priority",
   });
 
+  const handleSetStoreInFolder: Dispatch<SetStateAction<boolean>> = async (
+    newValue
+  ) => {
+    if (!newValue && transcriptsConfiguration) {
+      await handleSetDataSource(transcriptsConfiguration.id, null);
+    }
+    setStoreInFolder(newValue);
+  };
+
   const handleSetSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
-  > = (newValue) => {
+  > = async (newValue) => {
+    if (!transcriptsConfiguration) {
+      return;
+    }
+
     const newSelectionConfigurations =
       typeof newValue === "function"
         ? newValue(selectionConfigurations)
         : newValue;
 
     const keys = Object.keys(newSelectionConfigurations);
+    const lastKey = keys[keys.length - 1];
 
-    if (keys.length > 0) {
-      const lastKey = keys[keys.length - 1];
-      const finalConfigurations: DataSourceViewSelectionConfigurations = {
-        [lastKey]: newSelectionConfigurations[lastKey],
-      };
+    setSelectionConfigurations(
+      lastKey ? { [lastKey]: newSelectionConfigurations[lastKey] } : {}
+    );
+    const datasourceView = newSelectionConfigurations[lastKey].dataSourceView;
 
-      setSelectionConfigurations(finalConfigurations);
-    } else {
-      setSelectionConfigurations({});
-    }
+    await handleSetDataSource(transcriptsConfiguration.id, datasourceView);
   };
 
   const {
@@ -143,6 +153,7 @@ export default function LabsTranscriptsIndex({
 
   useEffect(() => {
     if (transcriptsConfiguration) {
+      setStoreInFolder(!!transcriptsConfiguration.dataSourceId);
       setTranscriptsConfigurationState((prev) => {
         return {
           ...prev,
@@ -273,32 +284,35 @@ export default function LabsTranscriptsIndex({
     return updateAssistant(transcriptConfigurationId, assistant);
   };
 
-  // const handleSetDataSource = async (
-  //   transcriptConfigurationId: number,
-  //   dataSource: DataSourceViewType | null
-  // ) => {
-  //   setTranscriptsConfigurationState((prev) => {
-  //     return {
-  //       ...prev,
-  //       dataSource,
-  //     };
-  //   });
+  const handleSetDataSource = async (
+    transcriptConfigurationId: number,
+    dataSource: DataSourceViewType | null
+  ) => {
+    setTranscriptsConfigurationState((prev) => {
+      return {
+        ...prev,
+        dataSource,
+      };
+    });
 
-  //   let successMessage = "The transcripts will not be stored.";
+    let successMessage = "The transcripts will not be stored.";
 
-  //   if (dataSource) {
-  //     successMessage =
-  //       "The transcripts will be stored in the folder " +
-  //       dataSource.dataSource.name;
-  //   }
-  //   await makePatchRequest(
-  //     transcriptConfigurationId,
-  //     {
-  //       dataSourceId: dataSource ? dataSource.dataSource.sId : null,
-  //     },
-  //     successMessage
-  //   );
-  // };
+    if (dataSource) {
+      successMessage =
+        "The transcripts will be stored in the folder " +
+        dataSource.dataSource.name;
+    } else {
+      successMessage = "The transcripts will not be stored.";
+    }
+
+    await makePatchRequest(
+      transcriptConfigurationId,
+      {
+        dataSourceId: dataSource ? dataSource.dataSource.sId : null,
+      },
+      successMessage
+    );
+  };
 
   const handleSetIsActive = async (
     transcriptConfigurationId: number,
@@ -656,14 +670,13 @@ export default function LabsTranscriptsIndex({
                   <Page.Layout direction="horizontal" gap="xl">
                     <SliderToggle
                       selected={storeInFolder}
-                      onClick={() => setStoreInFolder(!storeInFolder)}
+                      onClick={() => handleSetStoreInFolder(!storeInFolder)}
                       disabled={
                         !transcriptsConfigurationState.assistantSelected
                       }
                     />
                     <Page.P>
-                      Store transcripts in a Folder to use them as sources of
-                      your assistants.
+                      Store transcripts in a Folder for later use.
                     </Page.P>
                   </Page.Layout>
                   <Page.Layout direction="horizontal">
