@@ -9,6 +9,7 @@ import type {
 import { Op } from "sequelize";
 
 import {
+  getArticleInternalId,
   getBrandInternalId,
   getCategoryInternalId,
   getHelpCenterInternalId,
@@ -375,10 +376,13 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
   }: {
     connectorId: number;
     categoryId: number;
-  }): Promise<ZendeskArticle[]> {
-    return ZendeskArticle.findAll({
+  }): Promise<ZendeskArticleResource[]> {
+    const articles = await ZendeskArticle.findAll({
       where: { connectorId, categoryId, permission: "read" },
     });
+    return articles.map(
+      (article) => new ZendeskArticleResource(ZendeskArticle, article)
+    );
   }
 
   async revokePermissions(): Promise<void> {
@@ -508,6 +512,21 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
 
       connectorId: this.connectorId,
     };
+  }
+
+  toContentNode({ connectorId }: { connectorId: number }): ContentNode {
+    return {
+      provider: "zendesk",
+      internalId: getArticleInternalId(connectorId, this.articleId),
+      parentInternalId: getCategoryInternalId(connectorId, this.categoryId),
+      type: "file",
+      title: this.name,
+      sourceUrl: this.url,
+      expandable: false,
+      permission: this.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: this.updatedAt.getTime(),
+    }
   }
 
   static async fetchByArticleId({

@@ -305,18 +305,9 @@ export async function retrieveZendeskHelpCenterPermissions({
             connectorId,
             categoryId: objectId,
           });
-        nodes = articlesInDb.map((article) => ({
-          provider: connector.type,
-          internalId: getArticleInternalId(connectorId, article.categoryId),
-          parentInternalId: parentInternalId,
-          type: "file",
-          title: article.name,
-          sourceUrl: article.url,
-          expandable: false,
-          permission: article.permission,
-          dustDocumentId: null,
-          lastUpdatedAt: article.updatedAt.getTime(),
-        }));
+        nodes = articlesInDb.map((article) =>
+          article.toContentNode({ connectorId })
+        );
       }
       break;
     }
