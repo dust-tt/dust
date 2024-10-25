@@ -48,12 +48,12 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
-import type { RetrievedDocumentCitation } from "@app/components/actions/retrieval/utils";
 import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import type { MarkdownCitation } from "@app/components/assistant/markdown/MarkdownCitation";
 import { RenderMessageMarkdown } from "@app/components/assistant/markdown/RenderMessageMarkdown";
 import {
   getVisualizationPlugin,
@@ -100,11 +100,11 @@ export function AgentMessage({
     useState<boolean>(false);
 
   const [references, setReferences] = useState<{
-    [key: string]: RetrievedDocumentCitation;
+    [key: string]: MarkdownCitation;
   }>({});
 
   const [activeReferences, setActiveReferences] = useState<
-    { index: number; document: RetrievedDocumentCitation }[]
+    { index: number; document: MarkdownCitation }[]
   >([]);
 
   const shouldStream = (() => {
@@ -352,10 +352,7 @@ export function AgentMessage({
         ];
 
   // References logic.
-  function updateActiveReferences(
-    document: RetrievedDocumentCitation,
-    index: number
-  ) {
+  function updateActiveReferences(document: MarkdownCitation, index: number) {
     const existingIndex = activeReferences.find((r) => r.index === index);
     if (!existingIndex) {
       setActiveReferences([...activeReferences, { index, document }]);
@@ -385,7 +382,7 @@ export function AgentMessage({
       retrievalActionsWithDocs.map((a) => a.documents).flat()
     );
     const allDocsReferences = allDocs.reduce<{
-      [key: string]: RetrievedDocumentCitation;
+      [key: string]: MarkdownCitation;
     }>((acc, d) => {
       acc[d.reference] = makeDocumentCitation(d);
       return acc;
@@ -399,7 +396,7 @@ export function AgentMessage({
       websearchActionsWithResults.map((a) => a.output?.results).flat()
     );
     const allWebReferences = allWebResults.reduce<{
-      [key: string]: RetrievedDocumentCitation;
+      [key: string]: MarkdownCitation;
     }>((acc, l) => {
       acc[l.reference] = makeWebsearchResultsCitation(l);
       return acc;
@@ -480,7 +477,7 @@ export function AgentMessage({
     lastTokenClassification,
   }: {
     agentMessage: AgentMessageType;
-    references: { [key: string]: RetrievedDocumentCitation };
+    references: { [key: string]: MarkdownCitation };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
@@ -601,7 +598,7 @@ function getCitations({
 }: {
   activeReferences: {
     index: number;
-    document: RetrievedDocumentCitation;
+    document: MarkdownCitation;
   }[];
   lastHoveredReference: number | null;
 }) {

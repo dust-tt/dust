@@ -1,11 +1,4 @@
-import type { Citation } from "@dust-tt/sparkle";
 import type { WebsearchActionType, WebsearchResultType } from "@dust-tt/types";
-
-interface WebsearchResultCitation {
-  href: string;
-  title: string;
-  type: Exclude<React.ComponentProps<typeof Citation>["type"], undefined>;
-}
 
 export function makeWebsearchResultsCitation(result: WebsearchResultType) {
   return {
@@ -16,8 +9,6 @@ export function makeWebsearchResultsCitation(result: WebsearchResultType) {
   };
 }
 
-export function makeWebsearchResultsCitations(
-  action: WebsearchActionType
-): WebsearchResultCitation[] {
+export function makeWebsearchResultsCitations(action: WebsearchActionType) {
   return action.output?.results.map(makeWebsearchResultsCitation) ?? [];
 }
