@@ -10,7 +10,6 @@ import {
   getCategoryInternalId,
   getHelpCenterInternalId,
   getIdFromInternalId,
-  getTicketInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
