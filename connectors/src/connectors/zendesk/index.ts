@@ -318,26 +318,30 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       }
     });
 
-    const [brands, helpCenters, tickets, categories] = await Promise.all([
-      ZendeskBrandResource.fetchByBrandIds({
-        connectorId: this.connectorId,
-        brandIds,
-      }),
-      ZendeskBrandResource.fetchByBrandIds({
-        connectorId: this.connectorId,
-        brandIds: brandHelpCenterIds,
-      }),
-      ZendeskBrandResource.fetchByBrandIds({
-        connectorId: this.connectorId,
-        brandIds: brandTicketsIds,
-      }),
-      ZendeskCategoryResource.fetchByCategoryIds({
-        connectorId: this.connectorId,
-        categoryIds,
-      }),
-    ]);
-
     const connectorId = this.connectorId;
+
+    const allBrandIds = [
+      ...new Set([...brandIds, ...brandTicketsIds, ...brandHelpCenterIds]),
+    ];
+    const allBrands = await ZendeskBrandResource.fetchByBrandIds({
+      connectorId,
+      brandIds: allBrandIds,
+    });
+    const brands = allBrands.filter((brand) =>
+      brandIds.includes(brand.brandId)
+    );
+    const helpCenters = allBrands.filter((brand) =>
+      brandHelpCenterIds.includes(brand.brandId)
+    );
+    const tickets = allBrands.filter((brand) =>
+      brandTicketsIds.includes(brand.brandId)
+    );
+
+    const categories = await ZendeskCategoryResource.fetchByCategoryIds({
+      connectorId,
+      categoryIds,
+    });
+
     return new Ok([
       ...brands.map((brand) => brand.toContentNode({ connectorId })),
       ...helpCenters.map(
