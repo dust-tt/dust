@@ -122,7 +122,7 @@ export default function RunsView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.vault));
+            void router.push(dustAppsListUrl(owner, app.space));
           }}
         />
       }
@@ -197,7 +197,7 @@ export default function RunsView({
                   <div className="flex items-center justify-between">
                     <div className="flex flex-initial">
                       <Link
-                        href={`/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs/${run.run_id}`}
+                        href={`/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/runs/${run.run_id}`}
                         className="block"
                       >
                         <p className="font-mono truncate text-base text-action-500">

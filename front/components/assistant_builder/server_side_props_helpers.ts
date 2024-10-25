@@ -33,16 +33,16 @@ import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view"
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 
 export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
   const accessibleVaults = (
-    await VaultResource.listWorkspaceVaults(auth)
+    await SpaceResource.listWorkspaceSpaces(auth)
   ).filter((vault) => !vault.isSystem() && vault.canRead(auth));
 
   const [dsViews, allDustApps] = await Promise.all([
-    DataSourceViewResource.listByVaults(auth, accessibleVaults, {
+    DataSourceViewResource.listBySpaces(auth, accessibleVaults, {
       includeEditedBy: true,
     }),
     AppResource.listByWorkspace(auth),

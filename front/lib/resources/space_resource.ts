@@ -1,9 +1,9 @@
 import type {
   ModelId,
-  PokeVaultType,
+  PokeSpaceType,
   ResourcePermission,
   Result,
-  VaultType,
+  SpaceType,
 } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
@@ -22,9 +22,9 @@ import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vaults";
+import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
-import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappers";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -34,36 +34,36 @@ import { UserResource } from "@app/lib/resources/user_resource";
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
-export interface VaultResource extends ReadonlyAttributesType<VaultModel> {}
+export interface SpaceResource extends ReadonlyAttributesType<SpaceModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class VaultResource extends BaseResource<VaultModel> {
-  static model: ModelStaticSoftDeletable<VaultModel> = VaultModel;
+export class SpaceResource extends BaseResource<SpaceModel> {
+  static model: ModelStaticSoftDeletable<SpaceModel> = SpaceModel;
 
   constructor(
-    model: ModelStaticSoftDeletable<VaultModel>,
-    blob: Attributes<VaultModel>,
+    model: ModelStaticSoftDeletable<SpaceModel>,
+    blob: Attributes<SpaceModel>,
     readonly groups: GroupResource[]
   ) {
-    super(VaultModel, blob);
+    super(SpaceModel, blob);
   }
 
-  static fromModel(vault: VaultModel) {
-    return new VaultResource(
-      VaultModel,
+  static fromModel(vault: SpaceModel) {
+    return new SpaceResource(
+      SpaceModel,
       vault.get(),
       vault.groups.map((group) => new GroupResource(GroupModel, group.get()))
     );
   }
 
   static async makeNew(
-    blob: CreationAttributes<VaultModel>,
+    blob: CreationAttributes<SpaceModel>,
     groups: GroupResource[]
   ) {
     return frontSequelize.transaction(async (transaction) => {
-      const vault = await VaultModel.create(blob, { transaction });
+      const vault = await SpaceModel.create(blob, { transaction });
 
       for (const group of groups) {
-        await GroupVaultModel.create(
+        await GroupSpaceModel.create(
           {
             groupId: group.id,
             vaultId: vault.id,
@@ -72,7 +72,7 @@ export class VaultResource extends BaseResource<VaultModel> {
         );
       }
 
-      return new this(VaultModel, vault.get(), groups);
+      return new this(SpaceModel, vault.get(), groups);
     });
   }
 
@@ -88,10 +88,10 @@ export class VaultResource extends BaseResource<VaultModel> {
   ) {
     assert(auth.isAdmin(), "Only admins can call `makeDefaultsForWorkspace`");
 
-    const existingVaults = await this.listWorkspaceDefaultVaults(auth);
-    const systemVault =
-      existingVaults.find((v) => v.kind === "system") ||
-      (await VaultResource.makeNew(
+    const existingSpaces = await this.listWorkspaceDefaultSpaces(auth);
+    const systemSpace =
+      existingSpaces.find((s) => s.kind === "system") ||
+      (await SpaceResource.makeNew(
         {
           name: "System",
           kind: "system",
@@ -100,9 +100,9 @@ export class VaultResource extends BaseResource<VaultModel> {
         [systemGroup]
       ));
 
-    const globalVault =
-      existingVaults.find((v) => v.kind === "global") ||
-      (await VaultResource.makeNew(
+    const globalSpace =
+      existingSpaces.find((s) => s.kind === "global") ||
+      (await SpaceResource.makeNew(
         {
           name: "Company Data",
           kind: "global",
@@ -112,13 +112,13 @@ export class VaultResource extends BaseResource<VaultModel> {
       ));
 
     return {
-      systemVault,
-      globalVault,
+      systemSpace,
+      globalSpace,
     };
   }
 
   get sId(): string {
-    return VaultResource.modelIdToSId({
+    return SpaceResource.modelIdToSId({
       id: this.id,
       workspaceId: this.workspaceId,
     });
@@ -145,7 +145,7 @@ export class VaultResource extends BaseResource<VaultModel> {
       order,
       where,
       includeDeleted,
-    }: ResourceFindOptions<VaultModel> = {}
+    }: ResourceFindOptions<SpaceModel> = {}
   ) {
     const includeClauses: Includeable[] = [
       {
@@ -154,35 +154,36 @@ export class VaultResource extends BaseResource<VaultModel> {
       ...(includes || []),
     ];
 
-    const vaultModels = await this.model.findAll({
+    const spacesModels = await this.model.findAll({
       where: {
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
-      } as WhereOptions<VaultModel>,
+      } as WhereOptions<SpaceModel>,
       include: includeClauses,
       limit,
       order,
       includeDeleted,
     });
 
-    return vaultModels.map(this.fromModel);
+    return spacesModels.map(this.fromModel);
   }
 
-  static async listWorkspaceVaults(
+  static async listWorkspaceSpaces(
     auth: Authenticator
-  ): Promise<VaultResource[]> {
-    const vaults = await this.baseFetch(auth);
+  ): Promise<SpaceResource[]> {
+    const spaces = await this.baseFetch(auth);
 
-    return vaults.filter((vault) => vault.canList(auth));
+    return spaces.filter((s) => s.canList(auth));
   }
 
-  static async listWorkspaceVaultsAsMember(auth: Authenticator) {
-    const vaults = await this.baseFetch(auth);
-    // using canRead() as we know that only members can read vaults (but admins can list them)
-    return vaults.filter((vault) => vault.canList(auth) && vault.canRead(auth));
+  static async listWorkspaceSpacesAsMember(auth: Authenticator) {
+    const spaces = await this.baseFetch(auth);
+
+    // using canRead() as we know that only members can read spaces (but admins can list them)
+    return spaces.filter((s) => s.canList(auth) && s.canRead(auth));
   }
 
-  static async listWorkspaceDefaultVaults(auth: Authenticator) {
+  static async listWorkspaceDefaultSpaces(auth: Authenticator) {
     return this.baseFetch(auth, {
       where: {
         kind: {
@@ -193,61 +194,61 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   static async listForGroups(auth: Authenticator, groups: GroupResource[]) {
-    const groupVaults = await GroupVaultModel.findAll({
+    const groupSpaces = await GroupSpaceModel.findAll({
       where: {
         groupId: groups.map((g) => g.id),
       },
     });
 
-    const vaults = await this.baseFetch(auth, {
+    const spaces = await this.baseFetch(auth, {
       where: {
-        id: groupVaults.map((v) => v.vaultId),
+        id: groupSpaces.map((v) => v.vaultId),
       },
     });
 
-    return vaults.filter((v) => v.canRead(auth));
+    return spaces.filter((s) => s.canRead(auth));
   }
 
-  static async fetchWorkspaceSystemVault(
+  static async fetchWorkspaceSystemSpace(
     auth: Authenticator
-  ): Promise<VaultResource> {
-    const [vault] = await this.baseFetch(auth, { where: { kind: "system" } });
+  ): Promise<SpaceResource> {
+    const [space] = await this.baseFetch(auth, { where: { kind: "system" } });
 
-    if (!vault) {
-      throw new Error("System vault not found.");
+    if (!space) {
+      throw new Error("System space not found.");
     }
 
-    return vault;
+    return space;
   }
 
-  static async fetchWorkspaceGlobalVault(
+  static async fetchWorkspaceGlobalSpace(
     auth: Authenticator
-  ): Promise<VaultResource> {
-    const [vault] = await this.baseFetch(auth, { where: { kind: "global" } });
+  ): Promise<SpaceResource> {
+    const [space] = await this.baseFetch(auth, { where: { kind: "global" } });
 
-    if (!vault) {
-      throw new Error("Global vault not found.");
+    if (!space) {
+      throw new Error("Global space not found.");
     }
 
-    return vault;
+    return space;
   }
 
   static async fetchById(
     auth: Authenticator,
     sId: string,
     { includeDeleted }: { includeDeleted?: boolean } = {}
-  ): Promise<VaultResource | null> {
-    const vaultModelId = getResourceIdFromSId(sId);
-    if (!vaultModelId) {
+  ): Promise<SpaceResource | null> {
+    const spaceModelId = getResourceIdFromSId(sId);
+    if (!spaceModelId) {
       return null;
     }
 
-    const [vault] = await this.baseFetch(auth, {
-      where: { id: vaultModelId },
+    const [space] = await this.baseFetch(auth, {
+      where: { id: spaceModelId },
       includeDeleted,
     });
 
-    return vault;
+    return space;
   }
 
   static async isNameAvailable(
@@ -256,14 +257,14 @@ export class VaultResource extends BaseResource<VaultModel> {
   ): Promise<boolean> {
     const owner = auth.getNonNullableWorkspace();
 
-    const vault = await this.model.findOne({
+    const space = await this.model.findOne({
       where: {
         name,
         workspaceId: owner.id,
       },
     });
 
-    return !vault;
+    return !space;
   }
 
   async delete(
@@ -272,14 +273,14 @@ export class VaultResource extends BaseResource<VaultModel> {
   ): Promise<Result<undefined, Error>> {
     const { hardDelete, transaction } = options;
 
-    await GroupVaultModel.destroy({
+    await GroupSpaceModel.destroy({
       where: {
         vaultId: this.id,
       },
       transaction,
     });
 
-    await VaultModel.destroy({
+    await SpaceModel.destroy({
       where: {
         id: this.id,
       },
@@ -295,12 +296,12 @@ export class VaultResource extends BaseResource<VaultModel> {
     newName: string
   ): Promise<Result<undefined, Error>> {
     if (!auth.isAdmin()) {
-      return new Err(new Error("Only admins can update vault names."));
+      return new Err(new Error("Only admins can update space names."));
     }
 
-    const nameAvailable = await VaultResource.isNameAvailable(auth, newName);
+    const nameAvailable = await SpaceResource.isNameAvailable(auth, newName);
     if (!nameAvailable) {
-      return new Err(new Error("This vault name is already used."));
+      return new Err(new Error("This space name is already used."));
     }
 
     await this.update({ name: newName });
@@ -320,7 +321,7 @@ export class VaultResource extends BaseResource<VaultModel> {
       return new Err(
         new DustError(
           "unauthorized",
-          "You do not have permission to update vault permissions."
+          "You do not have permission to update space permissions."
         )
       );
     }
@@ -329,14 +330,14 @@ export class VaultResource extends BaseResource<VaultModel> {
       (group) => group.kind === "regular"
     );
 
-    // Ensure exactly one regular group is associated with the vault.
+    // Ensure exactly one regular group is associated with the space.
     // IMPORTANT: This constraint is critical for the requestedPermissions() method logic.
     // Modifying this requires careful review and updates to requestedPermissions().
     assert(
       regularGroups.length === 1,
-      `Expected exactly one regular group for the vault, but found ${regularGroups.length}.`
+      `Expected exactly one regular group for the space, but found ${regularGroups.length}.`
     );
-    const [defaultVaultGroup] = regularGroups;
+    const [defaultSpaceGroup] = regularGroups;
 
     const wasRestricted = this.groups.every((g) => !g.isGlobal());
 
@@ -347,7 +348,7 @@ export class VaultResource extends BaseResource<VaultModel> {
 
     const globalGroup = groupRes.value;
     if (isRestricted) {
-      // If the vault should be restricted and was not restricted before, remove the global group.
+      // If the space should be restricted and was not restricted before, remove the global group.
       if (!wasRestricted) {
         await this.removeGroup(globalGroup);
       }
@@ -355,7 +356,7 @@ export class VaultResource extends BaseResource<VaultModel> {
       if (memberIds) {
         const users = await UserResource.fetchByIds(memberIds);
 
-        return defaultVaultGroup.setMembers(
+        return defaultSpaceGroup.setMembers(
           auth,
           users.map((u) => u.toJSON())
         );
@@ -363,27 +364,27 @@ export class VaultResource extends BaseResource<VaultModel> {
 
       return new Ok(undefined);
     } else {
-      // If the vault should not be restricted and was restricted before, add the global group.
+      // If the space should not be restricted and was restricted before, add the global group.
       if (wasRestricted) {
         await this.addGroup(globalGroup);
       }
 
       // Remove all members.
-      await defaultVaultGroup.setMembers(auth, []);
+      await defaultSpaceGroup.setMembers(auth, []);
 
       return new Ok(undefined);
     }
   }
 
   private async addGroup(group: GroupResource) {
-    await GroupVaultModel.create({
+    await GroupSpaceModel.create({
       groupId: group.id,
       vaultId: this.id,
     });
   }
 
   private async removeGroup(group: GroupResource) {
-    await GroupVaultModel.destroy({
+    await GroupSpaceModel.destroy({
       where: {
         groupId: group.id,
         vaultId: this.id,
@@ -546,7 +547,7 @@ export class VaultResource extends BaseResource<VaultModel> {
 
   // Serialization.
 
-  toJSON(): VaultType {
+  toJSON(): SpaceType {
     return {
       groupIds: this.groups.map((group) => group.sId),
       isRestricted: !this.groups.some((group) => group.isGlobal()),
@@ -556,7 +557,7 @@ export class VaultResource extends BaseResource<VaultModel> {
     };
   }
 
-  toPokeJSON(): PokeVaultType {
+  toPokeJSON(): PokeSpaceType {
     return {
       ...this.toJSON(),
       groups: this.groups.map((group) => group.toJSON()),

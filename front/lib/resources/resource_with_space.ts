@@ -14,8 +14,9 @@ import type { Workspace } from "@app/lib/models/workspace";
 import type { ResourceWithId } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
-import type { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import type { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type {
   ModelStaticSoftDeletable,
   SoftDeletableModel,
@@ -24,24 +25,23 @@ import type {
   InferIncludeType,
   ResourceFindOptions,
 } from "@app/lib/resources/types";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 
 // Interface to enforce workspaceId and vaultId.
-interface ModelWithVault extends ResourceWithId {
+interface ModelWithSpace extends ResourceWithId {
   workspaceId: ForeignKey<Workspace["id"]>;
-  vaultId: ForeignKey<VaultModel["id"]>;
-  vault: NonAttribute<VaultModel>;
+  vaultId: ForeignKey<SpaceModel["id"]>;
+  space: NonAttribute<SpaceModel>;
 }
 
-export abstract class ResourceWithVault<
-  M extends SoftDeletableModel & ModelWithVault,
+export abstract class ResourceWithSpace<
+  M extends SoftDeletableModel & ModelWithSpace,
 > extends BaseResource<M> {
-  readonly workspaceId: ModelWithVault["workspaceId"];
+  readonly workspaceId: ModelWithSpace["workspaceId"];
 
   protected constructor(
     model: ModelStaticSoftDeletable<M>,
     blob: Attributes<M>,
-    public readonly vault: VaultResource
+    public readonly space: SpaceResource
   ) {
     super(model, blob);
 
@@ -49,15 +49,15 @@ export abstract class ResourceWithVault<
   }
 
   protected static async baseFetchWithAuthorization<
-    T extends ResourceWithVault<M>,
-    M extends SoftDeletableModel & ModelWithVault,
+    T extends ResourceWithSpace<M>,
+    M extends SoftDeletableModel & ModelWithSpace,
     IncludeType extends Partial<InferIncludeType<M>>,
   >(
     this: {
       new (
         model: ModelStaticSoftDeletable<M>,
         blob: Attributes<M>,
-        vault: VaultResource,
+        space: SpaceResource,
         includes?: IncludeType
       ): T;
     } & { model: ModelStaticSoftDeletable<M> },
@@ -72,8 +72,8 @@ export abstract class ResourceWithVault<
   ): Promise<T[]> {
     const includeClauses: Includeable[] = [
       {
-        model: VaultResource.model,
-        as: "vault",
+        model: SpaceResource.model,
+        as: "space",
         include: [{ model: GroupResource.model }],
       },
       ...(includes || []),
@@ -90,10 +90,10 @@ export abstract class ResourceWithVault<
     return (
       blobs
         .map((b) => {
-          const vault = new VaultResource(
-            VaultResource.model,
-            b.vault.get(),
-            b.vault.groups.map(
+          const space = new SpaceResource(
+            SpaceResource.model,
+            b.space.get(),
+            b.space.groups.map(
               (group) => new GroupResource(GroupModel, group.get())
             )
           );
@@ -106,8 +106,8 @@ export abstract class ResourceWithVault<
                 typeof current.as === "string"
               ) {
                 const key = current.as as keyof IncludeType;
-                // Only handle other includes if they are not vault.
-                if (key !== "vault") {
+                // Only handle other includes if they are not space.
+                if (key !== "space") {
                   const includedModel = b[key as keyof typeof b];
                   if (includedModel instanceof Model) {
                     acc[key] = includedModel.get();
@@ -119,7 +119,7 @@ export abstract class ResourceWithVault<
             {} as IncludeType
           );
 
-          return new this(this.model, b.get(), vault, includedResults);
+          return new this(this.model, b.get(), space, includedResults);
         })
         // Filter out resources that the user cannot fetch.
         .filter((cls) => cls.canFetch(auth))
@@ -154,31 +154,31 @@ export abstract class ResourceWithVault<
   // Permissions.
 
   requestedPermissions() {
-    return this.vault.requestedPermissions();
+    return this.space.requestedPermissions();
   }
 
   canList(auth: Authenticator) {
-    return this.vault.canList(auth);
+    return this.space.canList(auth);
   }
 
   canRead(auth: Authenticator) {
-    return this.vault.canRead(auth);
+    return this.space.canRead(auth);
   }
 
   canWrite(auth: Authenticator) {
-    return this.vault.canWrite(auth);
+    return this.space.canWrite(auth);
   }
 
   // This method determines if the authenticated user can fetch data, based on workspace ownership
-  // or public vault access. Changes to this logic can impact data security, so they must be
+  // or public space access. Changes to this logic can impact data security, so they must be
   // reviewed and tested carefully to prevent unauthorized access.
   private canFetch(auth: Authenticator) {
     return (
       // Superusers can fetch any resource.
       auth.isDustSuperUser() ||
-      // Others, can only fetch resources from their workspace or public vaults.
+      // Others, can only fetch resources from their workspace or public spaces.
       this.workspaceId === auth.getNonNullableWorkspace().id ||
-      this.vault.isPublic()
+      this.space.isPublic()
     );
   }
 }

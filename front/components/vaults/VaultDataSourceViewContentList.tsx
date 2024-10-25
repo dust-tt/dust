@@ -15,7 +15,7 @@ import type {
   DataSourceViewType,
   LightWorkspaceType,
   PlanType,
-  VaultType,
+  SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { isValidContentNodesViewType } from "@dust-tt/types";
@@ -56,7 +56,7 @@ type RowData = DataSourceViewContentNode & {
 };
 
 type VaultDataSourceViewContentListProps = {
-  vault: VaultType;
+  vault: SpaceType;
   dataSourceView: DataSourceViewType;
   plan: PlanType;
   canWriteInVault: boolean;
@@ -65,7 +65,7 @@ type VaultDataSourceViewContentListProps = {
   owner: WorkspaceType;
   parentId?: string;
   isAdmin: boolean;
-  systemVault: VaultType;
+  systemVault: SpaceType;
   connector: ConnectorType | null;
 };
 
@@ -96,7 +96,7 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
       meta: {
         width: "14rem",
       },
-      cell: (info: CellContext<RowData, VaultType[]>) => (
+      cell: (info: CellContext<RowData, SpaceType[]>) => (
         <DataTable.CellContent>
           {info.getValue().length > 0
             ? info
@@ -289,7 +289,7 @@ export const VaultDataSourceViewContentList = ({
                     !dsv.parentsIn || dsv.parentsIn.includes(parentId)
                 )
             )
-            .map((dsv) => dsv.vaultId)
+            .map((dsv) => dsv.spaceId)
             .includes(vault.sId)
         ),
         ...(contentNode.expandable && {

@@ -38,7 +38,7 @@ import {
 } from "@app/lib/connector_providers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
@@ -96,23 +96,23 @@ async function handler(
       status_code: 404,
       api_error: {
         type: "vault_not_found",
-        message: "The vault you requested was not found.",
+        message: "The space you requested was not found.",
       },
     });
   }
-  const vault = await VaultResource.fetchById(auth, req.query.vId);
+  const space = await SpaceResource.fetchById(auth, req.query.vId);
 
-  if (!vault) {
+  if (!space) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "vault_not_found",
-        message: "The vault you requested was not found.",
+        message: "The space you requested was not found.",
       },
     });
   }
 
-  if (vault.isSystem()) {
+  if (space.isSystem()) {
     if (!auth.isAdmin()) {
       return apiError(req, res, {
         status_code: 403,
@@ -124,7 +124,7 @@ async function handler(
       });
     }
   } else {
-    if (vault.isGlobal() && !auth.isBuilder()) {
+    if (space.isGlobal() && !auth.isBuilder()) {
       return apiError(req, res, {
         status_code: 403,
         api_error: {
@@ -135,13 +135,13 @@ async function handler(
       });
     }
 
-    if (!vault.canWrite(auth)) {
+    if (!space.canWrite(auth)) {
       return apiError(req, res, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
           message:
-            "Only the users that have `write` permission for the current vault can update a data source.",
+            "Only the users that have `write` permission for the current space can update a data source.",
         },
       });
     }
@@ -169,7 +169,7 @@ async function handler(
           auth,
           plan,
           owner,
-          vault,
+          space,
           body,
           req,
           res,
@@ -182,7 +182,7 @@ async function handler(
           auth,
           plan,
           owner,
-          vault,
+          space,
           body,
           req,
           res,
@@ -209,7 +209,7 @@ const handleDataSourceWithProvider = async ({
   auth,
   plan,
   owner,
-  vault,
+  space,
   body,
   req,
   res,
@@ -217,7 +217,7 @@ const handleDataSourceWithProvider = async ({
   auth: Authenticator;
   plan: PlanType;
   owner: WorkspaceType;
-  vault: VaultResource;
+  space: SpaceResource;
   body: t.TypeOf<typeof PostDataSourceWithProviderRequestBodySchema>;
   req: NextApiRequest;
   res: NextApiResponse<WithAPIErrorResponse<PostVaultDataSourceResponseBody>>;
@@ -251,8 +251,8 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
-  // System vaults only for managed data sources that are now webcrawler.
-  if (vault.isSystem() && provider === "webcrawler") {
+  // System spaces only for managed data sources that are now webcrawler.
+  if (space.isSystem() && provider === "webcrawler") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -260,7 +260,7 @@ const handleDataSourceWithProvider = async ({
         message: `Cannot post a datasource for provider: ${provider} in system vault.`,
       },
     });
-  } else if (!vault.isSystem() && provider !== "webcrawler") {
+  } else if (!space.isSystem() && provider !== "webcrawler") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -393,7 +393,7 @@ const handleDataSourceWithProvider = async ({
         name: dataSourceName,
         workspaceId: owner.id,
       },
-      vault
+      space
     );
 
   const { dataSource } = dataSourceView;
@@ -506,7 +506,7 @@ const handleDataSourceWithoutProvider = async ({
   auth,
   plan,
   owner,
-  vault,
+  space,
   body,
   req,
   res,
@@ -514,7 +514,7 @@ const handleDataSourceWithoutProvider = async ({
   auth: Authenticator;
   plan: PlanType;
   owner: WorkspaceType;
-  vault: VaultResource;
+  space: SpaceResource;
   body: t.TypeOf<typeof PostDataSourceWithoutProviderRequestBodySchema>;
   req: NextApiRequest;
   res: NextApiResponse<WithAPIErrorResponse<PostVaultDataSourceResponseBody>>;
@@ -611,7 +611,7 @@ const handleDataSourceWithoutProvider = async ({
         workspaceId: owner.id,
         assistantDefaultSelected: false,
       },
-      vault
+      space
     );
 
   const { dataSource } = dataSourceView;

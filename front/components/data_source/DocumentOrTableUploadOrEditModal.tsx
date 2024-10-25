@@ -147,7 +147,7 @@ const DocumentUploadOrEditModal = ({
   const handleDocumentUpload = async (document: Document) => {
     setUploading(true);
     try {
-      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
+      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
       const endpoint = initialId
         ? `${base}/${encodeURIComponent(document.name)}`
         : base;
@@ -509,7 +509,7 @@ const TableUploadOrEditModal = ({
         throw new Error("File too large");
       }
 
-      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/tables`;
+      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/tables`;
       const endpoint = initialId ? `${base}/${initialId}` : base;
 
       const body = JSON.stringify({

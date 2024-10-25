@@ -3,7 +3,7 @@ import type {
   DataSourceViewCategory,
   DataSourceViewType,
   LightWorkspaceType,
-  VaultType,
+  SpaceType,
 } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -451,7 +451,7 @@ export function useUpdateVault({ owner }: { owner: LightWorkspaceType }) {
   });
 
   const doUpdate = async (
-    vault: VaultType,
+    vault: SpaceType,
     params: DoCreateOrUpdateAllowedParams
   ) => {
     const { name: newName, memberIds, isRestricted } = params;
@@ -533,7 +533,7 @@ export function useDeleteVault({ owner }: { owner: LightWorkspaceType }) {
     disabled: true, // Needed just to mutate
   });
 
-  const doDelete = async (vault: VaultType | null) => {
+  const doDelete = async (vault: SpaceType | null) => {
     if (!vault) {
       return false;
     }

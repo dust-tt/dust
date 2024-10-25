@@ -3,7 +3,7 @@ import type {
   ConnectorProvider,
   DataSourceViewCategory,
   DataSourceWithConnectorDetailsType,
-  VaultType,
+  SpaceType,
 } from "@dust-tt/types";
 import {
   CONNECTOR_PROVIDERS,
@@ -25,15 +25,15 @@ import {
 } from "@app/lib/api/data_sources";
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   VaultLayoutProps & {
     category: DataSourceViewCategory;
     isAdmin: boolean;
     canWriteInVault: boolean;
-    vault: VaultType;
-    systemVault: VaultType;
+    vault: SpaceType;
+    systemVault: SpaceType;
     integrations: DataSourceIntegration[];
   }
 >(async (context, auth) => {
@@ -48,8 +48,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  const systemVault = await VaultResource.fetchWorkspaceSystemVault(auth);
-  const vault = await VaultResource.fetchById(
+  const systemVault = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+  const vault = await SpaceResource.fetchById(
     auth,
     context.query.vaultId as string
   );

@@ -5,17 +5,17 @@ import {
   RadioGroupChoice,
   Separator,
 } from "@dust-tt/sparkle";
-import type { VaultType } from "@dust-tt/types";
+import type { SpaceType } from "@dust-tt/types";
 import React, { useState } from "react";
 
 import { classNames } from "@app/lib/utils";
 import { getVaultIcon, getVaultName, groupVaults } from "@app/lib/vaults";
 
 interface VaultSelectorProps {
-  allowedVaults?: VaultType[];
+  allowedVaults?: SpaceType[];
   defaultVault: string | undefined;
-  vaults: VaultType[];
-  renderChildren: (vault?: VaultType) => React.ReactNode;
+  vaults: SpaceType[];
+  renderChildren: (vault?: SpaceType) => React.ReactNode;
 }
 export function VaultSelector({
   allowedVaults,

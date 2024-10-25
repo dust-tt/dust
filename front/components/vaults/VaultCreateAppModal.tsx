@@ -6,7 +6,7 @@ import {
   TextArea,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { APIError, VaultType, WorkspaceType } from "@dust-tt/types";
+import type { APIError, SpaceType, WorkspaceType } from "@dust-tt/types";
 import { APP_NAME_REGEXP } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -22,7 +22,7 @@ export const VaultCreateAppModal = ({
   setIsOpen,
 }: {
   owner: WorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
 }) => {
@@ -83,7 +83,7 @@ export const VaultCreateAppModal = ({
         const response: PostAppResponseBody = await res.json();
         const { app } = response;
         await router.push(
-          `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`
+          `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}`
         );
         setIsOpen(false);
 

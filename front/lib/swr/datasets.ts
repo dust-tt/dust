@@ -18,7 +18,7 @@ export function useDatasets({
   const datasetsFetcher: Fetcher<GetDatasetsResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets`,
+    `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets`,
     datasetsFetcher,
     {
       disabled,
@@ -41,7 +41,7 @@ export function useDataset(
   const datasetFetcher: Fetcher<GetDatasetResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${dataset}${
+    `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets/${dataset}${
       showData ? "?data=true" : ""
     }`,
     datasetFetcher

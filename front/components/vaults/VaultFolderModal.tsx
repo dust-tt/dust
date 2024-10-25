@@ -7,7 +7,7 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, VaultType, WorkspaceType } from "@dust-tt/types";
+import type { DataSourceType, SpaceType, WorkspaceType } from "@dust-tt/types";
 import { isDataSourceNameValid } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -31,7 +31,7 @@ export default function VaultFolderModal({
   isOpen: boolean;
   onClose: () => void;
   owner: WorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   dataSources: DataSourceType[];
   dataSourceViewId: string | null;
 }) {

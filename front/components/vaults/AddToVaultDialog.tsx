@@ -5,7 +5,7 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
   LightWorkspaceType,
-  VaultType,
+  SpaceType,
 } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
@@ -27,7 +27,7 @@ export const AddToVaultDialog = ({
   owner,
   contentNode,
 }: AddToVaultDialogProps) => {
-  const [vault, setVault] = useState<VaultType | undefined>();
+  const [vault, setVault] = useState<SpaceType | undefined>();
 
   const dataSource = dataSourceView.dataSource;
   const { vaults } = useVaults({ workspaceId: owner.sId });
@@ -47,7 +47,7 @@ export const AddToVaultDialog = ({
           (parentId) => !dsv.parentsIn || dsv.parentsIn.includes(parentId)
         )
     )
-    .map((dsv) => dsv.vaultId);
+    .map((dsv) => dsv.spaceId);
 
   const availableVaults = vaults.filter((v) => !alreadyInVault.includes(v.sId));
 
@@ -63,7 +63,7 @@ export const AddToVaultDialog = ({
     }
 
     const existingViewForVault = dataSourceViews.find(
-      (d) => d.vaultId === vault.sId && d.dataSource.sId === dataSource.sId
+      (d) => d.spaceId === vault.sId && d.dataSource.sId === dataSource.sId
     );
 
     try {

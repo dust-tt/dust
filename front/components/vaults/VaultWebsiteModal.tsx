@@ -20,8 +20,8 @@ import type {
   DataSourceType,
   DataSourceViewType,
   DepthOption,
+  SpaceType,
   UpdateConnectorConfigurationType,
-  VaultType,
   WebCrawlerConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -59,7 +59,7 @@ export default function VaultWebsiteModal({
   isOpen: boolean;
   onClose: () => void;
   owner: WorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   dataSources: DataSourceType[];
   dataSourceView: DataSourceViewType | null;
 }) {

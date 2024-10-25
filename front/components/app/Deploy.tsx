@@ -57,7 +57,7 @@ export function ViewAppAPIModal({
   const cURLRequest = (type: "run") => {
     switch (type) {
       case "run":
-        return `curl ${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs \\
+        return `curl ${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/api/v1/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/runs \\
     -H "Authorization: Bearer YOUR_API_KEY" \\
     -H "Content-Type: application/json" \\
     -d '{
@@ -103,7 +103,7 @@ export function ViewAppAPIModal({
             <Page.P>
               <ul className="text-gray-500">
                 <li>
-                  vaultId: <span className="font-bold">{app.vault.sId}</span>{" "}
+                  vaultId: <span className="font-bold">{app.space.sId}</span>{" "}
                 </li>
                 <li>
                   appId: <span className="font-bold">{app.sId}</span>

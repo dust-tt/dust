@@ -4,7 +4,7 @@ import type {
   APIError,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-  VaultType,
+  SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
@@ -25,8 +25,8 @@ interface EditVaultManagedDataSourcesViewsProps {
   isAdmin: boolean;
   onSelectedDataUpdated: () => Promise<void>;
   owner: WorkspaceType;
-  systemVault: VaultType;
-  vault: VaultType;
+  systemVault: SpaceType;
+  vault: SpaceType;
 }
 
 export function EditVaultManagedDataSourcesViews({

@@ -16,8 +16,8 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ProcessSchemaPropertyType,
   Result,
+  SpaceType,
   TimeframeUnit,
-  VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
@@ -264,7 +264,7 @@ type ActionProcessProps = {
   owner: WorkspaceType;
   instructions: string | null;
   actionConfiguration: AssistantBuilderProcessConfiguration | null;
-  allowedVaults: VaultType[];
+  allowedVaults: SpaceType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderProcessConfiguration

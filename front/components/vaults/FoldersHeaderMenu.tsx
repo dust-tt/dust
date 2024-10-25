@@ -10,7 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
-  VaultType,
+  SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { RefObject } from "react";
@@ -22,7 +22,7 @@ import { useDataSources } from "@app/lib/swr/data_sources";
 
 type FoldersHeaderMenuProps = {
   owner: WorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   canWriteInVault: boolean;
   folder: DataSourceViewType;
   contentActionsRef: RefObject<ContentActionsRef>;
@@ -138,7 +138,7 @@ const AddDataDropDownButton = ({
 
 type EditFolderButtonProps = {
   owner: WorkspaceType;
-  vault: VaultType;
+  vault: SpaceType;
   folder: DataSourceViewType;
   canWriteInVault: boolean;
 };

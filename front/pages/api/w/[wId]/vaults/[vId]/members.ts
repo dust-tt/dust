@@ -1,4 +1,4 @@
-import type { VaultType, WithAPIErrorResponse } from "@dust-tt/types";
+import type { SpaceType, WithAPIErrorResponse } from "@dust-tt/types";
 import { PatchVaultMembersRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -7,11 +7,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export interface PatchVaultMembersResponseBody {
-  vault: VaultType;
+  vault: SpaceType;
 }
 
 async function handler(
@@ -31,7 +31,7 @@ async function handler(
     });
   }
 
-  const vault = await VaultResource.fetchById(auth, vId);
+  const vault = await SpaceResource.fetchById(auth, vId);
   if (!vault) {
     return apiError(req, res, {
       status_code: 404,
@@ -47,7 +47,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Only regular vaults can have members.",
+        message: "Only regular spaces can have members.",
       },
     });
   }

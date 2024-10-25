@@ -10,7 +10,7 @@ import apiConfig from "@app/lib/api/config";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -87,12 +87,12 @@ async function handler(
   // user)).
   let { vId } = req.query;
   if (vId === undefined) {
-    vId = (await VaultResource.fetchWorkspaceGlobalVault(auth)).sId;
+    vId = (await SpaceResource.fetchWorkspaceGlobalSpace(auth)).sId;
   }
 
   const app = await AppResource.fetchById(auth, req.query.aId as string);
 
-  if (!app || !app.canRead(auth) || app.vault.sId !== vId) {
+  if (!app || !app.canRead(auth) || app.space.sId !== vId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

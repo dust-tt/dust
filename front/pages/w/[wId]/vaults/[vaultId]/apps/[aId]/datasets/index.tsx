@@ -75,7 +75,7 @@ export default function DatasetsView({
       })
     ) {
       await fetch(
-        `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${datasetName}`,
+        `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets/${datasetName}`,
         {
           method: "DELETE",
           headers: {
@@ -84,7 +84,7 @@ export default function DatasetsView({
         }
       );
       await router.push(
-        `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets`
+        `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets`
       );
     }
   };
@@ -98,7 +98,7 @@ export default function DatasetsView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.vault));
+            void router.push(dustAppsListUrl(owner, app.space));
           }}
         />
       }
@@ -119,7 +119,7 @@ export default function DatasetsView({
                   icon={PlusIcon}
                   onClick={() => {
                     void router.push(
-                      `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/new`
+                      `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets/new`
                     );
                   }}
                 />
@@ -130,7 +130,7 @@ export default function DatasetsView({
                     return (
                       <Link
                         key={d.name}
-                        href={`/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${d.name}`}
+                        href={`/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets/${d.name}`}
                         className="block"
                       >
                         <div

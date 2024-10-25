@@ -108,7 +108,7 @@ export default function ViewDatasetView({
   useEffect(() => {
     if (isFinishedEditing) {
       void router.push(
-        `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets`
+        `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets`
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -144,7 +144,7 @@ export default function ViewDatasetView({
   const handleSubmit = async () => {
     setLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${dataset.name}`,
+      `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets/${dataset.name}`,
       {
         method: "POST",
         headers: {
@@ -170,7 +170,7 @@ export default function ViewDatasetView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.vault));
+            void router.push(dustAppsListUrl(owner, app.space));
           }}
         />
       }

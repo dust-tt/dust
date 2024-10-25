@@ -13,7 +13,7 @@ import type {
   LightWorkspaceType,
   PlanType,
   Result,
-  VaultType,
+  SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Err, isOAuthProvider, Ok, setupOAuthConnection } from "@dust-tt/types";
@@ -120,7 +120,7 @@ export const AddConnectionMenu = ({
     suffix,
   }: {
     owner: WorkspaceType;
-    systemVault: VaultType;
+    systemVault: SpaceType;
     provider: ConnectorProvider;
     connectionId: string;
     suffix: string | null;

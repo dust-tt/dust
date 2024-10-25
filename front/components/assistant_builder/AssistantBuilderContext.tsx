@@ -1,10 +1,10 @@
-import type { AppType, DataSourceViewType, VaultType } from "@dust-tt/types";
+import type { AppType, DataSourceViewType, SpaceType } from "@dust-tt/types";
 import { createContext } from "react";
 
 type AssistantBuilderContextType = {
   dustApps: AppType[];
   dataSourceViews: DataSourceViewType[];
-  vaults: VaultType[];
+  vaults: SpaceType[];
 };
 
 export const AssistantBuilderContext =

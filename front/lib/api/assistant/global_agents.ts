@@ -50,7 +50,7 @@ import {
 } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 
 // Used when returning an agent with status 'disabled_by_admin'
@@ -61,7 +61,7 @@ const dummyModelConfiguration = {
 };
 
 type PrefetchedDataSourcesType = {
-  dataSourceViews: (DataSourceViewType & { isInGlobalVault: boolean })[];
+  dataSourceViews: (DataSourceViewType & { isInGlobalSpace: boolean })[];
   workspaceId: string;
 };
 
@@ -103,13 +103,13 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
   assert(globalGroup.isOk(), "Failed to fetch global group");
 
-  const defaultVaults = await VaultResource.listForGroups(auth, [
+  const defaultSpaces = await SpaceResource.listForGroups(auth, [
     globalGroup.value,
   ]);
 
-  const dataSourceViews = await DataSourceViewResource.listByVaults(
+  const dataSourceViews = await DataSourceViewResource.listBySpaces(
     auth,
-    defaultVaults
+    defaultSpaces
   );
 
   return {
@@ -117,7 +117,7 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
       return {
         ...dsv.toJSON(),
         assistantDefaultSelected: dsv.dataSource.assistantDefaultSelected,
-        isInGlobalVault: dsv.vault.isGlobal(),
+        isInGlobalSpace: dsv.space.isGlobal(),
       };
     }),
     workspaceId: owner.sId,
@@ -1043,7 +1043,7 @@ function _getDustGlobalAgent(
 
   // Add one action per managed data source to improve search results for queries like
   // "search in <data_source>".
-  // Only include data sources from the global vault to limit actions for the same
+  // Only include data sources from the global space to limit actions for the same
   // data source.
   // Hack: Prefix action names with "hidden_" to prevent them from appearing in the UI,
   // avoiding duplicate display of data sources.
@@ -1051,7 +1051,7 @@ function _getDustGlobalAgent(
     if (
       dsView.dataSource.connectorProvider &&
       dsView.dataSource.connectorProvider !== "webcrawler" &&
-      dsView.isInGlobalVault
+      dsView.isInGlobalSpace
     ) {
       actions.push({
         id: -1,

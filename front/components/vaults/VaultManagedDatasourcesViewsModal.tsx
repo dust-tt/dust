@@ -2,7 +2,7 @@ import { Modal } from "@dust-tt/sparkle";
 import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-  VaultType,
+  SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { SetStateAction } from "react";
@@ -20,7 +20,7 @@ interface VaultManagedDataSourcesViewsModalProps {
   ) => void;
   owner: WorkspaceType;
   systemVaultDataSourceViews: DataSourceViewType[];
-  vault: VaultType;
+  vault: SpaceType;
 }
 
 // We need to stabilize the initial state of the selection configurations,

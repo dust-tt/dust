@@ -24,7 +24,7 @@ export async function handlePatchDataSourceView(
       status_code: 403,
       api_error: {
         message:
-          "Only users that are `admins` or `builder` can administrate vaults.",
+          "Only users that are `admins` or `builder` can administrate spaces.",
         type: "workspace_auth_error",
       },
     });
@@ -91,7 +91,7 @@ async function handler(
 
   if (
     !dataSourceView ||
-    req.query.vId !== dataSourceView.vault.sId ||
+    req.query.vId !== dataSourceView.space.sId ||
     !dataSourceView.canList(auth)
   ) {
     return apiError(req, res, {
@@ -121,7 +121,7 @@ async function handler(
           api_error: {
             type: "workspace_auth_error",
             message:
-              "Only users that are `admins` or `builder` can administrate vaults.",
+              "Only users that are `admins` or `builder` can administrate spaces.",
           },
         });
       }

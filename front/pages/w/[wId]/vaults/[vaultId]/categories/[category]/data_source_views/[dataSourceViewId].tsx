@@ -4,7 +4,7 @@ import type {
   DataSourceType,
   DataSourceViewCategory,
   DataSourceViewType,
-  VaultType,
+  SpaceType,
 } from "@dust-tt/types";
 import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -17,7 +17,7 @@ import { VaultLayout } from "@app/components/vaults/VaultLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
@@ -28,7 +28,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     canWriteInVault: boolean;
     canReadInVault: boolean;
     parentId?: string;
-    systemVault: VaultType;
+    systemVault: SpaceType;
     connector: ConnectorType | null;
   }
 >(async (context, auth) => {
@@ -66,7 +66,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   if (
     !dataSourceView ||
-    dataSourceView.vault.sId !== vaultId ||
+    dataSourceView.space.sId !== vaultId ||
     !dataSourceView.canList(auth)
   ) {
     return {
@@ -74,8 +74,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  const systemVault = await VaultResource.fetchWorkspaceSystemVault(auth);
-  const vault = dataSourceView.vault;
+  const systemVault = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+  const vault = dataSourceView.space;
   const canWriteInVault = vault.canWrite(auth);
   const canReadInVault = vault.canRead(auth);
 
@@ -139,7 +139,7 @@ export default function Vault({
         dataSourceView={dataSourceView}
         onSelect={(parentId) => {
           void router.push(
-            `/w/${owner.sId}/vaults/${dataSourceView.vaultId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${parentId}`
+            `/w/${owner.sId}/vaults/${dataSourceView.spaceId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${parentId}`
           );
         }}
         isAdmin={isAdmin}
