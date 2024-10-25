@@ -332,11 +332,7 @@ export type AssistantBuilderProps = {
   subscription: SubscriptionType;
 };
 
-export const BUILDER_SCREENS = [
-  "instructions",
-  "actions",
-  "naming"
-] as const;
+export const BUILDER_SCREENS = ["instructions", "actions", "naming"] as const;
 
 export type BuilderScreen = (typeof BUILDER_SCREENS)[number];
 
@@ -344,23 +340,23 @@ type BuilderScreenInfos = {
   id: string;
   label: string;
   icon: (props: SVGProps<SVGSVGElement>) => React.JSX.Element;
-}
-
-export const BUILDER_SCREENS_INFOS: Record<BuilderScreen, BuilderScreenInfos> = {
-  instructions: {
-    id: "instructions",
-    label: "Instructions",
-    icon: CircleIcon,
-  },
-  actions: {
-    id: "actions",
-    label: "Tools & Data sources",
-    icon: SquareIcon,
-  },
-  naming: {
-    id: "naming",
-    label: "Naming",
-    icon: TriangleIcon
-  },
 };
 
+export const BUILDER_SCREENS_INFOS: Record<BuilderScreen, BuilderScreenInfos> =
+  {
+    instructions: {
+      id: "instructions",
+      label: "Instructions",
+      icon: CircleIcon,
+    },
+    actions: {
+      id: "actions",
+      label: "Tools & Data sources",
+      icon: SquareIcon,
+    },
+    naming: {
+      id: "naming",
+      label: "Naming",
+      icon: TriangleIcon,
+    },
+  };

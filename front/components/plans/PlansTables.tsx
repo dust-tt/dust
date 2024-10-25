@@ -1,4 +1,13 @@
-import { Button, Hoverable, PriceTable, RocketIcon, Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
+import {
+  Button,
+  Hoverable,
+  PriceTable,
+  RocketIcon,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 import type { BillingPeriod, PlanType } from "@dust-tt/types";
 import { Tab } from "@headlessui/react";
 import type { ReactNode } from "react";
@@ -324,14 +333,8 @@ export function PricePlans({
       >
         <Tabs defaultValue="pro">
           <TabsList>
-            <TabsTrigger
-              value="pro"
-              label="Pro"
-            />
-            <TabsTrigger
-              value="enterprise"
-              label="Enterprise"
-            />
+            <TabsTrigger value="pro" label="Pro" />
+            <TabsTrigger value="enterprise" label="Enterprise" />
           </TabsList>
           <div className="mt-8">
             <TabsContent value="pro">

@@ -46,7 +46,8 @@ import type {
   AssistantBuilderProps,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
-  BuilderScreen} from "@app/components/assistant_builder/types";
+  BuilderScreen,
+} from "@app/components/assistant_builder/types";
 import {
   BUILDER_SCREENS,
   BUILDER_SCREENS_INFOS,
@@ -85,7 +86,8 @@ export default function AssistantBuilder({
 
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
-  const [currentTab, setCurrentTab] = React.useState<BuilderScreen>("instructions")
+  const [currentTab, setCurrentTab] =
+    React.useState<BuilderScreen>("instructions");
   const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [disableUnsavedChangesPrompt, setDisableUnsavedChangesPrompt] =
@@ -267,11 +269,11 @@ export default function AssistantBuilder({
 
   useEffect(() => {
     const selectedTab = router.query.selectedTab;
-    if (typeof selectedTab === "string" && isValidTab(selectedTab)){
-      setCurrentTab(selectedTab)
-      setScreen(selectedTab)
+    if (typeof selectedTab === "string" && isValidTab(selectedTab)) {
+      setCurrentTab(selectedTab);
+      setScreen(selectedTab);
     }
-  }, [router.query.selectedTab])
+  }, [router.query.selectedTab]);
 
   const setAction = useCallback(
     (p: AssistantBuilderSetActionType) => {
@@ -389,7 +391,7 @@ export default function AssistantBuilder({
                 <Tabs
                   className="s-w-full"
                   onValueChange={(t) => {
-                    setQueryParam(router, "selectedTab", t)
+                    setQueryParam(router, "selectedTab", t);
                     setScreen(t as BuilderScreen);
                   }}
                   value={currentTab}

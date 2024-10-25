@@ -19,7 +19,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
-import { useContext, useEffect, useMemo } from "react";
+import { useContext, useEffect } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -104,8 +104,10 @@ export default function AssistantBuilderRightPanel({
       {template && (
         <div className="shrink-0 bg-white pt-5">
           <Tabs
-            value={rightPanelStatus.tab}
-            onValueChange={openRightPanelTab}
+            value={rightPanelStatus.tab ?? "Preview"}
+            onValueChange={(t) =>
+              openRightPanelTab(t as AssistantBuilderRightPanelTab)
+            }
             className="hidden lg:flex"
           >
             <TabsList className="s-inline-flex s-h-10 s-items-center s-gap-2 s-border-b s-border-separator">
