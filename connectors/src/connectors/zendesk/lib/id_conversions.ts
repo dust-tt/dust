@@ -93,14 +93,14 @@ export function getIdFromInternalId(
   return { type: null, objectId: -1 };
 }
 
-export function getBrandIdFromInternalId(
+function getBrandIdFromInternalId(
   connectorId: ModelId,
   internalId: string
 ): number | null {
   return _getIdFromInternal(internalId, `zendesk-brand-${connectorId}-`);
 }
 
-export function getBrandIdFromHelpCenterId(
+function getBrandIdFromHelpCenterId(
   connectorId: ModelId,
   helpCenterInternalId: string
 ): number | null {
@@ -110,21 +110,21 @@ export function getBrandIdFromHelpCenterId(
   );
 }
 
-export function getCategoryIdFromInternalId(
+function getCategoryIdFromInternalId(
   connectorId: ModelId,
   internalId: string
 ): number | null {
   return _getIdFromInternal(internalId, `zendesk-category-${connectorId}-`);
 }
 
-export function getArticleIdFromInternalId(
+function getArticleIdFromInternalId(
   connectorId: ModelId,
   internalId: string
 ): number | null {
   return _getIdFromInternal(internalId, `zendesk-article-${connectorId}-`);
 }
 
-export function getBrandIdFromTicketsId(
+function getBrandIdFromTicketsId(
   connectorId: ModelId,
   ticketsInternalId: string
 ): number | null {
@@ -134,7 +134,7 @@ export function getBrandIdFromTicketsId(
   );
 }
 
-export function getTicketIdFromInternalId(
+function getTicketIdFromInternalId(
   connectorId: ModelId,
   internalId: string
 ): number | null {
