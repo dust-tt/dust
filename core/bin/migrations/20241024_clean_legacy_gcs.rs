@@ -140,13 +140,26 @@ async fn clean_stored_versions_for_data_source(
         iteration += 1;
     }
 
-    for document_id_hash in document_id_hashs.iter() {
-        FileStorageDocument::delete_if_exists(&FileStorageDocument::get_legacy_document_id_path(
-            &data_source,
-            document_id_hash,
-        ))
-        .await?;
-    }
+    println!(
+        "Deleting legacy document ids for data_source_id={} count={}",
+        data_source_id,
+        document_id_hashs.len()
+    );
+
+    stream::iter(
+        document_id_hashs
+            .iter()
+            .map(|document_id_hash| {
+                FileStorageDocument::get_legacy_document_id_path(&data_source, document_id_hash)
+            })
+            .map(|p| async move {
+                FileStorageDocument::delete_if_exists(&p).await?;
+                Ok::<(), anyhow::Error>(())
+            }),
+    )
+    .buffer_unordered(16)
+    .try_collect::<Vec<_>>()
+    .await?;
 
     Ok(())
 }
