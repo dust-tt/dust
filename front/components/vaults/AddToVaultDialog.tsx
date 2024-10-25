@@ -31,7 +31,7 @@ export const AddToVaultDialog = ({
 
   const dataSource = dataSourceView.dataSource;
   const { vaults } = useVaults({ workspaceId: owner.sId });
-  const { dataSourceViews } = useDataSourceViews(owner);
+  const { dataSourceViews, mutateDataSourceViews } = useDataSourceViews(owner);
 
   const sendNotification = useContext(SendNotificationsContext);
 
@@ -111,6 +111,7 @@ export const AddToVaultDialog = ({
           type: "success",
         });
         onClose(true);
+        await mutateDataSourceViews();
       }
     } catch (e) {
       sendNotification({
