@@ -9,7 +9,9 @@ import {
   RocketIcon,
   Searchbar,
   StarIcon,
-  Tab,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Tooltip,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
@@ -22,7 +24,7 @@ import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
 import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
-import { classNames, subFilter } from "@app/lib/utils";
+import { subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
@@ -192,17 +194,27 @@ export function AssistantBrowser({
 
       {/* Assistant tabs */}
       <div className="flex flex-row space-x-4 px-4">
-        <Tab
-          className="grow"
-          tabs={visibleTabs.map((tab) => ({
-            ...tab,
-            current: tab.id === displayedTab,
-          }))}
-          tabClassName={classNames(
-            assistantSearch !== "" ? "text-element-700 border-element-700" : ""
-          )}
-          setCurrentTab={(t) => setQueryParam(router, "selectedTab", t)}
-        />
+        <Tabs
+          className="s-w-full"
+          defaultValue={selectedTab}
+          onValueChange={(t) => setQueryParam(router, "selectedTab", t)}
+        >
+          <TabsList className="s-inline-flex s-h-10 s-items-center s-gap-2 s-border-b s-border-separator">
+            {visibleTabs.map((tab) => (
+              <TabsTrigger
+                key={tab.id}
+                value={tab.id}
+                label={tab.label}
+                icon={tab.icon}
+                className={
+                  assistantSearch !== ""
+                    ? "s-text-element-700 s-border-element-700"
+                    : ""
+                }
+              />
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
       {!displayedTab && (
         <div className="text-center">
