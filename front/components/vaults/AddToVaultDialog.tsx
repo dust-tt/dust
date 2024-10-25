@@ -139,7 +139,6 @@ export const AddToVaultDialog = ({
         <DropdownMenu>
           <DropdownMenu.Button>
             <Button
-              hasMagnifying={false}
               label={vault ? vault.name : "Select space"}
               size="sm"
               isSelect
