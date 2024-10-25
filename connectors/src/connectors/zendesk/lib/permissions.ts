@@ -1,11 +1,6 @@
 import type { ContentNode, ModelId } from "@dust-tt/types";
 
-import {
-  getBrandInternalId,
-  getCategoryInternalId,
-  getHelpCenterInternalId,
-  getTicketsInternalId,
-} from "@connectors/connectors/zendesk/lib/id_conversions";
+import { getBrandInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -53,49 +48,17 @@ export async function retrieveSelectedNodes({
 
   const helpCenterNodes: ContentNode[] = brands
     .filter((brand) => brand.hasHelpCenter)
-    .map((brand) => ({
-      provider: connector.type,
-      internalId: getHelpCenterInternalId(connectorId, brand.id),
-      parentInternalId: getBrandInternalId(connectorId, brand.brandId),
-      type: "folder",
-      title: "Help Center",
-      sourceUrl: null,
-      expandable: true,
-      permission: brand.helpCenterPermission,
-      dustDocumentId: null,
-      lastUpdatedAt: brand.updatedAt.getTime(),
-    }));
+    .map((brand) => brand.getHelpCenterContentNode({ connectorId }));
 
   const categories = await ZendeskCategoryResource.fetchAllReadOnly({
     connectorId,
   });
-  const categoriesNodes: ContentNode[] = categories.map((category) => {
-    return {
-      provider: connector.type,
-      internalId: getCategoryInternalId(connectorId, category.categoryId),
-      parentInternalId: getHelpCenterInternalId(connectorId, category.brandId),
-      type: "folder",
-      title: category.name,
-      sourceUrl: category.url,
-      expandable: false,
-      permission: category.permission,
-      dustDocumentId: null,
-      lastUpdatedAt: category.updatedAt.getTime() || null,
-    };
-  });
-
-  const ticketNodes: ContentNode[] = brands.map((brand) => ({
-    provider: connector.type,
-    internalId: getTicketsInternalId(connectorId, brand.id),
-    parentInternalId: getBrandInternalId(connectorId, brand.brandId),
-    type: "folder",
-    title: "Tickets",
-    sourceUrl: null,
-    expandable: true,
-    permission: brand.ticketsPermission,
-    dustDocumentId: null,
-    lastUpdatedAt: brand.updatedAt.getTime(),
-  }));
+  const categoriesNodes: ContentNode[] = categories.map((category) =>
+    category.toContentNode({ connectorId })
+  );
+  const ticketNodes: ContentNode[] = brands.map((brand) =>
+    brand.getTicketsContentNode({ connectorId })
+  );
 
   return [
     ...brandNodes,
