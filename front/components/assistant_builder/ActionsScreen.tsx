@@ -13,7 +13,7 @@ import {
   MoreIcon,
   Page,
   PlusIcon,
-  Popover,
+  Popover, PopoverContent, PopoverRoot, PopoverTrigger,
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
@@ -953,16 +953,16 @@ function AdvancedSettings({
   setMaxStepsPerRun: (maxStepsPerRun: number | null) => void;
 }) {
   return (
-    <Popover
-      trigger={
+    <PopoverRoot>
+      <PopoverTrigger asChild>
         <Button
           label="Advanced settings"
           variant="outline"
           size="sm"
           isSelect
         />
-      }
-      content={
+      </PopoverTrigger>
+      <PopoverContent>
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <div className="flex flex-col items-start justify-start">
@@ -994,8 +994,8 @@ function AdvancedSettings({
             />
           </div>
         </div>
-      }
-    />
+      </PopoverContent>
+    </PopoverRoot>
   );
 }
 
