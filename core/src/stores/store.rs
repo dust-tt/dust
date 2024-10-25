@@ -1,6 +1,9 @@
 use anyhow::Result;
 use async_trait::async_trait;
+use bb8::Pool;
+use bb8_postgres::PostgresConnectionManager;
 use std::collections::HashMap;
+use tokio_postgres::NoTls;
 
 use crate::{
     blocks::block::BlockType,
@@ -21,6 +24,7 @@ use crate::{
 
 #[async_trait]
 pub trait Store {
+    fn raw_pool(&self) -> &Pool<PostgresConnectionManager<NoTls>>;
     // Projects
     async fn create_project(&self) -> Result<Project>;
     async fn delete_project(&self, project: &Project) -> Result<()>;
@@ -174,6 +178,13 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
         document_id: &str,
+    ) -> Result<()>;
+    async fn scrub_data_source_document_version(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+        version: &DocumentVersion,
     ) -> Result<()>;
     async fn delete_data_source(&self, project: &Project, data_source_id: &str) -> Result<u64>;
     // Databases
