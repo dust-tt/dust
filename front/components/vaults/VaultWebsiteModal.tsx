@@ -585,7 +585,6 @@ export default function VaultWebsiteModal({
                         onClick={() => {
                           setIsDeleteModalOpen(true);
                         }}
-                        hasMagnifying={false}
                       />
                       {dataSourceView && (
                         <DeleteStaticDataSourceDialog
