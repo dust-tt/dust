@@ -58,11 +58,11 @@ export type ResourcePermission =
 /**
  * Type guard to determine if a permission configuration includes role-based access control.
  *
- * @param acl - The resource permission configuration to check
+ * @param resourcePermission - The resource permission configuration to check
  * @returns True if the configuration includes role-based permissions
  */
 export function hasRolePermissions(
-  acl: ResourcePermission
-): acl is CombinedResourcePermissions {
-  return "roles" in acl;
+  resourcePermission: ResourcePermission
+): resourcePermission is CombinedResourcePermissions {
+  return "roles" in resourcePermission;
 }
