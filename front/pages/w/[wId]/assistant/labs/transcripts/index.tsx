@@ -677,7 +677,10 @@ export default function LabsTranscriptsIndex({
 
               {featureFlags.includes("labs_transcripts_datasource") && (
                 <Page.Layout direction="vertical">
-                  <Page.SectionHeader title="Store transcripts" />
+                  <Page.SectionHeader
+                    title="Store transcripts"
+                    description="After each transcribed meeting, store the full transcript in a Dust folder for later use."
+                  />
                   <Page.Layout direction="horizontal" gap="xl">
                     <SliderToggle
                       selected={storeInFolder}
@@ -686,9 +689,7 @@ export default function LabsTranscriptsIndex({
                         !transcriptsConfigurationState.assistantSelected
                       }
                     />
-                    <Page.P>
-                      Store transcripts in a Folder for later use.
-                    </Page.P>
+                    <Page.P>Enable transcripts storage</Page.P>
                   </Page.Layout>
                   <Page.Layout direction="horizontal">
                     <div className="w-full">
@@ -716,7 +717,52 @@ export default function LabsTranscriptsIndex({
               )}
 
               <Page.Layout direction="vertical">
-                <Page.SectionHeader title="Process transcripts automatically" />
+                <Page.SectionHeader
+                  title="Process transcripts automatically"
+                  description="After each transcribed meeting, Dust will run the assistant you selected and send you the result by email."
+                />
+                <Page.Layout direction="vertical">
+                  <Page.Layout direction="vertical">
+                    <Page.Layout direction="horizontal">
+                      <AssistantPicker
+                        owner={owner}
+                        size="sm"
+                        onItemClick={(assistant) =>
+                          handleSelectAssistant(
+                            transcriptsConfiguration.id,
+                            assistant
+                          )
+                        }
+                        assistants={agents}
+                        showFooterButtons={false}
+                      />
+                      {transcriptsConfigurationState.assistantSelected && (
+                        <div className="mt-2">
+                          <Page.P>
+                            <strong>
+                              @
+                              {
+                                transcriptsConfigurationState.assistantSelected
+                                  .name
+                              }
+                            </strong>
+                          </Page.P>
+                        </div>
+                      )}
+                      <div className="mt-2">
+                        <Page.P>
+                          The assistant that will process the transcripts
+                          received from{" "}
+                          {transcriptsConfigurationState.provider
+                            .charAt(0)
+                            .toUpperCase() +
+                            transcriptsConfigurationState.provider.slice(1)}
+                          .
+                        </Page.P>
+                      </div>
+                    </Page.Layout>
+                  </Page.Layout>
+                </Page.Layout>
                 <Page.Layout direction="horizontal" gap="xl">
                   <SliderToggle
                     selected={transcriptsConfigurationState.isActive}
@@ -728,10 +774,7 @@ export default function LabsTranscriptsIndex({
                     }
                     disabled={!transcriptsConfigurationState.assistantSelected}
                   />
-                  <Page.P>
-                    After each transcribed meeting, Dust will run the assistant
-                    you selected and send you the result by email.
-                  </Page.P>
+                  <Page.P>Enable transcripts email processing</Page.P>
                 </Page.Layout>
               </Page.Layout>
             </>
