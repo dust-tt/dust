@@ -10,7 +10,7 @@ import type { CreationAttributes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -143,16 +143,16 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       return this.update({ dataSourceViewId: null });
     }
 
-    const dataSource = await DataSourceResource.fetchById(
+    const dataSourceView = await DataSourceViewResource.fetchById(
       auth,
       dataSourceViewId
     );
 
-    if (!dataSource || this.dataSourceViewId === dataSource.id) {
+    if (!dataSourceView || this.dataSourceViewId === dataSourceView.id) {
       return;
     }
 
-    return this.update({ dataSourceViewId: dataSource.id });
+    return this.update({ dataSourceViewId: dataSourceView.id });
   }
 
   async delete(

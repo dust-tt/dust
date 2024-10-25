@@ -319,7 +319,7 @@ export default function LabsTranscriptsIndex({
     await makePatchRequest(
       transcriptConfigurationId,
       {
-        dataSourceViewId: dataSourceView ? dataSourceView.dataSource.sId : null,
+        dataSourceViewId: dataSourceView ? dataSourceView.sId : null,
       },
       successMessage
     );

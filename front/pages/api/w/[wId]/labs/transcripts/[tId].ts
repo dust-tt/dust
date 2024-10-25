@@ -124,7 +124,6 @@ async function handler(
       }
 
       if (dataSourceViewId !== undefined) {
-        console.log("Setting data source id", dataSourceViewId);
         await transcriptsConfiguration.setDataSourceViewId(
           auth,
           dataSourceViewId
