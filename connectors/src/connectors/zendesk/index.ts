@@ -12,13 +12,11 @@ import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import {
   allowSyncZendeskBrand,
-  retrieveZendeskBrandPermissions,
   revokeSyncZendeskBrand,
 } from "@connectors/connectors/zendesk/lib/brand_permissions";
 import {
   allowSyncZendeskCategory,
   allowSyncZendeskHelpCenter,
-  retrieveZendeskHelpCenterPermissions,
   revokeSyncZendeskCategory,
   revokeSyncZendeskHelpCenter,
 } from "@connectors/connectors/zendesk/lib/help_center_permissions";
@@ -29,10 +27,12 @@ import {
   getIdFromInternalId,
   getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
-import { retrieveSelectedNodes } from "@connectors/connectors/zendesk/lib/permissions";
+import {
+  retrieveChildrenNodes,
+  retrieveSelectedNodes,
+} from "@connectors/connectors/zendesk/lib/permissions";
 import {
   allowSyncZendeskTickets,
-  retrieveZendeskTicketPermissions,
   revokeSyncZendeskTickets,
 } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
@@ -118,25 +118,14 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
 
     try {
-      const brandNodes = await retrieveZendeskBrandPermissions({
-        connectorId,
-        parentInternalId,
-        filterPermission,
-        viewType: "documents",
-      });
-      const helpCenterNodes = await retrieveZendeskHelpCenterPermissions({
-        connectorId,
-        parentInternalId,
-        filterPermission,
-        viewType: "documents",
-      });
-      const ticketNodes = await retrieveZendeskTicketPermissions({
-        connectorId,
-        parentInternalId,
-        filterPermission,
-        viewType: "documents",
-      });
-      return new Ok([...brandNodes, ...helpCenterNodes, ...ticketNodes]);
+      return new Ok(
+        await retrieveChildrenNodes({
+          connectorId,
+          parentInternalId,
+          filterPermission,
+          viewType: "documents",
+        })
+      );
     } catch (e) {
       return new Err(e as Error);
     }
