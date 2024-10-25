@@ -90,10 +90,10 @@ export const AGENT_CONFIGURATION_SCOPES = [
   "global",
   "workspace",
   "published",
-  "private"
+  "private",
 ] as const;
-export type AgentConfigurationScope = typeof AGENT_CONFIGURATION_SCOPES[number];
-
+export type AgentConfigurationScope =
+  (typeof AGENT_CONFIGURATION_SCOPES)[number];
 
 /**
  * Defines strategies for fetching agent configurations based on various
