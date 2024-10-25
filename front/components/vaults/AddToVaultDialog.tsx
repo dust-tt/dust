@@ -63,7 +63,7 @@ export const AddToVaultDialog = ({
     }
 
     const existingViewForVault = dataSourceViews.find(
-      (d) => d.vaultId === vault.sId
+      (d) => d.vaultId === vault.sId && d.dataSource.sId === dataSource.sId
     );
 
     try {
