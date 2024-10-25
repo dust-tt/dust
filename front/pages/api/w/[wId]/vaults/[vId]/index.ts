@@ -138,7 +138,7 @@ async function handler(
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message: "Only admins can administrate vaults.",
+            message: "Only admins can administrate spaces.",
           },
         });
       }
@@ -218,7 +218,7 @@ async function handler(
           api_error: {
             type: "workspace_auth_error",
             message:
-              "Only users that are `admins` or `builder` can administrate vaults.",
+              "Only users that are `admins` or `builder` can administrate spaces.",
           },
         });
       }

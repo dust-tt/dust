@@ -153,7 +153,7 @@ async function archiveAssistants(auth: Authenticator) {
 
 async function deleteDatasources(auth: Authenticator) {
   const globalAndSystemVaults =
-    await SpaceResource.listWorkspaceDefaultVaults(auth);
+    await SpaceResource.listWorkspaceDefaultSpaces(auth);
 
   // Retrieve and delete all data sources associated with the system and global vaults.
   // Others will be deleted when deleting the vaults.
@@ -174,7 +174,7 @@ async function deleteDatasources(auth: Authenticator) {
 // Remove all user-created vaults and their associated groups,
 // preserving only the system and global vaults.
 async function deleteVaults(auth: Authenticator) {
-  const vaults = await SpaceResource.listWorkspaceVaults(auth);
+  const vaults = await SpaceResource.listWorkspaceSpaces(auth);
 
   // Filter out system and global vaults.
   const filteredVaults = vaults.filter(

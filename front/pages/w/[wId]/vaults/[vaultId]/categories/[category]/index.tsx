@@ -48,7 +48,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  const systemVault = await SpaceResource.fetchWorkspaceSystemVault(auth);
+  const systemVault = await SpaceResource.fetchWorkspaceSystemSpace(auth);
   const vault = await SpaceResource.fetchById(
     auth,
     context.query.vaultId as string

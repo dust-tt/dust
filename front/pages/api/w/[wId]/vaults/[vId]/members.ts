@@ -47,7 +47,7 @@ async function handler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Only regular vaults can have members.",
+        message: "Only regular spaces can have members.",
       },
     });
   }

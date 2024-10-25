@@ -569,7 +569,7 @@ export async function deleteVaultsActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const vaults = await SpaceResource.listWorkspaceVaults(auth);
+  const vaults = await SpaceResource.listWorkspaceSpaces(auth);
 
   for (const vault of vaults) {
     await scrubVaultActivity({

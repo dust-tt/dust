@@ -62,7 +62,7 @@ async function backfillDataSourceViewsForWorkspace(
     `Found ${dataSources.length} data sources for workspace(${workspace.sId}).`
   );
 
-  const globalVault = await SpaceResource.fetchWorkspaceGlobalVault(auth);
+  const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
   let updated = 0;
   for (const dataSource of dataSources) {

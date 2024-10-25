@@ -296,8 +296,8 @@ async function handler(
       }
 
       const vault = await (provider === "webcrawler"
-        ? SpaceResource.fetchWorkspaceGlobalVault(auth)
-        : SpaceResource.fetchWorkspaceSystemVault(auth));
+        ? SpaceResource.fetchWorkspaceGlobalSpace(auth)
+        : SpaceResource.fetchWorkspaceSystemSpace(auth));
 
       const dataSourceView =
         await DataSourceViewResource.createDataSourceAndDefaultView(

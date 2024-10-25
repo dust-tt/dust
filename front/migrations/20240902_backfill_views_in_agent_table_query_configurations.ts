@@ -25,7 +25,7 @@ async function backfillViewsInAgentTableQueryConfigurationForWorkspace(
     `Found ${dataSources.length} data sources for workspace(${workspace.sId}).`
   );
 
-  const globalVault = await SpaceResource.fetchWorkspaceGlobalVault(auth);
+  const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
   // Retrieve data source views for data sources.
   const dataSourceViews =

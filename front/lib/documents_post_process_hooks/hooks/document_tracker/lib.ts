@@ -6,7 +6,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 export async function getTrackableDataSourceViews(
   auth: Authenticator
 ): Promise<DataSourceViewResource[]> {
-  const globalVault = await SpaceResource.fetchWorkspaceGlobalVault(auth);
+  const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   // TODO(DOC_TRACKER):
   const views = await DataSourceViewResource.listBySpace(auth, globalVault);
 

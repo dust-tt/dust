@@ -352,12 +352,12 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
 
   static async listBySpaces(
     auth: Authenticator,
-    vaults: SpaceResource[],
+    spaces: SpaceResource[],
     options?: FetchDataSourceOptions
   ) {
     return this.baseFetch(auth, options, {
       where: {
-        vaultId: vaults.map((v) => v.id),
+        vaultId: spaces.map((s) => s.id),
       },
     });
   }

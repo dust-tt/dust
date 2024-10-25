@@ -74,7 +74,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  const systemVault = await SpaceResource.fetchWorkspaceSystemVault(auth);
+  const systemVault = await SpaceResource.fetchWorkspaceSystemSpace(auth);
   const vault = dataSourceView.space;
   const canWriteInVault = vault.canWrite(auth);
   const canReadInVault = vault.canRead(auth);

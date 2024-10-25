@@ -24,7 +24,7 @@ async function backfillDataSourceViewsForWorkspace(
     return;
   }
 
-  const globalVault = await SpaceResource.fetchWorkspaceGlobalVault(auth);
+  const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
   let updated = 0;
   for (const dataSource of dataSources) {

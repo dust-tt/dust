@@ -50,7 +50,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const subscription = auth.subscription();
   const user = auth.user();
 
-  const globalVault = await SpaceResource.fetchWorkspaceGlobalVault(auth);
+  const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const globalDataSourceViews = await DataSourceViewResource.listBySpace(
     auth,
     globalVault

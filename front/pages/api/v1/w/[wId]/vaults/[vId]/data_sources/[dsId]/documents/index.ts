@@ -107,7 +107,7 @@ async function handler(
       // dataSource.space.sId.
       vId = dataSource?.space.sId;
     } else {
-      vId = (await SpaceResource.fetchWorkspaceGlobalVault(auth)).sId;
+      vId = (await SpaceResource.fetchWorkspaceGlobalSpace(auth)).sId;
     }
   }
 

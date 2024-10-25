@@ -63,7 +63,7 @@ async function handler(
   // vault, global vault assumed).
   const vault =
     typeof vId !== "string"
-      ? await SpaceResource.fetchWorkspaceGlobalVault(auth)
+      ? await SpaceResource.fetchWorkspaceGlobalSpace(auth)
       : await SpaceResource.fetchById(auth, vId);
 
   if (!vault) {

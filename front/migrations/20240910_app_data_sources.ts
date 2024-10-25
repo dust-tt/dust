@@ -42,7 +42,7 @@ async function migrateApps(
   after: fs.WriteStream
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const vaults = await SpaceResource.listWorkspaceVaults(auth);
+  const vaults = await SpaceResource.listWorkspaceSpaces(auth);
 
   for (const vault of vaults) {
     const apps = await AppResource.listBySpace(auth, vault);

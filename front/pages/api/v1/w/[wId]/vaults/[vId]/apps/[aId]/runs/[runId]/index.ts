@@ -87,7 +87,7 @@ async function handler(
   // user)).
   let { vId } = req.query;
   if (vId === undefined) {
-    vId = (await SpaceResource.fetchWorkspaceGlobalVault(auth)).sId;
+    vId = (await SpaceResource.fetchWorkspaceGlobalSpace(auth)).sId;
   }
 
   const app = await AppResource.fetchById(auth, req.query.aId as string);

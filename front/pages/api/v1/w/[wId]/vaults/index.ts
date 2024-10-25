@@ -61,7 +61,7 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const vaults = (await SpaceResource.listWorkspaceVaults(auth)).map(
+      const vaults = (await SpaceResource.listWorkspaceSpaces(auth)).map(
         (vault) => vault.toJSON()
       );
       res.status(200).json({

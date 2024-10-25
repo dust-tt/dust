@@ -17,7 +17,7 @@ makeScript({}, async ({ execute }, logger) => {
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const globalVault = await SpaceResource.fetchWorkspaceGlobalVault(auth);
+    const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
     if (execute) {
       await app.update({ vaultId: globalVault.id });

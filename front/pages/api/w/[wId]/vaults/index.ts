@@ -47,7 +47,7 @@ async function handler(
         });
       }
 
-      let vaults: SpaceResource[] = [];
+      let spaces: SpaceResource[] = [];
 
       if (role && role === "admin") {
         if (!auth.isAdmin()) {
@@ -56,23 +56,23 @@ async function handler(
             api_error: {
               type: "workspace_auth_error",
               message:
-                "Only users that are `admins` can see all vaults in the workspace.",
+                "Only users that are `admins` can see all spaces in the workspace.",
             },
           });
         }
         if (kind && kind === "system") {
-          const systemVault =
-            await SpaceResource.fetchWorkspaceSystemVault(auth);
-          vaults = systemVault ? [systemVault] : [];
+          const systemSpace =
+            await SpaceResource.fetchWorkspaceSystemSpace(auth);
+          spaces = systemSpace ? [systemSpace] : [];
         } else {
-          vaults = await SpaceResource.listWorkspaceVaults(auth);
+          spaces = await SpaceResource.listWorkspaceSpaces(auth);
         }
       } else {
-        vaults = await SpaceResource.listWorkspaceVaultsAsMember(auth);
+        spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
       }
 
       return res.status(200).json({
-        vaults: vaults.map((vault) => vault.toJSON()),
+        vaults: spaces.map((s) => s.toJSON()),
       });
 
     case "POST":
@@ -82,7 +82,7 @@ async function handler(
           api_error: {
             type: "workspace_auth_error",
             message:
-              "Only users that are `admins` or `builder` can administrate vaults.",
+              "Only users that are `admins` or `builder` can administrate spaces.",
           },
         });
       }
@@ -101,7 +101,7 @@ async function handler(
       }
 
       const plan = auth.getNonNullablePlan();
-      const all = await SpaceResource.listWorkspaceVaults(auth);
+      const all = await SpaceResource.listWorkspaceSpaces(auth);
       const isLimitReached = isPrivateVaultsLimitReached(
         all.map((v) => v.toJSON()),
         plan
@@ -112,7 +112,7 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "The maximum number of vaults has been reached.",
+            message: "The maximum number of spaces has been reached.",
           },
         });
       }
@@ -125,13 +125,13 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "vault_already_exists",
-            message: "This vault name is already used.",
+            message: "This space name is already used.",
           },
         });
       }
 
       const group = await GroupResource.makeNew({
-        name: `Group for vault ${name}`,
+        name: `Group for space ${name}`,
         workspaceId: owner.id,
         kind: "regular",
       });
@@ -145,7 +145,7 @@ async function handler(
         globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
       ]);
 
-      const vault = await SpaceResource.makeNew(
+      const space = await SpaceResource.makeNew(
         {
           name,
           kind: "regular",
@@ -176,7 +176,7 @@ async function handler(
         }
       }
 
-      return res.status(201).json({ vault: vault.toJSON() });
+      return res.status(201).json({ vault: space.toJSON() });
 
     default:
       return apiError(req, res, {

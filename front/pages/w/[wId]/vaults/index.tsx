@@ -13,7 +13,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements(
       };
     }
 
-    const vault = await SpaceResource.fetchWorkspaceGlobalVault(auth);
+    const vault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     if (!vault) {
       return {
         notFound: true,

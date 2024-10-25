@@ -91,13 +91,14 @@ async function handler(
         let usages: DataSourcesUsageByAgent = {};
 
         if (vault.isSystem()) {
-          // In case of system vault, we want to reflect the usage by datasources themselves so we get usage accross all vaults
+          // In case of system vault, we want to reflect the usage by datasources themselves so we
+          // get usage accross all spaces.
           const usagesByDataSources = await getDataSourcesUsageByCategory({
             auth,
             category,
           });
 
-          // Then we remap to the dataSourceViews of the system vaults
+          // Then we remap to the dataSourceViews of the system spaces.
           dataSourceViews.forEach((dsView) => {
             usages[dsView.id] = usagesByDataSources[dsView.dataSource.id];
           });
@@ -158,7 +159,7 @@ async function handler(
           api_error: {
             type: "workspace_auth_error",
             message:
-              "Only users that are `admins` or `builder` can administrate vaults.",
+              "Only users that are `admins` or `builder` can administrate spaces.",
           },
         });
       }
