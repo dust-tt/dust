@@ -5,6 +5,7 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 
@@ -261,6 +262,17 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           break;
         }
         // we do not set permissions for single articles and tickets
+        case "article":
+        case "ticket":
+          logger.error(
+            { connectorId, objectId },
+            "[Zendesk] Cannot set permissions for a single article or ticket"
+          );
+          throw new Error(
+            "Cannot set permissions for a single article or ticket"
+          );
+        default:
+          assertNever(type);
       }
     }
 
@@ -301,8 +313,16 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           categoryIds.push(objectId);
           return;
         }
+        case "article":
+        case "ticket": {
+          logger.error(
+            { connectorId, objectId },
+            "[Zendesk] Cannot retrieve single articles or tickets"
+          );
+          throw new Error("Cannot retrieve single articles or tickets");
+        }
         default: {
-          return;
+          assertNever(type);
         }
       }
     });
@@ -423,13 +443,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           return new Err(new Error("Ticket not found"));
         }
       }
-      case null: {
-        logger.error(
-          { connectorId, internalId },
-          "[Zendesk] Internal ID not recognized"
-        );
-        return new Err(new Error("Internal ID not recognized"));
-      }
+      default:
+        assertNever(type);
     }
   }
 

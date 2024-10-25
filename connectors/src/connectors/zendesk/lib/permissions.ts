@@ -4,6 +4,7 @@ import type {
   ContentNodesViewType,
   ModelId,
 } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 
 import {
   getBrandInternalId,
@@ -251,8 +252,9 @@ export async function retrieveChildrenNodes({
       // Single tickets and articles have no children.
       case "ticket":
       case "article":
-      case null:
         return [];
+      default:
+        assertNever(type);
     }
   }
 
