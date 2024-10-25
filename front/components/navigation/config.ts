@@ -253,14 +253,14 @@ export const subNavigationApp = ({
       value: "specification",
       label: "Specification",
       icon: CommandLineIcon,
-      href: `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`,
+      href: `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}`,
       current: current === "specification",
     },
     {
       value: "datasets",
       label: "Datasets",
       icon: DocumentTextIcon,
-      href: `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets`,
+      href: `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets`,
       current: current === "datasets",
     },
   ];
@@ -271,14 +271,14 @@ export const subNavigationApp = ({
         value: "runs",
         label: "Logs",
         icon: FolderOpenIcon,
-        href: `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs`,
+        href: `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/runs`,
         current: current === "runs",
       },
       {
         value: "settings",
         label: "Settings",
         icon: Cog6ToothIcon,
-        href: `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/settings`,
+        href: `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/settings`,
         current: current === "settings",
       },
     ]);
