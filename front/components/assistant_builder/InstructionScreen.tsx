@@ -3,7 +3,7 @@ import {
   ContentMessage,
   DropdownMenu,
   Page,
-  Popover,
+  Popover, PopoverContent, PopoverRoot, PopoverTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -368,16 +368,16 @@ function AdvancedSettings({
     );
 
   return (
-    <Popover
-      trigger={
+    <PopoverRoot>
+      <PopoverTrigger asChild>
         <Button
           label="Advanced settings"
           variant="outline"
           size="sm"
           isSelect
         />
-      }
-      content={
+      </PopoverTrigger>
+      <PopoverContent>
         <div className="flex flex-col gap-4">
           <div className="flex flex-col items-end gap-2">
             <div className="w-full grow text-sm font-bold text-element-800">
@@ -435,7 +435,7 @@ function AdvancedSettings({
                   isSelect
                   label={
                     getCreativityLevelFromTemperature(
-                      generationSettings?.temperature
+                      generationSettings?.temperature,
                     ).label
                   }
                   variant="outline"
@@ -459,9 +459,9 @@ function AdvancedSettings({
             </DropdownMenu>
           </div>
         </div>
-      }
-    />
-  );
+      </PopoverContent>
+    </PopoverRoot>
+  )
 }
 
 const STATIC_SUGGESTIONS = [
@@ -479,18 +479,18 @@ type SuggestionStatus =
   | "error";
 
 function Suggestions({
-  owner,
-  instructions,
-}: {
+                       owner,
+                       instructions,
+                     }: {
   owner: WorkspaceType;
   instructions: string;
 }) {
   // history of all suggestions. The first two are displayed.
   const [suggestions, setSuggestions] = useState<string[]>(
-    !instructions ? STATIC_SUGGESTIONS : []
+    !instructions ? STATIC_SUGGESTIONS : [],
   );
   const [suggestionsStatus, setSuggestionsStatus] = useState<SuggestionStatus>(
-    !instructions ? "suggestions_available" : "no_suggestions"
+    !instructions ? "suggestions_available" : "no_suggestions",
   );
 
   const horinzontallyScrollableDiv = useRef<HTMLDivElement | null>(null);
@@ -512,7 +512,7 @@ function Suggestions({
     if (!instructions.trim()) {
       setError(null);
       setSuggestionsStatus(
-        suggestions.length > 0 ? "suggestions_available" : "no_suggestions"
+        suggestions.length > 0 ? "suggestions_available" : "no_suggestions",
       );
       clearTimeout(debounceHandle.current);
       return;
