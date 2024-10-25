@@ -227,7 +227,7 @@ function ContentNodeTreeChildren({
                     n.sourceUrl ? "" : "pointer-events-none opacity-0"
                   )}
                   disabled={!n.sourceUrl}
-                  variant="ghost"
+                  variant="outline"
                 />
                 {onDocumentViewClick && (
                   <IconButton

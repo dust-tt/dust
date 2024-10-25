@@ -99,9 +99,9 @@ async function updateAgent(
 
   const groupIds = (
     await DataSourceViewResource.fetchByIds(auth, dataSourceViewIds)
-  )
-    .map((view) => view.acl().aclEntries.map((entry) => entry.groupId))
-    .flat();
+  ).flatMap((view) =>
+    view.requestedPermissions().flatMap((rp) => rp.groups.map((g) => g.id))
+  );
 
   if (execute) {
     await AgentConfiguration.update(

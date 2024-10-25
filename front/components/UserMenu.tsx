@@ -7,11 +7,11 @@ import {
   StarIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@dust-tt/types";
-import { useContext, useMemo } from "react";
+import { useMemo } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { canForceUserRole, forceUserRole } from "@app/lib/development";
 
 export function UserMenu({
@@ -24,7 +24,7 @@ export function UserMenu({
   const hasBetaAccess = owner.flags.some((flag: string) =>
     flag.startsWith("labs_")
   );
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {

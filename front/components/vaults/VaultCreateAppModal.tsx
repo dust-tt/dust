@@ -4,13 +4,13 @@ import {
   Modal,
   Page,
   TextArea,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { APIError, VaultType, WorkspaceType } from "@dust-tt/types";
 import { APP_NAME_REGEXP } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useContext, useState } from "react";
+import { useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useApps } from "@app/lib/swr/apps";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import type { PostAppResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/apps";
@@ -27,7 +27,7 @@ export const VaultCreateAppModal = ({
   setIsOpen: (isOpen: boolean) => void;
 }) => {
   const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const [name, setName] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);

@@ -1,4 +1,5 @@
 import { ContentMessage, Modal, TextArea } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ActiveRoleType,
   SubscriptionPerSeatPricing,
@@ -10,7 +11,6 @@ import { mutate } from "swr";
 import { ConfirmContext } from "@app/components/Confirm";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useChangeMembersRoles } from "@app/hooks/useChangeMembersRoles";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import {
@@ -36,7 +36,7 @@ export function InviteEmailModal({
   const [isSending, setIsSending] = useState(false);
   const [emailError, setEmailError] = useState("");
 
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
   const [invitationRole, setInvitationRole] = useState<ActiveRoleType>("user");
   const handleMembersRoleChange = useChangeMembersRoles({ owner });
