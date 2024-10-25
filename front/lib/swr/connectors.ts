@@ -1,13 +1,13 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ConnectorPermission,
   ContentNodesViewType,
   DataSourceType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { useContext, useMemo } from "react";
+import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   fetcher,
   getErrorFromResponse,
@@ -146,7 +146,7 @@ export function useToggleSlackChatBot({
   dataSource: DataSourceType;
   owner: LightWorkspaceType;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const { mutateConfig } = useConnectorConfig({
     owner,

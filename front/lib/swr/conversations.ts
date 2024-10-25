@@ -1,14 +1,14 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ConversationError,
   ConversationMessageReactions,
   ConversationType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { useCallback, useContext, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
 import {
@@ -170,7 +170,7 @@ export function useConversationParticipants({
 }
 
 export const useDeleteConversation = (owner: LightWorkspaceType) => {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
   });

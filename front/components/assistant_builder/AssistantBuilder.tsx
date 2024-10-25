@@ -8,6 +8,7 @@ import {
   IconButton,
   MagicIcon,
   Tab,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
@@ -59,7 +60,6 @@ import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 
@@ -76,7 +76,7 @@ export default function AssistantBuilder({
   isAdmin,
 }: AssistantBuilderProps) {
   const router = useRouter();
-  const sendNotification = React.useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";

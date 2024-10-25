@@ -1,13 +1,13 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
   DataSourceViewType,
   LightWorkspaceType,
   VaultType,
 } from "@dust-tt/types";
-import { useContext, useMemo } from "react";
+import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import {
   fetcher,
@@ -221,7 +221,7 @@ export function useCreateFolder({
   owner: LightWorkspaceType;
   vaultId: string;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
     useVaultDataSourceViews({
       workspaceId: owner.sId,
@@ -280,7 +280,7 @@ export function useUpdateFolder({
   owner: LightWorkspaceType;
   vaultId: string;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const doUpdate = async (
     dataSourceView: DataSourceViewType | null,
     description: string | null
@@ -330,7 +330,7 @@ export function useDeleteFolderOrWebsite({
   vaultId: string;
   category: Exclude<DataSourceViewCategory, "apps">;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
     useVaultDataSourceViews({
       workspaceId: owner.sId,
@@ -376,7 +376,7 @@ type DoCreateOrUpdateAllowedParams =
   | { name: string | null; memberIds: string[]; isRestricted: true };
 
 export function useCreateVault({ owner }: { owner: LightWorkspaceType }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { mutate: mutateVaults } = useVaults({
     workspaceId: owner.sId,
     disabled: true, // Needed just to mutate.
@@ -440,7 +440,7 @@ export function useCreateVault({ owner }: { owner: LightWorkspaceType }) {
 }
 
 export function useUpdateVault({ owner }: { owner: LightWorkspaceType }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { mutate: mutateVaults } = useVaults({
     workspaceId: owner.sId,
     disabled: true, // Needed just to mutate
@@ -523,7 +523,7 @@ export function useUpdateVault({ owner }: { owner: LightWorkspaceType }) {
 }
 
 export function useDeleteVault({ owner }: { owner: LightWorkspaceType }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { mutate: mutateVaults } = useVaults({
     workspaceId: owner.sId,
     disabled: true, // Needed just to mutate

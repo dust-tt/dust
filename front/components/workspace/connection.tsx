@@ -12,6 +12,7 @@ import {
   RadioGroup,
   RadioGroupChoice,
   SliderToggle,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
   PlanType,
@@ -22,9 +23,8 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, connectionStrategyToHumanReadable } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useCallback, useContext, useState } from "react";
+import { useCallback, useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useWorkspaceEnterpriseConnection } from "@app/lib/swr/workspaces";
 import type { PostCreateEnterpriseConnectionRequestBodySchemaType } from "@app/pages/api/w/[wId]/enterprise-connection";
@@ -504,7 +504,7 @@ function StrategyModalContent({
   strategy: SupportedEnterpriseConnectionStrategies;
   strategyDetails: EnterpriseConnectionStrategyDetails;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const createEnterpriseConnection = useCallback(
     async (
@@ -635,7 +635,7 @@ function ToggleEnforceEnterpriseConnectionModal({
   onClose: (updated: boolean) => void;
   owner: WorkspaceType;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const titleAndContent = {
     enforce: {
@@ -708,7 +708,7 @@ function DisableEnterpriseConnectionModal({
   onClose: (updated: boolean) => void;
   owner: WorkspaceType;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   if (!enterpriseConnection) {
     return <></>;

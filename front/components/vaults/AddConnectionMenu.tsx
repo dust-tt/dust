@@ -4,6 +4,7 @@ import {
   Dialog,
   DropdownMenu,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
   ConnectorType,
@@ -17,11 +18,10 @@ import type {
 } from "@dust-tt/types";
 import { Err, isOAuthProvider, Ok, setupOAuthConnection } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useContext, useState } from "react";
+import { useState } from "react";
 
 import { CreateConnectionConfirmationModal } from "@app/components/data_source/CreateConnectionConfirmationModal";
 import { CreateConnectionSnowflakeModal } from "@app/components/data_source/CreateConnectionSnowflakeModal";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
@@ -81,7 +81,7 @@ export const AddConnectionMenu = ({
   onCreated,
   integrations,
 }: AddConnectionMenuProps) => {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const [showUpgradePopup, setShowUpgradePopup] = useState<boolean>(false);
   const [showPreviewPopupForProvider, setShowPreviewPopupForProvider] =
     useState<{ isOpen: boolean; connector: ConnectorProvider | null }>({

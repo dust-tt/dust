@@ -1,13 +1,11 @@
-import { Dialog } from "@dust-tt/sparkle";
+import { Dialog, useSendNotification } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   LightContentNode,
   LightWorkspaceType,
 } from "@dust-tt/types";
 import * as _ from "lodash";
-import { useContext, useState } from "react";
-
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
+import { useState } from "react";
 
 interface DocumentOrTableDeleteDialogProps {
   dataSourceView: DataSourceViewType;
@@ -25,7 +23,7 @@ export const DocumentOrTableDeleteDialog = ({
   contentNode,
 }: DocumentOrTableDeleteDialogProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const isTable = contentNode.type === "database";
   const itemType = isTable ? "table" : "document";

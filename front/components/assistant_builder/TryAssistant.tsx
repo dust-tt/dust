@@ -1,20 +1,15 @@
-import type { WorkspaceType } from "@dust-tt/types";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentMention,
   ConversationType,
   LightAgentConfigurationType,
   MentionType,
+  UploadedContentFragment,
   UserType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { UploadedContentFragment } from "@dust-tt/types";
 import { isEqual } from "lodash";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   createConversationWithMessage,
@@ -23,7 +18,6 @@ import {
 import { getDefaultAvatarUrlForPreview } from "@app/components/assistant_builder/avatar_picker/utils";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { debounce } from "@app/lib/utils/debounce";
 
 export function usePreviewAssistant({
@@ -46,7 +40,7 @@ export function usePreviewAssistant({
   const [isFading, setIsFading] = useState(false);
   const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
-  const sendNotification = React.useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   // Some state to keep track of the previous builderState
   const previousBuilderState = useRef<AssistantBuilderState>(builderState);
@@ -164,7 +158,7 @@ export function useTryAssistantCore({
   const [conversation, setConversation] = useState<ConversationType | null>(
     openWithConversation ?? null
   );
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const handleSubmit = async (
     input: string,

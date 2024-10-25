@@ -5,11 +5,11 @@ import {
   PlusIcon,
   TextArea,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
 import * as _ from "lodash";
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { sendRequestDataSourceEmail } from "@app/lib/email";
@@ -31,7 +31,7 @@ export function RequestDataSourceModal({
     useState<DataSourceType | null>(null);
 
   const [message, setMessage] = useState("");
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   useEffect(() => {
     if (dataSources.length === 1) {

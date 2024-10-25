@@ -5,18 +5,17 @@ import {
   Modal,
   SliderToggle,
   Tooltip,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
-import { EMBEDDING_PROVIDER_IDS } from "@dust-tt/types";
-import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
+import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import { isEqual } from "lodash";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import {
   MODEL_PROVIDER_LOGOS,
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 interface ProviderManagementModalProps {
   owner: WorkspaceType;
@@ -50,7 +49,7 @@ export function ProviderManagementModal({
   showProviderModal,
   onClose,
 }: ProviderManagementModalProps) {
-  const sendNotifications = useContext(SendNotificationsContext);
+  const sendNotifications = useSendNotification();
 
   const initialProviderStates: ProviderStates = useMemo(() => {
     const enabledProviders: ModelProviderIdType[] =
