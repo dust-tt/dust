@@ -3,7 +3,10 @@ import {
   ContentMessage,
   DropdownMenu,
   Page,
-  Popover, PopoverContent, PopoverRoot, PopoverTrigger,
+  Popover,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -435,7 +438,7 @@ function AdvancedSettings({
                   isSelect
                   label={
                     getCreativityLevelFromTemperature(
-                      generationSettings?.temperature,
+                      generationSettings?.temperature
                     ).label
                   }
                   variant="outline"
@@ -461,7 +464,7 @@ function AdvancedSettings({
         </div>
       </PopoverContent>
     </PopoverRoot>
-  )
+  );
 }
 
 const STATIC_SUGGESTIONS = [
@@ -479,18 +482,18 @@ type SuggestionStatus =
   | "error";
 
 function Suggestions({
-                       owner,
-                       instructions,
-                     }: {
+  owner,
+  instructions,
+}: {
   owner: WorkspaceType;
   instructions: string;
 }) {
   // history of all suggestions. The first two are displayed.
   const [suggestions, setSuggestions] = useState<string[]>(
-    !instructions ? STATIC_SUGGESTIONS : [],
+    !instructions ? STATIC_SUGGESTIONS : []
   );
   const [suggestionsStatus, setSuggestionsStatus] = useState<SuggestionStatus>(
-    !instructions ? "suggestions_available" : "no_suggestions",
+    !instructions ? "suggestions_available" : "no_suggestions"
   );
 
   const horinzontallyScrollableDiv = useRef<HTMLDivElement | null>(null);
@@ -512,7 +515,7 @@ function Suggestions({
     if (!instructions.trim()) {
       setError(null);
       setSuggestionsStatus(
-        suggestions.length > 0 ? "suggestions_available" : "no_suggestions",
+        suggestions.length > 0 ? "suggestions_available" : "no_suggestions"
       );
       clearTimeout(debounceHandle.current);
       return;
