@@ -1,5 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 
+import logger from "@connectors/logger/logger";
+
 /**
  * Conversion from an id to an internalId.
  */
@@ -65,7 +67,7 @@ export type InternalIdType =
 export function getIdFromInternalId(
   connectorId: ModelId,
   internalId: string
-): { type: InternalIdType | null; objectId: number } {
+): { type: InternalIdType; objectId: number } {
   let objectId = getBrandIdFromInternalId(connectorId, internalId);
   if (objectId) {
     return { type: "brand", objectId };
@@ -90,7 +92,11 @@ export function getIdFromInternalId(
   if (objectId) {
     return { type: "ticket", objectId };
   }
-  return { type: null, objectId: -1 };
+  logger.error(
+    { connectorId, internalId },
+    "[Zendesk] Internal ID not recognized"
+  );
+  throw new Error("Internal ID not recognized");
 }
 
 function getBrandIdFromInternalId(
