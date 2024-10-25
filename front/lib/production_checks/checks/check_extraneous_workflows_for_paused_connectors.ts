@@ -18,7 +18,7 @@ const connectorsDb = getConnectorsPrimaryDbConnection();
 
 async function listPausedConnectors() {
   const connectors: ConnectorBlob[] = await connectorsDb.query(
-    `SELECT id, "dataSourceId", "workspaceId", "pausedAt", "type" FROM connectors WHERE "pausedAt" IS NULL`,
+    `SELECT id, "dataSourceId", "workspaceId", "pausedAt", "type" FROM connectors WHERE "pausedAt" IS NOT NULL AND "type" != 'webcrawler' and "errorType" IS NULL`,
     {
       type: QueryTypes.SELECT,
     }
