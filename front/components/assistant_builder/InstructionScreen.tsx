@@ -3,9 +3,7 @@ import {
   ContentMessage,
   DropdownMenu,
   Page,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
+  Popover,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -370,16 +368,16 @@ function AdvancedSettings({
     );
 
   return (
-    <PopoverRoot>
-      <PopoverTrigger asChild>
+    <Popover
+      trigger={
         <Button
           label="Advanced settings"
           variant="outline"
           size="sm"
           isSelect
         />
-      </PopoverTrigger>
-      <PopoverContent>
+      }
+      content={
         <div className="flex flex-col gap-4">
           <div className="flex flex-col items-end gap-2">
             <div className="w-full grow text-sm font-bold text-element-800">
@@ -461,8 +459,8 @@ function AdvancedSettings({
             </DropdownMenu>
           </div>
         </div>
-      </PopoverContent>
-    </PopoverRoot>
+      }
+    />
   );
 }
 
