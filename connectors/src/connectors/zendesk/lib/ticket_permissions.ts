@@ -6,8 +6,6 @@ import type {
 } from "@dust-tt/types";
 
 import {
-  getBrandIdFromInternalId,
-  getBrandIdFromTicketsId,
   getIdFromInternalId,
   getTicketInternalId,
   getTicketsInternalId,
