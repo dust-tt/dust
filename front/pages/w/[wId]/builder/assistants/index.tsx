@@ -13,7 +13,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type {
+import {
+  AGENT_CONFIGURATION_SCOPES,
   AgentConfigurationScope,
   LightAgentConfigurationType,
   SubscriptionType,
@@ -64,6 +65,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   };
 });
 
+function isValidTab(tab: string): tab is AgentConfigurationScope {
+  return AGENT_CONFIGURATION_SCOPES.includes(tab as AgentConfigurationScope);
+}
+
 export default function WorkspaceAssistants({
   owner,
   tabScope,
@@ -91,12 +96,17 @@ export default function WorkspaceAssistants({
   })();
 
   useEffect(() => {
-    if (router.isReady && router.route) {
-      setActiveTab(router.query["tabScope"]);
+    const selectedTab = router.query.tabScope;
+    if (
+      router.isReady &&
+      router.route &&
+      typeof selectedTab === "string" &&
+      isValidTab(selectedTab)
+    ) {
+      setActiveTab(selectedTab);
     }
-  }, [router.route, router.isReady]);
+  }, [router.route, router.isReady, router.query.tabScope]);
 
-  console.log(activeTab);
   // only fetch the agents that are relevant to the current scope, except when
   // user searches: search across all agents
   const {
