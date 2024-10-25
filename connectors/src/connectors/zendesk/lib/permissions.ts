@@ -1,11 +1,23 @@
-import type { ContentNode, ModelId } from "@dust-tt/types";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+  ModelId,
+} from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 
 import {
   getBrandInternalId,
   getCategoryInternalId,
   getHelpCenterInternalId,
+  getIdFromInternalId,
   getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
+import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
+import {
+  changeZendeskClientSubdomain,
+  createZendeskClient,
+} from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -53,49 +65,17 @@ export async function retrieveSelectedNodes({
 
   const helpCenterNodes: ContentNode[] = brands
     .filter((brand) => brand.hasHelpCenter)
-    .map((brand) => ({
-      provider: connector.type,
-      internalId: getHelpCenterInternalId(connectorId, brand.id),
-      parentInternalId: getBrandInternalId(connectorId, brand.brandId),
-      type: "database",
-      title: "Help Center",
-      sourceUrl: null,
-      expandable: true,
-      permission: brand.helpCenterPermission,
-      dustDocumentId: null,
-      lastUpdatedAt: brand.updatedAt.getTime(),
-    }));
+    .map((brand) => brand.getHelpCenterContentNode({ connectorId }));
 
   const categories = await ZendeskCategoryResource.fetchAllReadOnly({
     connectorId,
   });
-  const categoriesNodes: ContentNode[] = categories.map((category) => {
-    return {
-      provider: connector.type,
-      internalId: getCategoryInternalId(connectorId, category.categoryId),
-      parentInternalId: getHelpCenterInternalId(connectorId, category.brandId),
-      type: "folder",
-      title: category.name,
-      sourceUrl: category.url,
-      expandable: false,
-      permission: category.permission,
-      dustDocumentId: null,
-      lastUpdatedAt: category.updatedAt.getTime() || null,
-    };
-  });
-
-  const ticketNodes: ContentNode[] = brands.map((brand) => ({
-    provider: connector.type,
-    internalId: getTicketsInternalId(connectorId, brand.id),
-    parentInternalId: getBrandInternalId(connectorId, brand.brandId),
-    type: "database",
-    title: "Tickets",
-    sourceUrl: null,
-    expandable: true,
-    permission: brand.ticketsPermission,
-    dustDocumentId: null,
-    lastUpdatedAt: brand.updatedAt.getTime(),
-  }));
+  const categoriesNodes: ContentNode[] = categories.map((category) =>
+    category.toContentNode({ connectorId })
+  );
+  const ticketNodes: ContentNode[] = brands.map((brand) =>
+    brand.getTicketsContentNode({ connectorId })
+  );
 
   return [
     ...brandNodes,
@@ -103,4 +83,181 @@ export async function retrieveSelectedNodes({
     ...categoriesNodes,
     ...ticketNodes,
   ];
+}
+
+export async function retrieveChildrenNodes({
+  connectorId,
+  parentInternalId,
+  filterPermission,
+}: {
+  connectorId: ModelId;
+  parentInternalId: string | null;
+  filterPermission: ConnectorPermission | null;
+  viewType: ContentNodesViewType;
+}): Promise<ContentNode[]> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    logger.error({ connectorId }, "[Zendesk] Connector not found.");
+    throw new Error("Connector not found");
+  }
+
+  const isReadPermissionsOnly = filterPermission === "read";
+  let nodes: ContentNode[] = [];
+
+  const token = await getZendeskAccessToken(connector.connectionId);
+  const zendeskApiClient = createZendeskClient({ token });
+
+  // At the root level, we show one node for each brand.
+  if (!parentInternalId) {
+    if (isReadPermissionsOnly) {
+      const brandsInDatabase =
+        await ZendeskBrandResource.fetchBrandsWithHelpCenter({ connectorId });
+      nodes = brandsInDatabase.map((brand) =>
+        brand.toContentNode({ connectorId })
+      );
+    } else {
+      const { result: brands } = await zendeskApiClient.brand.list();
+      nodes = brands
+        .filter((brand) => brand.has_help_center)
+        .map((brand) => ({
+          provider: connector.type,
+          internalId: getBrandInternalId(connectorId, brand.id),
+          parentInternalId: null,
+          type: "folder",
+          title: brand.name || "Brand",
+          sourceUrl: brand.brand_url,
+          expandable: true,
+          permission: "none",
+          dustDocumentId: null,
+          lastUpdatedAt: null,
+        }));
+    }
+  } else {
+    const { type, objectId } = getIdFromInternalId(
+      connectorId,
+      parentInternalId
+    );
+    switch (type) {
+      // If the parent is a Brand, we return a node for its tickets and one for its help center.
+      case "brand": {
+        const ticketsNode: ContentNode = {
+          provider: connector.type,
+          internalId: getTicketsInternalId(connectorId, objectId),
+          parentInternalId: parentInternalId,
+          type: "folder",
+          title: "Tickets",
+          sourceUrl: null,
+          expandable: false,
+          permission: "none",
+          dustDocumentId: null,
+          lastUpdatedAt: null,
+        };
+        nodes.push(ticketsNode);
+
+        let hasHelpCenter = false;
+        if (isReadPermissionsOnly) {
+          const brandInDatabase = await ZendeskBrandResource.fetchByBrandId({
+            connectorId,
+            brandId: objectId,
+          });
+          hasHelpCenter =
+            brandInDatabase !== null && brandInDatabase.hasHelpCenter;
+        } else {
+          const fetchedBrand = await zendeskApiClient.brand.show(objectId);
+          hasHelpCenter = fetchedBrand.result.brand.has_help_center;
+        }
+        if (hasHelpCenter) {
+          const helpCenterNode: ContentNode = {
+            provider: connector.type,
+            internalId: getHelpCenterInternalId(connectorId, objectId),
+            parentInternalId: parentInternalId,
+            type: "folder",
+            title: "Help Center",
+            sourceUrl: null,
+            expandable: true,
+            permission: "none",
+            dustDocumentId: null,
+            lastUpdatedAt: null,
+          };
+          nodes.push(helpCenterNode);
+        }
+        break;
+      }
+      // If the parent is a brand's tickets, we retrieve the list of tickets for the brand.
+      case "tickets": {
+        if (isReadPermissionsOnly) {
+          const ticketsInDb = await ZendeskBrandResource.fetchReadOnlyTickets({
+            connectorId,
+            brandId: objectId,
+          });
+          nodes = ticketsInDb.map((ticket) =>
+            ticket.toContentNode({ connectorId })
+          );
+        }
+        break;
+      }
+      // If the parent is a brand's help center, we retrieve the list of Categories for this brand.
+      case "help-center": {
+        const categoriesInDatabase =
+          await ZendeskBrandResource.fetchReadOnlyCategories({
+            connectorId,
+            brandId: objectId,
+          });
+        if (isReadPermissionsOnly) {
+          nodes = categoriesInDatabase.map((category) =>
+            category.toContentNode({ connectorId })
+          );
+        } else {
+          await changeZendeskClientSubdomain({
+            client: zendeskApiClient,
+            brandId: objectId,
+          });
+          const categories =
+            await zendeskApiClient.helpcenter.categories.list();
+          nodes = categories.map((category) => {
+            const matchingDbEntry = categoriesInDatabase.find(
+              (c) => c.categoryId === category.id
+            );
+            return {
+              provider: connector.type,
+              internalId: getCategoryInternalId(connectorId, category.id),
+              parentInternalId: parentInternalId,
+              type: "folder",
+              title: category.name,
+              sourceUrl: category.html_url,
+
+              expandable: false,
+              permission: matchingDbEntry ? "read" : "none",
+              dustDocumentId: null,
+              lastUpdatedAt: matchingDbEntry?.updatedAt.getTime() ?? null,
+            };
+          });
+        }
+        break;
+      }
+      // If the parent is a category, we retrieve the list of articles for this category.
+      case "category": {
+        if (isReadPermissionsOnly) {
+          const articlesInDb =
+            await ZendeskCategoryResource.fetchReadOnlyArticles({
+              connectorId,
+              categoryId: objectId,
+            });
+          nodes = articlesInDb.map((article) =>
+            article.toContentNode({ connectorId })
+          );
+        }
+        break;
+      }
+      // Single tickets and articles have no children.
+      case "ticket":
+      case "article":
+        return [];
+      default:
+        assertNever(type);
+    }
+  }
+
+  nodes.sort((a, b) => a.title.localeCompare(b.title));
+  return nodes;
 }
