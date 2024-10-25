@@ -1,7 +1,6 @@
 import {
   Button,
   PlusIcon,
-  Tab,
   Tabs,
   TabsList,
   TabsTrigger,

@@ -9,7 +9,6 @@ import {
   RobotIcon,
   Searchbar,
   SliderToggle,
-  Tab,
   Tabs,
   TabsList,
   TabsTrigger,

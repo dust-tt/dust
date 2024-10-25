@@ -8,7 +8,6 @@ import {
   MoreIcon,
   Page,
   Spinner,
-  Tab,
   Tabs,
   TabsList,
   TabsTrigger,
