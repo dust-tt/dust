@@ -7,8 +7,8 @@ import {
   ChevronRightIcon,
   IconButton,
   MagicIcon,
-  Tab,
   useSendNotification,
+  Tabs, TabsList, TabsTrigger,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
@@ -24,7 +24,7 @@ import {
 } from "@dust-tt/types";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import ActionsScreen, {
   hasActionError,
@@ -46,10 +46,10 @@ import type {
   AssistantBuilderProps,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
-  BuilderScreen,
-} from "@app/components/assistant_builder/types";
+  BuilderScreen} from "@app/components/assistant_builder/types";
 import {
   BUILDER_SCREENS,
+  BUILDER_SCREENS_INFOS,
   getDefaultAssistantState,
 } from "@app/components/assistant_builder/types";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
@@ -62,6 +62,11 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
+import { setQueryParam } from "@app/lib/utils/router";
+
+function isValidTab(tab: string): tab is BuilderScreen {
+  return BUILDER_SCREENS.includes(tab as BuilderScreen);
+}
 
 export default function AssistantBuilder({
   owner,
@@ -80,7 +85,7 @@ export default function AssistantBuilder({
 
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
-
+  const [currentTab, setCurrentTab] = React.useState<BuilderScreen>("instructions")
   const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [disableUnsavedChangesPrompt, setDisableUnsavedChangesPrompt] =
@@ -260,6 +265,14 @@ export default function AssistantBuilder({
     }
   }, [edited, formValidation]);
 
+  useEffect(() => {
+    const selectedTab = router.query.selectedTab;
+    if (typeof selectedTab === "string" && isValidTab(selectedTab)){
+      setCurrentTab(selectedTab)
+      setScreen(selectedTab)
+    }
+  }, [router.query.selectedTab])
+
   const setAction = useCallback(
     (p: AssistantBuilderSetActionType) => {
       if (p.type === "pending") {
@@ -333,18 +346,6 @@ export default function AssistantBuilder({
   };
 
   const [screen, setScreen] = useState<BuilderScreen>("instructions");
-  const tabs = useMemo(
-    () =>
-      Object.entries(BUILDER_SCREENS).map(([key, { label, icon }]) => ({
-        label,
-        current: screen === key,
-        onClick: () => {
-          setScreen(key as BuilderScreen);
-        },
-        icon,
-      })),
-    [screen]
-  );
 
   const [doTypewriterEffect, setDoTypewriterEffect] = useState(
     Boolean(template !== null && builderState.instructions)
@@ -385,7 +386,25 @@ export default function AssistantBuilder({
           leftPanel={
             <div className="flex h-full flex-col gap-5 pb-6 pt-4">
               <div className="flex flex-wrap justify-between gap-4 sm:flex-row">
-                <Tab tabs={tabs} variant="stepper" />
+                <Tabs
+                  className="s-w-full"
+                  onValueChange={(t) => {
+                    setQueryParam(router, "selectedTab", t)
+                    setScreen(t as BuilderScreen);
+                  }}
+                  value={currentTab}
+                >
+                  <TabsList className="s-inline-flex s-h-10 s-items-center s-gap-2 s-border-b s-border-separator">
+                    {Object.values(BUILDER_SCREENS_INFOS).map((tab) => (
+                      <TabsTrigger
+                        key={tab.label}
+                        value={tab.id}
+                        label={tab.label}
+                        icon={tab.icon}
+                      />
+                    ))}
+                  </TabsList>
+                </Tabs>
                 <div className="flex flex-row gap-2 self-end pt-0.5">
                   <SharingButton
                     agentConfigurationId={agentConfigurationId}
