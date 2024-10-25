@@ -1,8 +1,7 @@
 import type {
-  GroupAndRoleACL,
   ModelId,
-  Permission,
   PokeVaultType,
+  ResourcePermission,
   Result,
   VaultType,
 } from "@dust-tt/types";
@@ -331,8 +330,8 @@ export class VaultResource extends BaseResource<VaultModel> {
     );
 
     // Ensure exactly one regular group is associated with the vault.
-    // IMPORTANT: This constraint is critical for the acl() method logic.
-    // Modifying this requires careful review and updates to acl().
+    // IMPORTANT: This constraint is critical for the requestedPermissions() method logic.
+    // Modifying this requires careful review and updates to requestedPermissions().
     assert(
       regularGroups.length === 1,
       `Expected exactly one regular group for the vault, but found ${regularGroups.length}.`
@@ -393,98 +392,125 @@ export class VaultResource extends BaseResource<VaultModel> {
   }
 
   /**
-   * Maps permissions to all groups associated with this vault, creating permission assignments for
-   * each group-vault relationship.
-   */
-  private mapGroupPermissions(permissions: Permission[]) {
-    return this.groups.map((group) => ({
-      id: group.id,
-      permissions,
-    }));
-  }
-
-  /**
-   * Computes Access Control List (ACL) entries based on vault type and group configuration.
+   * Computes resource permissions based on vault type and group configuration.
    *
-   * Permission patterns:
-   * - System vaults: admin-only write access
-   * - Public vaults: anyone can read, workspace members can write
-   * - Global vaults: admin and builder have read/write access
-   * - Regular vaults with global group: hierarchical access (admin > builder > user)
-   * - Restricted vaults: admin access + explicit group permissions
+   * Permission patterns by vault type:
+   *
+   * 1. System vaults:
+   * - Restricted to workspace admins only
+   *
+   * 2. Public vaults:
+   * - Read: Anyone
+   * - Write: Workspace admins and builders
+   *
+   * 3. Global vaults:
+   * - Read: All workspace members
+   * - Write: Workspace admins and builders
+   *
+   * 4. Open vaults:
+   * - Read: All workspace members
+   * - Write: Admins and builders
+   *
+   * 5. Restricted vaults:
+   * - Read/Write: Group members
+   * - Admin: Workspace admins
+   *
+   * @returns Array of ResourcePermission objects based on vault type
    */
-  acl(): GroupAndRoleACL {
+  requestedPermissions(): ResourcePermission[] {
     const globalGroup = this.isRegular()
       ? this.groups.find((group) => group.isGlobal())
       : undefined;
 
     // System vaults.
     if (this.isSystem()) {
-      return {
-        workspaceId: this.workspaceId,
-        roles: [{ role: "admin", permissions: ["admin", "write"] }],
-        groups: [],
-      };
+      return [
+        {
+          workspaceId: this.workspaceId,
+          roles: [{ role: "admin", permissions: ["admin", "write"] }],
+          groups: [],
+        },
+      ];
     }
 
     // Public vaults.
     if (this.isPublic()) {
-      return {
-        workspaceId: this.workspaceId,
-        roles: [
-          { role: "admin", permissions: ["admin", "read", "write"] },
-          { role: "builder", permissions: ["read", "write"] },
-          { role: "user", permissions: ["read"] },
-          // Everyone can read.
-          { role: "none", permissions: ["read"] },
-        ],
-        groups: this.mapGroupPermissions(["read", "write"]),
-      };
+      return [
+        {
+          workspaceId: this.workspaceId,
+          roles: [
+            { role: "admin", permissions: ["admin", "read", "write"] },
+            { role: "builder", permissions: ["read", "write"] },
+            { role: "user", permissions: ["read"] },
+            // Everyone can read.
+            { role: "none", permissions: ["read"] },
+          ],
+          groups: this.groups.map((group) => ({
+            id: group.id,
+            permissions: ["read", "write"],
+          })),
+        },
+      ];
     }
 
     // Default Workspace vault.
     if (this.isGlobal()) {
-      return {
-        workspaceId: this.workspaceId,
-        roles: [
-          { role: "admin", permissions: ["read", "write"] },
-          { role: "builder", permissions: ["read", "write"] },
-        ],
-        groups: this.mapGroupPermissions(["read"]),
-      };
+      return [
+        {
+          workspaceId: this.workspaceId,
+          roles: [
+            { role: "admin", permissions: ["read", "write"] },
+            { role: "builder", permissions: ["read", "write"] },
+          ],
+          groups: this.groups.map((group) => ({
+            id: group.id,
+            permissions: ["read"],
+          })),
+        },
+      ];
     }
 
     // Open vaults.
     if (globalGroup) {
-      return {
-        workspaceId: this.workspaceId,
-        roles: [
-          { role: "admin", permissions: ["read", "write", "admin"] },
-          { role: "builder", permissions: ["read", "write"] },
-          { role: "user", permissions: ["read"] },
-        ],
-        groups: this.mapGroupPermissions(["read"]),
-      };
+      return [
+        {
+          workspaceId: this.workspaceId,
+          roles: [
+            { role: "admin", permissions: ["read", "write", "admin"] },
+            { role: "builder", permissions: ["read", "write"] },
+            { role: "user", permissions: ["read"] },
+          ],
+          groups: this.groups.map((group) => ({
+            id: group.id,
+            permissions: ["read"],
+          })),
+        },
+      ];
     }
 
     // Restricted vaults.
-    return {
-      workspaceId: this.workspaceId,
-      roles: [{ role: "admin", permissions: ["admin"] }],
-      groups: this.mapGroupPermissions(["read", "write"]),
-    };
+    return [
+      {
+        workspaceId: this.workspaceId,
+        roles: [{ role: "admin", permissions: ["admin"] }],
+        groups: this.groups.map((group) => ({
+          id: group.id,
+          permissions: ["read", "write"],
+        })),
+      },
+    ];
   }
 
   canAdministrate(auth: Authenticator) {
-    return auth.canAdministrate([this.acl()]);
+    return auth.canAdministrate(this.requestedPermissions());
   }
 
   canWrite(auth: Authenticator) {
-    return auth.canWrite([this.acl()]);
+    return auth.canWrite(this.requestedPermissions());
   }
 
   canRead(auth: Authenticator) {
-    return auth.canRead([this.acl()]);
+    return auth.canRead(this.requestedPermissions());
   }
 
   canList(auth: Authenticator) {

@@ -1,10 +1,10 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import type { DustAPICredentials } from "@dust-tt/client";
 import type {
-  GroupAndRoleACL,
   GroupType,
   LightWorkspaceType,
-  Permission,
+  PermissionType,
+  ResourcePermission,
   RoleType,
   UserType,
   WhitelistableFeature,
@@ -15,7 +15,7 @@ import type { Result } from "@dust-tt/types";
 import type { APIErrorWithStatusCode } from "@dust-tt/types";
 import {
   Err,
-  hasRoleBasedPermissions,
+  hasRolePermissions,
   isAdmin,
   isBuilder,
   isDevelopment,
@@ -103,10 +103,15 @@ export class Authenticator {
   }
 
   /**
-   * Builds the ACLs required to access a resource by converting group sIDs into the expected ACL
-   * format.
+   * Converts an array of group sIDs (string identifiers) into ResourcePermission objects.
+   * This utility method creates standard read/write permissions for each group.
+   *
+   * @param groupIds - Array of group string identifiers (SIDs)
+   * @returns Array of ResourcePermission objects, one for each group with read/write permissions
    */
-  static aclsFromGroupIds(groupIds: string[]): GroupAndRoleACL[] {
+  static resourcePermissionsFromGroupIds(
+    groupIds: string[]
+  ): ResourcePermission[] {
     const getIdFromSIdOrThrow = (groupId: string) => {
       const id = getResourceIdFromSId(groupId);
       if (!id) {
@@ -802,73 +807,89 @@ export class Authenticator {
   }
 
   /**
-   * Checks if the authenticator has the specified permission across all ACLs.
-   * Returns true only if the authenticator belongs to a group with the required permission in
-   * every ACL entry.
+   * Checks if the authenticator has the specified permission across all resource permissions.
+   *
+   * This method applies a conjunction (AND) over all resource permission entries. The authenticator
+   * must have the required permission in EVERY entry for the check to pass.
    */
-  hasPermission(acls: GroupAndRoleACL[], permission: Permission): boolean {
-    // For each acl, does the user belongs to a group that has the permission?
-    return acls.every((acl) => this.hasResourcePermission(acl, permission));
+  hasPermission(
+    resourcePermissions: ResourcePermission[],
+    permission: PermissionType
+  ): boolean {
+    // Apply conjunction (AND) over all resource permission entries.
+    return resourcePermissions.every((rp) =>
+      this.hasResourcePermission(rp, permission)
+    );
   }
 
   /**
-   * Determines if a user has a specific permission on a resource based on their role and group memberships.
+   * Determines if a user has a specific permission on a resource based on their role and group
+   * memberships.
    *
-   * Permission is granted if either:
-   * 1. Role-based access:
-   *    - Resource has role-based ACLs
-   *    - Either:
-   *      • Resource has public access for the permission
-   *      • User's role has the permission AND resource belongs to user's workspace
-   * 2. Group-based access:
-   *    - User belongs to a group that has the permission
+   * The permission check follows two independent paths (OR):
+   *
+   * 1. Role-based permission check:
+   *    Applies when the resource has role-based permissions configured.
+   *    Permission is granted if:
+   *    - The resource has public access (role="none") for the requested permission, OR
+   *    - The user's role has the required permission AND the resource belongs to user's workspace
+   *
+   * 2. Group-based permission check:
+   *    Applies when the resource has group-based permissions configured.
+   *    Permission is granted if:
+   *    - The user belongs to a group that has the required permission on this resource
+   *
+   * @param resourcePermission - The resource's permission configuration
+   * @param permission - The specific permission being checked
+   * @returns true if either permission path grants access
    */
   private hasResourcePermission(
-    acl: GroupAndRoleACL,
-    permission: Permission
+    resourcePermission: ResourcePermission,
+    permission: PermissionType
   ): boolean {
-    // Check role-based permissions if applicable.
-    if (hasRoleBasedPermissions(acl)) {
+    // First path: Role-based permission check.
+    if (hasRolePermissions(resourcePermission)) {
       const workspace = this.getNonNullableWorkspace();
 
-      // Public access check (across all workspaces).
-      const publicPermission = acl.roles
+      // Check for public access first.
+      const publicPermission = resourcePermission.roles
         .find((r) => r.role === "none")
         ?.permissions.includes(permission);
       if (publicPermission) {
         return true;
       }
 
-      // Workspace-specific role permission check.
-      const hasRolePermission = acl.roles.some(
+      // Check workspace-specific role permissions.
+      const hasRolePermission = resourcePermission.roles.some(
         (r) => this.role() === r.role && r.permissions.includes(permission)
       );
 
-      if (hasRolePermission && workspace.id === acl.workspaceId) {
+      if (
+        hasRolePermission &&
+        workspace.id === resourcePermission.workspaceId
+      ) {
         return true;
       }
     }
 
-    // Group-based permission check.
+    // Second path: Group-based permission check.
     return this.groups().some((userGroup) =>
-      acl.groups.some(
-        (aclGroup) =>
-          aclGroup.id === userGroup.id &&
-          aclGroup.permissions.includes(permission)
+      resourcePermission.groups.some(
+        (gp) => gp.id === userGroup.id && gp.permissions.includes(permission)
       )
     );
   }
 
-  canAdministrate(acls: GroupAndRoleACL[]): boolean {
-    return this.hasPermission(acls, "admin");
+  canAdministrate(resourcePermissions: ResourcePermission[]): boolean {
+    return this.hasPermission(resourcePermissions, "admin");
   }
 
-  canRead(acls: GroupAndRoleACL[]): boolean {
-    return this.hasPermission(acls, "read");
+  canRead(resourcePermissions: ResourcePermission[]): boolean {
+    return this.hasPermission(resourcePermissions, "read");
   }
 
-  canWrite(acls: GroupAndRoleACL[]): boolean {
-    return this.hasPermission(acls, "write");
+  canWrite(resourcePermissions: ResourcePermission[]): boolean {
+    return this.hasPermission(resourcePermissions, "write");
   }
 
   key(): KeyAuthType | null {
