@@ -6,4 +6,5 @@ export const TRACKABLE_CONNECTOR_TYPES: ConnectorProvider[] = [
   "notion",
   "slack",
   "microsoft",
+  "webcrawler",
 ];

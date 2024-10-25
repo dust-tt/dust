@@ -43,6 +43,8 @@ export async function shouldDocumentTrackerUpdateTrackedDocumentsRun(
   if (
     verb === "upsert" &&
     params.documentText.includes("DUST_TRACK(") &&
+    // TODO(DOC_TRACKER): Clean this up.
+    dataSource.connectorProvider !== "webcrawler" &&
     TRACKABLE_CONNECTOR_TYPES.includes(
       dataSource.connectorProvider as ConnectorProvider
     )
