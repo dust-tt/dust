@@ -106,8 +106,12 @@ export class Authenticator {
    * Converts an array of group sIDs (string identifiers) into ResourcePermission objects.
    * This utility method creates standard read/write permissions for each group.
    *
-   * @param groupIds - Array of group string identifiers (SIDs)
-   * @returns Array of ResourcePermission objects, one for each group with read/write permissions
+   * The resulting permissions enforce a conjunction (AND) between groups. A user must belong to
+   * ALL groups to access the resource, as each group is placed in a separate ResourcePermission
+   * entry.
+   *
+   * @param groupIds - Array of group string identifiers
+   * @returns Array of ResourcePermission objects, one per group, requiring membership in all groups
    */
   static resourcePermissionsFromGroupIds(
     groupIds: string[]
@@ -120,6 +124,7 @@ export class Authenticator {
       return id;
     };
 
+    // Each group in separate entry enforces AND relationship.
     return groupIds.map((groupId) => ({
       groups: [
         {
@@ -807,9 +812,9 @@ export class Authenticator {
   }
 
   /**
-   * Checks if the authenticator has the specified permission across all resource permissions.
+   * Checks if the user has the specified permission across all resource permissions.
    *
-   * This method applies a conjunction (AND) over all resource permission entries. The authenticator
+   * This method applies a conjunction (AND) over all resource permission entries. The user
    * must have the required permission in EVERY entry for the check to pass.
    */
   hasPermission(

@@ -470,7 +470,11 @@ export class VaultResource extends BaseResource<VaultModel> {
       ];
     }
 
-    // Open vaults.
+    // Open vaults:
+    // Currently only using global group for simplicity
+    // TODO(2024-10-25 flav): Refactor to store a list of ResourcePermission on conversations
+    // and agent_configurations. This will allow proper handling of multiple groups instead
+    // of only using the global group as a temporary solution.
     if (globalGroup) {
       return [
         {
@@ -480,10 +484,13 @@ export class VaultResource extends BaseResource<VaultModel> {
             { role: "builder", permissions: ["read", "write"] },
             { role: "user", permissions: ["read"] },
           ],
-          groups: this.groups.map((group) => ({
-            id: group.id,
-            permissions: ["read"],
-          })),
+          // Temporary: Only using global group until we implement multi-group support
+          groups: [
+            {
+              id: globalGroup.id,
+              permissions: ["read"],
+            },
+          ],
         },
       ];
     }
