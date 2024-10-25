@@ -128,14 +128,37 @@ async function handleFileExport(
       }
     );
   } catch (e) {
-    if (e instanceof GaxiosError && e.response?.status === 404) {
-      localLogger.info(
-        {
-          error: e,
-        },
-        "Can't export Gdrive file. 404 error returned. Skipping."
-      );
-      return null;
+    if (e instanceof GaxiosError) {
+      if (e.response?.status === 404) {
+        localLogger.info(
+          {
+            error: e,
+          },
+          "Can't export Gdrive file. 404 error returned. Skipping."
+        );
+        return null;
+      }
+      if (e.response?.status === 403) {
+        const skippableReasons = ["cannotDownloadAbusiveFile"];
+        try {
+          const body = Buffer.from(e.response.data).toString("utf-8").trim();
+          const parsedBody = JSON.parse(body);
+          const errors: { reason: string }[] | undefined =
+            parsedBody.error?.errors;
+          const firstSkippableReason = errors?.find((error) =>
+            skippableReasons.includes(error.reason)
+          )?.reason;
+          if (firstSkippableReason) {
+            localLogger.info(
+              { error: parsedBody.error },
+              `Can't export Gdrive file. Skippable reason: ${firstSkippableReason} Skipping.`
+            );
+            return null;
+          }
+        } catch (e) {
+          localLogger.error({ error: e }, "Error while parsing error response");
+        }
+      }
     }
     const maybeErrorWithCode = e as { code: string };
     if (maybeErrorWithCode.code === "ERR_OUT_OF_RANGE") {

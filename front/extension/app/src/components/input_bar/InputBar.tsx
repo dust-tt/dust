@@ -3,11 +3,12 @@ import type { InputBarContainerProps } from "@app/extension/app/src/components/i
 import { InputBarContainer } from "@app/extension/app/src/components/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/extension/app/src/components/input_bar/InputBarContext";
 import { classNames } from "@app/extension/app/src/lib/utils";
-import type { AgentMention, MentionType } from "@dust-tt/types";
 import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
+  AgentMention,
+  LightWorkspaceType,
+  MentionType,
 } from "@dust-tt/types";
+import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { compareAgentsForSort } from "@dust-tt/types";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -45,11 +46,11 @@ export function AssistantInputBar({
   isFloating = true,
   isFloatingWithoutMargin = false,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   onSubmit: (input: string, mentions: MentionType[]) => void;
   stickyMentions?: AgentMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
-  disableAutoFocus: boolean;
+  disableAutoFocus?: boolean;
   isFloating?: boolean;
   isFloatingWithoutMargin?: boolean;
 }) {
@@ -138,7 +139,7 @@ export function AssistantInputBar({
               "border-struture-200 border-t bg-white/90 backdrop-blur focus-within:border-structure-300",
               "transition-all",
               isFloating
-                ? "sm:rounded-3xl sm:border-b sm:border-l sm:border-r sm:border-element-500 sm:focus-within:border-action-300 sm:focus-within:shadow-md sm:focus-within:ring-1"
+                ? "sm:rounded-2xl sm:border-b sm:border-l sm:border-r sm:border-element-500 sm:focus-within:border-action-300 sm:focus-within:shadow-md sm:focus-within:ring-1"
                 : "",
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}

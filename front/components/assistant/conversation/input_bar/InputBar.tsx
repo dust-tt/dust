@@ -228,7 +228,7 @@ export function AssistantInputBar({
         <div className="flex justify-center px-4 pb-4">
           <Button
             className="mt-4"
-            variant="ghost"
+            variant="white"
             label={isProcessing ? "Stopping generation..." : "Stop generation"}
             icon={StopIcon}
             onClick={handleStopGeneration}

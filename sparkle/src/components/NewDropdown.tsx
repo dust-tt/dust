@@ -13,7 +13,7 @@ type ItemVariantType = (typeof ITEM_VARIANTS)[number];
 export const menuStyleClasses = {
   inset: "s-pl-8",
   container: cn(
-    "s-rounded-lg s-border s-border-hovering s-bg-white s-p-1 s-text-primary-950",
+    "s-rounded-xl s-border s-border-hovering s-bg-white s-p-1 s-text-primary-950",
     "s-z-50 s-min-w-[8rem] s-overflow-hidden",
     "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2"
   ),
@@ -83,7 +83,7 @@ const ItemWithLabelIconAndDescription = <
   return (
     <>
       {label && (
-        <div className="s-grid s-grid-cols-[auto,1fr] s-gap-x-1">
+        <div className="s-grid s-grid-cols-[auto,1fr] s-gap-x-1.5">
           {icon && (
             <div
               className={cn(

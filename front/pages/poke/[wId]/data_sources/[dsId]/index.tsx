@@ -38,6 +38,7 @@ import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { useDocuments } from "@app/poke/swr";
@@ -63,6 +64,11 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   connector: ConnectorType | null;
   features: FeaturesType;
   temporalWorkspace: string;
+  temporalRunningWorkflows: {
+    workflowId: string;
+    runId: string;
+    status: string;
+  }[];
   groupsForSlackBot: GroupType[];
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -96,6 +102,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   }
 
   let connector: ConnectorType | null = null;
+  const workflowInfos: { workflowId: string; runId: string; status: string }[] =
+    [];
   if (dataSource.connectorId) {
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
@@ -106,6 +114,19 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     );
     if (connectorRes.isOk()) {
       connector = connectorRes.value;
+      const temporalClient = await getTemporalConnectorsNamespaceConnection();
+
+      const res = temporalClient.workflow.list({
+        query: `ExecutionStatus = 'Running' AND connectorId = ${connector.id}`,
+      });
+
+      for await (const infos of res) {
+        workflowInfos.push({
+          workflowId: infos.workflowId,
+          runId: infos.runId,
+          status: infos.status.name,
+        });
+      }
     }
   }
 
@@ -243,6 +264,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       connector,
       features,
       temporalWorkspace: TEMPORAL_CONNECTORS_NAMESPACE,
+      temporalRunningWorkflows: workflowInfos,
       groupsForSlackBot,
     },
   };
@@ -254,6 +276,7 @@ const DataSourcePage = ({
   coreDataSource,
   connector,
   temporalWorkspace,
+  temporalRunningWorkflows,
   features,
   groupsForSlackBot,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
@@ -346,6 +369,7 @@ const DataSourcePage = ({
             temporalWorkspace={temporalWorkspace}
             coreDataSource={coreDataSource}
             connector={connector}
+            temporalRunningWorkflows={temporalRunningWorkflows}
           />
 
           {dataSource.connectorProvider === "slack" && (
