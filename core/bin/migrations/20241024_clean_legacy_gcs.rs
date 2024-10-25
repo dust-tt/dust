@@ -1,10 +1,11 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Duration};
 
 use anyhow::{anyhow, Context, Result};
 use dust::{
     data_sources::{
         data_source::make_document_id_hash, file_storage_document::FileStorageDocument,
     },
+    providers::provider::{with_retryable_back_off, ModelError, ModelErrorRetryOptions},
     stores::{postgres, store},
 };
 use tokio_postgres::Row;
@@ -44,6 +45,38 @@ async fn fetch_data_sources_documents_versions(
     )
     .await
     .context("fetch_data_sources_documents_versions")
+}
+
+async fn delete_wrapper(path: &str) -> Result<bool> {
+    match FileStorageDocument::delete_if_exists(path).await {
+        Ok(b) => Ok(b),
+
+        Err(e) => Err(ModelError {
+            request_id: None,
+            message: e.to_string(),
+            retryable: Some(ModelErrorRetryOptions {
+                sleep: Duration::from_millis(500),
+                factor: 2,
+                retries: 3,
+            }),
+        })?,
+    }
+}
+
+async fn retryable_delete(path: &str) -> Result<bool> {
+    with_retryable_back_off(
+        || delete_wrapper(path),
+        |err_msg, sleep, attempts| {
+            println!(
+                "Retrying delete: path={}, err_msg={}, sleep={:?}, attempts={}",
+                path, err_msg, sleep, attempts
+            );
+        },
+        |err| {
+            println!("Error deleting: path={}, err_msg={}", path, err.message);
+        },
+    )
+    .await
 }
 
 async fn clean_stored_versions_for_data_source(
@@ -105,7 +138,7 @@ async fn clean_stored_versions_for_data_source(
                     );
                 })
                 .map(|p| async move {
-                    FileStorageDocument::delete_if_exists(&p).await?;
+                    retryable_delete(&p).await?;
                     Ok::<(), anyhow::Error>(())
                 }),
         )
@@ -153,7 +186,7 @@ async fn clean_stored_versions_for_data_source(
                 FileStorageDocument::get_legacy_document_id_path(&data_source, document_id_hash)
             })
             .map(|p| async move {
-                FileStorageDocument::delete_if_exists(&p).await?;
+                retryable_delete(&p).await?;
                 Ok::<(), anyhow::Error>(())
             }),
     )
