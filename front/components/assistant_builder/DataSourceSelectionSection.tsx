@@ -142,7 +142,7 @@ export default function DataSourceSelectionSection({
                                   : "pointer-events-none opacity-0"
                               )}
                               disabled={!node.sourceUrl}
-                              variant="ghost"
+                              variant="outline"
                             />
                             <IconButton
                               size="xs"
