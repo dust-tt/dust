@@ -1,7 +1,6 @@
 import {
   BookOpenIcon,
   Button,
-  Checkbox,
   CloudArrowLeftRightIcon,
   Dialog,
   Page,
@@ -497,7 +496,7 @@ export default function LabsTranscriptsIndex({
           description="Receive meeting minutes summarized by email automatically."
         />
         <Page.Layout direction="vertical">
-          <Page.SectionHeader title="1. Connect your transcripts provider" />
+          <Page.SectionHeader title="Connect your transcripts provider" />
           {!transcriptsConfiguration && (
             <Page.Layout direction="horizontal" gap="xl">
               <div
@@ -610,11 +609,16 @@ export default function LabsTranscriptsIndex({
             transcriptsConfigurationState.isGongConnected) && (
             <>
               <Page.Layout direction="vertical">
-                <Page.SectionHeader title="2. Choose an assistant" />
+                <Page.SectionHeader title="Pick an assistant" />
                 <Page.Layout direction="vertical">
                   <Page.P>
-                    Choose the assistant that will process the transcripts the
-                    way you want.
+                    Pick the assistant that will process the transcripts
+                    received from{" "}
+                    {transcriptsConfigurationState.provider
+                      .charAt(0)
+                      .toUpperCase() +
+                      transcriptsConfigurationState.provider.slice(1)}
+                    .
                   </Page.P>
                   <Page.Layout direction="horizontal">
                     <AssistantPicker
@@ -630,12 +634,17 @@ export default function LabsTranscriptsIndex({
                       showFooterButtons={false}
                     />
                     {transcriptsConfigurationState.assistantSelected && (
-                      <Page.P>
-                        <strong>
-                          @
-                          {transcriptsConfigurationState.assistantSelected.name}
-                        </strong>
-                      </Page.P>
+                      <div className="mt-2">
+                        <Page.P>
+                          <strong>
+                            @
+                            {
+                              transcriptsConfigurationState.assistantSelected
+                                .name
+                            }
+                          </strong>
+                        </Page.P>
+                      </div>
                     )}
                   </Page.Layout>
                 </Page.Layout>
@@ -643,15 +652,19 @@ export default function LabsTranscriptsIndex({
 
               {featureFlags.includes("labs_transcripts_datasource") && (
                 <Page.Layout direction="vertical">
-                  <Page.SectionHeader title="3. Store transcripts in Folder" />
+                  <Page.SectionHeader title="Store transcripts" />
                   <Page.Layout direction="horizontal" gap="xl">
+                    <SliderToggle
+                      selected={storeInFolder}
+                      onClick={() => setStoreInFolder(!storeInFolder)}
+                      disabled={
+                        !transcriptsConfigurationState.assistantSelected
+                      }
+                    />
                     <Page.P>
-                      Store transcripts in a Folder to use them with Dust
-                      assistants.
+                      Store transcripts in a Folder to use them as sources of
+                      your assistants.
                     </Page.P>
-                    <div onClick={() => setStoreInFolder(!storeInFolder)}>
-                      <Checkbox checked={storeInFolder} />
-                    </div>
                   </Page.Layout>
                   <Page.Layout direction="horizontal">
                     <div className="w-full">
@@ -679,7 +692,7 @@ export default function LabsTranscriptsIndex({
               )}
 
               <Page.Layout direction="vertical">
-                <Page.SectionHeader title="3. Enable transcripts processing" />
+                <Page.SectionHeader title="Process transcripts automatically" />
                 <Page.Layout direction="horizontal" gap="xl">
                   <SliderToggle
                     selected={transcriptsConfigurationState.isActive}
@@ -692,11 +705,8 @@ export default function LabsTranscriptsIndex({
                     disabled={!transcriptsConfigurationState.assistantSelected}
                   />
                   <Page.P>
-                    When enabled, each new meeting transcript in 'My Drive' will
-                    be processed.
-                    <br />
-                    Summaries can take up to 30 minutes to be sent after
-                    meetings end.
+                    After each transcribed meeting, Dust will run the assistant
+                    you selected and send you the result by email.
                   </Page.P>
                 </Page.Layout>
               </Page.Layout>
