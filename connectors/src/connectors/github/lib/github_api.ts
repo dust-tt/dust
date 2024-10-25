@@ -11,6 +11,7 @@ import { tmpdir } from "os";
 import { basename, extname, join, resolve } from "path";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
+import type { ReadEntry } from "tar";
 import { extract } from "tar";
 
 import {
@@ -643,12 +644,14 @@ export async function processRepository({
   repoLogin,
   repoName,
   repoId,
+  onEntry,
   logger,
 }: {
   connectionId: string;
   repoLogin: string;
   repoName: string;
   repoId: number;
+  onEntry: (entry: ReadEntry) => void;
   logger: Logger;
 }) {
   const octokit = await getOctokit(connectionId);
@@ -717,6 +720,32 @@ export async function processRepository({
     await extract({
       file: tarPath,
       cwd: tempDir,
+      // Filter before extraction to avoid extracting files we don't want.
+      filter: (path, stat) => {
+        if (path.endsWith("/")) {
+          return true;
+        }
+
+        const isUnderLimit = stat.size < 1024 * 1024;
+
+        if (!isUnderLimit) {
+          logger.info({ path, size }, "File is over the size limit, skipping.");
+          return false;
+        }
+        const ext = extname(path).toLowerCase();
+
+        const isWithelisted =
+          (EXTENSION_WHITELIST.includes(ext) ||
+            FILENAME_WHITELIST.includes(path)) &&
+          !SUFFIX_BLACKLIST.some((suffix) => path.endsWith(suffix));
+
+        if (!isWithelisted) {
+          return false;
+        }
+
+        return true;
+      },
+      onentry: onEntry,
     });
 
     // Delete the tarball.
@@ -744,34 +773,6 @@ export async function processRepository({
 
     // Iterate over the files in the temp directory.
     for await (const file of getFiles(tempDir)) {
-      const ext = extname(file).toLowerCase();
-
-      const isWithelisted =
-        (EXTENSION_WHITELIST.includes(ext) ||
-          FILENAME_WHITELIST.includes(file)) &&
-        !SUFFIX_BLACKLIST.some((suffix) => file.endsWith(suffix));
-
-      if (!isWithelisted) {
-        continue;
-      }
-
-      try {
-        const { size } = await fs.stat(file);
-
-        const isUnderLimit = size < 1024 * 1024;
-
-        if (!isUnderLimit) {
-          logger.info({ file, size }, "File is over the size limit, skipping.");
-          continue;
-        }
-      } catch (e) {
-        logger.info(
-          { error: e, file },
-          "Caught exception while stating file, skipping."
-        );
-        continue;
-      }
-
       const path = file
         .substring(tempDir.length + 1)
         .split("/")
