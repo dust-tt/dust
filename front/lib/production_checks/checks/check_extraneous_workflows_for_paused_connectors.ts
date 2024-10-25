@@ -10,7 +10,7 @@ interface ConnectorBlob {
   id: number;
   dataSourceId: string;
   workspaceId: string;
-  provider: ConnectorProvider;
+  type: ConnectorProvider;
   pausedAt: Date | null;
 }
 
@@ -18,7 +18,7 @@ const connectorsDb = getConnectorsPrimaryDbConnection();
 
 async function listPausedConnectors() {
   const connectors: ConnectorBlob[] = await connectorsDb.query(
-    `SELECT id, "dataSourceId", "workspaceId", "pausedAt", "provider" FROM connectors WHERE pausedAt IS NULL`,
+    `SELECT id, "dataSourceId", "workspaceId", "pausedAt", "type" FROM connectors WHERE pausedAt IS NULL`,
     {
       type: QueryTypes.SELECT,
     }
@@ -70,7 +70,7 @@ export const checkExtraneousWorkflows: CheckFunction = async (
         connectorId: connector.id,
         workspaceId: connector.workspaceId,
         dataSourceId: connector.dataSourceId,
-        provider: connector.provider,
+        provider: connector.type,
       });
     }
   }
