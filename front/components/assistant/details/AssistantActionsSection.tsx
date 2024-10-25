@@ -385,7 +385,7 @@ function DataSourceViewSelectedNodes({
                   node.dustDocumentId ? "" : "pointer-events-none opacity-0"
                 )}
                 disabled={!node.dustDocumentId}
-                variant="ghost"
+                variant="outline"
               />
             </div>
           }

@@ -30,7 +30,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
 
-  if (!auth.isAdmin()) {
+  if (!auth.isBuilder()) {
     return {
       notFound: true,
     };
