@@ -1,4 +1,5 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
+import { concurrentExecutor } from "@dust-tt/types";
 import type { Options } from "yargs";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -78,11 +79,14 @@ export function makeScript<T extends ArgumentSpecs>(
 }
 
 export async function runOnAllWorkspaces(
-  worker: (workspace: LightWorkspaceType) => Promise<void>
+  worker: (workspace: LightWorkspaceType) => Promise<void>,
+  { concurrency }: { concurrency: number } = { concurrency: 1 }
 ) {
   const workspaces = await Workspace.findAll({});
 
-  for (const workspace of workspaces) {
-    await worker(renderLightWorkspaceType({ workspace }));
-  }
+  await concurrentExecutor(
+    workspaces,
+    (workspace) => worker(renderLightWorkspaceType({ workspace })),
+    { concurrency }
+  );
 }

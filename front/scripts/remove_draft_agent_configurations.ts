@@ -1,4 +1,5 @@
 import type { LightWorkspaceType } from "@dust-tt/types";
+import { concurrentExecutor } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -188,6 +189,11 @@ async function removeDraftAgentConfigurationsForWorkspace(
 
 makeScript(
   {
+    concurrency: {
+      type: "number",
+      description: "The number of workspaces to process concurrently.",
+      default: 8,
+    },
     workspaceId: {
       type: "string",
       description: "A single workspace id.",
@@ -211,6 +217,7 @@ makeScript(
         execute
       );
     }
+
     return runOnAllWorkspaces(async (workspace) => {
       await removeDraftAgentConfigurationsForWorkspace(
         workspace,
