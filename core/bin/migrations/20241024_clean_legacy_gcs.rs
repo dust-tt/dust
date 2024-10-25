@@ -61,7 +61,7 @@ async fn clean_stored_versions_for_data_source(
 
     let pool = store.raw_pool();
 
-    let limit: usize = 64;
+    let limit: usize = 1024;
     let mut last_data_source_document_id = 0;
     let mut iteration = 0;
     let mut document_id_hashs = HashSet::new();
@@ -109,7 +109,7 @@ async fn clean_stored_versions_for_data_source(
                     Ok::<(), anyhow::Error>(())
                 }),
         )
-        .buffer_unordered(16)
+        .buffer_unordered(32)
         .try_collect::<Vec<_>>()
         .await?;
 
@@ -177,7 +177,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let pool = store.raw_pool();
 
-    let limit: usize = 64;
+    let limit: usize = 256;
     let mut last_data_source_id = 0;
     let mut iteration = 0;
 
