@@ -166,9 +166,8 @@ export type UpsertDocumentResponseBody = {
  *                   type: string
  *                 description: Parent document IDs to associate with the document.
  *               timestamp:
- *                 type: string
- *                 format: date-time
- *                 description: Timestamp for the document.
+ *                 type: number
+ *                 description: Unix timestamp (in seconds) for the document (e.g. 1698225000). Can be null or omitted.
  *               light_document_output:
  *                 type: boolean
  *                 description: If true, a lightweight version of the document will be returned in the response (excluding the text, chunks and vectors). Defaults to false.
