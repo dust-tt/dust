@@ -37,15 +37,12 @@ export type GroupResourcePermissions = {
 };
 
 /**
- * Defines role-based permissions for a resource.
- * Used when access control is managed through role assignments.
- *
- * @property roles - Array of role permissions
- * @property workspaceId - Required identifier for workspace-scoped roles
+ * Defines combined group and role-based permissions for a resource.
  */
-export type RoleResourcePermissions = {
+export type CombinedResourcePermissions = {
+  groups: GroupPermission[];
   roles: RolePermission[];
-  workspaceId: ModelId; // Required when roles are defined.
+  workspaceId: ModelId;
 };
 
 /**
@@ -56,7 +53,7 @@ export type RoleResourcePermissions = {
  */
 export type ResourcePermission =
   | GroupResourcePermissions
-  | (GroupResourcePermissions & RoleResourcePermissions);
+  | CombinedResourcePermissions;
 
 /**
  * Type guard to determine if a permission configuration includes role-based access control.
@@ -66,6 +63,6 @@ export type ResourcePermission =
  */
 export function hasRolePermissions(
   acl: ResourcePermission
-): acl is GroupResourcePermissions & RoleResourcePermissions {
+): acl is CombinedResourcePermissions {
   return "roles" in acl;
 }

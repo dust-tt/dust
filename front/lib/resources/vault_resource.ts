@@ -480,7 +480,7 @@ export class VaultResource extends BaseResource<VaultModel> {
         {
           workspaceId: this.workspaceId,
           roles: [
-            { role: "admin", permissions: ["read", "write", "admin"] },
+            { role: "admin", permissions: ["admin", "read", "write"] },
             { role: "builder", permissions: ["read", "write"] },
             { role: "user", permissions: ["read"] },
           ],
