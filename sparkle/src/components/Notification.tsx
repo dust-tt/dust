@@ -99,12 +99,12 @@ function NotificationWithTransition({
     <Transition
       show={showNotification}
       appear={true}
-      enter="transition ease-in-out duration-300 transform"
-      enterFrom="translate-y-16 opacity-0"
-      enterTo="translate-y-0 opacity-100"
-      leave="transition ease-in-out duration-300 transform"
-      leaveFrom="translate-y-0 opacity-100"
-      leaveTo="translate-y-16 opacity-0"
+      enter="s-transition s-ease-in-out s-duration-300 s-transform"
+      enterFrom="s-translate-y-16 s-opacity-0"
+      enterTo="s-translate-y-0 s-opacity-100"
+      leave="s-transition s-ease-in-out s-duration-300 s-transform"
+      leaveFrom="s-translate-y-0 s-opacity-100"
+      leaveTo="s-translate-y-16 s-opacity-0"
     >
       <Notification
         variant={type}
@@ -122,8 +122,8 @@ function NotificationsList({
   notifications: (NotificationType & { id: string })[];
 }) {
   return (
-    <div className="pointer-events-none fixed bottom-0 right-0 z-60 w-96">
-      <div className="flex flex-col items-center justify-center gap-4 p-4">
+    <div className="s-pointer-events-none s-fixed s-bottom-0 s-right-0 s-z-60 s-w-96">
+      <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-4 s-p-4">
         {notifications.map((n) => {
           return (
             <NotificationWithTransition
