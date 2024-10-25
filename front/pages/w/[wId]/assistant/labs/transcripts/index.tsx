@@ -87,14 +87,17 @@ export default function LabsTranscriptsIndex({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useSendNotification();
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const {
+    transcriptsConfiguration,
+    isTranscriptsConfigurationLoading,
+    mutateTranscriptsConfiguration,
+  } = useLabsTranscriptsConfiguration({ workspaceId: owner.sId });
   const [isDeleteProviderDialogOpened, setIsDeleteProviderDialogOpened] =
     useState(false);
   const [selectionConfigurations, setSelectionConfigurations] =
-    useState<DataSourceViewSelectionConfigurations>(
-      {} as DataSourceViewSelectionConfigurations
-    );
+    useState<DataSourceViewSelectionConfigurations>({});
   const [storeInFolder, setStoreInFolder] = useState(false);
-  const { vaults, isVaultsLoading } = useSpaces({
+  const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
   });
   const { agentConfigurations } = useAgentConfigurations({
@@ -135,12 +138,6 @@ export default function LabsTranscriptsIndex({
     await handleSetDataSource(transcriptsConfiguration.id, datasourceView);
   };
 
-  const {
-    transcriptsConfiguration,
-    isTranscriptsConfigurationLoading,
-    mutateTranscriptsConfiguration,
-  } = useLabsTranscriptsConfiguration({ workspaceId: owner.sId });
-
   const [transcriptsConfigurationState, setTranscriptsConfigurationState] =
     useState<{
       provider: string;
@@ -153,6 +150,20 @@ export default function LabsTranscriptsIndex({
 
   useEffect(() => {
     if (transcriptsConfiguration) {
+      if (transcriptsConfiguration?.dataSourceId) {
+        const dataSourceView = dataSourcesViews.find(
+          (ds) => ds.id === transcriptsConfiguration.dataSourceId
+        );
+        if (dataSourceView) {
+          setSelectionConfigurations({
+            [dataSourceView.sId]: {
+              dataSourceView,
+              selectedResources: [],
+              isSelectAll: true,
+            },
+          });
+        }
+      }
       setStoreInFolder(!!transcriptsConfiguration.dataSourceId);
       setTranscriptsConfigurationState((prev) => {
         return {
@@ -682,13 +693,13 @@ export default function LabsTranscriptsIndex({
                   <Page.Layout direction="horizontal">
                     <div className="w-full">
                       <div className="overflow-x-auto">
-                        {!isVaultsLoading &&
+                        {!isSpacesLoading &&
                           storeInFolder &&
                           selectionConfigurations && (
                             <DataSourceViewsSelector
                               useCase="transcriptsProcessing"
                               dataSourceViews={dataSourcesViews}
-                              allowedVaults={vaults}
+                              allowedSpaces={spaces}
                               owner={owner}
                               selectionConfigurations={selectionConfigurations}
                               setSelectionConfigurations={
