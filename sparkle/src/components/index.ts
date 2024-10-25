@@ -66,7 +66,8 @@ export {
   NewDropdownMenuSubTrigger,
   NewDropdownMenuTrigger,
 } from "./NewDropdown";
-export { Notification } from "./Notification";
+export type { NotificationType } from "./Notification";
+export { Notification, useSendNotification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";

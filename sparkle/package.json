@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.2.278",
+  "version": "0.2.279",
   "scripts": {
     "build": "rm -rf dist && npm run tailwind && npm run build:esm && npm run build:cjs",
     "tailwind": "tailwindcss -i ./src/styles/tailwind.css -o dist/sparkle.css",
@@ -45,7 +45,8 @@
     "@storybook/testing-library": "^0.2.2",
     "@svgr/cli": "^8.0.1",
     "@tailwindcss/forms": "^0.5.3",
-    "@types/react": "^18.0.28",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
     "@types/uuid": "^9.0.6",
     "@typescript-eslint/eslint-plugin": "^7.9.0",
     "@typescript-eslint/parser": "^7.9.0",
@@ -77,7 +78,8 @@
     "uuid": "^9.0.1"
   },
   "peerDependencies": {
-    "react": "^18.2.0"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "description": "Sparkle is Dust's Design System",
   "repository": {
