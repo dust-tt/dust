@@ -1,5 +1,4 @@
-import { Dialog } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
+import { Dialog, useSendNotification } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   LightWorkspaceType,
@@ -7,7 +6,7 @@ import type {
   PostDataSourceWithNameDocumentRequestBody,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
