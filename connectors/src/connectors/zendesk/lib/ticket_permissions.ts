@@ -8,6 +8,7 @@ import type {
 import {
   getBrandIdFromInternalId,
   getBrandIdFromTicketsId,
+  getIdFromInternalId,
   getTicketInternalId,
   getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
@@ -119,48 +120,55 @@ export async function retrieveZendeskTicketPermissions({
   if (isRootLevel) {
     return [];
   }
-  let brandId = getBrandIdFromInternalId(connectorId, parentInternalId);
-  // If the parent is a Brand, we return a single node for its help center.
-  if (brandId) {
-    const ticketsNode: ContentNode = {
-      provider: connector.type,
-      internalId: getTicketsInternalId(connectorId, brandId),
-      parentInternalId: parentInternalId,
-      type: "folder",
-      title: "Tickets",
-      sourceUrl: null,
-      expandable: false,
-      permission: "none",
-      dustDocumentId: null,
-      lastUpdatedAt: null,
-    };
-
-    return [ticketsNode];
+  const { type, objectId } = getIdFromInternalId(connectorId, parentInternalId);
+  switch (type) {
+    // If the parent is a Brand, we return a single node for its tickets.
+    case "brand": {
+      const ticketsNode: ContentNode = {
+        provider: connector.type,
+        internalId: getTicketsInternalId(connectorId, objectId),
+        parentInternalId: parentInternalId,
+        type: "folder",
+        title: "Tickets",
+        sourceUrl: null,
+        expandable: false,
+        permission: "none",
+        dustDocumentId: null,
+        lastUpdatedAt: null,
+      };
+      return [ticketsNode];
+    }
+    // If the parent is a brand's tickets, we retrieve the list of tickets for the brand.
+    case "tickets": {
+      if (filterPermission === "read") {
+        const ticketsInDb = await ZendeskBrandResource.fetchReadOnlyTickets({
+          connectorId,
+          brandId: objectId,
+        });
+        const nodes: ContentNode[] = ticketsInDb.map((ticket) => ({
+          provider: connector.type,
+          internalId: getTicketInternalId(connectorId, ticket.ticketId),
+          parentInternalId: parentInternalId,
+          type: "file",
+          title: ticket.name,
+          sourceUrl: ticket.url,
+          expandable: false,
+          permission: ticket.permission,
+          dustDocumentId: null,
+          lastUpdatedAt: ticket.updatedAt.getTime(),
+        }));
+        nodes.sort((a, b) => a.title.localeCompare(b.title));
+        return nodes;
+      }
+      return [];
+    }
+    // Help center and categories are handled in retrieveZendeskHelpCenterPermissions
+    // Single tickets and articles have no children.
+    case "help-center":
+    case "category":
+    case "ticket":
+    case "article":
+    case null:
+      return [];
   }
-
-  // If the parent is a brand's tickets, we retrieve the list of tickets for the brand.
-  // In read-only mode, we retrieve the list of Tickets from the DB that have permission == "read"
-  // Otherwise, we do not show anything.
-  brandId = getBrandIdFromTicketsId(connectorId, parentInternalId);
-  if (brandId && filterPermission === "read") {
-    const ticketsInDatabase = await ZendeskBrandResource.fetchReadOnlyTickets({
-      connectorId,
-      brandId,
-    });
-    const nodes: ContentNode[] = ticketsInDatabase.map((ticket) => ({
-      provider: connector.type,
-      internalId: getTicketInternalId(connectorId, ticket.ticketId),
-      parentInternalId: parentInternalId,
-      type: "file",
-      title: ticket.name,
-      sourceUrl: ticket.url,
-      expandable: false,
-      permission: ticket.permission,
-      dustDocumentId: null,
-      lastUpdatedAt: ticket.updatedAt.getTime(),
-    }));
-    nodes.sort((a, b) => a.title.localeCompare(b.title));
-    return nodes;
-  }
-  return [];
 }
