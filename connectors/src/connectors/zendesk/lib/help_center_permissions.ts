@@ -6,7 +6,6 @@ import type {
 } from "@dust-tt/types";
 
 import {
-  getArticleInternalId,
   getCategoryInternalId,
   getHelpCenterInternalId,
   getIdFromInternalId,

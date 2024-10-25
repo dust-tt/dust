@@ -344,34 +344,10 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
 
     return new Ok([
       ...brands.map((brand) => brand.toContentNode({ connectorId })),
-      ...helpCenters.map(
-        (brand): ContentNode => ({
-          provider: "zendesk",
-          internalId: getHelpCenterInternalId(connectorId, brand.brandId),
-          parentInternalId: getBrandInternalId(connectorId, brand.brandId),
-          type: "folder",
-          title: "Help Center",
-          sourceUrl: null,
-          expandable: true,
-          permission: brand.helpCenterPermission,
-          dustDocumentId: null,
-          lastUpdatedAt: null,
-        })
+      ...helpCenters.map((brand) =>
+        brand.getHelpCenterContentNode({ connectorId })
       ),
-      ...tickets.map(
-        (brand): ContentNode => ({
-          provider: "zendesk",
-          internalId: getTicketsInternalId(connectorId, brand.brandId),
-          parentInternalId: getBrandInternalId(connectorId, brand.brandId),
-          type: "folder",
-          title: "Tickets",
-          sourceUrl: null,
-          expandable: false,
-          permission: brand.ticketsPermission,
-          dustDocumentId: null,
-          lastUpdatedAt: null,
-        })
-      ),
+      ...tickets.map((brand) => brand.getTicketsContentNode({ connectorId })),
       ...categories.map((category) => category.toContentNode({ connectorId })),
     ]);
   }

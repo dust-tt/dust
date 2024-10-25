@@ -13,6 +13,7 @@ import {
   getBrandInternalId,
   getCategoryInternalId,
   getHelpCenterInternalId,
+  getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
   ZendeskArticle,
@@ -265,6 +266,40 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
           : "none",
       dustDocumentId: null,
       lastUpdatedAt: this.updatedAt.getTime(),
+    };
+  }
+
+  getHelpCenterContentNode({
+    connectorId,
+  }: {
+    connectorId: number;
+  }): ContentNode {
+    return {
+      provider: "zendesk",
+      internalId: getHelpCenterInternalId(connectorId, this.brandId),
+      parentInternalId: getBrandInternalId(connectorId, this.brandId),
+      type: "folder",
+      title: "Help Center",
+      sourceUrl: null,
+      expandable: true,
+      permission: this.helpCenterPermission,
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+    };
+  }
+
+  getTicketsContentNode({ connectorId }: { connectorId: number }): ContentNode {
+    return {
+      provider: "zendesk",
+      internalId: getTicketsInternalId(connectorId, this.brandId),
+      parentInternalId: getBrandInternalId(connectorId, this.brandId),
+      type: "folder",
+      title: "Tickets",
+      sourceUrl: null,
+      expandable: false,
+      permission: this.ticketsPermission,
+      dustDocumentId: null,
+      lastUpdatedAt: null,
     };
   }
 }
@@ -526,7 +561,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
       permission: this.permission,
       dustDocumentId: null,
       lastUpdatedAt: this.updatedAt.getTime(),
-    }
+    };
   }
 
   static async fetchByArticleId({
