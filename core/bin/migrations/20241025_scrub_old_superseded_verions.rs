@@ -59,13 +59,17 @@ async fn scrub_superseded_versions_for_data_source(
                     (store.clone(), document_id, data_source.clone())
                 })
                 .map(|(store, document_id, data_source)| async move {
-                    println!(
-                        "Scrubbing document: data_source_id={} document_id={}",
-                        data_source_id, document_id
-                    );
-                    data_source
+                    let v = data_source
                         .scrub_document_superseded_versions(store, &document_id)
                         .await?;
+                    if v.len() > 0 {
+                        println!(
+                            "Scrubbed document: data_source_id={} document_id={} scrubbed={}",
+                            data_source_id,
+                            document_id,
+                            v.len()
+                        );
+                    }
                     Ok::<(), anyhow::Error>(())
                 }),
         )
