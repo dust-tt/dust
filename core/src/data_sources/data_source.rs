@@ -1818,7 +1818,7 @@ impl DataSource {
         Ok(scrubbed_versions)
     }
 
-    async fn scrub_document_superseded_versions(
+    pub async fn scrub_document_superseded_versions(
         &self,
         store: Box<dyn Store + Sync + Send>,
         document_id: &str,

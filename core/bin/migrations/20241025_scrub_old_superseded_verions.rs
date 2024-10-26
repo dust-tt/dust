@@ -64,7 +64,7 @@ async fn scrub_superseded_versions_for_data_source(
                         data_source_id, document_id
                     );
                     data_source
-                        .scrub_document_deleted_versions(store, &document_id)
+                        .scrub_document_superseded_versions(store, &document_id)
                         .await?;
                     Ok::<(), anyhow::Error>(())
                 }),
