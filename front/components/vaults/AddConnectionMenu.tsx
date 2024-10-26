@@ -29,6 +29,7 @@ import {
   isConnectorProviderAllowedForPlan,
 } from "@app/lib/connector_providers";
 import { useSystemVault } from "@app/lib/swr/vaults";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 export type DataSourceIntegration = {
@@ -97,6 +98,7 @@ export const AddConnectionMenu = ({
   });
 
   const router = useRouter();
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const availableIntegrations = integrations.filter(
     (i) =>
@@ -228,7 +230,7 @@ export const AddConnectionMenu = ({
       configuration.status === "built" ||
       (configuration.status === "rolling_out" &&
         !!configuration.rollingOutFlag &&
-        owner.flags.includes(configuration.rollingOutFlag));
+        featureFlags.includes(configuration.rollingOutFlag));
     const isProviderAllowed = isConnectorProviderAllowedForPlan(
       plan,
       configuration.connectorProvider

@@ -25,12 +25,14 @@ import { useEffect, useState } from "react";
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
 const defaultTranscriptConfigurationState = {
@@ -62,12 +64,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     .filter((dsv) => !dsv.dataSource.connectorId)
     .sort((a, b) => a.dataSource.name.localeCompare(b.dataSource.name));
 
-  if (
-    !owner ||
-    !owner.flags.includes("labs_transcripts") ||
-    !subscription ||
-    !user
-  ) {
+  if (!owner || !subscription || !user) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const flags = await getFeatureFlags(owner.id);
+  if (!flags.includes("labs_transcripts")) {
     return {
       notFound: true,
     };
@@ -88,6 +92,7 @@ export default function LabsTranscriptsIndex({
   dataSourcesViews,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useSendNotification();
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [isDeleteProviderDialogOpened, setIsDeleteProviderDialogOpened] =
     useState(false);
 
@@ -612,7 +617,7 @@ export default function LabsTranscriptsIndex({
                 </Page.Layout>
               </Page.Layout>
 
-              {owner.flags.includes("labs_transcripts_datasource") && (
+              {featureFlags.includes("labs_transcripts_datasource") && (
                 <Page.Layout direction="vertical">
                   <Page.SectionHeader title="3. Store transcripts in Folder" />
                   <Page.Layout direction="horizontal" gap="xl">
