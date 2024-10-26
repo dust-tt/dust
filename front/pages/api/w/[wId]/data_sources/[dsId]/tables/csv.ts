@@ -7,6 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
@@ -148,9 +149,11 @@ export async function handleDataSourceTableCSVUpsert({
     tableParents.push(tableId);
   }
 
+  const flags = await getFeatureFlags(owner.id);
+
   const useAppForHeaderDetection =
     !!bodyValidation.right.useAppForHeaderDetection &&
-    owner.flags.includes("use_app_for_header_detection");
+    flags.includes("use_app_for_header_detection");
 
   if (async) {
     // Ensure the CSV is valid before enqueuing the upsert.

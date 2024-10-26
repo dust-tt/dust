@@ -40,6 +40,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import {
   AgentUserRelation,
   GlobalAgentSettings,
@@ -1291,12 +1292,14 @@ export async function getGlobalAgents(
       (sId) => !RETIRED_GLOABL_AGENTS_SID.includes(sId)
     );
 
-  if (!owner.flags.includes("openai_o1_feature")) {
+  const flags = await getFeatureFlags(owner.id);
+
+  if (!flags.includes("openai_o1_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1
     );
   }
-  if (!owner.flags.includes("openai_o1_mini_feature")) {
+  if (!flags.includes("openai_o1_mini_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1_MINI
     );
