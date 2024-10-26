@@ -149,6 +149,9 @@ export async function agentMentionsCount(
     ],
     where: {
       workspaceId,
+      createdAt: {
+        [Op.gt]: literal(`NOW() - INTERVAL '${rankingUsageDays} days'`),
+      },
     },
     include: [
       {
