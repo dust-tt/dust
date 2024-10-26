@@ -5,6 +5,7 @@ import type {
   ConversationType,
   LightWorkspaceType,
 } from "@dust-tt/types";
+import _ from "lodash";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -58,7 +59,10 @@ export function useConversations({ workspaceId }: { workspaceId: string }) {
   );
 
   return {
-    conversations: useMemo(() => (data ? data.conversations : []), [data]),
+    conversations: useMemo(
+      () => (data ? _.sortBy(data.conversations, "createdAt").reverse() : []),
+      [data]
+    ),
     isConversationsLoading: !error && !data,
     isConversationsError: error,
     mutateConversations: mutate,
