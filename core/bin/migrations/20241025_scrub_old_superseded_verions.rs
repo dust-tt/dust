@@ -1,12 +1,45 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Context, Error, Result};
+use dust::data_sources::data_source::{DataSource, DocumentVersion};
 use dust::stores::{postgres, store};
 use tokio_postgres::Row;
 
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
+use futures::prelude::*;
 use futures::{StreamExt, TryStreamExt};
+use std::time::Duration;
 use tokio_postgres::NoTls;
 use tokio_stream::{self as stream};
+
+pub async fn with_retryable_back_off<F, O>(
+    mut f: impl FnMut() -> F,
+    log_retry: impl Fn(&Error, &Duration, usize) -> (),
+    log_error: impl Fn(&Error) -> (),
+) -> Result<O>
+where
+    F: Future<Output = Result<O, anyhow::Error>>,
+{
+    let factor = 2;
+    let retries = 3;
+    let mut sleep = Duration::from_millis(500);
+    let mut attempts = 0_usize;
+    let out = loop {
+        match f().await {
+            Err(err) => {
+                log_error(&err);
+                attempts += 1;
+                log_retry(&err, &sleep, attempts);
+                tokio::time::sleep(sleep).await;
+                sleep *= factor;
+                if attempts > retries {
+                    break Err(anyhow!("Too many retries ({}): {}", retries, err));
+                }
+            }
+            Ok(out) => break Ok(out),
+        }
+    };
+    out
+}
 
 async fn fetch_data_sources_documents_batch(
     pool: &Pool<PostgresConnectionManager<NoTls>>,
@@ -22,6 +55,16 @@ async fn fetch_data_sources_documents_batch(
     )
     .await
     .context("fetch_data_sources_documents")
+}
+
+async fn scrub_wrapper(
+    store: Box<dyn store::Store + Sync + Send>,
+    data_source: &DataSource,
+    document_id: &str,
+) -> Result<Vec<DocumentVersion>> {
+    data_source
+        .scrub_document_superseded_versions(store, document_id)
+        .await
 }
 
 async fn scrub_superseded_versions_for_data_source(
@@ -59,9 +102,22 @@ async fn scrub_superseded_versions_for_data_source(
                     (store.clone(), document_id, data_source.clone())
                 })
                 .map(|(store, document_id, data_source)| async move {
-                    let v = data_source
-                        .scrub_document_superseded_versions(store, &document_id)
-                        .await?;
+                    let v = with_retryable_back_off(
+                        || scrub_wrapper(store.clone(), &data_source, &document_id),
+                        |err, sleep, attempts| {
+                            println!(
+                                "Retrying scrub: err_msg={}, sleep={:?}, attempts={}",
+                                err, sleep, attempts
+                            );
+                        },
+                        |err| {
+                            println!(
+                                "Error scrubbing: data_source_id={}, err_msg={}",
+                                data_source_id, err
+                            );
+                        },
+                    )
+                    .await?;
                     if v.len() > 0 {
                         println!(
                             "Scrubbed document: data_source_id={} document_id={} scrubbed={}",
