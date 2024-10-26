@@ -150,7 +150,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
       } else if (createdDate.isSameOrAfter(lastMonth)) {
         groups["Last Month"].push(conversation);
       } else if (createdDate.isSameOrAfter(lastYear)) {
-        groups["Last Year"].push(conversation);
+        groups["Last 12 Months"].push(conversation);
       } else {
         groups["Older"].push(conversation);
       }
