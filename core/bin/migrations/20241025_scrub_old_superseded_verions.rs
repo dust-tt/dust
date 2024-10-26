@@ -69,7 +69,7 @@ async fn scrub_superseded_versions_for_data_source(
                     Ok::<(), anyhow::Error>(())
                 }),
         )
-        .buffer_unordered(32)
+        .buffer_unordered(8)
         .try_collect::<Vec<_>>()
         .await?;
 
@@ -138,7 +138,7 @@ async fn main() -> Result<(), anyhow::Error> {
             .await
         }
     }))
-    .buffer_unordered(16)
+    .buffer_unordered(8)
     .try_collect::<Vec<_>>()
     .await?;
 
