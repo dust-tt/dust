@@ -155,17 +155,17 @@ export async function agentMentionsCount(
         model: Message,
         required: true,
         attributes: [],
-        where: {
-          createdAt: {
-            [Op.gt]: literal(`NOW() - INTERVAL '${rankingUsageDays} days'`),
-          },
-        },
         include: [
           {
             model: Mention,
             as: "mentions",
             required: true,
             attributes: [],
+            where: {
+              createdAt: {
+                [Op.gt]: literal(`NOW() - INTERVAL '${rankingUsageDays} days'`),
+              },
+            },
           },
         ],
       },
