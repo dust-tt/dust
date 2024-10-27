@@ -17,7 +17,7 @@ import { getDatasetHash, getDatasetSchema } from "@app/lib/api/datasets";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { dustAppsListUrl } from "@app/lib/vaults";
+import { dustAppsListUrl } from "@app/lib/spaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

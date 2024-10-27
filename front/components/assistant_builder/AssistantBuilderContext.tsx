@@ -4,20 +4,20 @@ import { createContext } from "react";
 type AssistantBuilderContextType = {
   dustApps: AppType[];
   dataSourceViews: DataSourceViewType[];
-  vaults: SpaceType[];
+  spaces: SpaceType[];
 };
 
 export const AssistantBuilderContext =
   createContext<AssistantBuilderContextType>({
     dustApps: [],
     dataSourceViews: [],
-    vaults: [],
+    spaces: [],
   });
 
 export function AssistantBuilderProvider({
   dustApps,
   dataSourceViews,
-  vaults,
+  spaces,
   children,
 }: AssistantBuilderContextType & {
   children: React.ReactNode;
@@ -27,7 +27,7 @@ export function AssistantBuilderProvider({
       value={{
         dustApps,
         dataSourceViews,
-        vaults,
+        spaces,
       }}
     >
       {children}

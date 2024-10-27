@@ -31,6 +31,7 @@ import { extractConfig } from "@app/lib/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { dustAppsListUrl } from "@app/lib/spaces";
 import {
   addBlock,
   deleteBlock,
@@ -38,7 +39,6 @@ import {
   moveBlockUp,
 } from "@app/lib/specification";
 import { useSavedRunStatus } from "@app/lib/swr/apps";
-import { dustAppsListUrl } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

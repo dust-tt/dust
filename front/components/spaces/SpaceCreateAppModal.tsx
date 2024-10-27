@@ -15,17 +15,19 @@ import { useApps } from "@app/lib/swr/apps";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import type { PostAppResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/apps";
 
-export const VaultCreateAppModal = ({
-  owner,
-  vault,
-  isOpen,
-  setIsOpen,
-}: {
-  owner: WorkspaceType;
-  vault: SpaceType;
+interface SpaceCreateAppModalProps {
   isOpen: boolean;
+  owner: WorkspaceType;
   setIsOpen: (isOpen: boolean) => void;
-}) => {
+  space: SpaceType;
+}
+
+export const SpaceCreateAppModal = ({
+  isOpen,
+  owner,
+  setIsOpen,
+  space,
+}: SpaceCreateAppModalProps) => {
   const router = useRouter();
   const sendNotification = useSendNotification();
 
@@ -40,7 +42,7 @@ export const VaultCreateAppModal = ({
     description: null,
   });
 
-  const { apps, mutateApps } = useApps({ owner, vault });
+  const { apps, mutateApps } = useApps({ owner, space });
 
   const onSave = async () => {
     let nameError: string | null = null;
@@ -68,7 +70,7 @@ export const VaultCreateAppModal = ({
     });
 
     if (name && description && !nameError && !descriptionError) {
-      const res = await fetch(`/api/w/${owner.sId}/vaults/${vault.sId}/apps`, {
+      const res = await fetch(`/api/w/${owner.sId}/vaults/${space.sId}/apps`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

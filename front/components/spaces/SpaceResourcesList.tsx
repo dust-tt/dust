@@ -42,8 +42,8 @@ import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
 import { AddConnectionMenu } from "@app/components/spaces/AddConnectionMenu";
-import { EditVaultManagedDataSourcesViews } from "@app/components/spaces/EditVaultManagedDatasourcesViews";
-import { EditVaultStaticDatasourcesViews } from "@app/components/spaces/EditVaultStaticDatasourcesViews";
+import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
+import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpaceStaticDatasourcesViews";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
 import { useDataSources } from "@app/lib/swr/data_sources";
@@ -75,26 +75,14 @@ type RowData = {
   onClick?: () => void;
 };
 
-type VaultResourcesListProps = {
-  owner: WorkspaceType;
-  plan: PlanType;
-  isAdmin: boolean;
-  canWriteInVault: boolean;
-  vault: SpaceType;
-  systemSpace: SpaceType;
-  category: Exclude<DataSourceViewCategory, "apps">;
-  onSelect: (sId: string) => void;
-  integrations: DataSourceIntegration[];
-};
-
 const getTableColumns = ({
   isManaged,
   isWebsite,
-  vault,
+  space,
 }: {
   isManaged: boolean;
   isWebsite: boolean;
-  vault: SpaceType;
+  space: SpaceType;
 }) => {
   const nameColumn: ColumnDef<RowData, string> = {
     header: "Name",
@@ -108,7 +96,7 @@ const getTableColumns = ({
     ),
   };
 
-  const isGlobalOrSystemSpace = ["global", "system"].includes(vault.kind);
+  const isGlobalOrSystemSpace = ["global", "system"].includes(space.kind);
 
   const managedByColumn = {
     header: "Managed by",
@@ -232,7 +220,7 @@ const getTableColumns = ({
     },
   };
 
-  if (vault.kind === "system" && isManaged) {
+  if (space.kind === "system" && isManaged) {
     return [
       nameColumn,
       usedByColumn,
@@ -246,17 +234,29 @@ const getTableColumns = ({
     : [nameColumn, usedByColumn, managedByColumn];
 };
 
-export const VaultResourcesList = ({
+interface SpaceResourcesListProps {
+  owner: WorkspaceType;
+  plan: PlanType;
+  isAdmin: boolean;
+  canWriteInSpace: boolean;
+  space: SpaceType;
+  systemSpace: SpaceType;
+  category: Exclude<DataSourceViewCategory, "apps">;
+  onSelect: (sId: string) => void;
+  integrations: DataSourceIntegration[];
+}
+
+export const SpaceResourcesList = ({
   owner,
   plan,
   isAdmin,
-  canWriteInVault,
-  vault,
+  canWriteInSpace,
+  space,
   systemSpace,
   category,
   onSelect,
   integrations,
-}: VaultResourcesListProps) => {
+}: SpaceResourcesListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
@@ -276,7 +276,7 @@ export const VaultResourcesList = ({
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
-  const isSystemSpace = systemSpace.sId === vault.sId;
+  const isSystemSpace = systemSpace.sId === space.sId;
   const isManagedCategory = category === "managed";
   const isWebsite = category === "website";
   const isFolder = category === "folder";
@@ -292,26 +292,26 @@ export const VaultResourcesList = ({
 
   const doDelete = useDeleteFolderOrWebsite({
     owner,
-    vaultId: vault.sId,
+    spaceId: space.sId,
     category,
   });
 
-  // DataSources Views of the current vault.
+  // DataSources Views of the current space.
   const {
-    vaultDataSourceViews,
-    isVaultDataSourceViewsLoading,
-    mutateRegardlessOfQueryParams: mutateVaultDataSourceViews,
+    spaceDataSourceViews,
+    isSpaceDataSourceViewsLoading,
+    mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews,
   } = useSpaceDataSourceViewsWithDetails({
     workspaceId: owner.sId,
-    vaultId: vault.sId,
+    spaceId: space.sId,
     category: category,
   });
 
   const rows: RowData[] = useMemo(
     () =>
-      vaultDataSourceViews?.map((dataSourceView) => {
+      spaceDataSourceViews?.map((dataSourceView) => {
         const moreMenuItems = [];
-        if (isWebsiteOrFolder && canWriteInVault) {
+        if (isWebsiteOrFolder && canWriteInSpace) {
           moreMenuItems.push({
             label: "Edit",
             icon: PencilSquareIcon,
@@ -365,32 +365,32 @@ export const VaultResourcesList = ({
       isLoadingByProvider,
       onSelect,
       owner,
-      vaultDataSourceViews,
+      spaceDataSourceViews,
       isAdmin,
       isFolder,
       isWebsiteOrFolder,
-      canWriteInVault,
+      canWriteInSpace,
     ]
   );
 
   const onSelectedDataUpdated = useCallback(async () => {
-    await mutateVaultDataSourceViews();
-  }, [mutateVaultDataSourceViews]);
+    await mutateSpaceDataSourceViews();
+  }, [mutateSpaceDataSourceViews]);
 
   const onDeleteFolderOrWebsite = useCallback(async () => {
     if (selectedDataSourceView?.dataSource) {
       const res = await doDelete(selectedDataSourceView);
       if (res) {
         await router.push(
-          `/w/${owner.sId}/vaults/${vault.sId}/categories/${selectedDataSourceView.category}`
+          `/w/${owner.sId}/vaults/${space.sId}/categories/${selectedDataSourceView.category}`
         );
       }
     }
-  }, [selectedDataSourceView, doDelete, router, owner.sId, vault.sId]);
+  }, [selectedDataSourceView, doDelete, router, owner.sId, space.sId]);
 
   if (
     isDataSourcesLoading ||
-    isVaultDataSourceViewsLoading ||
+    isSpaceDataSourceViewsLoading ||
     isNewConnectorLoading
   ) {
     return (
@@ -427,7 +427,7 @@ export const VaultResourcesList = ({
               owner={owner}
               plan={plan}
               existingDataSources={
-                vaultDataSourceViews
+                spaceDataSourceViews
                   .filter((dsView) => isManaged(dsView.dataSource))
                   .map(
                     (v) => v.dataSource
@@ -443,7 +443,7 @@ export const VaultResourcesList = ({
               }}
               onCreated={async (dataSource) => {
                 const updateDataSourceViews =
-                  await mutateVaultDataSourceViews();
+                  await mutateSpaceDataSourceViews();
 
                 if (updateDataSourceViews) {
                   const view = updateDataSourceViews.dataSourceViews.find(
@@ -469,34 +469,34 @@ export const VaultResourcesList = ({
           </div>
         )}
         {!isSystemSpace && isManagedCategory && (
-          <EditVaultManagedDataSourcesViews
+          <EditSpaceManagedDataSourcesViews
             isAdmin={isAdmin}
             onSelectedDataUpdated={onSelectedDataUpdated}
             owner={owner}
             systemSpace={systemSpace}
-            vault={vault}
+            space={space}
           />
         )}
         {isFolder && selectedDataSourceView && (
           <ViewFolderAPIModal
             isOpen={showViewFolderAPIModal}
             owner={owner}
-            vault={vault}
+            space={space}
             dataSource={selectedDataSourceView?.dataSource}
             onClose={() => setShowViewFolderAPIModal(false)}
           />
         )}
         {isWebsiteOrFolder && (
           <>
-            <EditVaultStaticDatasourcesViews
+            <EditSpaceStaticDatasourcesViews
               isOpen={showFolderOrWebsiteModal}
               onOpen={() => {
                 setSelectedDataSourceView(null);
                 setShowFolderOrWebsiteModal(true);
               }}
               owner={owner}
-              vault={vault}
-              canWriteInVault={canWriteInVault}
+              space={space}
+              canWriteInSpace={canWriteInSpace}
               dataSources={dataSources}
               dataSourceView={selectedDataSourceView}
               plan={plan}
@@ -523,7 +523,7 @@ export const VaultResourcesList = ({
           columns={getTableColumns({
             isManaged: isManagedCategory,
             isWebsite: isWebsite,
-            vault,
+            space,
           })}
           filter={dataSourceSearch}
           filterColumn="name"

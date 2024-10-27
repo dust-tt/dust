@@ -9,12 +9,12 @@ import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { getSpaceName } from "@app/lib/spaces";
 import {
   fetcher,
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import { getVaultName } from "@app/lib/vaults";
 import type {
   GetVaultsResponseBody,
   PostVaultsResponseBody,
@@ -43,9 +43,9 @@ export function useSpaces({
   );
 
   return {
-    vaults: useMemo(() => (data ? data.vaults : []), [data]),
-    isVaultsLoading: !error && !data && !disabled,
-    isVaultsError: error,
+    spaces: useMemo(() => (data ? data.vaults : []), [data]),
+    isSpacesLoading: !error && !data && !disabled,
+    isSpacesError: error,
     mutate,
   };
 }
@@ -66,48 +66,48 @@ export function useSpacesAsAdmin({
   );
 
   return {
-    vaults: useMemo(() => (data ? data.vaults : []), [data]),
-    isVaultsLoading: !error && !data && !disabled,
-    isVaultsError: error,
+    spaces: useMemo(() => (data ? data.vaults : []), [data]),
+    isSpacesLoading: !error && !data && !disabled,
+    isSpacesError: error,
     mutate,
   };
 }
 
 export function useSpaceInfo({
   workspaceId,
-  vaultId,
+  spaceId,
   disabled,
 }: {
   workspaceId: string;
-  vaultId: string | null;
+  spaceId: string | null;
   disabled?: boolean;
 }) {
   const vaultsCategoriesFetcher: Fetcher<GetVaultResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/vaults/${vaultId}`,
+    `/api/w/${workspaceId}/vaults/${spaceId}`,
     vaultsCategoriesFetcher,
     {
-      disabled: disabled || vaultId === null,
+      disabled: disabled || spaceId === null,
     }
   );
 
   return {
-    vaultInfo: data ? data.vault : null,
-    mutateVaultInfo: mutate,
-    isVaultInfoLoading: !error && !data && !disabled,
-    isVaultInfoError: error,
+    spaceInfo: data ? data.vault : null,
+    mutateSpaceInfo: mutate,
+    isSpaceInfoLoading: !error && !data && !disabled,
+    isSpaceInfoError: error,
   };
 }
 
 export function useSpaceDataSourceView({
   owner,
-  vaultId,
+  spaceId,
   dataSourceViewId,
   disabled,
 }: {
   owner: LightWorkspaceType;
-  vaultId: string;
+  spaceId: string;
   dataSourceViewId?: string;
   disabled?: boolean;
 }) {
@@ -116,7 +116,7 @@ export function useSpaceDataSourceView({
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
-      `/api/w/${owner.sId}/vaults/${vaultId}/data_source_views/${dataSourceViewId}`,
+      `/api/w/${owner.sId}/vaults/${spaceId}/data_source_views/${dataSourceViewId}`,
       dataSourceViewsFetcher,
       { disabled }
     );
@@ -133,12 +133,12 @@ export function useSpaceDataSourceView({
 export function useSpaceDataSourceViews({
   category,
   disabled,
-  vaultId,
+  spaceId,
   workspaceId,
 }: {
   category?: Exclude<DataSourceViewCategory, "apps">;
   disabled?: boolean;
-  vaultId: string;
+  spaceId: string;
   workspaceId: string;
 }) {
   const vaultsDataSourceViewsFetcher: Fetcher<
@@ -152,34 +152,34 @@ export function useSpaceDataSourceViews({
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
-      `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views?${queryParams.toString()}`,
+      `/api/w/${workspaceId}/vaults/${spaceId}/data_source_views?${queryParams.toString()}`,
       vaultsDataSourceViewsFetcher,
       { disabled }
     );
 
-  const vaultDataSourceViews = useMemo(() => {
+  const spaceDataSourceViews = useMemo(() => {
     return (data?.dataSourceViews ??
       []) as GetVaultDataSourceViewsResponseBody<false>["dataSourceViews"];
   }, [data]);
 
   return {
-    vaultDataSourceViews,
+    spaceDataSourceViews,
     mutate,
     mutateRegardlessOfQueryParams,
-    isVaultDataSourceViewsLoading: !disabled && !error && !data,
-    isVaultDataSourceViewsError: error,
+    isSpaceDataSourceViewsLoading: !disabled && !error && !data,
+    isSpaceDataSourceViewsError: error,
   };
 }
 
 export function useSpaceDataSourceViewsWithDetails({
   category,
   disabled,
-  vaultId,
+  spaceId,
   workspaceId,
 }: {
   category: Exclude<DataSourceViewCategory, "apps">;
   disabled?: boolean;
-  vaultId: string;
+  spaceId: string;
   workspaceId: string;
 }) {
   const vaultsDataSourceViewsFetcher: Fetcher<
@@ -194,38 +194,38 @@ export function useSpaceDataSourceViewsWithDetails({
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
-      `/api/w/${workspaceId}/vaults/${vaultId}/data_source_views?${queryParams.toString()}`,
+      `/api/w/${workspaceId}/vaults/${spaceId}/data_source_views?${queryParams.toString()}`,
       vaultsDataSourceViewsFetcher,
       { disabled }
     );
 
-  const vaultDataSourceViews = useMemo(() => {
+  const spaceDataSourceViews = useMemo(() => {
     return (data?.dataSourceViews ??
       []) as GetVaultDataSourceViewsResponseBody<true>["dataSourceViews"];
   }, [data]);
 
   return {
-    vaultDataSourceViews,
+    spaceDataSourceViews,
     mutate,
     mutateRegardlessOfQueryParams,
-    isVaultDataSourceViewsLoading: !error && !data && !disabled,
-    isVaultDataSourceViewsError: error,
+    isSpaceDataSourceViewsLoading: !error && !data && !disabled,
+    isSpaceDataSourceViewsError: error,
   };
 }
 
 // Convenient hooks for creating, updating and deleting folders, handle mutations and notifications
 export function useCreateFolder({
   owner,
-  vaultId,
+  spaceId,
 }: {
   owner: LightWorkspaceType;
-  vaultId: string;
+  spaceId: string;
 }) {
   const sendNotification = useSendNotification();
-  const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
+  const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =
     useSpaceDataSourceViews({
       workspaceId: owner.sId,
-      vaultId: vaultId,
+      spaceId: spaceId,
       category: "folder",
       disabled: true, // Needed just to mutate
     });
@@ -236,7 +236,7 @@ export function useCreateFolder({
     }
 
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources`,
+      `/api/w/${owner.sId}/vaults/${spaceId}/data_sources`,
       {
         method: "POST",
         headers: {
@@ -249,7 +249,7 @@ export function useCreateFolder({
       }
     );
     if (res.ok) {
-      void mutateVaultDataSourceViews();
+      void mutateSpaceDataSourceViews();
       const response: PostVaultDataSourceResponseBody = await res.json();
       const { dataSourceView } = response;
       sendNotification({
@@ -275,10 +275,10 @@ export function useCreateFolder({
 
 export function useUpdateFolder({
   owner,
-  vaultId,
+  spaceId,
 }: {
   owner: LightWorkspaceType;
-  vaultId: string;
+  spaceId: string;
 }) {
   const sendNotification = useSendNotification();
   const doUpdate = async (
@@ -289,7 +289,7 @@ export function useUpdateFolder({
       return false;
     }
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSourceView.dataSource.sId}`,
+      `/api/w/${owner.sId}/vaults/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
       {
         method: "PATCH",
         headers: {
@@ -323,18 +323,18 @@ export function useUpdateFolder({
 
 export function useDeleteFolderOrWebsite({
   owner,
-  vaultId,
+  spaceId,
   category,
 }: {
   owner: LightWorkspaceType;
-  vaultId: string;
+  spaceId: string;
   category: Exclude<DataSourceViewCategory, "apps">;
 }) {
   const sendNotification = useSendNotification();
-  const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
+  const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =
     useSpaceDataSourceViews({
       workspaceId: owner.sId,
-      vaultId: vaultId,
+      spaceId: spaceId,
       category: category,
       disabled: true, // Needed just to mutate
     });
@@ -344,12 +344,12 @@ export function useDeleteFolderOrWebsite({
       return false;
     }
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vaultId}/data_sources/${dataSourceView.dataSource.sId}`,
+      `/api/w/${owner.sId}/vaults/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
       { method: "DELETE" }
     );
 
     if (res.ok) {
-      await mutateVaultDataSourceViews();
+      await mutateSpaceDataSourceViews();
 
       sendNotification({
         type: "success",
@@ -377,11 +377,11 @@ type DoCreateOrUpdateAllowedParams =
 
 export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
-  const { mutate: mutateVaults } = useSpaces({
+  const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
     disabled: true, // Needed just to mutate.
   });
-  const { mutate: mutateVaultsAsAdmin } = useSpacesAsAdmin({
+  const { mutate: mutateSpacesAsAdmin } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: true, // Needed just to mutate.
   });
@@ -417,18 +417,18 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
 
       sendNotification({
         type: "error",
-        title: "Error creating Vault",
+        title: "Error creating space",
         description: `Error: ${errorData.message}`,
       });
       return null;
     } else {
-      void mutateVaults();
-      void mutateVaultsAsAdmin();
+      void mutateSpaces();
+      void mutateSpacesAsAdmin();
 
       sendNotification({
         type: "success",
-        title: "Successfully created Vault",
-        description: "Vault was successfully created.",
+        title: "Successfully created space",
+        description: "Space was successfully created.",
       });
 
       const response: PostVaultsResponseBody = await res.json();
@@ -441,11 +441,11 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
 
 export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
-  const { mutate: mutateVaults } = useSpaces({
+  const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
     disabled: true, // Needed just to mutate
   });
-  const { mutate: mutateVaultsAsAdmin } = useSpacesAsAdmin({
+  const { mutate: mutateSpacesAsAdmin } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: true, // Needed just to mutate
   });
@@ -458,11 +458,11 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     const updatePromises: Promise<Response>[] = [];
 
-    // Prepare vault update request.
+    // Prepare space update request.
     if (newName) {
-      const vaultUrl = `/api/w/${owner.sId}/vaults/${vault.sId}`;
+      const spaceUrl = `/api/w/${owner.sId}/vaults/${vault.sId}`;
       updatePromises.push(
-        fetch(vaultUrl, {
+        fetch(spaceUrl, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -474,10 +474,10 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
       );
     }
 
-    // Prepare vault members update request if provided.
-    const vaultMembersUrl = `/api/w/${owner.sId}/vaults/${vault.sId}/members`;
+    // Prepare space members update request if provided.
+    const spaceMembersUrl = `/api/w/${owner.sId}/vaults/${vault.sId}/members`;
     updatePromises.push(
-      fetch(vaultMembersUrl, {
+      fetch(spaceMembersUrl, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -501,19 +501,19 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
         sendNotification({
           type: "error",
-          title: "Error updating Vault",
+          title: "Error updating space",
           description: `Error: ${errorData.message}`,
         });
         return null;
       }
     }
-    void mutateVaults();
-    void mutateVaultsAsAdmin();
+    void mutateSpaces();
+    void mutateSpacesAsAdmin();
 
     sendNotification({
       type: "success",
-      title: "Successfully updated Vault",
-      description: "Vault was successfully updated.",
+      title: "Successfully updated space",
+      description: "Space was successfully updated.",
     });
 
     const vaultResponse: PatchVaultResponseBody = await results[0].json();
@@ -524,11 +524,11 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
 export function useDeleteSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
-  const { mutate: mutateVaults } = useSpaces({
+  const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
     disabled: true, // Needed just to mutate
   });
-  const { mutate: mutateVaultsAsAdmin } = useSpacesAsAdmin({
+  const { mutate: mutateSpacesAsAdmin } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: true, // Needed just to mutate
   });
@@ -543,20 +543,20 @@ export function useDeleteSpace({ owner }: { owner: LightWorkspaceType }) {
     });
 
     if (res.ok) {
-      void mutateVaults();
-      void mutateVaultsAsAdmin();
+      void mutateSpaces();
+      void mutateSpacesAsAdmin();
 
       sendNotification({
         type: "success",
-        title: `Successfully deleted ${getVaultName(vault)}`,
-        description: `${getVaultName(vault)} was successfully deleted.`,
+        title: `Successfully deleted ${getSpaceName(vault)}`,
+        description: `${getSpaceName(vault)} was successfully deleted.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendNotification({
         type: "error",
-        title: `Error deleting ${getVaultName(vault)}`,
+        title: `Error deleting ${getSpaceName(vault)}`,
         description: `Error: ${errorData.message}`,
       });
     }

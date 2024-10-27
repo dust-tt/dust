@@ -25,7 +25,7 @@ export function isActionDustAppRunValid(
 
 interface ActionDustAppRunProps {
   action: AssistantBuilderActionConfiguration;
-  allowedVaults: SpaceType[];
+  allowedSpaces: SpaceType[];
   owner: LightWorkspaceType;
   setEdited: (edited: boolean) => void;
   updateAction: (args: {
@@ -39,7 +39,7 @@ interface ActionDustAppRunProps {
 
 export function ActionDustAppRun({
   action,
-  allowedVaults,
+  allowedSpaces,
   owner,
   setEdited,
   updateAction,
@@ -71,7 +71,7 @@ export function ActionDustAppRun({
   return (
     <>
       <AssistantBuilderDustAppModal
-        allowedVaults={allowedVaults}
+        allowedSpaces={allowedSpaces}
         owner={owner}
         isOpen={showDustAppsModal}
         setOpen={(isOpen) => {

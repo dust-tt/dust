@@ -115,7 +115,7 @@ export function hasActionError(
   }
 }
 
-type VaultIdToActions = Record<
+type SpaceIdToActions = Record<
   string,
   AssistantBuilderActionConfigurationWithId[]
 >;
@@ -139,7 +139,7 @@ export default function ActionsScreen({
   setAction,
   pendingAction,
 }: ActionScreenProps) {
-  const { vaults } = useContext(AssistantBuilderContext);
+  const { spaces } = useContext(AssistantBuilderContext);
 
   const configurableActions = builderState.actions.filter(
     (a) => !(CAPABILITIES_ACTION_CATEGORIES as string[]).includes(a.type)
@@ -147,13 +147,13 @@ export default function ActionsScreen({
 
   const isLegacyConfig = isLegacyAssistantBuilderConfiguration(builderState);
 
-  const vaultIdToActions = useMemo(() => {
+  const spaceIdToActions = useMemo(() => {
     return configurableActions.reduce<
       Record<string, AssistantBuilderActionConfigurationWithId[]>
     >((acc, action) => {
-      const addActionToVault = (vaultId?: string) => {
-        if (vaultId) {
-          acc[vaultId] = (acc[vaultId] || []).concat(action);
+      const addActionToSpace = (spaceId?: string) => {
+        if (spaceId) {
+          acc[spaceId] = (acc[spaceId] || []).concat(action);
         }
       };
 
@@ -162,7 +162,7 @@ export default function ActionsScreen({
       switch (actionType) {
         case "TABLES_QUERY":
           Object.values(action.configuration).forEach((config) => {
-            addActionToVault(config.dataSourceView.spaceId);
+            addActionToSpace(config.dataSourceView.spaceId);
           });
           break;
 
@@ -171,13 +171,13 @@ export default function ActionsScreen({
         case "PROCESS":
           Object.values(action.configuration.dataSourceConfigurations).forEach(
             (config) => {
-              addActionToVault(config.dataSourceView.spaceId);
+              addActionToSpace(config.dataSourceView.spaceId);
             }
           );
           break;
 
         case "DUST_APP_RUN":
-          addActionToVault(action.configuration.app?.space.sId);
+          addActionToSpace(action.configuration.app?.space.sId);
           break;
 
         case "WEB_NAVIGATION":
@@ -190,10 +190,10 @@ export default function ActionsScreen({
     }, {});
   }, [configurableActions]);
 
-  const nonGlobalVaultsUsedInActions = useMemo(() => {
-    const nonGlobalVaults = vaults.filter((v) => v.kind !== "global");
-    return nonGlobalVaults.filter((v) => vaultIdToActions[v.sId]?.length > 0);
-  }, [vaultIdToActions, vaults]);
+  const nonGlobalSpacessUsedInActions = useMemo(() => {
+    const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
+    return nonGlobalSpaces.filter((v) => spaceIdToActions[v.sId]?.length > 0);
+  }, [spaceIdToActions, spaces]);
 
   const updateAction = useCallback(
     function _updateAction({
@@ -251,7 +251,7 @@ export default function ActionsScreen({
         isOpen={pendingAction.action !== null}
         builderState={builderState}
         initialAction={pendingAction.action}
-        vaultsUsedInActions={vaultIdToActions}
+        spacesUsedInActions={spaceIdToActions}
         onSave={(newAction) => {
           setEdited(true);
           if (!pendingAction.action) {
@@ -377,12 +377,12 @@ export default function ActionsScreen({
             )}
           </div>
         </div>
-        {nonGlobalVaultsUsedInActions.length > 0 && (
+        {nonGlobalSpacessUsedInActions.length > 0 && (
           <div className="w-full">
             <Chip
               color="amber"
               size="sm"
-              label={`Based on the sources you selected, this assistant can only be used by users with access to space${nonGlobalVaultsUsedInActions.length > 1 ? "s" : ""} : ${nonGlobalVaultsUsedInActions.map((v) => v.name).join(", ")}.`}
+              label={`Based on the sources you selected, this assistant can only be used by users with access to space${nonGlobalSpacessUsedInActions.length > 1 ? "s" : ""} : ${nonGlobalSpacessUsedInActions.map((v) => v.name).join(", ")}.`}
             />
           </div>
         )}
@@ -441,7 +441,7 @@ type NewActionModalProps = {
   isOpen: boolean;
   builderState: AssistantBuilderState;
   initialAction: AssistantBuilderActionConfigurationWithId | null;
-  vaultsUsedInActions: VaultIdToActions;
+  spacesUsedInActions: SpaceIdToActions;
   onSave: (newAction: AssistantBuilderActionConfigurationWithId) => void;
   onClose: () => void;
   updateAction: (args: {
@@ -457,7 +457,7 @@ type NewActionModalProps = {
 function NewActionModal({
   isOpen,
   initialAction,
-  vaultsUsedInActions,
+  spacesUsedInActions,
   onSave,
   onClose,
   owner,
@@ -545,7 +545,7 @@ function NewActionModal({
           {newAction && (
             <ActionEditor
               action={newAction}
-              vaultsUsedInActions={vaultsUsedInActions}
+              spacesUsedInActions={spacesUsedInActions}
               updateAction={({
                 actionName,
                 actionDescription,
@@ -644,7 +644,7 @@ function ActionCard({
 interface ActionConfigEditorProps {
   owner: WorkspaceType;
   action: AssistantBuilderActionConfigurationWithId;
-  vaultsUsedInActions: VaultIdToActions;
+  spacesUsedInActions: SpaceIdToActions;
   instructions: string | null;
   updateAction: (args: {
     actionName: string;
@@ -661,41 +661,41 @@ interface ActionConfigEditorProps {
 function ActionConfigEditor({
   owner,
   action,
-  vaultsUsedInActions,
+  spacesUsedInActions,
   instructions,
   updateAction,
   setEdited,
   description,
   onDescriptionChange,
 }: ActionConfigEditorProps) {
-  const { vaults } = useContext(AssistantBuilderContext);
+  const { spaces } = useContext(AssistantBuilderContext);
 
-  // Only allow one vault across all actions.
-  const allowedVaults = useMemo(() => {
-    const isVaultUsedInOtherActions = (vault: SpaceType) => {
-      const actionsUsingVault = vaultsUsedInActions[vault.sId] ?? [];
+  // Only allow one space across all actions.
+  const allowedSpaces = useMemo(() => {
+    const isSpaceUsedInOtherActions = (space: SpaceType) => {
+      const actionsUsingSpace = spacesUsedInActions[space.sId] ?? [];
 
-      return actionsUsingVault.some((a) => {
+      return actionsUsingSpace.some((a) => {
         // We use the id to compare actions, as the configuration can change.
         return a.id !== action.id;
       });
     };
 
-    const usedVaultsInOtherActions = vaults.filter(isVaultUsedInOtherActions);
-    if (usedVaultsInOtherActions.length === 0) {
-      return vaults;
+    const usedSpacesInOtherActions = spaces.filter(isSpaceUsedInOtherActions);
+    if (usedSpacesInOtherActions.length === 0) {
+      return spaces;
     }
 
-    return vaults.filter((vault) =>
-      usedVaultsInOtherActions.some((v) => v.sId === vault.sId)
+    return spaces.filter((space) =>
+      usedSpacesInOtherActions.some((s) => s.sId === space.sId)
     );
-  }, [action, vaults, vaultsUsedInActions]);
+  }, [action, spaces, spacesUsedInActions]);
 
   switch (action.type) {
     case "DUST_APP_RUN":
       return (
         <ActionDustAppRun
-          allowedVaults={allowedVaults}
+          allowedSpaces={allowedSpaces}
           owner={owner}
           action={action}
           updateAction={updateAction}
@@ -708,7 +708,7 @@ function ActionConfigEditor({
         <ActionRetrievalSearch
           owner={owner}
           actionConfiguration={action.configuration}
-          allowedVaults={allowedVaults}
+          allowedSpaces={allowedSpaces}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -726,7 +726,7 @@ function ActionConfigEditor({
         <ActionRetrievalExhaustive
           owner={owner}
           actionConfiguration={action.configuration}
-          allowedVaults={allowedVaults}
+          allowedSpaces={allowedSpaces}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -745,7 +745,7 @@ function ActionConfigEditor({
           owner={owner}
           instructions={instructions}
           actionConfiguration={action.configuration}
-          allowedVaults={allowedVaults}
+          allowedSpaces={allowedSpaces}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -765,7 +765,7 @@ function ActionConfigEditor({
         <ActionTablesQuery
           owner={owner}
           actionConfiguration={action.configuration}
-          allowedVaults={allowedVaults}
+          allowedSpaces={allowedSpaces}
           updateAction={(setNewAction) => {
             updateAction({
               actionName: action.name,
@@ -788,7 +788,7 @@ function ActionConfigEditor({
 
 interface ActionEditorProps {
   action: AssistantBuilderActionConfigurationWithId;
-  vaultsUsedInActions: VaultIdToActions;
+  spacesUsedInActions: SpaceIdToActions;
   showInvalidActionNameError: string | null;
   showInvalidActionDescError: string | null;
   showInvalidActionError: string | null;
@@ -808,7 +808,7 @@ interface ActionEditorProps {
 
 function ActionEditor({
   action,
-  vaultsUsedInActions,
+  spacesUsedInActions,
   showInvalidActionNameError,
   showInvalidActionDescError,
   showInvalidActionError,
@@ -882,7 +882,7 @@ function ActionEditor({
           <ActionConfigEditor
             owner={owner}
             action={action}
-            vaultsUsedInActions={vaultsUsedInActions}
+            spacesUsedInActions={spacesUsedInActions}
             instructions={builderState.instructions}
             updateAction={updateAction}
             setEdited={setEdited}

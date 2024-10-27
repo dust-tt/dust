@@ -40,7 +40,7 @@ import {
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaces } from "@app/lib/swr/spaces";
 
-const ONLY_ONE_VAULT_PER_SELECTION = true;
+const ONLY_ONE_SPACE_PER_SELECTION = true;
 
 const getUseResourceHook =
   (
@@ -89,7 +89,7 @@ interface DataSourceViewsSelectorProps {
   owner: LightWorkspaceType;
   useCase: "vaultDatasourceManagement" | "assistantBuilder";
   dataSourceViews: DataSourceViewType[];
-  allowedVaults?: SpaceType[];
+  allowedSpaces?: SpaceType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
   setSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
@@ -102,13 +102,13 @@ export function DataSourceViewsSelector({
   owner,
   useCase,
   dataSourceViews,
-  allowedVaults,
+  allowedSpaces,
   selectionConfigurations,
   setSelectionConfigurations,
   viewType,
   isRootSelectable,
 }: DataSourceViewsSelectorProps) {
-  const { vaults, isVaultsLoading } = useSpaces({ workspaceId: owner.sId });
+  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
 
   const includesConnectorIDs: (string | null)[] = [];
   const excludesConnectorIDs: (string | null)[] = [];
@@ -153,34 +153,35 @@ export function DataSourceViewsSelector({
   const folders = filteredDSVs.filter((dsv) => isFolder(dsv.dataSource));
   const websites = filteredDSVs.filter((dsv) => isWebsite(dsv.dataSource));
 
-  const defaultVault = useMemo(() => {
+  const defaultSpace = useMemo(() => {
     const firstKey = Object.keys(selectionConfigurations)[0] ?? null;
     return firstKey
       ? selectionConfigurations[firstKey]?.dataSourceView?.spaceId ?? ""
       : "";
   }, [selectionConfigurations]);
 
-  const filteredVaults = useMemo(() => {
-    const vaultIds = [...new Set(dataSourceViews.map((dsv) => dsv.spaceId))];
-    return vaults.filter((v) => vaultIds.includes(v.sId));
-  }, [vaults, dataSourceViews]);
+  const filteredSpaces = useMemo(() => {
+    const spaceIds = [...new Set(dataSourceViews.map((dsv) => dsv.spaceId))];
 
-  if (isVaultsLoading) {
+    return spaces.filter((s) => spaceIds.includes(s.sId));
+  }, [spaces, dataSourceViews]);
+
+  if (isSpacesLoading) {
     return <Spinner />;
   }
 
-  if (filteredVaults.length > 1) {
+  if (filteredSpaces.length > 1) {
     return (
       <VaultSelector
-        vaults={filteredVaults}
-        allowedVaults={allowedVaults}
-        defaultVault={defaultVault}
-        renderChildren={(vault) => {
-          const dataSourceViewsForVault = vault
-            ? dataSourceViews.filter((dsv) => dsv.spaceId === vault.sId)
+        vaults={filteredSpaces}
+        allowedSpaces={allowedSpaces}
+        defaultSpace={defaultSpace}
+        renderChildren={(space) => {
+          const dataSourceViewsForSpace = space
+            ? dataSourceViews.filter((dsv) => dsv.spaceId === space.sId)
             : dataSourceViews;
 
-          if (dataSourceViewsForVault.length === 0) {
+          if (dataSourceViewsForSpace.length === 0) {
             return <>No data source in this space.</>;
           }
 
@@ -188,7 +189,7 @@ export function DataSourceViewsSelector({
             <DataSourceViewsSelector
               owner={owner}
               useCase={useCase}
-              dataSourceViews={dataSourceViewsForVault}
+              dataSourceViews={dataSourceViewsForSpace}
               selectionConfigurations={selectionConfigurations}
               setSelectionConfigurations={setSelectionConfigurations}
               viewType={viewType}
@@ -327,13 +328,13 @@ export function DataSourceViewSelector({
     (r) => r.internalId
   );
 
-  // When users have multiple vaults, they can opt to select only one vault per tool.
+  // When users have multiple spaces, they can opt to select only one space per tool.
   // This is enforced in the UI via a radio button, ensuring single selection at a time.
-  // However, selecting a new item in a different vault doesn't automatically clear previous selections.
-  // This function ensures that only the selections matching the current vault are retained, removing any others.
-  const keepOnlyOneVaultIfApplicable = useCallback(
+  // However, selecting a new item in a different space doesn't automatically clear previous selections.
+  // This function ensures that only the selections matching the current space are retained, removing any others.
+  const keepOnlyOneSpaceIfApplicable = useCallback(
     (config: DataSourceViewSelectionConfigurations) => {
-      if (!ONLY_ONE_VAULT_PER_SELECTION) {
+      if (!ONLY_ONE_SPACE_PER_SELECTION) {
         return config;
       }
 
@@ -381,7 +382,7 @@ export function DataSourceViewSelector({
             };
 
         // Return a new object to trigger a re-render
-        return keepOnlyOneVaultIfApplicable({
+        return keepOnlyOneSpaceIfApplicable({
           ...prevState,
           [dataSourceView.sId]: updatedConfig,
         });
@@ -430,13 +431,13 @@ export function DataSourceViewSelector({
         }
 
         // Return a new object to trigger a re-render
-        return keepOnlyOneVaultIfApplicable({
+        return keepOnlyOneSpaceIfApplicable({
           ...prevState,
           [dataSourceView.sId]: updatedConfig,
         });
       });
     },
-    [dataSourceView, keepOnlyOneVaultIfApplicable, setSelectionConfigurations]
+    [dataSourceView, keepOnlyOneSpaceIfApplicable, setSelectionConfigurations]
   );
 
   const useResourcesHook = useCallback(

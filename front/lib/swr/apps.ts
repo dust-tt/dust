@@ -16,43 +16,19 @@ import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/ap
 import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
 import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/apps/[aId]/runs/[runId]/status";
 
-export function useApp({
-  owner,
-  appId,
-  vault,
-}: {
-  owner: LightWorkspaceType;
-  appId: string;
-  vault: SpaceType;
-}) {
-  const appFetcher: Fetcher<{ app: AppType }> = fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/vaults/${vault.sId}/apps/${appId}`,
-    appFetcher
-  );
-
-  return {
-    app: data ? data.app : null,
-    isAppLoading: !error && !data,
-    isAppError: error,
-    mutateApp: mutate,
-  };
-}
-
 export function useApps({
-  owner,
-  vault,
   disabled,
+  owner,
+  space,
 }: {
-  owner: LightWorkspaceType;
-  vault: SpaceType;
   disabled?: boolean;
+  owner: LightWorkspaceType;
+  space: SpaceType;
 }) {
   const appsFetcher: Fetcher<GetAppsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/vaults/${vault.sId}/apps`,
+    `/api/w/${owner.sId}/vaults/${space.sId}/apps`,
     appsFetcher,
     {
       disabled,

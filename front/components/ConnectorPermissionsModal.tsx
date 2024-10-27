@@ -380,10 +380,10 @@ function DataSourceDeletionModal({
   const { systemSpace } = useSystemSpace({
     workspaceId: owner.sId,
   });
-  const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
+  const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =
     useSpaceDataSourceViews({
       workspaceId: owner.sId,
-      vaultId: systemSpace?.sId ?? "",
+      spaceId: systemSpace?.sId ?? "",
       disabled: true,
     });
   const { connectorProvider, editedByUser } = dataSource;
@@ -409,7 +409,7 @@ function DataSourceDeletionModal({
         type: "success",
         description: "The connection has been successfully deleted.",
       });
-      await mutateVaultDataSourceViews();
+      await mutateSpaceDataSourceViews();
       onClose();
     } else {
       const err = (await res.json()) as { error: APIError };

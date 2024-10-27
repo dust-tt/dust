@@ -20,14 +20,14 @@ makeScript({}, async ({ execute }, logger) => {
       id: allDustAppModels.map((app) => app.vaultId),
     },
   });
-  const groupVaults = await GroupSpaceModel.findAll({
+  const groupSpaces = await GroupSpaceModel.findAll({
     where: {
       vaultId: allDustAppVaults.map((vault) => vault.id),
     },
   });
   const groupIdsByVaultId = mapValues(
-    groupBy(groupVaults, "vaultId"),
-    (groupVaults) => groupVaults.map((groupVault) => groupVault.groupId)
+    groupBy(groupSpaces, "vaultId"),
+    (groupSpaces) => groupSpaces.map((groupVault) => groupVault.groupId)
   );
   const dustAppIdsByAgentConfigId = mapValues(
     groupBy(allDustAppRunConfigs, "agentConfigurationId"),
