@@ -61,10 +61,7 @@ impl FileStorageDocument {
         let bucket = FileStorageDocument::get_bucket().await?;
 
         match Object::delete(&bucket, &path).await {
-            Ok(_) => {
-                // println!("Deleted: path={}", path);
-                Ok(true)
-            }
+            Ok(_) => Ok(true),
             Err(e) => match e {
                 cloud_storage::Error::Google(GoogleErrorResponse {
                     error: ErrorList { code: 404, .. },
