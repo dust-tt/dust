@@ -1938,7 +1938,7 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn scrub_data_source_document_version(
+    async fn delete_data_source_document_version(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -1950,6 +1950,7 @@ impl Store for PostgresStore {
         let document_id = document_id.to_string();
         let created = version.created as i64;
         let hash = version.hash.clone();
+        let status = version.status.to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -1971,11 +1972,14 @@ impl Store for PostgresStore {
             .prepare(
                 "DELETE FROM data_sources_documents \
                    WHERE data_source = $1 AND document_id = $2 \
-                   AND created = $3 AND hash = $4 AND status='deleted'",
+                   AND created = $3 AND hash = $4 AND status=$5",
             )
             .await?;
         let _ = c
-            .query(&stmt, &[&data_source_row_id, &document_id, &created, &hash])
+            .query(
+                &stmt,
+                &[&data_source_row_id, &document_id, &created, &hash, &status],
+            )
             .await?;
 
         Ok(())

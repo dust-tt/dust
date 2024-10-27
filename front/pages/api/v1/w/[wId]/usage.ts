@@ -5,6 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { unsafeGetUsageData } from "@app/lib/workspace_usage";
 import { apiError } from "@app/logger/withlogging";
 
@@ -34,7 +35,8 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-  if (!owner.flags.includes("usage_data_api")) {
+  const flags = await getFeatureFlags(owner.id);
+  if (!flags.includes("usage_data_api")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {

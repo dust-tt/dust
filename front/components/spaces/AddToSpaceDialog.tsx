@@ -140,7 +140,6 @@ export const AddToSpaceDialog = ({
         <DropdownMenu>
           <DropdownMenu.Button>
             <Button
-              hasMagnifying={false}
               label={space ? space.name : "Select space"}
               size="sm"
               isSelect

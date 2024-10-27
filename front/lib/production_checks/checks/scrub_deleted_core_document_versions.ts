@@ -113,6 +113,15 @@ async function scrubDocument({
   });
 
   if (sRes.isErr()) {
+    logger.error(
+      {
+        documentId,
+        dataSourceProject: project,
+        dataSourceId: dataSourceId,
+        error: sRes.error,
+      },
+      "Failed to scrub versions"
+    );
     throw new Error(`Failed to scrub versions: ${sRes.error}`);
   }
 

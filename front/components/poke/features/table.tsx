@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 
 import { makeColumnsForFeatureFlags } from "@app/components/poke/features/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface FeatureFlagsDataTableProps {
   owner: WorkspaceType;
@@ -11,11 +12,11 @@ interface FeatureFlagsDataTableProps {
 }
 
 function prepareFeatureFlagsForDisplay(
-  owner: WorkspaceType,
+  workspaceFlags: WhitelistableFeature[],
   whitelistableFeatures: WhitelistableFeature[]
 ) {
   return whitelistableFeatures.map((ff) => {
-    const isEnabledForWorkspace = owner.flags.some((f) => f === ff);
+    const isEnabledForWorkspace = workspaceFlags.some((f) => f === ff);
 
     return {
       name: ff,
@@ -29,6 +30,7 @@ export function FeatureFlagsDataTable({
   whitelistableFeatures,
 }: FeatureFlagsDataTableProps) {
   const router = useRouter();
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const sendNotification = useSendNotification();
 
   return (
@@ -40,7 +42,10 @@ export function FeatureFlagsDataTable({
           router.reload,
           sendNotification
         )}
-        data={prepareFeatureFlagsForDisplay(owner, whitelistableFeatures)}
+        data={prepareFeatureFlagsForDisplay(
+          featureFlags,
+          whitelistableFeatures
+        )}
       />
     </div>
   );

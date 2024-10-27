@@ -179,7 +179,7 @@ pub trait Store {
         data_source_id: &str,
         document_id: &str,
     ) -> Result<()>;
-    async fn scrub_data_source_document_version(
+    async fn delete_data_source_document_version(
         &self,
         project: &Project,
         data_source_id: &str,

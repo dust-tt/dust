@@ -227,6 +227,16 @@ impl FromStr for DocumentStatus {
     }
 }
 
+impl ToString for DocumentStatus {
+    fn to_string(&self) -> String {
+        match self {
+            DocumentStatus::Latest => "latest".to_string(),
+            DocumentStatus::Superseded => "superseded".to_string(),
+            DocumentStatus::Deleted => "deleted".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Clone)]
 pub struct DocumentVersion {
     pub created: u64,
@@ -699,13 +709,17 @@ impl DataSource {
             .await?;
         }
 
-        // Upsert document (SQL)
+        // Upsert document (SQL).
         store
             .upsert_data_source_document(
                 &self.project,
                 &self.data_source_id,
                 &main_collection_document,
             )
+            .await?;
+
+        // Clean-up old superseded versions.
+        self.scrub_document_superseded_versions(store, &document_id)
             .await?;
 
         Ok(main_collection_document)
@@ -1769,7 +1783,7 @@ impl DataSource {
             .filter(|v| v.status == DocumentStatus::Deleted)
             .collect::<Vec<_>>();
 
-        let mut scrubbed_hashes: Vec<DocumentVersion> = vec![];
+        let mut scrubbed_versions: Vec<DocumentVersion> = vec![];
         for v in versions {
             let document_id_hash = make_document_id_hash(document_id);
 
@@ -1782,7 +1796,7 @@ impl DataSource {
             .await?;
 
             store
-                .scrub_data_source_document_version(
+                .delete_data_source_document_version(
                     &self.project,
                     &self.data_source_id,
                     document_id,
@@ -1798,10 +1812,77 @@ impl DataSource {
                 "Scrubbed deleted document version"
             );
 
-            scrubbed_hashes.push(v);
+            scrubbed_versions.push(v);
         }
 
-        Ok(scrubbed_hashes)
+        Ok(scrubbed_versions)
+    }
+
+    pub async fn scrub_document_superseded_versions(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        document_id: &str,
+    ) -> Result<Vec<DocumentVersion>> {
+        let (versions, _) = store
+            .list_data_source_document_versions(
+                &self.project,
+                &self.data_source_id,
+                document_id,
+                None,
+                &None,
+                &None,
+            )
+            .await?;
+
+        // We scrub only superseded version keeping always the last one as well as the ones that
+        // have been created within the past 24h. Document versions are ordered by creation date
+        // (descending) but we resort here just to be safe in case the API of the store changes.
+        let now = utils::now();
+        let scrubbed_versions = versions
+            .into_iter()
+            .sorted_by(|a, b| Ord::cmp(&b.created, &a.created))
+            .filter(|v| v.status == DocumentStatus::Superseded)
+            .skip(1)
+            .filter(|v| now - v.created > 24 * 60 * 60 * 1000)
+            .collect::<Vec<_>>();
+
+        for v in scrubbed_versions.iter() {
+            let document_id_hash = make_document_id_hash(document_id);
+
+            FileStorageDocument::scrub_document_version_from_file_storage(
+                &self,
+                document_id,
+                &document_id_hash,
+                v,
+            )
+            .await?;
+
+            store
+                .delete_data_source_document_version(
+                    &self.project,
+                    &self.data_source_id,
+                    document_id,
+                    v,
+                )
+                .await?;
+
+            info!(
+                data_source_internal_id = self.internal_id,
+                document_id = document_id,
+                version_created = v.created,
+                version_hash = v.hash,
+                "Scrubbed superseded document version"
+            );
+        }
+
+        info!(
+            data_source_internal_id = self.internal_id,
+            document_id = document_id,
+            scrubbed_version_count = scrubbed_versions.len(),
+            "Scrubbed superseded document versions"
+        );
+
+        Ok(scrubbed_versions)
     }
 
     pub async fn delete(

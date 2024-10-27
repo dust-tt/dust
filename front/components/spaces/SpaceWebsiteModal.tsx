@@ -587,7 +587,6 @@ export default function SpaceWebsiteModal({
                         onClick={() => {
                           setIsDeleteModalOpen(true);
                         }}
-                        hasMagnifying={false}
                       />
                       {dataSourceView && (
                         <DeleteStaticDataSourceDialog

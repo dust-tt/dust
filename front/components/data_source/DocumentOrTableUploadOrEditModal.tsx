@@ -37,6 +37,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useDataSourceViewDocument } from "@app/lib/swr/data_source_views";
 import { useTable } from "@app/lib/swr/tables";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 const MAX_NAME_CHARS = 32;
 
@@ -469,6 +470,8 @@ const TableUploadOrEditModal = ({
     tableId: initialId ?? null,
   });
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   useEffect(() => {
     if (!initialId) {
       setTableState({
@@ -702,7 +705,7 @@ const TableUploadOrEditModal = ({
                   </div>
                 )}
               </div>
-              {owner.flags.includes("use_app_for_header_detection") && (
+              {featureFlags.includes("use_app_for_header_detection") && (
                 <div>
                   <Page.SectionHeader
                     title="Enable header detection"
