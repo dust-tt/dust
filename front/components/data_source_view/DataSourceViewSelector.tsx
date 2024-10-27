@@ -21,7 +21,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useCallback } from "react";
 import { useMemo } from "react";
 
-import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
+import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
 import type {
   ContentNodeTreeItemStatus,
   TreeSelectionModelUpdater,
@@ -87,7 +87,7 @@ const getNodesFromConfig = (
 
 interface DataSourceViewsSelectorProps {
   owner: LightWorkspaceType;
-  useCase: "vaultDatasourceManagement" | "assistantBuilder";
+  useCase: "spaceDatasourceManagement" | "assistantBuilder";
   dataSourceViews: DataSourceViewType[];
   allowedSpaces?: SpaceType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
@@ -172,8 +172,8 @@ export function DataSourceViewsSelector({
 
   if (filteredSpaces.length > 1) {
     return (
-      <VaultSelector
-        vaults={filteredSpaces}
+      <SpaceSelector
+        spaces={filteredSpaces}
         allowedSpaces={allowedSpaces}
         defaultSpace={defaultSpace}
         renderChildren={(space) => {
@@ -228,7 +228,7 @@ export function DataSourceViewsSelector({
           </Tree.Item>
         )}
         {managedDsv.length > 0 &&
-          useCase === "vaultDatasourceManagement" &&
+          useCase === "spaceDatasourceManagement" &&
           managedDsv.map((dataSourceView) => (
             <DataSourceViewSelector
               key={dataSourceView.sId}

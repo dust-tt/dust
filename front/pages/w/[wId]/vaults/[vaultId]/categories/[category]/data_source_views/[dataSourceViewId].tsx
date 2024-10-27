@@ -11,9 +11,9 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
+import { SpaceDataSourceViewContentList } from "@app/components/spaces/SpaceDataSourceViewContentList";
 import type { SpaceLayoutProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
-import { VaultDataSourceViewContentList } from "@app/components/spaces/VaultDataSourceViewContentList";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -129,7 +129,7 @@ export default function Space({
   const router = useRouter();
   return (
     <Page.Vertical gap="xl" align="stretch">
-      <VaultDataSourceViewContentList
+      <SpaceDataSourceViewContentList
         owner={owner}
         space={space}
         plan={plan}

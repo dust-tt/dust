@@ -14,7 +14,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import RootLayout from "@app/components/app/RootLayout";
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { CATEGORY_DETAILS } from "@app/components/spaces/SpaceCategoriesList";
-import VaultSideBarMenu from "@app/components/spaces/VaultSideBarMenu";
+import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
@@ -82,7 +82,7 @@ export function SpaceLayout({
         subscription={subscription}
         owner={owner}
         navChildren={
-          <VaultSideBarMenu
+          <SpaceSideBarMenu
             owner={owner}
             isAdmin={isAdmin}
             openSpaceCreationModal={openSpaceCreationModal}

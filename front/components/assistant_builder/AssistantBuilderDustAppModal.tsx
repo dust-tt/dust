@@ -4,7 +4,7 @@ import { Transition } from "@headlessui/react";
 import { sortBy } from "lodash";
 import { useMemo } from "react";
 
-import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
+import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
 import { useSpaces } from "@app/lib/swr/spaces";
 
 interface AssistantBuilderDustAppModalProps {
@@ -94,8 +94,8 @@ function PickDustApp({
         {isSpacesLoading ? (
           <Spinner />
         ) : (
-          <VaultSelector
-            vaults={filteredSpaces}
+          <SpaceSelector
+            spaces={filteredSpaces}
             allowedSpaces={allowedSpaces}
             defaultSpace={allowedSpaces[0].sId}
             renderChildren={(space) => {

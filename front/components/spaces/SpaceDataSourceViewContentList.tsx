@@ -55,26 +55,12 @@ type RowData = DataSourceViewContentNode & {
   onClick?: () => void;
 };
 
-type VaultDataSourceViewContentListProps = {
-  space: SpaceType;
-  dataSourceView: DataSourceViewType;
-  plan: PlanType;
-  canWriteInSpace: boolean;
-  canReadInSpace: boolean;
-  onSelect: (parentId: string) => void;
-  owner: WorkspaceType;
-  parentId?: string;
-  isAdmin: boolean;
-  systemSpace: SpaceType;
-  connector: ConnectorType | null;
-};
-
 const columnsBreakpoints = {
   lastUpdatedAt: "sm" as const,
-  vaults: "md" as const,
+  spaces: "md" as const,
 };
 
-const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
+const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
   const columns: ColumnDef<RowData, any>[] = [];
   columns.push({
     header: "Name",
@@ -88,11 +74,11 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
     ),
   });
 
-  if (showVaultUsage) {
+  if (showSpaceUsage) {
     columns.push({
       header: "Available to",
-      id: "vaults",
-      accessorKey: "vaults",
+      id: "spaces",
+      accessorKey: "spaces",
       meta: {
         width: "14rem",
       },
@@ -161,19 +147,33 @@ function useStaticDataSourceViewHasContent({
   };
 }
 
-export const VaultDataSourceViewContentList = ({
-  owner,
-  space,
-  dataSourceView,
-  plan,
-  canWriteInSpace,
+type SpaceDataSourceViewContentListProps = {
+  canReadInSpace: boolean;
+  canWriteInSpace: boolean;
+  connector: ConnectorType | null;
+  dataSourceView: DataSourceViewType;
+  isAdmin: boolean;
+  onSelect: (parentId: string) => void;
+  owner: WorkspaceType;
+  parentId?: string;
+  plan: PlanType;
+  space: SpaceType;
+  systemSpace: SpaceType;
+};
+
+export const SpaceDataSourceViewContentList = ({
   canReadInSpace,
-  onSelect,
-  parentId,
-  isAdmin,
-  systemSpace,
+  canWriteInSpace,
   connector,
-}: VaultDataSourceViewContentListProps) => {
+  dataSourceView,
+  isAdmin,
+  onSelect,
+  owner,
+  parentId,
+  plan,
+  space,
+  systemSpace,
+}: SpaceDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
@@ -186,14 +186,14 @@ export const VaultDataSourceViewContentList = ({
   });
   const [viewType, setViewType] = useHashParam("viewType", "documents");
   const router = useRouter();
-  const showVaultUsage =
+  const showSpaceUsage =
     dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource);
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
-    disabled: !showVaultUsage,
+    disabled: !showSpaceUsage,
   });
   const { dataSourceViews } = useDataSourceViews(owner, {
-    disabled: !showVaultUsage,
+    disabled: !showSpaceUsage,
   });
   const handleViewTypeChange = useCallback(
     (newViewType?: ContentNodesViewType) => {
@@ -212,8 +212,8 @@ export const VaultDataSourceViewContentList = ({
     !isManaged(dataSourceView.dataSource) && !dataSourceSearch;
 
   const columns = useMemo(
-    () => getTableColumns(showVaultUsage),
-    [showVaultUsage]
+    () => getTableColumns(showSpaceUsage),
+    [showSpaceUsage]
   );
 
   const {
@@ -277,7 +277,7 @@ export const VaultDataSourceViewContentList = ({
       nodes?.map((contentNode) => ({
         ...contentNode,
         icon: getVisualForContentNode(contentNode),
-        vaults: spaces.filter((space) =>
+        spaces: spaces.filter((space) =>
           dataSourceViews
             .filter(
               (dsv) =>
@@ -322,7 +322,7 @@ export const VaultDataSourceViewContentList = ({
     await mutateContentNodes();
   }, [mutateContentNodes]);
 
-  const emptyVaultContent =
+  const emptySpaceContent =
     isManaged(dataSourceView.dataSource) && space.kind !== "system" ? (
       isAdmin ? (
         <Button
@@ -346,7 +346,7 @@ export const VaultDataSourceViewContentList = ({
       <></>
     );
 
-  const emptyContent = parentId ? <div>No content</div> : emptyVaultContent;
+  const emptyContent = parentId ? <div>No content</div> : emptySpaceContent;
   const isEmpty = rows.length === 0 && !isNodesLoading;
 
   return (

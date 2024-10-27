@@ -56,8 +56,8 @@ export default function SpaceManagedDataSourcesViewsModal({
     []
   );
 
-  const [systemDataSourceViews, vaultDataSourceViews] = useMemo(() => {
-    const [systemDataSourceViews, vaultDataSourceViews]: Record<
+  const [systemDataSourceViews, spaceDataSourceViews] = useMemo(() => {
+    const [systemDataSourceViews, spaceDataSourceViews]: Record<
       string,
       DataSourceViewType
     >[] = [{}, {}];
@@ -66,9 +66,9 @@ export default function SpaceManagedDataSourcesViewsModal({
         systemSpaceDataSourceViews.find(
           (sdsv) => sdsv.dataSource.sId === dsv.dataSource.sId
         ) ?? dsv;
-      vaultDataSourceViews[dsv.dataSource.sId] = dsv;
+      spaceDataSourceViews[dsv.dataSource.sId] = dsv;
     });
-    return [systemDataSourceViews, vaultDataSourceViews];
+    return [systemDataSourceViews, spaceDataSourceViews];
   }, [defaultSelectedDataSources, systemSpaceDataSourceViews]);
 
   const dataSourceViewsAndInternalIds = useMemo(
@@ -101,7 +101,7 @@ export default function SpaceManagedDataSourcesViewsModal({
           // config.dataSourceView is the system dataSourceView,
           // searching back the original dataSourceView from initialSelectedDataSources
           const dataSourceView =
-            vaultDataSourceViews[config.dataSourceView.dataSource.sId];
+            spaceDataSourceViews[config.dataSourceView.dataSource.sId];
 
           const isSelectAll = dataSourceView.parentsIn === null;
           const selectedResources = isSelectAll ? [] : config.nodes;
@@ -117,7 +117,7 @@ export default function SpaceManagedDataSourcesViewsModal({
       );
       setSelectionConfigurations(converted);
     }
-  }, [initialConfigurations, vaultDataSourceViews]);
+  }, [initialConfigurations, spaceDataSourceViews]);
 
   const setSelectionConfigurationsCallback = useCallback(
     (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
@@ -142,7 +142,7 @@ export default function SpaceManagedDataSourcesViewsModal({
       <div className="w-full pt-12">
         <div className="overflow-x-auto">
           <DataSourceViewsSelector
-            useCase="vaultDatasourceManagement"
+            useCase="spaceDatasourceManagement"
             dataSourceViews={systemSpaceDataSourceViews}
             owner={owner}
             selectionConfigurations={selectionConfigurations}

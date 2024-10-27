@@ -11,35 +11,35 @@ import React, { useState } from "react";
 import { getSpaceIcon, getSpaceName, groupSpaces } from "@app/lib/spaces";
 import { classNames } from "@app/lib/utils";
 
-interface VaultSelectorProps {
+interface SpaceSelectorProps {
   allowedSpaces?: SpaceType[];
   defaultSpace: string | undefined;
-  vaults: SpaceType[];
-  renderChildren: (vault?: SpaceType) => React.ReactNode;
+  spaces: SpaceType[];
+  renderChildren: (space?: SpaceType) => React.ReactNode;
 }
-export function VaultSelector({
+export function SpaceSelector({
   allowedSpaces,
   defaultSpace,
   renderChildren,
-  vaults,
-}: VaultSelectorProps) {
+  spaces,
+}: SpaceSelectorProps) {
   const [selectedSpace, setSelectedSpace] = useState<string | undefined>(
     defaultSpace
   );
   const [isAlertDialogOpen, setAlertIsDialogOpen] = useState(false);
 
-  const shouldRenderDirectly = vaults.length === 1;
-  const selectedSpaceObj = vaults.find((v) => v.sId === selectedSpace);
+  const shouldRenderDirectly = spaces.length === 1;
+  const selectedSpaceObj = spaces.find((s) => s.sId === selectedSpace);
 
   if (shouldRenderDirectly) {
-    if (allowedSpaces && !allowedSpaces.some((v) => v.sId === vaults[0].sId)) {
+    if (allowedSpaces && !allowedSpaces.some((v) => v.sId === spaces[0].sId)) {
       return renderChildren(undefined);
     }
-    return renderChildren(vaults[0]);
+    return renderChildren(spaces[0]);
   }
 
   // Group by kind and sort.
-  const sortedSpaces = groupSpaces(vaults)
+  const sortedSpaces = groupSpaces(spaces)
     .filter((i) => i.section !== "system")
     .map((i) =>
       i.spaces.sort((a, b) => {
