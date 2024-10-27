@@ -1,4 +1,4 @@
-import { getAccessToken } from "@app/extension/app/src/lib/storage";
+import { getAccessToken } from "@extension/lib/storage";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
 import useSWR, { useSWRConfig } from "swr";

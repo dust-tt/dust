@@ -1,6 +1,6 @@
-import { useAuth } from "@app/extension/app/src/components/auth/AuthProvider";
-import { ConversationContainer } from "@app/extension/app/src/components/conversation/ConversationContainer";
 import { BarHeader, ChevronLeftIcon, Page, Spinner } from "@dust-tt/sparkle";
+import { useAuth } from "@extension/components/auth/AuthProvider";
+import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 export const ConversationPage = () => {

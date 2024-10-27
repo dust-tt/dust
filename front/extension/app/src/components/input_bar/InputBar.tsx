@@ -1,8 +1,3 @@
-import { usePublicAgentConfigurations } from "@app/extension/app/src/components/assistants/usePublicAgentConfigurations";
-import type { InputBarContainerProps } from "@app/extension/app/src/components/input_bar/InputBarContainer";
-import { InputBarContainer } from "@app/extension/app/src/components/input_bar/InputBarContainer";
-import { InputBarContext } from "@app/extension/app/src/components/input_bar/InputBarContext";
-import { classNames } from "@app/extension/app/src/lib/utils";
 import type {
   AgentMention,
   LightWorkspaceType,
@@ -10,6 +5,11 @@ import type {
 } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { compareAgentsForSort } from "@dust-tt/types";
+import { usePublicAgentConfigurations } from "@extension/components/assistants/usePublicAgentConfigurations";
+import type { InputBarContainerProps } from "@extension/components/input_bar/InputBarContainer";
+import { InputBarContainer } from "@extension/components/input_bar/InputBarContainer";
+import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
+import { classNames } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 // AGENT MENTION

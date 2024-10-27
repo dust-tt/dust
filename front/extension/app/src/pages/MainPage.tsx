@@ -1,6 +1,6 @@
-import { useAuth } from "@app/extension/app/src/components/auth/AuthProvider";
-import { ConversationContainer } from "@app/extension/app/src/components/conversation/ConversationContainer";
 import { Page, Spinner } from "@dust-tt/sparkle";
+import { useAuth } from "@extension/components/auth/AuthProvider";
+import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
 import { useNavigate } from "react-router-dom";
 
 export const MainPage = () => {

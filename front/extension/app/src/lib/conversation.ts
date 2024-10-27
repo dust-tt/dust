@@ -1,7 +1,3 @@
-import {
-  getAccessToken,
-  getStoredUser,
-} from "@app/extension/app/src/lib/storage";
 import type {
   ConversationType,
   ConversationVisibility,
@@ -13,6 +9,7 @@ import type {
   UserMessageWithRankType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import { getAccessToken, getStoredUser } from "@extension/lib/storage";
 
 export async function postConversation({
   owner,

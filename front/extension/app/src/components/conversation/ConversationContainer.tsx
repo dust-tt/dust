@@ -1,24 +1,24 @@
-import { ConversationViewer } from "@app/extension/app/src/components/conversation/ConversationViewer";
-import { ReachedLimitPopup } from "@app/extension/app/src/components/conversation/ReachedLimitPopup";
-import { AssistantInputBar } from "@app/extension/app/src/components/input_bar/InputBar";
-import { InputBarContext } from "@app/extension/app/src/components/input_bar/InputBarContext";
-import { useSubmitFunction } from "@app/extension/app/src/components/utils/useSubmitFunction";
-import {
-  postConversation,
-  postMessage,
-} from "@app/extension/app/src/lib/conversation";
+import type { StoredUser } from "@app/extension/app/src/lib/storage";
 import type { LightWorkspaceType, MentionType } from "@dust-tt/types";
+import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
+import { ReachedLimitPopup } from "@extension/components/conversation/ReachedLimitPopup";
+import { AssistantInputBar } from "@extension/components/input_bar/InputBar";
+import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
+import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
+import { postConversation, postMessage } from "@extension/lib/conversation";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 interface ConversationContainerProps {
   conversationId: string | null;
   owner: LightWorkspaceType;
+  user: StoredUser;
 }
 
 export function ConversationContainer({
   conversationId,
   owner,
+  user,
 }: ConversationContainerProps) {
   const navigate = useNavigate();
   const [activeConversationId, setActiveConversationId] =
@@ -105,6 +105,7 @@ export function ConversationContainer({
         <ConversationViewer
           conversationId={activeConversationId}
           owner={owner}
+          user={user}
         />
       )}
       <AssistantInputBar

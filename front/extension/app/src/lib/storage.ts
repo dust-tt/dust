@@ -1,8 +1,8 @@
-import type { Auth0AuthorizeResponse } from "@app/extension/app/src/lib/messages";
 import type {
   LightWorkspaceType,
   UserTypeWithWorkspaces,
 } from "@dust-tt/types";
+import type { Auth0AuthorizeResponse } from "@extension/lib/messages";
 
 export type StoredTokens = {
   accessToken: string;

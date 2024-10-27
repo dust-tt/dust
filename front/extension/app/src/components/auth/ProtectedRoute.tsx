@@ -1,4 +1,3 @@
-import { useAuth } from "@app/extension/app/src/components/auth/AuthProvider";
 import {
   Button,
   ExternalLinkIcon,
@@ -6,6 +5,7 @@ import {
   LogoutIcon,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useAuth } from "@extension/components/auth/AuthProvider";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
