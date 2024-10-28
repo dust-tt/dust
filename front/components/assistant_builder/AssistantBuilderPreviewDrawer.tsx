@@ -105,7 +105,9 @@ export default function AssistantBuilderRightPanel({
         <div className="shrink-0 bg-white pt-5">
           <Tabs
             value={rightPanelStatus.tab ?? "Preview"}
-            onValueChange={openRightPanelTab}
+            onValueChange={(t) =>
+              openRightPanelTab(t as AssistantBuilderRightPanelTab)
+            }
             className="hidden lg:flex"
           >
             <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
