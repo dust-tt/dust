@@ -325,23 +325,29 @@ export function AgentMessage({
     message.status === "failed"
       ? []
       : [
-          {
-            label: "Copy to clipboard",
-            icon: ClipboardIcon,
-            onClick: () => {
+          <Button
+            key="copy-msg-button"
+            tooltip="Copy to clipboard"
+            variant="outline"
+            size="xs"
+            onClick={() => {
               void navigator.clipboard.writeText(
                 cleanUpCitations(agentMessageToRender.content || "")
               );
-            },
-          },
-          {
-            label: "Retry",
-            icon: ArrowPathIcon,
-            onClick: () => {
+            }}
+            icon={ClipboardIcon}
+          />,
+          <Button
+            key="retry-msg-button"
+            tooltip="Retry"
+            variant="outline"
+            size="xs"
+            onClick={() => {
               void retryHandler(agentMessageToRender);
-            },
-            disabled: isRetryHandlerProcessing || shouldStream,
-          },
+            }}
+            icon={ArrowPathIcon}
+            disabled={isRetryHandlerProcessing || shouldStream}
+          />,
         ];
 
   // References logic.
