@@ -92,14 +92,14 @@ export async function zendeskSyncWorkflow({
     }
   }
   while (brandHelpCenterIds.size > 0) {
-    const brandIdsToProcess = new Set(brandIds);
+    const brandIdsToProcess = new Set(brandHelpCenterIds);
     for (const brandId of brandIdsToProcess) {
       /// TODO: launch a child sync workflow for the help center
       brandHelpCenterIds.delete(brandId);
     }
   }
   while (brandTicketsIds.size > 0) {
-    const brandIdsToProcess = new Set(brandIds);
+    const brandIdsToProcess = new Set(brandTicketsIds);
     for (const brandId of brandIdsToProcess) {
       /// TODO: launch a child sync workflow for the tickets
       brandTicketsIds.delete(brandId);
