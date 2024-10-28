@@ -518,15 +518,13 @@ const SpaceDataSourceViewItem = ({
               node={node}
             />
           ))}
-          {notExpandableNodes.length > 0 && expandableNodes.length > 0 && (
+          {notExpandableNodes.length > 0 && (
             <Tree.Empty
-              label={`and ${notExpandableNodes.length} ${notExpandableNodesLabel}`}
-              onItemClick={() => router.push(dataSourceViewPath)}
-            />
-          )}
-          {notExpandableNodes.length > 0 && !expandableNodes.length && (
-            <Tree.Empty
-              label={`${notExpandableNodes.length} ${notExpandableNodesLabel}`}
+              label={
+                expandableNodes.length
+                  ? `and ${notExpandableNodes.length} ${notExpandableNodesLabel}`
+                  : `${notExpandableNodes.length} ${notExpandableNodesLabel}`
+              }
               onItemClick={() => router.push(dataSourceViewPath)}
             />
           )}
