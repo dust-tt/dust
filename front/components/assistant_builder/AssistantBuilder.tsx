@@ -7,10 +7,10 @@ import {
   ChevronRightIcon,
   IconButton,
   MagicIcon,
-  useSendNotification,
   Tabs,
   TabsList,
   TabsTrigger,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,

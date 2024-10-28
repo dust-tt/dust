@@ -5,9 +5,9 @@ import {
   ImageIcon,
   Modal,
   Tabs,
+  TabsContent,
   TabsList,
   TabsTrigger,
-  TabsContent,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import { useMemo, useRef, useState } from "react";
@@ -169,7 +169,7 @@ export function AvatarPicker({
     >
       <div className="h-full w-full overflow-visible pt-3">
         <Tabs
-          defaultValue={currentTab}
+          value={currentTab}
           onValueChange={(tab) => {
             setCurrentTab(tab as TabId);
             setIsStale(false);

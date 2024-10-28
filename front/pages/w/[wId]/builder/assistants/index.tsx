@@ -13,12 +13,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import {
-  AGENT_CONFIGURATION_SCOPES,
+import type {
   AgentConfigurationScope,
   LightAgentConfigurationType,
   SubscriptionType,
-  WorkspaceType,
+  WorkspaceType} from "@dust-tt/types";
+import {
+  AGENT_CONFIGURATION_SCOPES
 } from "@dust-tt/types";
 import { assertNever, isBuilder } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -75,8 +76,6 @@ export default function WorkspaceAssistants({
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
-  const [activeTab, setActiveTab] =
-    useState<AgentConfigurationScope>("workspace");
   const [orderBy, setOrderBy] = useState<SearchOrderType>("name");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
@@ -94,18 +93,6 @@ export default function WorkspaceAssistants({
         assertNever(tabScope);
     }
   })();
-
-  useEffect(() => {
-    const selectedTab = router.query.tabScope;
-    if (
-      router.isReady &&
-      router.route &&
-      typeof selectedTab === "string" &&
-      isValidTab(selectedTab)
-    ) {
-      setActiveTab(selectedTab);
-    }
-  }, [router.route, router.isReady, router.query.tabScope]);
 
   // only fetch the agents that are relevant to the current scope, except when
   // user searches: search across all agents
@@ -173,7 +160,6 @@ export default function WorkspaceAssistants({
     ["workspace", "published", "private", "global"] as AgentConfigurationScope[]
   ).map((scope) => ({
     label: SCOPE_INFO[scope].shortLabel,
-    current: scope === tabScope,
     icon: SCOPE_INFO[scope].icon,
     href: `/w/${owner.sId}/builder/assistants?tabScope=${scope}`,
   }));
@@ -233,6 +219,14 @@ export default function WorkspaceAssistants({
     }
   }, [tabScope]);
 
+  const activeTab =
+    router.isReady &&
+    router.route &&
+    typeof router.query.tabScope === "string" &&
+    isValidTab(router.query.tabScope)
+      ? SCOPE_INFO[router.query.tabScope].shortLabel
+      : SCOPE_INFO["workspace"].shortLabel;
+
   return (
     <AppLayout
       subscription={subscription}
@@ -271,7 +265,7 @@ export default function WorkspaceAssistants({
           </div>
           <div className="flex flex-col gap-4 pt-3">
             <div className="flex flex-row gap-2">
-              <Tabs defaultValue="company">
+              <Tabs value={activeTab}>
                 <TabsList>
                   {tabs.map((tab) => (
                     <TabsTrigger

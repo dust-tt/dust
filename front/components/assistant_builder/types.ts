@@ -15,7 +15,8 @@ import {
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
 } from "@dust-tt/types";
 import { uniqueId } from "lodash";
-import React, { SVGProps } from "react";
+import type { SVGProps } from "react";
+import type React from "react";
 
 import {
   DEFAULT_PROCESS_ACTION_NAME,
