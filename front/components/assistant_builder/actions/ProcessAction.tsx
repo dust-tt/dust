@@ -235,7 +235,7 @@ function PropertiesFields({
                   <IconButton
                     icon={XMarkIcon}
                     tooltip="Remove Property"
-                    variant="ghost"
+                    variant="outline"
                     onClick={async () => {
                       handleRemoveProperty(index);
                     }}
