@@ -87,9 +87,6 @@ export async function zendeskSyncWorkflow({
     // copying the set to avoid issues with concurrent modifications
     const brandIdsToProcess = new Set(brandIds);
     for (const brandId of brandIdsToProcess) {
-      if (!brandIds.has(brandId)) {
-        continue;
-      }
       /// TODO: launch a child sync workflow for the whole brand here
       brandIds.delete(brandId);
     }
@@ -97,9 +94,6 @@ export async function zendeskSyncWorkflow({
   while (brandHelpCenterIds.size > 0) {
     const brandIdsToProcess = new Set(brandIds);
     for (const brandId of brandIdsToProcess) {
-      if (!brandIds.has(brandId)) {
-        continue;
-      }
       /// TODO: launch a child sync workflow for the help center
       brandHelpCenterIds.delete(brandId);
     }
@@ -107,9 +101,6 @@ export async function zendeskSyncWorkflow({
   while (brandTicketsIds.size > 0) {
     const brandIdsToProcess = new Set(brandIds);
     for (const brandId of brandIdsToProcess) {
-      if (!brandIds.has(brandId)) {
-        continue;
-      }
       /// TODO: launch a child sync workflow for the tickets
       brandTicketsIds.delete(brandId);
     }
