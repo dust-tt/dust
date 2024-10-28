@@ -100,7 +100,6 @@ export {
   NewNavigationListLabel,
 } from "./NewNavigationList";
 export { NewSearchInput } from "./NewSearchInput";
-export { NewTextarea } from "./NewTextArea";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { Page } from "./Page";
