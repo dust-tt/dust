@@ -157,7 +157,7 @@ Tree.Item = function ({
           type,
           className
         )}
-        onClick={onItemClick ? onItemClick : undefined}
+        onClick={onItemClick}
       >
         {type === "node" && (
           <IconButton
@@ -202,11 +202,18 @@ Tree.Item = function ({
 
 interface TreeEmptyProps {
   label: string;
+  onItemClick?: () => void;
 }
 
-Tree.Empty = function ({ label }: TreeEmptyProps) {
+Tree.Empty = function ({ label, onItemClick }: TreeEmptyProps) {
   return (
-    <div className="s-font-regular s-py-1.5 s-pl-6 s-text-sm s-text-muted-foreground">
+    <div
+      className={cn(
+        "s-font-regular s-py-1.5 s-pl-6 s-text-sm s-text-muted-foreground",
+        onItemClick ? "s-cursor-pointer" : ""
+      )}
+      onClick={onItemClick}
+    >
       {label}
     </div>
   );
