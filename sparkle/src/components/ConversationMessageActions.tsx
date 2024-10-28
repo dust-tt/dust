@@ -1,5 +1,4 @@
 import React, { useRef } from "react";
-import { ComponentType, MouseEventHandler } from "react";
 
 import { Button } from "@sparkle/components/Button";
 import {
@@ -12,12 +11,7 @@ import { ReactionIcon } from "@sparkle/icons/solid";
 import { cn } from "@sparkle/lib/utils";
 
 type ConversationMessageActionsProps = {
-  buttons?: {
-    label: string;
-    icon: ComponentType;
-    onClick: MouseEventHandler<HTMLButtonElement>;
-    disabled?: boolean;
-  }[];
+  buttons?: React.ReactElement<typeof Button>[];
   messageEmoji?: ConversationMessageEmojiSelectorProps;
 };
 
@@ -25,17 +19,7 @@ export function ConversationMessageActions({
   buttons = [],
   messageEmoji,
 }: ConversationMessageActionsProps) {
-  const buttonNodes = buttons?.map((button, i) => (
-    <Button
-      key={`message-button-${i}`}
-      variant="outline"
-      size="xs"
-      label={button.label}
-      icon={button.icon}
-      onClick={button.onClick}
-      disabled={button.disabled || false}
-    />
-  ));
+  const buttonNodes = [...buttons];
 
   if (messageEmoji) {
     buttonNodes.push(

@@ -1,5 +1,6 @@
-import React, { ComponentType, MouseEventHandler } from "react";
+import React from "react";
 
+import { Button } from "@sparkle/components";
 import {
   ConversationMessageActions,
   ConversationMessageEmojiSelectorProps,
@@ -24,12 +25,7 @@ const messageTypeClasses: Record<MessageType, string> = {
 
 type ConversationMessageProps = {
   avatarBusy?: boolean;
-  buttons?: {
-    disabled?: boolean;
-    icon: ComponentType;
-    label: string;
-    onClick: MouseEventHandler<HTMLButtonElement>;
-  }[];
+  buttons?: React.ReactElement<typeof Button>[];
   children?: React.ReactNode;
   citations?: React.ReactElement[];
   messageEmoji?: ConversationMessageEmojiSelectorProps;
