@@ -10,6 +10,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
@@ -26,7 +27,7 @@ import {
 } from "@dust-tt/types";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import ActionsScreen, {
   hasActionError,
@@ -65,7 +66,6 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
-import { setQueryParam } from "@app/lib/utils/router";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -88,8 +88,11 @@ export default function AssistantBuilder({
 
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
-  const [currentTab, setCurrentTab] =
-    React.useState<BuilderScreen>("instructions");
+  const [currentTab, setCurrentTab] = useHashParam(
+    "selectedTab",
+    "instructions"
+  );
+  const [screen, setScreen] = useState<BuilderScreen>("instructions");
   const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [disableUnsavedChangesPrompt, setDisableUnsavedChangesPrompt] =
@@ -269,13 +272,13 @@ export default function AssistantBuilder({
     }
   }, [edited, formValidation]);
 
-  useEffect(() => {
-    const selectedTab = router.query.selectedTab;
-    if (typeof selectedTab === "string" && isValidTab(selectedTab)) {
-      setCurrentTab(selectedTab);
-      setScreen(selectedTab);
+  const viewTab = useMemo(() => {
+    if (currentTab && isValidTab(currentTab)) {
+      setScreen(currentTab);
+      return currentTab;
     }
-  }, [router.query.selectedTab]);
+    return "instructions";
+  }, [currentTab]);
 
   const setAction = useCallback(
     (p: AssistantBuilderSetActionType) => {
@@ -349,8 +352,6 @@ export default function AssistantBuilder({
     }
   };
 
-  const [screen, setScreen] = useState<BuilderScreen>("instructions");
-
   const [doTypewriterEffect, setDoTypewriterEffect] = useState(
     Boolean(template !== null && builderState.instructions)
   );
@@ -393,10 +394,10 @@ export default function AssistantBuilder({
                 <Tabs
                   className="s-w-full"
                   onValueChange={(t) => {
-                    setQueryParam(router, "selectedTab", t, true);
+                    setCurrentTab(t);
                     setScreen(t as BuilderScreen);
                   }}
-                  value={currentTab}
+                  value={viewTab}
                 >
                   <TabsList className="s-inline-flex s-h-10 s-items-center s-gap-2 s-border-b s-border-separator">
                     {Object.values(BUILDER_SCREENS_INFOS).map((tab) => (

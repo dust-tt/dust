@@ -17,10 +17,9 @@ import type {
   AgentConfigurationScope,
   LightAgentConfigurationType,
   SubscriptionType,
-  WorkspaceType} from "@dust-tt/types";
-import {
-  AGENT_CONFIGURATION_SCOPES
+  WorkspaceType,
 } from "@dust-tt/types";
+import { AGENT_CONFIGURATION_SCOPES } from "@dust-tt/types";
 import { assertNever, isBuilder } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";

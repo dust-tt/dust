@@ -13,6 +13,7 @@ import {
   TabsList,
   TabsTrigger,
   Tooltip,
+  useHashParam,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -20,12 +21,10 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import Link from "next/link";
-import { useRouter } from "next/router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
 import { subFilter } from "@app/lib/utils";
-import { setQueryParam } from "@app/lib/utils/router";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
@@ -64,7 +63,11 @@ export function AssistantBrowser({
   handleAssistantClick,
 }: AssistantListProps) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
-  const router = useRouter();
+  const [selectedTab, setSelectedTab] = useHashParam(
+    "selectedTab",
+    "favorites"
+  );
+
   const agentsByTab = useMemo(() => {
     const filteredAgents: LightAgentConfigurationType[] = agents
       .filter(
@@ -115,22 +118,15 @@ export function AssistantBrowser({
 
   // check the query string for the tab to show, the query param to look for is called "selectedTab"
   // if it's not found, show the first tab with agents
-  const selectedTab = useMemo(() => {
-    const selectedTab = router.query.selectedTab;
-    return typeof selectedTab === "string" &&
+  const viewTab = useMemo(() => {
+    return selectedTab &&
       isValidTab(
         selectedTab,
         visibleTabs.map((tab) => tab.id)
       )
       ? selectedTab
       : visibleTabs[0]?.id;
-  }, [router.query.selectedTab, visibleTabs]);
-
-  const displayedTab = visibleTabs.find((tab) => tab.id === selectedTab)
-    ? selectedTab
-    : visibleTabs.length > 0
-      ? visibleTabs[0].id
-      : null;
+  }, [selectedTab, visibleTabs]);
 
   return (
     <>
@@ -195,9 +191,9 @@ export function AssistantBrowser({
       {/* Assistant tabs */}
       <div className="flex flex-row space-x-4 px-4">
         <Tabs
-          className="s-w-full"
-          defaultValue={selectedTab}
-          onValueChange={(t) => setQueryParam(router, "selectedTab", t)}
+          className="w-full"
+          value={viewTab}
+          onValueChange={(t) => setSelectedTab(t)}
         >
           <TabsList className="s-inline-flex s-h-10 s-items-center s-gap-2 s-border-b s-border-separator">
             {visibleTabs.map((tab) => (
@@ -216,15 +212,15 @@ export function AssistantBrowser({
           </TabsList>
         </Tabs>
       </div>
-      {!displayedTab && (
+      {!viewTab && (
         <div className="text-center">
           No assistants found. Try adjusting your search criteria.
         </div>
       )}
 
-      {displayedTab && (
+      {viewTab && (
         <div className="relative grid w-full grid-cols-1 gap-2 px-4 md:grid-cols-3">
-          {agentsByTab[displayedTab].map((agent) => (
+          {agentsByTab[viewTab].map((agent) => (
             <AssistantPreview
               key={agent.sId}
               title={agent.name}
