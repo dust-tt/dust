@@ -329,7 +329,7 @@ export default function AppView({
       }
     >
       <div className="flex w-full flex-col">
-        <Tabs defaultValue="specification" className="mt-2">
+        <Tabs value="specification" className="mt-2">
           <TabsList>
             {subNavigationApp({ owner, app, current: "specification" }).map(
               (tab) => (

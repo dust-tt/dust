@@ -190,12 +190,8 @@ export function AssistantBrowser({
 
       {/* Assistant tabs */}
       <div className="flex flex-row space-x-4 px-4">
-        <Tabs
-          className="w-full"
-          value={viewTab}
-          onValueChange={(t) => setSelectedTab(t)}
-        >
-          <TabsList className="s-inline-flex s-h-10 s-items-center s-gap-2 s-border-b s-border-separator">
+        <Tabs className="w-full" value={viewTab} onValueChange={setSelectedTab}>
+          <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
             {visibleTabs.map((tab) => (
               <TabsTrigger
                 key={tab.id}
@@ -204,7 +200,7 @@ export function AssistantBrowser({
                 icon={tab.icon}
                 className={
                   assistantSearch !== ""
-                    ? "s-text-element-700 s-border-element-700"
+                    ? "border-element-700 text-element-700"
                     : ""
                 }
               />

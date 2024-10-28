@@ -330,7 +330,7 @@ export function PricePlans({
           className
         )}
       >
-        <Tabs defaultValue="pro">
+        <Tabs value="pro">
           <TabsList>
             <TabsTrigger value="pro" label="Pro" />
             <TabsTrigger value="enterprise" label="Enterprise" />

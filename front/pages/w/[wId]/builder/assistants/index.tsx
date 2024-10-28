@@ -12,6 +12,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  useHashParam,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
@@ -24,7 +25,7 @@ import { assertNever, isBuilder } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
@@ -36,7 +37,7 @@ import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { classNames, subFilter } from "@app/lib/utils";
+import { subFilter } from "@app/lib/utils";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -78,7 +79,10 @@ export default function WorkspaceAssistants({
   const [orderBy, setOrderBy] = useState<SearchOrderType>("name");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
-  const router = useRouter();
+  const [selectedTab, setSelectedTab] = useHashParam(
+    "tabScope",
+    SCOPE_INFO["workspace"].shortLabel
+  );
 
   const includes: ("authors" | "usage")[] = (() => {
     switch (tabScope) {
@@ -218,13 +222,11 @@ export default function WorkspaceAssistants({
     }
   }, [tabScope]);
 
-  const activeTab =
-    router.isReady &&
-    router.route &&
-    typeof router.query.tabScope === "string" &&
-    isValidTab(router.query.tabScope)
-      ? SCOPE_INFO[router.query.tabScope].shortLabel
+  const activeTab = useMemo(() => {
+    return selectedTab && isValidTab(selectedTab)
+      ? SCOPE_INFO[selectedTab].shortLabel
       : SCOPE_INFO["workspace"].shortLabel;
+  }, [selectedTab]);
 
   return (
     <AppLayout
@@ -272,12 +274,10 @@ export default function WorkspaceAssistants({
                       value={tab.label}
                       label={tab.label}
                       icon={tab.icon}
-                      className={classNames(
-                        assistantSearch ? disabledTablineClass : ""
-                      )}
+                      className={assistantSearch ? disabledTablineClass : ""}
                       onClick={() => {
                         if (tab.href) {
-                          void router.push(tab.href);
+                          setSelectedTab(tab.href);
                         }
                       }}
                     />

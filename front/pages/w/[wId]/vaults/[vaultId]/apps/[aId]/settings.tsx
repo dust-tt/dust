@@ -171,7 +171,7 @@ export default function SettingsView({
       }
     >
       <div className="flex w-full flex-col">
-        <Tabs defaultValue="settings" className="mt-2">
+        <Tabs value="settings" className="mt-2">
           <TabsList>
             {subNavigationApp({ owner, app, current: "settings" }).map(
               (tab) => (

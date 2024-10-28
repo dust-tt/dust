@@ -21,10 +21,7 @@ export function ProPlansTable({
 }) {
   return (
     <div className={classNames("w-full sm:px-0", className)}>
-      <Tabs
-        defaultValue="monthly"
-        onValueChange={(value) => setBillingPeriod(value as BillingPeriod)}
-      >
+      <Tabs defaultValue="monthly" onValueChange={setBillingPeriod}>
         <TabsList>
           <TabsTrigger value="monthly" label="Monthly Billing" />
           <TabsTrigger value="yearly" label="Yearly Billing" />

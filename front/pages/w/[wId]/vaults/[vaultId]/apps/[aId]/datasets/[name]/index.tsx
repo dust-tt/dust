@@ -161,11 +161,6 @@ export default function ViewDatasetView({
     setIsFinishedEditing(true);
   };
 
-  const activeTab =
-    router.isReady && router.route && typeof router.query.tabScope === "string"
-      ? router.query.tabScope
-      : "datasets";
-
   return (
     <AppLayout
       subscription={subscription}
@@ -181,7 +176,7 @@ export default function ViewDatasetView({
       }
     >
       <div className="flex w-full flex-col">
-        <Tabs value={activeTab} className="mt-2">
+        <Tabs value="datasets" className="mt-2">
           <TabsList>
             {subNavigationApp({ owner, app, current: "datasets" }).map(
               (tab) => (

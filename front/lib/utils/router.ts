@@ -3,23 +3,10 @@ import type { NextRouter } from "next/router";
 export const setQueryParam = (
   router: NextRouter,
   key: string,
-  value: string,
-  replace?: boolean
+  value: string
 ) => {
   const q = router.query;
   q[key] = value;
-
-  if (replace) {
-    void router.replace(
-      {
-        pathname: router.pathname,
-        query: q,
-      },
-      undefined,
-      { shallow: true }
-    );
-    return;
-  }
 
   void router.push(
     {

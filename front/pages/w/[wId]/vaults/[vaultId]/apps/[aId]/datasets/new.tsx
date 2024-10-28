@@ -136,7 +136,7 @@ export default function NewDatasetView({
       }
     >
       <div className="flex w-full flex-col">
-        <Tabs defaultValue="datasets" className="mt-2">
+        <Tabs value="datasets" className="mt-2">
           <TabsList>
             {subNavigationApp({ owner, app, current: "datasets" }).map(
               (tab) => (

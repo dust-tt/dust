@@ -392,14 +392,14 @@ export default function AssistantBuilder({
             <div className="flex h-full flex-col gap-5 pb-6 pt-4">
               <div className="flex flex-wrap justify-between gap-4 sm:flex-row">
                 <Tabs
-                  className="s-w-full"
+                  className="w-full"
                   onValueChange={(t) => {
                     setCurrentTab(t);
                     setScreen(t as BuilderScreen);
                   }}
                   value={viewTab}
                 >
-                  <TabsList className="s-inline-flex s-h-10 s-items-center s-gap-2 s-border-b s-border-separator">
+                  <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
                     {Object.values(BUILDER_SCREENS_INFOS).map((tab) => (
                       <TabsTrigger
                         key={tab.label}
