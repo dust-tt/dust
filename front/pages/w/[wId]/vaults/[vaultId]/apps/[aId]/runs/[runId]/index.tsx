@@ -164,7 +164,7 @@ export default function AppRun({
     >
       <div className="flex w-full flex-col">
         <Tabs value="runs" className="mt-2">
-          <TabsList className="s-inline-flex s-h-10 s-items-center s-gap-2 s-border-b s-border-separator">
+          <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
             {subNavigationApp({ owner, app, current: "runs" }).map((item) => (
               <TabsTrigger
                 key={item.value}

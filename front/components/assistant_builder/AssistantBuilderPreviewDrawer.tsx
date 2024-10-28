@@ -108,7 +108,7 @@ export default function AssistantBuilderRightPanel({
             onValueChange={openRightPanelTab}
             className="hidden lg:flex"
           >
-            <TabsList className="s-inline-flex s-h-10 s-items-center s-gap-2 s-border-b s-border-separator">
+            <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
               <TabsTrigger value="Template" label="Template" icon={MagicIcon} />
               <TabsTrigger
                 value="Preview"
