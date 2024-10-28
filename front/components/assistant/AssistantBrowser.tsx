@@ -21,7 +21,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import Link from "next/link";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 
 import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
 import { subFilter } from "@app/lib/utils";

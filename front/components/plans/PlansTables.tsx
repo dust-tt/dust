@@ -9,7 +9,6 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { BillingPeriod, PlanType } from "@dust-tt/types";
-import { Tab } from "@headlessui/react";
 import type { ReactNode } from "react";
 import React, { useState } from "react";
 
