@@ -1,7 +1,14 @@
 import type { ModelId } from "@dust-tt/types";
 
+import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
+import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import {
+  ZendeskBrandResource,
+  ZendeskConfigurationResource,
+} from "@connectors/resources/zendesk_resources";
 
 async function _getZendeskConnectorOrRaise(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -51,13 +58,89 @@ export async function saveZendeskConnectorSuccessSync({
  *
  * @returns true if the Brand was updated, false if it was deleted.
  */
-// eslint-disable-next-line no-empty-pattern
-export async function syncZendeskBrandActivity({}: {
+export async function syncZendeskBrandActivity({
+  connectorId,
+  brandId,
+  currentSyncDateMs,
+}: {
   connectorId: ModelId;
   brandId: number;
   currentSyncDateMs: number;
 }): Promise<{ helpCenterAllowed: boolean; ticketsAllowed: boolean }> {
-  return { helpCenterAllowed: false, ticketsAllowed: false };
+  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+
+  const configuration =
+    await ZendeskConfigurationResource.fetchById(connectorId);
+  if (!configuration) {
+    throw new Error("[Zendesk] Configuration not found.");
+  }
+
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  if (!brandInDb) {
+    throw new Error(
+      `[Zendesk] Brand not found, connectorId: ${connectorId}, brandId: ${brandId}`
+    );
+  }
+
+  // if all rights were revoked, we delete the brand data.
+  if (
+    brandInDb.helpCenterPermission === "none" &&
+    brandInDb.ticketsPermission === "none"
+  ) {
+    await brandInDb.remove({ dataSourceConfig, loggerArgs });
+    return { helpCenterAllowed: false, ticketsAllowed: false };
+  }
+
+  const accessToken = await getZendeskAccessToken(connector.connectionId);
+  const zendeskApiClient = createZendeskClient({
+    token: accessToken,
+    subdomain: configuration.subdomain,
+  });
+
+  // if the brand is not on Zendesk anymore, we delete it
+  const {
+    result: { brand: fetchedBrand },
+  } = await zendeskApiClient.brand.show(brandId);
+  if (!fetchedBrand) {
+    await brandInDb.remove({ dataSourceConfig, loggerArgs });
+    return { helpCenterAllowed: false, ticketsAllowed: false };
+  }
+
+  const categoriesWithReadPermissions =
+    await ZendeskBrandResource.fetchReadOnlyCategories({
+      connectorId,
+      brandId,
+    });
+  const noMoreAllowedCategories = categoriesWithReadPermissions.length === 0;
+
+  if (noMoreAllowedCategories) {
+    // if the tickets and all children categories are not allowed anymore, we delete the brand data
+    if (brandInDb.ticketsPermission !== "read") {
+      await brandInDb.remove({ dataSourceConfig, loggerArgs });
+      return { helpCenterAllowed: false, ticketsAllowed: false };
+    }
+    await brandInDb.update({ helpCenterPermission: "none" });
+  }
+
+  // otherwise, we update the brand name and lastUpsertedTs
+  await brandInDb.update({
+    name: fetchedBrand.name || "Brand",
+    lastUpsertedTs: new Date(currentSyncDateMs),
+  });
+  return {
+    helpCenterAllowed: brandInDb.helpCenterPermission === "read",
+    ticketsAllowed: brandInDb.ticketsPermission === "read",
+  };
 }
 
 /**
@@ -65,12 +148,24 @@ export async function syncZendeskBrandActivity({}: {
  *
  * @returns true if the Help Center has read permissions enabled.
  */
-// eslint-disable-next-line no-empty-pattern
-export async function checkZendeskHelpCenterPermissionsActivity({}: {
+export async function checkZendeskHelpCenterPermissionsActivity({
+  connectorId,
+  brandId,
+}: {
   connectorId: ModelId;
   brandId: number;
 }): Promise<boolean> {
-  return false;
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  if (!brandInDb) {
+    throw new Error(
+      `[Zendesk] Brand not found, connectorId: ${connectorId}, brandId: ${brandId}`
+    );
+  }
+
+  return brandInDb.helpCenterPermission === "read";
 }
 
 /**
@@ -78,12 +173,24 @@ export async function checkZendeskHelpCenterPermissionsActivity({}: {
  *
  * @returns true if the Help Center has read permissions enabled.
  */
-// eslint-disable-next-line no-empty-pattern
-export async function checkZendeskTicketsPermissionsActivity({}: {
+export async function checkZendeskTicketsPermissionsActivity({
+  connectorId,
+  brandId,
+}: {
   connectorId: ModelId;
   brandId: number;
 }): Promise<boolean> {
-  return false;
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  if (!brandInDb) {
+    throw new Error(
+      `[Zendesk] Brand not found, connectorId: ${connectorId}, brandId: ${brandId}`
+    );
+  }
+
+  return brandInDb.ticketsPermission === "read";
 }
 
 /**
