@@ -1,11 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
-import {
-  continueAsNew,
-  proxyActivities,
-  setHandler,
-  sleep,
-} from "@temporalio/workflow";
+import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
 import { INTERVAL_BETWEEN_SYNCS_MS } from "@connectors/connectors/zendesk/temporal/config";
@@ -121,6 +116,4 @@ export async function zendeskSyncWorkflow({
   await saveZendeskConnectorSuccessSync({ connectorId });
 
   await sleep(INTERVAL_BETWEEN_SYNCS_MS);
-
-  await continueAsNew<typeof zendeskSyncWorkflow>({ connectorId });
 }
