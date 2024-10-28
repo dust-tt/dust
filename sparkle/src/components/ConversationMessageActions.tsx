@@ -19,10 +19,8 @@ export function ConversationMessageActions({
   buttons = [],
   messageEmoji,
 }: ConversationMessageActionsProps) {
-  const buttonNodes = [...buttons];
-
   if (messageEmoji) {
-    buttonNodes.push(
+    buttons.push(
       <ConversationMessageEmojiSelector
         reactions={messageEmoji.reactions}
         onSubmitEmoji={messageEmoji.onSubmitEmoji}
@@ -31,11 +29,11 @@ export function ConversationMessageActions({
     );
   }
 
-  if (buttonNodes.length === 0) {
+  if (buttons.length === 0) {
     return false;
   }
 
-  return <div className="s-flex s-justify-end s-gap-2">{buttonNodes}</div>;
+  return <div className="s-flex s-justify-end s-gap-2">{buttons}</div>;
 }
 
 const MAX_MORE_REACTIONS_TO_SHOW = 9;
