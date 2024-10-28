@@ -10,42 +10,42 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
+  LightWorkspaceType,
   SpaceType,
-  WorkspaceType,
 } from "@dust-tt/types";
 import type { RefObject } from "react";
 import { useState } from "react";
 
-import type { ContentActionsRef } from "@app/components/vaults/ContentActions";
-import VaultFolderModal from "@app/components/vaults/VaultFolderModal";
+import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
+import SpaceFolderModal from "@app/components/spaces/SpaceFolderModal";
 import { useDataSources } from "@app/lib/swr/data_sources";
 
-type FoldersHeaderMenuProps = {
-  owner: WorkspaceType;
-  vault: SpaceType;
-  canWriteInVault: boolean;
-  folder: DataSourceViewType;
+interface FoldersHeaderMenuProps {
+  canWriteInSpace: boolean;
   contentActionsRef: RefObject<ContentActionsRef>;
-};
+  folder: DataSourceViewType;
+  owner: LightWorkspaceType;
+  space: SpaceType;
+}
 
 export const FoldersHeaderMenu = ({
-  owner,
-  vault,
-  canWriteInVault,
-  folder,
+  canWriteInSpace,
   contentActionsRef,
+  folder,
+  owner,
+  space,
 }: FoldersHeaderMenuProps) => {
   return (
     <>
-      {canWriteInVault ? (
+      {canWriteInSpace ? (
         <AddDataDropDownButton
           contentActionsRef={contentActionsRef}
-          canWriteInVault={canWriteInVault}
+          canWriteInSpace={canWriteInSpace}
         />
       ) : (
         <Tooltip
           label={
-            vault.kind === "global"
+            space.kind === "global"
               ? `Only builders of the workspace can add data in the Company Data space.`
               : `Only members of the space can add data.`
           }
@@ -53,22 +53,22 @@ export const FoldersHeaderMenu = ({
           trigger={
             <AddDataDropDownButton
               contentActionsRef={contentActionsRef}
-              canWriteInVault={canWriteInVault}
+              canWriteInSpace={canWriteInSpace}
             />
           }
         />
       )}
-      {canWriteInVault ? (
+      {canWriteInSpace ? (
         <EditFolderButton
           owner={owner}
-          vault={vault}
+          space={space}
           folder={folder}
-          canWriteInVault={canWriteInVault}
+          canWriteInSpace={canWriteInSpace}
         />
       ) : (
         <Tooltip
           label={
-            vault.kind === "global"
+            space.kind === "global"
               ? `Only builders of the workspace can edit a folder in the Company Data space.`
               : `Only members of the space can edit a folder.`
           }
@@ -76,9 +76,9 @@ export const FoldersHeaderMenu = ({
           trigger={
             <EditFolderButton
               owner={owner}
-              vault={vault}
+              space={space}
               folder={folder}
-              canWriteInVault={canWriteInVault}
+              canWriteInSpace={canWriteInSpace}
             />
           }
         />
@@ -89,12 +89,12 @@ export const FoldersHeaderMenu = ({
 
 type AddDataDropDrownButtonProps = {
   contentActionsRef: RefObject<ContentActionsRef>;
-  canWriteInVault: boolean;
+  canWriteInSpace: boolean;
 };
 
 const AddDataDropDownButton = ({
   contentActionsRef,
-  canWriteInVault,
+  canWriteInSpace,
 }: AddDataDropDrownButtonProps) => {
   return (
     <DropdownMenu>
@@ -105,7 +105,7 @@ const AddDataDropDownButton = ({
           icon={PlusIcon}
           variant="primary"
           isSelect
-          disabled={!canWriteInVault}
+          disabled={!canWriteInSpace}
         />
       </DropdownMenu.Button>
 
@@ -136,18 +136,18 @@ const AddDataDropDownButton = ({
   );
 };
 
-type EditFolderButtonProps = {
-  owner: WorkspaceType;
-  vault: SpaceType;
+interface EditFolderButtonProps {
+  canWriteInSpace: boolean;
   folder: DataSourceViewType;
-  canWriteInVault: boolean;
-};
+  owner: LightWorkspaceType;
+  space: SpaceType;
+}
 
 const EditFolderButton = ({
-  owner,
-  vault,
+  canWriteInSpace,
   folder,
-  canWriteInVault,
+  owner,
+  space,
 }: EditFolderButtonProps) => {
   const { dataSources } = useDataSources(owner);
 
@@ -155,13 +155,13 @@ const EditFolderButton = ({
 
   return (
     <>
-      <VaultFolderModal
+      <SpaceFolderModal
         isOpen={showEditFolderModal}
         onClose={() => {
           setShowEditFolderModal(false);
         }}
         owner={owner}
-        vault={vault}
+        space={space}
         dataSources={dataSources}
         dataSourceViewId={folder.sId}
       />
@@ -173,7 +173,7 @@ const EditFolderButton = ({
         onClick={() => {
           setShowEditFolderModal(true);
         }}
-        disabled={!canWriteInVault}
+        disabled={!canWriteInSpace}
       />
     </>
   );

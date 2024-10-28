@@ -15,14 +15,14 @@ import type { CellContext } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { ConfirmDeleteVaultDialog } from "@app/components/vaults/ConfirmDeleteVaultDialog";
-import { SearchMembersPopover } from "@app/components/vaults/SearchMembersPopover";
+import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
+import { SearchMembersPopover } from "@app/components/spaces/SearchMembersPopover";
 import {
-  useCreateVault,
-  useDeleteVault,
-  useUpdateVault,
-  useVaultInfo,
-} from "@app/lib/swr/vaults";
+  useCreateSpace,
+  useDeleteSpace,
+  useSpaceInfo,
+  useUpdateSpace,
+} from "@app/lib/swr/spaces";
 
 type RowData = {
   icon: string;
@@ -43,27 +43,27 @@ function getTableRows(allUsers: UserType[]): RowData[] {
   }));
 }
 
-interface CreateOrEditVaultModalProps {
+interface CreateOrEditSpaceModalProps {
   defaultRestricted?: boolean;
   isAdmin: boolean;
   isOpen: boolean;
   onClose: () => void;
-  onCreated?: (vault: SpaceType) => void;
+  onCreated?: (space: SpaceType) => void;
   owner: LightWorkspaceType;
-  vault?: SpaceType;
+  space?: SpaceType;
 }
 
-export function CreateOrEditVaultModal({
+export function CreateOrEditSpaceModal({
   defaultRestricted,
   isAdmin,
   isOpen,
   onClose,
   onCreated,
   owner,
-  vault,
-}: CreateOrEditVaultModalProps) {
-  const [vaultName, setVaultName] = useState<string | null>(
-    vault?.name ?? null
+  space,
+}: CreateOrEditSpaceModalProps) {
+  const [spaceName, setSpaceName] = useState<string | null>(
+    space?.name ?? null
   );
   const [selectedMembers, setSelectedMembers] = useState<UserType[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -71,32 +71,32 @@ export function CreateOrEditVaultModal({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestricted, setIsRestricted] = useState(false);
 
-  const doCreate = useCreateVault({ owner });
-  const doUpdate = useUpdateVault({ owner });
-  const doDelete = useDeleteVault({ owner });
+  const doCreate = useCreateSpace({ owner });
+  const doUpdate = useUpdateSpace({ owner });
+  const doDelete = useDeleteSpace({ owner });
 
   const router = useRouter();
 
-  const { vaultInfo, mutateVaultInfo } = useVaultInfo({
+  const { spaceInfo, mutateSpaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
-    vaultId: vault?.sId ?? null,
+    spaceId: space?.sId ?? null,
   });
 
   useEffect(() => {
     if (isOpen) {
-      const vaultMembers = vaultInfo?.members ?? null;
+      const spaceMembers = spaceInfo?.members ?? null;
 
-      if (vaultMembers && vaultInfo?.isRestricted) {
-        setSelectedMembers(vaultMembers);
+      if (spaceMembers && spaceInfo?.isRestricted) {
+        setSelectedMembers(spaceMembers);
       }
 
-      setVaultName(vaultInfo?.name ?? null);
+      setSpaceName(spaceInfo?.name ?? null);
 
       setIsRestricted(
-        vaultInfo ? vaultInfo.isRestricted : defaultRestricted ?? false
+        spaceInfo ? spaceInfo.isRestricted : defaultRestricted ?? false
       );
     }
-  }, [defaultRestricted, isOpen, vaultInfo]);
+  }, [defaultRestricted, isOpen, spaceInfo]);
 
   const handleClose = useCallback(() => {
     // Call the original onClose function.
@@ -104,7 +104,7 @@ export function CreateOrEditVaultModal({
 
     setTimeout(() => {
       // Reset state.
-      setVaultName("");
+      setSpaceName("");
       setIsRestricted(false);
       setSelectedMembers([]);
       setShowDeleteConfirmDialog(false);
@@ -116,43 +116,43 @@ export function CreateOrEditVaultModal({
   const onSave = useCallback(async () => {
     setIsSaving(true);
 
-    if (vault) {
+    if (space) {
       if (isRestricted) {
-        await doUpdate(vault, {
+        await doUpdate(space, {
           isRestricted: true,
           memberIds: selectedMembers.map((vm) => vm.sId),
-          name: vaultName,
+          name: spaceName,
         });
       } else {
-        await doUpdate(vault, {
+        await doUpdate(space, {
           isRestricted: false,
           memberIds: null,
-          name: vaultName,
+          name: spaceName,
         });
       }
 
-      // FIXME: we should update the page vault's name as well.
-      await mutateVaultInfo();
-    } else if (!vault) {
-      let createdVault;
+      // FIXME: we should update the page space's name as well.
+      await mutateSpaceInfo();
+    } else if (!space) {
+      let createdSpace;
 
       if (isRestricted) {
-        createdVault = await doCreate({
-          name: vaultName,
+        createdSpace = await doCreate({
+          name: spaceName,
           isRestricted: true,
           memberIds: selectedMembers.map((vm) => vm.sId),
         });
       } else {
-        createdVault = await doCreate({
-          name: vaultName,
+        createdSpace = await doCreate({
+          name: spaceName,
           isRestricted: false,
           memberIds: null, // must be null when isRestricted is false
         });
       }
 
       setIsSaving(false);
-      if (createdVault && onCreated) {
-        onCreated(createdVault);
+      if (createdSpace && onCreated) {
+        onCreated(createdSpace);
       }
     }
 
@@ -162,22 +162,22 @@ export function CreateOrEditVaultModal({
     doUpdate,
     handleClose,
     isRestricted,
-    mutateVaultInfo,
+    mutateSpaceInfo,
     onCreated,
     selectedMembers,
-    vault,
-    vaultName,
+    space,
+    spaceName,
   ]);
 
   const onDelete = useCallback(async () => {
-    if (!vault) {
+    if (!space) {
       setShowDeleteConfirmDialog(false);
       return;
     }
 
     setIsDeleting(true);
 
-    const res = await doDelete(vault);
+    const res = await doDelete(space);
     setIsDeleting(false);
     setShowDeleteConfirmDialog(false);
 
@@ -185,17 +185,17 @@ export function CreateOrEditVaultModal({
       handleClose();
       await router.push(`/w/${owner.sId}/vaults`);
     }
-  }, [doDelete, handleClose, owner.sId, router, vault]);
+  }, [doDelete, handleClose, owner.sId, router, space]);
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title={vault ? `Edit ${vault.name}` : "Create a Space"}
-      saveLabel={vault ? "Save" : "Create"}
+      title={space ? `Edit ${space.name}` : "Create a Space"}
+      saveLabel={space ? "Save" : "Create"}
       variant="side-md"
       hasChanged={
-        !!vaultName &&
+        !!spaceName &&
         (!isRestricted || (isRestricted && selectedMembers.length > 0))
       }
       isSaving={isSaving}
@@ -208,11 +208,11 @@ export function CreateOrEditVaultModal({
             <Page.SectionHeader title="Name" />
             <Input
               placeholder="Space's name"
-              value={vaultName}
-              name="vaultName"
-              onChange={(e) => setVaultName(e.target.value)}
+              value={spaceName}
+              name="spaceName"
+              onChange={(e) => setSpaceName(e.target.value)}
             />
-            {!vault && (
+            {!space && (
               <div className="flex gap-1 text-xs text-element-700">
                 <Icon visual={ExclamationCircleStrokeIcon} size="xs" />
                 <span>Space name must be unique</span>
@@ -244,10 +244,10 @@ export function CreateOrEditVaultModal({
               selectedMembers={selectedMembers}
             />
           </div>
-          {isAdmin && vault && vault.kind === "regular" && (
+          {isAdmin && space && space.kind === "regular" && (
             <>
-              <ConfirmDeleteVaultDialog
-                vault={vault}
+              <ConfirmDeleteSpaceDialog
+                space={space}
                 handleDelete={onDelete}
                 isOpen={showDeleteConfirmDialog}
                 isDeleting={isDeleting}

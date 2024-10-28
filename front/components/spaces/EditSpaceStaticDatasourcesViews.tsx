@@ -9,34 +9,34 @@ import type {
 import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
-import VaultFolderModal from "@app/components/vaults/VaultFolderModal";
-import VaultWebsiteModal from "@app/components/vaults/VaultWebsiteModal";
+import SpaceFolderModal from "@app/components/spaces/SpaceFolderModal";
+import SpaceWebsiteModal from "@app/components/spaces/SpaceWebsiteModal";
 
-interface EditVaultStaticDatasourcesViewsProps {
-  owner: WorkspaceType;
-  canWriteInVault: boolean;
-  isOpen: boolean;
-  plan: PlanType;
-  vault: SpaceType;
+interface EditSpaceStaticDatasourcesViewsProps {
+  canWriteInSpace: boolean;
+  category: "folder" | "website";
   dataSources: DataSourceType[];
   dataSourceView: DataSourceViewType | null;
-  category: "folder" | "website";
-  onOpen: () => void;
+  isOpen: boolean;
   onClose: () => void;
+  onOpen: () => void;
+  owner: WorkspaceType;
+  plan: PlanType;
+  space: SpaceType;
 }
 
-export function EditVaultStaticDatasourcesViews({
-  owner,
-  canWriteInVault,
-  plan,
-  vault,
-  isOpen,
+export function EditSpaceStaticDatasourcesViews({
+  canWriteInSpace,
+  category,
   dataSources,
   dataSourceView,
-  category,
-  onOpen,
+  isOpen,
   onClose,
-}: EditVaultStaticDatasourcesViewsProps) {
+  onOpen,
+  owner,
+  plan,
+  space,
+}: EditSpaceStaticDatasourcesViewsProps) {
   const router = useRouter();
   const [showDatasourceLimitPopup, setShowDatasourceLimitPopup] =
     useState(false);
@@ -70,35 +70,35 @@ export function EditVaultStaticDatasourcesViews({
         className="absolute bottom-8 right-0"
       />
       {category === "folder" ? (
-        <VaultFolderModal
+        <SpaceFolderModal
           isOpen={isOpen}
           onClose={onClose}
           owner={owner}
-          vault={vault}
+          space={space}
           dataSources={dataSources}
           dataSourceViewId={dataSourceView ? dataSourceView.sId : null}
         />
       ) : category === "website" ? (
-        <VaultWebsiteModal
+        <SpaceWebsiteModal
           isOpen={isOpen}
           onClose={onClose}
           owner={owner}
-          vault={vault}
+          space={space}
           dataSources={dataSources}
           dataSourceView={dataSourceView}
         />
       ) : null}
-      {canWriteInVault ? (
+      {canWriteInSpace ? (
         <Button
           label={`Add ${category}`}
           onClick={checkLimitsAndOpenModal}
           icon={PlusIcon}
-          disabled={!canWriteInVault}
+          disabled={!canWriteInSpace}
         />
       ) : (
         <Tooltip
           label={
-            vault.kind === "global"
+            space.kind === "global"
               ? `Only builders of the workspace can add a ${category} in the Company data space.`
               : `Only members of the space can add a ${category}.`
           }
@@ -108,7 +108,7 @@ export function EditVaultStaticDatasourcesViews({
               label={`Add ${category}`}
               onClick={checkLimitsAndOpenModal}
               icon={PlusIcon}
-              disabled={!canWriteInVault}
+              disabled={!canWriteInSpace}
             />
           }
         />

@@ -12,31 +12,31 @@ import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
-import VaultManagedDataSourcesViewsModal from "@app/components/vaults/VaultManagedDatasourcesViewsModal";
+import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import {
-  useVaultDataSourceViews,
-  useVaultDataSourceViewsWithDetails,
-} from "@app/lib/swr/vaults";
+  useSpaceDataSourceViews,
+  useSpaceDataSourceViewsWithDetails,
+} from "@app/lib/swr/spaces";
 
-interface EditVaultManagedDataSourcesViewsProps {
+interface EditSpaceManagedDataSourcesViewsProps {
   dataSourceView?: DataSourceViewType;
   isAdmin: boolean;
   onSelectedDataUpdated: () => Promise<void>;
   owner: WorkspaceType;
-  systemVault: SpaceType;
-  vault: SpaceType;
+  systemSpace: SpaceType;
+  space: SpaceType;
 }
 
-export function EditVaultManagedDataSourcesViews({
+export function EditSpaceManagedDataSourcesViews({
   dataSourceView,
   isAdmin,
   onSelectedDataUpdated,
   owner,
-  systemVault,
-  vault,
-}: EditVaultManagedDataSourcesViewsProps) {
+  systemSpace,
+  space,
+}: EditSpaceManagedDataSourcesViewsProps) {
   const sendNotification = useSendNotification();
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
@@ -45,46 +45,46 @@ export function EditVaultManagedDataSourcesViews({
 
   const { AwaitableDialog, showDialog } = useAwaitableDialog();
 
-  // DataSources Views of the current vault.
+  // DataSources Views of the current space.
   const {
-    vaultDataSourceViews,
-    isVaultDataSourceViewsLoading,
-    mutateRegardlessOfQueryParams: mutateVaultDataSourceViews,
-  } = useVaultDataSourceViewsWithDetails({
+    spaceDataSourceViews,
+    isSpaceDataSourceViewsLoading,
+    mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews,
+  } = useSpaceDataSourceViewsWithDetails({
     workspaceId: owner.sId,
-    vaultId: vault.sId,
+    spaceId: space.sId,
     category: "managed",
   });
 
-  // DataSources Views of the system vault holding the managed datasources we want to select data from.
+  // DataSources Views of the system space holding the managed datasources we want to select data from.
   const {
-    vaultDataSourceViews: systemVaultDataSourceViews,
-    isVaultDataSourceViewsLoading: isSystemVaultDataSourceViewsLoading,
-  } = useVaultDataSourceViews({
+    spaceDataSourceViews: systemSpaceDataSourceViews,
+    isSpaceDataSourceViewsLoading: isSystemSpaceDataSourceViewsLoading,
+  } = useSpaceDataSourceViews({
     workspaceId: owner.sId,
-    vaultId: systemVault.sId,
+    spaceId: systemSpace.sId,
     category: "managed",
     disabled: !isAdmin,
   });
-  const filteredSystemVaultDataSourceViews = useMemo(
+  const filterSystemSpaceDataSourceViews = useMemo(
     () =>
-      systemVaultDataSourceViews.filter(
+      systemSpaceDataSourceViews.filter(
         (dsv) =>
           isManaged(dsv.dataSource) &&
           (!dataSourceView ||
             dsv.dataSource.sId === dataSourceView.dataSource.sId)
       ),
-    [systemVaultDataSourceViews, dataSourceView]
+    [systemSpaceDataSourceViews, dataSourceView]
   );
 
-  const filteredDataSourceViews = vaultDataSourceViews.filter(
+  const filteredDataSourceViews = spaceDataSourceViews.filter(
     (dsv) => !dataSourceView || dsv.sId === dataSourceView.sId
   );
 
-  const updateVaultDataSourceViews = async (
+  const updateSpaceDataSourceViews = async (
     selectionConfigurations: DataSourceViewSelectionConfigurations
   ) => {
-    // Check if a data source view in the vault is no longer in the selection configurations by
+    // Check if a data source view in the space is no longer in the selection configurations by
     // comparing the data source.  If so, delete it.
     const deletedViews = filteredDataSourceViews.filter(
       (dsv) =>
@@ -139,7 +139,7 @@ export function EditVaultManagedDataSourcesViews({
       deletedViews.map(async (deletedView) => {
         try {
           const res = await fetch(
-            `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views/${deletedView.sId}?force=true`,
+            `/api/w/${owner.sId}/vaults/${space.sId}/data_source_views/${deletedView.sId}?force=true`,
             {
               method: "DELETE",
               headers: {
@@ -191,7 +191,7 @@ export function EditVaultManagedDataSourcesViews({
                 );
               } else {
                 res = await fetch(
-                  `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views/${existingViewForDs.sId}`,
+                  `/api/w/${owner.sId}/vaults/${space.sId}/data_source_views/${existingViewForDs.sId}`,
                   {
                     method: "PATCH",
                     headers: {
@@ -203,7 +203,7 @@ export function EditVaultManagedDataSourcesViews({
               }
             } else {
               res = await fetch(
-                `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views`,
+                `/api/w/${owner.sId}/vaults/${space.sId}/data_source_views`,
                 {
                   method: "POST",
                   headers: {
@@ -243,25 +243,25 @@ export function EditVaultManagedDataSourcesViews({
       });
     }
 
-    await mutateVaultDataSourceViews();
+    await mutateSpaceDataSourceViews();
     await onSelectedDataUpdated();
   };
 
-  if (isSystemVaultDataSourceViewsLoading || isVaultDataSourceViewsLoading) {
+  if (isSystemSpaceDataSourceViewsLoading || isSpaceDataSourceViewsLoading) {
     return false;
   }
   return isAdmin ? (
     <>
-      <VaultManagedDataSourcesViewsModal
-        vault={vault}
+      <SpaceManagedDatasourcesViewsModal
+        space={space}
         isOpen={showDataSourcesModal}
         onClose={() => {
           setShowDataSourcesModal(false);
         }}
         owner={owner}
-        systemVaultDataSourceViews={filteredSystemVaultDataSourceViews}
+        systemSpaceDataSourceViews={filterSystemSpaceDataSourceViews}
         onSave={async (selectionConfigurations) => {
-          await updateVaultDataSourceViews(selectionConfigurations);
+          await updateSpaceDataSourceViews(selectionConfigurations);
         }}
         initialSelectedDataSources={filteredDataSourceViews}
       />
@@ -272,7 +272,7 @@ export function EditVaultManagedDataSourcesViews({
         validateLabel="Go to connections management"
         onValidate={() => {
           void router.push(
-            `/w/${owner.sId}/vaults/${systemVault.sId}/categories/managed`
+            `/w/${owner.sId}/vaults/${systemSpace.sId}/categories/managed`
           );
         }}
         title="No connection set up"
@@ -290,7 +290,7 @@ export function EditVaultManagedDataSourcesViews({
         icon={PlusIcon}
         size="sm"
         onClick={() => {
-          if (systemVaultDataSourceViews.length === 0) {
+          if (systemSpaceDataSourceViews.length === 0) {
             setShowNoConnectionDialog(true);
           } else {
             setShowDataSourcesModal(true);

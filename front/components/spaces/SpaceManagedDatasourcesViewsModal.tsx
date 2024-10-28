@@ -11,18 +11,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { useMultipleDataSourceViewsContentNodes } from "@app/lib/swr/data_source_views";
 
-interface VaultManagedDataSourcesViewsModalProps {
-  initialSelectedDataSources: DataSourceViewType[];
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (
-    selectionConfigurations: DataSourceViewSelectionConfigurations
-  ) => void;
-  owner: WorkspaceType;
-  systemVaultDataSourceViews: DataSourceViewType[];
-  vault: SpaceType;
-}
-
 // We need to stabilize the initial state of the selection configurations,
 // to avoid resetting state when swr revalidates initialSelectedDataSources
 function useStabilizedValue<T>(
@@ -41,41 +29,53 @@ function useStabilizedValue<T>(
   return value ?? defaultValue;
 }
 
-export default function VaultManagedDataSourcesViewsModal({
+interface SpaceManagedDataSourcesViewsModalProps {
+  initialSelectedDataSources: DataSourceViewType[];
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (
+    selectionConfigurations: DataSourceViewSelectionConfigurations
+  ) => void;
+  owner: WorkspaceType;
+  systemSpaceDataSourceViews: DataSourceViewType[];
+  space: SpaceType;
+}
+
+export default function SpaceManagedDataSourcesViewsModal({
   initialSelectedDataSources,
   isOpen,
   onClose,
   onSave,
   owner,
-  systemVaultDataSourceViews,
-  vault,
-}: VaultManagedDataSourcesViewsModalProps) {
+  systemSpaceDataSourceViews,
+  space,
+}: SpaceManagedDataSourcesViewsModalProps) {
   const defaultSelectedDataSources = useStabilizedValue(
     initialSelectedDataSources,
     isOpen,
     []
   );
 
-  const [systemDataSourceViews, vaultDataSourceViews] = useMemo(() => {
-    const [systemDataSourceViews, vaultDataSourceViews]: Record<
+  const [systemDataSourceViews, spaceDataSourceViews] = useMemo(() => {
+    const [systemDataSourceViews, spaceDataSourceViews]: Record<
       string,
       DataSourceViewType
     >[] = [{}, {}];
     defaultSelectedDataSources.forEach((dsv) => {
       systemDataSourceViews[dsv.dataSource.sId] =
-        systemVaultDataSourceViews.find(
+        systemSpaceDataSourceViews.find(
           (sdsv) => sdsv.dataSource.sId === dsv.dataSource.sId
         ) ?? dsv;
-      vaultDataSourceViews[dsv.dataSource.sId] = dsv;
+      spaceDataSourceViews[dsv.dataSource.sId] = dsv;
     });
-    return [systemDataSourceViews, vaultDataSourceViews];
-  }, [defaultSelectedDataSources, systemVaultDataSourceViews]);
+    return [systemDataSourceViews, spaceDataSourceViews];
+  }, [defaultSelectedDataSources, systemSpaceDataSourceViews]);
 
   const dataSourceViewsAndInternalIds = useMemo(
     () =>
       defaultSelectedDataSources.map((dsv) => ({
         // We are selecting from the system dataSourceView and fetching the nodes from there,
-        // so we need to find the corresponding one in the systemVaultDataSourceViews
+        // so we need to find the corresponding one in the systemSpaceDataSourceViews
         dataSourceView: systemDataSourceViews[dsv.dataSource.sId],
         internalIds: dsv.parentsIn ?? [],
       })),
@@ -101,7 +101,7 @@ export default function VaultManagedDataSourcesViewsModal({
           // config.dataSourceView is the system dataSourceView,
           // searching back the original dataSourceView from initialSelectedDataSources
           const dataSourceView =
-            vaultDataSourceViews[config.dataSourceView.dataSource.sId];
+            spaceDataSourceViews[config.dataSourceView.dataSource.sId];
 
           const isSelectAll = dataSourceView.parentsIn === null;
           const selectedResources = isSelectAll ? [] : config.nodes;
@@ -117,7 +117,7 @@ export default function VaultManagedDataSourcesViewsModal({
       );
       setSelectionConfigurations(converted);
     }
-  }, [initialConfigurations, vaultDataSourceViews]);
+  }, [initialConfigurations, spaceDataSourceViews]);
 
   const setSelectionConfigurationsCallback = useCallback(
     (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
@@ -137,13 +137,13 @@ export default function VaultManagedDataSourcesViewsModal({
       }}
       hasChanged={hasChanged}
       variant="side-md"
-      title={`Add connected data to space "${vault.name}"`}
+      title={`Add connected data to space "${space.name}"`}
     >
       <div className="w-full pt-12">
         <div className="overflow-x-auto">
           <DataSourceViewsSelector
-            useCase="vaultDatasourceManagement"
-            dataSourceViews={systemVaultDataSourceViews}
+            useCase="spaceDatasourceManagement"
+            dataSourceViews={systemSpaceDataSourceViews}
             owner={owner}
             selectionConfigurations={selectionConfigurations}
             setSelectionConfigurations={setSelectionConfigurationsCallback}

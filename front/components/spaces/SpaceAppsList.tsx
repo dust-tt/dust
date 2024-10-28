@@ -17,7 +17,7 @@ import { useRef } from "react";
 import { useState } from "react";
 import * as React from "react";
 
-import { VaultCreateAppModal } from "@app/components/vaults/VaultCreateAppModal";
+import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
 import { useApps } from "@app/lib/swr/apps";
 
 type RowData = {
@@ -28,13 +28,6 @@ type RowData = {
   fetchConnectorError?: string;
   workspaceId: string;
   onClick?: () => void;
-};
-
-type VaultAppListProps = {
-  owner: WorkspaceType;
-  vault: SpaceType;
-  canWriteInVault: boolean;
-  onSelect: (sId: string) => void;
 };
 
 const getTableColumns = () => {
@@ -51,18 +44,25 @@ const getTableColumns = () => {
   ];
 };
 
-export const VaultAppsList = ({
+interface SpaceAppsListProps {
+  canWriteInSpace: boolean;
+  onSelect: (sId: string) => void;
+  owner: WorkspaceType;
+  space: SpaceType;
+}
+
+export const SpaceAppsList = ({
   owner,
-  canWriteInVault,
-  vault,
+  canWriteInSpace,
+  space,
   onSelect,
-}: VaultAppListProps) => {
+}: SpaceAppsListProps) => {
   const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
   const [appSearch, setAppSearch] = useState<string>("");
 
-  const { apps, isAppsLoading } = useApps({ owner, vault });
+  const { apps, isAppsLoading } = useApps({ owner, space });
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
@@ -97,7 +97,7 @@ export const VaultAppsList = ({
         <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg border bg-structure-50">
           <Button
             label="Create App"
-            disabled={!canWriteInVault}
+            disabled={!canWriteInSpace}
             onClick={() => {
               setIsCreateAppModalOpened(true);
             }}
@@ -115,7 +115,7 @@ export const VaultAppsList = ({
                 setAppSearch(s);
               }}
             />
-            {canWriteInVault && (
+            {canWriteInSpace && (
               <>
                 <Button
                   label="New App"
@@ -149,9 +149,9 @@ export const VaultAppsList = ({
           />
         </>
       )}
-      <VaultCreateAppModal
+      <SpaceCreateAppModal
         owner={owner}
-        vault={vault}
+        space={space}
         isOpen={isCreateAppModalOpened}
         setIsOpen={setIsCreateAppModalOpened}
       />

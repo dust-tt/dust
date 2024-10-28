@@ -33,21 +33,21 @@ import { RequestDataSourceModal } from "@app/components/data_source/RequestDataS
 import type {
   ContentActionKey,
   ContentActionsRef,
-} from "@app/components/vaults/ContentActions";
+} from "@app/components/spaces/ContentActions";
 import {
   ContentActions,
   getMenuItems,
-} from "@app/components/vaults/ContentActions";
-import { EditVaultManagedDataSourcesViews } from "@app/components/vaults/EditVaultManagedDatasourcesViews";
-import { FoldersHeaderMenu } from "@app/components/vaults/FoldersHeaderMenu";
-import { WebsitesHeaderMenu } from "@app/components/vaults/WebsitesHeaderMenu";
+} from "@app/components/spaces/ContentActions";
+import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
+import { FoldersHeaderMenu } from "@app/components/spaces/FoldersHeaderMenu";
+import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
-import { useVaults } from "@app/lib/swr/vaults";
+import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 type RowData = DataSourceViewContentNode & {
@@ -55,26 +55,12 @@ type RowData = DataSourceViewContentNode & {
   onClick?: () => void;
 };
 
-type VaultDataSourceViewContentListProps = {
-  vault: SpaceType;
-  dataSourceView: DataSourceViewType;
-  plan: PlanType;
-  canWriteInVault: boolean;
-  canReadInVault: boolean;
-  onSelect: (parentId: string) => void;
-  owner: WorkspaceType;
-  parentId?: string;
-  isAdmin: boolean;
-  systemVault: SpaceType;
-  connector: ConnectorType | null;
-};
-
 const columnsBreakpoints = {
   lastUpdatedAt: "sm" as const,
-  vaults: "md" as const,
+  spaces: "md" as const,
 };
 
-const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
+const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
   const columns: ColumnDef<RowData, any>[] = [];
   columns.push({
     header: "Name",
@@ -88,11 +74,11 @@ const getTableColumns = (showVaultUsage: boolean): ColumnDef<RowData>[] => {
     ),
   });
 
-  if (showVaultUsage) {
+  if (showSpaceUsage) {
     columns.push({
       header: "Available to",
-      id: "vaults",
-      accessorKey: "vaults",
+      id: "spaces",
+      accessorKey: "spaces",
       meta: {
         width: "14rem",
       },
@@ -161,19 +147,33 @@ function useStaticDataSourceViewHasContent({
   };
 }
 
-export const VaultDataSourceViewContentList = ({
-  owner,
-  vault,
-  dataSourceView,
-  plan,
-  canWriteInVault,
-  canReadInVault,
-  onSelect,
-  parentId,
-  isAdmin,
-  systemVault,
+type SpaceDataSourceViewContentListProps = {
+  canReadInSpace: boolean;
+  canWriteInSpace: boolean;
+  connector: ConnectorType | null;
+  dataSourceView: DataSourceViewType;
+  isAdmin: boolean;
+  onSelect: (parentId: string) => void;
+  owner: WorkspaceType;
+  parentId?: string;
+  plan: PlanType;
+  space: SpaceType;
+  systemSpace: SpaceType;
+};
+
+export const SpaceDataSourceViewContentList = ({
+  canReadInSpace,
+  canWriteInSpace,
   connector,
-}: VaultDataSourceViewContentListProps) => {
+  dataSourceView,
+  isAdmin,
+  onSelect,
+  owner,
+  parentId,
+  plan,
+  space,
+  systemSpace,
+}: SpaceDataSourceViewContentListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
@@ -186,14 +186,14 @@ export const VaultDataSourceViewContentList = ({
   });
   const [viewType, setViewType] = useHashParam("viewType", "documents");
   const router = useRouter();
-  const showVaultUsage =
+  const showSpaceUsage =
     dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource);
-  const { vaults } = useVaults({
+  const { spaces } = useSpaces({
     workspaceId: owner.sId,
-    disabled: !showVaultUsage,
+    disabled: !showSpaceUsage,
   });
   const { dataSourceViews } = useDataSourceViews(owner, {
-    disabled: !showVaultUsage,
+    disabled: !showSpaceUsage,
   });
   const handleViewTypeChange = useCallback(
     (newViewType?: ContentNodesViewType) => {
@@ -212,8 +212,8 @@ export const VaultDataSourceViewContentList = ({
     !isManaged(dataSourceView.dataSource) && !dataSourceSearch;
 
   const columns = useMemo(
-    () => getTableColumns(showVaultUsage),
-    [showVaultUsage]
+    () => getTableColumns(showSpaceUsage),
+    [showSpaceUsage]
   );
 
   const {
@@ -277,7 +277,7 @@ export const VaultDataSourceViewContentList = ({
       nodes?.map((contentNode) => ({
         ...contentNode,
         icon: getVisualForContentNode(contentNode),
-        vaults: vaults.filter((vault) =>
+        spaces: spaces.filter((space) =>
           dataSourceViews
             .filter(
               (dsv) =>
@@ -290,7 +290,7 @@ export const VaultDataSourceViewContentList = ({
                 )
             )
             .map((dsv) => dsv.spaceId)
-            .includes(vault.sId)
+            .includes(space.sId)
         ),
         ...(contentNode.expandable && {
           onClick: () => {
@@ -300,20 +300,20 @@ export const VaultDataSourceViewContentList = ({
           },
         }),
         moreMenuItems: getMenuItems(
-          canReadInVault,
-          canWriteInVault,
+          canReadInSpace,
+          canWriteInSpace,
           dataSourceView,
           contentNode,
           contentActionsRef
         ),
       })) || [],
     [
-      canWriteInVault,
-      canReadInVault,
+      canWriteInSpace,
+      canReadInSpace,
       dataSourceView,
       nodes,
       onSelect,
-      vaults,
+      spaces,
       dataSourceViews,
     ]
   );
@@ -322,16 +322,16 @@ export const VaultDataSourceViewContentList = ({
     await mutateContentNodes();
   }, [mutateContentNodes]);
 
-  const emptyVaultContent =
-    isManaged(dataSourceView.dataSource) && vault.kind !== "system" ? (
+  const emptySpaceContent =
+    isManaged(dataSourceView.dataSource) && space.kind !== "system" ? (
       isAdmin ? (
         <Button
           label="Manage Data"
           icon={Cog6ToothIcon}
           onClick={() => {
-            if (systemVault) {
+            if (systemSpace) {
               void router.push(
-                `/w/${owner.sId}/vaults/${systemVault.sId}/categories/${dataSourceView.category}`
+                `/w/${owner.sId}/vaults/${systemSpace.sId}/categories/${dataSourceView.category}`
               );
             }
           }}
@@ -346,7 +346,7 @@ export const VaultDataSourceViewContentList = ({
       <></>
     );
 
-  const emptyContent = parentId ? <div>No content</div> : emptyVaultContent;
+  const emptyContent = parentId ? <div>No content</div> : emptySpaceContent;
   const isEmpty = rows.length === 0 && !isNodesLoading;
 
   return (
@@ -404,8 +404,8 @@ export const VaultDataSourceViewContentList = ({
             )}
             <FoldersHeaderMenu
               owner={owner}
-              vault={vault}
-              canWriteInVault={canWriteInVault}
+              space={space}
+              canWriteInSpace={canWriteInSpace}
               folder={dataSourceView}
               contentActionsRef={contentActionsRef}
             />
@@ -414,18 +414,18 @@ export const VaultDataSourceViewContentList = ({
         {isWebsite(dataSourceView.dataSource) && (
           <WebsitesHeaderMenu
             owner={owner}
-            vault={vault}
-            canWriteInVault={canWriteInVault}
+            space={space}
+            canWriteInSpace={canWriteInSpace}
             dataSourceView={dataSourceView}
           />
         )}
         {isManaged(dataSourceView.dataSource) &&
-          vault.kind !== "system" &&
+          space.kind !== "system" &&
           !isEmpty && (
-            <EditVaultManagedDataSourcesViews
+            <EditSpaceManagedDataSourcesViews
               owner={owner}
-              vault={vault}
-              systemVault={systemVault}
+              space={space}
+              systemSpace={systemSpace}
               isAdmin={isAdmin}
               dataSourceView={dataSourceView}
               onSelectedDataUpdated={onSelectedDataUpdated}
@@ -434,7 +434,7 @@ export const VaultDataSourceViewContentList = ({
         {isManaged(dataSourceView.dataSource) &&
           connector &&
           !parentId &&
-          vault.kind === "system" && (
+          space.kind === "system" && (
             <div className="flex flex-col items-center gap-2 text-sm text-element-700">
               {!isNodesLoading && rows.length === 0 && (
                 <div>Connection ready. Select the data to sync.</div>

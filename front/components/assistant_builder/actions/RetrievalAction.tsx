@@ -26,7 +26,7 @@ export function hasErrorActionRetrievalSearch(
 type ActionRetrievalSearchProps = {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
-  allowedVaults: SpaceType[];
+  allowedSpaces: SpaceType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderRetrievalConfiguration
@@ -38,7 +38,7 @@ type ActionRetrievalSearchProps = {
 export function ActionRetrievalSearch({
   owner,
   actionConfiguration,
-  allowedVaults,
+  allowedSpaces,
   updateAction,
   setEdited,
 }: ActionRetrievalSearchProps) {
@@ -66,7 +66,7 @@ export function ActionRetrievalSearch({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
-        allowedVaults={allowedVaults}
+        allowedSpaces={allowedSpaces}
         viewType="documents"
       />
 
@@ -95,7 +95,7 @@ export function hasErrorActionRetrievalExhaustive(
 type ActionRetrievalExhaustiveProps = {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
-  allowedVaults: SpaceType[];
+  allowedSpaces: SpaceType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderRetrievalConfiguration
@@ -107,7 +107,7 @@ type ActionRetrievalExhaustiveProps = {
 export function ActionRetrievalExhaustive({
   owner,
   actionConfiguration,
-  allowedVaults,
+  allowedSpaces,
   updateAction,
   setEdited,
 }: ActionRetrievalExhaustiveProps) {
@@ -146,7 +146,7 @@ export function ActionRetrievalExhaustive({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
-        allowedVaults={allowedVaults}
+        allowedSpaces={allowedSpaces}
         viewType="documents"
       />
 

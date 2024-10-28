@@ -1,48 +1,50 @@
 import { DropdownMenu, Input } from "@dust-tt/sparkle";
 import type {
   DataSourceViewContentNode,
+  LightWorkspaceType,
   SpaceType,
-  WorkspaceType,
 } from "@dust-tt/types";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 
 import { useDataSourceViewTables } from "@app/lib/swr/data_source_views";
-import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
+import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
-export default function TablePicker({
-  owner,
-  dataSource,
-  currentTableId,
-  readOnly,
-  vault,
-  onTableUpdate,
-}: {
-  owner: WorkspaceType;
+interface TablePickerProps {
+  owner: LightWorkspaceType;
   dataSource: {
     workspace_id: string;
     data_source_id: string;
   };
   currentTableId?: string;
   readOnly: boolean;
-  vault: SpaceType;
+  space: SpaceType;
   onTableUpdate: (table: DataSourceViewContentNode) => void;
-}) {
+}
+
+export default function TablePicker({
+  owner,
+  dataSource,
+  currentTableId,
+  readOnly,
+  space,
+  onTableUpdate,
+}: TablePickerProps) {
   void owner;
   void dataSource;
 
-  const { vaultDataSourceViews } = useVaultDataSourceViews({
-    vaultId: vault.sId,
+  const { spaceDataSourceViews } = useSpaceDataSourceViews({
+    spaceId: space.sId,
     workspaceId: owner.sId,
   });
 
   // Look for the selected data source view in the list - data_source_id can contain either dsv sId
   // or dataSource name, try to find a match
-  const selectedDataSourceView = vaultDataSourceViews.find(
+  const selectedDataSourceView = spaceDataSourceViews.find(
     (dsv) =>
       dsv.sId === dataSource.data_source_id ||
-      // Legacy behavior
+      // Legacy behavior.
       dsv.dataSource.name === dataSource.data_source_id
   );
 

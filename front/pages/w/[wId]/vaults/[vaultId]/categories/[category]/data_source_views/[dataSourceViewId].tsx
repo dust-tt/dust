@@ -11,9 +11,9 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
-import { VaultDataSourceViewContentList } from "@app/components/vaults/VaultDataSourceViewContentList";
-import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
-import { VaultLayout } from "@app/components/vaults/VaultLayout";
+import { SpaceDataSourceViewContentList } from "@app/components/spaces/SpaceDataSourceViewContentList";
+import type { SpaceLayoutProps } from "@app/components/spaces/SpaceLayout";
+import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -21,14 +21,14 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
-  VaultLayoutProps & {
+  SpaceLayoutProps & {
     category: DataSourceViewCategory;
     dataSource: DataSourceType;
     dataSourceView: DataSourceViewType;
-    canWriteInVault: boolean;
-    canReadInVault: boolean;
+    canWriteInSpace: boolean;
+    canReadInSpace: boolean;
     parentId?: string;
-    systemVault: SpaceType;
+    systemSpace: SpaceType;
     connector: ConnectorType | null;
   }
 >(async (context, auth) => {
@@ -74,10 +74,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  const systemVault = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-  const vault = dataSourceView.space;
-  const canWriteInVault = vault.canWrite(auth);
-  const canReadInVault = vault.canRead(auth);
+  const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+  const { space } = dataSourceView;
+  const canWriteInSpace = space.canWrite(auth);
+  const canReadInSpace = space.canRead(auth);
 
   let connector: ConnectorType | null = null;
   if (dataSourceView.dataSource.connectorId) {
@@ -99,42 +99,42 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       dataSource: dataSourceView.dataSource.toJSON(),
       dataSourceView: dataSourceView.toJSON(),
       isAdmin,
-      canWriteInVault,
-      canReadInVault,
+      canWriteInSpace,
+      canReadInSpace,
       owner,
       // undefined is not allowed in the JSON response
       ...(parentId && { parentId }),
       plan,
       subscription,
-      vault: vault.toJSON(),
-      systemVault: systemVault.toJSON(),
+      space: space.toJSON(),
+      systemSpace: systemSpace.toJSON(),
       connector,
     },
   };
 });
 
-export default function Vault({
-  vault,
+export default function Space({
+  space,
   category,
   dataSourceView,
-  canWriteInVault,
-  canReadInVault,
+  canWriteInSpace,
+  canReadInSpace,
   owner,
   parentId,
   plan,
   isAdmin,
-  systemVault,
+  systemSpace,
   connector,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   return (
     <Page.Vertical gap="xl" align="stretch">
-      <VaultDataSourceViewContentList
+      <SpaceDataSourceViewContentList
         owner={owner}
-        vault={vault}
+        space={space}
         plan={plan}
-        canWriteInVault={canWriteInVault}
-        canReadInVault={canReadInVault}
+        canWriteInSpace={canWriteInSpace}
+        canReadInSpace={canReadInSpace}
         parentId={parentId}
         dataSourceView={dataSourceView}
         onSelect={(parentId) => {
@@ -143,13 +143,13 @@ export default function Vault({
           );
         }}
         isAdmin={isAdmin}
-        systemVault={systemVault}
+        systemSpace={systemSpace}
         connector={connector}
       />
     </Page.Vertical>
   );
 }
 
-Vault.getLayout = (page: ReactElement, pageProps: any) => {
-  return <VaultLayout pageProps={pageProps}>{page}</VaultLayout>;
+Space.getLayout = (page: ReactElement, pageProps: any) => {
+  return <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>;
 };

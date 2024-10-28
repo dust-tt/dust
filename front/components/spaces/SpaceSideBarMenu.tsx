@@ -25,102 +25,102 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import type { SpaceSectionGroupType } from "@app/lib/spaces";
+import { getSpaceIcon, getSpaceName, groupSpaces } from "@app/lib/spaces";
 import { useApps } from "@app/lib/swr/apps";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
-  useVaultDataSourceViews,
-  useVaultInfo,
-  useVaults,
-  useVaultsAsAdmin,
-} from "@app/lib/swr/vaults";
-import type { VaultSectionGroupType } from "@app/lib/vaults";
-import { getVaultIcon, getVaultName, groupVaults } from "@app/lib/vaults";
+  useSpaceDataSourceViews,
+  useSpaceInfo,
+  useSpaces,
+  useSpacesAsAdmin,
+} from "@app/lib/swr/spaces";
 
-interface VaultSideBarMenuProps {
+interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;
   isAdmin: boolean;
-  openVaultCreationModal?: ({
+  openSpaceCreationModal?: ({
     defaultRestricted,
   }: {
     defaultRestricted: boolean;
   }) => void;
 }
 
-export default function VaultSideBarMenu({
+export default function SpaceSideBarMenu({
   owner,
   isAdmin,
-  openVaultCreationModal,
-}: VaultSideBarMenuProps) {
-  const { vaults: vaultsAsAdmin, isVaultsLoading: isVaultsAsAdminLoading } =
-    useVaultsAsAdmin({
+  openSpaceCreationModal,
+}: SpaceSideBarMenuProps) {
+  const { spaces: spacesAsAdmin, isSpacesLoading: isSpacesAsAdminLoading } =
+    useSpacesAsAdmin({
       workspaceId: owner.sId,
       disabled: !isAdmin,
     });
 
-  const { vaults: vaultsAsUser, isVaultsLoading: isVaultsAsUserLoading } =
-    useVaults({
+  const { spaces: spacesAsUser, isSpacesLoading: isSpacesAsUserLoading } =
+    useSpaces({
       workspaceId: owner.sId,
     });
 
-  // Vaults that are in the vaultsAsUser list should be displayed first, use the name as a tiebreaker.
-  const compareVaults = useCallback(
-    (v1: SpaceType, v2: SpaceType) => {
-      const v1IsMember = !!vaultsAsUser.find((v) => v.sId === v1.sId);
-      const v2IsMember = !!vaultsAsUser.find((v) => v.sId === v2.sId);
+  // Spaces that are in the spacesAsUser list should be displayed first, use the name as a tiebreaker.
+  const compareSpaces = useCallback(
+    (s1: SpaceType, s2: SpaceType) => {
+      const s1IsMember = !!spacesAsUser.find((s) => s.sId === s1.sId);
+      const s2IsMember = !!spacesAsUser.find((s) => s.sId === s2.sId);
 
-      if (v1IsMember && !v2IsMember) {
+      if (s1IsMember && !s2IsMember) {
         return -1;
-      } else if (!v1IsMember && v2IsMember) {
+      } else if (!s1IsMember && s2IsMember) {
         return 1;
       } else {
-        return v1.name.localeCompare(v2.name);
+        return s1.name.localeCompare(s2.name);
       }
     },
-    [vaultsAsUser]
+    [spacesAsUser]
   );
 
-  const vaults = useMemo(() => {
-    return uniqBy(vaultsAsAdmin.concat(vaultsAsUser), "sId");
-  }, [vaultsAsAdmin, vaultsAsUser]);
+  const spaces = useMemo(() => {
+    return uniqBy(spacesAsAdmin.concat(spacesAsUser), "sId");
+  }, [spacesAsAdmin, spacesAsUser]);
 
-  if (isVaultsAsAdminLoading || isVaultsAsUserLoading || !vaultsAsUser) {
+  if (isSpacesAsAdminLoading || isSpacesAsUserLoading || !spacesAsUser) {
     return <></>;
   }
 
   // Group by section and sort.
-  const sortedGroupedVaults = groupVaults(vaults)
+  const sortedGroupedSpaces = groupSpaces(spaces)
     // Remove the empty system menu for users & builders.
     .filter(
-      ({ section, vaults }) => section !== "system" || vaults.length !== 0
+      ({ section, spaces }) => section !== "system" || spaces.length !== 0
     );
 
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
       <div className="flex w-full flex-col px-2">
         <Item.List>
-          {sortedGroupedVaults.map(({ section, vaults }, index) => {
-            // Public vaults are created manually by us to hold public dust apps - other workspaces
-            // can't create them, so we do not show the section at all if there are no vaults.
-            if (section === "public" && !vaults.length) {
+          {sortedGroupedSpaces.map(({ section, spaces }, index) => {
+            // Public spaces are created manually by us to hold public dust apps - other workspaces
+            // can't create them, so we do not show the section at all if there are no spaces.
+            if (section === "public" && !spaces.length) {
               return null;
             }
 
-            if (section === "restricted" && !vaults.length && !isAdmin) {
+            if (section === "restricted" && !spaces.length && !isAdmin) {
               return null;
             }
 
-            const sectionDetails = getVaultSectionDetails(section);
+            const sectionDetails = getSpaceSectionDetails(section);
 
             return (
-              <Fragment key={`vault-section-${index}`}>
+              <Fragment key={`space-section-${index}`}>
                 <div className="flex items-center justify-between px-2 pr-1">
                   <Item.SectionHeader
                     label={sectionDetails.label}
                     variant="secondary"
                   />
-                  {sectionDetails.displayCreateVaultButton &&
+                  {sectionDetails.displayCreateSpaceButton &&
                     isAdmin &&
-                    openVaultCreationModal && (
+                    openSpaceCreationModal && (
                       <Button
                         className="mt-4"
                         size="xs"
@@ -128,16 +128,16 @@ export default function VaultSideBarMenu({
                         label="New"
                         icon={PlusIcon}
                         onClick={() =>
-                          openVaultCreationModal({
+                          openSpaceCreationModal({
                             defaultRestricted: sectionDetails.defaultRestricted,
                           })
                         }
                       />
                     )}
                 </div>
-                {renderVaultItems(
-                  vaults.toSorted(compareVaults),
-                  vaultsAsUser,
+                {renderSpaceItems(
+                  spaces.toSorted(compareSpaces),
+                  spacesAsUser,
                   owner
                 )}
               </Fragment>
@@ -149,70 +149,70 @@ export default function VaultSideBarMenu({
   );
 }
 
-// Function to render vault items.
-const renderVaultItems = (
-  vaults: SpaceType[],
-  vaultsAsUser: SpaceType[],
+// Function to render space items.
+const renderSpaceItems = (
+  spaces: SpaceType[],
+  spacesAsUser: SpaceType[],
   owner: LightWorkspaceType
 ) => {
-  return vaults.map((vault) => (
-    <Fragment key={`vault-${vault.sId}`}>
-      {vault.kind === "system" ? (
-        <SystemVaultMenu owner={owner} vault={vault} />
+  return spaces.map((space) => (
+    <Fragment key={`space-${space.sId}`}>
+      {space.kind === "system" ? (
+        <SystemSpaceMenu owner={owner} space={space} />
       ) : (
-        <VaultMenu
+        <SpaceMenu
           owner={owner}
-          vault={vault}
-          isMember={!!vaultsAsUser.find((v) => v.sId === vault.sId)}
+          space={space}
+          isMember={!!spacesAsUser.find((v) => v.sId === space.sId)}
         />
       )}
     </Fragment>
   ));
 };
 
-type VaultSectionStructureType =
+type SpaceSectionStructureType =
   | {
       label: string;
-      displayCreateVaultButton: true;
+      displayCreateSpaceButton: true;
       defaultRestricted: boolean;
     }
   | {
       label: string;
-      displayCreateVaultButton: false;
+      displayCreateSpaceButton: false;
     };
 
-const getVaultSectionDetails = (
-  kind: VaultSectionGroupType
-): VaultSectionStructureType => {
+const getSpaceSectionDetails = (
+  kind: SpaceSectionGroupType
+): SpaceSectionStructureType => {
   switch (kind) {
     case "shared":
       return {
         label: "Open",
-        displayCreateVaultButton: true,
+        displayCreateSpaceButton: true,
         defaultRestricted: false,
       };
 
     case "restricted":
       return {
         label: "Restricted",
-        displayCreateVaultButton: true,
+        displayCreateSpaceButton: true,
         defaultRestricted: true,
       };
 
     case "system":
-      return { label: "", displayCreateVaultButton: false };
+      return { label: "", displayCreateSpaceButton: false };
 
     case "public":
-      return { label: "Public", displayCreateVaultButton: false };
+      return { label: "Public", displayCreateSpaceButton: false };
 
     default:
       assertNever(kind);
   }
 };
 
-// System vault.
+// System space.
 
-const SYSTEM_VAULTS_ITEMS = [
+const SYSTEM_SPACE_ITEMS = [
   {
     label: "Connection Admin",
     visual: CloudArrowLeftRightIcon,
@@ -220,22 +220,22 @@ const SYSTEM_VAULTS_ITEMS = [
   },
 ];
 
-const SystemVaultMenu = ({
+const SystemSpaceMenu = ({
   owner,
-  vault,
+  space,
 }: {
   owner: LightWorkspaceType;
-  vault: SpaceType;
+  space: SpaceType;
 }) => {
   return (
     <Tree variant="navigator">
-      {SYSTEM_VAULTS_ITEMS.map((item) => (
-        <SystemVaultItem
+      {SYSTEM_SPACE_ITEMS.map((item) => (
+        <SystemSpaceItem
           category={item.category as Exclude<DataSourceViewCategory, "apps">}
           key={item.label}
           label={item.label}
           owner={owner}
-          vault={vault}
+          space={space}
           visual={item.visual}
         />
       ))}
@@ -245,22 +245,22 @@ const SystemVaultMenu = ({
 
 type IconType = ComponentType<{ className?: string }>;
 
-const SystemVaultItem = ({
+const SystemSpaceItem = ({
   category,
   label,
   owner,
-  vault,
+  space,
   visual,
 }: {
   category: Exclude<DataSourceViewCategory, "apps">;
   label: string;
   owner: LightWorkspaceType;
-  vault: SpaceType;
+  space: SpaceType;
   visual: IconType;
 }) => {
   const router = useRouter();
 
-  const itemPath = `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`;
+  const itemPath = `/w/${owner.sId}/vaults/${space.sId}/categories/${category}`;
   const isAncestorToCurrentPage =
     router.asPath.startsWith(itemPath + "/") || router.asPath === itemPath;
 
@@ -272,10 +272,10 @@ const SystemVaultItem = ({
     }
   }, [isAncestorToCurrentPage]);
 
-  const { isVaultDataSourceViewsLoading, vaultDataSourceViews } =
-    useVaultDataSourceViews({
+  const { isSpaceDataSourceViewsLoading, spaceDataSourceViews } =
+    useSpaceDataSourceViews({
       workspaceId: owner.sId,
-      vaultId: vault.sId,
+      spaceId: space.sId,
       category,
       disabled: !isExpanded,
     });
@@ -292,13 +292,13 @@ const SystemVaultItem = ({
       areActionsFading={false}
     >
       {isExpanded && (
-        <Tree isLoading={isVaultDataSourceViewsLoading}>
-          {vaultDataSourceViews.map((ds) => (
-            <VaultDataSourceViewItem
+        <Tree isLoading={isSpaceDataSourceViewsLoading}>
+          {spaceDataSourceViews.map((ds) => (
+            <SpaceDataSourceViewItem
               item={ds}
               key={ds.sId}
               owner={owner}
-              vault={vault}
+              space={space}
             />
           ))}
         </Tree>
@@ -307,40 +307,40 @@ const SystemVaultItem = ({
   );
 };
 
-// Global + regular vaults.
+// Global + regular spaces.
 
-const VaultMenu = ({
+const SpaceMenu = ({
   owner,
-  vault,
+  space,
   isMember,
 }: {
   owner: LightWorkspaceType;
-  vault: SpaceType;
+  space: SpaceType;
   isMember: boolean;
 }) => {
   return (
     <Tree variant="navigator">
-      <VaultMenuItem owner={owner} vault={vault} isMember={isMember} />
+      <SpaceMenuItem owner={owner} space={space} isMember={isMember} />
     </Tree>
   );
 };
 
-const VaultMenuItem = ({
+const SpaceMenuItem = ({
   owner,
-  vault,
+  space,
   isMember,
 }: {
   owner: LightWorkspaceType;
-  vault: SpaceType;
+  space: SpaceType;
   isMember: boolean;
 }) => {
   const router = useRouter();
 
-  const vaultPath = `/w/${owner.sId}/vaults/${vault.sId}`;
+  const spacePath = `/w/${owner.sId}/vaults/${space.sId}`;
   const isAncestorToCurrentPage =
-    router.asPath.startsWith(vaultPath + "/") || router.asPath === vaultPath;
+    router.asPath.startsWith(spacePath + "/") || router.asPath === spacePath;
 
-  // Unfold the vault if it's an ancestor of the current page.
+  // Unfold the space if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(() => {
     if (isAncestorToCurrentPage) {
@@ -348,47 +348,47 @@ const VaultMenuItem = ({
     }
   }, [isAncestorToCurrentPage]);
 
-  const { vaultInfo, isVaultInfoLoading } = useVaultInfo({
+  const { spaceInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
-    vaultId: vault.sId,
+    spaceId: space.sId,
     disabled: !isExpanded,
   });
 
   return (
     <Tree.Item
       isNavigatable
-      label={getVaultName(vault)}
+      label={getSpaceName(space)}
       collapsed={!isExpanded}
-      onItemClick={() => router.push(vaultPath)}
-      isSelected={router.asPath === vaultPath}
+      onItemClick={() => router.push(spacePath)}
+      isSelected={router.asPath === spacePath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
-      visual={getVaultIcon(vault)}
+      visual={getSpaceIcon(space)}
       tailwindIconTextColor={isMember ? undefined : "text-warning-400"}
       areActionsFading={false}
     >
       {isExpanded && (
-        <Tree isLoading={isVaultInfoLoading}>
-          {vaultInfo?.categories &&
+        <Tree isLoading={isSpaceInfoLoading}>
+          {spaceInfo?.categories &&
             DATA_SOURCE_VIEW_CATEGORIES.filter(
-              (c) => !!vaultInfo.categories[c]
+              (c) => !!spaceInfo.categories[c]
             ).map((c) => {
               if (c === "apps") {
                 return (
-                  <VaultAppSubMenu
+                  <SpaceAppSubMenu
                     key={c}
                     category={c}
                     owner={owner}
-                    vault={vault}
+                    space={space}
                   />
                 );
               } else {
                 return (
-                  vaultInfo.categories[c] && (
-                    <VaultDataSourceViewSubMenu
+                  spaceInfo.categories[c] && (
+                    <SpaceDataSourceViewSubMenu
                       key={c}
                       category={c}
                       owner={owner}
-                      vault={vault}
+                      space={space}
                     />
                   )
                 );
@@ -426,15 +426,15 @@ const DATA_SOURCE_OR_VIEW_SUB_ITEMS: {
   },
 };
 
-const VaultDataSourceViewItem = ({
+const SpaceDataSourceViewItem = ({
   item,
   owner,
-  vault,
+  space,
   node,
 }: {
   item: DataSourceViewType;
   owner: LightWorkspaceType;
-  vault: SpaceType;
+  space: SpaceType;
   node?: DataSourceViewContentNode;
 }): ReactElement => {
   const router = useRouter();
@@ -451,7 +451,7 @@ const VaultDataSourceViewItem = ({
     },
   });
 
-  const basePath = `/w/${owner.sId}/vaults/${vault.sId}/categories/${item.category}/data_source_views/${item.sId}`;
+  const basePath = `/w/${owner.sId}/vaults/${space.sId}/categories/${item.category}/data_source_views/${item.sId}`;
 
   // Load the currently selected node from router.query.parentId
   const {
@@ -509,11 +509,11 @@ const VaultDataSourceViewItem = ({
       {isExpanded && (
         <Tree isLoading={isNodesLoading}>
           {folders.map((node) => (
-            <VaultDataSourceViewItem
+            <SpaceDataSourceViewItem
               item={item}
               key={node.internalId}
               owner={owner}
-              vault={vault}
+              space={space}
               node={node}
             />
           ))}
@@ -528,23 +528,23 @@ const VaultDataSourceViewItem = ({
   );
 };
 
-const VaultDataSourceViewSubMenu = ({
+const SpaceDataSourceViewSubMenu = ({
   owner,
-  vault,
+  space,
   category,
 }: {
   owner: LightWorkspaceType;
-  vault: SpaceType;
+  space: SpaceType;
   category: Exclude<DataSourceViewCategory, "apps">;
 }) => {
   const router = useRouter();
 
-  const vaultCategoryPath = `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`;
+  const spaceCategoryPath = `/w/${owner.sId}/vaults/${space.sId}/categories/${category}`;
   const isAncestorToCurrentPage =
-    router.asPath.startsWith(vaultCategoryPath + "/") ||
-    router.asPath === vaultCategoryPath;
+    router.asPath.startsWith(spaceCategoryPath + "/") ||
+    router.asPath === spaceCategoryPath;
 
-  // Unfold the vault's category if it's an ancestor of the current page.
+  // Unfold the space's category if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(() => {
     if (isAncestorToCurrentPage) {
@@ -553,42 +553,42 @@ const VaultDataSourceViewSubMenu = ({
   }, [isAncestorToCurrentPage]);
 
   const categoryDetails = DATA_SOURCE_OR_VIEW_SUB_ITEMS[category];
-  const { isVaultDataSourceViewsLoading, vaultDataSourceViews } =
-    useVaultDataSourceViews({
+  const { isSpaceDataSourceViewsLoading, spaceDataSourceViews } =
+    useSpaceDataSourceViews({
       workspaceId: owner.sId,
-      vaultId: vault.sId,
+      spaceId: space.sId,
       category,
     });
   const sortedViews = useMemo(() => {
-    return vaultDataSourceViews.sort((a, b) =>
+    return spaceDataSourceViews.sort((a, b) =>
       getDataSourceNameFromView(a).localeCompare(getDataSourceNameFromView(b))
     );
-  }, [vaultDataSourceViews]);
+  }, [spaceDataSourceViews]);
 
   return (
     <Tree.Item
       isNavigatable
       label={categoryDetails.label}
       collapsed={!isExpanded}
-      onItemClick={() => router.push(vaultCategoryPath)}
-      isSelected={router.asPath === vaultCategoryPath}
+      onItemClick={() => router.push(spaceCategoryPath)}
+      isSelected={router.asPath === spaceCategoryPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={categoryDetails.icon}
       areActionsFading={false}
       type={
-        isVaultDataSourceViewsLoading || vaultDataSourceViews.length > 0
+        isSpaceDataSourceViewsLoading || spaceDataSourceViews.length > 0
           ? "node"
           : "leaf"
       }
     >
       {isExpanded && (
-        <Tree isLoading={isVaultDataSourceViewsLoading}>
+        <Tree isLoading={isSpaceDataSourceViewsLoading}>
           {sortedViews.map((ds) => (
-            <VaultDataSourceViewItem
+            <SpaceDataSourceViewItem
               item={ds}
               key={ds.sId}
               owner={owner}
-              vault={vault}
+              space={space}
             />
           ))}
         </Tree>
@@ -597,7 +597,7 @@ const VaultDataSourceViewSubMenu = ({
   );
 };
 
-const VaultAppItem = ({
+const SpaceAppItem = ({
   app,
   owner,
 }: {
@@ -625,23 +625,23 @@ const VaultAppItem = ({
   );
 };
 
-const VaultAppSubMenu = ({
+const SpaceAppSubMenu = ({
   owner,
-  vault,
+  space,
   category,
 }: {
   owner: LightWorkspaceType;
-  vault: SpaceType;
+  space: SpaceType;
   category: "apps";
 }) => {
   const router = useRouter();
 
-  const vaultCategoryPath = `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`;
+  const spaceCategoryPath = `/w/${owner.sId}/vaults/${space.sId}/categories/${category}`;
   const isAncestorToCurrentPage =
-    router.asPath.startsWith(vaultCategoryPath + "/") ||
-    router.asPath === vaultCategoryPath;
+    router.asPath.startsWith(spaceCategoryPath + "/") ||
+    router.asPath === spaceCategoryPath;
 
-  // Unfold the vault's category if it's an ancestor of the current page.
+  // Unfold the space's category if it's an ancestor of the current page.
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(() => {
     if (isAncestorToCurrentPage) {
@@ -653,7 +653,7 @@ const VaultAppSubMenu = ({
 
   const { isAppsLoading, apps } = useApps({
     owner,
-    vault,
+    space,
   });
 
   return (
@@ -661,8 +661,8 @@ const VaultAppSubMenu = ({
       isNavigatable
       label={categoryDetails.label}
       collapsed={!isExpanded}
-      onItemClick={() => router.push(vaultCategoryPath)}
-      isSelected={router.asPath === vaultCategoryPath}
+      onItemClick={() => router.push(spaceCategoryPath)}
+      isSelected={router.asPath === spaceCategoryPath}
       onChevronClick={() => setIsExpanded(!isExpanded)}
       visual={categoryDetails.icon}
       areActionsFading={false}
@@ -671,7 +671,7 @@ const VaultAppSubMenu = ({
       {isExpanded && (
         <Tree isLoading={isAppsLoading}>
           {sortBy(apps, "name").map((app) => (
-            <VaultAppItem app={app} key={app.sId} owner={owner} />
+            <SpaceAppItem app={app} key={app.sId} owner={owner} />
           ))}
         </Tree>
       )}

@@ -21,7 +21,7 @@ import { DocumentOrTableDeleteDialog } from "@app/components/data_source/Documen
 import { DocumentOrTableUploadOrEditModal } from "@app/components/data_source/DocumentOrTableUploadOrEditModal";
 import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
-import { AddToVaultDialog } from "@app/components/vaults/AddToVaultDialog";
+import { AddToSpaceDialog } from "@app/components/spaces/AddToSpaceDialog";
 import {
   getDisplayNameForDataSource,
   isFolder,
@@ -35,7 +35,7 @@ export type ContentActionKey =
   | "MultipleDocumentsUpload"
   | "DocumentOrTableDeleteDialog"
   | "DocumentViewRawContent"
-  | "AddToVaultDialog";
+  | "AddToSpaceDialog";
 
 export type ContentAction = {
   action?: ContentActionKey;
@@ -147,10 +147,10 @@ export const ContentActions = React.forwardRef<
           }}
         />
         {currentAction.contentNode && (
-          <AddToVaultDialog
+          <AddToSpaceDialog
             contentNode={currentAction.contentNode}
             dataSourceView={dataSourceView}
-            isOpen={currentAction.action === "AddToVaultDialog"}
+            isOpen={currentAction.action === "AddToSpaceDialog"}
             onClose={onClose}
             owner={owner}
           />
@@ -165,8 +165,8 @@ ContentActions.displayName = "ContentActions";
 type ContentActionsMenu = ComponentProps<typeof DataTable.Row>["moreMenuItems"];
 
 export const getMenuItems = (
-  canReadInVault: boolean,
-  canWriteInVault: boolean,
+  canReadInSpace: boolean,
+  canWriteInSpace: boolean,
   dataSourceView: DataSourceViewType,
   contentNode: DataSourceViewContentNode,
   contentActionsRef: RefObject<ContentActionsRef>
@@ -180,13 +180,13 @@ export const getMenuItems = (
   }
 
   // View raw content in modal.
-  if (canReadInVault && contentNode.type === "file") {
+  if (canReadInSpace && contentNode.type === "file") {
     actions.push(makeViewRawContentAction(contentNode, contentActionsRef));
   }
 
   // Edit & Delete:
   // We can edit/delete the documents in a Folder only.
-  if (canWriteInVault && isFolder(dataSourceView.dataSource)) {
+  if (canWriteInSpace && isFolder(dataSourceView.dataSource)) {
     actions.push({
       label: "Edit",
       icon: PencilSquareIcon,
@@ -225,7 +225,7 @@ export const getMenuItems = (
       onClick: () => {
         contentActionsRef.current &&
           contentActionsRef.current?.callAction(
-            "AddToVaultDialog",
+            "AddToSpaceDialog",
             contentNode
           );
       },

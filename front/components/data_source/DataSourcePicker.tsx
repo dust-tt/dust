@@ -8,18 +8,18 @@ import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
+import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
 export default function DataSourcePicker({
   owner,
-  vault,
+  space,
   currentDataSources, // [{ workspace_id, data_source_id }]
   readOnly,
   onDataSourcesUpdate,
 }: {
   owner: WorkspaceType;
-  vault: SpaceType;
+  space: SpaceType;
   currentDataSources: {
     workspace_id: string;
     data_source_id: string;
@@ -37,22 +37,22 @@ export default function DataSourcePicker({
     currentDataSources[0].data_source_id.length > 0;
 
   const {
-    vaultDataSourceViews,
-    isVaultDataSourceViewsLoading,
-    isVaultDataSourceViewsError,
-  } = useVaultDataSourceViews({
-    vaultId: vault.sId,
+    spaceDataSourceViews,
+    isSpaceDataSourceViewsLoading,
+    isSpaceDataSourceViewsError,
+  } = useSpaceDataSourceViews({
+    spaceId: space.sId,
     workspaceId: owner.sId,
   });
 
   const [searchFilter, setSearchFilter] = useState("");
   const [filteredDataSourceViews, setFilteredDataSourceViews] =
-    useState(vaultDataSourceViews);
+    useState(spaceDataSourceViews);
 
   // Look for the selected data source view in the list - data_source_id can is dsv sId or
   // dataSource name, try to find a match
   const selectedDataSourceView = hasDataSourceView
-    ? vaultDataSourceViews.find(
+    ? spaceDataSourceViews.find(
         (dsv) =>
           dsv.sId === currentDataSources[0].data_source_id ||
           // Legacy behavior
@@ -62,8 +62,8 @@ export default function DataSourcePicker({
 
   useEffect(() => {
     if (
-      !isVaultDataSourceViewsLoading &&
-      !isVaultDataSourceViewsError &&
+      !isSpaceDataSourceViewsLoading &&
+      !isSpaceDataSourceViewsError &&
       !readOnly &&
       hasDataSourceView
     ) {
@@ -77,9 +77,9 @@ export default function DataSourcePicker({
     hasDataSourceView,
     selectedDataSourceView,
     readOnly,
-    isVaultDataSourceViewsLoading,
-    isVaultDataSourceViewsError,
-    vaultDataSourceViews,
+    isSpaceDataSourceViewsLoading,
+    isSpaceDataSourceViewsError,
+    spaceDataSourceViews,
   ]);
 
   const getEditLink = (dsv: DataSourceViewType) => {
@@ -88,12 +88,12 @@ export default function DataSourcePicker({
 
   useEffect(() => {
     const newDataSources = searchFilter
-      ? vaultDataSourceViews.filter((t) =>
+      ? spaceDataSourceViews.filter((t) =>
           t.dataSource.name.toLowerCase().includes(searchFilter.toLowerCase())
         )
-      : vaultDataSourceViews;
+      : spaceDataSourceViews;
     setFilteredDataSourceViews(newDataSources.slice(0, 30));
-  }, [vaultDataSourceViews, searchFilter]);
+  }, [spaceDataSourceViews, searchFilter]);
 
   return (
     <div className="flex items-center">
@@ -130,7 +130,7 @@ export default function DataSourcePicker({
                     </Link>
                     <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
                   </>
-                ) : vaultDataSourceViews && vaultDataSourceViews.length > 0 ? (
+                ) : spaceDataSourceViews && spaceDataSourceViews.length > 0 ? (
                   "Select DataSource"
                 ) : (
                   <Link
@@ -147,7 +147,7 @@ export default function DataSourcePicker({
               </DropdownMenu.Button>
             </div>
 
-            {(vaultDataSourceViews || []).length > 0 ? (
+            {(spaceDataSourceViews || []).length > 0 ? (
               <DropdownMenu.Items width={300}>
                 <Input
                   name="search"

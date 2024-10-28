@@ -10,9 +10,9 @@ import type {
 import { useEffect, useState } from "react";
 
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
-import { useVaults } from "@app/lib/swr/vaults";
+import { useSpaces } from "@app/lib/swr/spaces";
 
-interface AddToVaultDialogProps {
+interface AddToSpaceDialogProps {
   dataSourceView: DataSourceViewType;
   isOpen: boolean;
   onClose: (save: boolean) => void;
@@ -20,17 +20,17 @@ interface AddToVaultDialogProps {
   contentNode: DataSourceViewContentNode;
 }
 
-export const AddToVaultDialog = ({
+export const AddToSpaceDialog = ({
   dataSourceView,
   isOpen,
   onClose,
   owner,
   contentNode,
-}: AddToVaultDialogProps) => {
-  const [vault, setVault] = useState<SpaceType | undefined>();
+}: AddToSpaceDialogProps) => {
+  const [space, setSpace] = useState<SpaceType | undefined>();
 
   const dataSource = dataSourceView.dataSource;
-  const { vaults } = useVaults({ workspaceId: owner.sId });
+  const { spaces } = useSpaces({ workspaceId: owner.sId });
   const { dataSourceViews, mutateDataSourceViews } = useDataSourceViews(owner);
 
   const sendNotification = useSendNotification();
@@ -39,7 +39,7 @@ export const AddToVaultDialog = ({
     (dsv) => dsv.dataSource.sId === dataSource.sId && dsv.kind !== "default"
   );
 
-  const alreadyInVault = allViews
+  const alreadyInSpace = allViews
     .filter(
       (dsv) =>
         !contentNode.parentInternalIds ||
@@ -49,28 +49,28 @@ export const AddToVaultDialog = ({
     )
     .map((dsv) => dsv.spaceId);
 
-  const availableVaults = vaults.filter((v) => !alreadyInVault.includes(v.sId));
+  const availableSpaces = spaces.filter((s) => !alreadyInSpace.includes(s.sId));
 
   useEffect(() => {
     if (isOpen) {
-      setVault(undefined);
+      setSpace(undefined);
     }
   }, [isOpen]);
 
-  const addToVault = async () => {
-    if (!vault) {
+  const addToSpace = async () => {
+    if (!space) {
       return "Please select a space to add the data to.";
     }
 
-    const existingViewForVault = dataSourceViews.find(
-      (d) => d.spaceId === vault.sId && d.dataSource.sId === dataSource.sId
+    const existingViewForSpace = dataSourceViews.find(
+      (d) => d.spaceId === space.sId && d.dataSource.sId === dataSource.sId
     );
 
     try {
       let res;
-      if (existingViewForVault) {
+      if (existingViewForSpace) {
         res = await fetch(
-          `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views/${existingViewForVault.sId}`,
+          `/api/w/${owner.sId}/vaults/${space.sId}/data_source_views/${existingViewForSpace.sId}`,
           {
             method: "PATCH",
             headers: {
@@ -83,7 +83,7 @@ export const AddToVaultDialog = ({
         );
       } else {
         res = await fetch(
-          `/api/w/${owner.sId}/vaults/${vault.sId}/data_source_views`,
+          `/api/w/${owner.sId}/vaults/${space.sId}/data_source_views`,
           {
             method: "POST",
             headers: {
@@ -125,14 +125,14 @@ export const AddToVaultDialog = ({
 
   return (
     <Dialog
-      disabled={vault === undefined}
+      disabled={space === undefined}
       isOpen={isOpen}
       onCancel={() => onClose(false)}
-      onValidate={addToVault}
+      onValidate={addToSpace}
       title="Add to Space"
       validateLabel="Save"
     >
-      {availableVaults.length === 0 ? (
+      {availableSpaces.length === 0 ? (
         <div className="mt-1 text-left">
           This data is already available in all spaces.
         </div>
@@ -140,18 +140,18 @@ export const AddToVaultDialog = ({
         <DropdownMenu>
           <DropdownMenu.Button>
             <Button
-              label={vault ? vault.name : "Select space"}
+              label={space ? space.name : "Select space"}
               size="sm"
               isSelect
               variant="outline"
             />
           </DropdownMenu.Button>
           <DropdownMenu.Items>
-            {availableVaults.map((currentVault) => (
+            {availableSpaces.map((currentSpace) => (
               <DropdownMenu.Item
-                key={currentVault.sId}
-                label={currentVault.name}
-                onClick={() => setVault(currentVault)}
+                key={currentSpace.sId}
+                label={currentSpace.name}
+                onClick={() => setSpace(currentSpace)}
               />
             ))}
           </DropdownMenu.Items>

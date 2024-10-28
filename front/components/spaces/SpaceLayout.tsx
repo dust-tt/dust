@@ -12,35 +12,35 @@ import type { ComponentType } from "react";
 import React, { useCallback, useMemo, useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
+import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
+import { CATEGORY_DETAILS } from "@app/components/spaces/SpaceCategoriesList";
+import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { CreateOrEditVaultModal } from "@app/components/vaults/CreateOrEditVaultModal";
-import { CATEGORY_DETAILS } from "@app/components/vaults/VaultCategoriesList";
-import VaultSideBarMenu from "@app/components/vaults/VaultSideBarMenu";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
+import { getSpaceIcon, isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { useVaultsAsAdmin } from "@app/lib/swr/vaults";
-import { getVaultIcon, isPrivateVaultsLimitReached } from "@app/lib/vaults";
+import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 
-export interface VaultLayoutProps {
-  owner: WorkspaceType;
-  plan: PlanType;
-  isAdmin: boolean;
-  subscription: SubscriptionType;
-  vault: SpaceType;
+export interface SpaceLayoutProps {
   category?: DataSourceViewCategory;
   dataSourceView?: DataSourceViewType;
+  isAdmin: boolean;
+  owner: WorkspaceType;
   parentId?: string;
+  plan: PlanType;
+  space: SpaceType;
+  subscription: SubscriptionType;
 }
 
-export function VaultLayout({
+export function SpaceLayout({
   children,
   pageProps,
 }: {
   children: React.ReactNode;
-  pageProps: VaultLayoutProps;
+  pageProps: SpaceLayoutProps;
 }) {
-  const [vaultCreationModalState, setVaultCreationModalState] = useState({
+  const [spaceCreationModalState, setSpaceCreationModalState] = useState({
     isOpen: false,
     defaultRestricted: false,
   });
@@ -50,28 +50,28 @@ export function VaultLayout({
     plan,
     isAdmin,
     subscription,
-    vault,
+    space,
     category,
     dataSourceView,
     parentId,
   } = pageProps;
   const router = useRouter();
 
-  const { vaults } = useVaultsAsAdmin({
+  const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: plan.limits.vaults.maxVaults === 0 || !isAdmin,
   });
 
-  const isLimitReached = isPrivateVaultsLimitReached(vaults, plan);
+  const isLimitReached = isPrivateSpacesLimitReached(spaces, plan);
   const isEnterprise = isEntreprisePlan(plan.code);
 
-  const closeVaultCreationModal = useCallback(() => {
-    setVaultCreationModalState((prev) => ({ ...prev, isOpen: false }));
+  const closeSpaceCreationModal = useCallback(() => {
+    setSpaceCreationModalState((prev) => ({ ...prev, isOpen: false }));
   }, []);
 
-  const openVaultCreationModal = useCallback(
+  const openSpaceCreationModal = useCallback(
     ({ defaultRestricted }: { defaultRestricted: boolean }) => {
-      setVaultCreationModalState({ defaultRestricted, isOpen: true });
+      setSpaceCreationModalState({ defaultRestricted, isOpen: true });
     },
     []
   );
@@ -82,15 +82,15 @@ export function VaultLayout({
         subscription={subscription}
         owner={owner}
         navChildren={
-          <VaultSideBarMenu
+          <SpaceSideBarMenu
             owner={owner}
             isAdmin={isAdmin}
-            openVaultCreationModal={openVaultCreationModal}
+            openSpaceCreationModal={openSpaceCreationModal}
           />
         }
       >
-        <VaultBreadCrumbs
-          vault={vault}
+        <SpaceBreadCrumbs
+          space={space}
           category={category}
           owner={owner}
           dataSourceView={dataSourceView}
@@ -98,23 +98,23 @@ export function VaultLayout({
         />
         {children}
         {isAdmin && !isLimitReached && (
-          <CreateOrEditVaultModal
+          <CreateOrEditSpaceModal
             isAdmin={isAdmin}
             owner={owner}
-            isOpen={!isLimitReached && vaultCreationModalState.isOpen}
-            onClose={closeVaultCreationModal}
-            onCreated={(vault) => {
-              void router.push(`/w/${owner.sId}/vaults/${vault.sId}`);
+            isOpen={!isLimitReached && spaceCreationModalState.isOpen}
+            onClose={closeSpaceCreationModal}
+            onCreated={(space) => {
+              void router.push(`/w/${owner.sId}/vaults/${space.sId}`);
             }}
-            defaultRestricted={vaultCreationModalState.defaultRestricted}
+            defaultRestricted={spaceCreationModalState.defaultRestricted}
           />
         )}
         {isAdmin && isLimitReached && (
           <Dialog
             alertDialog
-            isOpen={isLimitReached && vaultCreationModalState.isOpen}
+            isOpen={isLimitReached && spaceCreationModalState.isOpen}
             title="You can't create more spaces."
-            onValidate={closeVaultCreationModal}
+            onValidate={closeSpaceCreationModal}
           >
             <div>
               {isEnterprise
@@ -128,15 +128,15 @@ export function VaultLayout({
   );
 }
 
-function VaultBreadCrumbs({
+function SpaceBreadCrumbs({
   owner,
-  vault,
+  space,
   category,
   dataSourceView,
   parentId,
 }: {
   owner: WorkspaceType;
-  vault: SpaceType;
+  space: SpaceType;
   category?: DataSourceViewCategory;
   dataSourceView?: DataSourceViewType;
   parentId?: string;
@@ -168,22 +168,22 @@ function VaultBreadCrumbs({
       href?: string;
     }[] = [
       {
-        icon: getVaultIcon(vault),
-        label: vault.kind === "global" ? "Company Data" : vault.name,
-        href: `/w/${owner.sId}/vaults/${vault.sId}`,
+        icon: getSpaceIcon(space),
+        label: space.kind === "global" ? "Company Data" : space.name,
+        href: `/w/${owner.sId}/vaults/${space.sId}`,
       },
       {
         label: CATEGORY_DETAILS[category].label,
-        href: `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`,
+        href: `/w/${owner.sId}/vaults/${space.sId}/categories/${category}`,
       },
     ];
 
-    if (vault.kind === "system") {
+    if (space.kind === "system") {
       if (!dataSourceView) {
         return [];
       }
 
-      // For system vault, we don't want the first breadcrumb to show, since
+      // For system space, we don't want the first breadcrumb to show, since
       // it's only used to manage "connected data" already. Otherwise it would
       // expose a useless link, and name would be redundant with the "Connected
       // data" label
@@ -191,7 +191,7 @@ function VaultBreadCrumbs({
     }
 
     if (dataSourceView) {
-      if (category === "managed" && vault.kind !== "system") {
+      if (category === "managed" && space.kind !== "system") {
         // Remove the "Connected data" from breadcrumbs to avoid hiding the actual
         // managed connection name
 
@@ -203,18 +203,18 @@ function VaultBreadCrumbs({
 
       items.push({
         label: getDataSourceNameFromView(dataSourceView),
-        href: `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
+        href: `/w/${owner.sId}/vaults/${space.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
       });
 
       for (const node of [...folders].reverse()) {
         items.push({
           label: node.title,
-          href: `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${node.internalId}`,
+          href: `/w/${owner.sId}/vaults/${space.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${node.internalId}`,
         });
       }
     }
     return items;
-  }, [owner, vault, category, dataSourceView, folders]);
+  }, [owner, space, category, dataSourceView, folders]);
 
   if (items.length === 0) {
     return null;

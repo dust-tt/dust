@@ -21,7 +21,7 @@ export function hasErrorActionTablesQuery(
 type ActionTablesQueryProps = {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderTableConfiguration | null;
-  allowedVaults: SpaceType[];
+  allowedSpaces: SpaceType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderTableConfiguration
@@ -33,7 +33,7 @@ type ActionTablesQueryProps = {
 export function ActionTablesQuery({
   owner,
   actionConfiguration,
-  allowedVaults,
+  allowedSpaces,
   updateAction,
   setEdited,
 }: ActionTablesQueryProps) {
@@ -63,7 +63,7 @@ export function ActionTablesQuery({
           });
         }}
         initialDataSourceConfigurations={actionConfiguration}
-        allowedVaults={allowedVaults}
+        allowedSpaces={allowedSpaces}
         viewType="tables"
       />
 

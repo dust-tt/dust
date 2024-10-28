@@ -1,10 +1,10 @@
 import { Dialog } from "@dust-tt/sparkle";
 import type { SpaceType } from "@dust-tt/types";
 
-import { getVaultName } from "@app/lib/vaults";
+import { getSpaceName } from "@app/lib/spaces";
 
-interface ConfirmDeleteVaultDialogProps {
-  vault: SpaceType;
+interface ConfirmDeleteSpaceDialogProps {
+  space: SpaceType;
   handleDelete: () => void;
   dataSourceUsage?: number;
   isOpen: boolean;
@@ -12,25 +12,25 @@ interface ConfirmDeleteVaultDialogProps {
   onClose: () => void;
 }
 
-export function ConfirmDeleteVaultDialog({
-  vault,
+export function ConfirmDeleteSpaceDialog({
+  space,
   handleDelete,
   dataSourceUsage,
   isOpen,
   isDeleting,
   onClose,
-}: ConfirmDeleteVaultDialogProps) {
+}: ConfirmDeleteSpaceDialogProps) {
   const message =
     dataSourceUsage === undefined
-      ? `Are you sure you want to permanently delete space ${getVaultName(vault)}?`
+      ? `Are you sure you want to permanently delete space ${getSpaceName(space)}?`
       : dataSourceUsage > 0
-        ? `${dataSourceUsage} assistants currently use space ${getVaultName(vault)}. Are you sure you want to delete?`
-        : `No assistants are using this ${getVaultName(vault)}. Confirm permanent deletion?`;
+        ? `${dataSourceUsage} assistants currently use space ${getSpaceName(space)}. Are you sure you want to delete?`
+        : `No assistants are using this ${getSpaceName(space)}. Confirm permanent deletion?`;
 
   return (
     <Dialog
       isOpen={isOpen}
-      title={`Deleting ${getVaultName(vault)}`}
+      title={`Deleting ${getSpaceName(space)}`}
       onValidate={handleDelete}
       onCancel={onClose}
       validateVariant="warning"

@@ -13,9 +13,9 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { dustAppsListUrl } from "@app/lib/spaces";
 import { useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import { dustAppsListUrl } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

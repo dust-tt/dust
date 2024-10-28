@@ -40,29 +40,31 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
-import { useVaultDataSourceViews } from "@app/lib/swr/vaults";
+import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
 import type { PostDataSourceWithProviderRequestBodySchema } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
 
 const WEBSITE_CAT = "website";
 
-// todo(GROUPS_INFRA): current component has been mostly copy pasted from the WebsiteConfiguration existing component
-// this should be refactored to use the new design.
-export default function VaultWebsiteModal({
-  isOpen,
-  onClose,
-  owner,
-  dataSources,
-  vault,
-  dataSourceView,
-}: {
+interface SpaceWebsiteModalProps {
+  dataSources: DataSourceType[];
+  dataSourceView: DataSourceViewType | null;
   isOpen: boolean;
   onClose: () => void;
   owner: WorkspaceType;
-  vault: SpaceType;
-  dataSources: DataSourceType[];
-  dataSourceView: DataSourceViewType | null;
-}) {
+  space: SpaceType;
+}
+
+// todo(GROUPS_INFRA): current component has been mostly copy pasted from the WebsiteConfiguration existing component
+// this should be refactored to use the new design.
+export default function SpaceWebsiteModal({
+  dataSources,
+  dataSourceView,
+  isOpen,
+  onClose,
+  owner,
+  space,
+}: SpaceWebsiteModalProps) {
   const router = useRouter();
   const sendNotification = useSendNotification();
 
@@ -152,10 +154,10 @@ export default function VaultWebsiteModal({
     }
   }, [isOpen, dataSourceView, webCrawlerConfiguration]);
 
-  const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
-    useVaultDataSourceViews({
+  const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =
+    useSpaceDataSourceViews({
       workspaceId: owner.sId,
-      vaultId: vault.sId,
+      spaceId: space.sId,
       category: WEBSITE_CAT,
     });
 
@@ -235,7 +237,7 @@ export default function VaultWebsiteModal({
     setIsSaving(true);
     const sanitizedDataSourceUrl = dataSourceUrl.trim();
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources`,
+      `/api/w/${owner.sId}/vaults/${space.sId}/data_sources`,
       {
         method: "POST",
         headers: {
@@ -278,7 +280,7 @@ export default function VaultWebsiteModal({
 
     setIsSaving(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
+      `/api/w/${owner.sId}/vaults/${space.sId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
       {
         method: "PATCH",
         headers: {
@@ -320,7 +322,7 @@ export default function VaultWebsiteModal({
         type: "success",
         description: `The website has been successfully ${action}.`,
       });
-      void mutateVaultDataSourceViews();
+      void mutateSpaceDataSourceViews();
       setIsSaving(false);
     } else {
       const err: { error: APIError } = await res.json();
@@ -339,16 +341,16 @@ export default function VaultWebsiteModal({
     }
     setIsSaving(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${vault.sId}/data_sources/${dataSourceView.dataSource.sId}`,
+      `/api/w/${owner.sId}/vaults/${space.sId}/data_sources/${dataSourceView.dataSource.sId}`,
       {
         method: "DELETE",
       }
     );
     setIsSaving(false);
     if (res.ok) {
-      void mutateVaultDataSourceViews();
+      void mutateSpaceDataSourceViews();
       await router.push(
-        `/w/${owner.sId}/vaults/${vault.sId}/categories/${WEBSITE_CAT}`
+        `/w/${owner.sId}/vaults/${space.sId}/categories/${WEBSITE_CAT}`
       );
       onClose();
     } else {

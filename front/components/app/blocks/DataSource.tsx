@@ -215,7 +215,7 @@ export default function DataSource({
               owner={owner}
               readOnly={readOnly}
               currentDataSources={block.config.data_sources || []}
-              vault={app.space}
+              space={app.space}
               onDataSourcesUpdate={(dataSources) => {
                 handleDataSourcesChange(dataSources);
               }}

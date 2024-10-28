@@ -6,20 +6,20 @@ import type {
 } from "@dust-tt/types";
 import { useState } from "react";
 
-import VaultWebsiteModal from "@app/components/vaults/VaultWebsiteModal";
+import SpaceWebsiteModal from "@app/components/spaces/SpaceWebsiteModal";
 import { useDataSources } from "@app/lib/swr/data_sources";
 
 type WebsitesHeaderMenuProps = {
   owner: WorkspaceType;
-  vault: SpaceType;
-  canWriteInVault: boolean;
+  space: SpaceType;
+  canWriteInSpace: boolean;
   dataSourceView: DataSourceViewType;
 };
 
 export const WebsitesHeaderMenu = ({
   owner,
-  vault,
-  canWriteInVault,
+  space,
+  canWriteInSpace,
   dataSourceView,
 }: WebsitesHeaderMenuProps) => {
   const [showEditWebsiteModal, setShowEditWebsiteModal] = useState(false);
@@ -28,13 +28,13 @@ export const WebsitesHeaderMenu = ({
 
   return (
     <>
-      <VaultWebsiteModal
+      <SpaceWebsiteModal
         isOpen={showEditWebsiteModal}
         onClose={() => {
           setShowEditWebsiteModal(false);
         }}
         owner={owner}
-        vault={vault}
+        space={space}
         dataSources={dataSources}
         dataSourceView={dataSourceView}
       />
@@ -46,7 +46,7 @@ export const WebsitesHeaderMenu = ({
         onClick={() => {
           setShowEditWebsiteModal(true);
         }}
-        disabled={!canWriteInVault}
+        disabled={!canWriteInSpace}
       />
     </>
   );

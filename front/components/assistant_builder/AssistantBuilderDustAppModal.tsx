@@ -4,11 +4,11 @@ import { Transition } from "@headlessui/react";
 import { sortBy } from "lodash";
 import { useMemo } from "react";
 
-import { VaultSelector } from "@app/components/assistant_builder/vaults/VaultSelector";
-import { useVaults } from "@app/lib/swr/vaults";
+import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
+import { useSpaces } from "@app/lib/swr/spaces";
 
 interface AssistantBuilderDustAppModalProps {
-  allowedVaults: SpaceType[];
+  allowedSpaces: SpaceType[];
   dustApps: AppType[];
   isOpen: boolean;
   onSave: (app: AppType) => void;
@@ -17,7 +17,7 @@ interface AssistantBuilderDustAppModalProps {
 }
 
 export default function AssistantBuilderDustAppModal({
-  allowedVaults,
+  allowedSpaces,
   dustApps,
   isOpen,
   onSave,
@@ -38,7 +38,7 @@ export default function AssistantBuilderDustAppModal({
     >
       <div className="w-full pt-12">
         <PickDustApp
-          allowedVaults={allowedVaults}
+          allowedSpaces={allowedSpaces}
           owner={owner}
           show={true}
           dustApps={dustApps}
@@ -53,7 +53,7 @@ export default function AssistantBuilderDustAppModal({
 }
 
 interface PickDustAppProps {
-  allowedVaults: SpaceType[];
+  allowedSpaces: SpaceType[];
   dustApps: AppType[];
   onPick: (app: AppType) => void;
   owner: LightWorkspaceType;
@@ -62,19 +62,19 @@ interface PickDustAppProps {
 
 function PickDustApp({
   owner,
-  allowedVaults,
+  allowedSpaces,
   dustApps,
   show,
   onPick,
 }: PickDustAppProps) {
-  const { vaults, isVaultsLoading } = useVaults({ workspaceId: owner.sId });
+  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
 
-  const filteredVaults = useMemo(
+  const filteredSpaces = useMemo(
     () =>
-      vaults.filter((vault) =>
-        dustApps.some((app) => app.space.sId === vault.sId)
+      spaces.filter((space) =>
+        dustApps.some((app) => app.space.sId === space.sId)
       ),
-    [vaults, dustApps]
+    [spaces, dustApps]
   );
 
   const hasSomeUnselectableApps = dustApps.some(
@@ -91,16 +91,16 @@ function PickDustApp({
             App selectable, edit it and add a description.
           </Page.P>
         )}
-        {isVaultsLoading ? (
+        {isSpacesLoading ? (
           <Spinner />
         ) : (
-          <VaultSelector
-            vaults={filteredVaults}
-            allowedVaults={allowedVaults}
-            defaultVault={allowedVaults[0].sId}
-            renderChildren={(vault) => {
-              const allowedDustApps = vault
-                ? dustApps.filter((app) => app.space.sId === vault.sId)
+          <SpaceSelector
+            spaces={filteredSpaces}
+            allowedSpaces={allowedSpaces}
+            defaultSpace={allowedSpaces[0].sId}
+            renderChildren={(space) => {
+              const allowedDustApps = space
+                ? dustApps.filter((app) => app.space.sId === space.sId)
                 : dustApps;
 
               if (allowedDustApps.length === 0) {

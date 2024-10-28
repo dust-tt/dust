@@ -6,9 +6,9 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 export async function getTrackableDataSourceViews(
   auth: Authenticator
 ): Promise<DataSourceViewResource[]> {
-  const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   // TODO(DOC_TRACKER):
-  const views = await DataSourceViewResource.listBySpace(auth, globalVault);
+  const views = await DataSourceViewResource.listBySpace(auth, globalSpace);
 
   // Filter data sources to only include trackable ones
   const trackableViews = views.filter(

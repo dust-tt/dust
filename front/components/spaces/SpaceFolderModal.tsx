@@ -7,7 +7,11 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, SpaceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceType,
+  LightWorkspaceType,
+  SpaceType,
+} from "@dust-tt/types";
 import { isDataSourceNameValid } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -16,44 +20,46 @@ import { DeleteStaticDataSourceDialog } from "@app/components/data_source/Delete
 import {
   useCreateFolder,
   useDeleteFolderOrWebsite,
+  useSpaceDataSourceView,
   useUpdateFolder,
-  useVaultDataSourceView,
-} from "@app/lib/swr/vaults";
+} from "@app/lib/swr/spaces";
 
-export default function VaultFolderModal({
+interface SpaceFolderModalProps {
+  dataSources: DataSourceType[];
+  dataSourceViewId: string | null;
+  isOpen: boolean;
+  onClose: () => void;
+  owner: LightWorkspaceType;
+  space: SpaceType;
+}
+
+export default function SpaceFolderModal({
+  dataSources,
+  dataSourceViewId,
   isOpen,
   onClose,
   owner,
-  vault,
-  dataSources,
-  dataSourceViewId,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  owner: WorkspaceType;
-  vault: SpaceType;
-  dataSources: DataSourceType[];
-  dataSourceViewId: string | null;
-}) {
+  space,
+}: SpaceFolderModalProps) {
   const { dataSourceView, isDataSourceViewLoading, mutate } =
-    useVaultDataSourceView({
+    useSpaceDataSourceView({
       owner,
-      vaultId: vault.sId,
+      spaceId: space.sId,
       dataSourceViewId: dataSourceViewId || undefined,
       disabled: !dataSourceViewId,
     });
 
   const doCreate = useCreateFolder({
     owner,
-    vaultId: vault.sId,
+    spaceId: space.sId,
   });
   const doUpdate = useUpdateFolder({
     owner,
-    vaultId: vault.sId,
+    spaceId: space.sId,
   });
   const doDelete = useDeleteFolderOrWebsite({
     owner,
-    vaultId: vault.sId,
+    spaceId: space.sId,
     category: "folder",
   });
   const router = useRouter();
@@ -102,7 +108,7 @@ export default function VaultFolderModal({
       if (dataSourceView) {
         onClose();
         await router.push(
-          `/w/${owner.sId}/vaults/${vault.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
+          `/w/${owner.sId}/vaults/${space.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
         );
       }
     } else {
@@ -119,7 +125,7 @@ export default function VaultFolderModal({
     if (res) {
       onClose();
       await router.push(
-        `/w/${owner.sId}/vaults/${vault.sId}/categories/folder`
+        `/w/${owner.sId}/vaults/${space.sId}/categories/folder`
       );
     }
   };

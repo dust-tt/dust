@@ -14,11 +14,11 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
-import type { DataSourceIntegration } from "@app/components/vaults/AddConnectionMenu";
-import { VaultAppsList } from "@app/components/vaults/VaultAppsList";
-import type { VaultLayoutProps } from "@app/components/vaults/VaultLayout";
-import { VaultLayout } from "@app/components/vaults/VaultLayout";
-import { VaultResourcesList } from "@app/components/vaults/VaultResourcesList";
+import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
+import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
+import type { SpaceLayoutProps } from "@app/components/spaces/SpaceLayout";
+import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
+import { SpaceResourcesList } from "@app/components/spaces/SpaceResourcesList";
 import {
   augmentDataSourceWithConnectorDetails,
   getDataSources,
@@ -28,12 +28,12 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
-  VaultLayoutProps & {
+  SpaceLayoutProps & {
     category: DataSourceViewCategory;
     isAdmin: boolean;
-    canWriteInVault: boolean;
-    vault: SpaceType;
-    systemVault: SpaceType;
+    canWriteInSpace: boolean;
+    space: SpaceType;
+    systemSpace: SpaceType;
     integrations: DataSourceIntegration[];
   }
 >(async (context, auth) => {
@@ -48,23 +48,23 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  const systemVault = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-  const vault = await SpaceResource.fetchById(
+  const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+  const space = await SpaceResource.fetchById(
     auth,
     context.query.vaultId as string
   );
-  if (!vault || !systemVault || !vault.canList(auth)) {
+  if (!space || !systemSpace || !space.canList(auth)) {
     return {
       notFound: true,
     };
   }
 
   const isBuilder = auth.isBuilder();
-  const canWriteInVault = vault.canWrite(auth);
+  const canWriteInSpace = space.canWrite(auth);
 
   const integrations: DataSourceIntegration[] = [];
 
-  if (vault.kind === "system") {
+  if (space.kind === "system") {
     let setupWithSuffix: {
       connector: ConnectorProvider;
       suffix: string;
@@ -123,31 +123,31 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       category: context.query.category as DataSourceViewCategory,
       isAdmin,
       isBuilder,
-      canWriteInVault,
+      canWriteInSpace,
       owner,
       plan,
       subscription,
-      vault: vault.toJSON(),
-      systemVault: systemVault.toJSON(),
+      space: space.toJSON(),
+      systemSpace: systemSpace.toJSON(),
       integrations,
     },
   };
 });
 
-export default function Vault({
+export default function Space({
   category,
   isAdmin,
-  canWriteInVault,
+  canWriteInSpace,
   owner,
   plan,
-  vault,
-  systemVault,
+  space,
+  systemSpace,
   integrations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   return (
     <Page.Vertical gap="xl" align="stretch">
-      {vault.kind === "system" && (
+      {space.kind === "system" && (
         <Page.Header
           title="Connection Admin"
           description="Manage the applications and data Dust has access to."
@@ -155,27 +155,27 @@ export default function Vault({
         />
       )}
       {category === "apps" ? (
-        <VaultAppsList
+        <SpaceAppsList
           owner={owner}
-          vault={vault}
-          canWriteInVault={canWriteInVault}
+          space={space}
+          canWriteInSpace={canWriteInSpace}
           onSelect={(sId) => {
-            void router.push(`/w/${owner.sId}/vaults/${vault.sId}/apps/${sId}`);
+            void router.push(`/w/${owner.sId}/vaults/${space.sId}/apps/${sId}`);
           }}
         />
       ) : (
-        <VaultResourcesList
+        <SpaceResourcesList
           owner={owner}
           plan={plan}
-          vault={vault}
-          systemVault={systemVault}
+          space={space}
+          systemSpace={systemSpace}
           isAdmin={isAdmin}
-          canWriteInVault={canWriteInVault}
+          canWriteInSpace={canWriteInSpace}
           category={category}
           integrations={integrations}
           onSelect={(sId) => {
             void router.push(
-              `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}/data_source_views/${sId}`
+              `/w/${owner.sId}/vaults/${space.sId}/categories/${category}/data_source_views/${sId}`
             );
           }}
         />
@@ -184,6 +184,6 @@ export default function Vault({
   );
 }
 
-Vault.getLayout = (page: ReactElement, pageProps: any) => {
-  return <VaultLayout pageProps={pageProps}>{page}</VaultLayout>;
+Space.getLayout = (page: ReactElement, pageProps: any) => {
+  return <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>;
 };

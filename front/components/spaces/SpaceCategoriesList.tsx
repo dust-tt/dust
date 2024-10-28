@@ -25,7 +25,7 @@ import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useState } from "react";
 
-import { useVaultInfo } from "@app/lib/swr/vaults";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
 type RowData = {
@@ -99,36 +99,36 @@ const getTableColumns = () => {
   ];
 };
 
-type VaultCategoriesListProps = {
+type SpaceCategoriesListProps = {
   isAdmin: boolean;
   onButtonClick?: () => void;
   onSelect: (category: string) => void;
   owner: WorkspaceType;
-  vault: SpaceType;
+  space: SpaceType;
 };
 
-export const VaultCategoriesList = ({
+export const SpaceCategoriesList = ({
   isAdmin,
   onButtonClick,
   onSelect,
   owner,
-  vault,
-}: VaultCategoriesListProps) => {
+  space,
+}: SpaceCategoriesListProps) => {
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
 
-  const { vaultInfo, isVaultInfoLoading } = useVaultInfo({
+  const { spaceInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
-    vaultId: vault.sId,
+    spaceId: space.sId,
   });
   const router = useRouter();
 
-  const rows: RowData[] = vaultInfo
+  const rows: RowData[] = spaceInfo
     ? removeNulls(
         DATA_SOURCE_VIEW_CATEGORIES.map((category) =>
-          vaultInfo.categories[category]
+          spaceInfo.categories[category]
             ? {
                 category,
-                ...vaultInfo.categories[category],
+                ...spaceInfo.categories[category],
                 name: CATEGORY_DETAILS[category].label,
                 icon: CATEGORY_DETAILS[category].icon,
                 onClick: () => onSelect(category),
@@ -138,7 +138,7 @@ export const VaultCategoriesList = ({
       )
     : [];
 
-  if (isVaultInfoLoading) {
+  if (isSpaceInfoLoading) {
     return (
       <div className="mt-8 flex justify-center">
         <Spinner />
@@ -148,7 +148,7 @@ export const VaultCategoriesList = ({
 
   const redirectTo = (category: DataSourceViewCategory) => {
     void router.push(
-      `/w/${owner.sId}/vaults/${vault.sId}/categories/${category}`
+      `/w/${owner.sId}/vaults/${space.sId}/categories/${category}`
     );
   };
 
@@ -172,7 +172,7 @@ export const VaultCategoriesList = ({
                 setDataSourceSearch(s);
               }}
             />
-            {isAdmin && onButtonClick && vault.kind === "regular" && (
+            {isAdmin && onButtonClick && space.kind === "regular" && (
               <Button
                 label="Space settings"
                 icon={Cog6ToothIcon}

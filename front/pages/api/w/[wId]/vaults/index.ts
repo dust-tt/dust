@@ -9,7 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { isPrivateVaultsLimitReached } from "@app/lib/vaults";
+import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -102,7 +102,7 @@ async function handler(
 
       const plan = auth.getNonNullablePlan();
       const all = await SpaceResource.listWorkspaceSpaces(auth);
-      const isLimitReached = isPrivateVaultsLimitReached(
+      const isLimitReached = isPrivateSpacesLimitReached(
         all.map((v) => v.toJSON()),
         plan
       );

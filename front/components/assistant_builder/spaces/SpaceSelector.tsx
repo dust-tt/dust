@@ -8,41 +8,41 @@ import {
 import type { SpaceType } from "@dust-tt/types";
 import React, { useState } from "react";
 
+import { getSpaceIcon, getSpaceName, groupSpaces } from "@app/lib/spaces";
 import { classNames } from "@app/lib/utils";
-import { getVaultIcon, getVaultName, groupVaults } from "@app/lib/vaults";
 
-interface VaultSelectorProps {
-  allowedVaults?: SpaceType[];
-  defaultVault: string | undefined;
-  vaults: SpaceType[];
-  renderChildren: (vault?: SpaceType) => React.ReactNode;
+interface SpaceSelectorProps {
+  allowedSpaces?: SpaceType[];
+  defaultSpace: string | undefined;
+  spaces: SpaceType[];
+  renderChildren: (space?: SpaceType) => React.ReactNode;
 }
-export function VaultSelector({
-  allowedVaults,
-  defaultVault,
+export function SpaceSelector({
+  allowedSpaces,
+  defaultSpace,
   renderChildren,
-  vaults,
-}: VaultSelectorProps) {
-  const [selectedVault, setSelectedVault] = useState<string | undefined>(
-    defaultVault
+  spaces,
+}: SpaceSelectorProps) {
+  const [selectedSpace, setSelectedSpace] = useState<string | undefined>(
+    defaultSpace
   );
   const [isAlertDialogOpen, setAlertIsDialogOpen] = useState(false);
 
-  const shouldRenderDirectly = vaults.length === 1;
-  const selectedVaultObj = vaults.find((v) => v.sId === selectedVault);
+  const shouldRenderDirectly = spaces.length === 1;
+  const selectedSpaceObj = spaces.find((s) => s.sId === selectedSpace);
 
   if (shouldRenderDirectly) {
-    if (allowedVaults && !allowedVaults.some((v) => v.sId === vaults[0].sId)) {
+    if (allowedSpaces && !allowedSpaces.some((v) => v.sId === spaces[0].sId)) {
       return renderChildren(undefined);
     }
-    return renderChildren(vaults[0]);
+    return renderChildren(spaces[0]);
   }
 
   // Group by kind and sort.
-  const sortedVaults = groupVaults(vaults)
+  const sortedSpaces = groupSpaces(spaces)
     .filter((i) => i.section !== "system")
     .map((i) =>
-      i.vaults.sort((a, b) => {
+      i.spaces.sort((a, b) => {
         return a.name.localeCompare(b.name);
       })
     )
@@ -51,19 +51,19 @@ export function VaultSelector({
   return (
     <>
       <RadioGroup
-        value={selectedVault}
-        onValueChange={(value) => setSelectedVault(value)}
+        value={selectedSpace}
+        onValueChange={(value) => setSelectedSpace(value)}
       >
-        {sortedVaults.map((vault, index) => {
+        {sortedSpaces.map((space, index) => {
           const isDisabled =
-            allowedVaults && !allowedVaults.some((v) => v.sId === vault.sId);
+            allowedSpaces && !allowedSpaces.some((v) => v.sId === space.sId);
 
           return (
-            <React.Fragment key={vault.sId}>
+            <React.Fragment key={space.sId}>
               {index > 0 && <Separator />}
-              <div key={vault.sId} className="py-2">
+              <div key={space.sId} className="py-2">
                 <RadioGroupChoice
-                  value={vault.sId}
+                  value={space.sId}
                   disabled={isDisabled}
                   iconPosition="start"
                   onClick={() => {
@@ -75,7 +75,7 @@ export function VaultSelector({
                   <div className="flex flex-col">
                     <div className="flex items-center gap-1 pl-2">
                       <Icon
-                        visual={getVaultIcon(vault)}
+                        visual={getSpaceIcon(space)}
                         size="md"
                         className={classNames(
                           "inline-block flex-shrink-0 align-middle",
@@ -89,12 +89,12 @@ export function VaultSelector({
                           isDisabled ? "text-element-700" : "text-element-900"
                         )}
                       >
-                        {getVaultName(vault)}
+                        {getSpaceName(space)}
                       </span>
                     </div>
-                    {selectedVault === vault.sId && (
+                    {selectedSpace === space.sId && (
                       <div className="ml-4 mt-1">
-                        {renderChildren(selectedVaultObj)}
+                        {renderChildren(selectedSpaceObj)}
                       </div>
                     )}
                   </div>
