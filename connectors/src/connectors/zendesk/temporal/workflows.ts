@@ -9,15 +9,29 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
+import { syncZendeskTicketsActivity } from "@connectors/connectors/zendesk/temporal/activities";
 import { INTERVAL_BETWEEN_SYNCS_MS } from "@connectors/connectors/zendesk/temporal/config";
 import type { ZendeskUpdateSignal } from "@connectors/connectors/zendesk/temporal/signals";
 
 import { zendeskUpdatesSignal } from "./signals";
 
-const { saveZendeskConnectorStartSync, saveZendeskConnectorSuccessSync } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "1 minute",
-  });
+const {
+  getZendeskCategoriesActivity,
+  syncZendeskBrandActivity,
+  syncZendeskCategoryActivity,
+  syncZendeskArticlesActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "5 minutes",
+});
+
+const {
+  checkZendeskHelpCenterPermissionsActivity,
+  checkZendeskTicketsPermissionsActivity,
+  saveZendeskConnectorStartSync,
+  saveZendeskConnectorSuccessSync,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "1 minute",
+});
 
 /**
  * Sync Workflow for Zendesk.
@@ -185,11 +199,36 @@ export async function zendeskBrandSyncWorkflow({
   brandId: number;
   currentSyncDateMs: number;
   forceResync: boolean;
-}) {}
+}) {
+  const { helpCenterAllowed, ticketsAllowed } = await syncZendeskBrandActivity({
+    connectorId,
+    brandId,
+    currentSyncDateMs,
+  });
+  if (!helpCenterAllowed && !ticketsAllowed) {
+    return; // nothing to sync since we don't have permission anymore
+  }
+  if (helpCenterAllowed) {
+    await runZendeskBrandHelpCenterSyncActivities({
+      connectorId,
+      brandId,
+      currentSyncDateMs,
+      forceResync,
+    });
+  }
+  if (ticketsAllowed) {
+    await runZendeskBrandTicketsSyncActivities({
+      connectorId,
+      brandId,
+      currentSyncDateMs,
+      forceResync,
+    });
+  }
+}
 
 /**
  * Sync Workflow for a Help Center.
- * We sync a HelpCenter by fetching all the Categories and Articles.
+ * We sync a Help Center by fetching all the Categories and Articles.
  */
 export async function zendeskBrandHelpCenterSyncWorkflow({
   connectorId,
@@ -201,11 +240,24 @@ export async function zendeskBrandHelpCenterSyncWorkflow({
   brandId: number;
   currentSyncDateMs: number;
   forceResync: boolean;
-}) {}
+}) {
+  const isHelpCenterAllowed = await checkZendeskHelpCenterPermissionsActivity({
+    connectorId,
+    brandId,
+  });
+  if (!isHelpCenterAllowed) {
+    return; // nothing to sync
+  }
+  await runZendeskBrandHelpCenterSyncActivities({
+    connectorId,
+    brandId,
+    currentSyncDateMs,
+    forceResync,
+  });
+}
 
 /**
- * Sync Workflow for a Help Center.
- * We sync a HelpCenter by fetching all the Categories and Articles.
+ * Sync Workflow for the Tickets associated to a Brand.
  */
 export async function zendeskBrandTicketsSyncWorkflow({
   connectorId,
@@ -217,11 +269,25 @@ export async function zendeskBrandTicketsSyncWorkflow({
   brandId: number;
   currentSyncDateMs: number;
   forceResync: boolean;
-}) {}
+}) {
+  const areTicketsAllowed = await checkZendeskTicketsPermissionsActivity({
+    connectorId,
+    brandId,
+  });
+  if (!areTicketsAllowed) {
+    return; // nothing to sync
+  }
+  await runZendeskBrandTicketsSyncActivities({
+    connectorId,
+    brandId,
+    currentSyncDateMs,
+    forceResync,
+  });
+}
 
 /**
- * Sync Workflow for a Help Center.
- * We sync a HelpCenter by fetching all the Categories and Articles.
+ * Sync Workflow for a Category.
+ * We sync a Category by fetching all the Articles that belong to it.
  */
 export async function zendeskCategorySyncWorkflow({
   connectorId,
@@ -233,4 +299,88 @@ export async function zendeskCategorySyncWorkflow({
   categoryId: number;
   currentSyncDateMs: number;
   forceResync: boolean;
-}) {}
+}) {
+  const isCategoryAllowed = await syncZendeskCategoryActivity({
+    connectorId,
+    categoryId,
+    currentSyncDateMs,
+  });
+  if (!isCategoryAllowed) {
+    return; // nothing to sync
+  }
+  await syncZendeskArticlesActivity({
+    connectorId,
+    categoryId,
+    currentSyncDateMs,
+    forceResync,
+  });
+}
+
+/**
+ * Run the activities necessary to sync the Help Center of a Brand.
+ */
+async function runZendeskBrandHelpCenterSyncActivities({
+  connectorId,
+  brandId,
+  currentSyncDateMs,
+  forceResync,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  currentSyncDateMs: number;
+  forceResync: boolean;
+}) {
+  const categoryIds = await getZendeskCategoriesActivity({
+    connectorId,
+    brandId,
+  });
+  const categoriesToSync = new Set<number>();
+  for (const categoryId of categoryIds) {
+    const wasCategoryUpdated = await syncZendeskCategoryActivity({
+      connectorId,
+      categoryId,
+      currentSyncDateMs,
+    });
+    if (wasCategoryUpdated) {
+      categoriesToSync.add(categoryId);
+    }
+  }
+
+  /// grouping the articles by category for a lower granularity
+  for (const categoryId of categoriesToSync) {
+    await syncZendeskArticlesActivity({
+      connectorId,
+      categoryId,
+      currentSyncDateMs,
+      forceResync,
+    });
+  }
+}
+
+/**
+ * Run the activities necessary to sync the Tickets of a Brand.
+ */
+// eslint-disable-next-line no-empty-pattern
+async function runZendeskBrandTicketsSyncActivities({
+  connectorId,
+  brandId,
+  currentSyncDateMs,
+  forceResync,
+}: {
+  connectorId: ModelId;
+  brandId: number;
+  currentSyncDateMs: number;
+  forceResync: boolean;
+}) {
+  let hasMore = true;
+  let afterCursor = null;
+  do {
+    ({ hasMore, afterCursor } = await syncZendeskTicketsActivity({
+      connectorId,
+      brandId,
+      currentSyncDateMs,
+      forceResync,
+      afterCursor,
+    }));
+  } while (hasMore);
+}
