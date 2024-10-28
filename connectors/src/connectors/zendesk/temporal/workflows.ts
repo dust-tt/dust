@@ -2,11 +2,9 @@ import type { ModelId } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import {
   continueAsNew,
-  executeChild,
   proxyActivities,
   setHandler,
   sleep,
-  workflowInfo,
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
@@ -83,14 +81,6 @@ export async function zendeskSyncWorkflow({
     // TODO: refresh the data we don't receive updates about through the webhooks here
   }
 
-  const {
-    workflowId,
-    searchAttributes: parentSearchAttributes,
-    memo,
-  } = workflowInfo();
-
-  const currentSyncDateMs = new Date().getTime();
-
   // Async operations allow Temporal's event loop to process signals.
   // If a signal arrives during an async operation, it will update the set before the next iteration.
   while (brandIds.size > 0) {
@@ -100,17 +90,7 @@ export async function zendeskSyncWorkflow({
       if (!brandIds.has(brandId)) {
         continue;
       }
-      const relatedSignal = brandSignals.find(
-        (signal) => signal.zendeskId === brandId
-      );
-      const forceResync = relatedSignal?.forceResync || false;
-
-      await executeChild(zendeskBrandSyncWorkflow, {
-        workflowId: `${workflowId}-brand-${brandId}`,
-        searchAttributes: parentSearchAttributes,
-        args: [{ connectorId, brandId, currentSyncDateMs, forceResync }],
-        memo,
-      });
+      /// TODO: launch a child sync workflow for the whole brand here
       brandIds.delete(brandId);
     }
   }
@@ -120,17 +100,7 @@ export async function zendeskSyncWorkflow({
       if (!brandIds.has(brandId)) {
         continue;
       }
-      const relatedSignal = brandHelpCenterSignals.find(
-        (signal) => signal.zendeskId === brandId
-      );
-      const forceResync = relatedSignal?.forceResync || false;
-
-      await executeChild(zendeskBrandHelpCenterSyncWorkflow, {
-        workflowId: `${workflowId}-help-center-${brandId}`,
-        searchAttributes: parentSearchAttributes,
-        args: [{ connectorId, brandId, currentSyncDateMs, forceResync }],
-        memo,
-      });
+      /// TODO: launch a child sync workflow for the help center
       brandHelpCenterIds.delete(brandId);
     }
   }
@@ -140,17 +110,7 @@ export async function zendeskSyncWorkflow({
       if (!brandIds.has(brandId)) {
         continue;
       }
-      const relatedSignal = brandTicketSignals.find(
-        (signal) => signal.zendeskId === brandId
-      );
-      const forceResync = relatedSignal?.forceResync || false;
-
-      await executeChild(zendeskBrandTicketsSyncWorkflow, {
-        workflowId: `${workflowId}-tickets-${brandId}`,
-        searchAttributes: parentSearchAttributes,
-        args: [{ connectorId, brandId, currentSyncDateMs, forceResync }],
-        memo,
-      });
+      /// TODO: launch a child sync workflow for the tickets
       brandTicketsIds.delete(brandId);
     }
   }
@@ -160,17 +120,7 @@ export async function zendeskSyncWorkflow({
       if (!categoryIds.has(categoryId)) {
         continue;
       }
-      const relatedSignal = categorySignals.find(
-        (signal) => signal.zendeskId === categoryId
-      );
-      const forceResync = relatedSignal?.forceResync || false;
-
-      await executeChild(zendeskCategorySyncWorkflow, {
-        workflowId: `${workflowId}-category-${categoryId}`,
-        searchAttributes: parentSearchAttributes,
-        args: [{ connectorId, categoryId, currentSyncDateMs, forceResync }],
-        memo,
-      });
+      /// TODO: launch a child sync workflow for the category
       categoryIds.delete(categoryId);
     }
   }
@@ -183,66 +133,3 @@ export async function zendeskSyncWorkflow({
 
   await continueAsNew<typeof zendeskSyncWorkflow>({ connectorId });
 }
-
-/**
- * Sync Workflow for an entire Brand (Help Center + Tickets).
- */
-export async function zendeskBrandSyncWorkflow({
-  connectorId,
-  brandId,
-  currentSyncDateMs,
-  forceResync,
-}: {
-  connectorId: ModelId;
-  brandId: number;
-  currentSyncDateMs: number;
-  forceResync: boolean;
-}) {}
-
-/**
- * Sync Workflow for a Help Center.
- * We sync a HelpCenter by fetching all the Categories and Articles.
- */
-export async function zendeskBrandHelpCenterSyncWorkflow({
-  connectorId,
-  brandId,
-  currentSyncDateMs,
-  forceResync,
-}: {
-  connectorId: ModelId;
-  brandId: number;
-  currentSyncDateMs: number;
-  forceResync: boolean;
-}) {}
-
-/**
- * Sync Workflow for a Help Center.
- * We sync a HelpCenter by fetching all the Categories and Articles.
- */
-export async function zendeskBrandTicketsSyncWorkflow({
-  connectorId,
-  brandId,
-  currentSyncDateMs,
-  forceResync,
-}: {
-  connectorId: ModelId;
-  brandId: number;
-  currentSyncDateMs: number;
-  forceResync: boolean;
-}) {}
-
-/**
- * Sync Workflow for a Help Center.
- * We sync a HelpCenter by fetching all the Categories and Articles.
- */
-export async function zendeskCategorySyncWorkflow({
-  connectorId,
-  categoryId,
-  currentSyncDateMs,
-  forceResync,
-}: {
-  connectorId: ModelId;
-  categoryId: number;
-  currentSyncDateMs: number;
-  forceResync: boolean;
-}) {}
