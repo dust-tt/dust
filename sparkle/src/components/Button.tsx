@@ -129,6 +129,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       isSelect = false,
       isPulsing = false,
       size,
+      "aria-label": ariaLabel,
       ...props
     },
     ref
@@ -163,6 +164,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         variant={variant}
         disabled={isLoading || props.disabled}
         className={isPulsing ? "s-animate-pulse" : ""}
+        aria-label={ariaLabel || tooltip || label}
         style={
           {
             "--pulse-color": "#93C5FD",
