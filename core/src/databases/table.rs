@@ -266,7 +266,8 @@ impl LocalTable {
         }
         info!(
             duration = utils::now() - now,
-            "DSSTRUCTSTAT Upsert rows validation"
+            table_id = self.table.table_id(),
+            "DSSTRUCTSTAT [upsert_rows] validation"
         );
 
         now = utils::now();
@@ -285,6 +286,7 @@ impl LocalTable {
         };
         info!(
             duration = utils::now() - now,
+            table_id = self.table.table_id(),
             "DSSTRUCTSTAT [upsert_rows] table schema"
         );
 
@@ -299,6 +301,7 @@ impl LocalTable {
             .await?;
         info!(
             duration = utils::now() - now,
+            table_id = self.table.table_id(),
             "DSSTRUCTSTAT [upsert_rows] update table_schema"
         );
 
@@ -321,6 +324,7 @@ impl LocalTable {
         }
         info!(
             duration = utils::now() - now,
+            table_id = self.table.table_id(),
             "DSSTRUCTSTAT [upsert_rows] invalidate table schema"
         );
 
@@ -335,6 +339,7 @@ impl LocalTable {
             .await?;
         info!(
             duration = utils::now() - now,
+            table_id = self.table.table_id(),
             "DSSTRUCTSTAT [upsert_rows] rows upsert"
         );
 
@@ -361,6 +366,7 @@ impl LocalTable {
         .await?;
         info!(
             duration = utils::now() - now,
+            table_id = self.table.table_id(),
             "DSSTRUCTSTAT [upsert_rows] invalidate dbs"
         );
 
