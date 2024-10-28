@@ -328,6 +328,8 @@ export function AgentMessage({
           <Button
             key="copy-msg-button"
             tooltip="Copy to clipboard"
+            variant="outline"
+            size="xs"
             onClick={() => {
               void navigator.clipboard.writeText(
                 cleanUpCitations(agentMessageToRender.content || "")
@@ -338,6 +340,8 @@ export function AgentMessage({
           <Button
             key="retry-msg-button"
             tooltip="Retry"
+            variant="outline"
+            size="xs"
             onClick={() => {
               void retryHandler(agentMessageToRender);
             }}
