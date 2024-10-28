@@ -229,7 +229,7 @@ export async function getUserConversations(
   }
 
   const participations = await ConversationParticipant.findAll({
-    attributes: [],
+    attributes: ["userId", "createdAt"],
     where: {
       userId: user.id,
       action: "posted",
@@ -241,6 +241,7 @@ export async function getUserConversations(
         required: true,
       },
     ],
+    order: [["createdAt", "DESC"]],
   });
 
   const conversations = participations.reduce<ConversationWithoutContentType[]>(
