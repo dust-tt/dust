@@ -29,6 +29,7 @@ import {
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@dust-tt/types";
+import _ from "lodash";
 import { useMemo, useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
@@ -87,20 +88,90 @@ export function AssistantActionsSection({
     }, initial);
   }, [agentConfiguration.actions, agentConfiguration.sId]);
 
+  const retrievalByDataSources = useMemo(() => {
+    const acc: Record<string, DataSourceConfiguration> = {};
+    categorizedActions.retrieval.forEach((action) => {
+      action.dataSources.forEach((ds) => {
+        if (!acc[ds.dataSourceViewId]) {
+          // First one sets the filter
+          acc[ds.dataSourceViewId] = ds;
+        } else {
+          if (ds.filter.parents) {
+            const existingFilter = acc[ds.dataSourceViewId].filter.parents;
+            // Merge the filters if they are not null
+            if (existingFilter) {
+              existingFilter.in = existingFilter.in.concat(
+                ds.filter.parents.in
+              );
+              existingFilter.not = existingFilter.not.concat(
+                ds.filter.parents.not
+              );
+
+              // We need to remove duplicates
+              existingFilter.in = _.uniq(existingFilter.in);
+              existingFilter.not = _.uniq(existingFilter.not);
+            }
+          } else {
+            // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
+            acc[ds.dataSourceViewId].filter.parents = null;
+          }
+        }
+      });
+    });
+    return acc;
+  }, [categorizedActions.retrieval]);
+
+  const queryTableByDataSources = useMemo(() => {
+    const acc: Record<string, DataSourceConfiguration> = {};
+    categorizedActions.queryTables.forEach((action) => {
+      const dataSources = getDataSourceConfigurationsForTableAction(
+        action,
+        dataSourceViews
+      );
+      dataSources.forEach((ds) => {
+        if (!acc[ds.dataSourceViewId]) {
+          // First one sets the filter
+          acc[ds.dataSourceViewId] = ds;
+        } else {
+          if (ds.filter.parents) {
+            const existingFilter = acc[ds.dataSourceViewId].filter.parents;
+            // Merge the filters if they are not null
+            if (existingFilter) {
+              existingFilter.in = existingFilter.in.concat(
+                ds.filter.parents.in
+              );
+              existingFilter.not = existingFilter.not.concat(
+                ds.filter.parents.not
+              );
+
+              // We need to remove duplicates
+              existingFilter.in = _.uniq(existingFilter.in);
+              existingFilter.not = _.uniq(existingFilter.not);
+            }
+          } else {
+            // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
+            acc[ds.dataSourceViewId].filter.parents = null;
+          }
+        }
+      });
+    });
+    return acc;
+  }, [categorizedActions.queryTables, dataSourceViews]);
+
   if (agentConfiguration.actions.length === 0) {
     return null;
   }
 
   return (
     <>
-      {categorizedActions.retrieval.length > 0 && (
+      {Object.values(retrievalByDataSources).length > 0 && (
         <ActionSection title="Retrieve from Documents">
-          {categorizedActions.retrieval.map((action, index) => (
+          {Object.values(retrievalByDataSources).map((dataSources, index) => (
             <div className="flex flex-col gap-2" key={`retrieval-${index}`}>
               <DataSourceViewsSection
                 owner={owner}
                 dataSourceViews={dataSourceViews}
-                dataSourceConfigurations={action.dataSources}
+                dataSourceConfigurations={[dataSources]}
                 viewType="documents"
               />
             </div>
@@ -108,17 +179,14 @@ export function AssistantActionsSection({
         </ActionSection>
       )}
 
-      {categorizedActions.queryTables.length > 0 && (
+      {Object.values(queryTableByDataSources).length > 0 && (
         <ActionSection title="Query Tables">
-          {categorizedActions.queryTables.map((action, index) => (
+          {Object.values(queryTableByDataSources).map((dataSources, index) => (
             <div className="flex flex-col gap-2" key={`query-tables-${index}`}>
               <DataSourceViewsSection
                 owner={owner}
                 dataSourceViews={dataSourceViews}
-                dataSourceConfigurations={getDataSourceConfigurationsForTableAction(
-                  action,
-                  dataSourceViews
-                )}
+                dataSourceConfigurations={[dataSources]}
                 viewType="tables"
               />
             </div>
