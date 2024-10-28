@@ -2,6 +2,7 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import {
+  Button,
   Citation,
   ConversationMessage,
   MagnifyingGlassIcon,
@@ -35,11 +36,11 @@ export const ConversationExample = () => {
             name="@assistant"
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
             buttons={[
-              {
-                icon: MagnifyingGlassIcon,
-                label: "Search details",
-                onClick: () => {},
-              },
+              <Button
+                icon={MagnifyingGlassIcon}
+                label="Search details"
+                onClick={() => {}}
+              />,
             ]}
             citations={[
               <Citation
@@ -103,11 +104,11 @@ export const ConversationExample = () => {
             name="@assistant"
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
             buttons={[
-              {
-                icon: MagnifyingGlassIcon,
-                label: "Search details",
-                onClick: () => {},
-              },
+              <Button
+                icon={MagnifyingGlassIcon}
+                label="Search details"
+                onClick={() => {}}
+              />,
             ]}
             citations={[
               <Citation
