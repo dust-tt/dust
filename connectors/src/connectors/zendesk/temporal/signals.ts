@@ -9,4 +9,3 @@ export interface ZendeskUpdateSignal {
 export const zendeskUpdatesSignal = defineSignal<[ZendeskUpdateSignal[]]>(
   "zendeskUpdatesSignal"
 );
-
