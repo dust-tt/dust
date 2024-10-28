@@ -490,9 +490,10 @@ const SpaceDataSourceViewItem = ({
     : basePath;
 
   const isEmpty = isExpanded && !isNodesLoading && nodes.length === 0;
-  const folders = nodes.filter((node) => node.expandable);
-  const notFolders = nodes.filter((node) => !node.expandable);
-  const itemsLabel = notFolders.length === 1 ? "item" : "items";
+  const expandableNodes = nodes.filter((node) => node.expandable);
+  const notExpandableNodes = nodes.filter((node) => !node.expandable);
+  const notExpandableNodesLabel =
+    notExpandableNodes.length === 1 ? "item" : "items";
 
   return (
     <Tree.Item
@@ -508,7 +509,7 @@ const SpaceDataSourceViewItem = ({
     >
       {isExpanded && (
         <Tree isLoading={isNodesLoading}>
-          {folders.map((node) => (
+          {expandableNodes.map((node) => (
             <SpaceDataSourceViewItem
               item={item}
               key={node.internalId}
@@ -517,9 +518,14 @@ const SpaceDataSourceViewItem = ({
               node={node}
             />
           ))}
-          {notFolders.length > 0 && (
+          {notExpandableNodes.length > 0 && (
             <Tree.Empty
-              label={`+ ${notFolders.length} ${folders.length > 0 ? "other " : ""} ${itemsLabel}`}
+              label={
+                expandableNodes.length
+                  ? `and ${notExpandableNodes.length} ${notExpandableNodesLabel}`
+                  : `${notExpandableNodes.length} ${notExpandableNodesLabel}`
+              }
+              onItemClick={() => router.push(dataSourceViewPath)}
             />
           )}
         </Tree>
