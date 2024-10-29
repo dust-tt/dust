@@ -25,7 +25,6 @@ import {
 } from "@connectors/lib/models/zendesk";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -104,17 +103,6 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       transaction,
     });
     return new Ok(undefined);
-  }
-
-  /**
-   * Deletes the brand and all associated data (tickets, categories, articles).
-   */
-  // eslint-disable-next-line no-empty-pattern
-  async remove({}: {
-    dataSourceConfig: DataSourceConfig;
-    loggerArgs: Record<string, string | number>;
-  }) {
-    // TODO: implement removal for the children first.
   }
 
   toJSON(): Record<string, unknown> {
@@ -235,6 +223,21 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     );
   }
 
+  static async fetchAllTickets({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskTicketResource[]> {
+    const tickets = await ZendeskTicket.findAll({
+      where: { connectorId, brandId },
+    });
+    return tickets.map(
+      (ticket) => new ZendeskTicketResource(ZendeskTicket, ticket)
+    );
+  }
+
   static async fetchReadOnlyCategories({
     connectorId,
     brandId,
@@ -244,6 +247,22 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }): Promise<ZendeskCategoryResource[]> {
     const categories = await ZendeskCategory.findAll({
       where: { connectorId, brandId, permission: "read" },
+    });
+    return categories.map(
+      (category) =>
+        category && new ZendeskCategoryResource(ZendeskCategory, category)
+    );
+  }
+
+  static async fetchAllCategories({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskCategoryResource[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, brandId },
     });
     return categories.map(
       (category) =>
@@ -366,17 +385,6 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return new Ok(undefined);
   }
 
-  /**
-   * Deletes the category and all associated data (articles).
-   */
-  // eslint-disable-next-line no-empty-pattern
-  async remove({}: {
-    dataSourceConfig: DataSourceConfig;
-    loggerArgs: Record<string, string | number>;
-  }) {
-    // TODO: implement removal for the children first.
-  }
-
   toJSON(): Record<string, unknown> {
     return {
       id: this.id,
@@ -441,6 +449,21 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
   }): Promise<ZendeskArticleResource[]> {
     const articles = await ZendeskArticle.findAll({
       where: { connectorId, categoryId, permission: "read" },
+    });
+    return articles.map(
+      (article) => new ZendeskArticleResource(ZendeskArticle, article)
+    );
+  }
+
+  static async fetchAllArticles({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }): Promise<ZendeskArticleResource[]> {
+    const articles = await ZendeskArticle.findAll({
+      where: { connectorId, categoryId },
     });
     return articles.map(
       (article) => new ZendeskArticleResource(ZendeskArticle, article)
