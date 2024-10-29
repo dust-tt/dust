@@ -99,9 +99,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
    */
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
-      where: {
-        connectorId: this.connectorId,
-      },
+      where: { connectorId: this.connectorId, brandId: this.brandId },
       transaction,
     });
     return new Ok(undefined);
@@ -412,9 +410,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
-      where: {
-        connectorId: this.connectorId,
-      },
+      where: { connectorId: this.connectorId, categoryId: this.categoryId },
       transaction,
     });
     return new Ok(undefined);
@@ -575,9 +571,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
-      where: {
-        connectorId: this.connectorId,
-      },
+      where: { connectorId: this.connectorId, ticketId: this.ticketId },
       transaction,
     });
     return new Ok(undefined);
@@ -650,9 +644,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
-      where: {
-        connectorId: this.connectorId,
-      },
+      where: { connectorId: this.connectorId, articleId: this.articleId },
       transaction,
     });
     return new Ok(undefined);
