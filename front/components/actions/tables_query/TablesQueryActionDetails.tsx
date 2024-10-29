@@ -12,11 +12,9 @@ import { useCallback } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import {
-  CodeBlock,
-  RenderMessageMarkdown,
-} from "@app/components/assistant/RenderMessageMarkdown";
-import { ContentBlockWrapper } from "@app/components/misc/ContentBlockWrapper";
+import { CodeBlock } from "@app/components/assistant/markdown/CodeBlock";
+import { ContentBlockWrapper } from "@app/components/assistant/markdown/ContentBlockWrapper";
+import { RenderMessageMarkdown } from "@app/components/assistant/markdown/RenderMessageMarkdown";
 
 export function TablesQueryActionDetails({
   action,

@@ -16,10 +16,8 @@ import {
   useState,
 } from "react";
 
-import {
-  MarkDownContentContext,
-  RenderMessageMarkdown,
-} from "@app/components/assistant/RenderMessageMarkdown";
+import { MarkdownContentContext } from "@app/components/assistant/markdown/MarkdownContentContext";
+import { RenderMessageMarkdown } from "@app/components/assistant/markdown/RenderMessageMarkdown";
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
@@ -202,7 +200,7 @@ export function VisualizationActionIframe({
     }
   }, [errorMessage, handleVisualizationRetry, retryClicked]);
 
-  const canRetry = useContext(MarkDownContentContext)?.isLastMessage ?? false;
+  const canRetry = useContext(MarkdownContentContext)?.isLastMessage ?? false;
 
   return (
     <div className="relative flex flex-col">

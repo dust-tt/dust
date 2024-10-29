@@ -4,9 +4,10 @@ import {
   ClipboardIcon,
   IconButton,
 } from "@dust-tt/sparkle";
-import { useCallback } from "react";
+import { useCallback, useContext } from "react";
 
-import { useCopyToClipboard } from "@app/hooks/useCopyToClipboard";
+import { MarkdownContentContext } from "@app/components/assistant/markdown/MarkdownContentContext";
+import { useCopyToClipboard } from "@app/components/assistant/markdown/useCopyToClipboard";
 import { classNames } from "@app/lib/utils";
 
 type SupportedContentType = "application/json" | "text/csv";
@@ -43,7 +44,7 @@ export function ContentBlockWrapper({
   getContentToDownload,
 }: ContentBlockWrapperProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
-
+  const { isDarkMode } = useContext(MarkdownContentContext);
   const handleCopyToClipboard = useCallback(() => {
     if (!content) {
       return;
@@ -101,7 +102,7 @@ export function ContentBlockWrapper({
       <div className="absolute right-2 top-2 mx-2 flex gap-3 rounded-xl">
         {getContentToDownload && (
           <IconButton
-            variant="ghost"
+            variant={isDarkMode ? "ghost" : "outline"}
             size="xs"
             icon={ArrowDownOnSquareIcon}
             onClick={handleDownload}
@@ -109,7 +110,7 @@ export function ContentBlockWrapper({
         )}
         {content && (
           <IconButton
-            variant="ghost"
+            variant={isDarkMode ? "ghost" : "outline"}
             size="xs"
             icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
             onClick={handleCopyToClipboard}

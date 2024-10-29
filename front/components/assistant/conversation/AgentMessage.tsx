@@ -22,15 +22,14 @@ import type {
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
+  AgentMessageType,
   GenerationTokensEvent,
   LightAgentConfigurationType,
   RetrievalActionType,
   UserType,
   WebsearchActionType,
-  WebsearchResultType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { AgentMessageType, RetrievalDocumentType } from "@dust-tt/types";
 import {
   assertNever,
   isRetrievalActionType,
@@ -47,13 +46,21 @@ import {
   useRef,
   useState,
 } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
-import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
+import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
+import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
-import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
+import type { MarkdownCitation } from "@app/components/assistant/markdown/MarkdownCitation";
+import { RenderMessageMarkdown } from "@app/components/assistant/markdown/RenderMessageMarkdown";
+import {
+  getVisualizationPlugin,
+  sanitizeVisualizationContent,
+  visualizationDirective,
+} from "@app/components/markdown/VisualizationBlock";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
@@ -96,11 +103,11 @@ export function AgentMessage({
     useState<boolean>(false);
 
   const [references, setReferences] = useState<{
-    [key: string]: RetrievalDocumentType | WebsearchResultType;
+    [key: string]: MarkdownCitation;
   }>({});
 
   const [activeReferences, setActiveReferences] = useState<
-    { index: number; document: RetrievalDocumentType | WebsearchResultType }[]
+    { index: number; document: MarkdownCitation }[]
   >([]);
 
   const shouldStream = (() => {
@@ -354,11 +361,7 @@ export function AgentMessage({
         ];
 
   // References logic.
-
-  function updateActiveReferences(
-    document: RetrievalDocumentType | WebsearchResultType,
-    index: number
-  ) {
+  function updateActiveReferences(document: MarkdownCitation, index: number) {
     const existingIndex = activeReferences.find((r) => r.index === index);
     if (!existingIndex) {
       setActiveReferences([...activeReferences, { index, document }]);
@@ -387,13 +390,12 @@ export function AgentMessage({
     const allDocs = removeNulls(
       retrievalActionsWithDocs.map((a) => a.documents).flat()
     );
-    const allDocsReferences = allDocs.reduce(
-      (acc, d) => {
-        acc[d.reference] = d;
-        return acc;
-      },
-      {} as { [key: string]: RetrievalDocumentType }
-    );
+    const allDocsReferences = allDocs.reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, d) => {
+      acc[d.reference] = makeDocumentCitation(d);
+      return acc;
+    }, {});
 
     // Websearch actions
     const websearchActionsWithResults = agentMessageToRender.actions
@@ -402,13 +404,12 @@ export function AgentMessage({
     const allWebResults = removeNulls(
       websearchActionsWithResults.map((a) => a.output?.results).flat()
     );
-    const allWebReferences = allWebResults.reduce(
-      (acc, l) => {
-        acc[l.reference] = l;
-        return acc;
-      },
-      {} as { [key: string]: WebsearchResultType }
-    );
+    const allWebReferences = allWebResults.reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, l) => {
+      acc[l.reference] = makeWebsearchResultsCitation(l);
+      return acc;
+    }, {});
 
     // Merge all references
     setReferences({ ...allDocsReferences, ...allWebReferences });
@@ -417,28 +418,31 @@ export function AgentMessage({
     agentMessageToRender.status,
     agentMessageToRender.sId,
   ]);
-
   const { configuration: agentConfiguration } = agentMessageToRender;
 
-  const customRenderer = useMemo(() => {
-    return {
-      visualization: (code: string, complete: boolean, lineStart: number) => {
-        return (
-          <VisualizationActionIframe
-            owner={owner}
-            visualization={{
-              code,
-              complete,
-              identifier: `viz-${message.sId}-${lineStart}`,
-            }}
-            key={`viz-${message.sId}-${lineStart}`}
-            conversationId={conversationId}
-            agentConfigurationId={agentConfiguration.sId}
-          />
-        );
-      },
-    };
-  }, [owner, conversationId, message.sId, agentConfiguration.sId]);
+  // @ts-expect-error - `visualization` is a custom tag, currently refused by
+  // react-markdown types although the functionality is supported
+  const additionalMarkdownComponents: Components = useMemo(
+    () => ({
+      visualization: getVisualizationPlugin(
+        owner,
+        agentConfiguration.sId,
+        conversationId,
+        message.sId
+      ),
+    }),
+    [owner, conversationId, message.sId, agentConfiguration.sId]
+  );
+
+  const additionalMarkdownPlugins: PluggableList = useMemo(
+    () => [visualizationDirective],
+    []
+  );
+
+  const citations = useMemo(
+    () => getCitations({ activeReferences, lastHoveredReference }),
+    [activeReferences, lastHoveredReference]
+  );
 
   const canMention =
     agentConfiguration.scope !== "private" ||
@@ -470,6 +474,7 @@ export function AgentMessage({
       }}
       type="agent"
       size={size}
+      citations={citations}
     >
       <div>
         {renderAgentMessage({
@@ -491,7 +496,7 @@ export function AgentMessage({
     lastTokenClassification,
   }: {
     agentMessage: AgentMessageType;
-    references: { [key: string]: RetrievalDocumentType | WebsearchResultType };
+    references: { [key: string]: MarkdownCitation };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
@@ -545,7 +550,7 @@ export function AgentMessage({
             ) : (
               <>
                 <RenderMessageMarkdown
-                  content={agentMessage.content}
+                  content={sanitizeVisualizationContent(agentMessage.content)}
                   isStreaming={
                     streaming && lastTokenClassification === "tokens"
                   }
@@ -554,15 +559,10 @@ export function AgentMessage({
                     updateActiveReferences,
                     setHoveredReference: setLastHoveredReference,
                   }}
-                  customRenderer={customRenderer}
                   isLastMessage={isLastMessage}
+                  additionalMarkdownComponents={additionalMarkdownComponents}
+                  additionalMarkdownPlugins={additionalMarkdownPlugins}
                 />
-                {activeReferences.length > 0 && (
-                  <Citations
-                    activeReferences={activeReferences}
-                    lastHoveredReference={lastHoveredReference}
-                  />
-                )}
               </>
             )}
           </div>
@@ -618,49 +618,31 @@ function AssitantName(
   );
 }
 
-function Citations({
+function getCitations({
   activeReferences,
   lastHoveredReference,
 }: {
   activeReferences: {
     index: number;
-    document: RetrievalDocumentType | WebsearchResultType;
+    document: MarkdownCitation;
   }[];
   lastHoveredReference: number | null;
 }) {
   activeReferences.sort((a, b) => a.index - b.index);
-  return (
-    <div
-      className="grid grid-cols-3 items-stretch gap-2 pb-4 pt-8 md:grid-cols-4"
-      // ref={citationContainer}
-    >
-      {activeReferences.map(({ document, index }) => {
-        const [documentCitation] =
-          "link" in document
-            ? [
-                {
-                  href: document.link,
-                  title: document.title,
-                  type: "document" as const,
-                },
-              ]
-            : makeDocumentCitations([document]);
-
-        return (
-          <Citation
-            key={index}
-            size="xs"
-            sizing="fluid"
-            isBlinking={lastHoveredReference === index}
-            type={documentCitation.type}
-            title={documentCitation.title}
-            href={documentCitation.href}
-            index={index}
-          />
-        );
-      })}
-    </div>
-  );
+  return activeReferences.map(({ document, index }) => {
+    return (
+      <Citation
+        key={index}
+        size="xs"
+        sizing="fluid"
+        isBlinking={lastHoveredReference === index}
+        type={document.type}
+        title={document.title}
+        href={document.href}
+        index={index}
+      />
+    );
+  });
 }
 
 function ErrorMessage({

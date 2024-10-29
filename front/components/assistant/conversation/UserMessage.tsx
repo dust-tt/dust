@@ -6,7 +6,7 @@ import { ConversationMessage } from "@dust-tt/sparkle";
 import type { UserMessageType, WorkspaceType } from "@dust-tt/types";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
-import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
+import { RenderMessageMarkdown } from "@app/components/assistant/markdown/RenderMessageMarkdown";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
