@@ -8,6 +8,7 @@ import { Label } from "./Label";
 export interface InputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> {
   error?: string | null;
+  help?: string | null;
   value?: string | null;
   showErrorLabel?: boolean;
   className?: string;
@@ -46,6 +47,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     {
       className,
       error,
+      help,
       value,
       label,
       disabled,
@@ -56,7 +58,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ) => {
     const state = error ? "error" : disabled ? "disabled" : "default";
     return (
-      <div className="s-flex s-flex-col s-gap-1 s-px-1">
+      <div className="s-flex s-flex-col s-gap-1">
         {label && <Label htmlFor={props.name}>{label}</Label>}
         <input
           ref={ref}
@@ -66,9 +68,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           disabled={disabled}
           {...props}
         />
-        {showErrorLabel && error && (
-          <div className="s-ml-3.5 s-text-xs s-text-foreground-warning">
-            {error}
+        {(help || (showErrorLabel && error)) && (
+          <div
+            className={cn(
+              "s-ml-3.5 s-text-xs",
+              error ? "s-text-foreground-warning" : "s-text-muted-foreground"
+            )}
+          >
+            {error && showErrorLabel ? error : help}
           </div>
         )}
       </div>
