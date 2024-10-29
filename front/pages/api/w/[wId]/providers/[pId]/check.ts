@@ -114,10 +114,13 @@ async function handler(
           );
 
           if (!testGenerate.ok) {
-            const err = await testGenerate.json();
+            const errRes = await testGenerate.json();
+            const errType = errRes.error?.type ?? "unknown error";
+            const errMessage =
+              errRes.error?.message ?? "contact us at team@dust.tt";
             res
               .status(400)
-              .json({ ok: false, error: err.message || err.detail });
+              .json({ ok: false, error: `[${errType}] ${errMessage}` });
           } else {
             await testGenerate.json();
             res.status(200).json({ ok: true });
