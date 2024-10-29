@@ -10,6 +10,7 @@ import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskBrandResource,
+  ZendeskCategoryResource,
   ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
 
@@ -233,12 +234,59 @@ export async function getZendeskCategoriesActivity({
  *
  * @returns true if the Category was updated, false if it was deleted.
  */
-// eslint-disable-next-line no-empty-pattern
-export async function syncZendeskCategoryActivity({}: {
+export async function syncZendeskCategoryActivity({
+  connectorId,
+  categoryId,
+  currentSyncDateMs,
+}: {
   connectorId: ModelId;
   categoryId: number;
   currentSyncDateMs: number;
 }): Promise<boolean> {
+  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+  const configuration = await _getZendeskConfigurationOrRaise(connectorId);
+  const categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
+    connectorId,
+    categoryId,
+  });
+  if (!categoryInDb) {
+    throw new Error(
+      `[Zendesk] Category not found, connectorId: ${connectorId}, categoryId: ${categoryId}`
+    );
+  }
+
+  // if all rights were revoked, we delete the category data.
+  if (categoryInDb.permission === "none") {
+    await categoryInDb.remove({ dataSourceConfig, loggerArgs });
+    return false;
+  }
+
+  const accessToken = await getZendeskAccessToken(connector.connectionId);
+  const zendeskApiClient = createZendeskClient({
+    token: accessToken,
+    subdomain: configuration.subdomain,
+  });
+
+  // if the category is not on Zendesk anymore, we delete it
+  const { result: fetchedCategory } =
+    await zendeskApiClient.helpcenter.categories.show(categoryId);
+  if (!fetchedCategory) {
+    await categoryInDb.remove({ dataSourceConfig, loggerArgs });
+    return false;
+  }
+
+  // otherwise, we update the category name and lastUpsertedTs
+  await categoryInDb.update({
+    name: fetchedCategory.name || "Category",
+    lastUpsertedTs: new Date(currentSyncDateMs),
+  });
   return true;
 }
 

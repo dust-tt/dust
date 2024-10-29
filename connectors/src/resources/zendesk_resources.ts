@@ -366,6 +366,17 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return new Ok(undefined);
   }
 
+  /**
+   * Deletes the category and all associated data (articles).
+   */
+  // eslint-disable-next-line no-empty-pattern
+  async remove({}: {
+    dataSourceConfig: DataSourceConfig;
+    loggerArgs: Record<string, string | number>;
+  }) {
+    // TODO: implement removal for the children first.
+  }
+
   toJSON(): Record<string, unknown> {
     return {
       id: this.id,
