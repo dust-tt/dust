@@ -689,7 +689,6 @@ const AdvancedSettingsModal = ({
           <div className="flex">
             <Button
               variant="outline"
-              className="outline"
               label="Add Header"
               onClick={() => {
                 onSave([...headers, { key: "", value: "" }]);
