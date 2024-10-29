@@ -29,9 +29,12 @@ import {
   isWebsite,
 } from "@app/lib/data_sources";
 
-export type ContentActionKey =
+export type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"
-  | "TableUploadOrEdit"
+  | "TableUploadOrEdit";
+
+export type ContentActionKey =
+  | UploadOrEditContentActionKey
   | "MultipleDocumentsUpload"
   | "DocumentOrTableDeleteDialog"
   | "DocumentViewRawContent"
@@ -44,7 +47,7 @@ export type ContentAction = {
 
 const isUploadOrEditAction = (
   action: ContentActionKey | undefined
-): action is "DocumentUploadOrEdit" | "TableUploadOrEdit" =>
+): action is UploadOrEditContentActionKey =>
   ["DocumentUploadOrEdit", "TableUploadOrEdit"].includes(action || "");
 
 type ContentActionsProps = {
