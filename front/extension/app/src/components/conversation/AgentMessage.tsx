@@ -1,9 +1,13 @@
-import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
+import {
+  makeDocumentCitation,
+  makeDocumentCitations,
+} from "@app/components/actions/retrieval/utils";
+import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import type { MarkdownCitation } from "@app/components/assistant/markdown/MarkdownCitation";
 import { RenderMessageMarkdown } from "@app/components/assistant/markdown/RenderMessageMarkdown";
-import { useEventSource } from "@app/hooks/useEventSource";
+import { useEventSource } from "@app/extension/app/src/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import type {
   ConversationMessageEmojiSelectorProps,
@@ -90,11 +94,11 @@ export function AgentMessage({
     useState<boolean>(false);
 
   const [references, setReferences] = useState<{
-    [key: string]: RetrievalDocumentType | WebsearchResultType;
+    [key: string]: MarkdownCitation;
   }>({});
 
   const [activeReferences, setActiveReferences] = useState<
-    { index: number; document: RetrievalDocumentType | WebsearchResultType }[]
+    { index: number; document: MarkdownCitation }[]
   >([]);
 
   const shouldStream = (() => {
@@ -120,7 +124,7 @@ export function AgentMessage({
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
+      const esURL = `${process.env.DUST_DOMAIN}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: {
@@ -341,16 +345,12 @@ export function AgentMessage({
   //     ];
 
   // References logic.
-
-  //   function updateActiveReferences(
-  //     document: RetrievalDocumentType | WebsearchResultType,
-  //     index: number
-  //   ) {
-  //     const existingIndex = activeReferences.find((r) => r.index === index);
-  //     if (!existingIndex) {
-  //       setActiveReferences([...activeReferences, { index, document }]);
-  //     }
-  //   }
+  function updateActiveReferences(document: MarkdownCitation, index: number) {
+    const existingIndex = activeReferences.find((r) => r.index === index);
+    if (!existingIndex) {
+      setActiveReferences([...activeReferences, { index, document }]);
+    }
+  }
 
   const [lastHoveredReference, setLastHoveredReference] = useState<
     number | null
@@ -374,13 +374,12 @@ export function AgentMessage({
     const allDocs = removeNulls(
       retrievalActionsWithDocs.map((a) => a.documents).flat()
     );
-    const allDocsReferences = allDocs.reduce(
-      (acc, d) => {
-        acc[d.reference] = d;
-        return acc;
-      },
-      {} as { [key: string]: RetrievalDocumentType }
-    );
+    const allDocsReferences = allDocs.reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, d) => {
+      acc[d.reference] = makeDocumentCitation(d);
+      return acc;
+    }, {});
 
     // Websearch actions
     const websearchActionsWithResults = agentMessageToRender.actions
@@ -389,13 +388,12 @@ export function AgentMessage({
     const allWebResults = removeNulls(
       websearchActionsWithResults.map((a) => a.output?.results).flat()
     );
-    const allWebReferences = allWebResults.reduce(
-      (acc, l) => {
-        acc[l.reference] = l;
-        return acc;
-      },
-      {} as { [key: string]: WebsearchResultType }
-    );
+    const allWebReferences = allWebResults.reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, l) => {
+      acc[l.reference] = makeWebsearchResultsCitation(l);
+      return acc;
+    }, {});
 
     // Merge all references
     setReferences({ ...allDocsReferences, ...allWebReferences });
@@ -404,28 +402,7 @@ export function AgentMessage({
     agentMessageToRender.status,
     agentMessageToRender.sId,
   ]);
-
   const { configuration: agentConfiguration } = agentMessageToRender;
-
-  const customRenderer = useMemo(() => {
-    return {
-      visualization: (code: string, complete: boolean, lineStart: number) => {
-        return (
-          <VisualizationActionIframe
-            owner={owner}
-            visualization={{
-              code,
-              complete,
-              identifier: `viz-${message.sId}-${lineStart}`,
-            }}
-            key={`viz-${message.sId}-${lineStart}`}
-            conversationId={conversationId}
-            agentConfigurationId={agentConfiguration.sId}
-          />
-        );
-      },
-    };
-  }, [owner, conversationId, message.sId, agentConfiguration.sId]);
 
   return (
     <ConversationMessage
@@ -468,7 +445,7 @@ export function AgentMessage({
     lastTokenClassification,
   }: {
     agentMessage: AgentMessageType;
-    references: { [key: string]: RetrievalDocumentType | WebsearchResultType };
+    references: { [key: string]: MarkdownCitation };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
@@ -485,8 +462,6 @@ export function AgentMessage({
         />
       );
     }
-
-    // TODO(2024-05-27 flav) Use <ConversationMessage.citations />.
 
     return (
       <div className="flex flex-col gap-y-4">
@@ -521,8 +496,7 @@ export function AgentMessage({
               </div>
             ) : (
               <>
-                {agentMessage.content}
-                {/* <RenderMessageMarkdown
+                <RenderMessageMarkdown
                   content={agentMessage.content}
                   isStreaming={
                     streaming && lastTokenClassification === "tokens"
@@ -532,15 +506,8 @@ export function AgentMessage({
                     updateActiveReferences,
                     setHoveredReference: setLastHoveredReference,
                   }}
-                  customRenderer={customRenderer}
                   isLastMessage={isLastMessage}
-                /> */}
-                {activeReferences.length > 0 && (
-                  <Citations
-                    activeReferences={activeReferences}
-                    lastHoveredReference={lastHoveredReference}
-                  />
-                )}
+                />
               </>
             )}
           </div>
