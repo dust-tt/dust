@@ -1,7 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
-import { ZendeskConfiguration } from "@connectors/lib/models/zendesk";
+import type { ZendeskConfiguration } from "@connectors/lib/models/zendesk";
 import type {
   ConnectorProviderConfigurationType,
   ConnectorProviderModelResourceMapping,
@@ -9,6 +9,7 @@ import type {
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
 
 export class ZendeskConnectorStrategy
   implements ConnectorProviderStrategy<"zendesk">
@@ -18,13 +19,10 @@ export class ZendeskConnectorStrategy
     blob: WithCreationAttributes<ZendeskConfiguration>,
     transaction: Transaction
   ): Promise<ConnectorProviderModelResourceMapping["zendesk"] | null> {
-    await ZendeskConfiguration.create(
-      {
-        ...blob,
-        connectorId,
-      },
-      { transaction }
-    );
+    await ZendeskConfigurationResource.makeNew({
+      blob: { ...blob, connectorId },
+      transaction,
+    });
     return null;
   }
 
@@ -32,14 +30,15 @@ export class ZendeskConnectorStrategy
     connector: ConnectorResource,
     transaction: Transaction
   ): Promise<void> {
-    await Promise.all([
-      ZendeskConfiguration.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction,
-      }),
-    ]);
+    const config = await ZendeskConfigurationResource.fetchByConnectorId(
+      connector.id
+    );
+    if (!config) {
+      throw new Error(
+        `Zendesk configuration not found for connector ${connector.id}`
+      );
+    }
+    await config.delete(transaction);
   }
 
   async fetchConfigurationsbyConnectorIds(): Promise<
