@@ -1735,6 +1735,7 @@ impl DataSource {
                 Ok(_) => {
                     info!(
                         data_source_internal_id = self.internal_id(),
+                        document_id = document_id,
                         cluster = ?self.shadow_write_qdrant_cluster(),
                         collection = qdrant_client.collection_name(embedder_config),
                         "[SHADOW_WRITE_SUCCESS] Delete points"
@@ -1748,16 +1749,36 @@ impl DataSource {
                         error = %e,
                         "[SHADOW_WRITE_FAIL] Delete points"
                     );
+                    return Err(e);
                 }
             },
             None => (),
         }
 
-        qdrant_client
+        match qdrant_client
             .delete_points(embedder_config, &self.internal_id, filter)
-            .await?;
-
-        Ok(())
+            .await
+        {
+            Ok(_) => {
+                info!(
+                    data_source_internal_id = self.internal_id(),
+                    document_id = document_id,
+                    collection = qdrant_client.collection_name(embedder_config),
+                    "[SUCCESS] Delete points"
+                );
+                Ok(())
+            }
+            Err(e) => {
+                error!(
+                    data_source_internal_id = self.internal_id(),
+                    document_id = document_id,
+                    collection = qdrant_client.collection_name(embedder_config),
+                    error = %e,
+                    "[FAIL] Delete points"
+                );
+                Err(e)
+            }
+        }
     }
 
     pub async fn scrub_document_deleted_versions(
