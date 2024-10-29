@@ -33,7 +33,9 @@ export function CodeBlockWithExtendedSupport({
 
   const [showMermaid, setShowMermaid] = useState<boolean>(false);
   const [isValidMermaid, setIsValidMermaid] = useState<boolean>(false);
-  const { isStreaming } = useContext(MarkdownContentContext);
+  const { isStreaming, isDarkMode, setIsDarkMode } = useContext(
+    MarkdownContentContext
+  );
 
   useEffect(() => {
     if (isStreaming || !validChildrenContent || isValidMermaid || showMermaid) {
@@ -59,7 +61,12 @@ export function CodeBlockWithExtendedSupport({
     setIsValidMermaid,
     setShowMermaid,
     validChildrenContent,
+    setIsDarkMode,
   ]);
+
+  useEffect(() => {
+    setIsDarkMode(!showMermaid);
+  }, [showMermaid, setIsDarkMode]);
 
   if (!inline && isValidMermaid) {
     return (
@@ -80,7 +87,7 @@ export function CodeBlockWithExtendedSupport({
               </a>
             </div>
             <IconButton
-              variant="ghost"
+              variant={isDarkMode ? "ghost" : "outline"}
               size="xs"
               icon={showMermaid ? WrenchIcon : SparklesIcon}
               onClick={() => setShowMermaid(!showMermaid)}

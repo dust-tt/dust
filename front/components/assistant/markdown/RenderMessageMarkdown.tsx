@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import React, { useMemo } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -99,6 +99,7 @@ export function RenderMessageMarkdown({
   additionalMarkdownPlugins?: PluggableList;
 }) {
   const processedContent = useMemo(() => sanitizeContent(content), [content]);
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
   // AST parsing rounds (happening at each token being streamed).
@@ -201,7 +202,13 @@ export function RenderMessageMarkdown({
         }
       >
         <MarkdownContentContext.Provider
-          value={{ content: processedContent, isStreaming, isLastMessage }}
+          value={{
+            content: processedContent,
+            isStreaming,
+            isLastMessage,
+            setIsDarkMode,
+            isDarkMode,
+          }}
         >
           <ReactMarkdown
             linkTarget="_blank"
@@ -358,7 +365,7 @@ function PreBlock({ children }: { children: React.ReactNode }) {
     Array.isArray(children) && children[0]
       ? children[0].props.children[0]
       : null;
-
+  const { isDarkMode } = useContext(MarkdownContentContext);
   // Sometimes the children are not valid, but the meta data is
   let fallbackData: string | null = null;
   if (!validChildrenContent) {
@@ -385,7 +392,10 @@ function PreBlock({ children }: { children: React.ReactNode }) {
 
   return (
     <pre
-      className={classNames("my-2 w-full break-all rounded-lg bg-slate-800")}
+      className={classNames(
+        "my-2 w-full break-all rounded-lg",
+        isDarkMode ? "bg-slate-800" : "bg-slate-100"
+      )}
     >
       <div className="relative">
         <ContentBlockWrapper
