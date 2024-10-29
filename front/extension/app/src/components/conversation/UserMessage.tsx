@@ -18,11 +18,9 @@ interface UserMessageProps {
 
 export function UserMessage({
   citations,
-  conversationId,
   isLastMessage,
   message,
   messageEmoji,
-  owner,
   size,
 }: UserMessageProps) {
   return (
@@ -43,9 +41,14 @@ export function UserMessage({
             isLastMessage={isLastMessage}
           />
         </div>
-        {message.mentions.length === 0 && isLastMessage && (
-          <div>agent suggestion</div>
-        )}
+        {/* {message.mentions.length === 0 && isLastMessage && (
+          TODO: Handle agent suggestions
+          <AgentSuggestion
+            conversationId={conversationId}
+            owner={owner}
+            userMessage={message}
+          />
+        )} */}
       </div>
     </ConversationMessage>
   );

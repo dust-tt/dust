@@ -5,7 +5,6 @@ import type { CitationType } from "@dust-tt/sparkle/dist/esm/components/Citation
 import type {
   ConversationMessageReactions,
   LightWorkspaceType,
-  UserType,
 } from "@dust-tt/types";
 import { isSupportedImageContentType } from "@dust-tt/types";
 import { AgentMessage } from "@extension/components/conversation/AgentMessage";

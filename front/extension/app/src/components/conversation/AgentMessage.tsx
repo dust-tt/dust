@@ -1,13 +1,7 @@
-import {
-  makeDocumentCitation,
-  makeDocumentCitations,
-} from "@app/components/actions/retrieval/utils";
+import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
-import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
-import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import type { MarkdownCitation } from "@app/components/assistant/markdown/MarkdownCitation";
 import { RenderMessageMarkdown } from "@app/components/assistant/markdown/RenderMessageMarkdown";
-import { useEventSource } from "@app/extension/app/src/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import type {
   ConversationMessageEmojiSelectorProps,
@@ -18,7 +12,6 @@ import {
   Button,
   ChatBubbleThoughtIcon,
   Chip,
-  Citation,
   ContentMessage,
   ConversationMessage,
   DocumentDuplicateIcon,
@@ -33,38 +26,22 @@ import type {
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
   GenerationTokensEvent,
-  LightAgentConfigurationType,
   LightWorkspaceType,
   RetrievalActionType,
   WebsearchActionType,
-  WebsearchResultType,
 } from "@dust-tt/types";
-import type { AgentMessageType, RetrievalDocumentType } from "@dust-tt/types";
+import type { AgentMessageType } from "@dust-tt/types";
 import {
   assertNever,
   isRetrievalActionType,
   isWebsearchActionType,
   removeNulls,
 } from "@dust-tt/types";
-import Link from "next/link";
-import { useRouter } from "next/router";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-
-function cleanUpCitations(message: string): string {
-  const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
-  return message.replace(regex, "");
-}
+import { useEventSource } from "@extension/hooks/useEventSource";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface AgentMessageProps {
   conversationId: string;
-  isInModal: boolean;
   isLastMessage: boolean;
   message: AgentMessageType;
   messageEmoji?: ConversationMessageEmojiSelectorProps;
@@ -80,7 +57,6 @@ interface AgentMessageProps {
  */
 export function AgentMessage({
   conversationId,
-  isInModal,
   isLastMessage,
   message,
   messageEmoji,
@@ -89,9 +65,6 @@ export function AgentMessage({
 }: AgentMessageProps) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
-
-  const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
-    useState<boolean>(false);
 
   const [references, setReferences] = useState<{
     [key: string]: MarkdownCitation;
@@ -294,56 +267,6 @@ export function AgentMessage({
     };
   }, []);
 
-  // GenerationContext: to know if we are generating or not
-  //   const generationContext = useContext(GenerationContext);
-  //   if (!generationContext) {
-  //     throw new Error(
-  //       "AgentMessage must be used within a GenerationContextProvider"
-  //     );
-  //   }
-  //   useEffect(() => {
-  //     const isInArray = generationContext.generatingMessages.some(
-  //       (m) => m.messageId === message.sId
-  //     );
-  //     if (agentMessageToRender.status === "created" && !isInArray) {
-  //       generationContext.setGeneratingMessages((s) => [
-  //         ...s,
-  //         { messageId: message.sId, conversationId },
-  //       ]);
-  //     } else if (agentMessageToRender.status !== "created" && isInArray) {
-  //       generationContext.setGeneratingMessages((s) =>
-  //         s.filter((m) => m.messageId !== message.sId)
-  //       );
-  //     }
-  //   }, [
-  //     agentMessageToRender.status,
-  //     generationContext,
-  //     message.sId,
-  //     conversationId,
-  //   ]);
-
-  // const buttons = message.status === "failed"
-  //   ? []
-  //   : [
-  //       {
-  //         label: "Copy to clipboard",
-  //         icon: ClipboardIcon,
-  //         onClick: () => {
-  //           void navigator.clipboard.writeText(
-  //             cleanUpCitations(agentMessageToRender.content || "")
-  //           );
-  //         },
-  //       },
-  //       {
-  //         label: "Retry",
-  //         icon: ArrowPathIcon,
-  //         onClick: () => {
-  //           void retryHandler(agentMessageToRender);
-  //         },
-  //         disabled: isRetryHandlerProcessing || shouldStream,
-  //       },
-  //     ];
-
   // References logic.
   function updateActiveReferences(document: MarkdownCitation, index: number) {
     const existingIndex = activeReferences.find((r) => r.index === index);
@@ -415,10 +338,9 @@ export function AgentMessage({
         return (
           <div className="flex flex-row items-center gap-2">
             <div className="text-base font-medium">
+              {/* TODO(Ext) Any CTA here ? */}
               {agentConfiguration.name}
-              {/* {AssitantDetailViewLink(agentConfiguration)} */}
             </div>
-            {!isInModal && <div>Assistant dropdown menu</div>}
           </div>
         );
       }}
@@ -465,11 +387,12 @@ export function AgentMessage({
 
     return (
       <div className="flex flex-col gap-y-4">
-        <AgentMessageActions
+        {/* TODO(Ext): Tools inspection */}
+        {/* <AgentMessageActions
           agentMessage={agentMessage}
           size={size}
           owner={owner}
-        />
+        /> */}
 
         {agentMessage.chainOfThought?.length ? (
           <ContentMessage
@@ -523,82 +446,20 @@ export function AgentMessage({
     );
   }
 
-  async function retryHandler(agentMessage: AgentMessageType) {
-    setIsRetryHandlerProcessing(true);
-    await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    setIsRetryHandlerProcessing(false);
-  }
-}
-
-function AssitantDetailViewLink(assistant: LightAgentConfigurationType) {
-  const router = useRouter();
-  const href = {
-    pathname: router.pathname,
-    query: { ...router.query, assistantDetails: assistant.sId },
-  };
-
-  return (
-    <Link
-      href={href}
-      shallow
-      className="cursor-pointer duration-300 hover:text-action-500 active:text-action-600"
-    >
-      @{assistant.name}
-    </Link>
-  );
-}
-
-function Citations({
-  activeReferences,
-  lastHoveredReference,
-}: {
-  activeReferences: {
-    index: number;
-    document: RetrievalDocumentType | WebsearchResultType;
-  }[];
-  lastHoveredReference: number | null;
-}) {
-  activeReferences.sort((a, b) => a.index - b.index);
-  return (
-    <div
-      className="grid grid-cols-3 items-stretch gap-2 pb-4 pt-8 md:grid-cols-4"
-      // ref={citationContainer}
-    >
-      {activeReferences.map(({ document, index }) => {
-        const [documentCitation] =
-          "link" in document
-            ? [
-                {
-                  href: document.link,
-                  title: document.title,
-                  type: "document" as const,
-                },
-              ]
-            : makeDocumentCitations([document]);
-
-        return (
-          <Citation
-            key={index}
-            size="xs"
-            sizing="fluid"
-            isBlinking={lastHoveredReference === index}
-            type={documentCitation.type}
-            title={documentCitation.title}
-            href={documentCitation.href}
-            index={index}
-          />
-        );
-      })}
-    </div>
-  );
+  // TODO(Ext): Handle retry API
+  // async function retryHandler(agentMessage: AgentMessageType) {
+  //   setIsRetryHandlerProcessing(true);
+  //   await fetch(
+  //     `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
+  //     {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //     }
+  //   );
+  //   setIsRetryHandlerProcessing(false);
+  // }
 }
 
 function ErrorMessage({

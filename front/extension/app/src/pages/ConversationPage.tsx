@@ -8,8 +8,6 @@ export const ConversationPage = () => {
   const { isLoading, isAuthenticated, user } = useAuth();
   const { conversationId } = useParams();
 
-  console.log(conversationId);
-
   if (isLoading) {
     return (
       <div className="h-full w-full">
@@ -54,6 +52,7 @@ export const ConversationPage = () => {
         <ConversationContainer
           owner={workspace}
           conversationId={conversationId}
+          user={user}
         />
       </div>
     </>

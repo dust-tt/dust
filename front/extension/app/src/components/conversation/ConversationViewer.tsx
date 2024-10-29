@@ -1,5 +1,4 @@
 import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
-import type { StoredUser } from "@app/extension/app/src/lib/storage";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { classNames } from "@app/lib/utils";
 import type {
@@ -11,6 +10,7 @@ import type {
 import { isContentFragmentType, isUserMessageType } from "@dust-tt/types";
 import MessageGroup from "@extension/components/conversation/MessageGroup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
+import type { StoredUser } from "@extension/lib/storage";
 import { useMemo } from "react";
 
 interface ConversationViewerProps {
@@ -24,12 +24,10 @@ export function ConversationViewer({
   owner,
   user,
 }: ConversationViewerProps) {
-  console.log(conversationId, owner);
-  const { conversation, conversationError } = usePublicConversation({
+  const { conversation } = usePublicConversation({
     conversationId,
     workspaceId: owner.sId,
   });
-  console.log(conversation);
 
   const messages = conversation?.content;
 

@@ -1,4 +1,4 @@
-import type { StoredUser } from "@app/extension/app/src/lib/storage";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, MentionType } from "@dust-tt/types";
 import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
 import { ReachedLimitPopup } from "@extension/components/conversation/ReachedLimitPopup";
@@ -6,6 +6,7 @@ import { AssistantInputBar } from "@extension/components/input_bar/InputBar";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import { postConversation, postMessage } from "@extension/lib/conversation";
+import type { StoredUser } from "@extension/lib/storage";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -26,10 +27,7 @@ export function ConversationContainer({
   const [planLimitReached, setPlanLimitReached] = useState(false);
 
   const { animate, setAnimate } = useContext(InputBarContext);
-
-  // TODO use notification once they are in Sparkle.
-  // const sendNotification = useSendNotification();
-  const sendNotification = console.log;
+  const sendNotification = useSendNotification();
 
   useEffect(() => {
     if (animate) {

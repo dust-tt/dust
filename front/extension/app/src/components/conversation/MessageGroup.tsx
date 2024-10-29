@@ -1,11 +1,11 @@
 import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
-import type { StoredUser } from "@app/extension/app/src/lib/storage";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import type {
   ConversationMessageReactions,
   LightWorkspaceType,
 } from "@dust-tt/types";
 import MessageItem from "@extension/components/conversation/MessageItem";
+import type { StoredUser } from "@extension/lib/storage";
 import React, { useEffect, useRef } from "react";
 
 interface MessageGroupProps {

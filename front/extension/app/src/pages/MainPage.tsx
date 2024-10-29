@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 export const MainPage = () => {
   const navigate = useNavigate();
   const { isLoading, isAuthenticated, user } = useAuth();
-
   if (isLoading) {
     return (
       <div className="h-full w-full">
@@ -34,7 +33,11 @@ export const MainPage = () => {
   return (
     <div className="h-full w-full pt-4">
       <Page.SectionHeader title="Conversation" />
-      <ConversationContainer owner={workspace} conversationId={null} />
+      <ConversationContainer
+        owner={workspace}
+        conversationId={null}
+        user={user}
+      />
     </div>
   );
 };
