@@ -42,6 +42,8 @@ export { IconToggleButton } from "./IconToggleButton";
 export { Input } from "./Input";
 export { Item } from "./Item";
 export { Label } from "./Label";
+export type { LinkWrapperProps } from "./LinkWrapper";
+export { LinkWrapper } from "./LinkWrapper";
 export { Markdown } from "./Markdown";
 export { Modal } from "./Modal";
 export {
