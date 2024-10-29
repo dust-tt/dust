@@ -267,6 +267,7 @@ impl LocalTable {
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
+            rows_count = rows.len(),
             "DSSTRUCTSTAT [upsert_rows] validation"
         );
 
@@ -287,6 +288,7 @@ impl LocalTable {
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
+            rows_count = rows.len(),
             "DSSTRUCTSTAT [upsert_rows] table schema"
         );
 
@@ -340,6 +342,7 @@ impl LocalTable {
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
+            rows_count = rows.len(),
             "DSSTRUCTSTAT [upsert_rows] rows upsert"
         );
 
