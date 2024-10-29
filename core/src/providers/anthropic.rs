@@ -726,7 +726,7 @@ impl AnthropicLLM {
     fn placehodler_tool(&self) -> AnthropicTool {
         AnthropicTool {
             name: "dummy_do_not_use".to_string(),
-            description: Some("Dummy placeholder tool that does nothing. Do not use.".to_string()),
+            description: Some("Dummy placeholder tool that does nothing. Do not use. Do not try to do any function call. You don't have access to any tool.".to_string()),
             input_schema: Some(json!({
                 "type": "object",
                 "properties": {
