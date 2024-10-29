@@ -4,6 +4,7 @@ use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use serde_json::Value;
 use tokio_postgres::{types::ToSql, NoTls};
+use tracing::info;
 
 use crate::{databases::table::Row, utils};
 
@@ -166,9 +167,15 @@ impl DatabasesStore for PostgresDatabasesStore {
                 .await?;
 
             loop {
+                let now = utils::now();
                 let deleted_rows = c
                     .execute(&stmt, &[&table_id, &(deletion_batch_size as i64)])
                     .await?;
+
+                info!(
+                    duration = utils::now() - now,
+                    table_id, deleted_rows, "DSSTRUCTSTAT [upsert_rows] truncation batch"
+                );
 
                 if deleted_rows < deletion_batch_size {
                     break;
@@ -196,6 +203,13 @@ impl DatabasesStore for PostgresDatabasesStore {
 
             c.execute(&stmt, &[&table_ids, &row_ids, &createds, &contents])
                 .await?;
+
+            info!(
+                duration = utils::now() - now as u64,
+                table_id,
+                inserted_rows = chunk.len(),
+                "DSSTRUCTSTAT [upsert_rows] insertion batch"
+            );
         }
 
         Ok(())
