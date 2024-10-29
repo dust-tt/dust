@@ -18,6 +18,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
+  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import Link from "next/link";
@@ -32,6 +33,7 @@ function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
 
 interface AssistantListProps {
   owner: WorkspaceType;
+  user: UserType;
   isBuilder: boolean;
   agents: LightAgentConfigurationType[];
   loadingStatus: "loading" | "finished";
@@ -57,6 +59,7 @@ type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
 
 export function AssistantBrowser({
   owner,
+  user,
   isBuilder,
   agents,
   loadingStatus,
@@ -229,6 +232,7 @@ export function AssistantBrowser({
                 <AssistantDropdownMenu
                   agentConfiguration={agent}
                   owner={owner}
+                  user={user}
                   variant="button"
                   isMoreInfoVisible
                   showAddRemoveToFavorite

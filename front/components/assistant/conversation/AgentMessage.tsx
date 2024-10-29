@@ -25,6 +25,7 @@ import type {
   GenerationTokensEvent,
   LightAgentConfigurationType,
   RetrievalActionType,
+  UserType,
   WebsearchActionType,
   WebsearchResultType,
   WorkspaceType,
@@ -68,6 +69,7 @@ interface AgentMessageProps {
   message: AgentMessageType;
   messageEmoji?: ConversationMessageEmojiSelectorProps;
   owner: WorkspaceType;
+  user: UserType;
   size: ConversationMessageSizeType;
 }
 
@@ -84,6 +86,7 @@ export function AgentMessage({
   message,
   messageEmoji,
   owner,
+  user,
   size,
 }: AgentMessageProps) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
@@ -437,6 +440,10 @@ export function AgentMessage({
     };
   }, [owner, conversationId, message.sId, agentConfiguration.sId]);
 
+  const canMention =
+    agentConfiguration.scope !== "private" ||
+    agentConfiguration.versionAuthorId === user.id;
+
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
@@ -448,12 +455,13 @@ export function AgentMessage({
         return (
           <div className="flex flex-row items-center gap-2">
             <div className="text-base font-medium">
-              {AssitantDetailViewLink(agentConfiguration)}
+              {AssitantName(agentConfiguration, canMention)}
             </div>
             {!isInModal && (
               <AssistantDropdownMenu
                 agentConfiguration={agentConfiguration}
                 owner={owner}
+                user={user}
                 showAddRemoveToFavorite
               />
             )}
@@ -585,12 +593,19 @@ export function AgentMessage({
   }
 }
 
-function AssitantDetailViewLink(assistant: LightAgentConfigurationType) {
+function AssitantName(
+  assistant: LightAgentConfigurationType,
+  canMention: boolean = true
+) {
   const router = useRouter();
   const href = {
     pathname: router.pathname,
     query: { ...router.query, assistantDetails: assistant.sId },
   };
+
+  if (!canMention) {
+    return <span>@{assistant.name}</span>;
+  }
 
   return (
     <Link

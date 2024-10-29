@@ -18,6 +18,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
+  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, isBuilder } from "@dust-tt/types";
@@ -32,6 +33,7 @@ import { setQueryParam } from "@app/lib/utils/router";
 interface AssistantDetailsMenuProps {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
+  user: UserType;
   variant?: "button" | "plain";
   canDelete?: boolean;
   isMoreInfoVisible?: boolean;
@@ -62,6 +64,11 @@ export function AssistantDropdownMenu({
     agentConfiguration.status === "archived" ||
     !user
   ) {
+    return <></>;
+  }
+
+  const isPrivate = agentConfiguration.scope === "private";
+  if (isPrivate && agentConfiguration.versionAuthorId !== user.id) {
     return <></>;
   }
 

@@ -1,6 +1,7 @@
 import { Page } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
+  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { useCallback } from "react";
@@ -12,6 +13,7 @@ import { classNames } from "@app/lib/utils";
 interface AssistantBrowserContainerProps {
   onAgentConfigurationClick: (agentId: string) => void;
   owner: WorkspaceType;
+  user: UserType;
   isBuilder: boolean;
   setAssistantToMention: (agent: LightAgentConfigurationType) => void;
 }
@@ -19,6 +21,7 @@ interface AssistantBrowserContainerProps {
 export function AssistantBrowserContainer({
   onAgentConfigurationClick,
   owner,
+  user,
   isBuilder,
   setAssistantToMention,
 }: AssistantBrowserContainerProps) {
@@ -69,6 +72,7 @@ export function AssistantBrowserContainer({
       </div>
       <AssistantBrowser
         owner={owner}
+        user={user}
         isBuilder={isBuilder}
         agents={agentConfigurations}
         loadingStatus={isLoading ? "loading" : "finished"}
