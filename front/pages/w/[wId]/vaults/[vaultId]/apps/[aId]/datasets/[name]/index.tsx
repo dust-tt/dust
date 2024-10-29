@@ -1,6 +1,6 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { Button, Tab } from "@dust-tt/sparkle";
+import { Button, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { DatasetSchema, DatasetType } from "@dust-tt/types";
@@ -176,10 +176,25 @@ export default function ViewDatasetView({
       }
     >
       <div className="flex w-full flex-col">
-        <Tab
-          className="mt-2"
-          tabs={subNavigationApp({ owner, app, current: "datasets" })}
-        />
+        <Tabs value="datasets" className="mt-2">
+          <TabsList>
+            {subNavigationApp({ owner, app, current: "datasets" }).map(
+              (tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  label={tab.label}
+                  icon={tab.icon}
+                  onClick={() => {
+                    if (tab.href) {
+                      void router.push(tab.href);
+                    }
+                  }}
+                />
+              )
+            )}
+          </TabsList>
+        </Tabs>
         <div className="mt-8 flex flex-col">
           <div className="flex flex-1">
             <div className="mb-8 w-full">

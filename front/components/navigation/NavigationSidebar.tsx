@@ -1,4 +1,11 @@
-import { CollapseButton, Item, Logo, Tab } from "@dust-tt/sparkle";
+import {
+  CollapseButton,
+  Item,
+  Logo,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -7,6 +14,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   AppLayoutNavigation,
   SidebarNavigation,
+  TabAppLayoutNavigation,
 } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { UserMenu } from "@app/components/UserMenu";
@@ -31,12 +39,13 @@ export const NavigationSidebar = React.forwardRef<
 ) {
   const router = useRouter();
   const { user } = useUser();
-
   const [activePath, setActivePath] = useState("");
+  const [currentTab, setCurrentTab] = useState<
+    TabAppLayoutNavigation | undefined
+  >(undefined);
 
   useEffect(() => {
     if (router.isReady && router.route) {
-      // Update activePath once router is ready.
       setActivePath(router.route);
     }
   }, [router.route, router.isReady]);
@@ -53,13 +62,14 @@ export const NavigationSidebar = React.forwardRef<
         return { ...n, current };
       });
 
-      // Only update navs if the current tab actually changes to prevent blinking effect.
       const isSameCurrent =
         prevNavs.length === newNavs.length &&
         prevNavs.every((prevNav, index) => {
           return prevNav.current === newNavs[index].current;
         });
 
+      const activeTab = nav.filter((n) => n.isCurrent(activePath))[0];
+      setCurrentTab(activeTab);
       return isSameCurrent ? prevNavs : newNavs;
     });
   }, [nav, activePath]);
@@ -110,7 +120,23 @@ export const NavigationSidebar = React.forwardRef<
         {subscription.paymentFailingSince && <SubscriptionPastDueBanner />}
         {nav.length > 1 && (
           <div className="pt-2">
-            <Tab tabs={navs} />
+            <Tabs value={currentTab?.id}>
+              <TabsList>
+                {navs.map((tab) => (
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    label={tab.label}
+                    icon={tab.icon}
+                    onClick={() => {
+                      if (tab.href) {
+                        void router.push(tab.href);
+                      }
+                    }}
+                  />
+                ))}
+              </TabsList>
+            </Tabs>
           </div>
         )}
         {subNavigation && (
@@ -140,7 +166,7 @@ export const NavigationSidebar = React.forwardRef<
                             }
                           />
                           {menu.subMenuLabel && (
-                            <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm text-xs uppercase text-slate-400">
+                            <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase text-slate-400">
                               {menu.subMenuLabel}
                             </div>
                           )}

@@ -3,7 +3,9 @@ import {
   Button,
   DocumentTextIcon,
   PlayIcon,
-  Tab,
+  Tabs,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 import type {
   APIErrorResponse,
@@ -327,10 +329,25 @@ export default function AppView({
       }
     >
       <div className="flex w-full flex-col">
-        <Tab
-          className="mt-2"
-          tabs={subNavigationApp({ owner, app, current: "specification" })}
-        />
+        <Tabs value="specification" className="mt-2">
+          <TabsList>
+            {subNavigationApp({ owner, app, current: "specification" }).map(
+              (tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  label={tab.label}
+                  icon={tab.icon}
+                  onClick={() => {
+                    if (tab.href) {
+                      void router.push(tab.href);
+                    }
+                  }}
+                />
+              )
+            )}
+          </TabsList>
+        </Tabs>
         <div className="mt-8 flex flex-auto flex-col">
           <div className="mb-4 flex flex-row items-center space-x-2">
             <NewBlock

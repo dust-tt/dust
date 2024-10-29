@@ -1,4 +1,4 @@
-import { Button, Input, Tab } from "@dust-tt/sparkle";
+import { Button, Input, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
@@ -171,10 +171,25 @@ export default function SettingsView({
       }
     >
       <div className="flex w-full flex-col">
-        <Tab
-          className="mt-2"
-          tabs={subNavigationApp({ owner, app, current: "settings" })}
-        />
+        <Tabs value="settings" className="mt-2">
+          <TabsList>
+            {subNavigationApp({ owner, app, current: "settings" }).map(
+              (tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  label={tab.label}
+                  icon={tab.icon}
+                  onClick={() => {
+                    if (tab.href) {
+                      void router.push(tab.href);
+                    }
+                  }}
+                />
+              )
+            )}
+          </TabsList>
+        </Tabs>
         <div className="mt-8 flex flex-1">
           <div className="space-y-8 divide-y divide-gray-200">
             <div className="space-y-4 divide-y divide-gray-200">

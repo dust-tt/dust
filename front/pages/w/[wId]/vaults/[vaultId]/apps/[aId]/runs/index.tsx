@@ -1,4 +1,4 @@
-import { Button, Tab } from "@dust-tt/sparkle";
+import { Button, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
@@ -128,10 +128,21 @@ export default function RunsView({
       }
     >
       <div className="flex w-full flex-col">
-        <Tab
-          className="mt-2"
-          tabs={subNavigationApp({ owner, app, current: "runs" })}
-        />
+        <Tabs value="runs" className="mt-2">
+          <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
+            {subNavigationApp({ owner, app, current: "runs" }).map((item) => (
+              <TabsTrigger
+                key={item.value}
+                value={item.value}
+                label={item.label}
+                icon={item.icon}
+                onClick={() => {
+                  void router.push(item.href);
+                }}
+              />
+            ))}
+          </TabsList>
+        </Tabs>
         <div className="mt-8 flex">
           <nav className="flex" aria-label="Tabs">
             {tabs.map((tab, tabIdx) => (

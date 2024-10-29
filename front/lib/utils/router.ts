@@ -7,6 +7,7 @@ export const setQueryParam = (
 ) => {
   const q = router.query;
   q[key] = value;
+
   void router.push(
     {
       pathname: router.pathname,

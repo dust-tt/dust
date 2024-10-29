@@ -248,21 +248,19 @@ export const subNavigationApp = ({
   app: AppType;
   current: SubNavigationAppId;
 }) => {
-  let nav: AppLayoutNavigation[] = [
+  let nav = [
     {
-      id: "specification",
+      value: "specification",
       label: "Specification",
       icon: CommandLineIcon,
       href: `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}`,
-      sizing: "expand",
       current: current === "specification",
     },
     {
-      id: "datasets",
+      value: "datasets",
       label: "Datasets",
       icon: DocumentTextIcon,
       href: `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets`,
-      sizing: "expand",
       current: current === "datasets",
     },
   ];
@@ -270,19 +268,17 @@ export const subNavigationApp = ({
   if (isAdmin(owner) || isBuilder(owner)) {
     nav = nav.concat([
       {
-        id: "runs",
+        value: "runs",
         label: "Logs",
         icon: FolderOpenIcon,
         href: `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/runs`,
-        sizing: "expand",
         current: current === "runs",
       },
       {
-        id: "settings",
+        value: "settings",
         label: "Settings",
         icon: Cog6ToothIcon,
         href: `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/settings`,
-        sizing: "expand",
         current: current === "settings",
       },
     ]);

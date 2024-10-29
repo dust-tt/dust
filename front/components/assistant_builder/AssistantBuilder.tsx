@@ -7,7 +7,10 @@ import {
   ChevronRightIcon,
   IconButton,
   MagicIcon,
-  Tab,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
@@ -50,6 +53,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import {
   BUILDER_SCREENS,
+  BUILDER_SCREENS_INFOS,
   getDefaultAssistantState,
 } from "@app/components/assistant_builder/types";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
@@ -62,6 +66,10 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
+
+function isValidTab(tab: string): tab is BuilderScreen {
+  return BUILDER_SCREENS.includes(tab as BuilderScreen);
+}
 
 export default function AssistantBuilder({
   owner,
@@ -80,7 +88,11 @@ export default function AssistantBuilder({
 
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
-
+  const [currentTab, setCurrentTab] = useHashParam(
+    "selectedTab",
+    "instructions"
+  );
+  const [screen, setScreen] = useState<BuilderScreen>("instructions");
   const [edited, setEdited] = useState(defaultIsEdited ?? false);
   const [isSavingOrDeleting, setIsSavingOrDeleting] = useState(false);
   const [disableUnsavedChangesPrompt, setDisableUnsavedChangesPrompt] =
@@ -260,6 +272,14 @@ export default function AssistantBuilder({
     }
   }, [edited, formValidation]);
 
+  const viewTab = useMemo(() => {
+    if (currentTab && isValidTab(currentTab)) {
+      setScreen(currentTab);
+      return currentTab;
+    }
+    return "instructions";
+  }, [currentTab]);
+
   const setAction = useCallback(
     (p: AssistantBuilderSetActionType) => {
       if (p.type === "pending") {
@@ -332,20 +352,6 @@ export default function AssistantBuilder({
     }
   };
 
-  const [screen, setScreen] = useState<BuilderScreen>("instructions");
-  const tabs = useMemo(
-    () =>
-      Object.entries(BUILDER_SCREENS).map(([key, { label, icon }]) => ({
-        label,
-        current: screen === key,
-        onClick: () => {
-          setScreen(key as BuilderScreen);
-        },
-        icon,
-      })),
-    [screen]
-  );
-
   const [doTypewriterEffect, setDoTypewriterEffect] = useState(
     Boolean(template !== null && builderState.instructions)
   );
@@ -385,7 +391,25 @@ export default function AssistantBuilder({
           leftPanel={
             <div className="flex h-full flex-col gap-5 pb-6 pt-4">
               <div className="flex flex-wrap justify-between gap-4 sm:flex-row">
-                <Tab tabs={tabs} variant="stepper" />
+                <Tabs
+                  className="w-full"
+                  onValueChange={(t) => {
+                    setCurrentTab(t);
+                    setScreen(t as BuilderScreen);
+                  }}
+                  value={viewTab}
+                >
+                  <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
+                    {Object.values(BUILDER_SCREENS_INFOS).map((tab) => (
+                      <TabsTrigger
+                        key={tab.label}
+                        value={tab.id}
+                        label={tab.label}
+                        icon={tab.icon}
+                      />
+                    ))}
+                  </TabsList>
+                </Tabs>
                 <div className="flex flex-row gap-2 self-end pt-0.5">
                   <SharingButton
                     agentConfigurationId={agentConfigurationId}

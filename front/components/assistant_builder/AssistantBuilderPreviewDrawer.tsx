@@ -8,7 +8,9 @@ import {
   MoreIcon,
   Page,
   Spinner,
-  Tab,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -17,7 +19,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
-import { useContext, useEffect, useMemo } from "react";
+import { useContext, useEffect } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -64,28 +66,6 @@ export default function AssistantBuilderRightPanel({
   builderState,
   setAction,
 }: AssistantBuilderRightPanelProps) {
-  const tabsConfig = useMemo(
-    () => [
-      {
-        label: "Template",
-        current: rightPanelStatus.tab === "Template",
-        onClick: () => {
-          openRightPanelTab("Template");
-        },
-        icon: MagicIcon,
-      },
-      {
-        label: "Preview",
-        current: rightPanelStatus.tab === "Preview",
-        onClick: () => {
-          openRightPanelTab("Preview");
-        },
-        icon: ChatBubbleBottomCenterTextIcon,
-      },
-    ],
-    [rightPanelStatus.tab, openRightPanelTab]
-  );
-
   const {
     shouldAnimate: shouldAnimatePreviewDrawer,
     draftAssistant,
@@ -123,7 +103,22 @@ export default function AssistantBuilderRightPanel({
     <div className="flex h-full flex-col">
       {template && (
         <div className="shrink-0 bg-white pt-5">
-          <Tab tabs={tabsConfig} variant="default" className="hidden lg:flex" />
+          <Tabs
+            value={rightPanelStatus.tab ?? "Preview"}
+            onValueChange={(t) =>
+              openRightPanelTab(t as AssistantBuilderRightPanelTab)
+            }
+            className="hidden lg:flex"
+          >
+            <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
+              <TabsTrigger value="Template" label="Template" icon={MagicIcon} />
+              <TabsTrigger
+                value="Preview"
+                label="Preview"
+                icon={ChatBubbleBottomCenterTextIcon}
+              />
+            </TabsList>
+          </Tabs>
         </div>
       )}
       <div

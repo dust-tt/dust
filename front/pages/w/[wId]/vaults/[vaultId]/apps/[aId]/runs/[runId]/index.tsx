@@ -1,4 +1,11 @@
-import { Button, CheckCircleIcon, ClockIcon, Tab } from "@dust-tt/sparkle";
+import {
+  Button,
+  CheckCircleIcon,
+  ClockIcon,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 import type {
   AppType,
   RunType,
@@ -156,10 +163,21 @@ export default function AppRun({
       }
     >
       <div className="flex w-full flex-col">
-        <Tab
-          className="mt-2"
-          tabs={subNavigationApp({ owner, app, current: "runs" })}
-        />
+        <Tabs value="runs" className="mt-2">
+          <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
+            {subNavigationApp({ owner, app, current: "runs" }).map((item) => (
+              <TabsTrigger
+                key={item.value}
+                value={item.value}
+                label={item.label}
+                icon={item.icon}
+                onClick={() => {
+                  void router.push(item.href);
+                }}
+              />
+            ))}
+          </TabsList>
+        </Tabs>
         <div className="mt-8 flex flex-col">
           <div className="mb-4 flex flex-row items-center justify-between space-x-2 text-sm">
             <div className="flex flex-col items-start">
