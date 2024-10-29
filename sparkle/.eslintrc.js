@@ -45,17 +45,20 @@ module.exports = {
     ],
     "simple-import-sort/exports": "error",
     "@typescript-eslint/return-await": ["error", "in-try-catch"],
-    "no-restricted-imports": ["error", {
-      "patterns": ["*/index_with_tw_base"]
-    }]
+    "no-restricted-imports": [
+      "error",
+      {
+        patterns: ["*/index_with_tw_base"],
+      },
+    ],
   },
   overrides: [
     {
       files: ["*.stories.tsx"],
       rules: {
-        "no-restricted-imports": ["off"]
-      }
-    }
+        "no-restricted-imports": ["off"],
+      },
+    },
   ],
   env: {
     browser: true,
