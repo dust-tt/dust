@@ -7,6 +7,9 @@ import {
   Label,
   ListCheckIcon,
   MoreIcon,
+  NavigationList,
+  NavigationListItem,
+  NavigationListLabel,
   NewDropdownMenu,
   NewDropdownMenuContent,
   NewDropdownMenuItem,
@@ -308,25 +311,37 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 return (
                   conversations.length > 0 && (
                     <React.Fragment key={dateLabel}>
-                      <Label className="py-1 text-xs font-medium text-element-800">
-                        {dateLabel.toUpperCase()}
-                      </Label>
-                      <Item.List>
+                      <NavigationListLabel
+                        label={dateLabel.toUpperCase()}
+                        className="py-1 pl-1 text-xs font-medium text-element-800"
+                      />
+                      <NavigationList>
                         {conversations.map((c: ConversationType) => (
-                          <RenderConversation
+                          <NavigationListItem
                             key={c.sId}
-                            conversation={c}
-                            isMultiSelect={isMultiSelect}
-                            selectedConversations={selectedConversations}
-                            toggleConversationSelection={
-                              toggleConversationSelection
+                            selected={router.query.cId === c.sId}
+                            label={
+                              c.title ||
+                              (moment(c.created).isSame(moment(), "day")
+                                ? "New Conversation"
+                                : `Conversation from ${new Date(c.created).toLocaleDateString()}`)
                             }
-                            setSidebarOpen={setSidebarOpen}
-                            router={router}
-                            owner={owner}
+                            onClick={() => {
+                              if (isMultiSelect) {
+                                toggleConversationSelection(c);
+                              } else {
+                                setSidebarOpen(false);
+                              }
+                            }}
+                            href={
+                              isMultiSelect
+                                ? undefined
+                                : `/w/${owner.sId}/assistant/${c.sId}`
+                            }
+                            className="px-2"
                           />
                         ))}
-                      </Item.List>
+                      </NavigationList>
                     </React.Fragment>
                   )
                 );
