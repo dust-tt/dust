@@ -29,9 +29,12 @@ import {
   isWebsite,
 } from "@app/lib/data_sources";
 
-export type ContentActionKey =
+export type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"
-  | "TableUploadOrEdit"
+  | "TableUploadOrEdit";
+
+export type ContentActionKey =
+  | UploadOrEditContentActionKey
   | "MultipleDocumentsUpload"
   | "DocumentOrTableDeleteDialog"
   | "DocumentViewRawContent"
@@ -41,6 +44,11 @@ export type ContentAction = {
   action?: ContentActionKey;
   contentNode?: DataSourceViewContentNode;
 };
+
+const isUploadOrEditAction = (
+  action: ContentActionKey | undefined
+): action is UploadOrEditContentActionKey =>
+  ["DocumentUploadOrEdit", "TableUploadOrEdit"].includes(action || "");
 
 type ContentActionsProps = {
   dataSourceView: DataSourceViewType;
@@ -98,17 +106,16 @@ export const ContentActions = React.forwardRef<
       }
     };
 
-    // TODO(2024-08-30 flav) Refactor component below to remove conditional code between
-    // tables and documents which currently leads to 5xx.
     return (
       <>
         <DocumentOrTableUploadOrEditModal
-          contentNode={currentAction.contentNode}
-          dataSourceView={dataSourceView}
-          isOpen={
-            currentAction.action === "DocumentUploadOrEdit" ||
-            currentAction.action === "TableUploadOrEdit"
+          contentNode={
+            isUploadOrEditAction(currentAction.action)
+              ? currentAction.contentNode
+              : undefined
           }
+          dataSourceView={dataSourceView}
+          isOpen={isUploadOrEditAction(currentAction.action)}
           onClose={onClose}
           owner={owner}
           plan={plan}
