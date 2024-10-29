@@ -9,6 +9,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 
+import { BlockquoteBlock } from "@sparkle/components/message_markdown/BlockquoteBlock";
 import {
   CitationsContext,
   CitationsContextType,
@@ -26,6 +27,28 @@ import {
   mentionDirective,
 } from "@sparkle/components/message_markdown/MentionBlock";
 import { classNames } from "@sparkle/lib/utils";
+
+const headerColor = "s-text-element-900";
+const paragraphSize = "s-text-base";
+const headingSize = {
+  sm: {
+    h1: "s-text-xl s-font-bold",
+    h2: "s-text-xl s-font-regular",
+    h3: "s-text-lg s-font-bold",
+    h4: "s-text-base s-font-bold",
+    h5: "s-text-base s-font-medium",
+    h6: "s-text-base s-font-bold",
+  },
+  base: {
+    h1: "s-text-5xl s-font-semibold",
+    h2: "s-text-4xl s-font-semibold",
+    h3: "s-text-2xl s-font-semibold",
+    h4: "s-text-lg s-font-bold",
+    h5: "s-text-lg s-font-medium",
+    h6: "s-text-base s-font-bold",
+  },
+};
+type TextSize = "sm" | "base";
 
 function showUnsupportedDirective() {
   return (tree: any) => {
@@ -83,20 +106,20 @@ export type CustomRenderers = {
 
 export function RenderMessageMarkdown({
   content,
-  isStreaming,
+  isStreaming = false,
   citationsContext,
-  textSize,
-  textColor,
-  isLastMessage,
+  textSize = "base",
+  textColor = "s-text-element-800",
+  isLastMessage = false,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
 }: {
   content: string;
-  isStreaming: boolean;
+  isStreaming?: boolean;
   citationsContext?: CitationsContextType;
-  textSize?: "sm" | "base";
+  textSize?: TextSize;
   textColor?: string;
-  isLastMessage: boolean;
+  isLastMessage?: boolean;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
 }) {
@@ -122,8 +145,8 @@ export function RenderMessageMarkdown({
     return {
       pre: ({ children }) => <PreBlock>{children}</PreBlock>,
       a: LinkBlock,
-      ul: UlBlock,
-      ol: OlBlock,
+      ul: ({ children }) => <UlBlock textColor={textColor}>{children}</UlBlock>,
+      ol: ({ children }) => <OlBlock textColor={textColor}>{children}</OlBlock>,
       li: ({ children }) => (
         <LiBlock textSize={textSize} textColor={textColor}>
           {children}
@@ -141,32 +164,68 @@ export function RenderMessageMarkdown({
       th: TableHeaderBlock,
       td: TableDataBlock,
       h1: ({ children }) => (
-        <h1 className="s-pb-2 s-pt-4 s-text-5xl s-font-semibold s-text-element-900">
+        <h1
+          className={classNames(
+            "s-pb-2 s-pt-4",
+            headingSize[textSize].h1,
+            headerColor
+          )}
+        >
           {children}
         </h1>
       ),
       h2: ({ children }) => (
-        <h2 className="s-pb-2 s-pt-4 s-text-4xl s-font-semibold s-text-element-900">
+        <h2
+          className={classNames(
+            "s-pb-2 s-pt-4",
+            headingSize[textSize].h2,
+            headerColor
+          )}
+        >
           {children}
         </h2>
       ),
       h3: ({ children }) => (
-        <h3 className="s-pb-2 s-pt-4 s-text-2xl s-font-semibold s-text-element-900">
+        <h3
+          className={classNames(
+            "s-pb-2 s-pt-4",
+            headingSize[textSize].h3,
+            headerColor
+          )}
+        >
           {children}
         </h3>
       ),
       h4: ({ children }) => (
-        <h4 className="s-pb-2 s-pt-3 s-text-lg s-font-bold s-text-element-900">
+        <h4
+          className={classNames(
+            "s-pb-2 s-pt-3",
+            headingSize[textSize].h4,
+            headerColor
+          )}
+        >
           {children}
         </h4>
       ),
       h5: ({ children }) => (
-        <h5 className="s-pb-1.5 s-pt-2.5 s-text-lg s-font-medium s-text-element-900">
+        <h5
+          className={classNames(
+            "s-pb-1.5 s-pt-2.5",
+            headingSize[textSize].h5,
+            headerColor
+          )}
+        >
           {children}
         </h5>
       ),
       h6: ({ children }) => (
-        <h6 className="s-pb-1.5 s-pt-2.5 s-text-base s-font-bold s-text-element-900">
+        <h6
+          className={classNames(
+            "s-pb-1.5 s-pt-2.5",
+            headingSize[textSize].h6,
+            headerColor
+          )}
+        >
           {children}
         </h6>
       ),
@@ -175,6 +234,8 @@ export function RenderMessageMarkdown({
           {children}
         </strong>
       ),
+      blockquote: BlockquoteBlock,
+      hr: () => <div className="s-my-6 s-border-b s-border-structure-200" />,
       mention: MentionBlock,
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
@@ -419,16 +480,40 @@ function PreBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
-function UlBlock({ children }: { children: React.ReactNode }) {
+function UlBlock({
+  children,
+  textColor,
+}: {
+  children: React.ReactNode;
+  textColor: string;
+}) {
   return (
-    <ul className="s-first:pt-0 s-last:pb-0 s-list-disc s-py-2 s-pl-8">
+    <ul
+      className={classNames(
+        "s-first:pt-0 s-last:pb-0 s-list-disc s-py-2 s-pl-8",
+        textColor,
+        paragraphSize
+      )}
+    >
       {children}
     </ul>
   );
 }
-function OlBlock({ children }: { children: React.ReactNode }) {
+function OlBlock({
+  children,
+  textColor,
+}: {
+  children: React.ReactNode;
+  textColor: string;
+}) {
   return (
-    <ol className="s-first:pt-0 s-last:pb-0 s-list-decimal s-py-3 s-pl-8">
+    <ol
+      className={classNames(
+        "s-first:pt-0 s-last:pb-0 s-list-decimal s-py-3 s-pl-8",
+        textColor,
+        paragraphSize
+      )}
+    >
       {children}
     </ol>
   );
@@ -438,8 +523,8 @@ function LiBlock({
   textColor,
   children,
 }: {
-  textSize?: string;
-  textColor?: string;
+  textSize: TextSize;
+  textColor: string;
   children: React.ReactNode;
 }) {
   return (
@@ -447,7 +532,8 @@ function LiBlock({
       className={classNames(
         "s-first:pt-0 s-last:pb-0 s-break-words",
         textSize === "sm" ? "s-py-1" : "s-py-2",
-        textColor ? textColor : "s-text-element-800"
+        textColor,
+        paragraphSize
       )}
     >
       {children}
@@ -460,7 +546,7 @@ function ParagraphBlock({
   children,
 }: {
   textSize?: string;
-  textColor?: string;
+  textColor: string;
   children: React.ReactNode;
 }) {
   return (
@@ -470,7 +556,7 @@ function ParagraphBlock({
         textSize === "sm"
           ? "s-py-1 s-text-sm"
           : "s-py-2 s-text-base s-leading-7",
-        textColor ? textColor : "s-text-element-800"
+        textColor
       )}
     >
       {children}
