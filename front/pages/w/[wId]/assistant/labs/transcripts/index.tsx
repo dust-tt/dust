@@ -111,6 +111,7 @@ export default function LabsTranscriptsIndex({
   ) => {
     if (!newValue && transcriptsConfiguration) {
       await handleSetDataSource(transcriptsConfiguration.id, null);
+      setSelectionConfigurations({});
     }
     setStoreInFolder(newValue);
   };
@@ -643,9 +644,6 @@ export default function LabsTranscriptsIndex({
                     <SliderToggle
                       selected={storeInFolder}
                       onClick={() => handleSetStoreInFolder(!storeInFolder)}
-                      disabled={
-                        !transcriptsConfigurationState.assistantSelected
-                      }
                     />
                     <Page.P>Enable transcripts storage</Page.P>
                   </Page.Layout>

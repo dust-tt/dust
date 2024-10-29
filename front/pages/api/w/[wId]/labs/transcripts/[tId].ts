@@ -117,19 +117,21 @@ async function handler(
         await transcriptsConfiguration.setIsActive(isActive);
       }
 
-      if (isActive !== undefined || dataSourceViewId) {
-        if (isActive || dataSourceViewId) {
-          await launchRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-        } else {
-          await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-        }
-      }
-
       if (dataSourceViewId !== undefined) {
         await transcriptsConfiguration.setDataSourceViewId(
           auth,
           dataSourceViewId
         );
+      }
+
+      const shouldStartWorkflow = isActive || dataSourceViewId;
+      const shouldStopWorkflow =
+        isActive === false || (isActive === undefined && !dataSourceViewId);
+
+      if (shouldStartWorkflow) {
+        await launchRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      } else if (shouldStopWorkflow) {
+        await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       }
 
       return res.status(200).json({ configuration: transcriptsConfiguration });
