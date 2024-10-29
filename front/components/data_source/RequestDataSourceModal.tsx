@@ -129,7 +129,7 @@ export function RequestDataSourceModal({
                 placeholder={`Hello ${selectedDataSource.editedByUser?.fullName},`}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="s-mb-2"
+                className="mb-2"
               />
               <div>
                 <Button

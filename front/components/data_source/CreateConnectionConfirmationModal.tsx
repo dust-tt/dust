@@ -78,7 +78,7 @@ export function CreateConnectionConfirmationModal({
                   Dust's use of information received from the Google APIs will
                   adhere to{" "}
                   <Link
-                    className="s-text-action-500"
+                    className="text-action-500"
                     href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes"
                   >
                     Google API Services User Data Policy

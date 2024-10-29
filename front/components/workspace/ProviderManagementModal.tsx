@@ -190,7 +190,7 @@ export function ProviderManagementModal({
         </ContextItem.List>
       </div>
       <div className="flex flex-row items-center gap-4 px-4 pt-4">
-        <div className="s-text-sm font-semibold">Embedding Provider:</div>
+        <div className="text-sm font-semibold">Embedding Provider:</div>
         <DropdownMenu>
           <DropdownMenu.Button>
             <Tooltip
