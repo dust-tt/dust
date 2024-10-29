@@ -270,6 +270,11 @@ export async function processTranscriptActivity(
 
   // If storing transcripts is active
   if (transcriptsConfiguration.dataSourceViewId) {
+    localLogger.info(
+      {},
+      "[processTranscriptActivity] Storing transcript to Datasource."
+    );
+
     const dataSource = await DataSourceResource.fetchByModelIdWithAuth(
       auth,
       transcriptsConfiguration.dataSourceViewId
@@ -303,10 +308,22 @@ export async function processTranscriptActivity(
         "[processTranscriptActivity] Error storing transcript to Datasource. Keep going to process."
       );
     }
+
+    localLogger.info(
+      {
+        dataSourceViewId: transcriptsConfiguration.dataSourceViewId,
+      },
+      "[processTranscriptActivity] Stored transcript to Datasource."
+    );
   }
 
   // Is transcripts processing is active
   if (transcriptsConfiguration.isActive) {
+    localLogger.info(
+      {},
+      "[processTranscriptActivity] Processing transcript content."
+    );
+
     const { agentConfigurationId } = transcriptsConfiguration;
 
     if (!agentConfigurationId) {
@@ -480,5 +497,13 @@ export async function processTranscriptActivity(
     </a>
   </div>`,
     });
+
+    localLogger.info(
+      {
+        agentConfigurationId,
+        conversationSid: conversation.sId,
+      },
+      "[processTranscriptActivity] Sent processed transcript email."
+    );
   }
 }
