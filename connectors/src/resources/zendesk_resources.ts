@@ -560,6 +560,22 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     super(ZendeskArticle, blob);
   }
 
+  static async makeNew({
+    blob,
+    transaction,
+  }: {
+    blob: CreationAttributes<ZendeskArticle>;
+    transaction?: Transaction;
+  }): Promise<ZendeskArticleResource> {
+    let article;
+    if (transaction) {
+      article = await ZendeskArticle.create({ ...blob }, { transaction });
+    } else {
+      article = await ZendeskArticle.create({ ...blob });
+    }
+    return new this(this.model, article.get());
+  }
+
   async postFetchHook(): Promise<void> {
     return;
   }
