@@ -192,7 +192,7 @@ export function ConversationTitle({
             <Popover
               popoverTriggerAsChild
               trigger={
-                <>
+                <div>
                   <div className="hidden sm:flex">
                     <Button
                       size="sm"
@@ -209,7 +209,7 @@ export function ConversationTitle({
                       variant="ghost"
                     />
                   </div>
-                </>
+                </div>
               }
               content={
                 <div className="flex flex-col gap-y-4 py-4">
