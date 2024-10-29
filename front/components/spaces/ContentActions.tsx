@@ -42,6 +42,11 @@ export type ContentAction = {
   contentNode?: DataSourceViewContentNode;
 };
 
+const isUploadOrEditAction = (
+  action: ContentActionKey | undefined
+): action is "DocumentUploadOrEdit" | "TableUploadOrEdit" =>
+  ["DocumentUploadOrEdit", "TableUploadOrEdit"].includes(action || "");
+
 type ContentActionsProps = {
   dataSourceView: DataSourceViewType;
   totalNodesCount: number;
@@ -98,17 +103,16 @@ export const ContentActions = React.forwardRef<
       }
     };
 
-    // TODO(2024-08-30 flav) Refactor component below to remove conditional code between
-    // tables and documents which currently leads to 5xx.
     return (
       <>
         <DocumentOrTableUploadOrEditModal
-          contentNode={currentAction.contentNode}
-          dataSourceView={dataSourceView}
-          isOpen={
-            currentAction.action === "DocumentUploadOrEdit" ||
-            currentAction.action === "TableUploadOrEdit"
+          contentNode={
+            isUploadOrEditAction(currentAction.action)
+              ? currentAction.contentNode
+              : undefined
           }
+          dataSourceView={dataSourceView}
+          isOpen={isUploadOrEditAction(currentAction.action)}
           onClose={onClose}
           owner={owner}
           plan={plan}
