@@ -13,17 +13,19 @@ const SyntaxHighlighter = React.lazy(() =>
   import("react-syntax-highlighter").then((mod) => ({ default: mod.Light }))
 );
 
+type CodeBlockProps = {
+  children?: React.ReactNode;
+  className?: string;
+  inline?: boolean;
+  wrapLongLines?: boolean;
+};
+
 export function CodeBlock({
   children,
   className,
   inline,
   wrapLongLines = false,
-}: {
-  children?: React.ReactNode;
-  className?: string;
-  inline?: boolean;
-  wrapLongLines?: boolean;
-}): JSX.Element {
+}: CodeBlockProps): JSX.Element {
   const match = /language-(\w+)/.exec(className || "");
   const language = match ? match[1] : "text";
   const slate900 = slate["900"];

@@ -40,16 +40,18 @@ export function CodeBlockWithExtendedSupport({
       return;
     }
 
-    void mermaid
-      .parse(validChildrenContent)
-      .then(() => {
+    const checkValidMermaid = async () => {
+      try {
+        await mermaid.parse(validChildrenContent);
         setIsValidMermaid(true);
         setShowMermaid(true);
-      })
-      .catch(() => {
+      } catch (e) {
         setIsValidMermaid(false);
         setShowMermaid(false);
-      });
+      }
+    };
+
+    void checkValidMermaid();
   }, [
     isStreaming,
     isValidMermaid,

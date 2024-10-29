@@ -436,6 +436,11 @@ export function AgentMessage({
     []
   );
 
+  const citations = useMemo(
+    () => getCitations({ activeReferences, lastHoveredReference }),
+    [activeReferences, lastHoveredReference]
+  );
+
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
@@ -461,7 +466,7 @@ export function AgentMessage({
       }}
       type="agent"
       size={size}
-      citations={getCitations({ activeReferences, lastHoveredReference })}
+      citations={citations}
     >
       <div>
         {renderAgentMessage({

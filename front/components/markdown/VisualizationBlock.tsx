@@ -10,13 +10,14 @@ const VISUALIZATION_MAGIC_LINE = "{/** visualization-complete */}";
 
 type PositionType = { start: { line: number }; end: { line: number } };
 
+type VisualizationBlockProps = {
+  position: PositionType;
+  customRenderer?: CustomRenderers;
+};
 export function VisualizationBlock({
   position,
   customRenderer,
-}: {
-  position: PositionType;
-  customRenderer?: CustomRenderers;
-}) {
+}: VisualizationBlockProps) {
   const { content } = useContext(MarkdownContentContext);
 
   const visualizationRenderer = useMemo(() => {
@@ -48,32 +49,27 @@ export function getVisualizationPlugin(
   conversationId: string,
   messageId: string
 ) {
+  const customRenderer = {
+    visualization: (code: string, complete: boolean, lineStart: number) => {
+      return (
+        <VisualizationActionIframe
+          owner={owner}
+          visualization={{
+            code,
+            complete,
+            identifier: `viz-${messageId}-${lineStart}`,
+          }}
+          key={`viz-${messageId}-${lineStart}`}
+          conversationId={conversationId}
+          agentConfigurationId={agentConfigurationId}
+        />
+      );
+    },
+  };
+
   const VisualizationPlugin = ({ position }: { position: PositionType }) => {
     return (
-      <VisualizationBlock
-        position={position}
-        customRenderer={{
-          visualization: (
-            code: string,
-            complete: boolean,
-            lineStart: number
-          ) => {
-            return (
-              <VisualizationActionIframe
-                owner={owner}
-                visualization={{
-                  code,
-                  complete,
-                  identifier: `viz-${messageId}-${lineStart}`,
-                }}
-                key={`viz-${messageId}-${lineStart}`}
-                conversationId={conversationId}
-                agentConfigurationId={agentConfigurationId}
-              />
-            );
-          },
-        }}
-      />
+      <VisualizationBlock position={position} customRenderer={customRenderer} />
     );
   };
 
