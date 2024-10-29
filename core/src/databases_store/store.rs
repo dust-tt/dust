@@ -42,7 +42,7 @@ pub struct PostgresDatabasesStore {
 impl PostgresDatabasesStore {
     pub async fn new(db_uri: &str) -> Result<Self> {
         let manager = PostgresConnectionManager::new_from_stringlike(db_uri, NoTls)?;
-        let pool = Pool::builder().max_size(128).build(manager).await?;
+        let pool = Pool::builder().max_size(32).build(manager).await?;
         Ok(Self { pool })
     }
 }
@@ -159,8 +159,8 @@ impl DatabasesStore for PostgresDatabasesStore {
 
             let stmt = c
                 .prepare(
-                    "DELETE FROM table_rows WHERE id IN (
-                   SELECT id FROM table_rows WHERE table_id = $1 LIMIT $2
+                    "DELETE FROM tables_rows WHERE id IN (
+                   SELECT id FROM tables_rows WHERE table_id = $1 LIMIT $2
                  )",
                 )
                 .await?;
@@ -209,8 +209,8 @@ impl DatabasesStore for PostgresDatabasesStore {
 
         let stmt = c
             .prepare(
-                "DELETE FROM table_rows WHERE id IN (
-                   SELECT id FROM table_rows WHERE table_id = $1 LIMIT $2
+                "DELETE FROM tables_rows WHERE id IN (
+                   SELECT id FROM tables_rows WHERE table_id = $1 LIMIT $2
                  )",
             )
             .await?;
