@@ -13,12 +13,17 @@ export default meta;
 export const InputExample = () => (
   <div className="s-flex s-flex-col s-gap-20">
     <div className="s-grid s-grid-cols-3 s-gap-4">
-      <Input placeholder="placeholder" name="input" />
+      <Input
+        placeholder="placeholder"
+        name="input"
+        help="Name must be unique"
+      />
       <Input
         placeholder="placeholder"
         name="input"
         value="value"
         error="errored because it's a very long message"
+        help="Name must be unique"
         showErrorLabel
       />
       <Input
