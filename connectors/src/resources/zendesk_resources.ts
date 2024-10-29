@@ -25,6 +25,7 @@ import {
 } from "@connectors/lib/models/zendesk";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -92,6 +93,9 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return;
   }
 
+  /**
+   * Deletes the brand data, keeping all children data (tickets, categories, articles).
+   */
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
       where: {
@@ -100,6 +104,17 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       transaction,
     });
     return new Ok(undefined);
+  }
+
+  /**
+   * Deletes the brand and all associated data (tickets, categories, articles).
+   */
+  // eslint-disable-next-line no-empty-pattern
+  async remove({}: {
+    dataSourceConfig: DataSourceConfig;
+    loggerArgs: Record<string, string | number>;
+  }) {
+    // TODO: implement removal for the children first.
   }
 
   toJSON(): Record<string, unknown> {
@@ -349,6 +364,17 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
       transaction,
     });
     return new Ok(undefined);
+  }
+
+  /**
+   * Deletes the category and all associated data (articles).
+   */
+  // eslint-disable-next-line no-empty-pattern
+  async remove({}: {
+    dataSourceConfig: DataSourceConfig;
+    loggerArgs: Record<string, string | number>;
+  }) {
+    // TODO: implement removal for the children first.
   }
 
   toJSON(): Record<string, unknown> {

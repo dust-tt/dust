@@ -1,7 +1,18 @@
 import type { ModelId } from "@dust-tt/types";
 
+import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
+import {
+  changeZendeskClientSubdomain,
+  createZendeskClient,
+} from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import {
+  ZendeskBrandResource,
+  ZendeskCategoryResource,
+  ZendeskConfigurationResource,
+} from "@connectors/resources/zendesk_resources";
 
 async function _getZendeskConnectorOrRaise(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -9,6 +20,15 @@ async function _getZendeskConnectorOrRaise(connectorId: ModelId) {
     throw new Error("[Zendesk] Connector not found.");
   }
   return connector;
+}
+
+async function _getZendeskConfigurationOrRaise(connectorId: ModelId) {
+  const configuration =
+    await ZendeskConfigurationResource.fetchById(connectorId);
+  if (!configuration) {
+    throw new Error("[Zendesk] Configuration not found.");
+  }
+  return configuration;
 }
 
 /**
@@ -51,13 +71,84 @@ export async function saveZendeskConnectorSuccessSync({
  *
  * @returns true if the Brand was updated, false if it was deleted.
  */
-// eslint-disable-next-line no-empty-pattern
-export async function syncZendeskBrandActivity({}: {
+export async function syncZendeskBrandActivity({
+  connectorId,
+  brandId,
+  currentSyncDateMs,
+}: {
   connectorId: ModelId;
   brandId: number;
   currentSyncDateMs: number;
 }): Promise<{ helpCenterAllowed: boolean; ticketsAllowed: boolean }> {
-  return { helpCenterAllowed: false, ticketsAllowed: false };
+  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+  const configuration = await _getZendeskConfigurationOrRaise(connectorId);
+
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  if (!brandInDb) {
+    throw new Error(
+      `[Zendesk] Brand not found, connectorId: ${connectorId}, brandId: ${brandId}`
+    );
+  }
+
+  // if all rights were revoked, we delete the brand data.
+  if (
+    brandInDb.helpCenterPermission === "none" &&
+    brandInDb.ticketsPermission === "none"
+  ) {
+    await brandInDb.remove({ dataSourceConfig, loggerArgs });
+    return { helpCenterAllowed: false, ticketsAllowed: false };
+  }
+
+  const accessToken = await getZendeskAccessToken(connector.connectionId);
+  const zendeskApiClient = createZendeskClient({
+    token: accessToken,
+    subdomain: configuration.subdomain,
+  });
+
+  // if the brand is not on Zendesk anymore, we delete it
+  const {
+    result: { brand: fetchedBrand },
+  } = await zendeskApiClient.brand.show(brandId);
+  if (!fetchedBrand) {
+    await brandInDb.remove({ dataSourceConfig, loggerArgs });
+    return { helpCenterAllowed: false, ticketsAllowed: false };
+  }
+
+  const categoriesWithReadPermissions =
+    await ZendeskBrandResource.fetchReadOnlyCategories({
+      connectorId,
+      brandId,
+    });
+  const noMoreAllowedCategories = categoriesWithReadPermissions.length === 0;
+
+  if (noMoreAllowedCategories) {
+    // if the tickets and all children categories are not allowed anymore, we delete the brand data
+    if (brandInDb.ticketsPermission !== "read") {
+      await brandInDb.remove({ dataSourceConfig, loggerArgs });
+      return { helpCenterAllowed: false, ticketsAllowed: false };
+    }
+    await brandInDb.update({ helpCenterPermission: "none" });
+  }
+
+  // otherwise, we update the brand name and lastUpsertedTs
+  await brandInDb.update({
+    name: fetchedBrand.name || "Brand",
+    lastUpsertedTs: new Date(currentSyncDateMs),
+  });
+  return {
+    helpCenterAllowed: brandInDb.helpCenterPermission === "read",
+    ticketsAllowed: brandInDb.ticketsPermission === "read",
+  };
 }
 
 /**
@@ -65,12 +156,24 @@ export async function syncZendeskBrandActivity({}: {
  *
  * @returns true if the Help Center has read permissions enabled.
  */
-// eslint-disable-next-line no-empty-pattern
-export async function checkZendeskHelpCenterPermissionsActivity({}: {
+export async function checkZendeskHelpCenterPermissionsActivity({
+  connectorId,
+  brandId,
+}: {
   connectorId: ModelId;
   brandId: number;
 }): Promise<boolean> {
-  return false;
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  if (!brandInDb) {
+    throw new Error(
+      `[Zendesk] Brand not found, connectorId: ${connectorId}, brandId: ${brandId}`
+    );
+  }
+
+  return brandInDb.helpCenterPermission === "read";
 }
 
 /**
@@ -78,23 +181,47 @@ export async function checkZendeskHelpCenterPermissionsActivity({}: {
  *
  * @returns true if the Help Center has read permissions enabled.
  */
-// eslint-disable-next-line no-empty-pattern
-export async function checkZendeskTicketsPermissionsActivity({}: {
+export async function checkZendeskTicketsPermissionsActivity({
+  connectorId,
+  brandId,
+}: {
   connectorId: ModelId;
   brandId: number;
 }): Promise<boolean> {
-  return false;
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  if (!brandInDb) {
+    throw new Error(
+      `[Zendesk] Brand not found, connectorId: ${connectorId}, brandId: ${brandId}`
+    );
+  }
+
+  return brandInDb.ticketsPermission === "read";
 }
 
 /**
  * Retrieves the categories for a given Brand.
  */
-// eslint-disable-next-line no-empty-pattern
-export async function getZendeskCategoriesActivity({}: {
+export async function getZendeskCategoriesActivity({
+  connectorId,
+  brandId,
+}: {
   connectorId: ModelId;
   brandId: number;
 }): Promise<number[]> {
-  return [];
+  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const configuration = await _getZendeskConfigurationOrRaise(connectorId);
+  const accessToken = await getZendeskAccessToken(connector.connectionId);
+  const client = createZendeskClient({
+    token: accessToken,
+    subdomain: configuration.subdomain,
+  });
+  await changeZendeskClientSubdomain({ client, brandId });
+  const categories = await client.helpcenter.categories.list();
+
+  return categories.map((category) => category.id);
 }
 
 /**
@@ -107,12 +234,59 @@ export async function getZendeskCategoriesActivity({}: {
  *
  * @returns true if the Category was updated, false if it was deleted.
  */
-// eslint-disable-next-line no-empty-pattern
-export async function syncZendeskCategoryActivity({}: {
+export async function syncZendeskCategoryActivity({
+  connectorId,
+  categoryId,
+  currentSyncDateMs,
+}: {
   connectorId: ModelId;
   categoryId: number;
   currentSyncDateMs: number;
 }): Promise<boolean> {
+  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+  const configuration = await _getZendeskConfigurationOrRaise(connectorId);
+  const categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
+    connectorId,
+    categoryId,
+  });
+  if (!categoryInDb) {
+    throw new Error(
+      `[Zendesk] Category not found, connectorId: ${connectorId}, categoryId: ${categoryId}`
+    );
+  }
+
+  // if all rights were revoked, we delete the category data.
+  if (categoryInDb.permission === "none") {
+    await categoryInDb.remove({ dataSourceConfig, loggerArgs });
+    return false;
+  }
+
+  const accessToken = await getZendeskAccessToken(connector.connectionId);
+  const zendeskApiClient = createZendeskClient({
+    token: accessToken,
+    subdomain: configuration.subdomain,
+  });
+
+  // if the category is not on Zendesk anymore, we delete it
+  const { result: fetchedCategory } =
+    await zendeskApiClient.helpcenter.categories.show(categoryId);
+  if (!fetchedCategory) {
+    await categoryInDb.remove({ dataSourceConfig, loggerArgs });
+    return false;
+  }
+
+  // otherwise, we update the category name and lastUpsertedTs
+  await categoryInDb.update({
+    name: fetchedCategory.name || "Category",
+    lastUpsertedTs: new Date(currentSyncDateMs),
+  });
   return true;
 }
 

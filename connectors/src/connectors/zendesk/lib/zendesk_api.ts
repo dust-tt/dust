@@ -18,6 +18,7 @@ export async function changeZendeskClientSubdomain({
   client: Client;
   brandId: number;
 }) {
+  // TODO(2024-10-29 aubin): in some cases the brand in db is available and can be used to retrieve the subdomain
   const {
     result: { brand },
   } = await client.brand.show(brandId);
