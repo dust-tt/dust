@@ -27,49 +27,54 @@ const TabsTrigger = React.forwardRef<
     label?: string;
     icon?: React.ComponentType;
     isLoading?: boolean;
+  } & Omit<LinkWrapperProps, "children" | "className">
+>(
+  (
+    { className, label, icon, href, target, rel, replace, shallow, ...props },
+    ref
+  ) => {
+    const content = (
+      <TabsPrimitive.Trigger
+        ref={ref}
+        className={cn(
+          "s-border-0 s-border-b-2 s-border-primary-800/0 s-pb-1 disabled:s-pointer-events-none data-[state=active]:s-border-primary-800",
+          className
+        )}
+        {...props}
+        asChild={!!href}
+      >
+        <Button variant="ghost" size="sm" label={label} icon={icon} />
+      </TabsPrimitive.Trigger>
+    );
+
+    return (
+      <LinkWrapper
+        href={href}
+        target={target}
+        rel={rel}
+        replace={replace}
+        shallow={shallow}
+        className={className}
+      >
+        {content}
+      </LinkWrapper>
+    );
   }
->(({ className, label, icon, ...props }, ref) => (
-  <TabsPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      "s-border-0 s-border-b-2 s-border-primary-800/0 s-pb-1 disabled:s-pointer-events-none data-[state=active]:s-border-primary-800",
-      className
-    )}
-    {...props}
-  >
-    <Button variant="ghost" size="sm" label={label} icon={icon} />
-  </TabsPrimitive.Trigger>
-));
-TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
+);
 
 const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content> &
-    Omit<LinkWrapperProps, "children" | "className">
->(({ className, href, target, rel, replace, shallow, ...props }, ref) => {
-  const content = (
-    <TabsPrimitive.Content
-      ref={ref}
-      className={cn(
-        "s-contents s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
-        className
-      )}
-      {...props}
-    />
-  );
-
-  return (
-    <LinkWrapper
-      href={href}
-      target={target}
-      rel={rel}
-      replace={replace}
-      shallow={shallow}
-      className={className}
-    >
-      {content}
-    </LinkWrapper>
-  );
-});
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Content
+    ref={ref}
+    className={cn(
+      "s-contents s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
+      className
+    )}
+    {...props}
+  />
+));
+TabsContent.displayName = TabsPrimitive.Content.displayName;
 
 export { Tabs, TabsContent, TabsList, TabsTrigger };
