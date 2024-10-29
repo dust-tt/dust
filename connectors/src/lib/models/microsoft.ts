@@ -142,6 +142,7 @@ export class MicrosoftNodeModel extends Model<
   declare mimeType: string | null;
   declare parentInternalId: string | null;
   declare deltaLink: string | null;
+  declare webUrl: string | null;
 }
 
 MicrosoftNodeModel.init(
@@ -198,6 +199,10 @@ MicrosoftNodeModel.init(
       allowNull: true,
     },
     deltaLink: {
+      type: DataTypes.STRING(1024),
+      allowNull: true,
+    },
+    webUrl: {
       type: DataTypes.STRING(1024),
       allowNull: true,
     },
