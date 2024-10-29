@@ -22,6 +22,7 @@ export function ConversationMessageActions({
   if (messageEmoji) {
     buttons.push(
       <ConversationMessageEmojiSelector
+        key="emoji-selector"
         reactions={messageEmoji.reactions}
         onSubmitEmoji={messageEmoji.onSubmitEmoji}
         isSubmittingEmoji={messageEmoji.isSubmittingEmoji}
@@ -71,7 +72,7 @@ function ConversationMessageEmojiSelector({
         emojiData={emojiData}
         isSubmittingEmoji={isSubmittingEmoji}
       />
-      {slicedReactions.map((reaction) => {
+      {slicedReactions.map((reaction, index) => {
         const hasReacted = reaction.hasReacted;
         const emoji = emojiData?.emojis[reaction.emoji];
         const nativeEmoji = emoji?.skins[0].native;
@@ -80,7 +81,7 @@ function ConversationMessageEmojiSelector({
         }
         return (
           <ButtonEmoji
-            key={reaction.emoji}
+            key={`${reaction.emoji}-${index}`}
             variant={hasReacted ? "selected" : "unselected"}
             emoji={nativeEmoji}
             count={reaction.count.toString()}
