@@ -69,10 +69,9 @@ export function ActivityReport({
                   action={
                     <Button
                       icon={DownloadIcon}
-                      variant="tertiary"
+                      variant="ghost"
                       size="xs"
-                      label="Download"
-                      labelVisible={false}
+                      tooltip="Download"
                       onClick={() => {
                         handleDownload(item);
                       }}

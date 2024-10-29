@@ -8,6 +8,7 @@ import {
   Modal,
   Page,
   UserGroupIcon,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
@@ -16,14 +17,13 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { GLOBAL_AGENTS_SID } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import { useCallback, useContext } from "react";
+import { useCallback } from "react";
 
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
-import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
 // describe the type of userContent where the
@@ -150,7 +150,7 @@ export function HelpDrawer({
   setShowQuickGuide: (show: boolean) => void;
 }) {
   const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const { submit: handleHelpSubmit } = useSubmitFunction(
     useCallback(
@@ -223,17 +223,16 @@ export function HelpDrawer({
 
         <div className="flex flex-col gap-4 [&>*]:pl-px">
           <Page.SectionHeader title="Ask questions to @help" />
-          <Button.List isWrapping={true}>
+          <div className="flex gap-2">
             <div className="flex flex-col gap-8">
               <div className="flex flex-wrap gap-2">
                 {userContent[owner.role].helpIceBreakers.map(
                   (iceBreaker, index) => (
                     <Button
-                      variant="tertiary"
+                      variant="ghost"
                       icon={ChatBubbleBottomCenterTextIcon}
                       label={iceBreaker}
                       size="sm"
-                      hasMagnifying={false}
                       onClick={() => {
                         void handleHelpSubmit(`@help ${iceBreaker}`, [
                           { configurationId: GLOBAL_AGENTS_SID.HELPER },
@@ -245,7 +244,7 @@ export function HelpDrawer({
                 )}
               </div>
             </div>
-          </Button.List>
+          </div>
           <AssistantInputBar
             owner={owner}
             onSubmit={handleHelpSubmit}

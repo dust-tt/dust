@@ -20,7 +20,7 @@ export const BasicBanner = () => {
           <p>
             Join us in Denver from June 7 – 9 to see what’s coming next&nbsp;
           </p>
-          <Button variant="tertiary" size="sm" label="Register Now" />
+          <Button variant="ghost" size="sm" label="Register Now" />
         </div>
       </Banner>
       <Banner variant="incident">

@@ -118,7 +118,7 @@ export const TreeExample = () => {
                         <IconButton
                           size="xs"
                           icon={EyeIcon}
-                          variant="tertiary"
+                          variant="outline"
                         />
                       </>
                     }
@@ -270,7 +270,6 @@ export const TreeExample = () => {
                 visual={IntercomLogo}
                 onItemClick={() => console.log("Clickable")}
                 isSelected={true}
-                size="md"
               >
                 <Tree variant="navigator" tailwindIconTextColor="s-text-brand">
                   <Tree.Item
@@ -311,9 +310,9 @@ export const TreeExample = () => {
                   </Tree.Item>
                 </Tree>
               </Tree.Item>
-              <Tree.Item label="Notion" visual={NotionLogo} size="md" />
-              <Tree.Item label="Slack" visual={SlackLogo} size="md" />
-              <Tree.Item label="Dust" visual={DustIcon} size="md" />
+              <Tree.Item label="Notion" visual={NotionLogo} />
+              <Tree.Item label="Slack" visual={SlackLogo} />
+              <Tree.Item label="Dust" visual={DustIcon} />
             </Tree>
           </div>
         </div>
@@ -380,6 +379,14 @@ export const TreeExample = () => {
                   <Tree.Item label="Item 1" collapsed={false}>
                     <Tree>
                       <Tree.Empty label="No documents" />
+                    </Tree>
+                  </Tree.Item>
+                  <Tree.Item label="Item 2" collapsed={false}>
+                    <Tree>
+                      <Tree.Empty
+                        label="Empty tree can be clickable"
+                        onItemClick={() => alert("Soupinou")}
+                      />
                     </Tree>
                   </Tree.Item>
                 </Tree>
@@ -636,7 +643,6 @@ export const SelectDataSourceExample = () => {
               <Tree.Item
                 label="Intercom"
                 visual={IntercomLogo}
-                size="md"
                 areActionsFading={false}
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
@@ -647,9 +653,8 @@ export const SelectDataSourceExample = () => {
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}
-                      variant="tertiary"
+                      variant="outline"
                       size="sm"
-                      hasMagnifying={false}
                     />
                   </div>
                 }
@@ -668,19 +673,16 @@ export const SelectDataSourceExample = () => {
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}
-                      variant="tertiary"
+                      variant="outline"
                       size="sm"
-                      hasMagnifying={false}
                     />
                   </div>
                 }
-                size="md"
               />
               <Tree.Item
                 label="Notion"
                 visual={NotionLogo}
                 areActionsFading={false}
-                size="md"
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
                     <span className="s-text-sm s-text-element-700">
@@ -690,9 +692,8 @@ export const SelectDataSourceExample = () => {
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}
-                      variant="tertiary"
+                      variant="outline"
                       size="sm"
-                      hasMagnifying={false}
                     />
                   </div>
                 }
@@ -709,7 +710,6 @@ export const SelectDataSourceExample = () => {
                 label="Google Drive"
                 visual={DriveLogo}
                 areActionsFading={false}
-                size="md"
                 defaultCollapsed={true}
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
@@ -720,9 +720,8 @@ export const SelectDataSourceExample = () => {
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}
-                      variant="tertiary"
+                      variant="outline"
                       size="sm"
-                      hasMagnifying={false}
                     />
                   </div>
                 }
@@ -739,7 +738,6 @@ export const SelectDataSourceExample = () => {
               <Tree.Item
                 label="Intercom"
                 visual={IntercomLogo}
-                size="md"
                 checkbox={{
                   checked: false,
                   onChange: () => {
@@ -751,7 +749,6 @@ export const SelectDataSourceExample = () => {
                 label="Slack"
                 collapsed={true}
                 visual={SlackLogo}
-                size="md"
                 checkbox={{
                   checked: false,
                   onChange: () => {
@@ -762,7 +759,6 @@ export const SelectDataSourceExample = () => {
               <Tree.Item
                 label="Notion"
                 visual={NotionLogo}
-                size="md"
                 checkbox={{
                   checked: false,
                   onChange: () => {
@@ -813,7 +809,6 @@ export const SelectDataSourceExample = () => {
               <Tree.Item
                 label="Google Drive"
                 visual={DriveLogo}
-                size="md"
                 checkbox={{
                   checked: false,
                   onChange: () => {
@@ -847,7 +842,7 @@ const TreeItem = ({
           <span className="s-text-xs s-text-element-700">
             last updated Jan 6
           </span>
-          <IconButton icon={CloudArrowDownIcon} size="xs" variant="tertiary" />
+          <IconButton icon={CloudArrowDownIcon} size="xs" variant="outline" />
           <IconButton icon={PlusCircleIcon} size="xs" />
         </div>
       }

@@ -10,7 +10,6 @@ import {
 import { Transition } from "@headlessui/react";
 import Head from "next/head";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import Script from "next/script";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
@@ -22,7 +21,6 @@ import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 import Particles, { shapeNamesArray } from "@app/components/home/Particles";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
-import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
 export interface LandingLayoutProps {
@@ -39,7 +37,6 @@ export default function LandingLayout({
 }) {
   const { postLoginReturnToUrl = "/api/login", shape } = pageProps;
 
-  const router = useRouter();
   const [currentShape, setCurrentShape] = useState(shape);
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(true);
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
@@ -79,12 +76,6 @@ export default function LandingLayout({
     };
   }, []);
 
-  useEffect(() => {
-    ClientSideTracking.trackPageView({
-      pathname: router.pathname,
-    });
-  }, [router.pathname]);
-
   return (
     <RootLayout>
       <Header />
@@ -109,7 +100,7 @@ export default function LandingLayout({
           <MainNavigation />
           <div className="flex flex-grow justify-end">
             <Button
-              variant="tertiary"
+              variant="highlight"
               size="sm"
               label="Sign in"
               icon={LoginIcon}
@@ -212,13 +203,13 @@ const CookieBanner = ({
       </div>
       <div className="flex gap-2">
         <Button
-          variant="tertiary"
+          variant="outline"
           size="sm"
           label="Reject"
           onClick={onClickRefuse}
         />
         <Button
-          variant="primary"
+          variant="highlight"
           size="sm"
           label="Accept All"
           onClick={onClickAccept}

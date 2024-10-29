@@ -2,10 +2,15 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   ClipboardIcon,
-  DropdownMenu,
   EyeIcon,
   Icon,
   MoreIcon,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuLabel,
+  NewDropdownMenuSeparator,
+  NewDropdownMenuTrigger,
   PencilSquareIcon,
   StarIcon,
   StarStrokeIcon,
@@ -79,16 +84,19 @@ export function AssistantDropdownMenu({
           <Button
             key="show_details"
             icon={MoreIcon}
-            label="Actions"
-            labelVisible={false}
-            disabledTooltip
             size="sm"
-            variant="tertiary"
-            hasMagnifying={false}
+            variant="outline"
+            className="rounded-2xl"
           />
         );
+
       case "plain":
-        return <Icon visual={MoreIcon} />;
+        return (
+          <div>
+            <Icon visual={MoreIcon} />
+          </div>
+        );
+
       default:
         assertNever(variant);
     }
@@ -108,113 +116,92 @@ export function AssistantDropdownMenu({
         isPrivateAssistant={agentConfiguration.scope === "private"}
       />
 
-      <DropdownMenu className="text-element-700">
-        {({ close }) => (
-          <>
-            <DropdownMenu.Button>{dropdownButton}</DropdownMenu.Button>
-            {/* TODO: get rid of the hardcoded value */}
-            <DropdownMenu.Items width={230}>
-              <DropdownMenu.SectionHeader label={agentConfiguration.name} />
-              <DropdownMenu.Item
-                label="Start new conversation"
-                link={{
-                  href: `/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`,
-                }}
-                icon={ChatBubbleBottomCenterTextIcon}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  close();
-                }}
-              />
-              {isMoreInfoVisible ? (
-                <DropdownMenu.Item
-                  label="More info"
-                  onClick={() =>
-                    setQueryParam(
-                      router,
-                      "assistantDetails",
-                      agentConfiguration.sId
-                    )
-                  }
-                  icon={EyeIcon}
-                />
-              ) : (
-                <DropdownMenu.Item
-                  label={`Copy assistant ID`}
+      <NewDropdownMenu>
+        <NewDropdownMenuTrigger asChild>
+          {dropdownButton}
+        </NewDropdownMenuTrigger>
+        <NewDropdownMenuContent>
+          <NewDropdownMenuLabel>{agentConfiguration.name}</NewDropdownMenuLabel>
+          <NewDropdownMenuItem
+            label="Start new conversation"
+            icon={ChatBubbleBottomCenterTextIcon}
+            onClick={() =>
+              router.push(
+                `/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`
+              )
+            }
+          />
+          {isMoreInfoVisible ? (
+            <NewDropdownMenuItem
+              label="More info"
+              icon={EyeIcon}
+              onClick={(e) => {
+                e.stopPropagation();
+                setQueryParam(
+                  router,
+                  "assistantDetails",
+                  agentConfiguration.sId
+                );
+              }}
+            />
+          ) : (
+            <NewDropdownMenuItem
+              label="Copy assistant ID"
+              icon={ClipboardIcon}
+              onClick={async (e) => {
+                e.stopPropagation();
+                await navigator.clipboard.writeText(agentConfiguration.sId);
+              }}
+            />
+          )}
+          {showAddRemoveToFavorite && (
+            <NewDropdownMenuItem
+              label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+              icon={isFavorite ? StarStrokeIcon : StarIcon}
+              disabled={isUpdatingFavorites}
+              onClick={async (e) => {
+                e.stopPropagation();
+                await updateFavorite(!isFavorite);
+              }}
+            />
+          )}
+          {!isGlobalAgent && (
+            <>
+              <NewDropdownMenuSeparator />
+              <NewDropdownMenuLabel>Edition</NewDropdownMenuLabel>
+              {(isBuilder(owner) || !isAgentWorkspace) && (
+                <NewDropdownMenuItem
+                  label="Edit"
+                  icon={PencilSquareIcon}
                   onClick={async (e) => {
                     e.stopPropagation();
-                    await navigator.clipboard.writeText(agentConfiguration.sId);
-                    close();
+                    await router.push(
+                      `/w/${owner.sId}/builder/assistants/${agentConfiguration.sId}?flow=${isAgentWorkspace ? "workspace_assistants" : "personal_assistants"}`
+                    );
                   }}
-                  icon={ClipboardIcon}
                 />
               )}
-              {!isGlobalAgent && (
-                <>
-                  <DropdownMenu.SectionHeader label="Edition" />
-
-                  {/* Should use the router to have a better navigation experience */}
-                  {(isBuilder(owner) || !isAgentWorkspace) && (
-                    <DropdownMenu.Item
-                      label="Edit"
-                      link={{
-                        href: `/w/${owner.sId}/builder/assistants/${
-                          agentConfiguration.sId
-                        }?flow=${
-                          isAgentWorkspace
-                            ? "workspace_assistants"
-                            : "personal_assistants"
-                        }`,
-                      }}
-                      icon={PencilSquareIcon}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        close();
-                      }}
-                    />
-                  )}
-                  <DropdownMenu.Item
-                    label="Duplicate (New)"
-                    link={{
-                      href: `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`,
-                    }}
-                    icon={ClipboardIcon}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      close();
-                    }}
-                  />
-                  {allowDeletion && (
-                    <DropdownMenu.Item
-                      label="Delete"
-                      icon={TrashIcon}
-                      variant="warning"
-                      onClick={() => {
-                        setShowDeletionModal(true);
-                      }}
-                    />
-                  )}
-                </>
+              <NewDropdownMenuItem
+                label="Duplicate (New)"
+                icon={ClipboardIcon}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  await router.push(
+                    `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
+                  );
+                }}
+              />
+              {allowDeletion && (
+                <NewDropdownMenuItem
+                  label="Delete"
+                  icon={TrashIcon}
+                  onClick={() => setShowDeletionModal(true)}
+                />
               )}
-              {showAddRemoveToFavorite && (
-                <>
-                  <DropdownMenu.SectionHeader label="MY ASSISTANTS" />
-                  <DropdownMenu.Item
-                    label={
-                      isFavorite ? "Remove from favorites" : "Add to favorites"
-                    }
-                    disabled={isUpdatingFavorites}
-                    onClick={() => {
-                      void updateFavorite(isFavorite ? false : true);
-                    }}
-                    icon={isFavorite ? StarStrokeIcon : StarIcon}
-                  />
-                </>
-              )}
-            </DropdownMenu.Items>
-          </>
-        )}
-      </DropdownMenu>
+            </>
+          )}
+        </NewDropdownMenuContent>
+      </NewDropdownMenu>
     </>
   );
 }

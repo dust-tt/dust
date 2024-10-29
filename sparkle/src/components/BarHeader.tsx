@@ -83,9 +83,8 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
         <Button
           size="sm"
           icon={ChevronLeftIcon}
-          variant="tertiary"
-          label="Back"
-          labelVisible={false}
+          variant="ghost"
+          tooltip="Back"
           onClick={props.onBack}
         />
       );
@@ -94,9 +93,8 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
         <Button
           size="sm"
           icon={XMarkIcon}
-          variant="tertiary"
-          label="Close"
-          labelVisible={false}
+          variant="ghost"
+          tooltip="Close"
           onClick={props.onClose}
         />
       );
@@ -106,7 +104,7 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
           <Button
             size="sm"
             label="Cancel"
-            variant="tertiary"
+            variant="ghost"
             onClick={props.onCancel}
             disabled={!props.onCancel || props.isSaving}
           />
@@ -128,17 +126,16 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
         <>
           <Button
             size="sm"
-            label="Delete"
             icon={TrashIcon}
-            variant="tertiary"
-            labelVisible={false}
+            tooltip="Delete"
+            variant="ghost"
             onClick={props.onDelete}
           />
           <Button
             size="sm"
             label="Share"
             icon={ArrowUpOnSquareIcon}
-            variant="tertiary"
+            variant="ghost"
             onClick={props.onShare}
           />
         </>

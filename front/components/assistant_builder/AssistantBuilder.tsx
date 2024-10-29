@@ -8,6 +8,7 @@ import {
   IconButton,
   MagicIcon,
   Tab,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
@@ -59,9 +60,7 @@ import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
 export default function AssistantBuilder({
@@ -77,7 +76,7 @@ export default function AssistantBuilder({
   isAdmin,
 }: AssistantBuilderProps) {
   const router = useRouter();
-  const sendNotification = React.useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const defaultScope =
     flow === "workspace_assistants" ? "workspace" : "private";
@@ -347,36 +346,6 @@ export default function AssistantBuilder({
     [screen]
   );
 
-  useEffect(() => {
-    void ClientSideTracking.trackAssistantBuilderOpened({
-      isNew: !agentConfigurationId,
-      templateName: defaultTemplate?.handle,
-      assistantName: builderState.handle || undefined,
-      workspaceId: owner.sId,
-    });
-  }, [
-    agentConfigurationId,
-    builderState.handle,
-    defaultTemplate?.handle,
-    owner.sId,
-  ]);
-
-  useEffect(() => {
-    void ClientSideTracking.trackAssistantBuilderStepViewed({
-      step: screen,
-      isNew: !agentConfigurationId,
-      templateName: defaultTemplate?.handle,
-      assistantName: builderState.handle || undefined,
-      workspaceId: owner.sId,
-    });
-  }, [
-    agentConfigurationId,
-    builderState.handle,
-    defaultTemplate?.handle,
-    owner.sId,
-    screen,
-  ]);
-
   const [doTypewriterEffect, setDoTypewriterEffect] = useState(
     Boolean(template !== null && builderState.instructions)
   );
@@ -493,12 +462,13 @@ export default function AssistantBuilder({
             <>
               <IconButton
                 size="md"
-                variant="tertiary"
+                variant="outline"
                 icon={
                   rightPanelStatus.tab !== null
                     ? ChevronRightIcon
                     : ChevronLeftIcon
                 }
+                disabled={isBuilderStateEmpty}
                 onClick={toggleRightPanel}
               />
               {rightPanelStatus.tab === null && template === null && (
@@ -506,12 +476,11 @@ export default function AssistantBuilder({
                   icon={ChatBubbleBottomCenterTextIcon}
                   onClick={() => openRightPanelTab("Preview")}
                   size="md"
-                  label={
+                  tooltip={
                     isBuilderStateEmpty
                       ? "Add instructions or tools to Preview"
                       : "Preview"
                   }
-                  labelVisible={false}
                   variant="primary"
                   disabled={isBuilderStateEmpty}
                   className={classNames(
@@ -525,13 +494,13 @@ export default function AssistantBuilder({
                     icon={ChatBubbleBottomCenterTextIcon}
                     onClick={() => openRightPanelTab("Preview")}
                     size="md"
-                    variant="tertiary"
+                    variant="ghost"
                   />
                   <IconButton
                     icon={MagicIcon}
                     onClick={() => openRightPanelTab("Template")}
                     size="md"
-                    variant="tertiary"
+                    variant="ghost"
                   />
                 </div>
               )}

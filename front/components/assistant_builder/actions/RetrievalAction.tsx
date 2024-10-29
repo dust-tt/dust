@@ -1,5 +1,5 @@
 import { Button, DropdownMenu } from "@dust-tt/sparkle";
-import type { VaultType, WorkspaceType } from "@dust-tt/types";
+import type { SpaceType, WorkspaceType } from "@dust-tt/types";
 import type { TimeframeUnit } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
@@ -26,7 +26,7 @@ export function hasErrorActionRetrievalSearch(
 type ActionRetrievalSearchProps = {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
-  allowedVaults: VaultType[];
+  allowedSpaces: SpaceType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderRetrievalConfiguration
@@ -38,7 +38,7 @@ type ActionRetrievalSearchProps = {
 export function ActionRetrievalSearch({
   owner,
   actionConfiguration,
-  allowedVaults,
+  allowedSpaces,
   updateAction,
   setEdited,
 }: ActionRetrievalSearchProps) {
@@ -66,7 +66,7 @@ export function ActionRetrievalSearch({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
-        allowedVaults={allowedVaults}
+        allowedSpaces={allowedSpaces}
         viewType="documents"
       />
 
@@ -95,7 +95,7 @@ export function hasErrorActionRetrievalExhaustive(
 type ActionRetrievalExhaustiveProps = {
   owner: WorkspaceType;
   actionConfiguration: AssistantBuilderRetrievalConfiguration | null;
-  allowedVaults: VaultType[];
+  allowedSpaces: SpaceType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderRetrievalConfiguration
@@ -107,7 +107,7 @@ type ActionRetrievalExhaustiveProps = {
 export function ActionRetrievalExhaustive({
   owner,
   actionConfiguration,
-  allowedVaults,
+  allowedSpaces,
   updateAction,
   setEdited,
 }: ActionRetrievalExhaustiveProps) {
@@ -146,7 +146,7 @@ export function ActionRetrievalExhaustive({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
-        allowedVaults={allowedVaults}
+        allowedSpaces={allowedSpaces}
         viewType="documents"
       />
 
@@ -189,12 +189,11 @@ export function ActionRetrievalExhaustive({
         <DropdownMenu>
           <DropdownMenu.Button tooltipPosition="top">
             <Button
-              type="select"
-              labelVisible={true}
+              isSelect
               label={
                 TIME_FRAME_UNIT_TO_LABEL[actionConfiguration.timeFrame.unit]
               }
-              variant="secondary"
+              variant="outline"
               size="sm"
             />
           </DropdownMenu.Button>

@@ -12,7 +12,9 @@ export type StoredTokens = {
 
 export type StoredUser = {
   userId: string;
-  firstName: string;
+  email: string;
+  username: string;
+  fullName: string;
   selectedWorkspace: string | null;
   workspaces: LightWorkspaceType[];
 };
@@ -40,7 +42,7 @@ export const getStoredTokens = async (): Promise<StoredTokens | null> => {
     "refreshToken",
     "expiresAt",
   ]);
-  if (result.accessToken && result.refreshToken && result.expiresAt) {
+  if (result.accessToken && result.expiresAt) {
     return {
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
@@ -48,6 +50,11 @@ export const getStoredTokens = async (): Promise<StoredTokens | null> => {
     };
   }
   return null;
+};
+
+export const getAccessToken = async (): Promise<string | null> => {
+  const result = await chrome.storage.local.get(["accessToken"]);
+  return result.accessToken ?? null;
 };
 
 /**
@@ -60,7 +67,9 @@ export const saveUser = async (
 ): Promise<StoredUser> => {
   const storedUser: StoredUser = {
     userId: user.sId,
-    firstName: user.firstName,
+    email: user.email,
+    username: user.username,
+    fullName: user.fullName,
     selectedWorkspace:
       user.workspaces.length === 1 ? user.workspaces[0].sId : null,
     workspaces: user.workspaces,

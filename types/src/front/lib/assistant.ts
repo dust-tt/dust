@@ -1,6 +1,7 @@
 import { WorkspaceType } from "../../front/user";
 import { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import { ioTsEnum } from "../../shared/utils/iots_utils";
+import { LightAgentConfigurationType } from "../assistant/agent";
 import { GenerationTokensEvent } from "./api/assistant/generation";
 
 /**
@@ -63,11 +64,11 @@ export function getSmallWhitelistedModel(
 export function getLargeWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
-  if (isProviderWhitelisted(owner, "openai")) {
-    return GPT_4_TURBO_MODEL_CONFIG;
-  }
   if (isProviderWhitelisted(owner, "anthropic")) {
-    return CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG;
+    return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "openai")) {
+    return GPT_4O_MODEL_CONFIG;
   }
   if (isProviderWhitelisted(owner, "google_ai_studio")) {
     return GEMINI_PRO_DEFAULT_MODEL_CONFIG;
@@ -92,6 +93,8 @@ export const O1_MINI_MODEL_ID = "o1-mini" as const;
 export const CLAUDE_3_OPUS_2024029_MODEL_ID = "claude-3-opus-20240229" as const;
 export const CLAUDE_3_5_SONNET_20240620_MODEL_ID =
   "claude-3-5-sonnet-20240620" as const;
+export const CLAUDE_3_5_SONNET_20241022_MODEL_ID =
+  "claude-3-5-sonnet-20241022" as const;
 export const CLAUDE_3_HAIKU_20240307_MODEL_ID =
   "claude-3-haiku-20240307" as const;
 export const CLAUDE_2_1_MODEL_ID = "claude-2.1" as const;
@@ -114,6 +117,7 @@ export const MODEL_IDS = [
   O1_MINI_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   CLAUDE_3_HAIKU_20240307_MODEL_ID,
   CLAUDE_2_1_MODEL_ID,
   CLAUDE_INSTANT_1_2_MODEL_ID,
@@ -341,9 +345,27 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
 };
+
+export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "anthropic",
+    modelId: CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+    displayName: "Claude 3.5 Sonnet",
+    contextSize: 180_000,
+    recommendedTopK: 32,
+    recommendedExhaustiveTopK: 128, // 65_536
+    largeModel: true,
+    description: "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
+    shortDescription: "Anthropic's latest model.",
+    isLegacy: false,
+    delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+    supportsVision: true,
+    toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  };
+
 export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
-  modelId: CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+  modelId: CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   displayName: "Claude 3.5 Sonnet",
   contextSize: 180_000,
   recommendedTopK: 32,
@@ -492,6 +514,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   O1_PREVIEW_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
@@ -520,4 +543,131 @@ export function isSupportedModel(model: unknown): model is SupportedModel {
       m.modelId === maybeSupportedModel.modelId &&
       m.providerId === maybeSupportedModel.providerId
   );
+}
+
+/**
+ * Global agent list (stored here to be imported from client-side)
+ */
+
+export enum GLOBAL_AGENTS_SID {
+  HELPER = "helper",
+  DUST = "dust",
+  SLACK = "slack",
+  GOOGLE_DRIVE = "google_drive",
+  NOTION = "notion",
+  GITHUB = "github",
+  INTERCOM = "intercom",
+  GPT35_TURBO = "gpt-3.5-turbo",
+  GPT4 = "gpt-4",
+  O1 = "o1",
+  O1_MINI = "o1-mini",
+  CLAUDE_3_OPUS = "claude-3-opus",
+  CLAUDE_3_SONNET = "claude-3-sonnet",
+  CLAUDE_3_HAIKU = "claude-3-haiku",
+  CLAUDE_2 = "claude-2",
+  CLAUDE_INSTANT = "claude-instant-1",
+  MISTRAL_LARGE = "mistral-large",
+  MISTRAL_MEDIUM = "mistral-medium",
+  //!\ TEMPORARY WORKAROUND: Renaming 'mistral' to 'mistral-small' is not feasible since
+  // it interferes with the retrieval of ongoing conversations involving this agent.
+  // Needed to preserve ongoing chat integrity due to 'sId=mistral' references in legacy messages.
+  MISTRAL_SMALL = "mistral",
+  GEMINI_PRO = "gemini-pro",
+}
+
+export function getGlobalAgentAuthorName(agentId: string): string {
+  switch (agentId) {
+    case GLOBAL_AGENTS_SID.GPT4:
+      return "OpenAI";
+    case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
+    case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
+    case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
+    case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
+    case GLOBAL_AGENTS_SID.CLAUDE_2:
+      return "Anthropic";
+    case GLOBAL_AGENTS_SID.MISTRAL_LARGE:
+    case GLOBAL_AGENTS_SID.MISTRAL_MEDIUM:
+    case GLOBAL_AGENTS_SID.MISTRAL_SMALL:
+      return "Mistral";
+    case GLOBAL_AGENTS_SID.GEMINI_PRO:
+      return "Google";
+    default:
+      return "Dust";
+  }
+}
+
+const CUSTOM_ORDER: string[] = [
+  GLOBAL_AGENTS_SID.DUST,
+  GLOBAL_AGENTS_SID.GPT4,
+  GLOBAL_AGENTS_SID.SLACK,
+  GLOBAL_AGENTS_SID.NOTION,
+  GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
+  GLOBAL_AGENTS_SID.GITHUB,
+  GLOBAL_AGENTS_SID.INTERCOM,
+  GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
+  GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
+  GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
+  GLOBAL_AGENTS_SID.CLAUDE_2,
+  GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
+  GLOBAL_AGENTS_SID.MISTRAL_LARGE,
+  GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+  GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+  GLOBAL_AGENTS_SID.GEMINI_PRO,
+  GLOBAL_AGENTS_SID.HELPER,
+];
+
+// This function implements our general strategy to sort agents to users (input bar, assistant list,
+// agent suggestions...).
+export function compareAgentsForSort(
+  a: LightAgentConfigurationType,
+  b: LightAgentConfigurationType
+) {
+  // Place favorites first
+  if (a.userFavorite && !b.userFavorite) {
+    return -1;
+  }
+  if (b.userFavorite && !a.userFavorite) {
+    return 1;
+  }
+  // Check for 'dust'
+  if (a.sId === GLOBAL_AGENTS_SID.DUST) {
+    return -1;
+  }
+  if (b.sId === GLOBAL_AGENTS_SID.DUST) {
+    return 1;
+  }
+
+  // Check for 'gpt4'
+  if (a.sId === GLOBAL_AGENTS_SID.GPT4) {
+    return -1;
+  }
+  if (b.sId === GLOBAL_AGENTS_SID.GPT4) {
+    return 1;
+  }
+
+  // Check for agents with non-global 'scope'
+  if (a.scope !== "global" && b.scope === "global") {
+    return -1;
+  }
+  if (b.scope !== "global" && a.scope === "global") {
+    return 1;
+  }
+
+  // Check for customOrder (slack, notion, googledrive, github, claude)
+  const aIndex = CUSTOM_ORDER.indexOf(a.sId);
+  const bIndex = CUSTOM_ORDER.indexOf(b.sId);
+
+  if (aIndex !== -1 && bIndex !== -1) {
+    return aIndex - bIndex; // Both are in customOrder, sort them accordingly
+  }
+
+  if (aIndex !== -1) {
+    return -1;
+  } // Only a is in customOrder, it comes first
+  if (bIndex !== -1) {
+    return 1;
+  } // Only b is in customOrder, it comes first
+
+  // default: sort alphabetically
+  return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
 }

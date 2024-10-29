@@ -91,6 +91,10 @@ async function _upsertToDatasource({
         span?.setTag(key, loggerArgs[key]);
       });
 
+      const endpoint =
+        `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
+        `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
+
       const localLogger = logger.child({
         ...loggerArgs,
         documentId,
@@ -98,6 +102,7 @@ async function _upsertToDatasource({
         documentLength: sectionFullText(documentContent).length,
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceId: dataSourceConfig.dataSourceId,
+        endpoint,
         parents,
       });
       const statsDTags = [
@@ -114,9 +119,6 @@ async function _upsertToDatasource({
 
       const now = new Date();
 
-      const endpoint =
-        `${DUST_FRONT_API}/api/v1/w/${dataSourceConfig.workspaceId}` +
-        `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
       const dustRequestPayload: PostDataSourceDocumentRequestBody = {
         text: null,
         section: documentContent,

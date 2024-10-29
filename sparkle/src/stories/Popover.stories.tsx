@@ -23,7 +23,7 @@ export default meta;
 export function SimplePopoverExample() {
   return (
     <Popover
-      trigger={<Button label="Popover" variant="secondary" />}
+      trigger={<Button label="Popover" variant="outline" />}
       content={
         <div className="s-grid s-gap-2 s-p-2">
           <p>Lorem</p>

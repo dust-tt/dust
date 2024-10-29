@@ -92,7 +92,7 @@ export const ActionCard: React.FC = () => (
             <div className="s-w-full">{card.title}</div>
             <IconButton
               icon={XMarkIcon}
-              variant="tertiary"
+              variant="ghost"
               size="sm"
               onClick={(e) => {
                 alert(`You clicked on close button of ${card.title}`);

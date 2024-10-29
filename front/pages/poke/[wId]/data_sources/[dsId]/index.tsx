@@ -27,6 +27,7 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
@@ -37,6 +38,7 @@ import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { useDocuments } from "@app/poke/swr";
@@ -62,6 +64,11 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   connector: ConnectorType | null;
   features: FeaturesType;
   temporalWorkspace: string;
+  temporalRunningWorkflows: {
+    workflowId: string;
+    runId: string;
+    status: string;
+  }[];
   groupsForSlackBot: GroupType[];
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -95,6 +102,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   }
 
   let connector: ConnectorType | null = null;
+  const workflowInfos: { workflowId: string; runId: string; status: string }[] =
+    [];
   if (dataSource.connectorId) {
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
@@ -105,6 +114,19 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     );
     if (connectorRes.isOk()) {
       connector = connectorRes.value;
+      const temporalClient = await getTemporalConnectorsNamespaceConnection();
+
+      const res = temporalClient.workflow.list({
+        query: `ExecutionStatus = 'Running' AND connectorId = ${connector.id}`,
+      });
+
+      for await (const infos of res) {
+        workflowInfos.push({
+          workflowId: infos.workflowId,
+          runId: infos.runId,
+          status: infos.status.name,
+        });
+      }
     }
   }
 
@@ -242,6 +264,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       connector,
       features,
       temporalWorkspace: TEMPORAL_CONNECTORS_NAMESPACE,
+      temporalRunningWorkflows: workflowInfos,
       groupsForSlackBot,
     },
   };
@@ -253,6 +276,7 @@ const DataSourcePage = ({
   coreDataSource,
   connector,
   temporalWorkspace,
+  temporalRunningWorkflows,
   features,
   groupsForSlackBot,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
@@ -333,12 +357,19 @@ const DataSourcePage = ({
               🔒 search data
             </div>
           </div>
-
+          <PluginList
+            resourceType="data_sources"
+            workspaceResource={{
+              workspace: owner,
+              resourceId: dataSource.sId,
+            }}
+          />
           <ViewDataSourceTable
             dataSource={dataSource}
             temporalWorkspace={temporalWorkspace}
             coreDataSource={coreDataSource}
             connector={connector}
+            temporalRunningWorkflows={temporalRunningWorkflows}
           />
 
           {dataSource.connectorProvider === "slack" && (
@@ -443,7 +474,7 @@ const DataSourcePage = ({
                   <div className="flex flex-row">
                     <div className="flex flex-initial gap-x-2">
                       <Button
-                        variant="tertiary"
+                        variant="ghost"
                         disabled={offset < limit}
                         onClick={() => {
                           if (offset >= limit) {
@@ -455,7 +486,7 @@ const DataSourcePage = ({
                         label="Previous"
                       />
                       <Button
-                        variant="tertiary"
+                        variant="ghost"
                         label="Next"
                         disabled={offset + limit >= total}
                         onClick={() => {
@@ -498,17 +529,16 @@ const DataSourcePage = ({
                         />
                       }
                       action={
-                        <Button.List>
+                        <div className="flex gap-2">
                           <Button
-                            variant="secondary"
+                            variant="outline"
                             icon={EyeIcon}
                             onClick={() =>
                               onDisplayDocumentSource(d.document_id)
                             }
-                            label="View"
-                            labelVisible={false}
+                            tooltip="View"
                           />
-                        </Button.List>
+                        </div>
                       }
                     >
                       <ContextItem.Description>
@@ -642,8 +672,8 @@ function NotionUrlCheckOrFind({
           />
         </div>
         <Button
-          variant="secondary"
-          label={"Check"}
+          variant="outline"
+          label="Check"
           onClick={async () => {
             setCommand("check-url");
             setUrlDetails(
@@ -657,8 +687,8 @@ function NotionUrlCheckOrFind({
           }}
         />
         <Button
-          variant="secondary"
-          label={"Find"}
+          variant="outline"
+          label="Find"
           onClick={async () => {
             setCommand("find-url");
             setUrlDetails(
@@ -876,7 +906,7 @@ function SlackWhitelistBot({
           </DropdownMenu>
         </div>
         <Button
-          variant="secondary"
+          variant="outline"
           label="Whitelist"
           onClick={async () => {
             if (!botName) {

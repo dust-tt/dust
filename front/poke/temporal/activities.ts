@@ -7,7 +7,7 @@ import { Op } from "sequelize";
 import { hardDeleteApp } from "@app/lib/api/apps";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
-import { hardDeleteVault } from "@app/lib/api/vaults";
+import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
@@ -53,10 +53,10 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { Provider } from "@app/lib/resources/storage/models/apps";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
@@ -130,7 +130,7 @@ export async function scrubVaultActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const vault = await VaultResource.fetchById(auth, vaultId, {
+  const vault = await SpaceResource.fetchById(auth, vaultId, {
     includeDeleted: true,
   });
 
@@ -143,7 +143,7 @@ export async function scrubVaultActivity({
   assert(isDeletableVault, "Vault is not soft deleted.");
 
   // Delete all the data sources of the vaults.
-  const dataSources = await DataSourceResource.listByVault(auth, vault, {
+  const dataSources = await DataSourceResource.listBySpace(auth, vault, {
     includeDeleted: true,
   });
   for (const ds of dataSources) {
@@ -155,7 +155,7 @@ export async function scrubVaultActivity({
 
   hardDeleteLogger.info({ vault: vault.sId }, "Deleting vault");
 
-  await hardDeleteVault(auth, vault);
+  await hardDeleteSpace(auth, vault);
 }
 
 export async function isWorkflowDeletableActivity({
@@ -569,7 +569,7 @@ export async function deleteVaultsActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const vaults = await VaultResource.listWorkspaceVaults(auth);
+  const vaults = await SpaceResource.listWorkspaceSpaces(auth);
 
   for (const vault of vaults) {
     await scrubVaultActivity({

@@ -29,8 +29,8 @@ export const IconButtonWithTooltip: Story = {
 
 export const IconButtonSecondary: Story = {
   args: {
-    variant: "secondary",
-    tooltip: "This a secondary IconButton",
+    variant: "highlight",
+    tooltip: "This a highlight IconButton",
     tooltipPosition: "bottom",
     icon: Cog6ToothIcon,
   },
@@ -38,8 +38,8 @@ export const IconButtonSecondary: Story = {
 
 export const IconButtonTertiary: Story = {
   args: {
-    variant: "tertiary",
-    tooltip: "This a tertiary IconButton",
+    variant: "ghost",
+    tooltip: "This a ghost IconButton",
     tooltipPosition: "bottom",
     icon: Cog6ToothIcon,
   },

@@ -21,6 +21,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { prettifyGroupName } from "@dust-tt/types";
+import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import React, { useMemo } from "react";
 import { useState } from "react";
@@ -71,7 +72,9 @@ export function APIKeys({
 }) {
   const { mutate } = useSWRConfig();
   const [newApiKeyName, setNewApiKeyName] = useState("");
-  const [newApiKeyGroup, setNewApiKeyGroup] = useState<GroupType>(groups[0]);
+  const [newApiKeyGroup, setNewApiKeyGroup] = useState<GroupType>(
+    _.find(groups, (g) => g.kind === "global") || groups[0]
+  );
   const [isNewApiKeyPromptOpen, setIsNewApiKeyPromptOpen] = useState(false);
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
 
@@ -179,7 +182,7 @@ export function APIKeys({
         />
         <div className="align-center flex flex-row items-center gap-2 p-2">
           <span className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
-            Assign permissions to vault:{" "}
+            Assign permissions to space:{" "}
           </span>
           <DropdownMenu>
             <DropdownMenu.Button
@@ -203,7 +206,7 @@ export function APIKeys({
         <Button
           label="Read the API reference"
           size="sm"
-          variant="secondary"
+          variant="outline"
           icon={BookOpenIcon}
           onClick={() => {
             window.open("https://docs.dust.tt/reference", "_blank");
@@ -253,7 +256,7 @@ export function APIKeys({
                                 "font-mono truncate text-sm text-slate-700"
                               )}
                             >
-                              Scoped to vault:{" "}
+                              Scoped to space:{" "}
                               <strong>
                                 {prettifyGroupName(groupsById[key.groupId])}
                               </strong>
@@ -287,7 +290,7 @@ export function APIKeys({
                   {key.status === "active" ? (
                     <div>
                       <Button
-                        variant="secondaryWarning"
+                        variant="warning"
                         disabled={
                           key.status != "active" || isRevoking || isGenerating
                         }

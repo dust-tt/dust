@@ -19,7 +19,7 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { getRun } from "@app/lib/api/run";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { dustAppsListUrl } from "@app/lib/vaults";
+import { dustAppsListUrl } from "@app/lib/spaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -94,7 +94,7 @@ export default function AppRun({
       !(await confirm({
         title: "Double checking",
         message: `This will revert the app specification to the state it was in when this run was saved (${run.run_id}). Are you sure?`,
-        validateVariant: "primaryWarning",
+        validateVariant: "warning",
       }))
     ) {
       return;
@@ -121,7 +121,7 @@ export default function AppRun({
     }
 
     await fetch(
-      `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/state`,
+      `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/state`,
       {
         method: "POST",
         headers: {
@@ -150,7 +150,7 @@ export default function AppRun({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.vault));
+            void router.push(dustAppsListUrl(owner, app.space));
           }}
         />
       }
@@ -201,7 +201,7 @@ export default function AppRun({
                   disabled={true}
                   icon={CheckCircleIcon}
                   label="Latest version"
-                  variant="secondary"
+                  variant="outline"
                 />
               )}
               <CopyRun

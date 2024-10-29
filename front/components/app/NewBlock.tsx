@@ -136,7 +136,7 @@ export default function NewBlock({
         ) : (
           <Menu.Button as="div" disabled={disabled}>
             <Button
-              variant="secondary"
+              variant="outline"
               label="Add Block"
               icon={PlusIcon}
               disabled={disabled}

@@ -18,7 +18,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   GPT_4O_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
 } from "@dust-tt/types";
@@ -66,7 +66,7 @@ export const CREATIVITY_LEVELS = Object.entries(
 
 const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
   GPT_4O_MODEL_ID,
-  CLAUDE_3_5_SONNET_20240620_MODEL_ID,
+  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
 ] as const;
 
@@ -369,12 +369,13 @@ function AdvancedSettings({
 
   return (
     <Popover
+      popoverTriggerAsChild
       trigger={
         <Button
           label="Advanced settings"
-          variant="tertiary"
+          variant="outline"
           size="sm"
-          type="menu"
+          isSelect
         />
       }
       content={
@@ -386,14 +387,12 @@ function AdvancedSettings({
             <DropdownMenu>
               <DropdownMenu.Button>
                 <Button
-                  type="select"
-                  labelVisible={true}
+                  isSelect
                   label={
                     getSupportedModelConfig(generationSettings.modelSettings)
                       .displayName
                   }
-                  variant="secondary"
-                  hasMagnifying={false}
+                  variant="outline"
                   size="sm"
                 />
               </DropdownMenu.Button>
@@ -434,15 +433,13 @@ function AdvancedSettings({
             <DropdownMenu>
               <DropdownMenu.Button>
                 <Button
-                  type="select"
-                  labelVisible={true}
+                  isSelect
                   label={
                     getCreativityLevelFromTemperature(
                       generationSettings?.temperature
                     ).label
                   }
-                  variant="secondary"
-                  hasMagnifying={false}
+                  variant="outline"
                   size="sm"
                 />
               </DropdownMenu.Button>

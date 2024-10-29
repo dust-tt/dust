@@ -112,12 +112,7 @@ export const DropdownExample = () => {
         <div className="s-text-sm">Custom Dropdown:</div>
         <DropdownMenu>
           <DropdownMenu.Button>
-            <Button
-              label="Advanced settings"
-              variant="tertiary"
-              size="sm"
-              type="select"
-            />
+            <Button label="Advanced settings" variant="outline" size="sm" />
           </DropdownMenu.Button>
           <DropdownMenu.Items width={300} overflow="visible">
             <div className="s-flex s-flex-col s-gap-4">
@@ -127,14 +122,7 @@ export const DropdownExample = () => {
                 </div>
                 <DropdownMenu>
                   <DropdownMenu.Button>
-                    <Button
-                      type="select"
-                      labelVisible={true}
-                      label="GPT4"
-                      variant="tertiary"
-                      hasMagnifying={false}
-                      size="sm"
-                    />
+                    <Button label="GPT4" variant="outline" size="sm" />
                   </DropdownMenu.Button>
                   <DropdownMenu.Items origin="topRight">
                     {["GPT4", "GPT3", "GPT2", "GPT1"].map((item) => (
@@ -158,14 +146,7 @@ export const DropdownExample = () => {
                 </div>
                 <DropdownMenu>
                   <DropdownMenu.Button>
-                    <Button
-                      type="select"
-                      labelVisible={true}
-                      label="Balanced"
-                      variant="tertiary"
-                      hasMagnifying={false}
-                      size="sm"
-                    />
+                    <Button label="Balanced" variant="outline" size="sm" />
                   </DropdownMenu.Button>
                   <DropdownMenu.Items origin="topRight">
                     {["Deterministic", "Factual", "Balanced", "Creative"].map(
@@ -215,14 +196,14 @@ export const DropdownExample = () => {
                   <div className="s-flex s-border-t s-border-structure-50 s-p-2">
                     <Button
                       label="Manage"
-                      variant="tertiary"
+                      variant="outline"
                       size="xs"
                       icon={ListIcon}
                     />
                     <div className="s-flex-grow" />
                     <Button
                       label="New"
-                      variant="secondary"
+                      variant="outline"
                       size="xs"
                       icon={PlusIcon}
                       onClick={close}
@@ -466,7 +447,7 @@ export const DropdownExample = () => {
         <DropdownMenu>
           <DropdownMenu.Button>
             <Button
-              variant="tertiary"
+              variant="outline"
               size="xs"
               icon={EyeIcon}
               label="See the error"
@@ -479,10 +460,10 @@ export const DropdownExample = () => {
               </div>
               <div className="self-end">
                 <Button
-                  variant="tertiary"
+                  variant="outline"
                   size="xs"
                   icon={DocumentDuplicateIcon}
-                  label={"Copy"}
+                  label="Copy"
                   onClick={() =>
                     void navigator.clipboard.writeText("Hello error messange!")
                   }

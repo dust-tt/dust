@@ -806,7 +806,7 @@ export default function DatasetView({
               <div className="mt-6 flex flex-row">
                 {!readOnly ? (
                   <Button
-                    variant="secondary"
+                    variant="outline"
                     onClick={() => {
                       handleNewEntry(datasetData.length - 1);
                     }}
@@ -817,7 +817,7 @@ export default function DatasetView({
                 <div className="flex-1"></div>
                 <div className="ml-2 flex-initial">
                   <Button
-                    variant="tertiary"
+                    variant="ghost"
                     onClick={() => {
                       const dataStr =
                         "data:text/jsonl;charset=utf-8," +
@@ -854,7 +854,7 @@ export default function DatasetView({
                   ></input>
                   {!readOnly ? (
                     <Button
-                      variant="tertiary"
+                      variant="ghost"
                       onClick={() => {
                         if (fileInputRef.current) {
                           fileInputRef.current.click();

@@ -1,12 +1,10 @@
-import { Dialog } from "@dust-tt/sparkle";
+import { Dialog, useSendNotification } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
-import { useContext } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import {
   useAgentConfiguration,
   useUpdateUserFavorite,
@@ -34,7 +32,7 @@ export function RemoveAssistantFromFavoritesDialog({
       title={`Remove from favorites`}
       onCancel={onClose}
       validateLabel="Remove"
-      validateVariant="primaryWarning"
+      validateVariant="warning"
       onValidate={async () => {
         void doUpdate(false);
         onClose();
@@ -61,7 +59,7 @@ export function RemoveAssistantFromWorkspaceDialog({
   onClose: () => void;
   onRemove: () => void;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const { agentConfiguration: detailedConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
@@ -74,7 +72,7 @@ export function RemoveAssistantFromWorkspaceDialog({
       title={`Remove from Company assistants`}
       onCancel={onClose}
       validateLabel="Remove"
-      validateVariant="primaryWarning"
+      validateVariant="warning"
       onValidate={async () => {
         if (!detailedConfiguration) {
           throw new Error("Agent configuration not found");

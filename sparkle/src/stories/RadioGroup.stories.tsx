@@ -37,27 +37,24 @@ export const RadioGroupExample = () => {
         <div className="s-flex s-items-center s-space-x-2">
           <RadioGroupItem
             value="option-one"
-            id="option-one"
+            id="option-four"
             size="sm"
             tooltipMessage="This is a nice tooltip message"
-            disabled
-            tooltipAsChild
           />
           <Label htmlFor="option-one">Option One</Label>
         </div>
         <div className="s-flex s-items-center s-space-x-2">
           <RadioGroupItem
             value="option-two"
-            id="option-two"
+            id="option-five"
             size="sm"
-            disabled={true}
-            checked
+            disabled
           />
           <Label htmlFor="option-two">Option Two</Label>
         </div>
         <div className="s-flex s-items-center s-space-x-2">
-          <RadioGroupItem value="option-three" id="option-three" size="sm" />
-          <Label htmlFor="option-two">Option Three</Label>
+          <RadioGroupItem value="option-six" id="option-three" size="sm" />
+          <Label htmlFor="option-three">Option Three</Label>
         </div>
       </RadioGroup>
     </div>

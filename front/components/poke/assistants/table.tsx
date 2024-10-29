@@ -3,6 +3,7 @@ import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@dust-tt/types";
+import { GLOBAL_AGENTS_SID } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
@@ -10,7 +11,6 @@ import { makeColumnsForAssistants } from "@app/components/poke/assistants/column
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 
 interface AssistantsDataTableProps {

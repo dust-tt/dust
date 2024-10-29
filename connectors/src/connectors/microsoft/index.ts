@@ -68,7 +68,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     try {
       // Sanity checks - check connectivity and permissions. User should be able to access the sites and teams list.
       await getSites(client);
-      await getTeams(client);
     } catch (err) {
       logger.error(
         {

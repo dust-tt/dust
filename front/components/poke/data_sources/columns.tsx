@@ -36,7 +36,7 @@ export function makeColumnsForDataSources(
           <div className="flex space-x-2">
             <p>sId</p>
             <IconButton
-              variant="tertiary"
+              variant="ghost"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -53,7 +53,7 @@ export function makeColumnsForDataSources(
           <div className="flex space-x-2">
             <p>Name</p>
             <IconButton
-              variant="tertiary"
+              variant="ghost"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -93,7 +93,7 @@ export function makeColumnsForDataSources(
           <IconButton
             icon={TrashIcon}
             size="xs"
-            variant="tertiary"
+            variant="ghost"
             onClick={async () => {
               await deleteDataSource(owner, dataSource.sId, onDeleted);
             }}

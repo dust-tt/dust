@@ -10,9 +10,6 @@ spec:
     - name: http
       port: 80
       targetPort: 80
-    - name: socks5
-      port: 1080
-      targetPort: 1080
   
 ---
 apiVersion: net.gke.io/v1

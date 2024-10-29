@@ -8,6 +8,7 @@ import {
   SparklesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
   BuilderEmojiSuggestionsType,
@@ -35,7 +36,6 @@ import {
 } from "@app/components/assistant_builder/shared";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { debounce } from "@app/lib/utils/debounce";
 
 export function removeLeadingAt(handle: string) {
@@ -148,7 +148,7 @@ export default function NamingScreen({
   descriptionError: string | null;
 }) {
   const confirm = useContext(ConfirmContext);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
 
   // Name suggestions handling
@@ -336,7 +336,7 @@ export default function NamingScreen({
                     .map((suggestion, index) => (
                       <Button
                         label={`@${suggestion.replace(/\s/g, "")}`}
-                        variant="secondary"
+                        variant="outline"
                         key={`naming-suggestion-${index}`}
                         size="xs"
                         onClick={() => {
@@ -373,9 +373,8 @@ export default function NamingScreen({
           <div className="flex flex-col items-center space-y-2">
             <Avatar size="xl" visual={builderState.avatarUrl} />
             <Button
-              labelVisible={true}
-              label={"Change"}
-              variant="tertiary"
+              label="Change"
+              variant="outline"
               size="xs"
               icon={PencilSquareIcon}
               onClick={() => {

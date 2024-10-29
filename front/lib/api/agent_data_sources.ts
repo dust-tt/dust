@@ -25,7 +25,7 @@ import type { DataSourceViewResource } from "@app/lib/resources/data_source_view
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
-// To use in case of heavy db load emergency with theses usages queries
+// To use in case of heavy db load emergency with these usages queries
 // If it is a problem, let's add caching
 const DISABLE_QUERIES = false;
 

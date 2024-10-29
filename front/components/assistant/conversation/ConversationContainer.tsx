@@ -1,4 +1,5 @@
 import { Page } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentMention,
   LightAgentConfigurationType,
@@ -30,7 +31,6 @@ import {
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -65,7 +65,7 @@ export function ConversationContainer({
 
   const router = useRouter();
 
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const { mutateMessages } = useConversationMessages({
     conversationId: activeConversationId,

@@ -1,4 +1,10 @@
-import { Button, DocumentTextIcon, PlayIcon, Tab } from "@dust-tt/sparkle";
+import {
+  BracesIcon,
+  Button,
+  DocumentTextIcon,
+  PlayIcon,
+  Tab,
+} from "@dust-tt/sparkle";
 import type {
   APIErrorResponse,
   AppType,
@@ -24,7 +30,8 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { extractConfig } from "@app/lib/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { dustAppsListUrl } from "@app/lib/spaces";
 import {
   addBlock,
   deleteBlock,
@@ -32,7 +39,6 @@ import {
   moveBlockUp,
 } from "@app/lib/specification";
 import { useSavedRunStatus } from "@app/lib/swr/apps";
-import { dustAppsListUrl } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -44,7 +50,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const owner = auth.workspace();
   const subscription = auth.subscription();
 
-  const vault = await VaultResource.fetchById(
+  const vault = await SpaceResource.fetchById(
     auth,
     context.query.vaultId as string
   );
@@ -175,7 +181,7 @@ export default function AppView({
     saveTimeout = setTimeout(async () => {
       if (!readOnly) {
         await fetch(
-          `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/state`,
+          `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/state`,
           {
             method: "POST",
             headers: {
@@ -266,7 +272,7 @@ export default function AppView({
     setTimeout(async () => {
       const [runRes] = await Promise.all([
         fetch(
-          `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs`,
+          `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/runs`,
           {
             method: "POST",
             headers: {
@@ -289,14 +295,14 @@ export default function AppView({
 
         // Mutate the run status to trigger a refresh of `useSavedRunStatus`.
         await mutate(
-          `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs/saved/status`
+          `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/runs/saved/status`
         );
 
         // Mutate all blocks to trigger a refresh of `useRunBlock` in each block `Output`.
         await Promise.all(
           spec.map(async (block) => {
             return mutate(
-              `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs/${run.run.run_id}/blocks/${block.type}/${block.name}`
+              `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/runs/${run.run.run_id}/blocks/${block.type}/${block.name}`
             );
           })
         );
@@ -315,7 +321,7 @@ export default function AppView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.vault));
+            void router.push(dustAppsListUrl(owner, app.space));
           }}
         />
       }
@@ -337,7 +343,7 @@ export default function AppView({
               small={false}
             />
             <Button
-              variant="secondary"
+              variant="outline"
               disabled={
                 !runnable || runRequested || run?.status.run == "running"
               }
@@ -361,9 +367,17 @@ export default function AppView({
             ) : null}
             <div className="flex-1"></div>
             {!readOnly ? (
-              <div className="hidden flex-initial sm:block">
+              <div className="hidden flex-initial space-x-2 sm:block">
                 <Button
-                  variant="tertiary"
+                  variant="outline"
+                  icon={BracesIcon}
+                  label="Secrets"
+                  onClick={() => {
+                    void router.push(`/w/${owner.sId}/developers/dev-secrets`);
+                  }}
+                />
+                <Button
+                  variant="ghost"
                   icon={DocumentTextIcon}
                   label="Documentation"
                   onClick={() => {
@@ -410,7 +424,7 @@ export default function AppView({
               <p className="mt-4">To get started, add your first block or:</p>
               <p className="mt-4">
                 <Button
-                  variant="tertiary"
+                  variant="ghost"
                   icon={DocumentTextIcon}
                   label="Follow the QuickStart Guide"
                   onClick={() => {
@@ -439,7 +453,7 @@ export default function AppView({
               </div>
               <div className="flex">
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   disabled={
                     !runnable || runRequested || run?.status.run == "running"
                   }

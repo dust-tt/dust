@@ -1904,6 +1904,55 @@ async fn data_sources_documents_delete(
     }
 }
 
+/// Scrub document deleted versions
+
+async fn data_sources_documents_scrub_deleted_versions(
+    Path((project_id, data_source_id, document_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve data source",
+            Some(e),
+        ),
+        Ok(ds) => match ds {
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "data_source_not_found",
+                &format!("No data source found for id `{}`", data_source_id),
+                None,
+            ),
+            Some(ds) => match ds
+                .scrub_document_deleted_versions(state.store.clone(), &document_id)
+                .await
+            {
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to scrub document deleted versions",
+                    Some(e),
+                ),
+                Ok(versions) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "versions": versions,
+                        })),
+                    }),
+                ),
+            },
+        },
+    }
+}
+
 /// Delete a data source.
 
 async fn data_sources_delete(
@@ -2983,6 +3032,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id",
             delete(data_sources_documents_delete),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/scrub_deleted_versions",
+            post(data_sources_documents_scrub_deleted_versions),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id",

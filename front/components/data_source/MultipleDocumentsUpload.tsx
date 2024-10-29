@@ -1,4 +1,4 @@
-import { Dialog } from "@dust-tt/sparkle";
+import { Dialog, useSendNotification } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   LightWorkspaceType,
@@ -6,12 +6,10 @@ import type {
   PostDataSourceWithNameDocumentRequestBody,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
-import { ClientSideTracking } from "@app/lib/tracking/client";
 
 const UPLOAD_ACCEPT = [".txt", ".pdf", ".md", ".csv"];
 
@@ -47,7 +45,7 @@ export const MultipleDocumentsUpload = ({
     completed: number;
   }>(null);
 
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const handleUpsert = async (text: string, documentId: string) => {
     const body: PostDataSourceWithNameDocumentRequestBody = {
@@ -69,7 +67,7 @@ export const MultipleDocumentsUpload = ({
 
     try {
       const res = await fetch(
-        `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${
+        `/api/w/${owner.sId}/vaults/${dataSourceView.spaceId}/data_sources/${
           dataSourceView.dataSource.sId
         }/documents`,
         {
@@ -143,10 +141,6 @@ export const MultipleDocumentsUpload = ({
               return;
             }
             const files = e.target.files;
-            ClientSideTracking.trackMultiFilesUploadUsed({
-              fileCount: files.length,
-              workspaceId: owner.sId,
-            });
             let i = 0;
             for (const file of files) {
               setIsBulkFilesUploading({

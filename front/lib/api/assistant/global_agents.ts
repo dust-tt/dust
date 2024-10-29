@@ -22,6 +22,7 @@ import {
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
+  GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4O_MODEL_CONFIG,
   isProviderWhitelisted,
@@ -31,14 +32,15 @@ import {
   O1_MINI_MODEL_CONFIG,
   O1_PREVIEW_MODEL_CONFIG,
 } from "@dust-tt/types";
+import assert from "assert";
 
 import {
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/names";
-import { GLOBAL_AGENTS_SID } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import {
   AgentUserRelation,
   GlobalAgentSettings,
@@ -48,7 +50,8 @@ import {
   PRODUCTION_DUST_APPS_WORKSPACE_ID,
 } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 
 // Used when returning an agent with status 'disabled_by_admin'
@@ -59,7 +62,7 @@ const dummyModelConfiguration = {
 };
 
 type PrefetchedDataSourcesType = {
-  dataSourceViews: DataSourceViewType[];
+  dataSourceViews: (DataSourceViewType & { isInGlobalSpace: boolean })[];
   workspaceId: string;
 };
 
@@ -95,16 +98,19 @@ class HelperAssistantPrompt {
 
 async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   auth: Authenticator
-): Promise<{
-  dataSourceViews: DataSourceViewType[];
-  workspaceId: string;
-}> {
+): Promise<PrefetchedDataSourcesType> {
   const owner = auth.getNonNullableWorkspace();
 
-  const defaultVaults = [await VaultResource.fetchWorkspaceGlobalVault(auth)];
-  const dataSourceViews = await DataSourceViewResource.listByVaults(
+  const globalGroup = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+  assert(globalGroup.isOk(), "Failed to fetch global group");
+
+  const defaultSpaces = await SpaceResource.listForGroups(auth, [
+    globalGroup.value,
+  ]);
+
+  const dataSourceViews = await DataSourceViewResource.listBySpaces(
     auth,
-    defaultVaults
+    defaultSpaces
   );
 
   return {
@@ -112,6 +118,7 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
       return {
         ...dsv.toJSON(),
         assistantDefaultSelected: dsv.dataSource.assistantDefaultSelected,
+        isInGlobalSpace: dsv.space.isGlobal(),
       };
     }),
     workspaceId: owner.sId,
@@ -942,15 +949,9 @@ function _getDustGlobalAgent(
   const description = "An assistant with context on your company data.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
-  const modelConfiguration = (() => {
-    // If we can use Sonnet 3.5, we use it. Otherwise we use the default model.
-    if (auth.isUpgraded() && isProviderWhitelisted(owner, "anthropic")) {
-      return CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG;
-    }
-    return auth.isUpgraded()
-      ? getLargeWhitelistedModel(owner)
-      : getSmallWhitelistedModel(owner);
-  })();
+  const modelConfiguration = auth.isUpgraded()
+    ? getLargeWhitelistedModel(owner)
+    : getSmallWhitelistedModel(owner);
 
   const model: AgentModelConfigurationType = modelConfiguration
     ? {
@@ -1041,12 +1042,17 @@ function _getDustGlobalAgent(
     },
   ];
 
-  // Then we push one action per managed data source to have better results when users ask "search in <data_source>"
-  // Hack: We prefix the action names with "hidden_" to hide it from the user in the UI otherwise data sources are displayed twice.
+  // Add one action per managed data source to improve search results for queries like
+  // "search in <data_source>".
+  // Only include data sources from the global space to limit actions for the same
+  // data source.
+  // Hack: Prefix action names with "hidden_" to prevent them from appearing in the UI,
+  // avoiding duplicate display of data sources.
   dataSourceViews.forEach((dsView) => {
     if (
       dsView.dataSource.connectorProvider &&
-      dsView.dataSource.connectorProvider !== "webcrawler"
+      dsView.dataSource.connectorProvider !== "webcrawler" &&
+      dsView.isInGlobalSpace
     ) {
       actions.push({
         id: -1,
@@ -1286,12 +1292,14 @@ export async function getGlobalAgents(
       (sId) => !RETIRED_GLOABL_AGENTS_SID.includes(sId)
     );
 
-  if (!owner.flags.includes("openai_o1_feature")) {
+  const flags = await getFeatureFlags(owner.id);
+
+  if (!flags.includes("openai_o1_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1
     );
   }
-  if (!owner.flags.includes("openai_o1_mini_feature")) {
+  if (!flags.includes("openai_o1_mini_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1_MINI
     );

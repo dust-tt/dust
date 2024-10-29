@@ -1,10 +1,11 @@
 import { Button, StopIcon } from "@dust-tt/sparkle";
+import type { AgentMention, MentionType } from "@dust-tt/types";
+import type { UploadedContentFragment } from "@dust-tt/types";
 import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { AgentMention, MentionType } from "@dust-tt/types";
-import type { UploadedContentFragment } from "@dust-tt/types";
+import { compareAgentsForSort } from "@dust-tt/types";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
@@ -17,9 +18,7 @@ import InputBarContainer, {
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import { compareAgentsForSort } from "@app/lib/assistant";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { ClientSideTracking } from "@app/lib/tracking/client";
 import { classNames } from "@app/lib/utils";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
@@ -79,7 +78,7 @@ export function AssistantInputBar({
   const { agentConfigurations: baseAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetView: "assistants-search",
+      agentsGetView: "list",
     });
 
   // Files upload.
@@ -161,12 +160,6 @@ export function AssistantInputBar({
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
 
-    if (fileUploaderService.fileBlobs.length > 0) {
-      void ClientSideTracking.trackInputBarFileUploadUsed({
-        fileCount: fileUploaderService.fileBlobs.length,
-      });
-    }
-
     onSubmit(
       text,
       mentions,
@@ -235,7 +228,7 @@ export function AssistantInputBar({
         <div className="flex justify-center px-4 pb-4">
           <Button
             className="mt-4"
-            variant="tertiary"
+            variant="white"
             label={isProcessing ? "Stopping generation..." : "Stop generation"}
             icon={StopIcon}
             onClick={handleStopGeneration}
@@ -257,7 +250,7 @@ export function AssistantInputBar({
               "border-struture-200 border-t bg-white/90 backdrop-blur focus-within:border-structure-300",
               "transition-all",
               isFloating
-                ? "sm:rounded-3xl sm:border-b sm:border-l sm:border-r sm:border-element-500 sm:focus-within:border-action-300 sm:focus-within:shadow-md sm:focus-within:ring-1"
+                ? "sm:rounded-2xl sm:border-b sm:border-l sm:border-r sm:border-element-500 sm:focus-within:border-action-300 sm:focus-within:shadow-md sm:focus-within:ring-1"
                 : "",
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}

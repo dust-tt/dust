@@ -1,3 +1,7 @@
+import type {
+  ConversationMessageEmojiSelectorProps,
+  ConversationMessageSizeType,
+} from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
@@ -6,6 +10,7 @@ import {
   Citation,
   ClipboardIcon,
   ContentMessage,
+  ConversationMessage,
   DocumentDuplicateIcon,
   EyeIcon,
   Popover,
@@ -20,16 +25,11 @@ import type {
   GenerationTokensEvent,
   LightAgentConfigurationType,
   RetrievalActionType,
-  UserType,
   WebsearchActionType,
   WebsearchResultType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type {
-  AgentMessageType,
-  MessageReactionType,
-  RetrievalDocumentType,
-} from "@dust-tt/types";
+import type { AgentMessageType, RetrievalDocumentType } from "@dust-tt/types";
 import {
   assertNever,
   isRetrievalActionType,
@@ -51,8 +51,6 @@ import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import type { MessageSizeType } from "@app/components/assistant/conversation/ConversationMessage";
-import { ConversationMessage } from "@app/components/assistant/conversation/ConversationMessage";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { RenderMessageMarkdown } from "@app/components/assistant/RenderMessageMarkdown";
 import { useEventSource } from "@app/hooks/useEventSource";
@@ -64,15 +62,13 @@ function cleanUpCitations(message: string): string {
 }
 
 interface AgentMessageProps {
-  message: AgentMessageType;
-  owner: WorkspaceType;
-  user: UserType;
   conversationId: string;
-  reactions: MessageReactionType[];
-  hideReactions?: boolean;
   isInModal: boolean;
-  size: MessageSizeType;
   isLastMessage: boolean;
+  message: AgentMessageType;
+  messageEmoji?: ConversationMessageEmojiSelectorProps;
+  owner: WorkspaceType;
+  size: ConversationMessageSizeType;
 }
 
 /**
@@ -82,15 +78,13 @@ interface AgentMessageProps {
  * @returns
  */
 export function AgentMessage({
-  message,
-  owner,
-  user,
   conversationId,
-  reactions,
-  hideReactions,
   isInModal,
-  size,
   isLastMessage,
+  message,
+  messageEmoji,
+  owner,
+  size,
 }: AgentMessageProps) {
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
@@ -331,23 +325,29 @@ export function AgentMessage({
     message.status === "failed"
       ? []
       : [
-          {
-            label: "Copy to clipboard",
-            icon: ClipboardIcon,
-            onClick: () => {
+          <Button
+            key="copy-msg-button"
+            tooltip="Copy to clipboard"
+            variant="outline"
+            size="xs"
+            onClick={() => {
               void navigator.clipboard.writeText(
                 cleanUpCitations(agentMessageToRender.content || "")
               );
-            },
-          },
-          {
-            label: "Retry",
-            icon: ArrowPathIcon,
-            onClick: () => {
+            }}
+            icon={ClipboardIcon}
+          />,
+          <Button
+            key="retry-msg-button"
+            tooltip="Retry"
+            variant="outline"
+            size="xs"
+            onClick={() => {
               void retryHandler(agentMessageToRender);
-            },
-            disabled: isRetryHandlerProcessing || shouldStream,
-          },
+            }}
+            icon={ArrowPathIcon}
+            disabled={isRetryHandlerProcessing || shouldStream}
+          />,
         ];
 
   // References logic.
@@ -439,16 +439,11 @@ export function AgentMessage({
 
   return (
     <ConversationMessage
-      owner={owner}
-      user={user}
-      conversationId={conversationId}
-      messageId={agentMessageToRender.sId}
       pictureUrl={agentConfiguration.pictureUrl}
       name={`@${agentConfiguration.name}`}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
-      reactions={reactions}
-      enableEmojis={!hideReactions}
+      messageEmoji={messageEmoji}
       renderName={() => {
         return (
           <div className="flex flex-row items-center gap-2">
@@ -678,7 +673,7 @@ function ErrorMessage({
         <Popover
           trigger={
             <Button
-              variant="tertiary"
+              variant="ghost"
               size="xs"
               icon={EyeIcon}
               label="See the error"
@@ -691,7 +686,7 @@ function ErrorMessage({
               </div>
               <div className="self-end">
                 <Button
-                  variant="tertiary"
+                  variant="ghost"
                   size="xs"
                   icon={DocumentDuplicateIcon}
                   label={"Copy"}
@@ -706,7 +701,7 @@ function ErrorMessage({
       </div>
       <div>
         <Button
-          variant="tertiary"
+          variant="ghost"
           size="sm"
           icon={ArrowPathIcon}
           label="Retry"

@@ -4,7 +4,6 @@ import {
   EmbeddingProviderIdType,
   ModelProviderIdType,
 } from "../front/lib/assistant";
-import { WhitelistableFeature } from "../shared/feature_flags";
 import { ModelId } from "../shared/model_id";
 import { assertNever } from "../shared/utils/assert_never";
 
@@ -44,7 +43,6 @@ export type LightWorkspaceType = {
 };
 
 export type WorkspaceType = LightWorkspaceType & {
-  flags: WhitelistableFeature[];
   ssoEnforced?: boolean;
 };
 

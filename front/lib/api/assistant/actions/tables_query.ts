@@ -38,9 +38,8 @@ import logger from "@app/logger/logger";
 const TABLES_QUERY_MIN_TOKEN = 28_000;
 const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
 
-// Max number of lines from the CSV ouptut file that will be saved in the DB
-// and inlined in the rendered conversation.
-const MAX_SNIPPET_LINES_QUERY_RESULT_FILE = 128;
+// Max number of characters in the snippet.
+const MAX_SNIPPET_CHARS = 16384;
 
 interface TablesQueryActionBlob {
   id: ModelId; // AgentTablesQueryAction.
@@ -604,10 +603,11 @@ async function getTablesQueryOutputCsvFileAndSnippet(
   snippet: string;
 }> {
   const toCsv = (
-    records: Array<Record<string, string | number | boolean>>
+    records: Array<Record<string, string | number | boolean>>,
+    options: { header: boolean } = { header: true }
   ): Promise<string> => {
     return new Promise((resolve, reject) => {
-      stringify(records, { header: true }, (err, data) => {
+      stringify(records, options, (err, data) => {
         if (err) {
           reject(err);
         }
@@ -615,7 +615,6 @@ async function getTablesQueryOutputCsvFileAndSnippet(
       });
     });
   };
-
   const csvOutput = await toCsv(results);
 
   const file = await internalCreateToolOutputCsvFile(auth, {
@@ -624,17 +623,54 @@ async function getTablesQueryOutputCsvFileAndSnippet(
     contentType: "text/csv",
   });
 
-  let snippetOuptut = `TOTAL_LINES: ${results.length}\n`;
-  if (results.length > MAX_SNIPPET_LINES_QUERY_RESULT_FILE) {
-    snippetOuptut += `Showing the first ${MAX_SNIPPET_LINES_QUERY_RESULT_FILE} lines of the results.\n\n`;
-    snippetOuptut += await toCsv(
-      results.slice(0, MAX_SNIPPET_LINES_QUERY_RESULT_FILE)
-    );
-    snippetOuptut += `\n... (${results.length - MAX_SNIPPET_LINES_QUERY_RESULT_FILE} lines omitted)\n`;
-  } else {
-    snippetOuptut += await toCsv(results);
-    snippetOuptut += `\n(end of file)\n`;
+  if (results.length === 0) {
+    return { file, snippet: "TOTAL_LINES: 0\n(empty result set)\n" };
   }
 
-  return { file, snippet: snippetOuptut };
+  let snippetOutput = `TOTAL_LINES: ${results.length}\n`;
+  let currentCharCount = snippetOutput.length;
+  let linesIncluded = 0;
+
+  const truncationString = "(...truncated)";
+  const endOfSnippetString = (omitted: number) =>
+    omitted > 0 ? `\n(${omitted} lines omitted)\n` : "\n(end of file)\n";
+
+  // Process header
+  const header = csvOutput.split("\n")[0];
+  if (currentCharCount + header.length + 1 <= MAX_SNIPPET_CHARS) {
+    snippetOutput += header + "\n";
+    currentCharCount += header.length + 1;
+  } else {
+    const remainingChars =
+      MAX_SNIPPET_CHARS - currentCharCount - truncationString.length;
+    if (remainingChars > 0) {
+      snippetOutput += header.slice(0, remainingChars) + truncationString;
+    }
+    snippetOutput += endOfSnippetString(results.length);
+    return { file, snippet: snippetOutput };
+  }
+
+  // Process data rows
+  for (const row of results) {
+    const rowCsv = await toCsv([row], { header: false });
+    const trimmedRowCsv = rowCsv.trim(); // Remove trailing newline
+    if (currentCharCount + trimmedRowCsv.length + 1 <= MAX_SNIPPET_CHARS) {
+      snippetOutput += trimmedRowCsv + "\n";
+      currentCharCount += trimmedRowCsv.length + 1;
+      linesIncluded++;
+    } else {
+      const remainingChars =
+        MAX_SNIPPET_CHARS - currentCharCount - truncationString.length;
+      if (remainingChars > 0) {
+        snippetOutput +=
+          trimmedRowCsv.slice(0, remainingChars) + truncationString;
+        linesIncluded++;
+      }
+      break;
+    }
+  }
+
+  const linesOmitted = results.length - linesIncluded;
+  snippetOutput += endOfSnippetString(linesOmitted);
+  return { file, snippet: snippetOutput };
 }

@@ -61,7 +61,8 @@ export type UserMessageOrigin =
   | "zapier"
   | "make"
   | "zendesk"
-  | "raycast";
+  | "raycast"
+  | "extension";
 
 export type UserMessageContext = {
   username: string;
@@ -236,3 +237,14 @@ export class ConversationError extends Error {
     this.type = type;
   }
 }
+
+export type SubmitMessageError = {
+  type:
+    | "user_not_found"
+    | "attachment_upload_error"
+    | "message_send_error"
+    | "plan_limit_reached_error"
+    | "content_too_large";
+  title: string;
+  message: string;
+};

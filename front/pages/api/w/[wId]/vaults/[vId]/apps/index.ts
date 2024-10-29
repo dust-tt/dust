@@ -1,13 +1,13 @@
 import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
+import { APP_NAME_REGEXP, CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -36,7 +36,7 @@ async function handler(
       },
     });
   }
-  const vault = await VaultResource.fetchById(auth, vaultId);
+  const vault = await SpaceResource.fetchById(auth, vaultId);
   if (!vault || !vault.canList(auth)) {
     return apiError(req, res, {
       status_code: 404,
@@ -50,7 +50,7 @@ async function handler(
   switch (req.method) {
     case "GET":
       return res.status(200).json({
-        apps: (await AppResource.listByVault(auth, vault)).map((app) =>
+        apps: (await AppResource.listBySpace(auth, vault)).map((app) =>
           app.toJSON()
         ),
       });
@@ -76,6 +76,17 @@ async function handler(
             type: "invalid_request_error",
             message:
               "The request body is invalid, expects { name: string, description: string }.",
+          },
+        });
+      }
+
+      if (!APP_NAME_REGEXP.test(req.body.name)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The app name is invalid, expects a string with a length of 1-64 characters, containing only alphanumeric characters, underscores, and dashes.",
           },
         });
       }

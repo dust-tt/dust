@@ -19,6 +19,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  compareAgentsForSort,
   Err,
   isTimeFrame,
   MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -49,7 +50,6 @@ import {
   isGlobalAgentId,
 } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
-import { compareAgentsForSort } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
@@ -172,16 +172,8 @@ function determineGlobalAgentIdsToFetch(
     case "list":
     case "all":
     case "admin_internal":
-    case "assistants-search":
       return undefined; // undefined means all global agents will be fetched
     default:
-      if (
-        typeof agentsGetView === "object" &&
-        "conversationId" in agentsGetView
-      ) {
-        // All global agents in conversation view.
-        return undefined;
-      }
       if (typeof agentsGetView === "object" && "agentIds" in agentsGetView) {
         return agentsGetView.agentIds.filter(isGlobalAgentId);
       }
@@ -303,7 +295,6 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         where: baseConditionsAndScopesIn(["published"]),
       });
 
-    case "assistants-search":
     case "list":
       const user = auth.user();
 
@@ -338,22 +329,6 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
           },
           order: [["version", "DESC"]],
           ...(agentsGetView.allVersions ? {} : { limit: 1 }),
-        });
-      } else if (
-        typeof agentsGetView === "object" &&
-        "conversationId" in agentsGetView
-      ) {
-        const user = auth.user();
-
-        return AgentConfiguration.findAll({
-          ...baseAgentsSequelizeQuery,
-          where: {
-            ...baseWhereConditions,
-            [Op.or]: [
-              { scope: { [Op.in]: ["workspace", "published"] } },
-              { authorId: user?.id },
-            ],
-          },
         });
       }
       assertNever(agentsGetView);
@@ -547,10 +522,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
     throw new Error("Archived view is for dust superusers only.");
   }
 
-  if (
-    (agentsGetView === "list" || agentsGetView === "assistants-search") &&
-    !user
-  ) {
+  if (agentsGetView === "list" && !user) {
     throw new Error(
       "`list` or `assistants-search` view is specific to a user."
     );
@@ -585,7 +557,11 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   // user should be in all groups that are in the agent's groupIds
   const allowedAgentConfigurations = allAgentConfigurations
     .flat()
-    .filter((a) => auth.canRead(Authenticator.aclsFromGroupIds(a.groupIds)));
+    .filter((a) =>
+      auth.canRead(
+        Authenticator.createResourcePermissionsFromGroupIds(a.groupIds)
+      )
+    );
 
   return applySortAndLimit(allowedAgentConfigurations.flat());
 }

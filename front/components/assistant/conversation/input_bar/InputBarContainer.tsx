@@ -4,7 +4,6 @@ import {
   Button,
   FullscreenExitIcon,
   FullscreenIcon,
-  IconButton,
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
@@ -121,14 +120,8 @@ const InputBarContainer = ({
         )}
       />
 
-      <div className="flex flex-row items-end justify-between gap-2 self-stretch py-2 pr-2 sm:flex-col sm:border-0">
-        <div
-          className={classNames(
-            "flex gap-5 rounded-full px-4 py-2 sm:gap-3 sm:px-2",
-            // Hide border when there are no actions.
-            actions.length === 0 ? "" : "border border-structure-200/60"
-          )}
-        >
+      <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-2 pr-2 sm:flex-col sm:border-0">
+        <div className="flex py-2">
           {actions.includes("attachment") && (
             <>
               <input
@@ -145,13 +138,11 @@ const InputBarContainer = ({
                 type="file"
                 multiple={true}
               />
-              <IconButton
-                variant={"tertiary"}
+              <Button
+                variant="ghost"
                 icon={AttachmentIcon}
-                size="sm"
+                size="xs"
                 tooltip={`Add a document to the conversation (${supportedFileExtensions.join(", ")}).`}
-                tooltipPosition="top"
-                className="flex"
                 onClick={() => {
                   fileInputRef.current?.click();
                 }}
@@ -162,7 +153,7 @@ const InputBarContainer = ({
             actions.includes("assistants-list-with-actions")) && (
             <AssistantPicker
               owner={owner}
-              size="sm"
+              size="xs"
               onItemClick={(c) => {
                 editorService.insertMention({ id: c.sId, label: c.name });
               }}
@@ -177,11 +168,10 @@ const InputBarContainer = ({
           )}
           {actions.includes("fullscreen") && (
             <div className="hidden sm:flex">
-              <IconButton
-                variant={"tertiary"}
+              <Button
+                variant="ghost"
                 icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
-                size="sm"
-                className="flex"
+                size="xs"
                 onClick={handleExpansionToggle}
               />
             </div>
@@ -190,10 +180,8 @@ const InputBarContainer = ({
         <Button
           size="sm"
           icon={ArrowUpIcon}
-          label="Send"
+          variant="highlight"
           disabled={editorService.isEmpty() || disableSendButton}
-          labelVisible={false}
-          disabledTooltip
           onClick={async () => {
             const jsonContent = editorService.getTextAndMentions();
             onEnterKeyDown(editorService.isEmpty(), jsonContent, () => {

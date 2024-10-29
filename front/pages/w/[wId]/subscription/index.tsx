@@ -9,22 +9,22 @@ import {
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   SubscriptionPerSeatPricing,
+  SubscriptionType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
 import type * as t from "io-ts";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { PricePlans } from "@app/components/plans/PlansTables";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { SubscriptionContactUsDrawer } from "@app/components/SubscriptionContactUsDrawer";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -99,7 +99,7 @@ export default function Subscription({
   perSeatPricing,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const [isWebhookProcessing, setIsWebhookProcessing] =
     React.useState<boolean>(false);
 
@@ -329,13 +329,7 @@ export default function Subscription({
                     subscription.stripeSubscriptionId && (
                       <DropdownMenu>
                         <DropdownMenu.Button>
-                          <Button
-                            icon={MoreIcon}
-                            variant="tertiary"
-                            labelVisible={false}
-                            disabledTooltip={true}
-                            label=""
-                          />
+                          <Button icon={MoreIcon} variant="ghost" />
                         </DropdownMenu.Button>
                         <DropdownMenu.Items origin="auto" width={210}>
                           <DropdownMenu.Item
@@ -358,7 +352,7 @@ export default function Subscription({
                 />
                 <Button
                   label="Cancel subscription"
-                  variant="tertiary"
+                  variant="ghost"
                   onClick={() => setShowCancelFreeTrialDialog(true)}
                 />
               </Page.Horizontal>
@@ -407,7 +401,7 @@ export default function Subscription({
                 <Button
                   icon={CardIcon}
                   label="Your billing dashboard on Stripe"
-                  variant="tertiary"
+                  variant="ghost"
                   onClick={handleGoToStripePortal}
                 />
               </div>
@@ -540,7 +534,7 @@ function CancelFreeTrialDialog({
       title={`Cancel subscription`}
       onCancel={onClose}
       validateLabel="Yes, cancel subscription"
-      validateVariant="primaryWarning"
+      validateVariant="warning"
       onValidate={onValidate}
       isSaving={isSaving}
     >
