@@ -1,7 +1,10 @@
 import type { ModelId } from "@dust-tt/types";
 
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import {
+  changeZendeskClientSubdomain,
+  createZendeskClient,
+} from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -16,6 +19,15 @@ async function _getZendeskConnectorOrRaise(connectorId: ModelId) {
     throw new Error("[Zendesk] Connector not found.");
   }
   return connector;
+}
+
+async function _getZendeskConfigurationOrRaise(connectorId: ModelId) {
+  const configuration =
+    await ZendeskConfigurationResource.fetchById(connectorId);
+  if (!configuration) {
+    throw new Error("[Zendesk] Configuration not found.");
+  }
+  return configuration;
 }
 
 /**
@@ -75,12 +87,7 @@ export async function syncZendeskBrandActivity({
     provider: "zendesk",
     dataSourceId: dataSourceConfig.dataSourceId,
   };
-
-  const configuration =
-    await ZendeskConfigurationResource.fetchById(connectorId);
-  if (!configuration) {
-    throw new Error("[Zendesk] Configuration not found.");
-  }
+  const configuration = await _getZendeskConfigurationOrRaise(connectorId);
 
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
@@ -196,12 +203,24 @@ export async function checkZendeskTicketsPermissionsActivity({
 /**
  * Retrieves the categories for a given Brand.
  */
-// eslint-disable-next-line no-empty-pattern
-export async function getZendeskCategoriesActivity({}: {
+export async function getZendeskCategoriesActivity({
+  connectorId,
+  brandId,
+}: {
   connectorId: ModelId;
   brandId: number;
 }): Promise<number[]> {
-  return [];
+  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const configuration = await _getZendeskConfigurationOrRaise(connectorId);
+  const accessToken = await getZendeskAccessToken(connector.connectionId);
+  const client = createZendeskClient({
+    token: accessToken,
+    subdomain: configuration.subdomain,
+  });
+  await changeZendeskClientSubdomain({ client, brandId });
+  const categories = await client.helpcenter.categories.list();
+
+  return categories.map((category) => category.id);
 }
 
 /**
