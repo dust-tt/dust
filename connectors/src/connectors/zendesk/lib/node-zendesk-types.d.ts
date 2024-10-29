@@ -93,6 +93,7 @@ interface ZendeskFetchedTicket {
   problem_id: number;
   raw_subject: string;
   recipient: string;
+  requester: { locale_id: number; name: string; email: string };
   requester_id: number;
   satisfaction_rating: {
     comment: string;
@@ -100,11 +101,11 @@ interface ZendeskFetchedTicket {
     score: string;
   };
   sharing_agreement_ids: number[];
-  status: string;
+  status: "new" | "open" | "pending" | "hold" | "solved" | "closed";
   subject: string;
   submitter_id: number;
   tags: string[];
-  type: string;
+  type: "problem" | "incident" | "question" | "task";
   updated_at: string; // ISO 8601 date string
   url: string;
   via: {
@@ -144,12 +145,12 @@ declare module "node-zendesk" {
           startTime: number
         ) => Promise<ZendeskFetchedArticle[]>;
       };
-      tickets: {
-        list: () => Promise<ZendeskFetchedTicket[]>;
-        show: (
-          ticketId: number
-        ) => Promise<{ response: Response; result: ZendeskFetchedTicket }>;
-      };
+    };
+    tickets: {
+      list: () => Promise<ZendeskFetchedTicket[]>;
+      show: (
+        ticketId: number
+      ) => Promise<{ response: Response; result: ZendeskFetchedTicket }>;
     };
   }
 

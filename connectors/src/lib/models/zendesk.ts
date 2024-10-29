@@ -336,7 +336,7 @@ export class ZendeskTicket extends Model<
   declare groupId: number;
   declare organizationId: number;
 
-  declare name: string;
+  declare name: string; // TODO: remove this column
   declare description: string;
   declare subject: string;
   declare requesterMail: string;
@@ -345,6 +345,7 @@ export class ZendeskTicket extends Model<
   declare satisfactionScore: string;
   declare satisfactionComment: string;
 
+  // TODO: see if we need all of this
   declare status: "new" | "open" | "pending" | "hold" | "solved" | "closed";
   declare tags: string[];
   declare type: "problem" | "incident" | "question" | "task";
