@@ -46,7 +46,7 @@ impl From<anyhow::Error> for SqliteDatabaseError {
     }
 }
 
-const MAX_ROWS: usize = 128;
+const MAX_ROWS: usize = 2048;
 
 impl SqliteDatabase {
     pub fn new() -> Self {

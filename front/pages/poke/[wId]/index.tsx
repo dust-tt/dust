@@ -6,22 +6,23 @@ import {
   NewDropdownMenuItem,
   NewDropdownMenuTrigger,
   Spinner,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceType,
+  SubscriptionType,
   WhitelistableFeature,
   WorkspaceDomain,
   WorkspaceSegmentationType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
 import { WHITELISTABLE_FEATURES } from "@dust-tt/types";
 import { format } from "date-fns/format";
 import { keyBy } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useContext } from "react";
+import React from "react";
 
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
@@ -31,7 +32,6 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { getDataSources } from "@app/lib/api/data_sources";
 import {
   getWorkspaceCreationDate,
@@ -205,11 +205,9 @@ const WorkspacePage = ({
               <NewDropdownMenu>
                 <NewDropdownMenuTrigger>
                   <Button
-                    type="select"
-                    labelVisible={true}
+                    isSelect
                     label={`Segmentation: ${owner.segmentation ?? "none"}`}
-                    variant="secondary"
-                    hasMagnifying={false}
+                    variant="outline"
                     size="sm"
                   />
                 </NewDropdownMenuTrigger>
@@ -333,7 +331,7 @@ function DeleteWorkspaceModal({
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const { submit: onDeleteWorkspace } = useSubmitFunction(async () => {
     if (
@@ -400,7 +398,7 @@ function DeleteWorkspaceModal({
             ) : (
               <Button
                 label="Delete the workspace"
-                variant="secondaryWarning"
+                variant="outline"
                 onClick={onDeleteWorkspace}
                 disabled={
                   subscription.plan.code !== FREE_NO_PLAN_CODE ||

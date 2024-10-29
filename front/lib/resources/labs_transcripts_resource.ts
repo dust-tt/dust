@@ -10,7 +10,7 @@ import type { CreationAttributes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -131,18 +131,28 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ isActive });
   }
 
-  async setDataSourceId(auth: Authenticator, dataSourceId: string | null) {
-    if (!dataSourceId) {
+  async setDataSourceViewId(
+    auth: Authenticator,
+    dataSourceViewId: string | null
+  ) {
+    if (dataSourceViewId === undefined) {
       return;
     }
 
-    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+    if (dataSourceViewId === null) {
+      return this.update({ dataSourceViewId: null });
+    }
 
-    if (!dataSource || this.dataSourceId === dataSource.id) {
+    const dataSourceView = await DataSourceViewResource.fetchById(
+      auth,
+      dataSourceViewId
+    );
+
+    if (!dataSourceView || this.dataSourceViewId === dataSourceView.id) {
       return;
     }
 
-    return this.update({ dataSourceId: dataSource.id });
+    return this.update({ dataSourceViewId: dataSourceView.id });
   }
 
   async delete(

@@ -1,3 +1,4 @@
+import type { NotificationType } from "@dust-tt/sparkle";
 import {
   Avatar,
   Button,
@@ -9,6 +10,7 @@ import {
   Page,
   TrashIcon,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
   ConnectorPermission,
@@ -25,24 +27,22 @@ import {
   MANAGED_DS_DELETABLE,
 } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
-import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
-import { ConnectorDataUpdatedModal } from "@app/components/vaults/ConnectorDataUpdatedModal";
+import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
+import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
-import { useSystemVault, useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 import type { ContentNodeTreeItemStatus } from "./ContentNodeTree";
 import { ContentNodeTree } from "./ContentNodeTree";
-import type { NotificationType } from "./sparkle/Notification";
-import { SendNotificationsContext } from "./sparkle/Notification";
 
 const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "confluence",
@@ -318,9 +318,9 @@ function DataSourceEditionModal({
             </div>
             <div className="flex items-center justify-center">
               <Button
-                label={"Edit Permissions"}
+                label="Edit Permissions"
                 icon={LockIcon}
-                variant="primaryWarning"
+                variant="warning"
                 onClick={() => {
                   setShowConfirmDialog(true);
                 }}
@@ -331,9 +331,9 @@ function DataSourceEditionModal({
         {isDataSourceOwner && (
           <div className="flex items-center justify-center">
             <Button
-              label={"Edit Permissions"}
+              label="Edit Permissions"
               icon={LockIcon}
-              variant="primaryWarning"
+              variant="warning"
               onClick={() => {
                 setShowConfirmDialog(true);
               }}
@@ -348,7 +348,7 @@ function DataSourceEditionModal({
             void onEditPermissionsClick();
             setShowConfirmDialog(false);
           }}
-          validateVariant="primaryWarning"
+          validateVariant="warning"
           cancelLabel="Cancel"
           validateLabel="Continue"
         >
@@ -374,21 +374,21 @@ function DataSourceDeletionModal({
   owner,
 }: DataSourceDeletionModalProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { user } = useUser();
-  const { systemVault } = useSystemVault({
+  const { systemSpace } = useSystemSpace({
     workspaceId: owner.sId,
   });
-  const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
-    useVaultDataSourceViews({
+  const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =
+    useSpaceDataSourceViews({
       workspaceId: owner.sId,
-      vaultId: systemVault?.sId ?? "",
+      spaceId: systemSpace?.sId ?? "",
       disabled: true,
     });
   const { connectorProvider, editedByUser } = dataSource;
 
-  if (!connectorProvider || !user || !systemVault) {
+  if (!connectorProvider || !user || !systemSpace) {
     return null;
   }
 
@@ -398,7 +398,7 @@ function DataSourceDeletionModal({
   const handleDelete = async () => {
     setIsLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${systemVault.sId}/data_sources/${dataSource.sId}`,
+      `/api/w/${owner.sId}/vaults/${systemSpace.sId}/data_sources/${dataSource.sId}`,
       {
         method: "DELETE",
       }
@@ -409,7 +409,7 @@ function DataSourceDeletionModal({
         type: "success",
         description: "The connection has been successfully deleted.",
       });
-      await mutateVaultDataSourceViews();
+      await mutateSpaceDataSourceViews();
       onClose();
     } else {
       const err = (await res.json()) as { error: APIError };
@@ -461,7 +461,7 @@ function DataSourceDeletionModal({
           <Button
             label="Delete Connection"
             icon={LockIcon}
-            variant="primaryWarning"
+            variant="warning"
             onClick={() => {
               setShowConfirmDialog(true);
             }}
@@ -476,7 +476,7 @@ function DataSourceDeletionModal({
             void handleDelete();
             setShowConfirmDialog(false);
           }}
-          validateVariant="primaryWarning"
+          validateVariant="warning"
           cancelLabel="Cancel"
           validateLabel="Continue"
           isSaving={isLoading}
@@ -578,7 +578,7 @@ export function ConnectorPermissionsModal({
   const plan = activeSubscription ? activeSubscription.plan : null;
 
   const [saving, setSaving] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const { user } = useUser();
 
   function closeModal(save: boolean) {
@@ -702,7 +702,7 @@ export function ConnectorPermissionsModal({
               <Button
                 className="ml-auto justify-self-end"
                 label="Edit permissions"
-                variant="tertiary"
+                variant="outline"
                 icon={LockIcon}
                 onClick={() => {
                   setModalToShow("edition");
@@ -713,7 +713,7 @@ export function ConnectorPermissionsModal({
               <Button
                 className="ml-auto justify-self-end"
                 label="Delete connection"
-                variant="secondaryWarning"
+                variant="warning"
                 icon={TrashIcon}
                 onClick={() => {
                   setModalToShow("deletion");

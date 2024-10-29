@@ -2,16 +2,16 @@
 // Disabling jsdoc rule, as we're not yet documentating dust apps endpoints under vaults.
 // We still document the legacy endpoint, which does the same thing.
 // Note: for now, an API key only has access to the global vault.
-import type { VaultType, WithAPIErrorResponse } from "@dust-tt/types";
+import type { SpaceType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetVaultsResponseBody = {
-  vaults: VaultType[];
+  vaults: SpaceType[];
 };
 
 /**
@@ -61,7 +61,7 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const vaults = (await VaultResource.listWorkspaceVaults(auth)).map(
+      const vaults = (await SpaceResource.listWorkspaceSpaces(auth)).map(
         (vault) => vault.toJSON()
       );
       res.status(200).json({

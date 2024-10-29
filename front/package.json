@@ -23,12 +23,9 @@
     "extension:lint": "eslint extension/app"
   },
   "dependencies": {
-    "@amplitude/ampli": "^1.35.0",
-    "@amplitude/analytics-browser": "^2.5.2",
-    "@amplitude/analytics-node": "^1.3.5",
     "@auth0/nextjs-auth0": "^3.5.0",
     "@dust-tt/client": "file:../sdks/js",
-    "@dust-tt/sparkle": "^0.2.272",
+    "@dust-tt/sparkle": "^0.2.284",
     "@dust-tt/types": "file:../types",
     "@headlessui/react": "^1.7.7",
     "@heroicons/react": "^2.0.11",
@@ -88,7 +85,7 @@
     "lodash": "^4.17.21",
     "lucide-react": "^0.363.0",
     "luxon": "^3.4.4",
-    "marked": "^12.0.2",
+    "marked": "^14.1.3",
     "mermaid": "^10.9.0",
     "minimist": "^1.2.8",
     "moment-timezone": "^0.5.43",

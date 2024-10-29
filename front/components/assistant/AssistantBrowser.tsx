@@ -9,21 +9,23 @@ import {
   RocketIcon,
   Searchbar,
   StarIcon,
-  Tab,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Tooltip,
+  useHashParam,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
+  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
 import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
-import { classNames, subFilter } from "@app/lib/utils";
-import { setQueryParam } from "@app/lib/utils/router";
+import { subFilter } from "@app/lib/utils";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);
@@ -31,6 +33,7 @@ function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
 
 interface AssistantListProps {
   owner: WorkspaceType;
+  user: UserType;
   isBuilder: boolean;
   agents: LightAgentConfigurationType[];
   loadingStatus: "loading" | "finished";
@@ -56,13 +59,18 @@ type TabId = (typeof ALL_AGENTS_TABS)[number]["id"];
 
 export function AssistantBrowser({
   owner,
+  user,
   isBuilder,
   agents,
   loadingStatus,
   handleAssistantClick,
 }: AssistantListProps) {
   const [assistantSearch, setAssistantSearch] = useState<string>("");
-  const router = useRouter();
+  const [selectedTab, setSelectedTab] = useHashParam(
+    "selectedTab",
+    "favorites"
+  );
+
   const agentsByTab = useMemo(() => {
     const filteredAgents: LightAgentConfigurationType[] = agents
       .filter(
@@ -113,22 +121,15 @@ export function AssistantBrowser({
 
   // check the query string for the tab to show, the query param to look for is called "selectedTab"
   // if it's not found, show the first tab with agents
-  const selectedTab = useMemo(() => {
-    const selectedTab = router.query.selectedTab;
-    return typeof selectedTab === "string" &&
+  const viewTab = useMemo(() => {
+    return selectedTab &&
       isValidTab(
         selectedTab,
         visibleTabs.map((tab) => tab.id)
       )
       ? selectedTab
       : visibleTabs[0]?.id;
-  }, [router.query.selectedTab, visibleTabs]);
-
-  const displayedTab = visibleTabs.find((tab) => tab.id === selectedTab)
-    ? selectedTab
-    : visibleTabs.length > 0
-      ? visibleTabs[0].id
-      : null;
+  }, [selectedTab, visibleTabs]);
 
   return (
     <>
@@ -145,7 +146,7 @@ export function AssistantBrowser({
           onChange={setAssistantSearch}
         />
         <div className="hidden sm:block">
-          <Button.List>
+          <div className="flex gap-2">
             <Tooltip
               label="Create your own assistant"
               tooltipTriggerAsChild
@@ -163,8 +164,6 @@ export function AssistantBrowser({
                     <Button
                       variant="primary"
                       icon={PlusIcon}
-                      label="Create"
-                      labelVisible={false}
                       size="sm"
                       className="sm:hidden"
                     />
@@ -188,33 +187,39 @@ export function AssistantBrowser({
                 }
               />
             )}
-          </Button.List>
+          </div>
         </div>
       </div>
 
       {/* Assistant tabs */}
       <div className="flex flex-row space-x-4 px-4">
-        <Tab
-          className="grow"
-          tabs={visibleTabs.map((tab) => ({
-            ...tab,
-            current: tab.id === displayedTab,
-          }))}
-          tabClassName={classNames(
-            assistantSearch !== "" ? "text-element-700 border-element-700" : ""
-          )}
-          setCurrentTab={(t) => setQueryParam(router, "selectedTab", t)}
-        />
+        <Tabs className="w-full" value={viewTab} onValueChange={setSelectedTab}>
+          <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
+            {visibleTabs.map((tab) => (
+              <TabsTrigger
+                key={tab.id}
+                value={tab.id}
+                label={tab.label}
+                icon={tab.icon}
+                className={
+                  assistantSearch !== ""
+                    ? "border-element-700 text-element-700"
+                    : ""
+                }
+              />
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
-      {!displayedTab && (
+      {!viewTab && (
         <div className="text-center">
           No assistants found. Try adjusting your search criteria.
         </div>
       )}
 
-      {displayedTab && (
+      {viewTab && (
         <div className="relative grid w-full grid-cols-1 gap-2 px-4 md:grid-cols-3">
-          {agentsByTab[displayedTab].map((agent) => (
+          {agentsByTab[viewTab].map((agent) => (
             <AssistantPreview
               key={agent.sId}
               title={agent.name}
@@ -224,21 +229,15 @@ export function AssistantBrowser({
               variant="minimal"
               onClick={() => handleAssistantClick(agent)}
               actionElement={
-                <>
-                  {/* TODO: get rid of the ugly hack */}
-                  {/* Theses 2 divs are an ugly hack to align the button while making the dropdown menu visible above the container, it has the size of the button hardcoded -- Let's fix it asap */}
-                  <div style={{ width: "56px" }}></div>{" "}
-                  <div className="absolute">
-                    <AssistantDropdownMenu
-                      agentConfiguration={agent}
-                      owner={owner}
-                      variant="button"
-                      isMoreInfoVisible
-                      showAddRemoveToFavorite
-                      canDelete
-                    />
-                  </div>
-                </>
+                <AssistantDropdownMenu
+                  agentConfiguration={agent}
+                  owner={owner}
+                  user={user}
+                  variant="button"
+                  isMoreInfoVisible
+                  showAddRemoveToFavorite
+                  canDelete
+                />
               }
             />
           ))}

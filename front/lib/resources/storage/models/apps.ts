@@ -10,7 +10,7 @@ import { DataTypes, Model } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
 // TODO(2024-10-04 flav) Remove visibility from here.
@@ -28,10 +28,10 @@ export class AppModel extends SoftDeletableModel<AppModel> {
   declare savedRun: string | null;
   declare dustAPIProjectId: string;
 
-  declare vaultId: ForeignKey<VaultModel["id"]>;
+  declare vaultId: ForeignKey<SpaceModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
-  declare vault: NonAttribute<VaultModel>;
+  declare space: NonAttribute<SpaceModel>;
   declare workspace: NonAttribute<Workspace>;
 }
 AppModel.init(
@@ -100,11 +100,13 @@ Workspace.hasMany(AppModel, {
 });
 AppModel.belongsTo(Workspace);
 
-VaultModel.hasMany(AppModel, {
-  foreignKey: { allowNull: false },
+SpaceModel.hasMany(AppModel, {
+  foreignKey: { allowNull: false, name: "vaultId" },
   onDelete: "RESTRICT",
 });
-AppModel.belongsTo(VaultModel);
+AppModel.belongsTo(SpaceModel, {
+  foreignKey: { allowNull: false, name: "vaultId" },
+});
 
 export class Provider extends Model<
   InferAttributes<Provider>,

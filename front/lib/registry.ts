@@ -126,7 +126,7 @@ export const DustProdActionRegistry = createActionRegistry({
         data_sources: [],
         // top k will probably need to be
         // proportional to the number of documents
-        top_k: 64,
+        top_k: 1,
         filter: {
           tags: null,
           timestamp: null,
@@ -148,7 +148,7 @@ export const DustProdActionRegistry = createActionRegistry({
     config: {
       SUGGEST_CHANGES: {
         // `provider_id` and `model_id` must be set by caller.
-        use_cache: false,
+        use_cache: true,
         function_call: "suggest_changes",
       },
     },
@@ -158,7 +158,7 @@ export const DustProdActionRegistry = createActionRegistry({
       workspaceId: PRODUCTION_DUST_APPS_WORKSPACE_ID,
       appId: "b4f205e453",
       appHash:
-        "d2bfd8d38ad3fa5f71fb7c95cdd9eed158ae3b25f737cb27b8fa3e2d344388ce",
+        "59b0d9aa49ed9232f88f3ac1cd260ae25e0cd68e0622058c87cd4a42edce18da",
       appVaultId: PRODUCTION_DUST_APPS_VAULT_ID,
     },
     config: {

@@ -1,4 +1,11 @@
-import { Button, PlusIcon, Tab, TrashIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  PlusIcon,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TrashIcon,
+} from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { DatasetType } from "@dust-tt/types";
@@ -15,8 +22,8 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { getDatasets } from "@app/lib/api/datasets";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { dustAppsListUrl } from "@app/lib/spaces";
 import { classNames } from "@app/lib/utils";
-import { dustAppsListUrl } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -71,11 +78,11 @@ export default function DatasetsView({
       await confirm({
         title: "Double checking",
         message: "Are you sure you want to delete this dataset entirely?",
-        validateVariant: "primaryWarning",
+        validateVariant: "warning",
       })
     ) {
       await fetch(
-        `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${datasetName}`,
+        `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets/${datasetName}`,
         {
           method: "DELETE",
           headers: {
@@ -84,7 +91,7 @@ export default function DatasetsView({
         }
       );
       await router.push(
-        `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets`
+        `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets`
       );
     }
   };
@@ -98,16 +105,31 @@ export default function DatasetsView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.vault));
+            void router.push(dustAppsListUrl(owner, app.space));
           }}
         />
       }
     >
       <div className="flex w-full flex-col">
-        <Tab
-          className="mt-2"
-          tabs={subNavigationApp({ owner, app, current: "datasets" })}
-        />
+        <Tabs value="datasets" className="mt-2">
+          <TabsList>
+            {subNavigationApp({ owner, app, current: "datasets" }).map(
+              (tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  label={tab.label}
+                  icon={tab.icon}
+                  onClick={() => {
+                    if (tab.href) {
+                      void router.push(tab.href);
+                    }
+                  }}
+                />
+              )
+            )}
+          </TabsList>
+        </Tabs>
         <div className="mt-8 flex flex-col">
           <div className="flex flex-1">
             <div className="mb-4 flex flex-auto flex-col gap-y-4">
@@ -119,7 +141,7 @@ export default function DatasetsView({
                   icon={PlusIcon}
                   onClick={() => {
                     void router.push(
-                      `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/new`
+                      `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets/new`
                     );
                   }}
                 />
@@ -130,7 +152,7 @@ export default function DatasetsView({
                     return (
                       <Link
                         key={d.name}
-                        href={`/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${d.name}`}
+                        href={`/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets/${d.name}`}
                         className="block"
                       >
                         <div

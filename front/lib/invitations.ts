@@ -1,4 +1,5 @@
 // Maxmimum allowed number of unconsumed invitations per workspace per day.
+import type { NotificationType } from "@dust-tt/sparkle";
 import type {
   ActiveRoleType,
   MembershipInvitationType,
@@ -8,7 +9,6 @@ import type {
 import { mutate } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
-import type { NotificationType } from "@app/components/sparkle/Notification";
 import type {
   PostInvitationRequestBody,
   PostInvitationResponseBody,
@@ -34,7 +34,7 @@ export async function updateInvitation({
       title: "Revoke invitation",
       message: `Are you sure you want to revoke the invitation for ${invitation.inviteEmail}?`,
       validateLabel: "Yes, revoke",
-      validateVariant: "primaryWarning",
+      validateVariant: "warning",
     });
     if (!confirmation) {
       return;

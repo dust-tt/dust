@@ -161,7 +161,7 @@ async function handler(
 
   const dataSourceView = await DataSourceViewResource.fetchById(auth, dsvId);
 
-  if (!dataSourceView || dataSourceView.vault.sId !== vId) {
+  if (!dataSourceView || dataSourceView.space.sId !== vId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

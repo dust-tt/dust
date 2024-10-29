@@ -9,6 +9,7 @@ import {
   NewDropdownMenuContent,
   NewDropdownMenuItem,
   NewDropdownMenuLabel,
+  NewDropdownMenuSeparator,
   NewDropdownMenuTrigger,
   PencilSquareIcon,
   StarIcon,
@@ -17,6 +18,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
+  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, isBuilder } from "@dust-tt/types";
@@ -32,6 +34,7 @@ import { setQueryParam } from "@app/lib/utils/router";
 interface AssistantDetailsMenuProps {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
+  user: UserType;
   variant?: "button" | "plain";
   canDelete?: boolean;
   isMoreInfoVisible?: boolean;
@@ -65,6 +68,11 @@ export function AssistantDropdownMenu({
     return <></>;
   }
 
+  const isPrivate = agentConfiguration.scope === "private";
+  if (isPrivate && agentConfiguration.versionAuthorId !== user.id) {
+    return <></>;
+  }
+
   const isAgentWorkspace = agentConfiguration.scope === "workspace";
   const isGlobalAgent = agentConfiguration.scope === "global";
 
@@ -84,16 +92,19 @@ export function AssistantDropdownMenu({
           <Button
             key="show_details"
             icon={MoreIcon}
-            label="Actions"
-            labelVisible={false}
-            disabledTooltip
             size="sm"
-            variant="tertiary"
-            hasMagnifying={false}
+            variant="outline"
+            className="rounded-2xl"
           />
         );
+
       case "plain":
-        return <Icon visual={MoreIcon} />;
+        return (
+          <div>
+            <Icon visual={MoreIcon} />
+          </div>
+        );
+
       default:
         assertNever(variant);
     }
@@ -114,20 +125,24 @@ export function AssistantDropdownMenu({
       />
 
       <NewDropdownMenu>
-        <NewDropdownMenuTrigger>{dropdownButton}</NewDropdownMenuTrigger>
+        <NewDropdownMenuTrigger asChild>
+          {dropdownButton}
+        </NewDropdownMenuTrigger>
         <NewDropdownMenuContent>
-          <NewDropdownMenuLabel label={agentConfiguration.name} />
-          <Link
-            href={`/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`}
-          >
-            <NewDropdownMenuItem
-              label="Start new conversation"
-              icon={ChatBubbleBottomCenterTextIcon}
-            />
-          </Link>
+          <NewDropdownMenuLabel>{agentConfiguration.name}</NewDropdownMenuLabel>
+          <NewDropdownMenuItem
+            label="Start new conversation"
+            icon={ChatBubbleBottomCenterTextIcon}
+            onClick={() =>
+              router.push(
+                `/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`
+              )
+            }
+          />
           {isMoreInfoVisible ? (
             <NewDropdownMenuItem
               label="More info"
+              icon={EyeIcon}
               onClick={(e) => {
                 e.stopPropagation();
                 setQueryParam(
@@ -136,80 +151,60 @@ export function AssistantDropdownMenu({
                   agentConfiguration.sId
                 );
               }}
-              icon={EyeIcon}
             />
           ) : (
             <NewDropdownMenuItem
               label="Copy assistant ID"
+              icon={ClipboardIcon}
               onClick={async (e) => {
                 e.stopPropagation();
                 await navigator.clipboard.writeText(agentConfiguration.sId);
               }}
-              icon={ClipboardIcon}
             />
           )}
-
           {showAddRemoveToFavorite && (
-            <>
-              <NewDropdownMenuItem
-                label={
-                  isFavorite ? "Remove from favorites" : "Add to favorites"
-                }
-                disabled={isUpdatingFavorites}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void updateFavorite(isFavorite ? false : true);
-                }}
-                icon={isFavorite ? StarIcon : StarStrokeIcon}
-              />
-            </>
+            <NewDropdownMenuItem
+              label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+              icon={isFavorite ? StarStrokeIcon : StarIcon}
+              disabled={isUpdatingFavorites}
+              onClick={async (e) => {
+                e.stopPropagation();
+                await updateFavorite(!isFavorite);
+              }}
+            />
           )}
-
           {!isGlobalAgent && (
             <>
-              <NewDropdownMenuLabel label="Edition" />
-
-              {/* Should use the router to have a better navigation experience */}
+              <NewDropdownMenuSeparator />
+              <NewDropdownMenuLabel>Edition</NewDropdownMenuLabel>
               {(isBuilder(owner) || !isAgentWorkspace) && (
-                <Link
-                  href={`/w/${owner.sId}/builder/assistants/${
-                    agentConfiguration.sId
-                  }?flow=${
-                    isAgentWorkspace
-                      ? "workspace_assistants"
-                      : "personal_assistants"
-                  }`}
-                >
-                  <NewDropdownMenuItem
-                    label="Edit"
-                    icon={PencilSquareIcon}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                    }}
-                  />
-                </Link>
-              )}
-              <Link
-                href={`/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`}
-              >
                 <NewDropdownMenuItem
-                  label="Duplicate (New)"
-                  icon={ClipboardIcon}
-                  onClick={(e) => {
+                  label="Edit"
+                  icon={PencilSquareIcon}
+                  onClick={async (e) => {
                     e.stopPropagation();
+                    await router.push(
+                      `/w/${owner.sId}/builder/assistants/${agentConfiguration.sId}?flow=${isAgentWorkspace ? "workspace_assistants" : "personal_assistants"}`
+                    );
                   }}
                 />
-              </Link>
+              )}
+              <NewDropdownMenuItem
+                label="Duplicate (New)"
+                icon={ClipboardIcon}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  await router.push(
+                    `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
+                  );
+                }}
+              />
               {allowDeletion && (
                 <NewDropdownMenuItem
                   label="Delete"
                   icon={TrashIcon}
-                  // TODO:
-                  // variant="warning"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowDeletionModal(true);
-                  }}
+                  variant="warning"
+                  onClick={() => setShowDeletionModal(true)}
                 />
               )}
             </>

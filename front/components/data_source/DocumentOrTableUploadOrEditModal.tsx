@@ -12,6 +12,7 @@ import {
   Spinner,
   TextArea,
   TrashIcon,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
@@ -23,18 +24,20 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import {
+  BIG_FILE_SIZE,
+  Err,
+  isSlugified,
   MAX_FILE_LENGTH,
+  MAX_FILE_SIZES,
   maxFileSizeToHumanReadable,
   parseAndStringifyCsv,
 } from "@dust-tt/types";
-import { Err } from "@dust-tt/types";
-import { BIG_FILE_SIZE, isSlugified, MAX_FILE_SIZES } from "@dust-tt/types";
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useDataSourceViewDocument } from "@app/lib/swr/data_source_views";
 import { useTable } from "@app/lib/swr/tables";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 const MAX_NAME_CHARS = 32;
 
@@ -91,7 +94,7 @@ const DocumentUploadOrEditModal = ({
   owner,
   plan,
 }: DocumentOrTableUploadOrEditModalProps) => {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [documentState, setDocumentState] = useState<Document>({
     name: "",
@@ -145,7 +148,7 @@ const DocumentUploadOrEditModal = ({
   const handleDocumentUpload = async (document: Document) => {
     setUploading(true);
     try {
-      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
+      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
       const endpoint = initialId
         ? `${base}/${encodeURIComponent(document.name)}`
         : base;
@@ -360,7 +363,7 @@ const DocumentUploadOrEditModal = ({
                   title="Developer Options"
                   action={{
                     label: developerOptionsVisible ? "Hide" : "Show",
-                    variant: "tertiary",
+                    variant: "ghost",
                     icon: developerOptionsVisible ? EyeSlashIcon : EyeIcon,
                     onClick: () =>
                       setDeveloperOptionsVisible(!developerOptionsVisible),
@@ -373,7 +376,7 @@ const DocumentUploadOrEditModal = ({
                       description="Tags can be set to filter Data Source retrieval or provide a user-friendly title for programmatically uploaded documents (`title:User-friendly Title`)."
                       action={{
                         label: "Add tag",
-                        variant: "tertiary",
+                        variant: "ghost",
                         icon: PlusIcon,
                         onClick: () =>
                           setDocumentState((prev) => ({
@@ -403,9 +406,9 @@ const DocumentUploadOrEditModal = ({
                           </div>
                           <div className="flex">
                             <Button
-                              label="Remove"
+                              tooltip="Remove"
                               icon={TrashIcon}
-                              variant="secondaryWarning"
+                              variant="warning"
                               onClick={() => {
                                 const newTags = [...documentState.tags];
                                 newTags.splice(index, 1);
@@ -414,7 +417,6 @@ const DocumentUploadOrEditModal = ({
                                   tags: newTags,
                                 }));
                               }}
-                              labelVisible={false}
                             />
                           </div>
                         </div>
@@ -444,7 +446,7 @@ const TableUploadOrEditModal = ({
   onClose,
   owner,
 }: DocumentOrTableUploadOrEditModalProps) => {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [tableState, setTableState] = useState<Table>({
@@ -467,6 +469,8 @@ const TableUploadOrEditModal = ({
     dataSourceView: dataSourceView,
     tableId: initialId ?? null,
   });
+
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   useEffect(() => {
     if (!initialId) {
@@ -508,7 +512,7 @@ const TableUploadOrEditModal = ({
         throw new Error("File too large");
       }
 
-      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/tables`;
+      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/tables`;
       const endpoint = initialId ? `${base}/${initialId}` : base;
 
       const body = JSON.stringify({
@@ -519,7 +523,7 @@ const TableUploadOrEditModal = ({
         timestamp: null,
         tags: [],
         parents: [],
-        truncate: false,
+        truncate: true,
         async: false,
         useAppForHeaderDetection,
       });
@@ -701,7 +705,7 @@ const TableUploadOrEditModal = ({
                   </div>
                 )}
               </div>
-              {owner.flags.includes("use_app_for_header_detection") && (
+              {featureFlags.includes("use_app_for_header_detection") && (
                 <div>
                   <Page.SectionHeader
                     title="Enable header detection"
@@ -710,9 +714,7 @@ const TableUploadOrEditModal = ({
                     }
                     action={{
                       label: useAppForHeaderDetection ? "Disable" : "Enable",
-                      variant: useAppForHeaderDetection
-                        ? "primary"
-                        : "tertiary",
+                      variant: useAppForHeaderDetection ? "primary" : "ghost",
                       icon: SparklesIcon,
                       onClick: () =>
                         setUseAppForHeaderDetection(!useAppForHeaderDetection),

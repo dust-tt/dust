@@ -1,4 +1,4 @@
-import { Tab } from "@dust-tt/sparkle";
+import { Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import type { AppType, SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -10,8 +10,8 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { dustAppsListUrl } from "@app/lib/spaces";
 import { dumpSpecification } from "@app/lib/specification";
-import { dustAppsListUrl } from "@app/lib/vaults";
 import logger from "@app/logger/logger";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -88,16 +88,31 @@ export default function Specification({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.vault));
+            void router.push(dustAppsListUrl(owner, app.space));
           }}
         />
       }
     >
       <div className="flex w-full flex-col">
-        <Tab
-          className="mt-2"
-          tabs={subNavigationApp({ owner, app, current: "specification" })}
-        />
+        <Tabs value="specification" className="mt-2">
+          <TabsList>
+            {subNavigationApp({ owner, app, current: "specification" }).map(
+              (tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  label={tab.label}
+                  icon={tab.icon}
+                  onClick={() => {
+                    if (tab.href) {
+                      void router.push(tab.href);
+                    }
+                  }}
+                />
+              )
+            )}
+          </TabsList>
+        </Tabs>
         <div className="font-mono mt-8 whitespace-pre text-[13px] text-gray-700">
           {specification}
         </div>

@@ -1,6 +1,14 @@
-import { Button, Hoverable, PriceTable, RocketIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  Hoverable,
+  PriceTable,
+  RocketIcon,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 import type { BillingPeriod, PlanType } from "@dust-tt/types";
-import { Tab } from "@headlessui/react";
 import type { ReactNode } from "react";
 import React, { useState } from "react";
 
@@ -223,7 +231,7 @@ export function ProPriceTable({
         {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
           <PriceTable.ActionContainer position="top">
             <Button
-              variant="primary"
+              variant="highlight"
               size={biggerButtonSize}
               label="Start now, 15 days free"
               icon={RocketIcon}
@@ -244,7 +252,7 @@ export function ProPriceTable({
         {onClick && (!plan || plan.code !== PRO_PLAN_SEAT_29_CODE) && (
           <PriceTable.ActionContainer>
             <Button
-              variant="primary"
+              variant="highlight"
               size={biggerButtonSize}
               label="Start now, 15 days free"
               icon={RocketIcon}
@@ -272,7 +280,7 @@ function EnterprisePriceTable({
       <PriceTable.ActionContainer position="top">
         {onClick && (
           <Button
-            variant="primary"
+            variant="highlight"
             size={biggerButtonSize}
             label="Contact us"
             disabled={isProcessing}
@@ -290,7 +298,7 @@ function EnterprisePriceTable({
       <PriceTable.ActionContainer>
         {onClick && (
           <Button
-            variant="primary"
+            variant="highlight"
             size={biggerButtonSize}
             label="Contact us"
             disabled={isProcessing}
@@ -318,49 +326,17 @@ export function PricePlans({
       <div
         className={classNames(
           "mx-0 sm:mx-24",
-          "w-full max-w-md px-2 py-16 sm:px-0",
+          "w-full max-w-md px-2 sm:px-0",
           className
         )}
       >
-        <Tab.Group>
-          <Tab.List
-            className={classNames(
-              "flex space-x-1 rounded-full border p-1 backdrop-blur",
-              "border-structure-300/30 bg-white/80",
-              "dark:border-structure-300-dark/30 dark:bg-structure-50-dark/80"
-            )}
-          >
-            <Tab
-              className={({ selected }) =>
-                classNames(
-                  "w-full rounded-full font-semibold transition-all duration-300 ease-out",
-                  "py-3 text-lg",
-                  "ring-0 focus:outline-none",
-                  selected
-                    ? "bg-emerald-400 text-white shadow dark:bg-emerald-500"
-                    : "text-element-700 hover:bg-white/20 hover:text-white dark:text-element-700-dark"
-                )
-              }
-            >
-              Pro
-            </Tab>
-            <Tab
-              className={({ selected }) =>
-                classNames(
-                  "w-full rounded-full font-semibold transition-all duration-300 ease-out",
-                  "py-3 text-lg",
-                  "ring-0 focus:outline-none",
-                  selected
-                    ? "bg-pink-400 text-white shadow dark:bg-pink-500"
-                    : "text-element-700 hover:bg-white/20 hover:text-white dark:text-element-700-dark"
-                )
-              }
-            >
-              Enterprise
-            </Tab>
-          </Tab.List>
-          <Tab.Panels className="mt-8">
-            <Tab.Panel>
+        <Tabs value="pro">
+          <TabsList>
+            <TabsTrigger value="pro" label="Pro" />
+            <TabsTrigger value="enterprise" label="Enterprise" />
+          </TabsList>
+          <div className="mt-8">
+            <TabsContent value="pro">
               <ProPriceTable
                 display={display}
                 size={size}
@@ -368,16 +344,16 @@ export function PricePlans({
                 isProcessing={isProcessing}
                 onClick={onClickProPlan}
               />
-            </Tab.Panel>
-            <Tab.Panel>
+            </TabsContent>
+            <TabsContent value="enterprise">
               <EnterprisePriceTable
                 size={size}
                 isProcessing={isProcessing}
                 onClick={onClickEnterprisePlan}
               />
-            </Tab.Panel>
-          </Tab.Panels>
-        </Tab.Group>
+            </TabsContent>
+          </div>
+        </Tabs>
       </div>
     );
   } else {

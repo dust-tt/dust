@@ -6,7 +6,7 @@ import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import { VaultModel } from "@app/lib/resources/storage/models/vaults";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { SoftDeletableModel } from "@app/lib/resources/storage/wrappers";
 
 export class DataSourceViewModel extends SoftDeletableModel<DataSourceViewModel> {
@@ -22,12 +22,12 @@ export class DataSourceViewModel extends SoftDeletableModel<DataSourceViewModel>
   declare parentsIn: string[] | null;
 
   declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
-  declare vaultId: ForeignKey<VaultModel["id"]>;
+  declare vaultId: ForeignKey<SpaceModel["id"]>;
   declare workspaceId: ForeignKey<Workspace["id"]>;
 
   declare dataSourceForView: NonAttribute<DataSourceModel>;
   declare editedByUser: NonAttribute<User>;
-  declare vault: NonAttribute<VaultModel>;
+  declare space: NonAttribute<SpaceModel>;
   declare workspace: NonAttribute<Workspace>;
 }
 DataSourceViewModel.init(
@@ -84,11 +84,13 @@ Workspace.hasMany(DataSourceViewModel, {
 });
 DataSourceViewModel.belongsTo(Workspace);
 
-VaultModel.hasMany(DataSourceViewModel, {
-  foreignKey: { allowNull: false },
+SpaceModel.hasMany(DataSourceViewModel, {
+  foreignKey: { allowNull: false, name: "vaultId" },
   onDelete: "RESTRICT",
 });
-DataSourceViewModel.belongsTo(VaultModel);
+DataSourceViewModel.belongsTo(SpaceModel, {
+  foreignKey: { allowNull: false, name: "vaultId" },
+});
 
 DataSourceModel.hasMany(DataSourceViewModel, {
   as: "dataSourceForView",

@@ -1,10 +1,11 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
 import type { DustAPICredentials } from "@dust-tt/client";
 import type {
-  ACLType,
   GroupType,
   LightWorkspaceType,
-  Permission,
+  ModelId,
+  PermissionType,
+  ResourcePermission,
   RoleType,
   UserType,
   WhitelistableFeature,
@@ -15,7 +16,7 @@ import type { Result } from "@dust-tt/types";
 import type { APIErrorWithStatusCode } from "@dust-tt/types";
 import {
   Err,
-  groupHasPermission,
+  hasRolePermissions,
   isAdmin,
   isBuilder,
   isDevelopment,
@@ -67,7 +68,6 @@ export const getAuthType = (token: string): PublicAPIAuthMethod => {
  * workspace oriented. Use `getUserFromSession` if needed.
  */
 export class Authenticator {
-  _flags: WhitelistableFeature[];
   _key?: KeyAuthType;
   _role: RoleType;
   _subscription: SubscriptionType | null;
@@ -82,7 +82,6 @@ export class Authenticator {
     role,
     groups,
     subscription,
-    flags,
     key,
   }: {
     workspace?: Workspace | null;
@@ -90,7 +89,6 @@ export class Authenticator {
     role: RoleType;
     groups: GroupResource[];
     subscription?: SubscriptionType | null;
-    flags: WhitelistableFeature[];
     key?: KeyAuthType;
   }) {
     this._workspace = workspace || null;
@@ -98,11 +96,23 @@ export class Authenticator {
     this._groups = groups;
     this._role = role;
     this._subscription = subscription || null;
-    this._flags = flags;
     this._key = key;
   }
 
-  static aclsFromGroupIds(groupIds: string[]): ACLType[] {
+  /**
+   * Converts an array of group sIDs (string identifiers) into ResourcePermission objects.
+   * This utility method creates standard read/write permissions for each group.
+   *
+   * The resulting permissions enforce a conjunction (AND) between groups. A user must belong to
+   * ALL groups to access the resource, as each group is placed in a separate ResourcePermission
+   * entry.
+   *
+   * @param groupIds - Array of group string identifiers
+   * @returns Array of ResourcePermission objects, one per group, requiring membership in all groups
+   */
+  static createResourcePermissionsFromGroupIds(
+    groupIds: string[]
+  ): ResourcePermission[] {
     const getIdFromSIdOrThrow = (groupId: string) => {
       const id = getResourceIdFromSId(groupId);
       if (!id) {
@@ -111,10 +121,11 @@ export class Authenticator {
       return id;
     };
 
+    // Each group in separate entry enforces AND relationship.
     return groupIds.map((groupId) => ({
-      aclEntries: [
+      groups: [
         {
-          groupId: getIdFromSIdOrThrow(groupId),
+          id: getIdFromSIdOrThrow(groupId),
           permissions: ["read", "write"],
         },
       ],
@@ -153,10 +164,9 @@ export class Authenticator {
     let role = "none" as RoleType;
     let groups: GroupResource[] = [];
     let subscription: SubscriptionType | null = null;
-    let flags: WhitelistableFeature[] = [];
 
     if (user && workspace) {
-      [role, groups, subscription, flags] = await Promise.all([
+      [role, groups, subscription] = await Promise.all([
         MembershipResource.getActiveMembershipOfUserInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
@@ -166,11 +176,6 @@ export class Authenticator {
           workspace: renderLightWorkspaceType({ workspace }),
         }),
         subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
-        FeatureFlag.findAll({
-          where: {
-            workspaceId: workspace.id,
-          },
-        }).then((flags) => flags.map((flag) => flag.name)),
       ]);
     }
 
@@ -180,7 +185,6 @@ export class Authenticator {
       role,
       groups,
       subscription,
-      flags,
     });
   }
 
@@ -219,23 +223,13 @@ export class Authenticator {
 
     let groups: GroupResource[] = [];
     let subscription: SubscriptionType | null = null;
-    let flags: WhitelistableFeature[] = [];
 
     if (workspace) {
-      [groups, subscription, flags] = await Promise.all([
+      [groups, subscription] = await Promise.all([
         user?.isDustSuperUser
           ? GroupResource.superAdminFetchWorkspaceGroups(user, workspace.id)
           : [],
         subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
-        (async () => {
-          return (
-            await FeatureFlag.findAll({
-              where: {
-                workspaceId: workspace?.id,
-              },
-            })
-          ).map((flag) => flag.name);
-        })(),
       ]);
     }
 
@@ -245,7 +239,6 @@ export class Authenticator {
       role: user?.isDustSuperUser ? "admin" : "none",
       groups,
       subscription,
-      flags,
     });
   }
   /**
@@ -272,10 +265,9 @@ export class Authenticator {
     let role: RoleType = "none";
     let groups: GroupResource[] = [];
     let subscription: SubscriptionType | null = null;
-    let flags: WhitelistableFeature[] = [];
 
     if (user && workspace) {
-      [role, groups, subscription, flags] = await Promise.all([
+      [role, groups, subscription] = await Promise.all([
         MembershipResource.getActiveMembershipOfUserInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
@@ -285,11 +277,6 @@ export class Authenticator {
           workspace: renderLightWorkspaceType({ workspace }),
         }),
         subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
-        FeatureFlag.findAll({
-          where: {
-            workspaceId: workspace.id,
-          },
-        }).then((flags) => flags.map((flag) => flag.name)),
       ]);
     }
 
@@ -299,7 +286,6 @@ export class Authenticator {
       role,
       groups,
       subscription,
-      flags,
     });
   }
 
@@ -334,9 +320,8 @@ export class Authenticator {
     let role = "none" as RoleType;
     let groups: GroupResource[] = [];
     let subscription: SubscriptionType | null = null;
-    let flags: WhitelistableFeature[] = [];
 
-    [role, groups, subscription, flags] = await Promise.all([
+    [role, groups, subscription] = await Promise.all([
       MembershipResource.getActiveMembershipOfUserInWorkspace({
         user: user,
         workspace: renderLightWorkspaceType({ workspace }),
@@ -346,11 +331,6 @@ export class Authenticator {
         workspace: renderLightWorkspaceType({ workspace }),
       }),
       subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
-      FeatureFlag.findAll({
-        where: {
-          workspaceId: workspace.id,
-        },
-      }).then((flags) => flags.map((flag) => flag.name)),
     ]);
 
     return new Authenticator({
@@ -359,7 +339,6 @@ export class Authenticator {
       user,
       role,
       subscription,
-      flags,
     });
   }
 
@@ -411,32 +390,21 @@ export class Authenticator {
 
     let keyGroups: GroupResource[] = [];
     let requestedGroups: GroupResource[] = [];
-    let keyFlags: WhitelistableFeature[] = [];
-    let workspaceFlags: WhitelistableFeature[] = [];
-
     let workspaceSubscription: SubscriptionType | null = null;
     let keySubscription: SubscriptionType | null = null;
 
     if (workspace) {
-      [
-        keyGroups,
-        requestedGroups,
-        keySubscription,
-        keyFlags,
-        workspaceSubscription,
-        workspaceFlags,
-      ] = await Promise.all([
-        // Key related attributes.
-        GroupResource.listWorkspaceGroupsFromKey(key),
-        requestedGroupIds
-          ? GroupResource.listGroupsWithSystemKey(key, requestedGroupIds)
-          : [],
-        getSubscriptionForWorkspace(keyWorkspace),
-        getFeatureFlags(keyWorkspace),
-        // Workspace related attributes.
-        getSubscriptionForWorkspace(workspace),
-        getFeatureFlags(workspace),
-      ]);
+      [keyGroups, requestedGroups, keySubscription, workspaceSubscription] =
+        await Promise.all([
+          // Key related attributes.
+          GroupResource.listWorkspaceGroupsFromKey(key),
+          requestedGroupIds
+            ? GroupResource.listGroupsWithSystemKey(key, requestedGroupIds)
+            : [],
+          getSubscriptionForWorkspace(keyWorkspace),
+          // Workspace related attributes.
+          getSubscriptionForWorkspace(workspace),
+        ]);
     }
 
     const allGroups = Object.entries(
@@ -451,7 +419,6 @@ export class Authenticator {
 
     return {
       workspaceAuth: new Authenticator({
-        flags: workspaceFlags,
         // If the key is associated with the workspace, we associate the groups.
         groups: isKeyWorkspace ? allGroups : [],
         key: key.toAuthJSON(),
@@ -460,7 +427,6 @@ export class Authenticator {
         workspace,
       }),
       keyAuth: new Authenticator({
-        flags: keyFlags,
         groups: allGroups,
         key: key.toAuthJSON(),
         role: "builder",
@@ -512,7 +478,6 @@ export class Authenticator {
     );
 
     return new Authenticator({
-      flags: await getFeatureFlags(workspace),
       groups,
       role: "builder",
       subscription: null,
@@ -539,20 +504,10 @@ export class Authenticator {
 
     let globalGroup: GroupResource | null = null;
     let subscription: SubscriptionType | null = null;
-    let flags: WhitelistableFeature[] = [];
 
-    [globalGroup, subscription, flags] = await Promise.all([
+    [globalGroup, subscription] = await Promise.all([
       GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
       subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
-      (async () => {
-        return (
-          await FeatureFlag.findAll({
-            where: {
-              workspaceId: workspace?.id,
-            },
-          })
-        ).map((flag) => flag.name);
-      })(),
     ]);
 
     return new Authenticator({
@@ -560,7 +515,6 @@ export class Authenticator {
       role: "builder",
       groups: globalGroup ? [globalGroup] : [],
       subscription,
-      flags,
     });
   }
 
@@ -579,20 +533,10 @@ export class Authenticator {
 
     let globalGroup: GroupResource | null = null;
     let subscription: SubscriptionType | null = null;
-    let flags: WhitelistableFeature[] = [];
 
-    [globalGroup, subscription, flags] = await Promise.all([
+    [globalGroup, subscription] = await Promise.all([
       GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
       subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
-      (async () => {
-        return (
-          await FeatureFlag.findAll({
-            where: {
-              workspaceId: workspace?.id,
-            },
-          })
-        ).map((flag) => flag.name);
-      })(),
     ]);
 
     return new Authenticator({
@@ -600,7 +544,6 @@ export class Authenticator {
       role: "admin",
       groups: globalGroup ? [globalGroup] : [],
       subscription,
-      flags,
     });
   }
 
@@ -662,7 +605,6 @@ export class Authenticator {
     });
 
     return new Authenticator({
-      flags: auth._flags,
       key: auth._key,
       // We limit scope to a user role.
       role: "user",
@@ -701,10 +643,6 @@ export class Authenticator {
           name: this._workspace.name,
           role: this._role,
           segmentation: this._workspace.segmentation || null,
-          flags:
-            ACTIVATE_ALL_FEATURES_DEV && isDevelopment()
-              ? [...WHITELISTABLE_FEATURES]
-              : this._flags,
           ssoEnforced: this._workspace.ssoEnforced,
           whiteListedProviders: this._workspace.whiteListedProviders,
           defaultEmbeddingProvider: this._workspace.defaultEmbeddingProvider,
@@ -797,21 +735,90 @@ export class Authenticator {
     return this._groups.map((g) => g.toJSON());
   }
 
-  hasPermission(acls: ACLType[], permission: Permission): boolean {
-    // For each acl, does the user belongs to a group that has the permission?
-    return acls.every((acl) =>
-      this.groups().some((group) =>
-        groupHasPermission(acl, permission, group.id)
+  /**
+   * Checks if the user has the specified permission across all resource permissions.
+   *
+   * This method applies a conjunction (AND) over all resource permission entries. The user
+   * must have the required permission in EVERY entry for the check to pass.
+   */
+  hasPermissionForAllResources(
+    resourcePermissions: ResourcePermission[],
+    permission: PermissionType
+  ): boolean {
+    // Apply conjunction (AND) over all resource permission entries.
+    return resourcePermissions.every((rp) =>
+      this.hasResourcePermission(rp, permission)
+    );
+  }
+
+  /**
+   * Determines if a user has a specific permission on a resource based on their role and group
+   * memberships.
+   *
+   * The permission check follows two independent paths (OR):
+   *
+   * 1. Role-based permission check:
+   *    Applies when the resource has role-based permissions configured.
+   *    Permission is granted if:
+   *    - The resource has public access (role="none") for the requested permission, OR
+   *    - The user's role has the required permission AND the resource belongs to user's workspace
+   *
+   * 2. Group-based permission check:
+   *    Applies when the resource has group-based permissions configured.
+   *    Permission is granted if:
+   *    - The user belongs to a group that has the required permission on this resource
+   *
+   * @param resourcePermission - The resource's permission configuration
+   * @param permission - The specific permission being checked
+   * @returns true if either permission path grants access
+   */
+  private hasResourcePermission(
+    resourcePermission: ResourcePermission,
+    permission: PermissionType
+  ): boolean {
+    // First path: Role-based permission check.
+    if (hasRolePermissions(resourcePermission)) {
+      const workspace = this.getNonNullableWorkspace();
+
+      // Check for public access first. Only case of cross-workspace permission.
+      const publicPermission = resourcePermission.roles
+        .find((r) => r.role === "none")
+        ?.permissions.includes(permission);
+      if (publicPermission) {
+        return true;
+      }
+
+      // Check workspace-specific role permissions.
+      const hasRolePermission = resourcePermission.roles.some(
+        (r) => this.role() === r.role && r.permissions.includes(permission)
+      );
+
+      if (
+        hasRolePermission &&
+        workspace.id === resourcePermission.workspaceId
+      ) {
+        return true;
+      }
+    }
+
+    // Second path: Group-based permission check.
+    return this.groups().some((userGroup) =>
+      resourcePermission.groups.some(
+        (gp) => gp.id === userGroup.id && gp.permissions.includes(permission)
       )
     );
   }
 
-  canRead(acls: ACLType[]): boolean {
-    return this.hasPermission(acls, "read");
+  canAdministrate(resourcePermissions: ResourcePermission[]): boolean {
+    return this.hasPermissionForAllResources(resourcePermissions, "admin");
   }
 
-  canWrite(acls: ACLType[]): boolean {
-    return this.hasPermission(acls, "write");
+  canRead(resourcePermissions: ResourcePermission[]): boolean {
+    return this.hasPermissionForAllResources(resourcePermissions, "read");
+  }
+
+  canWrite(resourcePermissions: ResourcePermission[]): boolean {
+    return this.hasPermissionForAllResources(resourcePermissions, "write");
   }
 
   key(): KeyAuthType | null {
@@ -993,7 +1000,15 @@ export async function prodAPICredentialsForOwner(
   };
 }
 
-const getFeatureFlags = async (workspace: Workspace) =>
-  (await FeatureFlag.findAll({ where: { workspaceId: workspace.id } })).map(
-    (flag) => flag.name
-  );
+export const getFeatureFlags = async (
+  workspaceId: ModelId
+): Promise<WhitelistableFeature[]> => {
+  if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
+    return [...WHITELISTABLE_FEATURES];
+  } else {
+    const res = await FeatureFlag.findAll({
+      where: { workspaceId: workspaceId },
+    });
+    return res.map((flag) => flag.name);
+  }
+};

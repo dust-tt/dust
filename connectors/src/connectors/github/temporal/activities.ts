@@ -946,11 +946,18 @@ export async function githubCodeSyncActivity({
   );
 
   Context.current().heartbeat();
+  let nbEntries = 0;
   const repoRes = await processRepository({
     connectionId: connector.connectionId,
     repoLogin,
     repoName,
     repoId,
+    onEntry: () => {
+      if (nbEntries % 100 === 0) {
+        Context.current().heartbeat();
+      }
+      ++nbEntries;
+    },
     logger: logger,
   });
   Context.current().heartbeat();

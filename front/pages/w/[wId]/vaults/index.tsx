@@ -1,5 +1,5 @@
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 
 // This endpoint is used as a pass through to redirect to the global vault.
 export const getServerSideProps = withDefaultUserAuthRequirements(
@@ -13,7 +13,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements(
       };
     }
 
-    const vault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+    const vault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     if (!vault) {
       return {
         notFound: true,

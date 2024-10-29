@@ -7,8 +7,8 @@ import { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
-import { VaultResource } from "@app/lib/resources/vault_resource";
 import { makeScript, runOnAllWorkspaces } from "@app/scripts/helpers";
 
 function searchInJson(
@@ -42,10 +42,10 @@ async function migrateApps(
   after: fs.WriteStream
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const vaults = await VaultResource.listWorkspaceVaults(auth);
+  const vaults = await SpaceResource.listWorkspaceSpaces(auth);
 
   for (const vault of vaults) {
-    const apps = await AppResource.listByVault(auth, vault);
+    const apps = await AppResource.listBySpace(auth, vault);
     if (apps.length > 0) {
       logger.info(`Found ${apps.length} apps in vault ${vault.name}.`);
 

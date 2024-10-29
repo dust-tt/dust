@@ -147,7 +147,7 @@ export function ConversationTitle({
                 }}
                 className="flex items-center"
               >
-                <IconButton icon={CheckIcon} variant="secondary" />
+                <IconButton icon={CheckIcon} variant="highlight" />
               </div>
               <IconButton
                 icon={XMarkIcon}
@@ -155,7 +155,7 @@ export function ConversationTitle({
                   setIsEditingTitle(false);
                   setEditedTitle("");
                 }}
-                variant="secondary"
+                variant="highlight"
               />
             </div>
           ) : (
@@ -166,7 +166,7 @@ export function ConversationTitle({
                 setIsEditingTitle(true);
               }}
               size="sm"
-              variant="tertiary"
+              variant="outline"
             />
           )}
         </div>
@@ -177,41 +177,39 @@ export function ConversationTitle({
               owner={owner}
             />
           </div>
-          <Button.List>
+          <div className="flex gap-2">
             <div className="hidden lg:flex">
               {onDelete && (
                 <Button
                   size="sm"
-                  labelVisible={false}
-                  tooltipPosition="bottom"
-                  variant="tertiary"
-                  label="Delete Conversation"
+                  variant="ghost"
+                  tooltip="Delete Conversation"
                   icon={TrashIcon}
                   onClick={() => setShowDeleteDialog(true)}
                 />
               )}
             </div>
             <Popover
+              popoverTriggerAsChild
               trigger={
-                <>
+                <div>
                   <div className="hidden sm:flex">
                     <Button
                       size="sm"
                       label="Share"
                       icon={ArrowUpOnSquareIcon}
-                      variant="tertiary"
+                      variant="ghost"
                     />
                   </div>
                   <div className="flex sm:hidden">
                     <Button
                       size="sm"
-                      label="Share"
-                      labelVisible={false}
+                      tooltip="Share"
                       icon={ArrowUpOnSquareIcon}
-                      variant="tertiary"
+                      variant="ghost"
                     />
                   </div>
-                </>
+                </div>
               }
               content={
                 <div className="flex flex-col gap-y-4 py-4">
@@ -233,7 +231,7 @@ export function ConversationTitle({
                 </div>
               }
             />
-          </Button.List>
+          </div>
         </div>
       </div>
     </>
@@ -255,7 +253,7 @@ function DeleteConversationDialog({
       title={"Deleting the conversation"}
       onCancel={onClose}
       validateLabel="Delete for everyone"
-      validateVariant="primaryWarning"
+      validateVariant="warning"
       onValidate={onDelete}
     >
       <div className="flex flex-col gap-2">

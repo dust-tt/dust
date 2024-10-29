@@ -8,7 +8,9 @@ import {
   MoreIcon,
   Page,
   Spinner,
-  Tab,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -17,7 +19,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
-import { useContext, useEffect, useMemo } from "react";
+import { useContext, useEffect } from "react";
 
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -64,28 +66,6 @@ export default function AssistantBuilderRightPanel({
   builderState,
   setAction,
 }: AssistantBuilderRightPanelProps) {
-  const tabsConfig = useMemo(
-    () => [
-      {
-        label: "Template",
-        current: rightPanelStatus.tab === "Template",
-        onClick: () => {
-          openRightPanelTab("Template");
-        },
-        icon: MagicIcon,
-      },
-      {
-        label: "Preview",
-        current: rightPanelStatus.tab === "Preview",
-        onClick: () => {
-          openRightPanelTab("Preview");
-        },
-        icon: ChatBubbleBottomCenterTextIcon,
-      },
-    ],
-    [rightPanelStatus.tab, openRightPanelTab]
-  );
-
   const {
     shouldAnimate: shouldAnimatePreviewDrawer,
     draftAssistant,
@@ -123,7 +103,22 @@ export default function AssistantBuilderRightPanel({
     <div className="flex h-full flex-col">
       {template && (
         <div className="shrink-0 bg-white pt-5">
-          <Tab tabs={tabsConfig} variant="default" className="hidden lg:flex" />
+          <Tabs
+            value={rightPanelStatus.tab ?? "Preview"}
+            onValueChange={(t) =>
+              openRightPanelTab(t as AssistantBuilderRightPanelTab)
+            }
+            className="hidden lg:flex"
+          >
+            <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
+              <TabsTrigger value="Template" label="Template" icon={MagicIcon} />
+              <TabsTrigger
+                value="Preview"
+                label="Preview"
+                icon={ChatBubbleBottomCenterTextIcon}
+              />
+            </TabsList>
+          </Tabs>
         </div>
       )}
       <div
@@ -290,7 +285,7 @@ const TemplateAddActionButton = ({
         icon={spec.cardIcon}
         label={`Add tool “${spec.label}”`}
         size="sm"
-        variant="secondary"
+        variant="outline"
         onClick={() => addAction(action)}
       />
     </div>
@@ -315,15 +310,7 @@ const TemplateDropDownMenu = ({
   return (
     <DropdownMenu className="text-element-700">
       <DropdownMenu.Button>
-        <Button
-          icon={MoreIcon}
-          label="Actions"
-          labelVisible={false}
-          disabledTooltip
-          size="sm"
-          variant="tertiary"
-          hasMagnifying={false}
-        />
+        <Button icon={MoreIcon} size="sm" variant="ghost" />
       </DropdownMenu.Button>
       <DropdownMenu.Items width={320} origin="topRight">
         <DropdownMenu.Item
@@ -333,7 +320,7 @@ const TemplateDropDownMenu = ({
               title: "Are you sure you want to close the template?",
               message:
                 "Your assistant will remain as it is but will not display template's help any more.",
-              validateVariant: "primaryWarning",
+              validateVariant: "warning",
             });
             if (confirmed) {
               openRightPanelTab("Preview");
@@ -351,7 +338,7 @@ const TemplateDropDownMenu = ({
                 title: "Are you sure?",
                 message:
                   "You will lose the changes you have made to the assistant's instructions and go back to the template's default settings.",
-                validateVariant: "primaryWarning",
+                validateVariant: "warning",
               });
               if (confirmed) {
                 await resetToTemplateInstructions();
@@ -369,7 +356,7 @@ const TemplateDropDownMenu = ({
                 title: "Are you sure?",
                 message:
                   "You will lose the changes you have made to the assistant's tools.",
-                validateVariant: "primaryWarning",
+                validateVariant: "warning",
               });
               if (confirmed) {
                 await resetToTemplateActions();

@@ -159,7 +159,7 @@ export const HeaderContentBlock = ({
         <div>
           <Link href="/pricing" shallow={true}>
             <Button
-              variant="primary"
+              variant="highlight"
               size="md"
               label="Get started"
               icon={RocketIcon}
@@ -212,7 +212,7 @@ export const CarousselContentBlock = ({
         <Link href={href} shallow={true} className="block w-full">
           <Button
             label={"Discover Dust for " + title}
-            variant="tertiary"
+            variant="ghost"
             size="md"
             icon={ArrowRightIcon}
             className="max-w-full"
@@ -229,8 +229,8 @@ export const CarousselContentBlock = ({
         ))}
       </CarouselContent>
       <div className="flex w-full flex-row items-center justify-end gap-3 px-8">
-        <CarouselPrevious label="previous" />
-        <CarouselNext label="next" />
+        <CarouselPrevious variant="white" />
+        <CarouselNext variant="white" />
       </div>
     </Carousel>
   </div>

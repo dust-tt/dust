@@ -1,12 +1,18 @@
-import { Avatar, Button, Dialog, ElementModal, Page } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Button,
+  Dialog,
+  ElementModal,
+  Page,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import type { ActiveRoleType, UserTypeWithWorkspaces } from "@dust-tt/types";
 import { isActiveRoleType } from "@dust-tt/types";
-import React, { useContext, useState } from "react";
+import { useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
 
@@ -21,7 +27,7 @@ export function ChangeMemberModal({
 }) {
   const { role = null } = member?.workspaces[0] ?? {};
 
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
   const [revokeMemberModalOpen, setRevokeMemberModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType | null>(
     role !== "none" ? role : null
@@ -86,7 +92,7 @@ export function ChangeMemberModal({
           <div className="flex flex-none flex-col gap-2">
             <div className="flex-none">
               <Button
-                variant="primaryWarning"
+                variant="warning"
                 label="Revoke member access"
                 size="sm"
                 onClick={() => setRevokeMemberModalOpen(true)}
@@ -113,7 +119,7 @@ export function ChangeMemberModal({
           onClose();
         }}
         validateLabel="Yes, revoke"
-        validateVariant="primaryWarning"
+        validateVariant="warning"
         onCancel={() => {
           setRevokeMemberModalOpen(false);
         }}

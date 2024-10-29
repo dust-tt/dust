@@ -42,7 +42,7 @@ export function ZoomableImageCitationWrapper({
                 <IconButton
                   icon={XCircleIcon}
                   onClick={handleZoomToggle}
-                  variant="white"
+                  variant="ghost"
                 />
               </div>
             </Dialog.Title>

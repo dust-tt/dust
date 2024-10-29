@@ -369,12 +369,13 @@ function AdvancedSettings({
 
   return (
     <Popover
+      popoverTriggerAsChild
       trigger={
         <Button
           label="Advanced settings"
-          variant="tertiary"
+          variant="outline"
           size="sm"
-          type="menu"
+          isSelect
         />
       }
       content={
@@ -386,14 +387,12 @@ function AdvancedSettings({
             <DropdownMenu>
               <DropdownMenu.Button>
                 <Button
-                  type="select"
-                  labelVisible={true}
+                  isSelect
                   label={
                     getSupportedModelConfig(generationSettings.modelSettings)
                       .displayName
                   }
-                  variant="secondary"
-                  hasMagnifying={false}
+                  variant="outline"
                   size="sm"
                 />
               </DropdownMenu.Button>
@@ -434,15 +433,13 @@ function AdvancedSettings({
             <DropdownMenu>
               <DropdownMenu.Button>
                 <Button
-                  type="select"
-                  labelVisible={true}
+                  isSelect
                   label={
                     getCreativityLevelFromTemperature(
                       generationSettings?.temperature
                     ).label
                   }
-                  variant="secondary"
-                  hasMagnifying={false}
+                  variant="outline"
                   size="sm"
                 />
               </DropdownMenu.Button>

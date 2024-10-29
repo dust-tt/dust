@@ -1,8 +1,9 @@
-import { Button, Tab } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import { Button, Input, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { APIError } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
+import { APP_NAME_REGEXP } from "@dust-tt/types";
 import { ChevronRightIcon } from "@heroicons/react/24/outline";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -15,8 +16,8 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { dustAppsListUrl } from "@app/lib/spaces";
 import { classNames, MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
-import { dustAppsListUrl } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -78,9 +79,9 @@ export default function SettingsView({
       setAppNameError("");
       return false;
       // eslint-disable-next-line no-useless-escape
-    } else if (!appName.match(/^[a-zA-Z0-9\._\-]+$/)) {
+    } else if (!appName.match(APP_NAME_REGEXP)) {
       setAppNameError(
-        "App name must only contain letters, numbers, and the characters `._-`"
+        "Name must be only contain letters, numbers, and the characters `_-` and be less than 64 characters."
       );
       return false;
     } else {
@@ -96,18 +97,18 @@ export default function SettingsView({
       await confirm({
         title: "Double checking",
         message: "Are you sure you want to delete this app?",
-        validateVariant: "primaryWarning",
+        validateVariant: "warning",
       })
     ) {
       setIsDeleting(true);
       const res = await fetch(
-        `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`,
+        `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}`,
         {
           method: "DELETE",
         }
       );
       if (res.ok) {
-        await router.push(dustAppsListUrl(owner, app.vault));
+        await router.push(dustAppsListUrl(owner, app.space));
       } else {
         setIsDeleting(false);
         const err = (await res.json()) as { error: APIError };
@@ -124,21 +125,21 @@ export default function SettingsView({
   const handleUpdate = async () => {
     setIsUpdating(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`,
+      `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: appName.slice(0, MODELS_STRING_MAX_LENGTH),
+          name: appName,
           description: appDescription.slice(0, MODELS_STRING_MAX_LENGTH),
         }),
       }
     );
     if (res.ok) {
       await router.push(
-        `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}`
+        `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}`
       );
     } else {
       setIsUpdating(false);
@@ -164,16 +165,31 @@ export default function SettingsView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.vault));
+            void router.push(dustAppsListUrl(owner, app.space));
           }}
         />
       }
     >
       <div className="flex w-full flex-col">
-        <Tab
-          className="mt-2"
-          tabs={subNavigationApp({ owner, app, current: "settings" })}
-        />
+        <Tabs value="settings" className="mt-2">
+          <TabsList>
+            {subNavigationApp({ owner, app, current: "settings" }).map(
+              (tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  label={tab.label}
+                  icon={tab.icon}
+                  onClick={() => {
+                    if (tab.href) {
+                      void router.push(tab.href);
+                    }
+                  }}
+                />
+              )
+            )}
+          </TabsList>
+        </Tabs>
         <div className="mt-8 flex flex-1">
           <div className="space-y-8 divide-y divide-gray-200">
             <div className="space-y-4 divide-y divide-gray-200">
@@ -194,7 +210,7 @@ export default function SettingsView({
                           aria-hidden="true"
                         />
                       </span>
-                      <input
+                      <Input
                         type="text"
                         name="name"
                         id="appName"
@@ -206,7 +222,15 @@ export default function SettingsView({
                         )}
                         value={appName}
                         onChange={(e) => setAppName(e.target.value)}
+                        showErrorLabel
+                        error={appNameError}
                       />
+                    </div>
+                    <div>
+                      <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
+                        Must be unique and only use alphanumeric, - or _
+                        characters.
+                      </p>
                     </div>
                   </div>
 
@@ -232,7 +256,7 @@ export default function SettingsView({
                         onChange={(e) => setAppDescription(e.target.value)}
                       />
                     </div>
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
                       This description guides assistants in understanding how to
                       use your app effectively and determines its relevance in
                       responding to user inquiries. If you don't provide a
@@ -252,7 +276,7 @@ export default function SettingsView({
               <div className="flex-1"></div>
               <div className="ml-2 flex">
                 <Button
-                  variant="secondaryWarning"
+                  variant="warning"
                   onClick={handleDelete}
                   disabled={isDeleting || isUpdating}
                   label={isDeleting ? "Deleting..." : "Delete"}

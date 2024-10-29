@@ -1,4 +1,11 @@
-import { Button, CheckCircleIcon, ClockIcon, Tab } from "@dust-tt/sparkle";
+import {
+  Button,
+  CheckCircleIcon,
+  ClockIcon,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 import type {
   AppType,
   RunType,
@@ -19,7 +26,7 @@ import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitl
 import { getRun } from "@app/lib/api/run";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { dustAppsListUrl } from "@app/lib/vaults";
+import { dustAppsListUrl } from "@app/lib/spaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -94,7 +101,7 @@ export default function AppRun({
       !(await confirm({
         title: "Double checking",
         message: `This will revert the app specification to the state it was in when this run was saved (${run.run_id}). Are you sure?`,
-        validateVariant: "primaryWarning",
+        validateVariant: "warning",
       }))
     ) {
       return;
@@ -121,7 +128,7 @@ export default function AppRun({
     }
 
     await fetch(
-      `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/state`,
+      `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/state`,
       {
         method: "POST",
         headers: {
@@ -150,16 +157,27 @@ export default function AppRun({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.vault));
+            void router.push(dustAppsListUrl(owner, app.space));
           }}
         />
       }
     >
       <div className="flex w-full flex-col">
-        <Tab
-          className="mt-2"
-          tabs={subNavigationApp({ owner, app, current: "runs" })}
-        />
+        <Tabs value="runs" className="mt-2">
+          <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
+            {subNavigationApp({ owner, app, current: "runs" }).map((item) => (
+              <TabsTrigger
+                key={item.value}
+                value={item.value}
+                label={item.label}
+                icon={item.icon}
+                onClick={() => {
+                  void router.push(item.href);
+                }}
+              />
+            ))}
+          </TabsList>
+        </Tabs>
         <div className="mt-8 flex flex-col">
           <div className="mb-4 flex flex-row items-center justify-between space-x-2 text-sm">
             <div className="flex flex-col items-start">
@@ -201,7 +219,7 @@ export default function AppRun({
                   disabled={true}
                   icon={CheckCircleIcon}
                   label="Latest version"
-                  variant="secondary"
+                  variant="outline"
                 />
               )}
               <CopyRun

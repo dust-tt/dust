@@ -27,6 +27,7 @@ import { sendGithubDeletionEmail } from "@app/lib/api/email";
 import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
@@ -353,7 +354,9 @@ export async function upsertDocument({
     tags: nonNullTags,
     parents: parents || [],
     sourceUrl,
-    timestamp: timestamp || null,
+    // TEMPORARY -- need to unstuck a specific entry
+    // TODO(FONTANIERH): remove this once the entry is unstuck
+    timestamp: timestamp ? Math.floor(timestamp) : null,
     section: generatedSection,
     credentials,
     lightDocumentOutput: light_document_output === true,
@@ -405,9 +408,11 @@ export async function upsertTable({
     tableParents.push(nonNullTableId);
   }
 
-  const useAppForHeaderDetectionFlag = auth
-    .getNonNullableWorkspace()
-    .flags.includes("use_app_for_header_detection");
+  const flags = await getFeatureFlags(auth.getNonNullableWorkspace().id);
+
+  const useAppForHeaderDetectionFlag = flags.includes(
+    "use_app_for_header_detection"
+  );
 
   const useApp = !!useAppForHeaderDetection && useAppForHeaderDetectionFlag;
 

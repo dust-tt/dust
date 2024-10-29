@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetDataSourcesResponseBody = {
@@ -63,8 +63,8 @@ async function handler(
   // vault, global vault assumed).
   const vault =
     typeof vId !== "string"
-      ? await VaultResource.fetchWorkspaceGlobalVault(auth)
-      : await VaultResource.fetchById(auth, vId);
+      ? await SpaceResource.fetchWorkspaceGlobalSpace(auth)
+      : await SpaceResource.fetchById(auth, vId);
 
   if (!vault) {
     return apiError(req, res, {
@@ -76,7 +76,7 @@ async function handler(
     });
   }
 
-  const dataSources = await DataSourceResource.listByVault(auth, vault);
+  const dataSources = await DataSourceResource.listBySpace(auth, vault);
 
   switch (req.method) {
     case "GET":

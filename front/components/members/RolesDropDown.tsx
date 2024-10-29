@@ -29,7 +29,7 @@ export function RoleDropDown({
           <IconButton
             icon={ChevronDownIcon}
             size="sm"
-            variant="secondary"
+            variant="outline"
             className="group-hover:text-action-400"
           />
         </div>

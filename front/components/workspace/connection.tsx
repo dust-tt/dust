@@ -12,6 +12,7 @@ import {
   RadioGroup,
   RadioGroupChoice,
   SliderToggle,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
   PlanType,
@@ -22,11 +23,13 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, connectionStrategyToHumanReadable } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useCallback, useContext, useState } from "react";
+import { useCallback, useState } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { useWorkspaceEnterpriseConnection } from "@app/lib/swr/workspaces";
+import {
+  useFeatureFlags,
+  useWorkspaceEnterpriseConnection,
+} from "@app/lib/swr/workspaces";
 import type { PostCreateEnterpriseConnectionRequestBodySchemaType } from "@app/pages/api/w/[wId]/enterprise-connection";
 
 interface EnterpriseConnectionDetailsProps {
@@ -64,13 +67,14 @@ export function EnterpriseConnectionDetails({
   ] = useState(false);
 
   const router = useRouter();
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const { enterpriseConnection, mutateEnterpriseConnection } =
     useWorkspaceEnterpriseConnection({
       workspaceId: owner.sId,
     });
 
-  if (!owner.flags.includes("okta_enterprise_connection")) {
+  if (!featureFlags.includes("okta_enterprise_connection")) {
     return <></>;
   }
 
@@ -124,7 +128,7 @@ export function EnterpriseConnectionDetails({
             <Button
               label="De-activate Single Sign On"
               size="sm"
-              variant="secondaryWarning"
+              variant="warning"
               disabled={!enterpriseConnection}
               onClick={() => {
                 setIsDisableEnterpriseConnectionModalOpened(true);
@@ -334,7 +338,7 @@ function CreateOktaEnterpriseConnectionModal({
         <Page.Separator />
         <div className="flex items-start">
           <Button
-            variant="primaryWarning"
+            variant="warning"
             size="sm"
             disabled={
               !(
@@ -351,7 +355,6 @@ function CreateOktaEnterpriseConnectionModal({
               );
               onConnectionCreated();
             }}
-            hasMagnifying={true}
           />
         </div>
       </Page.Layout>
@@ -470,7 +473,7 @@ function CreateWAADEnterpriseConnectionModal({
         <Page.Separator />
         <div className="flex items-start">
           <Button
-            variant="primaryWarning"
+            variant="warning"
             size="sm"
             disabled={
               !(
@@ -487,7 +490,6 @@ function CreateWAADEnterpriseConnectionModal({
               );
               onConnectionCreated();
             }}
-            hasMagnifying={true}
           />
         </div>
       </Page.Layout>
@@ -506,7 +508,7 @@ function StrategyModalContent({
   strategy: SupportedEnterpriseConnectionStrategies;
   strategyDetails: EnterpriseConnectionStrategyDetails;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const createEnterpriseConnection = useCallback(
     async (
@@ -637,7 +639,7 @@ function ToggleEnforceEnterpriseConnectionModal({
   onClose: (updated: boolean) => void;
   owner: WorkspaceType;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const titleAndContent = {
     enforce: {
@@ -692,7 +694,7 @@ function ToggleEnforceEnterpriseConnectionModal({
       }}
       onCancel={() => onClose(false)}
       validateLabel={dialog.validateLabel}
-      validateVariant="primaryWarning"
+      validateVariant="warning"
     >
       <div>{dialog.content}</div>
     </Dialog>
@@ -710,7 +712,7 @@ function DisableEnterpriseConnectionModal({
   onClose: (updated: boolean) => void;
   owner: WorkspaceType;
 }) {
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   if (!enterpriseConnection) {
     return <></>;
@@ -750,7 +752,7 @@ function DisableEnterpriseConnectionModal({
       }}
       onCancel={() => onClose(false)}
       validateLabel={`Disable ${strategyHumanReadable} Single Sign On`}
-      validateVariant="primaryWarning"
+      validateVariant="warning"
     >
       <div>
         Anyone with an {strategyHumanReadable} account won't be able to access

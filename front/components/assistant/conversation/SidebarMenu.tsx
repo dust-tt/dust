@@ -16,6 +16,7 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { ConversationType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import { isBuilder, isOnlyUser } from "@dust-tt/types";
@@ -26,7 +27,6 @@ import { useRouter } from "next/router";
 import React, { useCallback, useContext, useState } from "react";
 
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
   useConversations,
@@ -37,6 +37,14 @@ import { classNames } from "@app/lib/utils";
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;
 };
+
+type GroupLabel =
+  | "Today"
+  | "Yesterday"
+  | "Last Week"
+  | "Last Month"
+  | "Last 12 Months"
+  | "Older";
 
 export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   const router = useRouter();
@@ -54,7 +62,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     "all" | "selection" | null
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const toggleMultiSelect = useCallback(() => {
     setIsMultiSelect((prev) => !prev);
@@ -122,12 +130,12 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     const lastMonth = moment().subtract(1, "months").startOf("day");
     const lastYear = moment().subtract(1, "years").startOf("day");
 
-    const groups: { [key: string]: ConversationType[] } = {
+    const groups: Record<GroupLabel, ConversationType[]> = {
       Today: [],
       Yesterday: [],
       "Last Week": [],
       "Last Month": [],
-      "Last Year": [],
+      "Last 12 Months": [],
       Older: [],
     };
 
@@ -142,7 +150,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
       } else if (createdDate.isSameOrAfter(lastMonth)) {
         groups["Last Month"].push(conversation);
       } else if (createdDate.isSameOrAfter(lastYear)) {
-        groups["Last Year"].push(conversation);
+        groups["Last 12 Months"].push(conversation);
       } else {
         groups["Older"].push(conversation);
       }
@@ -153,7 +161,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   const conversationsByDate = conversations.length
     ? groupConversationsByDate(conversations)
-    : {};
+    : ({} as Record<GroupLabel, ConversationType[]>);
 
   const { setAnimate } = useContext(InputBarContext);
 
@@ -168,7 +176,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         isOpen={showDeleteDialog === "all"}
         onCancel={() => setShowDeleteDialog(null)}
         onValidate={deleteAll}
-        validateVariant="primaryWarning"
+        validateVariant="warning"
         isSaving={isDeleting}
       >
         Are you sure you want to delete ALL conversations&nbsp;?
@@ -180,7 +188,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         isOpen={showDeleteDialog === "selection"}
         onCancel={() => setShowDeleteDialog(null)}
         onValidate={deleteSelection}
-        validateVariant="primaryWarning"
+        validateVariant="warning"
         isSaving={isDeleting}
       >
         Are you sure you want to delete {selectedConversations.length}{" "}
@@ -200,73 +208,49 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               <div className={classNames("flex items-center pt-2")}>
                 <div className="flex-grow" />
                 <Button
-                  label=""
                   size="sm"
                   icon={MoreIcon}
-                  variant="tertiary"
-                  disabledTooltip
-                  labelVisible={false}
+                  variant="ghost"
                   className="invisible"
                 />
                 <Button
-                  label=""
-                  labelVisible={false}
                   size="xs"
-                  variant="tertiary"
+                  variant="ghost"
                   icon={XMarkIcon}
                   onClick={toggleMultiSelect}
                   className="mr-2"
-                  disabledTooltip
                 />
                 <Button
-                  label=""
-                  labelVisible={false}
                   icon={TrashIcon}
                   size="xs"
                   variant={
-                    selectedConversations.length === 0
-                      ? "tertiary"
-                      : "secondaryWarning"
+                    selectedConversations.length === 0 ? "ghost" : "warning"
                   }
                   disabled={selectedConversations.length === 0}
-                  disabledTooltip
                   onClick={() => setShowDeleteDialog("selection")}
                 />
               </div>
             ) : (
-              <div className={classNames("flex space-x-2 pt-2")}>
-                <div className="flex-grow" />
+              <div className={classNames("flex justify-end gap-2 pt-2")}>
                 <NewDropdownMenu>
-                  <NewDropdownMenuTrigger>
-                    <Button
-                      label=""
-                      size="sm"
-                      icon={MoreIcon}
-                      variant="tertiary"
-                      disabledTooltip
-                      labelVisible={false}
-                    />
+                  <NewDropdownMenuTrigger asChild>
+                    <Button size="sm" icon={MoreIcon} variant="outline" />
                   </NewDropdownMenuTrigger>
                   <NewDropdownMenuContent>
                     {isBuilder(owner) && (
                       <>
-                        <Link
+                        <NewDropdownMenuItem
+                          label="Create new assistant"
                           href={`/w/${owner.sId}/builder/assistants/create`}
-                        >
-                          <NewDropdownMenuItem
-                            label="Create new assistant"
-                            icon={PlusIcon}
-                          />
-                        </Link>
-                        <Link href={`/w/${owner.sId}/builder/assistants`}>
-                          <NewDropdownMenuItem
-                            label="Manage assistants"
-                            icon={RobotIcon}
-                          />
-                        </Link>
+                          icon={PlusIcon}
+                        />
+                        <NewDropdownMenuItem
+                          href={`/w/${owner.sId}/builder/assistants`}
+                          label="Manage assistants"
+                          icon={RobotIcon}
+                        />
                       </>
                     )}
-
                     <NewDropdownMenuItem
                       label="Edit conversations"
                       onClick={toggleMultiSelect}
@@ -297,7 +281,6 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   }}
                 >
                   <Button
-                    labelVisible={true}
                     label="New conversation"
                     icon={ChatBubbleBottomCenterPlusIcon}
                     className="flex-none shrink"
@@ -312,7 +295,8 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
             )}
             {conversationsByDate &&
               Object.keys(conversationsByDate).map((dateLabel) => {
-                const conversations = conversationsByDate[dateLabel];
+                const conversations =
+                  conversationsByDate[dateLabel as GroupLabel];
                 return (
                   conversations.length > 0 && (
                     <React.Fragment key={dateLabel}>

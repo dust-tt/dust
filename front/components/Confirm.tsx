@@ -6,7 +6,7 @@ export type ConfirmDataType = {
   title: string;
   message: string | React.ReactNode;
   validateLabel?: string;
-  validateVariant?: "primary" | "primaryWarning";
+  validateVariant?: "primary" | "warning";
 };
 
 export const ConfirmContext = React.createContext<

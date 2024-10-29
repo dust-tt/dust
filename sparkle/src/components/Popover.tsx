@@ -38,7 +38,7 @@ const PopoverContent = React.forwardRef<
           "data-[side=left]:s-slide-in-from-right-2",
           "data-[side=right]:s-slide-in-from-left-2",
           "data-[side=top]:s-slide-in-from-bottom-2",
-          "s-z-50 s-rounded-lg s-border s-bg-background s-text-primary-950 s-shadow-md s-outline-none",
+          "s-z-50 s-rounded-xl s-border s-bg-background s-text-primary-950 s-shadow-md s-outline-none",
           fullWidth ? "s-grow" : "s-w-72 s-p-4",
           className
         )}

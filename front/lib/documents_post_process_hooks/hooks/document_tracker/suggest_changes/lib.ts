@@ -4,6 +4,7 @@ import { Op } from "sequelize";
 import showdown from "showdown";
 
 import config from "@app/lib/api/config";
+import { getFeatureFlags } from "@app/lib/auth";
 import type {
   DocumentsPostProcessHookFilterParams,
   DocumentsPostProcessHookOnUpsertParams,
@@ -38,7 +39,7 @@ const MAX_DIFF_TOKENS = 4096;
 const TOTAL_TARGET_TOKENS = 8192;
 
 // The maximum number of tracked documents that we process for one diff.
-const MAX_TRACKED_DOCUMENTS = 3;
+const MAX_TRACKED_DOCUMENTS = 1;
 
 const logger = mainLogger.child({
   postProcessHook: "document_tracker_suggest_changes",
@@ -47,6 +48,15 @@ const logger = mainLogger.child({
 export async function shouldDocumentTrackerSuggestChangesRun(
   params: DocumentsPostProcessHookFilterParams
 ): Promise<boolean> {
+  const auth = params.auth;
+  const owner = auth.getNonNullableWorkspace();
+
+  const flags = await getFeatureFlags(owner.id);
+
+  if (!flags.includes("document_tracker")) {
+    return false;
+  }
+
   if (params.verb !== "upsert") {
     logger.info(
       "document_tracker_suggest_changes post process hook should only run for upsert."
@@ -56,32 +66,23 @@ export async function shouldDocumentTrackerSuggestChangesRun(
 
   const {
     upsertContext,
-    auth,
     dataSourceId,
     documentId,
     dataSourceConnectorProvider,
   } = params;
   const isBatchSync = upsertContext?.sync_type === "batch";
 
-  if (isBatchSync) {
-    logger.info(
-      "document_tracker_suggest_changes post process hook should not run for batch sync."
-    );
-    return false;
-  }
-
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Workspace not found.");
-  }
-
   const localLogger = logger.child({
     workspaceId: owner.sId,
     dataSourceId,
     documentId,
+    dataSourceConnectorProvider,
   });
 
-  if (!owner.flags.includes("document_tracker")) {
+  if (isBatchSync) {
+    localLogger.info(
+      "document_tracker_suggest_changes post process hook should not run for batch sync."
+    );
     return false;
   }
 
@@ -229,6 +230,10 @@ export async function documentTrackerSuggestChangesOnUpsert({
     .filter(Boolean)
     .join("\n");
 
+  if (diffString.includes("__DUST_DEBUG")) {
+    localLogger.info({ diffString }, "Found __DUST_DEBUG in diff.");
+  }
+
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const tokensInDiff = await coreAPI.tokenize({
     text: diffString,
@@ -257,11 +262,11 @@ export async function documentTrackerSuggestChangesOnUpsert({
     },
     "Calling doc tracker retrieval action."
   );
-  const retrievalResult = await callDocTrackerRetrievalAction(
-    auth,
-    diffString,
-    targetTrackedDocumentTokens
-  );
+  const retrievalResult = await callDocTrackerRetrievalAction(auth, {
+    inputText: diffString,
+    targetDocumentTokens: targetTrackedDocumentTokens,
+    topK: MAX_TRACKED_DOCUMENTS,
+  });
 
   if (!retrievalResult.length) {
     localLogger.warn("No documents found.");
@@ -337,13 +342,13 @@ export async function documentTrackerSuggestChangesOnUpsert({
       "Match found."
     );
 
-    const trackedDocDataSource =
+    const trackedDocumentDataSource =
       await DataSourceResource.fetchByDustAPIDataSourceId(
         auth,
         trackedDocDataSourceId
       );
 
-    if (!trackedDocDataSource) {
+    if (!trackedDocumentDataSource) {
       trackedDocLocalLogger.warn(
         {
           trackedDocDataSourceId,
@@ -356,7 +361,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     // again, checking for race condition here and skipping if the
     // tracked doc is the doc that was just upserted.
     if (
-      trackedDocDataSource.id === dataSource.id &&
+      trackedDocumentDataSource.id === dataSource.id &&
       trackedDocId === documentId
     ) {
       trackedDocLocalLogger.info(
@@ -372,7 +377,7 @@ export async function documentTrackerSuggestChangesOnUpsert({
     const trackedDocuments = await TrackedDocument.findAll({
       where: {
         documentId: trackedDocId,
-        dataSourceId: trackedDocDataSourceId,
+        dataSourceId: trackedDocumentDataSource.id,
       },
     });
     if (!trackedDocuments.length) {

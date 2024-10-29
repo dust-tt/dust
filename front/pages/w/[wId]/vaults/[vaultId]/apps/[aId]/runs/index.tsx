@@ -1,4 +1,4 @@
-import { Button, Tab } from "@dust-tt/sparkle";
+import { Button, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { AppType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
@@ -13,9 +13,9 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { dustAppsListUrl } from "@app/lib/spaces";
 import { useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import { dustAppsListUrl } from "@app/lib/vaults";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -122,16 +122,27 @@ export default function RunsView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.vault));
+            void router.push(dustAppsListUrl(owner, app.space));
           }}
         />
       }
     >
       <div className="flex w-full flex-col">
-        <Tab
-          className="mt-2"
-          tabs={subNavigationApp({ owner, app, current: "runs" })}
-        />
+        <Tabs value="runs" className="mt-2">
+          <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
+            {subNavigationApp({ owner, app, current: "runs" }).map((item) => (
+              <TabsTrigger
+                key={item.value}
+                value={item.value}
+                label={item.label}
+                icon={item.icon}
+                onClick={() => {
+                  void router.push(item.href);
+                }}
+              />
+            ))}
+          </TabsList>
+        </Tabs>
         <div className="mt-8 flex">
           <nav className="flex" aria-label="Tabs">
             {tabs.map((tab, tabIdx) => (
@@ -156,7 +167,7 @@ export default function RunsView({
           <div className="flex flex-initial">
             <div className="flex">
               <Button
-                variant="tertiary"
+                variant="ghost"
                 disabled={offset < limit}
                 onClick={() => {
                   if (offset >= limit) {
@@ -170,7 +181,7 @@ export default function RunsView({
             </div>
             <div className="ml-2 flex">
               <Button
-                variant="tertiary"
+                variant="ghost"
                 disabled={offset + limit >= total}
                 onClick={() => {
                   if (offset + limit < total) {
@@ -197,7 +208,7 @@ export default function RunsView({
                   <div className="flex items-center justify-between">
                     <div className="flex flex-initial">
                       <Link
-                        href={`/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/runs/${run.run_id}`}
+                        href={`/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/runs/${run.run_id}`}
                         className="block"
                       >
                         <p className="font-mono truncate text-base text-action-500">

@@ -107,7 +107,11 @@ function ComplexDropdownDemo() {
         <NewDropdownMenuItem icon={UserIcon} label="Support" />
         <NewDropdownMenuItem icon={CloudArrowDownIcon} label="API" disabled />
         <NewDropdownMenuSeparator />
-        <NewDropdownMenuItem icon={LogoutIcon} label="Log out" />
+        <NewDropdownMenuItem
+          icon={LogoutIcon}
+          label="Log out"
+          variant="warning"
+        />
       </NewDropdownMenuContent>
     </NewDropdownMenu>
   );
@@ -195,15 +199,8 @@ function ModelsDropdownDemo() {
 
   return (
     <NewDropdownMenu>
-      <NewDropdownMenuTrigger>
-        <Button
-          type="select"
-          labelVisible={true}
-          label={selectedModel}
-          variant="secondary"
-          hasMagnifying={false}
-          size="sm"
-        />
+      <NewDropdownMenuTrigger asChild>
+        <Button label={selectedModel} variant="outline" size="sm" />
       </NewDropdownMenuTrigger>
       <NewDropdownMenuContent>
         <NewDropdownMenuLabel label="Best performing models" />
@@ -250,15 +247,8 @@ function ModelsDropdownRadioGroupDemo() {
 
   return (
     <NewDropdownMenu>
-      <NewDropdownMenuTrigger>
-        <Button
-          type="select"
-          labelVisible={true}
-          label={selectedModel}
-          variant="secondary"
-          hasMagnifying={false}
-          size="sm"
-        />
+      <NewDropdownMenuTrigger asChild>
+        <Button label={selectedModel} variant="ghost" size="sm" />
       </NewDropdownMenuTrigger>
       <NewDropdownMenuContent>
         <NewDropdownMenuRadioGroup

@@ -3,6 +3,7 @@ import type {
   AgentConfigurationType,
   DustAppRunConfigurationType,
   LightAgentConfigurationType,
+  ModelId,
   PostOrPatchAgentConfigurationRequestBody,
   Result,
   WithAPIErrorResponse,
@@ -80,7 +81,9 @@ async function handler(
 
       const { view, limit, withUsage, withAuthors, sort } =
         queryValidation.right;
-      const viewParam = view ? view : "all";
+      let viewParam = view ? view : "all";
+      // @ts-expect-error: added for backwards compatibility
+      viewParam = viewParam === "assistant-search" ? "list" : viewParam;
       if (viewParam === "admin_internal" && !auth.isDustSuperUser()) {
         return apiError(req, res, {
           status_code: 404,
@@ -490,14 +493,14 @@ async function getAgentConfigurationGroupIdsFromActions(
       .map((action) => (action as DustAppRunConfigurationType).appId)
   );
 
-  return uniq(
-    [
-      ...dsViews.map((view) =>
-        view.acl().aclEntries.map((entry) => entry.groupId)
-      ),
-      ...dustApps.map((app) =>
-        app.acl().aclEntries.map((entry) => entry.groupId)
-      ),
-    ].flat()
+  // TODO(2024-10-25 flav) Refactor to store a list of ResourcePermission.
+  const dataSourceViewGroupIds: ModelId[] = dsViews.flatMap((view) =>
+    view.requestedPermissions().flatMap((rp) => rp.groups.map((g) => g.id))
   );
+
+  const dustAppGroupIds: ModelId[] = dustApps.flatMap((app) =>
+    app.requestedPermissions().flatMap((rp) => rp.groups.map((g) => g.id))
+  );
+
+  return uniq([...dataSourceViewGroupIds, ...dustAppGroupIds].flat());
 }

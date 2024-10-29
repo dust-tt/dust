@@ -66,7 +66,7 @@ export const noHrefLink: SparkleContextLinkType = ({
   <a
     className={className}
     aria-current={ariaCurrent}
-    arria-label={ariaLabel}
+    aria-label={ariaLabel}
     onClick={onClick}
   >
     {children}

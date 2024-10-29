@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { apiError } from "@app/logger/withlogging";
 import {
@@ -20,7 +21,7 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
 export const PatchLabsTranscriptsConfigurationBodySchema = t.partial({
   agentConfigurationId: t.string,
   isActive: t.boolean,
-  dataSourceId: t.union([t.string, t.null]),
+  dataSourceViewId: t.union([t.string, t.null]),
 });
 export type PatchTranscriptsConfiguration = t.TypeOf<
   typeof PatchLabsTranscriptsConfigurationBodySchema
@@ -35,8 +36,9 @@ async function handler(
 ): Promise<void> {
   const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
+  const flags = await getFeatureFlags(owner.id);
 
-  if (!owner.flags.includes("labs_transcripts")) {
+  if (!flags.includes("labs_transcripts")) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -102,7 +104,7 @@ async function handler(
       const {
         agentConfigurationId: patchAgentId,
         isActive,
-        dataSourceId,
+        dataSourceViewId,
       } = patchBodyValidation.right;
 
       if (patchAgentId) {
@@ -113,16 +115,23 @@ async function handler(
 
       if (isActive !== undefined) {
         await transcriptsConfiguration.setIsActive(isActive);
-        if (isActive) {
-          await launchRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-        } else {
-          // Cancel the workflow
-          await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-        }
       }
 
-      if (dataSourceId !== undefined) {
-        await transcriptsConfiguration.setDataSourceId(auth, dataSourceId);
+      if (dataSourceViewId !== undefined) {
+        await transcriptsConfiguration.setDataSourceViewId(
+          auth,
+          dataSourceViewId
+        );
+      }
+
+      const shouldStartWorkflow = isActive || dataSourceViewId;
+      const shouldStopWorkflow =
+        isActive === false || (isActive === undefined && !dataSourceViewId);
+
+      if (shouldStartWorkflow) {
+        await launchRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      } else if (shouldStopWorkflow) {
+        await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       }
 
       return res.status(200).json({ configuration: transcriptsConfiguration });

@@ -11,13 +11,13 @@ import {
   StarIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@dust-tt/types";
-import Link from "next/link";
-import { useContext, useMemo } from "react";
+import { useMemo } from "react";
 
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { canForceUserRole, forceUserRole } from "@app/lib/development";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export function UserMenu({
   user,
@@ -26,10 +26,12 @@ export function UserMenu({
   user: UserType;
   owner: WorkspaceType;
 }) {
-  const hasBetaAccess = owner.flags.some((flag: string) =>
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
+  const hasBetaAccess = featureFlags.some((flag: string) =>
     flag.startsWith("labs_")
   );
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {
@@ -77,13 +79,12 @@ export function UserMenu({
         {hasBetaAccess && (
           <>
             <NewDropdownMenuLabel label="Beta" />
-            {owner.flags.includes("labs_transcripts") && (
-              <Link href={`/w/${owner.sId}/assistant/labs/transcripts`}>
-                <NewDropdownMenuItem
-                  label="Transcripts processing"
-                  icon={BookOpenIcon}
-                />
-              </Link>
+            {featureFlags.includes("labs_transcripts") && (
+              <NewDropdownMenuItem
+                label="Meeting transcripts"
+                icon={BookOpenIcon}
+                href={`/w/${owner.sId}/assistant/labs/transcripts`}
+              />
             )}
           </>
         )}
@@ -116,9 +117,11 @@ export function UserMenu({
         )}
 
         <NewDropdownMenuLabel label="Account" />
-        <Link href="/api/auth/logout">
-          <NewDropdownMenuItem label="Sign&nbsp;out" icon={LogoutIcon} />
-        </Link>
+        <NewDropdownMenuItem
+          href="/api/auth/logout"
+          icon={LogoutIcon}
+          label="Sign&nbsp;out"
+        />
       </NewDropdownMenuContent>
     </NewDropdownMenu>
   );

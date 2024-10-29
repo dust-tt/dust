@@ -1,21 +1,36 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
+import { cva } from "class-variance-authority";
 import * as React from "react";
 
-import { Icon } from "@sparkle/components";
+import { Icon, LinkWrapper, LinkWrapperProps } from "@sparkle/components";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
+
+const ITEM_VARIANTS = ["default", "warning"] as const;
+
+type ItemVariantType = (typeof ITEM_VARIANTS)[number];
 
 export const menuStyleClasses = {
   inset: "s-pl-8",
   container: cn(
-    "s-rounded-lg s-border s-border-hovering s-bg-white s-p-1 s-text-primary-950",
+    "s-rounded-xl s-border s-border-hovering s-bg-white s-p-1 s-text-primary-950",
     "s-z-50 s-min-w-[8rem] s-overflow-hidden",
     "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2"
   ),
-  item: cn(
-    "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none",
-    "s-rounded-md s-text-sm s-font-medium focus:s-text-primary-950 focus:s-bg-primary-100 s-px-2 s-py-2",
-    "s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none data-[disabled]:s-text-primary-400"
+  item: cva(
+    "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-text-sm s-font-medium s-px-2 s-py-2 s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none data-[disabled]:s-text-primary-400",
+    {
+      variants: {
+        variant: {
+          default: "focus:s-text-primary-950 focus:s-bg-primary-100",
+          warning:
+            "s-text-warning-500 hover:s-bg-warning-50 active:s-bg-warning-100",
+        },
+      },
+      defaultVariants: {
+        variant: "default",
+      },
+    }
   ),
   subTrigger: {
     default: "s-mr-1 s-ml-auto s-tracking-widest s-text-primary-400",
@@ -68,7 +83,7 @@ const ItemWithLabelIconAndDescription = <
   return (
     <>
       {label && (
-        <div className="s-grid s-grid-cols-[auto,1fr] s-gap-x-1">
+        <div className="s-grid s-grid-cols-[auto,1fr] s-gap-x-1.5">
           {icon && (
             <div
               className={cn(
@@ -108,7 +123,7 @@ const NewDropdownMenuSubTrigger = React.forwardRef<
     className={cn(
       menuStyleClasses.item,
       inset ? menuStyleClasses.inset : "",
-      className || ""
+      className
     )}
     {...props}
   >
@@ -133,7 +148,7 @@ const NewDropdownMenuSubContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
-    className={cn(menuStyleClasses.container, "s-shadow-lg", className || "")}
+    className={cn(menuStyleClasses.container, "s-shadow-lg", className)}
     {...props}
   />
 ));
@@ -148,40 +163,78 @@ const NewDropdownMenuContent = React.forwardRef<
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
-      className={cn(menuStyleClasses.container, "s-shadow-md", className || "")}
+      className={cn(menuStyleClasses.container, "s-shadow-md", className)}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
 ));
 NewDropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
+type NewDropdownMenuItemProps = MutuallyExclusiveProps<
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
+    inset?: boolean;
+    variant?: ItemVariantType;
+  } & Omit<LinkWrapperProps, "children" | "className">,
+  LabelAndIconProps & { description?: string }
+>;
+
 const NewDropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
-  MutuallyExclusiveProps<
-    React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
-      inset?: boolean;
+  NewDropdownMenuItemProps
+>(
+  (
+    {
+      children,
+      variant,
+      description,
+      className,
+      inset,
+      icon,
+      label,
+      href,
+      target,
+      rel,
+      asChild,
+      replace,
+      shallow,
+      ...props
     },
-    LabelAndIconProps & { description?: string }
-  >
->(({ children, description, className, inset, icon, label, ...props }, ref) => (
-  <DropdownMenuPrimitive.Item
-    ref={ref}
-    className={cn(
-      menuStyleClasses.item,
-      inset ? menuStyleClasses.inset : "",
-      className || ""
-    )}
-    {...props}
-  >
-    <ItemWithLabelIconAndDescription
-      label={label}
-      icon={icon}
-      description={description}
-    >
-      {children}
-    </ItemWithLabelIconAndDescription>
-  </DropdownMenuPrimitive.Item>
-));
+    ref
+  ) => {
+    const content = (
+      <DropdownMenuPrimitive.Item
+        ref={ref}
+        className={cn(
+          menuStyleClasses.item({ variant }),
+          inset ? menuStyleClasses.inset : "",
+          className
+        )}
+        {...props}
+        asChild={!!href || asChild}
+      >
+        <ItemWithLabelIconAndDescription
+          label={label}
+          icon={icon}
+          description={description}
+        >
+          {children}
+        </ItemWithLabelIconAndDescription>
+      </DropdownMenuPrimitive.Item>
+    );
+
+    return (
+      <LinkWrapper
+        href={href}
+        target={target}
+        rel={rel}
+        replace={replace}
+        shallow={shallow}
+      >
+        {content}
+      </LinkWrapper>
+    );
+  }
+);
 NewDropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
 
 const NewDropdownMenuCheckboxItem = React.forwardRef<
@@ -190,11 +243,7 @@ const NewDropdownMenuCheckboxItem = React.forwardRef<
 >(({ className, children, checked, ...props }, ref) => (
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
-    className={cn(
-      menuStyleClasses.item,
-      menuStyleClasses.inset,
-      className || ""
-    )}
+    className={cn(menuStyleClasses.item, menuStyleClasses.inset, className)}
     checked={checked}
     {...props}
   >
@@ -218,11 +267,7 @@ const NewDropdownMenuRadioItem = React.forwardRef<
 >(({ className, children, description, label, icon, ...props }, ref) => (
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
-    className={cn(
-      menuStyleClasses.item,
-      menuStyleClasses.inset,
-      className || ""
-    )}
+    className={cn(menuStyleClasses.item, menuStyleClasses.inset, className)}
     {...props}
   >
     <span className={menuStyleClasses.subTrigger.span}>
@@ -256,7 +301,7 @@ const NewDropdownMenuLabel = React.forwardRef<
     className={cn(
       menuStyleClasses.label,
       inset ? menuStyleClasses.inset : "",
-      className || ""
+      className
     )}
     {...props}
   >
@@ -272,7 +317,7 @@ const NewDropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={cn(menuStyleClasses.separator, className || "")}
+    className={cn(menuStyleClasses.separator, className)}
     {...props}
   />
 ));
@@ -284,10 +329,7 @@ const NewDropdownMenuShortcut = ({
   ...props
 }: React.HTMLAttributes<HTMLSpanElement>) => {
   return (
-    <span
-      className={cn(menuStyleClasses.shortcut, className || "")}
-      {...props}
-    />
+    <span className={cn(menuStyleClasses.shortcut, className)} {...props} />
   );
 };
 NewDropdownMenuShortcut.displayName = "NewDropdownMenuShortcut";

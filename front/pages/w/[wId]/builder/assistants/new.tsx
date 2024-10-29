@@ -3,9 +3,9 @@ import type {
   AppType,
   DataSourceViewType,
   PlanType,
+  SpaceType,
   SubscriptionType,
   TemplateAgentConfigurationType,
-  VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { throwIfInvalidAgentConfiguration } from "@dust-tt/types";
@@ -44,7 +44,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
-  vaults: VaultType[];
+  spaces: SpaceType[];
   dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
   actions: AssistantBuilderInitialState["actions"];
@@ -65,7 +65,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const { vaults, dataSourceViews, dustApps } =
+  const { spaces, dataSourceViews, dustApps } =
     await getAccessibleSourcesAndApps(auth);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
@@ -129,7 +129,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       subscription,
       templateId,
-      vaults: vaults.map((v) => v.toJSON()),
+      spaces: spaces.map((s) => s.toJSON()),
     },
   };
 });
@@ -138,7 +138,7 @@ export default function CreateAssistant({
   actions,
   agentConfiguration,
   baseUrl,
-  vaults,
+  spaces,
   dataSourceViews,
   dustApps,
   flow,
@@ -163,7 +163,7 @@ export default function CreateAssistant({
 
   return (
     <AssistantBuilderProvider
-      vaults={vaults}
+      spaces={spaces}
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}
     >

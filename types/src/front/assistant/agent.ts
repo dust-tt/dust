@@ -86,11 +86,14 @@ export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
  * - 'private' scope are editable by author only, inside-list for author, cannot be overriden (so no
  *   entry in the table
  */
+export const AGENT_CONFIGURATION_SCOPES = [
+  "global",
+  "workspace",
+  "published",
+  "private",
+] as const;
 export type AgentConfigurationScope =
-  | "global"
-  | "workspace"
-  | "published"
-  | "private";
+  (typeof AGENT_CONFIGURATION_SCOPES)[number];
 
 /**
  * Defines strategies for fetching agent configurations based on various

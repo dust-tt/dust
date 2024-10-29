@@ -7,19 +7,18 @@ import {
   Page,
   PlusIcon,
 } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   DustAppSecretType,
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
-import React, { useContext } from "react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
@@ -31,7 +30,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
 
-  if (!auth.isAdmin()) {
+  if (!auth.isBuilder()) {
     return {
       notFound: true,
     };
@@ -57,7 +56,7 @@ export default function SecretsPage({
     useState<DustAppSecretType | null>(null);
   const [isNewSecretPromptOpen, setIsNewSecretPromptOpen] = useState(false);
   const [isInputNameDisabled, setIsInputNameDisabled] = useState(false);
-  const sendNotification = useContext(SendNotificationsContext);
+  const sendNotification = useSendNotification();
 
   const { secrets } = useDustAppSecrets(owner);
 
@@ -187,7 +186,7 @@ export default function SecretsPage({
               <Button
                 label="Read the API reference"
                 size="sm"
-                variant="secondary"
+                variant="outline"
                 icon={BookOpenIcon}
                 onClick={() => {
                   window.open(
@@ -230,7 +229,7 @@ export default function SecretsPage({
                       </div>
                       <div className="flex-none px-2">
                         <Button
-                          variant="secondary"
+                          variant="outline"
                           disabled={isRevoking || isGenerating}
                           onClick={async () => {
                             handleUpdate(secret);
@@ -240,7 +239,7 @@ export default function SecretsPage({
                       </div>
                       <div className="flex-none">
                         <Button
-                          variant="secondaryWarning"
+                          variant="warning"
                           disabled={isRevoking || isGenerating}
                           onClick={async () => {
                             setSecretToRevoke(secret);

@@ -33,7 +33,7 @@ export const SearchbarExample = () => {
             size="md"
           />
           <div>
-            <Button variant="tertiary" size="md" label="Hello" />
+            <Button variant="outline" size="md" label="Hello" />
           </div>
         </div>
         <Searchbar
@@ -60,7 +60,7 @@ export const SearchbarExample = () => {
             onChange={handleChange}
           />
           <div>
-            <Button variant="tertiary" size="sm" label="Hello" />
+            <Button variant="outline" size="sm" label="Hello" />
           </div>
         </div>
         <Searchbar
@@ -86,7 +86,7 @@ export const SearchbarExample = () => {
             size="xs"
           />
           <div>
-            <Button variant="tertiary" size="xs" label="Hello" />
+            <Button variant="outline" size="xs" label="Hello" />
           </div>
         </div>
         <Searchbar

@@ -3,8 +3,8 @@ import type {
   AppType,
   DataSourceViewType,
   PlanType,
+  SpaceType,
   SubscriptionType,
-  VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { throwIfInvalidAgentConfiguration } from "@dust-tt/types";
@@ -29,13 +29,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   actions: AssistantBuilderInitialState["actions"];
   agentConfiguration: AgentConfigurationType;
   baseUrl: string;
-  vaults: VaultType[];
   dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
   flow: BuilderFlow;
   isAdmin: boolean;
   owner: WorkspaceType;
   plan: PlanType;
+  spaces: SpaceType[];
   subscription: SubscriptionType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
@@ -53,7 +53,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const [{ vaults, dataSourceViews, dustApps }, configuration] =
+  const [{ spaces, dataSourceViews, dustApps }, configuration] =
     await Promise.all([
       getAccessibleSourcesAndApps(auth),
       getAgentConfiguration(auth, context.params?.aId as string),
@@ -95,7 +95,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       plan,
       subscription,
-      vaults: vaults.map((v) => v.toJSON()),
+      spaces: spaces.map((s) => s.toJSON()),
     },
   };
 });
@@ -104,7 +104,7 @@ export default function EditAssistant({
   actions,
   agentConfiguration,
   baseUrl,
-  vaults,
+  spaces,
   dataSourceViews,
   dustApps,
   flow,
@@ -125,7 +125,7 @@ export default function EditAssistant({
 
   return (
     <AssistantBuilderProvider
-      vaults={vaults}
+      spaces={spaces}
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}
     >

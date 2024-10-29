@@ -118,7 +118,7 @@ export const TreeExample = () => {
                         <IconButton
                           size="xs"
                           icon={EyeIcon}
-                          variant="tertiary"
+                          variant="outline"
                         />
                       </>
                     }
@@ -379,6 +379,14 @@ export const TreeExample = () => {
                   <Tree.Item label="Item 1" collapsed={false}>
                     <Tree>
                       <Tree.Empty label="No documents" />
+                    </Tree>
+                  </Tree.Item>
+                  <Tree.Item label="Item 2" collapsed={false}>
+                    <Tree>
+                      <Tree.Empty
+                        label="Empty tree can be clickable"
+                        onItemClick={() => alert("Soupinou")}
+                      />
                     </Tree>
                   </Tree.Item>
                 </Tree>
@@ -645,9 +653,8 @@ export const SelectDataSourceExample = () => {
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}
-                      variant="tertiary"
+                      variant="outline"
                       size="sm"
-                      hasMagnifying={false}
                     />
                   </div>
                 }
@@ -666,9 +673,8 @@ export const SelectDataSourceExample = () => {
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}
-                      variant="tertiary"
+                      variant="outline"
                       size="sm"
-                      hasMagnifying={false}
                     />
                   </div>
                 }
@@ -686,9 +692,8 @@ export const SelectDataSourceExample = () => {
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}
-                      variant="tertiary"
+                      variant="outline"
                       size="sm"
-                      hasMagnifying={false}
                     />
                   </div>
                 }
@@ -715,9 +720,8 @@ export const SelectDataSourceExample = () => {
                     <Button
                       label="Manage"
                       icon={Cog6ToothIcon}
-                      variant="tertiary"
+                      variant="outline"
                       size="sm"
-                      hasMagnifying={false}
                     />
                   </div>
                 }
@@ -838,7 +842,7 @@ const TreeItem = ({
           <span className="s-text-xs s-text-element-700">
             last updated Jan 6
           </span>
-          <IconButton icon={CloudArrowDownIcon} size="xs" variant="tertiary" />
+          <IconButton icon={CloudArrowDownIcon} size="xs" variant="outline" />
           <IconButton icon={PlusCircleIcon} size="xs" />
         </div>
       }

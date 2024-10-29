@@ -32,11 +32,7 @@ export default function Custom404() {
           )}
         </div>
         <Link href="/">
-          <Button
-            variant="tertiary"
-            label="Back to homepage"
-            icon={LogoutIcon}
-          />
+          <Button variant="ghost" label="Back to homepage" icon={LogoutIcon} />
         </Link>
       </div>
     </div>

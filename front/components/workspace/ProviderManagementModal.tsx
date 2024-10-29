@@ -8,18 +8,17 @@ import {
   NewDropdownMenuTrigger,
   SliderToggle,
   Tooltip,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
-import { EMBEDDING_PROVIDER_IDS } from "@dust-tt/types";
-import { MODEL_PROVIDER_IDS } from "@dust-tt/types";
+import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import { isEqual } from "lodash";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import {
   MODEL_PROVIDER_LOGOS,
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
-import { SendNotificationsContext } from "@app/components/sparkle/Notification";
 
 interface ProviderManagementModalProps {
   owner: WorkspaceType;
@@ -53,7 +52,7 @@ export function ProviderManagementModal({
   showProviderModal,
   onClose,
 }: ProviderManagementModalProps) {
-  const sendNotifications = useContext(SendNotificationsContext);
+  const sendNotifications = useSendNotification();
 
   const initialProviderStates: ProviderStates = useMemo(() => {
     const enabledProviders: ModelProviderIdType[] =
@@ -194,22 +193,20 @@ export function ProviderManagementModal({
         </ContextItem.List>
       </div>
       <div className="flex flex-row items-center gap-4 px-4 pt-4">
-        <div className="s-text-sm font-semibold">Embedding Provider:</div>
+        <div className="text-sm font-semibold">Embedding Provider:</div>
         <NewDropdownMenu>
-          <NewDropdownMenuTrigger>
+          <NewDropdownMenuTrigger asChild>
             <Tooltip
               label="Please contact us if you are willing to change this setting."
               trigger={
                 <Button
-                  type="select"
-                  labelVisible={true}
+                  isSelect
                   label={
                     embeddingProvider
                       ? prettyfiedProviderNames[embeddingProvider]
                       : prettyfiedProviderNames["openai"]
                   }
-                  variant="secondary"
-                  hasMagnifying={false}
+                  variant="outline"
                   size="sm"
                 />
               }

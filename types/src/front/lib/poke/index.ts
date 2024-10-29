@@ -2,7 +2,7 @@ import { ModelId } from "../../../shared/model_id";
 import { DataSourceType } from "../../data_source";
 import { DataSourceViewType } from "../../data_source_view";
 import { GroupType } from "../../groups";
-import { VaultType } from "../../vault";
+import { SpaceType } from "../../space";
 
 export interface PokeItemBase {
   id: ModelId;
@@ -10,17 +10,17 @@ export interface PokeItemBase {
   name: string;
 }
 
-export type PokeVaultType = VaultType & {
+export type PokeSpaceType = SpaceType & {
   groups: GroupType[];
 };
 
 export type PokeDataSourceType = DataSourceType &
   PokeItemBase & {
-    vault: PokeVaultType;
+    space: PokeSpaceType;
   };
 
 export type PokeDataSourceViewType = DataSourceViewType &
   PokeItemBase & {
     dataSource: PokeDataSourceType;
-    vault: PokeVaultType;
+    space: PokeSpaceType;
   };

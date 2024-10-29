@@ -1,8 +1,8 @@
 import type {
-  ACLType,
   GroupType,
   LightWorkspaceType,
   ModelId,
+  ResourcePermission,
   Result,
   UserType,
 } from "@dust-tt/types";
@@ -23,7 +23,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { GroupVaultModel } from "@app/lib/resources/storage/models/group_vaults";
+import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -651,7 +651,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         transaction,
       });
 
-      await GroupVaultModel.destroy({
+      await GroupSpaceModel.destroy({
         where: {
           groupId: this.id,
         },
@@ -680,23 +680,36 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // Permissions
 
-  acl(): ACLType {
-    return {
-      aclEntries: [
-        {
-          groupId: this.id,
-          permissions: ["read"],
-        },
-      ],
-    };
+  /**
+   * Returns the requested permissions for this resource.
+   *
+   * Configures two types of access:
+   * 1. Group-based: The group's members get read access
+   * 2. Role-based: Workspace admins get read and write access
+   *
+   * @returns Array of ResourcePermission objects defining the default access configuration
+   */
+  requestedPermissions(): ResourcePermission[] {
+    return [
+      {
+        groups: [
+          {
+            id: this.id,
+            permissions: ["read"],
+          },
+        ],
+        roles: [{ role: "admin", permissions: ["read", "write"] }],
+        workspaceId: this.workspaceId,
+      },
+    ];
   }
 
   canRead(auth: Authenticator): boolean {
-    return auth.isAdmin() || auth.canRead([this.acl()]);
+    return auth.canRead(this.requestedPermissions());
   }
 
   canWrite(auth: Authenticator): boolean {
-    return auth.isAdmin();
+    return auth.canWrite(this.requestedPermissions());
   }
 
   isSystem(): boolean {
