@@ -354,7 +354,9 @@ export async function upsertDocument({
     tags: nonNullTags,
     parents: parents || [],
     sourceUrl,
-    timestamp: timestamp || null,
+    // TEMPORARY -- need to unstuck a specific entry
+    // TODO(FONTANIERH): remove this once the entry is unstuck
+    timestamp: timestamp ? Math.floor(timestamp) : null,
     section: generatedSection,
     credentials,
     lightDocumentOutput: light_document_output === true,
