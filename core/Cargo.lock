@@ -1273,7 +1273,6 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "tokio-stream",
- "tokio-util",
  "tower-http",
  "tracing",
  "tracing-bunyan-formatter",
