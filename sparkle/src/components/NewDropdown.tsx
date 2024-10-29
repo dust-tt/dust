@@ -2,7 +2,7 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
-import { Icon } from "@sparkle/components";
+import { Icon, LinkWrapper, LinkWrapperProps } from "@sparkle/components";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -170,38 +170,70 @@ const NewDropdownMenuContent = React.forwardRef<
 ));
 NewDropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
+type NewDropdownMenuItemProps = MutuallyExclusiveProps<
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
+    inset?: boolean;
+    variant?: ItemVariantType;
+  } & Omit<LinkWrapperProps, "children" | "className">,
+  LabelAndIconProps & { description?: string }
+>;
+
 const NewDropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
-  MutuallyExclusiveProps<
-    React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
-      inset?: boolean;
-      variant?: ItemVariantType;
-    },
-    LabelAndIconProps & { description?: string }
-  >
+  NewDropdownMenuItemProps
 >(
   (
-    { children, variant, description, className, inset, icon, label, ...props },
+    {
+      children,
+      variant,
+      description,
+      className,
+      inset,
+      icon,
+      label,
+      href,
+      target,
+      rel,
+      asChild,
+      replace,
+      shallow,
+      ...props
+    },
     ref
-  ) => (
-    <DropdownMenuPrimitive.Item
-      ref={ref}
-      className={cn(
-        menuStyleClasses.item({ variant }),
-        inset ? menuStyleClasses.inset : "",
-        className
-      )}
-      {...props}
-    >
-      <ItemWithLabelIconAndDescription
-        label={label}
-        icon={icon}
-        description={description}
+  ) => {
+    const content = (
+      <DropdownMenuPrimitive.Item
+        ref={ref}
+        className={cn(
+          menuStyleClasses.item({ variant }),
+          inset ? menuStyleClasses.inset : "",
+          className
+        )}
+        {...props}
+        asChild={!!href || asChild}
       >
-        {children}
-      </ItemWithLabelIconAndDescription>
-    </DropdownMenuPrimitive.Item>
-  )
+        <ItemWithLabelIconAndDescription
+          label={label}
+          icon={icon}
+          description={description}
+        >
+          {children}
+        </ItemWithLabelIconAndDescription>
+      </DropdownMenuPrimitive.Item>
+    );
+
+    return (
+      <LinkWrapper
+        href={href}
+        target={target}
+        rel={rel}
+        replace={replace}
+        shallow={shallow}
+      >
+        {content}
+      </LinkWrapper>
+    );
+  }
 );
 NewDropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
 

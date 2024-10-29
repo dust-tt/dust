@@ -1,7 +1,7 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import * as React from "react";
 
-import { Button } from "@sparkle/components";
+import { Button, LinkWrapper, LinkWrapperProps } from "@sparkle/components";
 import { cn } from "@sparkle/lib/utils";
 
 const Tabs = TabsPrimitive.Root;
@@ -27,20 +27,42 @@ const TabsTrigger = React.forwardRef<
     label?: string;
     icon?: React.ComponentType;
     isLoading?: boolean;
+  } & Omit<LinkWrapperProps, "children" | "className">
+>(
+  (
+    { className, label, icon, href, target, rel, replace, shallow, ...props },
+    ref
+  ) => {
+    const content = (
+      <TabsPrimitive.Trigger
+        ref={ref}
+        className={cn(
+          "s-border-0 s-border-b-2 s-border-primary-800/0 s-pb-1 disabled:s-pointer-events-none data-[state=active]:s-border-primary-800",
+          className
+        )}
+        asChild
+        {...props}
+      >
+        <div>
+          <Button variant="ghost" size="sm" label={label} icon={icon} />
+        </div>
+      </TabsPrimitive.Trigger>
+    );
+
+    return (
+      <LinkWrapper
+        href={href}
+        target={target}
+        rel={rel}
+        replace={replace}
+        shallow={shallow}
+        className={className}
+      >
+        {content}
+      </LinkWrapper>
+    );
   }
->(({ className, label, icon, ...props }, ref) => (
-  <TabsPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      "s-border-0 s-border-b-2 s-border-primary-800/0 s-pb-1 disabled:s-pointer-events-none data-[state=active]:s-border-primary-800",
-      className
-    )}
-    {...props}
-  >
-    <Button variant="ghost" size="sm" label={label} icon={icon} />
-  </TabsPrimitive.Trigger>
-));
-TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
+);
 
 const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,
@@ -49,7 +71,7 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "focus-visible:s-ring-ring s-contents s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2",
+      "s-contents s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2",
       className
     )}
     {...props}

@@ -1,7 +1,12 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import { Button, Icon } from "@sparkle/components/";
+import {
+  Button,
+  Icon,
+  LinkWrapper,
+  LinkWrapperProps,
+} from "@sparkle/components/";
 import { MoreIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -43,62 +48,94 @@ const NavigationList = React.forwardRef<
 ));
 NavigationList.displayName = "NavigationList";
 
-interface NavigationListItemProps extends React.HTMLAttributes<HTMLDivElement> {
+interface NavigationListItemProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    Omit<LinkWrapperProps, "children" | "className"> {
   selected?: boolean;
   label?: string;
   icon?: React.ComponentType;
+  showMoreIcon?: boolean;
 }
 
 const NavigationListItem = React.forwardRef<
   HTMLDivElement,
   NavigationListItemProps
->(({ className, selected, label, icon, ...props }, ref) => {
-  const [isHovered, setIsHovered] = React.useState(false);
-  const [isPressed, setIsPressed] = React.useState(false);
+>(
+  (
+    {
+      className,
+      selected,
+      label,
+      icon,
+      href,
+      target,
+      rel,
+      replace,
+      shallow,
+      ...props
+    },
+    ref
+  ) => {
+    const [isHovered, setIsHovered] = React.useState(false);
+    const [isPressed, setIsPressed] = React.useState(false);
 
-  const handleMouseDown = (event: React.MouseEvent) => {
-    if (!(event.target as HTMLElement).closest(".new-button-class")) {
-      setIsPressed(true);
-    }
-  };
+    const handleMouseDown = (event: React.MouseEvent) => {
+      if (!(event.target as HTMLElement).closest(".new-button-class")) {
+        setIsPressed(true);
+      }
+    };
 
-  return (
-    <div className={className} ref={ref} {...props}>
-      <div
-        className={listStyles({
-          layout: "item",
-          state: selected ? "selected" : isPressed ? "active" : "unselected",
-        })}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => {
-          setIsHovered(false);
-          setIsPressed(false);
-        }}
-        onMouseDown={handleMouseDown}
-        onMouseUp={() => setIsPressed(false)}
-      >
-        {icon && <Icon visual={icon} size="sm" />}
-        {label && (
-          <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap">
-            {label}
-          </span>
-        )}
-        {isHovered && (
-          <div className="-s-mr-2 s-flex s-h-4 s-items-center">
-            <Button
-              variant="ghost"
-              icon={MoreIcon}
-              size="xs"
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-              onMouseUp={(e) => e.stopPropagation()}
-            />
-          </div>
-        )}
+    const content = (
+      <div className={className} ref={ref} {...props}>
+        <div
+          className={listStyles({
+            layout: "item",
+            state: selected ? "selected" : isPressed ? "active" : "unselected",
+          })}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => {
+            setIsHovered(false);
+            setIsPressed(false);
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseUp={() => setIsPressed(false)}
+        >
+          {icon && <Icon visual={icon} size="sm" />}
+          {label && (
+            <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap">
+              {label}
+            </span>
+          )}
+          {isHovered && (
+            <div className="-s-mr-2 s-flex s-h-4 s-items-center">
+              <Button
+                variant="ghost"
+                icon={MoreIcon}
+                size="xs"
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onMouseUp={(e) => e.stopPropagation()}
+              />
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+
+    return (
+      <LinkWrapper
+        href={href}
+        target={target}
+        rel={rel}
+        replace={replace}
+        shallow={shallow}
+        className={className}
+      >
+        {content}
+      </LinkWrapper>
+    );
+  }
+);
 NavigationListItem.displayName = "NavigationListItem";
 
 const variantStyles = cva("", {

@@ -199,7 +199,7 @@ function ModelsDropdownDemo() {
 
   return (
     <NewDropdownMenu>
-      <NewDropdownMenuTrigger>
+      <NewDropdownMenuTrigger asChild>
         <Button label={selectedModel} variant="outline" size="sm" />
       </NewDropdownMenuTrigger>
       <NewDropdownMenuContent>
@@ -247,7 +247,7 @@ function ModelsDropdownRadioGroupDemo() {
 
   return (
     <NewDropdownMenu>
-      <NewDropdownMenuTrigger>
+      <NewDropdownMenuTrigger asChild>
         <Button label={selectedModel} variant="ghost" size="sm" />
       </NewDropdownMenuTrigger>
       <NewDropdownMenuContent>
