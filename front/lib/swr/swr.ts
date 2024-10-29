@@ -122,6 +122,17 @@ const resHandler = async (res: Response) => {
       res.headers,
       errorText
     );
+    if (res.status === 401) {
+      try {
+        const body = JSON.parse(errorText);
+        if (body.error.type === "not_authenticated") {
+          // We are de-authenticated let's redirect to the home page.
+          window.location.href = "/";
+        }
+      } catch (e) {
+        // Do nothing.
+      }
+    }
     throw new Error(errorText);
   }
   return res.json();
