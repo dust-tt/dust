@@ -115,10 +115,12 @@ async function handler(
 
       if (isActive !== undefined) {
         await transcriptsConfiguration.setIsActive(isActive);
-        if (isActive) {
+      }
+
+      if (isActive !== undefined || dataSourceViewId) {
+        if (isActive || dataSourceViewId) {
           await launchRetrieveTranscriptsWorkflow(transcriptsConfiguration);
         } else {
-          // Cancel the workflow
           await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
         }
       }
