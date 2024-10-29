@@ -6,10 +6,10 @@ import {
   createZendeskClient,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { syncArticle } from "@connectors/connectors/zendesk/temporal/sync_article";
+import { syncTicket } from "@connectors/connectors/zendesk/temporal/sync_ticket";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
-import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskBrandResource,
@@ -365,12 +365,47 @@ export async function syncZendeskArticlesActivity({
 /**
  * This activity is responsible for syncing all the tickets for a Brand.
  */
-export async function syncZendeskTicketsActivity({}: {
+export async function syncZendeskTicketsActivity({
+  connectorId,
+  brandId,
+  currentSyncDateMs,
+  forceResync,
+}: {
   connectorId: ModelId;
   brandId: number;
   currentSyncDateMs: number;
   forceResync: boolean;
-  afterCursor: string | null;
-}): Promise<{ hasMore: boolean; afterCursor: string }> {
-  return { hasMore: false, afterCursor: "" };
+}) {
+  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+  const configuration = await _getZendeskConfigurationOrRaise(connectorId);
+
+  const accessToken = await getZendeskAccessToken(connector.connectionId);
+  const zendeskApiClient = createZendeskClient({
+    token: accessToken,
+    subdomain: configuration.subdomain,
+  });
+  await changeZendeskClientSubdomain({ client: zendeskApiClient, brandId });
+  const tickets = await zendeskApiClient.tickets.list();
+
+  await concurrentExecutor(
+    tickets,
+    (ticket) =>
+      syncTicket({
+        connectorId,
+        brandId,
+        ticket,
+        dataSourceConfig,
+        currentSyncDateMs,
+        loggerArgs,
+        forceResync,
+      }),
+    { concurrency: 10 }
+  );
 }
