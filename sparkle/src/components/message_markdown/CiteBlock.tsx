@@ -61,7 +61,7 @@ export function CiteBlock(props: ReactMarkdownProps) {
                 rel="noopener noreferrer"
                 onMouseEnter={() => setHoveredReference(r.counter)}
               >
-                <div className="s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-border s-border-violet-200 s-bg-violet-100 s-text-xs s-font-semibold s-text-element-800 hover:s-border-violet-400">
+                <div className="s-hover:border-violet-400 s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-border s-border-violet-200 s-bg-violet-100 s-text-xs s-font-semibold s-text-element-800">
                   {r.counter}
                 </div>
               </a>

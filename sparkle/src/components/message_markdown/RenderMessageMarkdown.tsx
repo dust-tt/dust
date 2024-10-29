@@ -294,7 +294,7 @@ function TableBlock({ children }: { children: React.ReactNode }) {
 
   return (
     <ContentBlockWrapper
-      className="s-border s-border-structure-200 dark:s-border-structure-200-dark"
+      className="s-dark:border-structure-200-dark s-border s-border-structure-200"
       content={tableData}
     >
       <table className="s-w-full s-table-auto">{children}</table>
@@ -304,7 +304,7 @@ function TableBlock({ children }: { children: React.ReactNode }) {
 
 function TableHeadBlock({ children }: { children: React.ReactNode }) {
   return (
-    <thead className="s-bg-structure-50 s-px-2 s-py-2 dark:s-bg-structure-50-dark">
+    <thead className="s-dark:bg-structure-50-dark s-bg-structure-50 s-px-2 s-py-2">
       {children}
     </thead>
   );
@@ -316,7 +316,7 @@ function TableBodyBlock({ children }: { children: React.ReactNode }) {
 
 function TableHeaderBlock({ children }: { children: React.ReactNode }) {
   return (
-    <th className="s-whitespace-nowrap s-px-6 s-py-3 s-text-left s-text-xs s-font-semibold s-uppercase s-tracking-wider s-text-element-700 dark:s-text-element-700-dark">
+    <th className="s-dark:text-element-700-dark s-whitespace-nowrap s-px-6 s-py-3 s-text-left s-text-xs s-font-semibold s-uppercase s-tracking-wider s-text-element-700">
       {children}
     </th>
   );
@@ -324,7 +324,7 @@ function TableHeaderBlock({ children }: { children: React.ReactNode }) {
 
 function TableDataBlock({ children }: { children: React.ReactNode }) {
   return (
-    <td className="s-px-6 s-py-4 s-text-sm s-text-element-800 dark:s-text-element-800-dark">
+    <td className="s-dark:text-element-800-dark s-px-6 s-py-4 s-text-sm s-text-element-800">
       {Array.isArray(children) ? (
         children.map((child: any, i) => {
           if (child === "<br>") {
@@ -351,7 +351,7 @@ function LinkBlock({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="s-break-all s-font-semibold s-text-action-500 s-transition-all s-duration-200 s-ease-in-out hover:s-text-action-400 hover:s-underline active:s-text-action-600"
+      className="s-hover:text-action-400 s-hover:underline s-active:text-action-600 s-break-all s-font-semibold s-text-action-500 s-transition-all s-duration-200 s-ease-in-out"
     >
       {children}
     </a>
@@ -421,14 +421,14 @@ function PreBlock({ children }: { children: React.ReactNode }) {
 
 function UlBlock({ children }: { children: React.ReactNode }) {
   return (
-    <ul className="s-list-disc s-py-2 s-pl-8 first:s-pt-0 last:s-pb-0">
+    <ul className="s-first:pt-0 s-last:pb-0 s-list-disc s-py-2 s-pl-8">
       {children}
     </ul>
   );
 }
 function OlBlock({ children }: { children: React.ReactNode }) {
   return (
-    <ol className="s-list-decimal s-py-3 s-pl-8 first:s-pt-0 last:s-pb-0">
+    <ol className="s-first:pt-0 s-last:pb-0 s-list-decimal s-py-3 s-pl-8">
       {children}
     </ol>
   );
@@ -445,7 +445,7 @@ function LiBlock({
   return (
     <li
       className={classNames(
-        "s-break-words first:s-pt-0 last:s-pb-0",
+        "s-first:pt-0 s-last:pb-0 s-break-words",
         textSize === "sm" ? "s-py-1" : "s-py-2",
         textColor ? textColor : "s-text-element-800"
       )}
@@ -466,7 +466,7 @@ function ParagraphBlock({
   return (
     <div
       className={classNames(
-        "s-whitespace-pre-wrap s-break-words s-font-normal first:s-pt-0 last:s-pb-0",
+        "s-first:pt-0 s-last:pb-0 s-whitespace-pre-wrap s-break-words s-font-normal",
         textSize === "sm"
           ? "s-py-1 s-text-sm"
           : "s-py-2 s-text-base s-leading-7",

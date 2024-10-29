@@ -152,7 +152,7 @@ export function CodeBlock({
       </SyntaxHighlighter>
     </Suspense>
   ) : (
-    <code className="s-rounded-lg s-border-structure-200 s-bg-structure-100 s-px-1.5 s-py-1 s-text-sm s-text-amber-600 dark:s-border-structure-200-dark dark:s-bg-structure-100-dark dark:s-text-amber-400">
+    <code className="s-dark:border-structure-200-dark s-dark:bg-structure-100-dark s-dark:text-amber-400 s-rounded-lg s-border-structure-200 s-bg-structure-100 s-px-1.5 s-py-1 s-text-sm s-text-amber-600">
       {children}
     </code>
   );
