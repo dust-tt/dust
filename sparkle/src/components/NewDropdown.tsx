@@ -210,7 +210,7 @@ const NewDropdownMenuItem = React.forwardRef<
           className
         )}
         {...props}
-        asChild={!!href && asChild}
+        asChild={!!href || asChild}
       >
         <ItemWithLabelIconAndDescription
           label={label}

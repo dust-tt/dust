@@ -40,10 +40,12 @@ const TabsTrigger = React.forwardRef<
           "s-border-0 s-border-b-2 s-border-primary-800/0 s-pb-1 disabled:s-pointer-events-none data-[state=active]:s-border-primary-800",
           className
         )}
+        asChild
         {...props}
-        asChild={!!href}
       >
-        <Button variant="ghost" size="sm" label={label} icon={icon} />
+        <div>
+          <Button variant="ghost" size="sm" label={label} icon={icon} />
+        </div>
       </TabsPrimitive.Trigger>
     );
 
@@ -69,7 +71,7 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "s-contents s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
+      "s-contents s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2",
       className
     )}
     {...props}
