@@ -633,48 +633,6 @@ export default function LabsTranscriptsIndex({
           (transcriptsConfigurationState.isGDriveConnected ||
             transcriptsConfigurationState.isGongConnected) && (
             <>
-              <Page.Layout direction="vertical">
-                <Page.SectionHeader title="Pick an assistant" />
-                <Page.Layout direction="vertical">
-                  <Page.P>
-                    Pick the assistant that will process the transcripts
-                    received from{" "}
-                    {transcriptsConfigurationState.provider
-                      .charAt(0)
-                      .toUpperCase() +
-                      transcriptsConfigurationState.provider.slice(1)}
-                    .
-                  </Page.P>
-                  <Page.Layout direction="horizontal">
-                    <AssistantPicker
-                      owner={owner}
-                      size="sm"
-                      onItemClick={(assistant) =>
-                        handleSelectAssistant(
-                          transcriptsConfiguration.id,
-                          assistant
-                        )
-                      }
-                      assistants={agents}
-                      showFooterButtons={false}
-                    />
-                    {transcriptsConfigurationState.assistantSelected && (
-                      <div className="mt-2">
-                        <Page.P>
-                          <strong>
-                            @
-                            {
-                              transcriptsConfigurationState.assistantSelected
-                                .name
-                            }
-                          </strong>
-                        </Page.P>
-                      </div>
-                    )}
-                  </Page.Layout>
-                </Page.Layout>
-              </Page.Layout>
-
               {featureFlags.includes("labs_transcripts_datasource") && (
                 <Page.Layout direction="vertical">
                   <Page.SectionHeader
