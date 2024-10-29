@@ -640,7 +640,6 @@ export default function LabsTranscriptsIndex({
                   <SliderToggle
                     selected={storeInFolder}
                     onClick={() => handleSetStoreInFolder(!storeInFolder)}
-                    disabled={!transcriptsConfigurationState.assistantSelected}
                   />
                   <Page.P>Enable transcripts storage</Page.P>
                 </Page.Layout>
