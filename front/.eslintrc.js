@@ -36,7 +36,7 @@ module.exports = {
     "no-restricted-syntax": [
       "error",
       {
-        selector: "JSXAttribute[name.name='className'][value.value=/s-/]",
+        selector: "JSXAttribute[name.name='className'][value.value=/\\bs-/]",
         message:
           "className values with 's-' prefix are not allowed in front. These are reserved for sparkle components.",
       },
