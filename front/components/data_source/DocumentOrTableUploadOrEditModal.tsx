@@ -37,6 +37,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
 import { useDataSourceViewDocument } from "@app/lib/swr/data_source_views";
 import { useTable } from "@app/lib/swr/tables";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 const MAX_NAME_CHARS = 32;
 
@@ -147,7 +148,7 @@ const DocumentUploadOrEditModal = ({
   const handleDocumentUpload = async (document: Document) => {
     setUploading(true);
     try {
-      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
+      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
       const endpoint = initialId
         ? `${base}/${encodeURIComponent(document.name)}`
         : base;
@@ -469,6 +470,8 @@ const TableUploadOrEditModal = ({
     tableId: initialId ?? null,
   });
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   useEffect(() => {
     if (!initialId) {
       setTableState({
@@ -509,7 +512,7 @@ const TableUploadOrEditModal = ({
         throw new Error("File too large");
       }
 
-      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.vaultId}/data_sources/${dataSourceView.dataSource.sId}/tables`;
+      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/tables`;
       const endpoint = initialId ? `${base}/${initialId}` : base;
 
       const body = JSON.stringify({
@@ -702,7 +705,7 @@ const TableUploadOrEditModal = ({
                   </div>
                 )}
               </div>
-              {owner.flags.includes("use_app_for_header_detection") && (
+              {featureFlags.includes("use_app_for_header_detection") && (
                 <div>
                   <Page.SectionHeader
                     title="Enable header detection"

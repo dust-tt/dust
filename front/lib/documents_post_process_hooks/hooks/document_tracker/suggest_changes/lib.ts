@@ -4,6 +4,7 @@ import { Op } from "sequelize";
 import showdown from "showdown";
 
 import config from "@app/lib/api/config";
+import { getFeatureFlags } from "@app/lib/auth";
 import type {
   DocumentsPostProcessHookFilterParams,
   DocumentsPostProcessHookOnUpsertParams,
@@ -49,7 +50,10 @@ export async function shouldDocumentTrackerSuggestChangesRun(
 ): Promise<boolean> {
   const auth = params.auth;
   const owner = auth.getNonNullableWorkspace();
-  if (!owner.flags.includes("document_tracker")) {
+
+  const flags = await getFeatureFlags(owner.id);
+
+  if (!flags.includes("document_tracker")) {
     return false;
   }
 

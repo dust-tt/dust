@@ -17,7 +17,7 @@ import { getDatasetHash, getDatasetSchema } from "@app/lib/api/datasets";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { dustAppsListUrl } from "@app/lib/vaults";
+import { dustAppsListUrl } from "@app/lib/spaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -108,7 +108,7 @@ export default function ViewDatasetView({
   useEffect(() => {
     if (isFinishedEditing) {
       void router.push(
-        `/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets`
+        `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets`
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -144,7 +144,7 @@ export default function ViewDatasetView({
   const handleSubmit = async () => {
     setLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${app.vault.sId}/apps/${app.sId}/datasets/${dataset.name}`,
+      `/api/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}/datasets/${dataset.name}`,
       {
         method: "POST",
         headers: {
@@ -170,7 +170,7 @@ export default function ViewDatasetView({
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.vault));
+            void router.push(dustAppsListUrl(owner, app.space));
           }}
         />
       }

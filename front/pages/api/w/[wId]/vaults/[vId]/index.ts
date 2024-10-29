@@ -1,7 +1,7 @@
 import type {
   DataSourceWithAgentsUsageType,
+  SpaceType,
   UserType,
-  VaultType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@dust-tt/types";
@@ -12,13 +12,13 @@ import { uniq } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
-import { softDeleteVaultAndLaunchScrubWorkflow } from "@app/lib/api/vaults";
+import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 export type VaultCategoryInfo = {
@@ -27,14 +27,14 @@ export type VaultCategoryInfo = {
 };
 
 export type GetVaultResponseBody = {
-  vault: VaultType & {
+  vault: SpaceType & {
     categories: { [key: string]: VaultCategoryInfo };
     members: UserType[];
   };
 };
 
 export type PatchVaultResponseBody = {
-  vault: VaultType;
+  vault: SpaceType;
 };
 
 const ContentSchema = t.type({
@@ -54,8 +54,10 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const vault = await VaultResource.fetchById(auth, req.query.vId as string);
+  const vault = await SpaceResource.fetchById(auth, req.query.vId as string);
 
+  console.log(">> vaul:", vault);
+  console.log(">> vault.canList:", vault?.canList(auth));
   if (!vault || !vault.canList(auth)) {
     return apiError(req, res, {
       status_code: 404,
@@ -68,11 +70,11 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const dataSourceViews = await DataSourceViewResource.listByVault(
+      const dataSourceViews = await DataSourceViewResource.listBySpace(
         auth,
         vault
       );
-      const apps = await AppResource.listByVault(auth, vault);
+      const apps = await AppResource.listBySpace(auth, vault);
 
       const categories: { [key: string]: VaultCategoryInfo } = {};
       for (const category of DATA_SOURCE_VIEW_CATEGORIES) {
@@ -136,7 +138,7 @@ async function handler(
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message: "Only admins can administrate vaults.",
+            message: "Only admins can administrate spaces.",
           },
         });
       }
@@ -157,7 +159,7 @@ async function handler(
       const { content, name } = bodyValidation.right;
 
       if (content) {
-        const currentViews = await DataSourceViewResource.listByVault(
+        const currentViews = await DataSourceViewResource.listBySpace(
           auth,
           vault
         );
@@ -216,13 +218,13 @@ async function handler(
           api_error: {
             type: "workspace_auth_error",
             message:
-              "Only users that are `admins` or `builder` can administrate vaults.",
+              "Only users that are `admins` or `builder` can administrate spaces.",
           },
         });
       }
 
       try {
-        const deleteRes = await softDeleteVaultAndLaunchScrubWorkflow(
+        const deleteRes = await softDeleteSpaceAndLaunchScrubWorkflow(
           auth,
           vault
         );

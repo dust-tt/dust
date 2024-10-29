@@ -1,5 +1,4 @@
 import React, { useRef } from "react";
-import { ComponentType, MouseEventHandler } from "react";
 
 import { Button } from "@sparkle/components/Button";
 import {
@@ -12,12 +11,7 @@ import { ReactionIcon } from "@sparkle/icons/solid";
 import { cn } from "@sparkle/lib/utils";
 
 type ConversationMessageActionsProps = {
-  buttons?: {
-    label: string;
-    icon: ComponentType;
-    onClick: MouseEventHandler<HTMLButtonElement>;
-    disabled?: boolean;
-  }[];
+  buttons?: React.ReactElement<typeof Button>[];
   messageEmoji?: ConversationMessageEmojiSelectorProps;
 };
 
@@ -25,20 +19,8 @@ export function ConversationMessageActions({
   buttons = [],
   messageEmoji,
 }: ConversationMessageActionsProps) {
-  const buttonNodes = buttons?.map((button, i) => (
-    <Button
-      key={`message-button-${i}`}
-      variant="outline"
-      size="xs"
-      label={button.label}
-      icon={button.icon}
-      onClick={button.onClick}
-      disabled={button.disabled || false}
-    />
-  ));
-
   if (messageEmoji) {
-    buttonNodes.push(
+    buttons.push(
       <ConversationMessageEmojiSelector
         reactions={messageEmoji.reactions}
         onSubmitEmoji={messageEmoji.onSubmitEmoji}
@@ -47,11 +29,11 @@ export function ConversationMessageActions({
     );
   }
 
-  if (buttonNodes.length === 0) {
+  if (buttons.length === 0) {
     return false;
   }
 
-  return <div className="s-flex s-justify-end s-gap-2">{buttonNodes}</div>;
+  return <div className="s-flex s-justify-end s-gap-2">{buttons}</div>;
 }
 
 const MAX_MORE_REACTIONS_TO_SHOW = 9;

@@ -11,7 +11,7 @@ import { Authenticator } from "@app/lib/auth";
 import { isManaged } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 
@@ -234,7 +234,7 @@ async function handleDataSource(
   // Until we pass the data source view id for managed data sources, we need to fetch it here.
   // TODO(DATASOURCE_SID) Clean-up Remove once dust apps rely on the data source view id for managed data sources.
   if (isManaged(dataSource)) {
-    const globalVault = await VaultResource.fetchWorkspaceGlobalVault(auth);
+    const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const dataSourceView =
       await DataSourceViewResource.listForDataSourcesInVault(
         auth,

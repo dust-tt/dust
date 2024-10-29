@@ -90,7 +90,7 @@ export default function Database({
                       ]
                     : []
                 }
-                vault={app.vault}
+                space={app.space}
                 onDataSourcesUpdate={(dataSources) => {
                   if (dataSources.length === 0) {
                     return;
@@ -114,7 +114,7 @@ export default function Database({
               <div className="mr-2 flex flex-initial flex-row items-center space-x-1 text-sm font-medium leading-8 text-gray-700">
                 <TablePicker
                   owner={owner}
-                  vault={app.vault}
+                  space={app.space}
                   dataSource={{
                     workspace_id: block.config.tables?.[0].workspace_id,
                     data_source_id: block.config.tables?.[0].data_source_id,

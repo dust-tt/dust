@@ -20,7 +20,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { User } from "@app/lib/models/user";
-import { ResourceWithVault } from "@app/lib/resources/resource_with_vault";
+import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -29,7 +30,6 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { VaultResource } from "@app/lib/resources/vault_resource";
 import { getWorkspaceByModelId } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
@@ -63,7 +63,7 @@ export type FetchDataSourceOptions = {
 export interface DataSourceResource
   extends ReadonlyAttributesType<DataSourceModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
+export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   static model: ModelStatic<DataSourceModel> = DataSourceModel;
 
   readonly editedByUser?: Attributes<User>;
@@ -71,10 +71,10 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
   constructor(
     model: ModelStatic<DataSourceModel>,
     blob: Attributes<DataSourceModel>,
-    vault: VaultResource,
+    space: SpaceResource,
     { editedByUser }: { editedByUser?: Attributes<User> } = {}
   ) {
-    super(DataSourceResource.model, blob, vault);
+    super(DataSourceResource.model, blob, space);
 
     this.editedByUser = editedByUser;
   }
@@ -85,7 +85,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
       CreationAttributes<DataSourceModel>,
       "editedAt" | "editedByUserId" | "vaultId"
     >,
-    vault: VaultResource,
+    space: SpaceResource,
     transaction?: Transaction
   ) {
     const dataSource = await DataSourceModel.create(
@@ -93,12 +93,12 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
         ...blob,
         editedByUserId: auth.getNonNullableUser().id,
         editedAt: new Date(),
-        vaultId: vault.id,
+        vaultId: space.id,
       },
       { transaction }
     );
 
-    return new this(DataSourceResource.model, dataSource.get(), vault);
+    return new this(DataSourceResource.model, dataSource.get(), space);
   }
 
   // Fetching.
@@ -342,22 +342,22 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
     });
   }
 
-  static async listByVault(
+  static async listBySpace(
     auth: Authenticator,
-    vault: VaultResource,
+    space: SpaceResource,
     options?: FetchDataSourceOptions
   ) {
-    return this.listByVaults(auth, [vault], options);
+    return this.listBySpaces(auth, [space], options);
   }
 
-  static async listByVaults(
+  static async listBySpaces(
     auth: Authenticator,
-    vaults: VaultResource[],
+    spaces: SpaceResource[],
     options?: FetchDataSourceOptions
   ) {
     return this.baseFetch(auth, options, {
       where: {
-        vaultId: vaults.map((v) => v.id),
+        vaultId: spaces.map((s) => s.id),
       },
     });
   }
@@ -490,11 +490,11 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
   // Permissions.
 
   canRead(auth: Authenticator) {
-    return this.vault.canRead(auth);
+    return this.space.canRead(auth);
   }
 
   canWrite(auth: Authenticator) {
-    return this.vault.canWrite(auth);
+    return this.space.canWrite(auth);
   }
 
   // sId logic.
@@ -550,7 +550,7 @@ export class DataSourceResource extends ResourceWithVault<DataSourceModel> {
         ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/data_sources/${this.sId}`
         : null,
       name: `Data Source View (${this.name})`,
-      vault: this.vault.toPokeJSON(),
+      space: this.space.toPokeJSON(),
     };
   }
 }

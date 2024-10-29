@@ -229,6 +229,7 @@ export async function getUserConversations(
   }
 
   const participations = await ConversationParticipant.findAll({
+    attributes: ["userId", "createdAt"],
     where: {
       userId: user.id,
       action: "posted",

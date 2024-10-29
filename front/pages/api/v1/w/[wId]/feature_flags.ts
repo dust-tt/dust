@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
 export type WorkspaceFeatureFlagsResponseBody = {
@@ -35,7 +36,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      return res.status(200).json({ feature_flags: owner.flags });
+      const feature_flags = await getFeatureFlags(owner.id);
+      return res.status(200).json({ feature_flags });
 
     default:
       return apiError(req, res, {

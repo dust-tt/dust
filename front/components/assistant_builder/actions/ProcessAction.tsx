@@ -16,8 +16,8 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ProcessSchemaPropertyType,
   Result,
+  SpaceType,
   TimeframeUnit,
-  VaultType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
@@ -235,7 +235,7 @@ function PropertiesFields({
                   <IconButton
                     icon={XMarkIcon}
                     tooltip="Remove Property"
-                    variant="ghost"
+                    variant="outline"
                     onClick={async () => {
                       handleRemoveProperty(index);
                     }}
@@ -264,7 +264,7 @@ type ActionProcessProps = {
   owner: WorkspaceType;
   instructions: string | null;
   actionConfiguration: AssistantBuilderProcessConfiguration | null;
-  allowedVaults: VaultType[];
+  allowedSpaces: SpaceType[];
   updateAction: (
     setNewAction: (
       previousAction: AssistantBuilderProcessConfiguration
@@ -279,7 +279,7 @@ export function ActionProcess({
   owner,
   instructions,
   actionConfiguration,
-  allowedVaults,
+  allowedSpaces,
   updateAction,
   setEdited,
   description,
@@ -388,7 +388,7 @@ export function ActionProcess({
         initialDataSourceConfigurations={
           actionConfiguration.dataSourceConfigurations
         }
-        allowedVaults={allowedVaults}
+        allowedSpaces={allowedSpaces}
         viewType="documents"
       />
 

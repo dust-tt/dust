@@ -85,7 +85,7 @@ export { Searchbar } from "./Searchbar";
 export { Separator } from "./Separator";
 export { SliderToggle } from "./SliderToggle";
 export { default as Spinner } from "./Spinner";
-export { Tab } from "./Tab";
+export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { TextArea } from "./TextArea";
 export {
   Tooltip,

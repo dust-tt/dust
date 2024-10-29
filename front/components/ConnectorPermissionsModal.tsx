@@ -31,13 +31,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
-import { setupConnection } from "@app/components/vaults/AddConnectionMenu";
-import { ConnectorDataUpdatedModal } from "@app/components/vaults/ConnectorDataUpdatedModal";
+import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
+import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
-import { useSystemVault, useVaultDataSourceViews } from "@app/lib/swr/vaults";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
@@ -377,18 +377,18 @@ function DataSourceDeletionModal({
   const sendNotification = useSendNotification();
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { user } = useUser();
-  const { systemVault } = useSystemVault({
+  const { systemSpace } = useSystemSpace({
     workspaceId: owner.sId,
   });
-  const { mutateRegardlessOfQueryParams: mutateVaultDataSourceViews } =
-    useVaultDataSourceViews({
+  const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =
+    useSpaceDataSourceViews({
       workspaceId: owner.sId,
-      vaultId: systemVault?.sId ?? "",
+      spaceId: systemSpace?.sId ?? "",
       disabled: true,
     });
   const { connectorProvider, editedByUser } = dataSource;
 
-  if (!connectorProvider || !user || !systemVault) {
+  if (!connectorProvider || !user || !systemSpace) {
     return null;
   }
 
@@ -398,7 +398,7 @@ function DataSourceDeletionModal({
   const handleDelete = async () => {
     setIsLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${systemVault.sId}/data_sources/${dataSource.sId}`,
+      `/api/w/${owner.sId}/vaults/${systemSpace.sId}/data_sources/${dataSource.sId}`,
       {
         method: "DELETE",
       }
@@ -409,7 +409,7 @@ function DataSourceDeletionModal({
         type: "success",
         description: "The connection has been successfully deleted.",
       });
-      await mutateVaultDataSourceViews();
+      await mutateSpaceDataSourceViews();
       onClose();
     } else {
       const err = (await res.json()) as { error: APIError };

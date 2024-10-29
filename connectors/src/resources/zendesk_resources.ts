@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/types";
+import type { ContentNode, Result } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import type {
   Attributes,
@@ -6,7 +6,16 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
+import {
+  getArticleInternalId,
+  getBrandInternalId,
+  getCategoryInternalId,
+  getHelpCenterInternalId,
+  getTicketInternalId,
+  getTicketsInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
   ZendeskArticle,
   ZendeskBrand,
@@ -168,18 +177,32 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return blob && new this(this.model, blob.get());
   }
 
+  static async fetchByBrandIds({
+    connectorId,
+    brandIds,
+  }: {
+    connectorId: number;
+    brandIds: number[];
+  }): Promise<ZendeskBrandResource[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: { connectorId, brandId: { [Op.in]: brandIds } },
+    });
+    return brands.map((brand) => new this(this.model, brand.get()));
+  }
+
   static async fetchAllReadOnly({
     connectorId,
   }: {
     connectorId: number;
   }): Promise<ZendeskBrandResource[]> {
-    return ZendeskBrand.findAll({
+    const brands = await ZendeskBrand.findAll({
       where: {
         connectorId,
         helpCenterPermission: "read",
         ticketsPermission: "read",
       },
-    }).then((brands) => brands.map((brand) => new this(this.model, brand)));
+    });
+    return brands.map((brand) => new this(this.model, brand.get()));
   }
 
   static async fetchReadOnlyTickets({
@@ -188,10 +211,13 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }: {
     connectorId: number;
     brandId: number;
-  }): Promise<ZendeskTicket[]> {
-    return ZendeskTicket.findAll({
+  }): Promise<ZendeskTicketResource[]> {
+    const tickets = await ZendeskTicket.findAll({
       where: { connectorId, brandId, permission: "read" },
     });
+    return tickets.map(
+      (ticket) => new ZendeskTicketResource(ZendeskTicket, ticket)
+    );
   }
 
   static async fetchReadOnlyCategories({
@@ -201,13 +227,81 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     connectorId: number;
     brandId: number;
   }): Promise<ZendeskCategoryResource[]> {
-    return ZendeskCategory.findAll({
+    const categories = await ZendeskCategory.findAll({
       where: { connectorId, brandId, permission: "read" },
-    }).then((categories) =>
-      categories.map(
-        (category) => new ZendeskCategoryResource(ZendeskCategory, category)
-      )
+    });
+    return categories.map(
+      (category) =>
+        category && new ZendeskCategoryResource(ZendeskCategory, category)
     );
+  }
+
+  static async fetchBrandsWithHelpCenter({
+    connectorId,
+  }: {
+    connectorId: number;
+  }): Promise<ZendeskBrandResource[]> {
+    const brands = await ZendeskBrand.findAll({
+      where: {
+        connectorId: connectorId,
+        helpCenterPermission: "read",
+        hasHelpCenter: true,
+      },
+    });
+    return brands.map((brand) => new this(this.model, brand.get()));
+  }
+
+  toContentNode({ connectorId }: { connectorId: number }): ContentNode {
+    return {
+      provider: "zendesk",
+      internalId: getBrandInternalId(connectorId, this.brandId),
+      parentInternalId: null,
+      type: "folder",
+      title: this.name,
+      sourceUrl: this.url,
+      expandable: true,
+      permission:
+        this.helpCenterPermission === "read" &&
+        this.ticketsPermission === "read"
+          ? "read"
+          : "none",
+      dustDocumentId: null,
+      lastUpdatedAt: this.updatedAt.getTime(),
+    };
+  }
+
+  getHelpCenterContentNode({
+    connectorId,
+  }: {
+    connectorId: number;
+  }): ContentNode {
+    return {
+      provider: "zendesk",
+      internalId: getHelpCenterInternalId(connectorId, this.brandId),
+      parentInternalId: getBrandInternalId(connectorId, this.brandId),
+      type: "folder",
+      title: "Help Center",
+      sourceUrl: null,
+      expandable: true,
+      permission: this.helpCenterPermission,
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+    };
+  }
+
+  getTicketsContentNode({ connectorId }: { connectorId: number }): ContentNode {
+    return {
+      provider: "zendesk",
+      internalId: getTicketsInternalId(connectorId, this.brandId),
+      parentInternalId: getBrandInternalId(connectorId, this.brandId),
+      type: "folder",
+      title: "Tickets",
+      sourceUrl: null,
+      expandable: false,
+      permission: this.ticketsPermission,
+      dustDocumentId: null,
+      lastUpdatedAt: null,
+    };
   }
 }
 
@@ -280,10 +374,25 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     connectorId: number;
     categoryId: number;
   }): Promise<ZendeskCategoryResource | null> {
-    const blob = await ZendeskCategory.findOne({
+    const category = await ZendeskCategory.findOne({
       where: { connectorId, categoryId },
     });
-    return blob && new this(this.model, blob.get());
+    return category && new this(this.model, category.get());
+  }
+
+  static async fetchByCategoryIds({
+    connectorId,
+    categoryIds,
+  }: {
+    connectorId: number;
+    categoryIds: number[];
+  }): Promise<ZendeskCategoryResource[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, categoryId: { [Op.in]: categoryIds } },
+    });
+    return categories.map(
+      (category) => category && new this(this.model, category.get())
+    );
   }
 
   static async fetchAllReadOnly({
@@ -291,11 +400,10 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
   }: {
     connectorId: number;
   }): Promise<ZendeskCategoryResource[]> {
-    return ZendeskCategory.findAll({
+    const categories = await ZendeskCategory.findAll({
       where: { connectorId, permission: "read" },
-    }).then((categories) =>
-      categories.map((category) => new this(this.model, category))
-    );
+    });
+    return categories.map((category) => new this(this.model, category.get()));
   }
 
   static async fetchReadOnlyArticles({
@@ -304,15 +412,184 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
   }: {
     connectorId: number;
     categoryId: number;
-  }): Promise<ZendeskArticle[]> {
-    return ZendeskArticle.findAll({
+  }): Promise<ZendeskArticleResource[]> {
+    const articles = await ZendeskArticle.findAll({
       where: { connectorId, categoryId, permission: "read" },
     });
+    return articles.map(
+      (article) => new ZendeskArticleResource(ZendeskArticle, article)
+    );
   }
 
   async revokePermissions(): Promise<void> {
-    if (this?.permission === "read") {
+    if (this.permission === "read") {
       await this.update({ permission: "none" });
     }
+  }
+
+  toContentNode({ connectorId }: { connectorId: number }): ContentNode {
+    return {
+      provider: "zendesk",
+      internalId: getCategoryInternalId(connectorId, this.categoryId),
+      parentInternalId: getHelpCenterInternalId(connectorId, this.brandId),
+      type: "folder",
+      title: this.name,
+      sourceUrl: this.url,
+      expandable: false,
+      permission: this.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: this.updatedAt.getTime(),
+    };
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface ZendeskTicketResource
+  extends ReadonlyAttributesType<ZendeskTicket> {}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
+  static model: ModelStatic<ZendeskTicket> = ZendeskTicket;
+
+  constructor(
+    model: ModelStatic<ZendeskTicket>,
+    blob: Attributes<ZendeskTicket>
+  ) {
+    super(ZendeskTicket, blob);
+  }
+
+  async postFetchHook(): Promise<void> {
+    return;
+  }
+
+  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+    await this.model.destroy({
+      where: {
+        connectorId: this.connectorId,
+      },
+      transaction,
+    });
+    return new Ok(undefined);
+  }
+
+  toJSON(): Record<string, unknown> {
+    return {
+      id: this.id,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+
+      name: this.name,
+      url: this.url,
+      ticketId: this.ticketId,
+      brandId: this.brandId,
+      permission: this.permission,
+
+      connectorId: this.connectorId,
+    };
+  }
+
+  toContentNode({ connectorId }: { connectorId: number }): ContentNode {
+    return {
+      provider: "zendesk",
+      internalId: getTicketInternalId(connectorId, this.ticketId),
+      parentInternalId: getBrandInternalId(connectorId, this.brandId),
+      type: "file",
+      title: this.name,
+      sourceUrl: this.url,
+      expandable: false,
+      permission: this.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: this.updatedAt.getTime(),
+    };
+  }
+
+  static async fetchByTicketId({
+    connectorId,
+    ticketId,
+  }: {
+    connectorId: number;
+    ticketId: number;
+  }): Promise<ZendeskTicketResource | null> {
+    const ticket = await ZendeskTicket.findOne({
+      where: { connectorId, ticketId },
+    });
+    return ticket && new this(this.model, ticket.get());
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface ZendeskArticleResource
+  extends ReadonlyAttributesType<ZendeskArticle> {}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
+  static model: ModelStatic<ZendeskArticle> = ZendeskArticle;
+
+  constructor(
+    model: ModelStatic<ZendeskArticle>,
+    blob: Attributes<ZendeskArticle>
+  ) {
+    super(ZendeskArticle, blob);
+  }
+
+  async postFetchHook(): Promise<void> {
+    return;
+  }
+
+  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+    await this.model.destroy({
+      where: {
+        connectorId: this.connectorId,
+      },
+      transaction,
+    });
+    return new Ok(undefined);
+  }
+
+  toJSON(): Record<string, unknown> {
+    return {
+      id: this.id,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+
+      name: this.name,
+      url: this.url,
+      articleId: this.articleId,
+      categoryId: this.categoryId,
+      brandId: this.brandId,
+      permission: this.permission,
+
+      connectorId: this.connectorId,
+    };
+  }
+
+  toContentNode({ connectorId }: { connectorId: number }): ContentNode {
+    return {
+      provider: "zendesk",
+      internalId: getArticleInternalId(connectorId, this.articleId),
+      parentInternalId: getCategoryInternalId(connectorId, this.categoryId),
+      type: "file",
+      title: this.name,
+      sourceUrl: this.url,
+      expandable: false,
+      permission: this.permission,
+      dustDocumentId: null,
+      lastUpdatedAt: this.updatedAt.getTime(),
+    };
+  }
+
+  static async fetchByArticleId({
+    connectorId,
+    articleId,
+  }: {
+    connectorId: number;
+    articleId: number;
+  }): Promise<ZendeskArticleResource | null> {
+    const article = await ZendeskArticle.findOne({
+      where: { connectorId, articleId },
+    });
+    return article && new this(this.model, article.get());
   }
 }

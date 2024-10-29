@@ -20,7 +20,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import { Authenticator } from "@app/lib/auth";
 import { getDocumentsPostDeleteHooksToRun } from "@app/lib/documents_post_process_hooks/hooks";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   enqueueUpsertDocument,
   runPostUpsertHooks,
@@ -297,14 +297,14 @@ async function handler(
     if (auth.isSystemKey()) {
       // We also handle the legacy usage of connectors that taps into connected data sources which
       // are not in the global vault. If this is a system key we trust it and set the vId to the
-      // dataSource.vault.sId.
-      vId = dataSource?.vault.sId;
+      // dataSource.space.sId.
+      vId = dataSource?.space.sId;
     } else {
-      vId = (await VaultResource.fetchWorkspaceGlobalVault(auth)).sId;
+      vId = (await SpaceResource.fetchWorkspaceGlobalSpace(auth)).sId;
     }
   }
 
-  if (!dataSource || dataSource.vault.sId !== vId) {
+  if (!dataSource || dataSource.space.sId !== vId) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

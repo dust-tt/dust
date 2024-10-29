@@ -9,7 +9,7 @@ import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_so
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { VaultResource } from "@app/lib/resources/vault_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 const PatchDataSourceWithoutProviderRequestBodySchema = t.type({
@@ -38,7 +38,7 @@ async function handler(
     });
   }
 
-  const vault = await VaultResource.fetchById(auth, vId);
+  const vault = await SpaceResource.fetchById(auth, vId);
   if (!vault) {
     return apiError(req, res, {
       status_code: 404,
