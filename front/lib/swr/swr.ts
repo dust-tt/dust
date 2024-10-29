@@ -1,4 +1,4 @@
-import { isAPIErrorResponse } from "@dust-tt/types";
+import { isAPIErrorResponse, safeParseJSON } from "@dust-tt/types";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
@@ -122,17 +122,14 @@ const resHandler = async (res: Response) => {
       res.headers,
       errorText
     );
-    if (res.status === 401) {
-      try {
-        const body = JSON.parse(errorText);
-        if (body.error.type === "not_authenticated") {
-          // We are de-authenticated let's redirect to the home page.
-          window.location.href = "/";
-        }
-      } catch (e) {
-        // Do nothing.
+
+    const parseRes = safeParseJSON(errorText);
+    if (parseRes.isOk()) {
+      if (isAPIErrorResponse(parseRes.value)) {
+        throw parseRes.value;
       }
     }
+
     throw new Error(errorText);
   }
   return res.json();
