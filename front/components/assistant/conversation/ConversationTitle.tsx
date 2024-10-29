@@ -166,7 +166,7 @@ export function ConversationTitle({
                 setIsEditingTitle(true);
               }}
               size="sm"
-              variant="ghost"
+              variant="outline"
             />
           )}
         </div>
