@@ -380,7 +380,7 @@ export function AgentMessage({
               code: "unexpected_error",
             }
           }
-          retryHandler={async () => retryHandler(agentMessage)}
+          retryHandler={() => {}}
         />
       );
     }

@@ -90,7 +90,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               isLastMessage={isLastMessage}
               message={message}
               owner={owner}
-              size={isInModal ? "compact" : "normal"}
+              size="compact"
             />
           </div>
         );
@@ -100,12 +100,11 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           <div key={`message-id-${sId}`} ref={ref}>
             <AgentMessage
               conversationId={conversationId}
-              isInModal={isInModal}
               isLastMessage={isLastMessage}
               message={message}
               messageEmoji={messageEmoji}
               owner={owner}
-              size={isInModal ? "compact" : "normal"}
+              size="compact"
             />
           </div>
         );
