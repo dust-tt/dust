@@ -516,9 +516,9 @@ export default function LabsTranscriptsIndex({
       </Dialog>
       <Page>
         <Page.Header
-          title="Transcripts processing"
+          title="Meeting transcripts processing"
           icon={BookOpenIcon}
-          description="Receive meeting minutes summarized by email automatically."
+          description="Receive meeting minutes processed by email automatically and store them in a Dust Folder."
         />
         <Page.Layout direction="vertical">
           <Page.SectionHeader title="Connect your transcripts provider" />

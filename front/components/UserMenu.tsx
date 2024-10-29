@@ -74,7 +74,7 @@ export function UserMenu({
             <DropdownMenu.SectionHeader label="Beta" />
             {featureFlags.includes("labs_transcripts") && (
               <DropdownMenu.Item
-                label="Transcripts processing"
+                label="Meeting transcripts"
                 link={{ href: `/w/${owner.sId}/assistant/labs/transcripts` }}
                 icon={BookOpenIcon}
               />
