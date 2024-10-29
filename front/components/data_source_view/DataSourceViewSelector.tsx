@@ -87,7 +87,10 @@ const getNodesFromConfig = (
 
 interface DataSourceViewsSelectorProps {
   owner: LightWorkspaceType;
-  useCase: "spaceDatasourceManagement" | "assistantBuilder";
+  useCase:
+    | "spaceDatasourceManagement"
+    | "assistantBuilder"
+    | "transcriptsProcessing";
   dataSourceViews: DataSourceViewType[];
   allowedSpaces?: SpaceType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
@@ -223,6 +226,7 @@ export function DataSourceViewsSelector({
                   viewType={viewType}
                   isRootSelectable={isRootSelectable}
                   defaultCollapsed={filteredDSVs.length > 1}
+                  useCase={useCase}
                 />
               ))}
           </Tree.Item>
@@ -241,6 +245,7 @@ export function DataSourceViewsSelector({
               viewType={viewType}
               isRootSelectable={false}
               defaultCollapsed={filteredDSVs.length > 1}
+              useCase={useCase}
             />
           ))}
         {folders.length > 0 && (
@@ -262,11 +267,12 @@ export function DataSourceViewsSelector({
                 viewType={viewType}
                 isRootSelectable={isRootSelectable}
                 defaultCollapsed={filteredDSVs.length > 1}
+                useCase={useCase}
               />
             ))}
           </Tree.Item>
         )}
-        {websites.length > 0 && (
+        {websites.length > 0 && useCase !== "transcriptsProcessing" && (
           <Tree.Item
             key="websites"
             label="Websites"
@@ -285,6 +291,7 @@ export function DataSourceViewsSelector({
                 viewType={viewType}
                 isRootSelectable={isRootSelectable}
                 defaultCollapsed={filteredDSVs.length > 1}
+                useCase={useCase}
               />
             ))}
           </Tree.Item>
@@ -305,6 +312,7 @@ interface DataSourceViewSelectorProps {
   viewType: ContentNodesViewType;
   isRootSelectable: boolean;
   defaultCollapsed?: boolean;
+  useCase?: DataSourceViewsSelectorProps["useCase"];
 }
 
 export function DataSourceViewSelector({
@@ -316,6 +324,7 @@ export function DataSourceViewSelector({
   viewType,
   isRootSelectable,
   defaultCollapsed = true,
+  useCase,
 }: DataSourceViewSelectorProps) {
   const dataSourceView = selectionConfiguration.dataSourceView;
 
@@ -484,19 +493,21 @@ export function DataSourceViewSelector({
           )
         }
       >
-        <ContentNodeTree
-          selectedNodes={selectedNodes}
-          setSelectedNodes={readonly ? undefined : setSelectedNodes}
-          parentIsSelected={selectionConfiguration.isSelectAll}
-          useResourcesHook={useResourcesHook}
-          emptyComponent={
-            viewType === "tables" ? (
-              <Tree.Empty label="No tables" />
-            ) : (
-              <Tree.Empty label="No documents" />
-            )
-          }
-        />
+        {useCase !== "transcriptsProcessing" && (
+          <ContentNodeTree
+            selectedNodes={selectedNodes}
+            setSelectedNodes={readonly ? undefined : setSelectedNodes}
+            parentIsSelected={selectionConfiguration.isSelectAll}
+            useResourcesHook={useResourcesHook}
+            emptyComponent={
+              viewType === "tables" ? (
+                <Tree.Empty label="No tables" />
+              ) : (
+                <Tree.Empty label="No documents" />
+              )
+            }
+          />
+        )}
       </Tree.Item>
     </div>
   );

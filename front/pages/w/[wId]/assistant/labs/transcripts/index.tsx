@@ -1,10 +1,8 @@
 import {
   BookOpenIcon,
   Button,
-  ChevronDownIcon,
   CloudArrowLeftRightIcon,
   Dialog,
-  DropdownMenu,
   Page,
   SliderToggle,
   Spinner,
@@ -12,6 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
+  DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   LabsTranscriptsProviderType,
   LightAgentConfigurationType,
@@ -20,18 +19,20 @@ import type {
 } from "@dust-tt/types";
 import { setupOAuthConnection } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
+import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
+import { useSpaces } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
@@ -41,7 +42,7 @@ const defaultTranscriptConfigurationState = {
   isGongConnected: false,
   assistantSelected: null,
   isActive: false,
-  dataSource: null,
+  dataSourceView: null,
 };
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -53,16 +54,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const subscription = auth.subscription();
   const user = auth.user();
 
-  const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-  const globalDataSourceViews = await DataSourceViewResource.listBySpace(
-    auth,
-    globalVault
-  );
-
-  const dataSourcesViews = globalDataSourceViews
-    .map((dsv) => dsv.toJSON())
-    .filter((dsv) => !dsv.dataSource.connectorId)
-    .sort((a, b) => a.dataSource.name.localeCompare(b.dataSource.name));
+  const dataSourcesViews = (
+    await DataSourceViewResource.listByWorkspace(auth)
+  ).map((dsv) => dsv.toJSON());
 
   if (!owner || !subscription || !user) {
     return {
@@ -93,20 +87,56 @@ export default function LabsTranscriptsIndex({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useSendNotification();
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const {
+    transcriptsConfiguration,
+    isTranscriptsConfigurationLoading,
+    mutateTranscriptsConfiguration,
+  } = useLabsTranscriptsConfiguration({ workspaceId: owner.sId });
   const [isDeleteProviderDialogOpened, setIsDeleteProviderDialogOpened] =
     useState(false);
-
+  const [selectionConfigurations, setSelectionConfigurations] =
+    useState<DataSourceViewSelectionConfigurations>({});
+  const [storeInFolder, setStoreInFolder] = useState(false);
+  const { spaces, isSpacesLoading } = useSpaces({
+    workspaceId: owner.sId,
+  });
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
     agentsGetView: "list",
     sort: "priority",
   });
 
-  const {
-    transcriptsConfiguration,
-    isTranscriptsConfigurationLoading,
-    mutateTranscriptsConfiguration,
-  } = useLabsTranscriptsConfiguration({ workspaceId: owner.sId });
+  const handleSetStoreInFolder: Dispatch<SetStateAction<boolean>> = async (
+    newValue
+  ) => {
+    if (!newValue && transcriptsConfiguration) {
+      await handleSetDataSource(transcriptsConfiguration.id, null);
+    }
+    setStoreInFolder(newValue);
+  };
+
+  const handleSetSelectionConfigurations: Dispatch<
+    SetStateAction<DataSourceViewSelectionConfigurations>
+  > = async (newValue) => {
+    if (!transcriptsConfiguration) {
+      return;
+    }
+
+    const newSelectionConfigurations =
+      typeof newValue === "function"
+        ? newValue(selectionConfigurations)
+        : newValue;
+
+    const keys = Object.keys(newSelectionConfigurations);
+    const lastKey = keys[keys.length - 1];
+
+    setSelectionConfigurations(
+      lastKey ? { [lastKey]: newSelectionConfigurations[lastKey] } : {}
+    );
+    const datasourceView = newSelectionConfigurations[lastKey].dataSourceView;
+
+    await handleSetDataSource(transcriptsConfiguration.id, datasourceView);
+  };
 
   const [transcriptsConfigurationState, setTranscriptsConfigurationState] =
     useState<{
@@ -115,11 +145,26 @@ export default function LabsTranscriptsIndex({
       isGongConnected: boolean;
       assistantSelected: LightAgentConfigurationType | null;
       isActive: boolean;
-      dataSource: DataSourceViewType | null;
+      dataSourceView: DataSourceViewType | null;
     }>(defaultTranscriptConfigurationState);
 
   useEffect(() => {
     if (transcriptsConfiguration) {
+      if (transcriptsConfiguration.dataSourceViewId) {
+        const dataSourceView = dataSourcesViews.find(
+          (ds) => ds.id === transcriptsConfiguration.dataSourceViewId
+        );
+        if (dataSourceView) {
+          setSelectionConfigurations({
+            [dataSourceView.sId]: {
+              dataSourceView,
+              selectedResources: [],
+              isSelectAll: true,
+            },
+          });
+        }
+      }
+      setStoreInFolder(!!transcriptsConfiguration.dataSourceViewId);
       setTranscriptsConfigurationState((prev) => {
         return {
           ...prev,
@@ -132,9 +177,9 @@ export default function LabsTranscriptsIndex({
               (a) => a.sId === transcriptsConfiguration.agentConfigurationId
             ) || null,
           isActive: transcriptsConfiguration.isActive || false,
-          dataSource:
+          dataSourceView:
             dataSourcesViews.find(
-              (ds) => ds.id === transcriptsConfiguration.dataSourceId
+              (ds) => ds.id === transcriptsConfiguration.dataSourceViewId
             ) || null,
         };
       });
@@ -252,26 +297,29 @@ export default function LabsTranscriptsIndex({
 
   const handleSetDataSource = async (
     transcriptConfigurationId: number,
-    dataSource: DataSourceViewType | null
+    dataSourceView: DataSourceViewType | null
   ) => {
     setTranscriptsConfigurationState((prev) => {
       return {
         ...prev,
-        dataSource,
+        dataSourceView,
       };
     });
 
     let successMessage = "The transcripts will not be stored.";
 
-    if (dataSource) {
+    if (dataSourceView) {
       successMessage =
         "The transcripts will be stored in the folder " +
-        dataSource.dataSource.name;
+        dataSourceView.dataSource.name;
+    } else {
+      successMessage = "The transcripts will not be stored.";
     }
+
     await makePatchRequest(
       transcriptConfigurationId,
       {
-        dataSourceId: dataSource ? dataSource.dataSource.sId : null,
+        dataSourceViewId: dataSourceView ? dataSourceView.sId : null,
       },
       successMessage
     );
@@ -473,7 +521,7 @@ export default function LabsTranscriptsIndex({
           description="Receive meeting minutes summarized by email automatically."
         />
         <Page.Layout direction="vertical">
-          <Page.SectionHeader title="1. Connect your transcripts provider" />
+          <Page.SectionHeader title="Connect your transcripts provider" />
           {!transcriptsConfiguration && (
             <Page.Layout direction="horizontal" gap="xl">
               <div
@@ -585,95 +633,94 @@ export default function LabsTranscriptsIndex({
           (transcriptsConfigurationState.isGDriveConnected ||
             transcriptsConfigurationState.isGongConnected) && (
             <>
-              <Page.Layout direction="vertical">
-                <Page.SectionHeader title="2. Choose an assistant" />
-                <Page.Layout direction="vertical">
-                  <Page.P>
-                    Choose the assistant that will process the transcripts the
-                    way you want.
-                  </Page.P>
-                  <Page.Layout direction="horizontal">
-                    <AssistantPicker
-                      owner={owner}
-                      size="sm"
-                      onItemClick={(assistant) =>
-                        handleSelectAssistant(
-                          transcriptsConfiguration.id,
-                          assistant
-                        )
-                      }
-                      assistants={agents}
-                      showFooterButtons={false}
-                    />
-                    {transcriptsConfigurationState.assistantSelected && (
-                      <Page.P>
-                        <strong>
-                          @
-                          {transcriptsConfigurationState.assistantSelected.name}
-                        </strong>
-                      </Page.P>
-                    )}
-                  </Page.Layout>
-                </Page.Layout>
-              </Page.Layout>
-
               {featureFlags.includes("labs_transcripts_datasource") && (
                 <Page.Layout direction="vertical">
-                  <Page.SectionHeader title="3. Store transcripts in Folder" />
+                  <Page.SectionHeader
+                    title="Store transcripts"
+                    description="After each transcribed meeting, store the full transcript in a Dust folder for later use."
+                  />
                   <Page.Layout direction="horizontal" gap="xl">
-                    <Page.P>
-                      Store transcripts in a Folder to keep using them in your
-                      assistants?
-                      <br />
-                      <small>
-                        Warning: this can make your transcripts public within
-                        your workspace.
-                      </small>
-                    </Page.P>
-                    {dataSourcesViews.length > 0 && (
-                      <DropdownMenu>
-                        <DropdownMenu.Button
-                          className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-4 py-2 text-left text-sm font-medium shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                          disabled={!transcriptsConfigurationState.isActive}
-                        >
-                          {transcriptsConfigurationState?.dataSource?.dataSource
-                            .name || "Do not store transcripts"}
-                          <ChevronDownIcon
-                            className="-mr-1 ml-2 h-5 w-5"
-                            aria-hidden="true"
-                          />
-                        </DropdownMenu.Button>
-                        <DropdownMenu.Items origin="topLeft" width={220}>
-                          <DropdownMenu.Item
-                            label="Do not store transcripts"
-                            onClick={() =>
-                              handleSetDataSource(
-                                transcriptsConfiguration.id,
-                                null
-                              )
-                            }
-                          />
-                          {dataSourcesViews.map((dsv) => (
-                            <DropdownMenu.Item
-                              key={dsv.id}
-                              label={dsv.dataSource.name}
-                              onClick={() =>
-                                handleSetDataSource(
-                                  transcriptsConfiguration.id,
-                                  dsv
-                                )
+                    <SliderToggle
+                      selected={storeInFolder}
+                      onClick={() => handleSetStoreInFolder(!storeInFolder)}
+                      disabled={
+                        !transcriptsConfigurationState.assistantSelected
+                      }
+                    />
+                    <Page.P>Enable transcripts storage</Page.P>
+                  </Page.Layout>
+                  <Page.Layout direction="horizontal">
+                    <div className="w-full">
+                      <div className="overflow-x-auto">
+                        {!isSpacesLoading &&
+                          storeInFolder &&
+                          selectionConfigurations && (
+                            <DataSourceViewsSelector
+                              useCase="transcriptsProcessing"
+                              dataSourceViews={dataSourcesViews}
+                              allowedSpaces={spaces}
+                              owner={owner}
+                              selectionConfigurations={selectionConfigurations}
+                              setSelectionConfigurations={
+                                handleSetSelectionConfigurations
                               }
+                              viewType={"documents"}
+                              isRootSelectable={true}
                             />
-                          ))}
-                        </DropdownMenu.Items>
-                      </DropdownMenu>
-                    )}
+                          )}
+                      </div>
+                    </div>
                   </Page.Layout>
                 </Page.Layout>
               )}
 
               <Page.Layout direction="vertical">
-                <Page.SectionHeader title="3. Enable transcripts processing" />
+                <Page.SectionHeader
+                  title="Process transcripts automatically"
+                  description="After each transcribed meeting, Dust will run the assistant you selected and send you the result by email."
+                />
+                <Page.Layout direction="vertical">
+                  <Page.Layout direction="vertical">
+                    <Page.Layout direction="horizontal">
+                      <AssistantPicker
+                        owner={owner}
+                        size="sm"
+                        onItemClick={(assistant) =>
+                          handleSelectAssistant(
+                            transcriptsConfiguration.id,
+                            assistant
+                          )
+                        }
+                        assistants={agents}
+                        showFooterButtons={false}
+                      />
+                      {transcriptsConfigurationState.assistantSelected && (
+                        <div className="mt-2">
+                          <Page.P>
+                            <strong>
+                              @
+                              {
+                                transcriptsConfigurationState.assistantSelected
+                                  .name
+                              }
+                            </strong>
+                          </Page.P>
+                        </div>
+                      )}
+                      <div className="mt-2">
+                        <Page.P>
+                          The assistant that will process the transcripts
+                          received from{" "}
+                          {transcriptsConfigurationState.provider
+                            .charAt(0)
+                            .toUpperCase() +
+                            transcriptsConfigurationState.provider.slice(1)}
+                          .
+                        </Page.P>
+                      </div>
+                    </Page.Layout>
+                  </Page.Layout>
+                </Page.Layout>
                 <Page.Layout direction="horizontal" gap="xl">
                   <SliderToggle
                     selected={transcriptsConfigurationState.isActive}
@@ -685,13 +732,7 @@ export default function LabsTranscriptsIndex({
                     }
                     disabled={!transcriptsConfigurationState.assistantSelected}
                   />
-                  <Page.P>
-                    When enabled, each new meeting transcript in 'My Drive' will
-                    be processed.
-                    <br />
-                    Summaries can take up to 30 minutes to be sent after
-                    meetings end.
-                  </Page.P>
+                  <Page.P>Enable transcripts email processing</Page.P>
                 </Page.Layout>
               </Page.Layout>
             </>
