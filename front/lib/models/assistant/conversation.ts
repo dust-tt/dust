@@ -151,6 +151,10 @@ ConversationParticipant.init(
         fields: ["conversationId"],
         concurrently: true,
       },
+      {
+        fields: ["userId", "action"],
+        concurrently: true,
+      },
     ],
   }
 );
