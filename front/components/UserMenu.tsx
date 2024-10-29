@@ -10,6 +10,7 @@ import {
 import { useSendNotification } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@dust-tt/types";
+import { DocumentMagnifyingGlassIcon } from "@heroicons/react/20/solid";
 import { useMemo } from "react";
 
 import { canForceUserRole, forceUserRole } from "@app/lib/development";
@@ -24,9 +25,10 @@ export function UserMenu({
 }) {
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
-  const hasBetaAccess = featureFlags.some((flag: string) =>
-    flag.startsWith("labs_")
+  const hasBetaAccess = featureFlags.some(
+    (flag: string) => flag.startsWith("labs_") || flag === "document_tracker"
   );
+
   const sendNotification = useSendNotification();
 
   const forceRoleUpdate = useMemo(
@@ -77,6 +79,13 @@ export function UserMenu({
                 label="Meeting transcripts"
                 link={{ href: `/w/${owner.sId}/assistant/labs/transcripts` }}
                 icon={BookOpenIcon}
+              />
+            )}
+            {featureFlags?.includes("document_tracker") && (
+              <DropdownMenu.Item
+                label="Document tracker"
+                link={{ href: `/w/${owner.sId}/assistant/dust-tracker` }}
+                icon={DocumentMagnifyingGlassIcon}
               />
             )}
           </>
