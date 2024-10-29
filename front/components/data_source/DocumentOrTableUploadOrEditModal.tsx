@@ -523,7 +523,7 @@ const TableUploadOrEditModal = ({
         timestamp: null,
         tags: [],
         parents: [],
-        truncate: false,
+        truncate: true,
         async: false,
         useAppForHeaderDetection,
       });
