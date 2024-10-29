@@ -1,12 +1,9 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import {
-  Button,
-  Icon,
-  LinkWrapper,
-  LinkWrapperProps,
-} from "@sparkle/components/";
+import { Button } from "@sparkle/components/Button";
+import { Icon } from "@sparkle/components/Icon";
+import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { MoreIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 

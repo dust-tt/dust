@@ -2,9 +2,9 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 
 import { Button } from "@sparkle/components/Button";
+import { useCopyToClipboard } from "@sparkle/hooks";
 import { ClipboardCheckIcon, ClipboardIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
-import { useCopyToClipboard } from "@sparkle/lib/utils";
 
 const textColor = "s-text-element-900";
 const paragraphSize = "s-text-base";
@@ -116,10 +116,11 @@ export function Markdown({
         hr: () => <div className="s-my-6 s-border-b s-border-structure-200" />,
         blockquote: ({ children }) => {
           const [isCopied, copyToClipboard] = useCopyToClipboard();
+          const elementAt1 = React.Children.toArray(children)[1];
 
           const childrenContent =
-            Array.isArray(children) && children[1]
-              ? children[1].props.children
+            elementAt1 && React.isValidElement(elementAt1)
+              ? elementAt1.props.children
               : null;
 
           const handleCopy = async () => {

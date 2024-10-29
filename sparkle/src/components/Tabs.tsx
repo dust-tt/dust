@@ -1,7 +1,8 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import * as React from "react";
 
-import { Button, LinkWrapper, LinkWrapperProps } from "@sparkle/components";
+import { Button } from "@sparkle/components/Button";
+import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { cn } from "@sparkle/lib/utils";
 
 const Tabs = TabsPrimitive.Root;

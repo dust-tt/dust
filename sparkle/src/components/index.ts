@@ -12,7 +12,7 @@ export {
   CheckBoxWithTextAndDescription,
 } from "./Checkbox";
 export { Chip } from "./Chip";
-export { Citation } from "./Citation";
+export * from "./Citation";
 export { default as CollapseButton } from "./CollapseButton";
 export { Collapsible } from "./Collapsible";
 export { ColorPicker } from "./ColorPicker";
@@ -45,6 +45,7 @@ export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
 export { Markdown } from "./Markdown";
+export * from "./message_markdown";
 export { Modal } from "./Modal";
 export {
   NavigationList,
