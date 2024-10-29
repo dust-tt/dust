@@ -42,7 +42,7 @@ pub struct PostgresDatabasesStore {
 impl PostgresDatabasesStore {
     pub async fn new(db_uri: &str) -> Result<Self> {
         let manager = PostgresConnectionManager::new_from_stringlike(db_uri, NoTls)?;
-        let pool = Pool::builder().max_size(16).build(manager).await?;
+        let pool = Pool::builder().max_size(128).build(manager).await?;
         Ok(Self { pool })
     }
 }
