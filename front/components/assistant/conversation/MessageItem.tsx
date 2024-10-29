@@ -153,6 +153,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               message={message}
               messageEmoji={messageEmoji}
               owner={owner}
+              user={user}
               size={isInModal ? "compact" : "normal"}
             />
           </div>
