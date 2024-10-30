@@ -7,6 +7,7 @@ import {
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import {
+  ZendeskArticleResource,
   ZendeskBrandResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
@@ -105,6 +106,14 @@ export async function revokeSyncZendeskHelpCenter({
   }
 
   await brand.revokeHelpCenterPermissions();
+  await ZendeskCategoryResource.revokePermissionsForBrand({
+    connectorId,
+    brandId,
+  });
+  await ZendeskArticleResource.revokePermissionsForBrand({
+    connectorId,
+    brandId,
+  });
   return brand;
 }
 

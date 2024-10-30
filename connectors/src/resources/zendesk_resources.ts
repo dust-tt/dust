@@ -127,16 +127,14 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     blob: CreationAttributes<ZendeskBrand>;
     transaction?: Transaction;
   }): Promise<ZendeskBrandResource> {
-    let brand;
-    if (transaction) {
-      brand = await ZendeskBrand.create({ ...blob }, { transaction });
-    } else {
-      brand = await ZendeskBrand.create({ ...blob });
-    }
+    const brand = await ZendeskBrand.create(
+      { ...blob },
+      transaction && { transaction }
+    );
     return new this(this.model, brand.get());
   }
 
-  async revokePermissions(): Promise<void> {
+  async revokeAllPermissions(): Promise<void> {
     await this.revokeHelpCenterPermissions();
     await this.revokeTicketsPermissions();
   }
@@ -145,24 +143,12 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     if (this.helpCenterPermission === "read") {
       await this.update({ helpCenterPermission: "none" });
     }
-    await ZendeskCategory.update(
-      { permission: "none" },
-      { where: { brandId: this.brandId } }
-    );
-    await ZendeskArticle.update(
-      { permission: "none" },
-      { where: { brandId: this.brandId } }
-    );
   }
 
   async revokeTicketsPermissions(): Promise<void> {
     if (this.ticketsPermission === "read") {
       await this.update({ ticketsPermission: "none" });
     }
-    await ZendeskTicket.update(
-      { permission: "none" },
-      { where: { brandId: this.brandId } }
-    );
   }
 
   static async fetchByBrandId({
@@ -206,68 +192,6 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => new this(this.model, brand.get()));
   }
 
-  static async fetchReadOnlyTickets({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }): Promise<ZendeskTicketResource[]> {
-    const tickets = await ZendeskTicket.findAll({
-      where: { connectorId, brandId, permission: "read" },
-    });
-    return tickets.map(
-      (ticket) => new ZendeskTicketResource(ZendeskTicket, ticket)
-    );
-  }
-
-  static async fetchAllTickets({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }): Promise<ZendeskTicketResource[]> {
-    const tickets = await ZendeskTicket.findAll({
-      where: { connectorId, brandId },
-    });
-    return tickets.map(
-      (ticket) => new ZendeskTicketResource(ZendeskTicket, ticket)
-    );
-  }
-
-  static async fetchReadOnlyCategories({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }): Promise<ZendeskCategoryResource[]> {
-    const categories = await ZendeskCategory.findAll({
-      where: { connectorId, brandId, permission: "read" },
-    });
-    return categories.map(
-      (category) =>
-        category && new ZendeskCategoryResource(ZendeskCategory, category)
-    );
-  }
-
-  static async fetchAllCategories({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }): Promise<ZendeskCategoryResource[]> {
-    const categories = await ZendeskCategory.findAll({
-      where: { connectorId, brandId },
-    });
-    return categories.map(
-      (category) =>
-        category && new ZendeskCategoryResource(ZendeskCategory, category)
-    );
-  }
-
   static async fetchBrandsWithHelpCenter({
     connectorId,
   }: {
@@ -275,7 +199,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }): Promise<ZendeskBrandResource[]> {
     const brands = await ZendeskBrand.findAll({
       where: {
-        connectorId: connectorId,
+        connectorId,
         helpCenterPermission: "read",
         hasHelpCenter: true,
       },
@@ -360,12 +284,10 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     blob: CreationAttributes<ZendeskCategory>;
     transaction?: Transaction;
   }): Promise<ZendeskCategoryResource> {
-    let category;
-    if (transaction) {
-      category = await ZendeskCategory.create({ ...blob }, { transaction });
-    } else {
-      category = await ZendeskCategory.create({ ...blob });
-    }
+    const category = await ZendeskCategory.create(
+      { ...blob },
+      transaction && { transaction }
+    );
     return new this(this.model, category.get());
   }
 
@@ -425,6 +347,38 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     );
   }
 
+  static async fetchByBrandId({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskCategoryResource[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, brandId },
+    });
+    return categories.map(
+      (category) =>
+        category && new ZendeskCategoryResource(ZendeskCategory, category)
+    );
+  }
+
+  static async fetchByBrandIdReadOnly({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskCategoryResource[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, brandId, permission: "read" },
+    });
+    return categories.map(
+      (category) =>
+        category && new ZendeskCategoryResource(ZendeskCategory, category)
+    );
+  }
+
   static async fetchAllReadOnly({
     connectorId,
   }: {
@@ -436,33 +390,16 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map((category) => new this(this.model, category.get()));
   }
 
-  static async fetchReadOnlyArticles({
+  static async revokePermissionsForBrand({
     connectorId,
-    categoryId,
+    brandId,
   }: {
     connectorId: number;
-    categoryId: number;
-  }): Promise<ZendeskArticleResource[]> {
-    const articles = await ZendeskArticle.findAll({
-      where: { connectorId, categoryId, permission: "read" },
-    });
-    return articles.map(
-      (article) => new ZendeskArticleResource(ZendeskArticle, article)
-    );
-  }
-
-  static async fetchAllArticles({
-    connectorId,
-    categoryId,
-  }: {
-    connectorId: number;
-    categoryId: number;
-  }): Promise<ZendeskArticleResource[]> {
-    const articles = await ZendeskArticle.findAll({
-      where: { connectorId, categoryId },
-    });
-    return articles.map(
-      (article) => new ZendeskArticleResource(ZendeskArticle, article)
+    brandId: number;
+  }) {
+    await ZendeskCategory.update(
+      { permission: "none" },
+      { where: { connectorId, brandId } }
     );
   }
 
@@ -559,6 +496,49 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     });
     return ticket && new this(this.model, ticket.get());
   }
+
+  static async fetchByBrandIdReadOnly({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskTicketResource[]> {
+    const tickets = await ZendeskTicket.findAll({
+      where: { connectorId, brandId, permission: "read" },
+    });
+    return tickets.map(
+      (ticket) => new ZendeskTicketResource(ZendeskTicket, ticket)
+    );
+  }
+
+  static async fetchByBrandId({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskTicketResource[]> {
+    const tickets = await ZendeskTicket.findAll({
+      where: { connectorId, brandId },
+    });
+    return tickets.map(
+      (ticket) => new ZendeskTicketResource(ZendeskTicket, ticket)
+    );
+  }
+
+  static async revokePermissionsForBrand({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<void> {
+    await ZendeskTicket.update(
+      { permission: "none" },
+      { where: { connectorId, brandId } }
+    );
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -632,5 +612,48 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
       where: { connectorId, articleId },
     });
     return article && new this(this.model, article.get());
+  }
+
+  static async fetchByCategoryId({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }): Promise<ZendeskArticleResource[]> {
+    const articles = await ZendeskArticle.findAll({
+      where: { connectorId, categoryId },
+    });
+    return articles.map(
+      (article) => new ZendeskArticleResource(ZendeskArticle, article)
+    );
+  }
+
+  static async fetchByCategoryIdReadOnly({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }): Promise<ZendeskArticleResource[]> {
+    const articles = await ZendeskArticle.findAll({
+      where: { connectorId, categoryId, permission: "read" },
+    });
+    return articles.map(
+      (article) => new ZendeskArticleResource(ZendeskArticle, article)
+    );
+  }
+
+  static async revokePermissionsForBrand({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }) {
+    await ZendeskArticle.update(
+      { permission: "none" },
+      { where: { connectorId, brandId } }
+    );
   }
 }

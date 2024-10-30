@@ -13,11 +13,12 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
 import {
+  ZendeskArticleResource,
   ZendeskBrandResource,
   ZendeskCategoryResource,
   ZendeskConfigurationResource,
+  ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -126,7 +127,7 @@ export async function syncZendeskBrandActivity({
   }
 
   const categoriesWithReadPermissions =
-    await ZendeskBrandResource.fetchReadOnlyCategories({
+    await ZendeskCategoryResource.fetchByBrandIdReadOnly({
       connectorId,
       brandId,
     });
@@ -323,11 +324,11 @@ async function deleteBrandWithChildren({
   brandInDb: ZendeskBrandResource;
   dataSourceConfig: DataSourceConfig;
 }) {
-  const categories = await ZendeskBrandResource.fetchAllCategories({
+  const categories = await ZendeskCategoryResource.fetchByBrandId({
     connectorId: brandInDb.connectorId,
     brandId: brandInDb.brandId,
   });
-  const tickets = await ZendeskBrandResource.fetchAllTickets({
+  const tickets = await ZendeskTicketResource.fetchByBrandId({
     connectorId: brandInDb.connectorId,
     brandId: brandInDb.brandId,
   });
@@ -352,7 +353,7 @@ async function deleteCategoryWithChildren({
   categoryInDb: ZendeskCategoryResource;
   dataSourceConfig: DataSourceConfig;
 }) {
-  const articles = await ZendeskCategoryResource.fetchAllArticles({
+  const articles = await ZendeskArticleResource.fetchByCategoryId({
     connectorId: categoryInDb.connectorId,
     categoryId: categoryInDb.brandId,
   });
