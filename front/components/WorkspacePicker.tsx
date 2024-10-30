@@ -10,36 +10,40 @@ import type {
   UserTypeWithWorkspaces,
 } from "@dust-tt/types";
 
+interface WorkspacePickerProps {
+  onWorkspaceUpdate: (w: LightWorkspaceType) => void;
+  user: UserTypeWithWorkspaces;
+  workspace: LightWorkspaceType;
+}
+
 export default function WorkspacePicker({
+  onWorkspaceUpdate,
   user,
   workspace,
-  onWorkspaceUpdate,
-}: {
-  user: UserTypeWithWorkspaces;
-  workspace: LightWorkspaceType | null;
-  readOnly: boolean;
-  onWorkspaceUpdate: (w: LightWorkspaceType) => void;
-}) {
+}: WorkspacePickerProps) {
   return (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger asChild>
-        <Button
-          label={workspace ? workspace.name : "Select workspace"}
-          variant="ghost"
-        />
-      </NewDropdownMenuTrigger>
+    <div className="flex flex-row items-center gap-2">
+      <p className="text-sm text-slate-500">Workspace:</p>
+      <NewDropdownMenu>
+        <NewDropdownMenuTrigger asChild>
+          <Button
+            label={workspace ? workspace.name : "Select workspace"}
+            variant="ghost"
+          />
+        </NewDropdownMenuTrigger>
 
-      <NewDropdownMenuContent>
-        {user.workspaces.map((w) => {
-          return (
-            <NewDropdownMenuItem
-              key={w.sId}
-              onClick={() => void onWorkspaceUpdate(w)}
-              label={w.name}
-            />
-          );
-        })}
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+        <NewDropdownMenuContent>
+          {user.workspaces.map((w) => {
+            return (
+              <NewDropdownMenuItem
+                key={w.sId}
+                onClick={() => void onWorkspaceUpdate(w)}
+                label={w.name}
+              />
+            );
+          })}
+        </NewDropdownMenuContent>
+      </NewDropdownMenu>
+    </div>
   );
 }
