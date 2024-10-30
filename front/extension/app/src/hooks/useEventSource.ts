@@ -1,5 +1,4 @@
 import { getAccessToken } from "@app/extension/app/src/lib/storage";
-import { COMMIT_HASH } from "@app/lib/commit-hash";
 import { useCallback, useEffect, useRef, useState } from "react";
 const RECONNECT_DELAY = 5000; // 5 seconds.
 import { EventSourcePolyfill } from "event-source-polyfill";
@@ -40,7 +39,6 @@ const stableEventSourceManager = {
     // EventSource does not support custom headers
     // so we append the commit hash as a query parameter.
     const urlWithCommitHash = new URL(url, document.baseURI);
-    urlWithCommitHash.searchParams.append("commitHash", COMMIT_HASH);
 
     // Extract everything except the origin.
     const pathWithQueryAndHash =
