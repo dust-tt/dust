@@ -6,7 +6,6 @@ import type {
   Result,
 } from "@dust-tt/types";
 import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
-import { Auth } from "googleapis";
 import type {
   Attributes,
   CreationAttributes,

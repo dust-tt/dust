@@ -118,7 +118,7 @@ async function handler(
         vault.canWrite(auth) ||
         // Only allow to delete Snowflake connectors if the user is an admin.
         (vault.isSystem() &&
-          auth.isAdmin() &&
+          vault.canAdministrate(auth) &&
           dataSource.connectorProvider === "snowflake");
 
       if (!isAuthorized) {

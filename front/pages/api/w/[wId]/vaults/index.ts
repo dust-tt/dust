@@ -76,13 +76,12 @@ async function handler(
       });
 
     case "POST":
-      if (!auth.isAdmin() || !auth.isBuilder()) {
+      if (!auth.isAdmin()) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
-            message:
-              "Only users that are `admins` or `builder` can administrate spaces.",
+            message: "Only users that are `admins` can administrate spaces.",
           },
         });
       }
