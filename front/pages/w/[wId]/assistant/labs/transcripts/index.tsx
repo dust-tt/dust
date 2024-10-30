@@ -33,7 +33,6 @@ import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/la
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
 const defaultTranscriptConfigurationState = {
@@ -86,7 +85,6 @@ export default function LabsTranscriptsIndex({
   dataSourcesViews,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const sendNotification = useSendNotification();
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const {
     transcriptsConfiguration,
     isTranscriptsConfigurationLoading,
@@ -635,43 +633,41 @@ export default function LabsTranscriptsIndex({
           (transcriptsConfigurationState.isGDriveConnected ||
             transcriptsConfigurationState.isGongConnected) && (
             <>
-              {featureFlags.includes("labs_transcripts_datasource") && (
-                <Page.Layout direction="vertical">
-                  <Page.SectionHeader
-                    title="Store transcripts"
-                    description="After each transcribed meeting, store the full transcript in a Dust folder for later use."
+              <Page.Layout direction="vertical">
+                <Page.SectionHeader
+                  title="Store transcripts"
+                  description="After each transcribed meeting, store the full transcript in a Dust folder for later use."
+                />
+                <Page.Layout direction="horizontal" gap="xl">
+                  <SliderToggle
+                    selected={storeInFolder}
+                    onClick={() => handleSetStoreInFolder(!storeInFolder)}
                   />
-                  <Page.Layout direction="horizontal" gap="xl">
-                    <SliderToggle
-                      selected={storeInFolder}
-                      onClick={() => handleSetStoreInFolder(!storeInFolder)}
-                    />
-                    <Page.P>Enable transcripts storage</Page.P>
-                  </Page.Layout>
-                  <Page.Layout direction="horizontal">
-                    <div className="w-full">
-                      <div className="overflow-x-auto">
-                        {!isSpacesLoading &&
-                          storeInFolder &&
-                          selectionConfigurations && (
-                            <DataSourceViewsSelector
-                              useCase="transcriptsProcessing"
-                              dataSourceViews={dataSourcesViews}
-                              allowedSpaces={spaces}
-                              owner={owner}
-                              selectionConfigurations={selectionConfigurations}
-                              setSelectionConfigurations={
-                                handleSetSelectionConfigurations
-                              }
-                              viewType={"documents"}
-                              isRootSelectable={true}
-                            />
-                          )}
-                      </div>
-                    </div>
-                  </Page.Layout>
+                  <Page.P>Enable transcripts storage</Page.P>
                 </Page.Layout>
-              )}
+                <Page.Layout direction="horizontal">
+                  <div className="w-full">
+                    <div className="overflow-x-auto">
+                      {!isSpacesLoading &&
+                        storeInFolder &&
+                        selectionConfigurations && (
+                          <DataSourceViewsSelector
+                            useCase="transcriptsProcessing"
+                            dataSourceViews={dataSourcesViews}
+                            allowedSpaces={spaces}
+                            owner={owner}
+                            selectionConfigurations={selectionConfigurations}
+                            setSelectionConfigurations={
+                              handleSetSelectionConfigurations
+                            }
+                            viewType={"documents"}
+                            isRootSelectable={true}
+                          />
+                        )}
+                    </div>
+                  </div>
+                </Page.Layout>
+              </Page.Layout>
 
               <Page.Layout direction="vertical">
                 <Page.SectionHeader
