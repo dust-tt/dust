@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { ExtendedMarkdown } from "../index_with_tw_base";
+import {
+  CitationsContext,
+  CiteBlock,
+  citeDirective,
+  ExtendedMarkdown,
+} from "../index_with_tw_base";
 
 const meta: Meta<typeof ExtendedMarkdown> = {
   title: "Components/ExtendedMarkdown",
@@ -9,7 +14,20 @@ const meta: Meta<typeof ExtendedMarkdown> = {
   decorators: [
     (Story) => (
       <div className="s-flex s-flex-col s-bg-structure-50 s-p-8">
-        <Story />
+        <CitationsContext.Provider
+          value={{
+            references: {
+              xx: {
+                title: "test",
+                type: "snowflake",
+              },
+            },
+            updateActiveReferences: () => {},
+            setHoveredReference: () => {},
+          }}
+        >
+          <Story />
+        </CitationsContext.Provider>
       </div>
     ),
   ],
@@ -164,15 +182,7 @@ export const ExtendedMarkdownStory: Story = {
     content: example,
     textSize: "base",
     textColor: "s-text-element-800",
-    citationsContext: {
-      references: {
-        xx: {
-          title: "test",
-          type: "snowflake",
-        },
-      },
-      updateActiveReferences: () => {},
-      setHoveredReference: () => {},
-    },
+    additionalMarkdownComponents: { sup: CiteBlock },
+    additionalMarkdownPlugins: [citeDirective()],
   },
 };

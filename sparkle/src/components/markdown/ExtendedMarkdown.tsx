@@ -11,12 +11,6 @@ import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 
 import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
-import {
-  CitationsContext,
-  CitationsContextType,
-  CiteBlock,
-  citeDirective,
-} from "@sparkle/components/markdown/CiteBlock";
 import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
 import {
   ContentBlockWrapper,
@@ -110,7 +104,6 @@ export type CustomRenderers = {
 export function ExtendedMarkdown({
   content,
   isStreaming = false,
-  citationsContext,
   textSize = "base",
   textColor = "s-text-element-800",
   isLastMessage = false,
@@ -119,7 +112,6 @@ export function ExtendedMarkdown({
 }: {
   content: string;
   isStreaming?: boolean;
-  citationsContext?: CitationsContextType;
   textSize?: TextSize;
   textColor?: string;
   isLastMessage?: boolean;
@@ -167,7 +159,6 @@ export function ExtendedMarkdown({
           {children}
         </ParagraphBlock>
       ),
-      sup: CiteBlock,
       table: TableBlock,
       thead: TableHeadBlock,
       tbody: TableBodyBlock,
@@ -256,7 +247,6 @@ export function ExtendedMarkdown({
     () => [
       remarkDirective,
       mentionDirective,
-      citeDirective(),
       remarkGfm,
       [remarkMath, { singleDollarTextMath: false }],
       ...(additionalMarkdownPlugins || []),
@@ -271,32 +261,22 @@ export function ExtendedMarkdown({
     <div
       className={classNames("s-w-full", isStreaming ? "s-blinking-cursor" : "")}
     >
-      <CitationsContext.Provider
-        value={
-          citationsContext || {
-            references: {},
-            updateActiveReferences: () => null,
-            setHoveredReference: () => null,
-          }
-        }
+      <MarkdownContentContext.Provider
+        value={{
+          content: processedContent,
+          isStreaming,
+          isLastMessage,
+        }}
       >
-        <MarkdownContentContext.Provider
-          value={{
-            content: processedContent,
-            isStreaming,
-            isLastMessage,
-          }}
+        <ReactMarkdown
+          linkTarget="_blank"
+          components={markdownComponents}
+          remarkPlugins={markdownPlugins}
+          rehypePlugins={rehypePlugins}
         >
-          <ReactMarkdown
-            linkTarget="_blank"
-            components={markdownComponents}
-            remarkPlugins={markdownPlugins}
-            rehypePlugins={rehypePlugins}
-          >
-            {processedContent}
-          </ReactMarkdown>
-        </MarkdownContentContext.Provider>
-      </CitationsContext.Provider>
+          {processedContent}
+        </ReactMarkdown>
+      </MarkdownContentContext.Provider>
     </div>
   );
 }
