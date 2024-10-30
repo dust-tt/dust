@@ -19,7 +19,7 @@ const contentTypeExtensions: Record<SupportedContentType, string> = {
 export interface ContentToDownload {
   content: string;
   filename: string;
-  type: "text/csv" | "application/json";
+  type: SupportedContentType;
 }
 
 export type GetContentToDownloadFunction = () => Promise<ContentToDownload>;
