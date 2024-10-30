@@ -357,7 +357,7 @@ const RenderConversations = ({
           <Checkbox
             className="bg-white"
             checked={selectedConversations.includes(conversation)}
-            onChange={() => toggleConversationSelection(conversation)}
+            onCheckedChange={() => toggleConversationSelection(conversation)}
           />
           <span className="ml-2 text-sm text-muted-foreground">
             {conversationLabel}
