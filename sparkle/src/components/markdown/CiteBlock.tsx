@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import { visit } from "unist-util-visit";
 
-import { MarkdownCitation } from "@sparkle/components/message_markdown/MarkdownCitation";
+import { MarkdownCitation } from "@sparkle/components/markdown/MarkdownCitation";
 
 export type CitationsContextType = {
   references: {

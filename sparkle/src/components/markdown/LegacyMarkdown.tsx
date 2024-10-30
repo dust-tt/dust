@@ -21,7 +21,7 @@ const headingSize = {
   },
 };
 
-export function Markdown({
+export function LegacyMarkdown({
   content,
   size = "sm",
   className = "",

@@ -2,8 +2,8 @@ import mermaid from "mermaid";
 import React, { useContext, useEffect, useRef, useState } from "react";
 
 import { IconButton } from "@sparkle/components/IconButton";
-import { CodeBlock } from "@sparkle/components/message_markdown/CodeBlock";
-import { MarkdownContentContext } from "@sparkle/components/message_markdown/MarkdownContentContext";
+import { CodeBlock } from "@sparkle/components/markdown/CodeBlock";
+import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { SparklesIcon, WrenchIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
 

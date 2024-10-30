@@ -44,8 +44,7 @@ export { Item } from "./Item";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
-export { Markdown } from "./Markdown";
-export * from "./message_markdown";
+export * from "./markdown";
 export { Modal } from "./Modal";
 export {
   NavigationList,

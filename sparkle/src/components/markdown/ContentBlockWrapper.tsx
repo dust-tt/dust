@@ -2,7 +2,7 @@ import { useCallback, useContext } from "react";
 import React from "react";
 
 import { IconButton } from "@sparkle/components/IconButton";
-import { MarkdownContentContext } from "@sparkle/components/message_markdown/MarkdownContentContext";
+import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
   ArrowDownOnSquareIcon,
