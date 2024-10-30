@@ -9,17 +9,16 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
-import { syncZendeskTicketsActivity } from "@connectors/connectors/zendesk/temporal/activities";
 import { INTERVAL_BETWEEN_SYNCS_MS } from "@connectors/connectors/zendesk/temporal/config";
 import type { ZendeskUpdateSignal } from "@connectors/connectors/zendesk/temporal/signals";
-
-import { zendeskUpdatesSignal } from "./signals";
+import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
 
 const {
   getZendeskCategoriesActivity,
   syncZendeskBrandActivity,
   syncZendeskCategoryActivity,
   syncZendeskArticlesActivity,
+  syncZendeskTicketsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
