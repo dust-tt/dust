@@ -206,7 +206,7 @@ function PropertiesFields({
 
                 <div className="col-span-2">
                   <DropdownMenu>
-                    <DropdownMenu.Button tooltipPosition="top">
+                    <DropdownMenu.Button>
                       <Button
                         isSelect
                         label={prop["type"]}
@@ -563,7 +563,7 @@ export function ActionProcess({
           }}
         />
         <DropdownMenu>
-          <DropdownMenu.Button tooltipPosition="top">
+          <DropdownMenu.Button>
             <Button
               isSelect
               label={
