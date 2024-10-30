@@ -3,23 +3,21 @@ import React from "react";
 import { SparkleContext } from "@sparkle/context";
 
 export interface LinkWrapperProps {
+  children: React.ReactNode;
   href?: string;
-  target?: string;
   rel?: string;
   replace?: boolean;
   shallow?: boolean;
-  className?: string;
-  children: React.ReactNode;
+  target?: string;
 }
 
 export function LinkWrapper({
+  children,
   href,
-  target,
   rel,
   replace,
   shallow,
-  className,
-  children,
+  target,
 }: LinkWrapperProps) {
   const { components } = React.useContext(SparkleContext);
 
@@ -31,12 +29,11 @@ export function LinkWrapper({
         rel={rel}
         replace={replace}
         shallow={shallow}
-        className={className}
       >
         {children}
       </components.link>
     );
   }
 
-  return <>{children}</>;
+  return children;
 }

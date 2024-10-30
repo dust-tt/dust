@@ -182,7 +182,6 @@ export function ConversationTitle({
               {onDelete && (
                 <Button
                   size="sm"
-                  tooltipPosition="bottom"
                   variant="ghost"
                   tooltip="Delete Conversation"
                   icon={TrashIcon}
@@ -191,8 +190,9 @@ export function ConversationTitle({
               )}
             </div>
             <Popover
+              popoverTriggerAsChild
               trigger={
-                <>
+                <div>
                   <div className="hidden sm:flex">
                     <Button
                       size="sm"
@@ -209,7 +209,7 @@ export function ConversationTitle({
                       variant="ghost"
                     />
                   </div>
-                </>
+                </div>
               }
               content={
                 <div className="flex flex-col gap-y-4 py-4">

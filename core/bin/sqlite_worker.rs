@@ -65,6 +65,7 @@ struct WorkerState {
 
     registry: Arc<Mutex<HashMap<String, DatabaseEntry>>>,
     is_shutting_down: Arc<AtomicBool>,
+    first_heartbeat_success: Arc<AtomicBool>,
 }
 
 impl WorkerState {
@@ -75,6 +76,7 @@ impl WorkerState {
             // TODO: store an instant of the last access for each DB.
             registry: Arc::new(Mutex::new(HashMap::new())),
             is_shutting_down: Arc::new(AtomicBool::new(false)),
+            first_heartbeat_success: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -110,7 +112,13 @@ impl WorkerState {
     }
 
     async fn heartbeat(&self) -> Result<()> {
-        self._core_request("POST").await
+        match self._core_request("POST").await {
+            Ok(response) => {
+                self.first_heartbeat_success.store(true, Ordering::SeqCst);
+                Ok(response)
+            }
+            Err(e) => Err(e),
+        }
     }
 
     async fn shutdown(&self) -> Result<()> {
@@ -159,8 +167,12 @@ impl WorkerState {
 
 /// Index
 
-async fn index() -> &'static str {
-    "sqlite_worker server ready"
+async fn index(State(state): State<Arc<WorkerState>>) -> Result<&'static str, StatusCode> {
+    if state.first_heartbeat_success.load(Ordering::SeqCst) {
+        Ok("sqlite_worker server ready")
+    } else {
+        Err(StatusCode::SERVICE_UNAVAILABLE)
+    }
 }
 
 // Databases
@@ -323,7 +335,9 @@ fn main() {
             )
             .with_state(state.clone());
 
-        let health_check_router = Router::new().route("/", get(index));
+        let health_check_router = Router::new()
+            .route("/", get(index))
+            .with_state(state.clone());
 
         let app = Router::new().merge(router).merge(health_check_router);
 

@@ -1,6 +1,6 @@
 import { useAuth } from "@app/extension/app/src/components/auth/AuthProvider";
 import { ConversationContainer } from "@app/extension/app/src/components/conversation/ConversationContainer";
-import { Page, Spinner } from "@dust-tt/sparkle";
+import { Button, HistoryIcon, Page, Spinner } from "@dust-tt/sparkle";
 import { useNavigate } from "react-router-dom";
 
 export const MainPage = () => {
@@ -33,7 +33,15 @@ export const MainPage = () => {
 
   return (
     <div className="h-full w-full pt-4">
-      <Page.SectionHeader title="Conversation" />
+      <div className="flex items-center justify-between pb-2">
+        <Page.SectionHeader title="Conversation" />
+        <Button
+          icon={HistoryIcon}
+          variant="outline"
+          onClick={() => navigate("/conversations")}
+          size="xs"
+        />
+      </div>
       <ConversationContainer owner={workspace} conversationId={null} />
     </div>
   );

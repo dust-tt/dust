@@ -3,6 +3,7 @@ import mermaid from "mermaid";
 import React, { useContext, useEffect, useRef, useState } from "react";
 
 import { CodeBlock } from "@app/components/assistant/markdown/CodeBlock";
+import { ContentBlockWrapperContext } from "@app/components/assistant/markdown/ContentBlockWrapper";
 import { MarkdownContentContext } from "@app/components/assistant/markdown/MarkdownContentContext";
 import { classNames } from "@app/lib/utils";
 
@@ -33,9 +34,9 @@ export function CodeBlockWithExtendedSupport({
 
   const [showMermaid, setShowMermaid] = useState<boolean>(false);
   const [isValidMermaid, setIsValidMermaid] = useState<boolean>(false);
-  const { isStreaming, isDarkMode, setIsDarkMode } = useContext(
-    MarkdownContentContext
-  );
+
+  const { isStreaming } = useContext(MarkdownContentContext);
+  const { isDarkMode, setIsDarkMode } = useContext(ContentBlockWrapperContext);
 
   useEffect(() => {
     if (isStreaming || !validChildrenContent || isValidMermaid || showMermaid) {

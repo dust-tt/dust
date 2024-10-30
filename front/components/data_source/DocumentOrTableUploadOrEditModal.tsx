@@ -283,12 +283,12 @@ const DocumentUploadOrEditModal = ({
                       name: e.target.value,
                     }));
                   }}
-                  error={
+                  message={
                     !documentState.name && editionStatus.name
                       ? "You need to provide a name."
                       : null
                   }
-                  showErrorLabel
+                  messageStatus="error"
                 />
               </div>
 
@@ -631,13 +631,13 @@ const TableUploadOrEditModal = ({
                       name: e.target.value,
                     }));
                   }}
-                  error={
+                  message={
                     editionStatus.name &&
                     (!tableState.name || !isSlugified(tableState.name))
                       ? "Invalid name: Must be alphanumeric, max 32 characters and no space."
                       : null
                   }
-                  showErrorLabel
+                  messageStatus="error"
                 />
               </div>
 

@@ -260,6 +260,7 @@ export default function LabsTranscriptsIndex({
     await makePatchRequest(
       transcriptsConfigurationId,
       {
+        isActive: transcriptsConfigurationState.isActive,
         agentConfigurationId: assistant.sId,
       },
       successMessage

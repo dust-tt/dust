@@ -21,8 +21,10 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
+  ZendeskArticleResource,
   ZendeskBrandResource,
   ZendeskCategoryResource,
+  ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 
 /**
@@ -111,7 +113,7 @@ export async function retrieveChildrenNodes({
   if (!parentInternalId) {
     if (isReadPermissionsOnly) {
       const brandsInDatabase =
-        await ZendeskBrandResource.fetchBrandsWithHelpCenter({ connectorId });
+        await ZendeskBrandResource.fetchAllWithHelpCenter({ connectorId });
       nodes = brandsInDatabase.map((brand) =>
         brand.toContentNode({ connectorId })
       );
@@ -186,10 +188,11 @@ export async function retrieveChildrenNodes({
       // If the parent is a brand's tickets, we retrieve the list of tickets for the brand.
       case "tickets": {
         if (isReadPermissionsOnly) {
-          const ticketsInDb = await ZendeskBrandResource.fetchReadOnlyTickets({
-            connectorId,
-            brandId: objectId,
-          });
+          const ticketsInDb =
+            await ZendeskTicketResource.fetchByBrandIdReadOnly({
+              connectorId,
+              brandId: objectId,
+            });
           nodes = ticketsInDb.map((ticket) =>
             ticket.toContentNode({ connectorId })
           );
@@ -199,7 +202,7 @@ export async function retrieveChildrenNodes({
       // If the parent is a brand's help center, we retrieve the list of Categories for this brand.
       case "help-center": {
         const categoriesInDatabase =
-          await ZendeskBrandResource.fetchReadOnlyCategories({
+          await ZendeskCategoryResource.fetchByBrandIdReadOnly({
             connectorId,
             brandId: objectId,
           });
@@ -239,7 +242,7 @@ export async function retrieveChildrenNodes({
       case "category": {
         if (isReadPermissionsOnly) {
           const articlesInDb =
-            await ZendeskCategoryResource.fetchReadOnlyArticles({
+            await ZendeskArticleResource.fetchByCategoryIdReadOnly({
               connectorId,
               categoryId: objectId,
             });

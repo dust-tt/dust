@@ -74,7 +74,7 @@ export function AssistantDetailsButtonBar({
         />
         <NewDropdownMenu>
           <NewDropdownMenuTrigger asChild>
-            <Button icon={MoreIcon} size="sm" variant="ghost" />
+            <Button icon={MoreIcon} size="sm" variant="outline" />
           </NewDropdownMenuTrigger>
           <NewDropdownMenuContent>
             <NewDropdownMenuItem
@@ -149,6 +149,7 @@ export function AssistantDetailsButtonBar({
           variant="ghost"
         />
       </Link>
+      <Separator orientation="vertical" className="h-6" />
 
       {agentConfiguration.scope !== "global" && (
         <Link

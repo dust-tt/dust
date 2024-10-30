@@ -406,9 +406,9 @@ export default function SpaceWebsiteModal({
                     placeholder="https://example.com/articles"
                     value={dataSourceUrl}
                     onChange={(e) => updateUrl(e.target.value)}
-                    error={dataSourceUrlError}
+                    message={dataSourceUrlError}
+                    messageStatus="error"
                     name="dataSourceUrl"
-                    showErrorLabel
                   />
                   <ContentMessage
                     title="Ensure the website is public"
@@ -426,7 +426,7 @@ export default function SpaceWebsiteModal({
                     interested in.
                   </Page.P>
                 </Page.Layout>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-8">
+                <div className="mr-1 grid grid-cols-2 gap-x-6 gap-y-8">
                   <Page.Layout direction="vertical" sizing="grow">
                     <Page.SectionHeader
                       title="Crawling strategy"
@@ -529,20 +529,13 @@ export default function SpaceWebsiteModal({
                           setMaxPages(null);
                         }
                       }}
-                      showErrorLabel={
-                        maxPages &&
-                        maxPages > WEBCRAWLER_MAX_PAGES &&
-                        maxPages &&
-                        maxPages < 1
-                          ? false
-                          : true
-                      }
-                      error={
+                      message={
                         (maxPages && maxPages > WEBCRAWLER_MAX_PAGES) ||
                         (maxPages && maxPages < 1)
                           ? `Maximum pages must be between 1 and ${WEBCRAWLER_MAX_PAGES}`
                           : null
                       }
+                      messageStatus="error"
                       name="maxPages"
                     />
                   </Page.Layout>
@@ -562,9 +555,9 @@ export default function SpaceWebsiteModal({
                   <Input
                     value={dataSourceName}
                     onChange={(e) => setDataSourceName(e.target.value)}
-                    error={dataSourceNameError}
+                    message={dataSourceNameError}
+                    messageStatus="error"
                     name="dataSourceName"
-                    showErrorLabel
                     placeholder="Articles"
                     disabled={webCrawlerConfiguration !== null}
                   />

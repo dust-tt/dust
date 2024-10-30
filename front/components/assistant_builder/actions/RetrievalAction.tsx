@@ -187,7 +187,7 @@ export function ActionRetrievalExhaustive({
           }}
         />
         <DropdownMenu>
-          <DropdownMenu.Button tooltipPosition="top">
+          <DropdownMenu.Button>
             <Button
               isSelect
               label={

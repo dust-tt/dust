@@ -1,7 +1,9 @@
 import {
   CollapseButton,
-  Item,
   Logo,
+  NavigationList,
+  NavigationListItem,
+  NavigationListLabel,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -141,29 +143,26 @@ export const NavigationSidebar = React.forwardRef<
         )}
         {subNavigation && (
           <div className="pt-3">
-            {subNavigation.map((nav) => {
-              return (
-                <div key={nav.id} className="grow py-1 pl-4 pr-3">
-                  <Item.List>
-                    {nav.label && (
-                      <Item.SectionHeader
-                        label={nav.label}
-                        variant={nav.variant}
-                        className="!pt-4"
-                      />
-                    )}
-                    {nav.menus.map((menu) => {
-                      return (
+            {subNavigation && (
+              <div className="pt-3">
+                {subNavigation.map((nav) => (
+                  <div key={nav.id} className="grow py-1 pl-4 pr-3">
+                    <NavigationList>
+                      {nav.label && (
+                        <NavigationListLabel
+                          label={nav.label}
+                          variant={nav.variant}
+                          className="!pt-4"
+                        />
+                      )}
+                      {nav.menus.map((menu) => (
                         <React.Fragment key={menu.id}>
-                          <Item.Navigation
+                          <NavigationListItem
                             selected={menu.current}
                             label={menu.label}
                             icon={menu.icon}
-                            link={
-                              menu.href
-                                ? { href: menu.href, target: menu.target }
-                                : undefined
-                            }
+                            href={menu.href}
+                            target={menu.target}
                           />
                           {menu.subMenuLabel && (
                             <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase text-slate-400">
@@ -172,34 +171,25 @@ export const NavigationSidebar = React.forwardRef<
                           )}
                           {menu.subMenu && (
                             <div className="mb-2 flex flex-col">
-                              {menu.subMenu.map((nav) => {
-                                return (
-                                  <div key={nav.id} className="flex grow">
-                                    <Item.Entry
-                                      selected={nav.current}
-                                      label={nav.label}
-                                      icon={nav.icon}
-                                      className="TEST grow pl-14 pr-4"
-                                      link={
-                                        nav.href
-                                          ? {
-                                              href: nav.href,
-                                            }
-                                          : undefined
-                                      }
-                                    />
-                                  </div>
-                                );
-                              })}
+                              {menu.subMenu.map((nav) => (
+                                <NavigationListItem
+                                  key={nav.id}
+                                  selected={nav.current}
+                                  label={nav.label}
+                                  icon={nav.icon}
+                                  className="grow pl-14 pr-4"
+                                  href={nav.href ? nav.href : undefined}
+                                />
+                              ))}
                             </div>
                           )}
                         </React.Fragment>
-                      );
-                    })}
-                  </Item.List>
-                </div>
-              );
-            })}
+                      ))}
+                    </NavigationList>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
