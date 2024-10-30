@@ -336,10 +336,17 @@ async function deleteBrandWithChildren({
     ...categories.map((categoryInDb) =>
       deleteCategoryWithChildren({ categoryInDb, dataSourceConfig })
     ),
-    ...tickets.map((ticketInDb) =>
-      deleteTicket({ ticketInDb, dataSourceConfig })
+    ...tickets.map((ticket) =>
+      deleteFromDataSource(
+        dataSourceConfig,
+        getTicketInternalId(ticket.connectorId, ticket.ticketId)
+      )
     ),
   ]);
+  await ZendeskTicketResource.deleteByBrandId({
+    connectorId: brandInDb.connectorId,
+    brandId: brandInDb.brandId,
+  });
   await brandInDb.delete();
 }
 
@@ -359,33 +366,15 @@ async function deleteCategoryWithChildren({
   });
   await Promise.all(
     articles.map((article) =>
-      Promise.all([
-        deleteFromDataSource(
-          dataSourceConfig,
-          getArticleInternalId(article.connectorId, article.articleId)
-        ),
-        article.delete(),
-      ])
+      deleteFromDataSource(
+        dataSourceConfig,
+        getArticleInternalId(article.connectorId, article.articleId)
+      )
     )
   );
+  await ZendeskArticleResource.deleteByCategoryId({
+    connectorId: categoryInDb.connectorId,
+    categoryId: categoryInDb.brandId,
+  });
   await categoryInDb.delete();
-}
-
-/**
- * Deletes the data relative to a ticket stored in the db and the data source.
- */
-async function deleteTicket({
-  ticketInDb,
-  dataSourceConfig,
-}: {
-  ticketInDb: ZendeskTicketResource;
-  dataSourceConfig: DataSourceConfig;
-}) {
-  await Promise.all([
-    deleteFromDataSource(
-      dataSourceConfig,
-      getTicketInternalId(ticketInDb.connectorId, ticketInDb.ticketId)
-    ),
-    ticketInDb.delete(),
-  ]);
 }

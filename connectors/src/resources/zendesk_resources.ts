@@ -527,6 +527,16 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     );
   }
 
+  static async deleteByBrandId({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<void> {
+    await ZendeskTicket.destroy({ where: { connectorId, brandId } });
+  }
+
   static async revokePermissionsForBrand({
     connectorId,
     brandId,
@@ -642,6 +652,16 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     return articles.map(
       (article) => new ZendeskArticleResource(ZendeskArticle, article)
     );
+  }
+
+  static async deleteByCategoryId({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }) {
+    await ZendeskArticle.destroy({ where: { connectorId, categoryId } });
   }
 
   static async revokePermissionsForBrand({
