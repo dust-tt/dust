@@ -99,10 +99,13 @@ export const ContentActions = React.forwardRef<
     }, [currentAction, setCurrentDocumentId]);
 
     const onClose = (save: boolean) => {
-      // Keep current to have it during closing animation
+      const action = currentAction.action;
+
+      // Clear the action
       setCurrentAction({ contentNode: currentAction.contentNode });
+
       if (save) {
-        onSave(currentAction.action);
+        onSave(action);
       }
     };
 
