@@ -1,10 +1,8 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import { Button } from "@sparkle/components/Button";
 import { Icon } from "@sparkle/components/Icon";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
-import { MoreIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 const listStyles = cva("s-flex", {
@@ -51,7 +49,7 @@ interface NavigationListItemProps
   selected?: boolean;
   label?: string;
   icon?: React.ComponentType;
-  showMoreIcon?: boolean;
+  moreMenu?: React.ReactNode;
 }
 
 const NavigationListItem = React.forwardRef<
@@ -69,15 +67,15 @@ const NavigationListItem = React.forwardRef<
       rel,
       replace,
       shallow,
+      moreMenu,
       ...props
     },
     ref
   ) => {
-    const [isHovered, setIsHovered] = React.useState(false);
     const [isPressed, setIsPressed] = React.useState(false);
 
     const handleMouseDown = (event: React.MouseEvent) => {
-      if (!(event.target as HTMLElement).closest(".new-button-class")) {
+      if (!(event.target as HTMLElement).closest(".button-class")) {
         setIsPressed(true);
       }
     };
@@ -89,9 +87,7 @@ const NavigationListItem = React.forwardRef<
             layout: "item",
             state: selected ? "selected" : isPressed ? "active" : "unselected",
           })}
-          onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => {
-            setIsHovered(false);
             setIsPressed(false);
           }}
           onMouseDown={handleMouseDown}
@@ -103,16 +99,9 @@ const NavigationListItem = React.forwardRef<
               {label}
             </span>
           )}
-          {isHovered && (
+          {selected && moreMenu && (
             <div className="-s-mr-2 s-flex s-h-4 s-items-center">
-              <Button
-                variant="ghost"
-                icon={MoreIcon}
-                size="xs"
-                onClick={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-                onMouseUp={(e) => e.stopPropagation()}
-              />
+              {moreMenu}
             </div>
           )}
         </div>
@@ -126,7 +115,6 @@ const NavigationListItem = React.forwardRef<
         rel={rel}
         replace={replace}
         shallow={shallow}
-        className={className}
       >
         {content}
       </LinkWrapper>

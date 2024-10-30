@@ -57,7 +57,6 @@ const TabsTrigger = React.forwardRef<
         rel={rel}
         replace={replace}
         shallow={shallow}
-        className={className}
       >
         {content}
       </LinkWrapper>

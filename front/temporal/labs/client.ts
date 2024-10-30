@@ -43,7 +43,8 @@ export async function launchRetrieveTranscriptsWorkflow(
 }
 
 export async function stopRetrieveTranscriptsWorkflow(
-  transcriptsConfiguration: LabsTranscriptsConfigurationResource
+  transcriptsConfiguration: LabsTranscriptsConfigurationResource,
+  setIsActiveToFalse: boolean = true
 ): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
   const workflowId = makeRetrieveTranscriptWorkflowId(transcriptsConfiguration);
@@ -58,7 +59,9 @@ export async function stopRetrieveTranscriptsWorkflow(
         throw e;
       }
     }
-    await transcriptsConfiguration.setIsActive(false);
+    if (setIsActiveToFalse) {
+      await transcriptsConfiguration.setIsActive(false);
+    }
     return new Ok(undefined);
   } catch (e) {
     logger.error(
