@@ -124,13 +124,13 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         query: `ExecutionStatus = 'Running' AND connectorId = ${connector.id}`,
       });
 
-      // for await (const infos of res) {
-      //   workflowInfos.push({
-      //     workflowId: infos.workflowId,
-      //     runId: infos.runId,
-      //     status: infos.status.name,
-      //   });
-      // }
+      for await (const infos of res) {
+        workflowInfos.push({
+          workflowId: infos.workflowId,
+          runId: infos.runId,
+          status: infos.status.name,
+        });
+      }
     }
   }
 
