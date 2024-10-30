@@ -52,15 +52,10 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
     blob: CreationAttributes<ZendeskConfiguration>;
     transaction?: Transaction;
   }): Promise<ZendeskConfigurationResource> {
-    let configuration;
-    if (transaction) {
-      configuration = await ZendeskConfiguration.create(
-        { ...blob },
-        { transaction }
-      );
-    } else {
-      configuration = await ZendeskConfiguration.create({ ...blob });
-    }
+    const configuration = await ZendeskConfiguration.create(
+      { ...blob },
+      transaction && { transaction }
+    );
     return new this(this.model, configuration.get());
   }
 
