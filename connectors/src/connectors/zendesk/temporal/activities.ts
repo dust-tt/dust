@@ -122,7 +122,8 @@ export async function syncZendeskBrandActivity({
     result: { brand: fetchedBrand },
   } = await zendeskApiClient.brand.show(brandId);
   if (!fetchedBrand) {
-    await deleteBrandWithChildren({ brandInDb, dataSourceConfig });
+    await deleteBrandChildren({ connectorId, brandId, dataSourceConfig });
+    await brandInDb.delete();
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
@@ -136,7 +137,7 @@ export async function syncZendeskBrandActivity({
   if (noMoreAllowedCategories) {
     // if the tickets and all children categories are not allowed anymore, we delete the brand data
     if (brandInDb.ticketsPermission !== "read") {
-      await deleteBrandWithChildren({ brandInDb, dataSourceConfig });
+      await deleteBrandChildren({ connectorId, brandId, dataSourceConfig });
       return { helpCenterAllowed: false, ticketsAllowed: false };
     }
     await brandInDb.update({ helpCenterPermission: "none" });
@@ -261,6 +262,10 @@ export async function syncZendeskCategoryActivity({
   // if all rights were revoked, we delete the category data.
   if (categoryInDb.permission === "none") {
     await deleteUpsertedArticles({ connectorId, categoryId, dataSourceConfig });
+    await ZendeskArticleResource.deleteByCategoryId({
+      connectorId,
+      categoryId,
+    });
     await categoryInDb.delete();
     return false;
   }
@@ -276,6 +281,10 @@ export async function syncZendeskCategoryActivity({
     await zendeskApiClient.helpcenter.categories.show(categoryId);
   if (!fetchedCategory) {
     await deleteUpsertedArticles({ connectorId, categoryId, dataSourceConfig });
+    await ZendeskArticleResource.deleteByCategoryId({
+      connectorId,
+      categoryId,
+    });
     await categoryInDb.delete();
     return false;
   }
@@ -319,45 +328,39 @@ export async function syncZendeskTicketsActivity({}: {
 /**
  * Deletes all the data stored in the db and in the data source relative to a brand (category, articles and tickets).
  */
-async function deleteBrandWithChildren({
-  brandInDb,
+async function deleteBrandChildren({
+  connectorId,
+  brandId,
   dataSourceConfig,
 }: {
-  brandInDb: ZendeskBrandResource;
+  connectorId: number;
+  brandId: number;
   dataSourceConfig: DataSourceConfig;
 }) {
+  /// deleting the upserted articles
   const categories = await ZendeskCategoryResource.fetchByBrandId({
-    connectorId: brandInDb.connectorId,
-    brandId: brandInDb.brandId,
+    connectorId,
+    brandId,
   });
-  const tickets = await ZendeskTicketResource.fetchByBrandId({
-    connectorId: brandInDb.connectorId,
-    brandId: brandInDb.brandId,
-  });
-  await Promise.all([
-    ...categories.map((categoryInDb) =>
+  await Promise.all(
+    categories.map((categoryInDb) =>
       deleteUpsertedArticles({
-        connectorId: categoryInDb.connectorId,
+        connectorId,
         categoryId: categoryInDb.categoryId,
         dataSourceConfig,
       })
-    ),
-    ...tickets.map((ticket) =>
-      deleteFromDataSource(
-        dataSourceConfig,
-        getTicketInternalId(ticket.connectorId, ticket.ticketId)
-      )
-    ),
-  ]);
-  await ZendeskCategoryResource.deleteByBrandId({
-    connectorId: brandInDb.connectorId,
-    brandId: brandInDb.brandId,
+    )
+  );
+  /// deleting the upserted tickets
+  await deleteUpsertedTickets({ connectorId, brandId, dataSourceConfig });
+  await ZendeskArticleResource.deleteByBrandId({
+    connectorId,
+    brandId,
   });
-  await ZendeskTicketResource.deleteByBrandId({
-    connectorId: brandInDb.connectorId,
-    brandId: brandInDb.brandId,
-  });
-  await brandInDb.delete();
+  /// deleting the categories stored in the db
+  await ZendeskCategoryResource.deleteByBrandId({ connectorId, brandId });
+  /// deleting the tickets stored in the db
+  await ZendeskTicketResource.deleteByBrandId({ connectorId, brandId });
 }
 
 /**
@@ -384,8 +387,30 @@ async function deleteUpsertedArticles({
       )
     )
   );
-  await ZendeskArticleResource.deleteByCategoryId({
-    connectorId,
-    categoryId,
+}
+
+/**
+ * Deletes all the tickets upserted for a brand.
+ */
+async function deleteUpsertedTickets({
+  connectorId,
+  brandId,
+  dataSourceConfig,
+}: {
+  connectorId: number;
+  brandId: number;
+  dataSourceConfig: DataSourceConfig;
+}) {
+  const tickets = await ZendeskTicketResource.fetchByBrandId({
+    connectorId: connectorId,
+    brandId: brandId,
   });
+  await Promise.all([
+    tickets.map((ticket) =>
+      deleteFromDataSource(
+        dataSourceConfig,
+        getTicketInternalId(ticket.connectorId, ticket.ticketId)
+      )
+    ),
+  ]);
 }

@@ -674,6 +674,16 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     await ZendeskArticle.destroy({ where: { connectorId, categoryId } });
   }
 
+  static async deleteByBrandId({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }) {
+    await ZendeskArticle.destroy({ where: { connectorId, brandId } });
+  }
+
   static async revokePermissionsForBrand({
     connectorId,
     brandId,
