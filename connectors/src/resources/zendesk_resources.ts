@@ -16,7 +16,6 @@ import {
   getTicketInternalId,
   getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
-import { deleteFromDataSource } from "@connectors/lib/data_sources";
 import {
   ZendeskArticle,
   ZendeskBrand,
@@ -26,7 +25,6 @@ import {
 } from "@connectors/lib/models/zendesk";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -103,39 +101,6 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       transaction,
     });
     return new Ok(undefined);
-  }
-
-  /**
-   * Deletes all the data stored in the db and in the data source relative to a brand (category, articles and tickets).
-   */
-  async deleteWithChildren({
-    dataSourceConfig,
-  }: {
-    dataSourceConfig: DataSourceConfig;
-  }) {
-    const categories = await ZendeskBrandResource.fetchAllCategories({
-      connectorId: this.connectorId,
-      brandId: this.brandId,
-    });
-    const tickets = await ZendeskBrandResource.fetchAllTickets({
-      connectorId: this.connectorId,
-      brandId: this.brandId,
-    });
-    await Promise.all([
-      ...categories.map((category) =>
-        category.deleteWithChildren({ dataSourceConfig })
-      ),
-      ...tickets.map((ticket) =>
-        Promise.all([
-          deleteFromDataSource(
-            dataSourceConfig,
-            getTicketInternalId(ticket.connectorId, ticket.ticketId)
-          ),
-          ticket.delete(),
-        ])
-      ),
-    ]);
-    await this.delete();
   }
 
   toJSON(): Record<string, unknown> {
@@ -414,32 +379,6 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
       transaction,
     });
     return new Ok(undefined);
-  }
-
-  /**
-   * Deletes all the data relative to a category stored in the db and in the data source (category and articles).
-   */
-  async deleteWithChildren({
-    dataSourceConfig,
-  }: {
-    dataSourceConfig: DataSourceConfig;
-  }) {
-    const articles = await ZendeskCategoryResource.fetchAllArticles({
-      connectorId: this.connectorId,
-      categoryId: this.brandId,
-    });
-    await Promise.all(
-      articles.map((article) =>
-        Promise.all([
-          deleteFromDataSource(
-            dataSourceConfig,
-            getArticleInternalId(article.connectorId, article.articleId)
-          ),
-          article.delete(),
-        ])
-      )
-    );
-    await this.delete();
   }
 
   toJSON(): Record<string, unknown> {

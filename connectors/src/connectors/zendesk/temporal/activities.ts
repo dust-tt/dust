@@ -1,18 +1,25 @@
 import type { ModelId } from "@dust-tt/types";
 
+import {
+  getArticleInternalId,
+  getTicketInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { deleteFromDataSource } from "@connectors/lib/data_sources";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
 import {
   ZendeskBrandResource,
   ZendeskCategoryResource,
   ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 async function _getZendeskConnectorOrRaise(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -114,7 +121,7 @@ export async function syncZendeskBrandActivity({
     result: { brand: fetchedBrand },
   } = await zendeskApiClient.brand.show(brandId);
   if (!fetchedBrand) {
-    await brandInDb.deleteWithChildren({ dataSourceConfig });
+    await deleteBrandWithChildren({ brandInDb, dataSourceConfig });
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
@@ -128,7 +135,7 @@ export async function syncZendeskBrandActivity({
   if (noMoreAllowedCategories) {
     // if the tickets and all children categories are not allowed anymore, we delete the brand data
     if (brandInDb.ticketsPermission !== "read") {
-      await brandInDb.deleteWithChildren({ dataSourceConfig });
+      await deleteBrandWithChildren({ brandInDb, dataSourceConfig });
       return { helpCenterAllowed: false, ticketsAllowed: false };
     }
     await brandInDb.update({ helpCenterPermission: "none" });
@@ -252,7 +259,7 @@ export async function syncZendeskCategoryActivity({
 
   // if all rights were revoked, we delete the category data.
   if (categoryInDb.permission === "none") {
-    await categoryInDb.deleteWithChildren({ dataSourceConfig });
+    await deleteCategoryWithChildren({ categoryInDb, dataSourceConfig });
     return false;
   }
 
@@ -266,7 +273,7 @@ export async function syncZendeskCategoryActivity({
   const { result: fetchedCategory } =
     await zendeskApiClient.helpcenter.categories.show(categoryId);
   if (!fetchedCategory) {
-    await categoryInDb.deleteWithChildren({ dataSourceConfig });
+    await deleteCategoryWithChildren({ categoryInDb, dataSourceConfig });
     return false;
   }
 
@@ -304,4 +311,80 @@ export async function syncZendeskTicketsActivity({}: {
   afterCursor: string | null;
 }): Promise<{ hasMore: boolean; afterCursor: string }> {
   return { hasMore: false, afterCursor: "" };
+}
+
+/**
+ * Deletes all the data stored in the db and in the data source relative to a brand (category, articles and tickets).
+ */
+async function deleteBrandWithChildren({
+  brandInDb,
+  dataSourceConfig,
+}: {
+  brandInDb: ZendeskBrandResource;
+  dataSourceConfig: DataSourceConfig;
+}) {
+  const categories = await ZendeskBrandResource.fetchAllCategories({
+    connectorId: brandInDb.connectorId,
+    brandId: brandInDb.brandId,
+  });
+  const tickets = await ZendeskBrandResource.fetchAllTickets({
+    connectorId: brandInDb.connectorId,
+    brandId: brandInDb.brandId,
+  });
+  await Promise.all([
+    ...categories.map((categoryInDb) =>
+      deleteCategoryWithChildren({ categoryInDb, dataSourceConfig })
+    ),
+    ...tickets.map((ticketInDb) =>
+      deleteTicket({ ticketInDb, dataSourceConfig })
+    ),
+  ]);
+  await brandInDb.delete();
+}
+
+/**
+ * Deletes all the data relative to a category stored in the db and in the data source (category and articles).
+ */
+async function deleteCategoryWithChildren({
+  categoryInDb,
+  dataSourceConfig,
+}: {
+  categoryInDb: ZendeskCategoryResource;
+  dataSourceConfig: DataSourceConfig;
+}) {
+  const articles = await ZendeskCategoryResource.fetchAllArticles({
+    connectorId: categoryInDb.connectorId,
+    categoryId: categoryInDb.brandId,
+  });
+  await Promise.all(
+    articles.map((article) =>
+      Promise.all([
+        deleteFromDataSource(
+          dataSourceConfig,
+          getArticleInternalId(article.connectorId, article.articleId)
+        ),
+        article.delete(),
+      ])
+    )
+  );
+  await categoryInDb.delete();
+}
+
+/**
+ * Deletes the data relative to a ticket stored in the db and the data source.
+ */
+async function deleteTicket({
+  ticketInDb,
+  dataSourceConfig,
+}: {
+  ticketInDb: ZendeskTicketResource;
+  dataSourceConfig: DataSourceConfig;
+}) {
+  await Promise.all([
+    deleteFromDataSource(
+      dataSourceConfig,
+      getTicketInternalId(ticketInDb.connectorId, ticketInDb.ticketId)
+    ),
+    ticketInDb.delete(),
+  ]);
 }
