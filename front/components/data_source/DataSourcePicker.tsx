@@ -1,4 +1,12 @@
-import { DropdownMenu, Input } from "@dust-tt/sparkle";
+import {
+  Button,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  ScrollArea,
+  Searchbar,
+  Separator,
+} from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
   SpaceType,
@@ -109,58 +117,50 @@ export default function DataSourcePicker({
             "No DataSource"
           )
         ) : (
-          <DropdownMenu>
-            <div>
-              <DropdownMenu.Button
-                className={classNames(
-                  "inline-flex items-center rounded-md py-1 text-sm font-normal text-gray-700",
-                  selectedDataSourceView ? "px-0" : "border px-3",
-                  readOnly
-                    ? "border-white text-gray-300"
-                    : "border-orange-400 text-gray-700",
-                  "focus:outline-none focus:ring-0"
-                )}
-              >
-                {selectedDataSourceView ? (
-                  <>
-                    <Link href={getEditLink(selectedDataSourceView)}>
-                      <div className="mr-1 max-w-xs truncate text-sm font-bold text-action-500">
-                        {selectedDataSourceView.dataSource.name}
-                      </div>
-                    </Link>
-                    <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
-                  </>
-                ) : spaceDataSourceViews && spaceDataSourceViews.length > 0 ? (
-                  "Select DataSource"
-                ) : (
-                  <Link
-                    href={`/w/${owner.sId}/data-sources/vaults`}
-                    className={classNames(
-                      readOnly
-                        ? "border-white text-gray-300"
-                        : "border-orange-400 text-gray-700"
-                    )}
-                  >
-                    Create DataSource
+          <PopoverRoot>
+            <PopoverTrigger>
+              {selectedDataSourceView ? (
+                <div
+                  className={classNames(
+                    "inline-flex items-center rounded-md py-1 text-sm font-normal",
+                    readOnly ? "text-gray-300" : "text-gray-700",
+                    "focus:outline-none focus:ring-0"
+                  )}
+                >
+                  <Link href={getEditLink(selectedDataSourceView)}>
+                    <div className="mr-1 max-w-xs truncate text-sm font-bold text-action-500">
+                      {selectedDataSourceView.dataSource.name}
+                    </div>
                   </Link>
-                )}
-              </DropdownMenu.Button>
-            </div>
+                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
+                </div>
+              ) : spaceDataSourceViews && spaceDataSourceViews.length > 0 ? (
+                <Button variant="outline" label="Select DataSource" isSelect />
+              ) : (
+                <Link
+                  href={`/w/${owner.sId}/data-sources/vaults`}
+                  className={classNames(
+                    readOnly ? "text-gray-300" : "text-gray-700"
+                  )}
+                >
+                  Create DataSource
+                </Link>
+              )}
+            </PopoverTrigger>
 
-            {(spaceDataSourceViews || []).length > 0 ? (
-              <DropdownMenu.Items width={300}>
-                <Input
+            {(spaceDataSourceViews || []).length > 0 && (
+              <PopoverContent className="mr-2 p-4">
+                <Searchbar
                   name="search"
                   placeholder="Search"
                   value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                  className="mt-4 w-full"
+                  onChange={(e) => setSearchFilter(e)}
                 />
-                {(filteredDataSourceViews || []).map((dsv) => {
-                  return (
-                    <DropdownMenu.Item
+                <ScrollArea className="mt-2 h-[300px]">
+                  {(filteredDataSourceViews || []).map((dsv) => (
+                    <div
                       key={dsv.sId}
-                      label={dsv.dataSource.name}
+                      className="flex cursor-pointer flex-col items-start hover:opacity-80"
                       onClick={() => {
                         onDataSourcesUpdate([
                           {
@@ -170,18 +170,22 @@ export default function DataSourcePicker({
                         ]);
                         setSearchFilter("");
                       }}
-                    />
-                  );
-                })}
-                {filteredDataSourceViews.length === 0 && (
-                  <span className="block px-4 py-2 text-sm text-gray-700">
-                    No datasources found
-                  </span>
-                )}
-                {/* </div> */}
-              </DropdownMenu.Items>
-            ) : null}
-          </DropdownMenu>
+                    >
+                      <div className="my-1">
+                        <div className="text-sm">{dsv.dataSource.name}</div>
+                      </div>
+                      <Separator />
+                    </div>
+                  ))}
+                  {filteredDataSourceViews.length === 0 && (
+                    <span className="block px-4 py-2 text-sm text-gray-700">
+                      No datasources found
+                    </span>
+                  )}
+                </ScrollArea>
+              </PopoverContent>
+            )}
+          </PopoverRoot>
         )}
       </div>
     </div>

@@ -9,8 +9,16 @@ import {
   Icon,
   IconButton,
   Input,
+  Label,
   Modal,
   MoreIcon,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuGroup,
+  NewDropdownMenuItem,
+  NewDropdownMenuLabel,
+  NewDropdownMenuSeparator,
+  NewDropdownMenuTrigger,
   Page,
   PlusIcon,
   Popover,
@@ -1007,50 +1015,69 @@ interface AddActionProps {
 
 function AddAction({ onAddAction }: AddActionProps) {
   return (
-    <DropdownMenu>
-      <DropdownMenu.Button>
+    <NewDropdownMenu>
+      <NewDropdownMenuTrigger asChild>
         <Button variant="primary" label="Add a tool" icon={PlusIcon} />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items origin="topLeft" width={320} overflow="visible">
-        <DropdownMenu.SectionHeader label="DATA SOURCES" />
-        {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
-          const spec = ACTION_SPECIFICATIONS[key];
-          const defaultAction = getDefaultActionConfiguration(key);
-          if (!defaultAction) {
-            // Unreachable
-            return null;
-          }
-          return (
-            <DropdownMenu.Item
-              key={key}
-              label={spec.label}
-              icon={spec.dropDownIcon}
-              description={spec.description}
-              onClick={() => onAddAction(defaultAction)}
-            />
-          );
-        })}
+      </NewDropdownMenuTrigger>
 
-        <DropdownMenu.SectionHeader label="ADVANCED ACTIONS" />
-        {ADVANCED_ACTION_CATEGORIES.map((key) => {
-          const spec = ACTION_SPECIFICATIONS[key];
-          const defaultAction = getDefaultActionConfiguration(key);
-          if (!defaultAction) {
-            // Unreachable
-            return null;
-          }
-          return (
-            <DropdownMenu.Item
-              key={key}
-              label={spec.label}
-              icon={spec.dropDownIcon}
-              description={spec.description}
-              onClick={() => onAddAction(defaultAction)}
-            />
-          );
-        })}
-      </DropdownMenu.Items>
-    </DropdownMenu>
+      <NewDropdownMenuContent className="w-[320px]">
+        <NewDropdownMenuGroup>
+          <NewDropdownMenuLabel>Data Sources</NewDropdownMenuLabel>
+          {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
+            const spec = ACTION_SPECIFICATIONS[key];
+            const defaultAction = getDefaultActionConfiguration(key);
+            if (!defaultAction) {
+              return null;
+            }
+
+            return (
+              <NewDropdownMenuItem
+                key={key}
+                onClick={() => onAddAction(defaultAction)}
+              >
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <Icon visual={spec.dropDownIcon} />
+                    <Label>{spec.label}</Label>
+                  </div>
+                  <span className="text-sm text-element-700">
+                    {spec.description}
+                  </span>
+                </div>
+              </NewDropdownMenuItem>
+            );
+          })}
+        </NewDropdownMenuGroup>
+        <NewDropdownMenuSeparator />
+        <NewDropdownMenuGroup>
+          <NewDropdownMenuLabel>Advanced Actions</NewDropdownMenuLabel>
+          {ADVANCED_ACTION_CATEGORIES.map((key) => {
+            const spec = ACTION_SPECIFICATIONS[key];
+            const defaultAction = getDefaultActionConfiguration(key);
+            if (!defaultAction) {
+              return null;
+            }
+
+            return (
+              <NewDropdownMenuItem
+                key={key}
+                onClick={() => onAddAction(defaultAction)}
+              >
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <Icon visual={spec.dropDownIcon} />
+                    <Label>{spec.label}</Label>
+                  </div>
+                  <span className="text-sm text-element-700">
+                    {spec.description}
+                  </span>
+                </div>
+              </NewDropdownMenuItem>
+            );
+          })}
+        </NewDropdownMenuGroup>
+      </NewDropdownMenuContent>
+    </NewDropdownMenu>
   );
 }
 
