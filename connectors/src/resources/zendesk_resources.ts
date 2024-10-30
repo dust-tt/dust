@@ -44,6 +44,29 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
     super(ZendeskConfiguration, blob);
   }
 
+  static async makeNew({
+    blob,
+    transaction,
+  }: {
+    blob: CreationAttributes<ZendeskConfiguration>;
+    transaction?: Transaction;
+  }): Promise<ZendeskConfigurationResource> {
+    const configuration = await ZendeskConfiguration.create(
+      { ...blob },
+      transaction && { transaction }
+    );
+    return new this(this.model, configuration.get());
+  }
+
+  static async fetchByConnectorId(
+    connectorId: number
+  ): Promise<ZendeskConfigurationResource | null> {
+    const configuration = await ZendeskConfiguration.findOne({
+      where: { connectorId },
+    });
+    return configuration && new this(this.model, configuration.get());
+  }
+
   async postFetchHook(): Promise<void> {
     return;
   }
