@@ -2,7 +2,6 @@ import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import type { MarkdownCitation } from "@app/components/assistant/markdown/MarkdownCitation";
 import { RenderMessageMarkdown } from "@app/components/assistant/markdown/RenderMessageMarkdown";
-import { useSubmitFunction } from "@app/lib/client/utils";
 import type {
   ConversationMessageEmojiSelectorProps,
   ConversationMessageSizeType,
@@ -38,6 +37,7 @@ import {
   isWebsearchActionType,
   removeNulls,
 } from "@dust-tt/types";
+import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import { useEventSource } from "@extension/hooks/useEventSource";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 

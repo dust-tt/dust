@@ -1,5 +1,3 @@
-import type { ProtectedRouteChildrenProps } from "@app/extension/app/src/components/auth/ProtectedRoute";
-import { useConversations } from "@app/extension/app/src/components/conversation/useConversations";
 import {
   BarHeader,
   ChevronLeftIcon,
@@ -9,6 +7,8 @@ import {
   Page,
 } from "@dust-tt/sparkle";
 import type { ConversationWithoutContentType } from "@dust-tt/types";
+import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
+import { useConversations } from "@extension/components/conversation/useConversations";
 import moment from "moment";
 import { Link, useNavigate } from "react-router-dom";
 
