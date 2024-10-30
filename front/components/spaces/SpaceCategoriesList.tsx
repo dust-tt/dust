@@ -23,7 +23,6 @@ import type {
 } from "@dust-tt/types";
 import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
-import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useState } from "react";
 
