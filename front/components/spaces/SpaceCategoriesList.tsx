@@ -122,8 +122,6 @@ export const SpaceCategoriesList = ({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
-  const router = useRouter();
-
   const rows: RowData[] = spaceInfo
     ? removeNulls(
         DATA_SOURCE_VIEW_CATEGORIES.map((category) =>

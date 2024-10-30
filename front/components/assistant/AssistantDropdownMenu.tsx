@@ -22,7 +22,6 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, isBuilder } from "@dust-tt/types";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
 

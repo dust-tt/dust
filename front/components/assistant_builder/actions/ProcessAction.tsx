@@ -1,6 +1,5 @@
 import {
   Button,
-  DropdownMenu,
   Hoverable,
   IconButton,
   Input,
@@ -21,7 +20,6 @@ import type {
   ProcessSchemaPropertyType,
   Result,
   SpaceType,
-  TimeframeUnit,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
@@ -30,7 +28,6 @@ import React, { useEffect, useState } from "react";
 import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
-import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderProcessConfiguration,
