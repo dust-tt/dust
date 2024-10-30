@@ -6,7 +6,7 @@ import { CodeBlock } from "@sparkle/components/markdown/CodeBlock";
 import { ContentBlockWrapperContext } from "@sparkle/components/markdown/ContentBlockWrapper";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { SparklesIcon, WrenchIcon } from "@sparkle/icons";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
   const graphRef = useRef<HTMLDivElement | null>(null);
@@ -75,7 +75,7 @@ export function CodeBlockWithExtendedSupport({
         <>
           <div className="s-absolute s-left-2 s-top-2 s-mx-2 s-flex s-gap-2">
             <div
-              className={classNames(
+              className={cn(
                 "text-xs",
                 showMermaid ? "s-text-slate-400" : "s-text-slate-300"
               )}

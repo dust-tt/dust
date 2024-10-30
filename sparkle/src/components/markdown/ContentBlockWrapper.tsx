@@ -7,7 +7,7 @@ import {
   ClipboardCheckIcon,
   ClipboardIcon,
 } from "@sparkle/icons";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 type SupportedContentType = "application/json" | "text/csv";
 
@@ -98,7 +98,7 @@ export function ContentBlockWrapper({
   return (
     <div className="s-relative">
       <div
-        className={classNames(
+        className={cn(
           "s-relative s-w-auto s-overflow-x-auto s-rounded-lg",
           className ?? ""
         )}

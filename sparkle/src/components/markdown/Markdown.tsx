@@ -18,7 +18,7 @@ import {
   GetContentToDownloadFunction,
 } from "@sparkle/components/markdown/ContentBlockWrapper";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 const headerColor = "s-text-element-900";
 const sizes = {
@@ -161,67 +161,35 @@ export function Markdown({
       th: TableHeaderBlock,
       td: TableDataBlock,
       h1: ({ children }) => (
-        <h1
-          className={classNames(
-            "s-pb-2 s-pt-4",
-            sizes[textSize].h1,
-            headerColor
-          )}
-        >
+        <h1 className={cn("s-pb-2 s-pt-4", sizes[textSize].h1, headerColor)}>
           {children}
         </h1>
       ),
       h2: ({ children }) => (
-        <h2
-          className={classNames(
-            "s-pb-2 s-pt-4",
-            sizes[textSize].h2,
-            headerColor
-          )}
-        >
+        <h2 className={cn("s-pb-2 s-pt-4", sizes[textSize].h2, headerColor)}>
           {children}
         </h2>
       ),
       h3: ({ children }) => (
-        <h3
-          className={classNames(
-            "s-pb-2 s-pt-4",
-            sizes[textSize].h3,
-            headerColor
-          )}
-        >
+        <h3 className={cn("s-pb-2 s-pt-4", sizes[textSize].h3, headerColor)}>
           {children}
         </h3>
       ),
       h4: ({ children }) => (
-        <h4
-          className={classNames(
-            "s-pb-2 s-pt-3",
-            sizes[textSize].h4,
-            headerColor
-          )}
-        >
+        <h4 className={cn("s-pb-2 s-pt-3", sizes[textSize].h4, headerColor)}>
           {children}
         </h4>
       ),
       h5: ({ children }) => (
         <h5
-          className={classNames(
-            "s-pb-1.5 s-pt-2.5",
-            sizes[textSize].h5,
-            headerColor
-          )}
+          className={cn("s-pb-1.5 s-pt-2.5", sizes[textSize].h5, headerColor)}
         >
           {children}
         </h5>
       ),
       h6: ({ children }) => (
         <h6
-          className={classNames(
-            "s-pb-1.5 s-pt-2.5",
-            sizes[textSize].h6,
-            headerColor
-          )}
+          className={cn("s-pb-1.5 s-pt-2.5", sizes[textSize].h6, headerColor)}
         >
           {children}
         </h6>
@@ -252,9 +220,7 @@ export function Markdown({
   const rehypePlugins = [[rehypeKatex, { output: "mathml" }]] as PluggableList;
 
   return (
-    <div
-      className={classNames("s-w-full", isStreaming ? "s-blinking-cursor" : "")}
-    >
+    <div className={cn("s-w-full", isStreaming ? "s-blinking-cursor" : "")}>
       <MarkdownContentContext.Provider
         value={{
           content: processedContent,
@@ -442,7 +408,7 @@ function PreBlock({ children }: { children: React.ReactNode }) {
   return (
     <ContentBlockWrapperContext.Provider value={{ isDarkMode, setIsDarkMode }}>
       <pre
-        className={classNames(
+        className={cn(
           "s-my-2 s-w-full s-break-all s-rounded-lg",
           isDarkMode ? "s-bg-slate-800" : "s-bg-slate-100"
         )}
@@ -475,7 +441,7 @@ function UlBlock({
 }) {
   return (
     <ul
-      className={classNames(
+      className={cn(
         "s-first:pt-0 s-last:pb-0 s-list-disc s-py-2 s-pl-8",
         textColor,
         sizes[textSize].p
@@ -496,7 +462,7 @@ function OlBlock({
 }) {
   return (
     <ol
-      className={classNames(
+      className={cn(
         "s-first:pt-0 s-last:pb-0 s-list-decimal s-py-3 s-pl-8",
         textColor,
         sizes[textSize].p
@@ -517,7 +483,7 @@ function LiBlock({
 }) {
   return (
     <li
-      className={classNames(
+      className={cn(
         "s-first:pt-0 s-last:pb-0 s-break-words",
         textSize === "sm" ? "s-py-1" : "s-py-2",
         textColor,
@@ -539,7 +505,7 @@ function ParagraphBlock({
 }) {
   return (
     <div
-      className={classNames(
+      className={cn(
         "s-first:pt-0 s-last:pb-0 s-whitespace-pre-wrap s-break-words s-font-normal",
         textSize === "sm" ? "s-py-1" : "s-py-2 s-leading-7",
         sizes[textSize].p,

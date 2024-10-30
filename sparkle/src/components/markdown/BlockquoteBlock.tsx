@@ -3,7 +3,7 @@ import React from "react";
 import { Button } from "@sparkle/components/Button";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import { ClipboardCheckIcon, ClipboardIcon } from "@sparkle/icons";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 type BlockquoteBlockProps = { children: React.ReactNode };
 
@@ -29,11 +29,7 @@ export function BlockquoteBlock({ children }: BlockquoteBlockProps) {
   return (
     <div className="s-my-2 s-flex s-w-auto s-flex-row s-rounded-3xl s-border s-border-structure-100 s-bg-structure-0 s-py-2 s-pl-5 s-pr-2">
       <blockquote
-        className={classNames(
-          "s-w-full s-italic",
-          "s-text-base",
-          "s-text-element-800"
-        )}
+        className={cn("s-w-full s-italic", "s-text-base", "s-text-element-800")}
       >
         {children}
       </blockquote>
