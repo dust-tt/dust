@@ -166,7 +166,7 @@ export default function WorkspaceAssistants({
   ).map((scope) => ({
     label: SCOPE_INFO[scope].shortLabel,
     icon: SCOPE_INFO[scope].icon,
-    scope: scope,
+    scope,
   }));
 
   const disabledTablineClass =
