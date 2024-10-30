@@ -32,13 +32,13 @@ export const MultipleDocumentsUpload = ({
 }: MultipleDocumentsUploadProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLimitPopupOpen, setIsLimitPopupOpen] = useState(false);
+  const [clicked, setClicked] = useState(false);
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !clicked) {
       fileInputRef.current?.click();
-      // Reset state immediately after opening the dialog, we don't need to keep it set
-      onClose(false);
+      setClicked(true);
     }
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, clicked]);
 
   const [isBulkFilesUploading, setIsBulkFilesUploading] = useState<null | {
     total: number;
