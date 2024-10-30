@@ -45,17 +45,19 @@ export function AssistantPicker({
   return (
     <PopoverRoot>
       <PopoverTrigger asChild>
-        {pickerButton ? (
-          pickerButton
-        ) : (
-          <Button
-            icon={RobotIcon}
-            variant="ghost"
-            isSelect
-            size={size}
-            tooltip="Pick an assistant"
-          />
-        )}
+        <div>
+          {pickerButton ? (
+            pickerButton
+          ) : (
+            <Button
+              icon={RobotIcon}
+              variant="ghost"
+              isSelect
+              size={size}
+              tooltip="Pick an assistant"
+            />
+          )}
+        </div>
       </PopoverTrigger>
       <PopoverContent className="mr-2 p-2">
         <Searchbar

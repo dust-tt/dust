@@ -43,16 +43,12 @@ export function AssistantInputBar({
   stickyMentions,
   additionalAgentConfiguration,
   disableAutoFocus = false,
-  isFloating = true,
-  isFloatingWithoutMargin = false,
 }: {
   owner: LightWorkspaceType;
   onSubmit: (input: string, mentions: MentionType[]) => void;
   stickyMentions?: AgentMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
   disableAutoFocus?: boolean;
-  isFloating?: boolean;
-  isFloatingWithoutMargin?: boolean;
 }) {
   const { agentConfigurations: baseAgentConfigurations } =
     usePublicAgentConfigurations({
@@ -126,21 +122,14 @@ export function AssistantInputBar({
 
   return (
     <div className="flex w-full flex-col">
-      <div
-        className={classNames(
-          "flex flex-1 px-0",
-          isFloating ? (isFloatingWithoutMargin ? "" : "sm:px-4") : ""
-        )}
-      >
+      <div className="flex flex-1 px-0">
         <div className="flex w-full flex-1 flex-col items-end self-stretch sm:flex-row">
           <div
             className={classNames(
               "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-4 sm:flex-row",
               "border-struture-200 border-t bg-white/90 backdrop-blur focus-within:border-structure-300",
               "transition-all",
-              isFloating
-                ? "sm:rounded-2xl sm:border-b sm:border-l sm:border-r sm:border-element-500 sm:focus-within:border-action-300 sm:focus-within:shadow-md sm:focus-within:ring-1"
-                : "",
+              "rounded-2xl border-b border-l border-r border-element-500 focus-within:border-action-300 focus-within:shadow-md focus-within:ring-1",
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}
           >

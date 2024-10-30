@@ -4,9 +4,8 @@ import {
   ClipboardIcon,
   IconButton,
 } from "@dust-tt/sparkle";
-import { useCallback, useContext } from "react";
+import React, { useCallback, useContext } from "react";
 
-import { MarkdownContentContext } from "@app/components/assistant/markdown/MarkdownContentContext";
 import { useCopyToClipboard } from "@app/components/assistant/markdown/useCopyToClipboard";
 import { classNames } from "@app/lib/utils";
 
@@ -37,6 +36,14 @@ interface ContentBlockWrapperProps {
   getContentToDownload?: GetContentToDownloadFunction;
 }
 
+export const ContentBlockWrapperContext = React.createContext<{
+  setIsDarkMode: (v: boolean) => void;
+  isDarkMode: boolean;
+}>({
+  setIsDarkMode: () => {},
+  isDarkMode: false,
+});
+
 export function ContentBlockWrapper({
   children,
   className,
@@ -44,7 +51,7 @@ export function ContentBlockWrapper({
   getContentToDownload,
 }: ContentBlockWrapperProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
-  const { isDarkMode } = useContext(MarkdownContentContext);
+  const { isDarkMode } = useContext(ContentBlockWrapperContext);
   const handleCopyToClipboard = useCallback(() => {
     if (!content) {
       return;

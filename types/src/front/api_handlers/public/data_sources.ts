@@ -28,7 +28,7 @@ export type FrontDataSourceDocumentSectionType = t.TypeOf<
 >;
 
 export const PostDataSourceDocumentRequestBodySchema = t.type({
-  timestamp: t.union([t.number, t.undefined, t.null]),
+  timestamp: t.union([t.Int, t.undefined, t.null]),
   tags: t.union([t.array(t.string), t.undefined, t.null]),
   parents: t.union([t.array(t.string), t.undefined, t.null]),
   source_url: t.union([t.string, t.undefined, t.null]),

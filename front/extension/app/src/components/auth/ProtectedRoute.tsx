@@ -42,9 +42,10 @@ export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
         </div>
         <Button
           icon={LogoutIcon}
-          variant="ghost"
+          variant="outline"
           label="Sign out"
           onClick={handleLogout}
+          size="sm"
         />
       </div>
       <>{children}</>

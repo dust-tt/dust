@@ -471,6 +471,10 @@ export async function constructPromptMultiActions(
   additionalInstructions +=
     "\nWhen generating latex formulas, solely rely on the $$ escape sequence, single $ latex sequences are not supported.\n";
 
+  additionalInstructions +=
+    "\nIn numbered lists, align all content with the item's text to preserve list continuity " +
+    "in markdown - otherwise the list numbering breaks and restarts when rendered.\n";
+
   let prompt = `${context}\n${instructions}`;
   if (additionalInstructions) {
     prompt += `\nADDITIONAL INSTRUCTIONS:\n${additionalInstructions}`;
