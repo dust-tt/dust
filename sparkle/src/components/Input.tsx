@@ -38,6 +38,15 @@ const stateVariantStyles: Record<InputStateType, string> = {
   error: "s-border-border-warning focus:s-ring-ring-warning",
 };
 
+const messageVariant = cva("", {
+  variants: {
+    status: messageVariantStyles,
+  },
+  defaultVariants: {
+    status: "info",
+  },
+});
+
 const inputStyleClasses = cva(
   cn(
     "s-text-sm s-bg-background s-rounded-xl s-border s-border-border-dark s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
@@ -85,7 +94,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <div
             className={cn(
               "s-ml-3.5 s-flex s-items-center s-gap-1 s-text-xs",
-              messageVariantStyles[messageStatus]
+              messageVariant({ status: messageStatus })
             )}
           >
             {messageStatus === "info" && (
