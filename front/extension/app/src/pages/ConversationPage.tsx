@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 export const ConversationPage = ({
   workspace,
+  user,
 }: ProtectedRouteChildrenProps) => {
   const navigate = useNavigate();
   const { conversationId } = useParams();

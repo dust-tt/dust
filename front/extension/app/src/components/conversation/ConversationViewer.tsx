@@ -1,5 +1,4 @@
 import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMessageType,

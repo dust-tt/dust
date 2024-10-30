@@ -24,13 +24,7 @@ interface MessageItemProps {
 
 const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
-    {
-      conversationId,
-      isInModal,
-      isLastMessage,
-      message,
-      owner,
-    }: MessageItemProps,
+    { conversationId, isLastMessage, message, owner }: MessageItemProps,
     ref
   ) {
     const { sId, type } = message;
