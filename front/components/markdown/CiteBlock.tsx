@@ -76,7 +76,7 @@ export function CiteBlock(props: ReactMarkdownProps) {
   }
 }
 
-export function citeDirective() {
+export function getCiteDirective() {
   // Initialize a counter to keep track of citation references, starting from 1.
   let refCounter = 1;
   const refSeen: { [ref: string]: number } = {};

@@ -2,7 +2,6 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   DropdownMenu,
-  Markdown,
   LightbulbIcon,
   MagicIcon,
   Markdown,
@@ -223,8 +222,7 @@ export default function AssistantBuilderRightPanel({
                     <div>
                       <Markdown
                         content={template?.helpActions ?? ""}
-                        className=""
-                        size="sm"
+                        textSize="sm"
                       />
                     </div>
                     <Separator />

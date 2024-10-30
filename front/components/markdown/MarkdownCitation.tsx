@@ -1,4 +1,4 @@
-import { CitationType } from "@sparkle/components/Citation";
+import type { CitationType } from "@dust-tt/sparkle";
 
 export interface MarkdownCitation {
   description?: string;

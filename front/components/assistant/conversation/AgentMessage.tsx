@@ -58,7 +58,7 @@ import { GenerationContext } from "@app/components/assistant/conversation/Genera
 import {
   CitationsContext,
   CiteBlock,
-  citeDirective,
+  getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 import {
@@ -444,7 +444,7 @@ export function AgentMessage({
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [mentionDirective(), citeDirective(), visualizationDirective],
+    () => [mentionDirective, getCiteDirective(), visualizationDirective],
     []
   );
 

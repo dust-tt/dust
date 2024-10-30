@@ -9,7 +9,10 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
-import { CiteBlock, citeDirective } from "@app/components/markdown/CiteBlock";
+import {
+  CiteBlock,
+  getCiteDirective,
+} from "@app/components/markdown/CiteBlock";
 import {
   MentionBlock,
   mentionDirective,
@@ -43,7 +46,7 @@ export function UserMessage({
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [citeDirective(), mentionDirective()],
+    () => [getCiteDirective(), mentionDirective],
     []
   );
 
