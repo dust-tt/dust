@@ -462,7 +462,7 @@ export default function SpaceWebsiteModal({
                       </RadioGroupChoice>
                     </RadioGroup>
                   </Page.Layout>
-                  <Page.Layout direction="vertical">
+                  <Page.Layout direction="vertical" sizing="grow">
                     <Page.SectionHeader
                       title="Refresh schedule"
                       description="How often would you like to check for updates?"

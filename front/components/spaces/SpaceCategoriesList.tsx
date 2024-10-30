@@ -5,16 +5,18 @@ import {
   Cog6ToothIcon,
   CommandLineIcon,
   DataTable,
-  DropdownMenu,
   FolderIcon,
   GlobeAltIcon,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
   PlusIcon,
   RobotIcon,
   Searchbar,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
-  DataSourceViewCategory,
   DataSourceWithAgentsUsageType,
   SpaceType,
   WorkspaceType,
@@ -146,12 +148,6 @@ export const SpaceCategoriesList = ({
     );
   }
 
-  const redirectTo = (category: DataSourceViewCategory) => {
-    void router.push(
-      `/w/${owner.sId}/vaults/${space.sId}/categories/${category}`
-    );
-  };
-
   return (
     <>
       <div
@@ -180,41 +176,33 @@ export const SpaceCategoriesList = ({
                 variant="outline"
               />
             )}
-            <DropdownMenu>
-              <DropdownMenu.Button>
+            <NewDropdownMenu>
+              <NewDropdownMenuTrigger>
                 <Button label="Add data" icon={PlusIcon} />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items width={200}>
-                <DropdownMenu.Item
-                  label="Connected Data"
+              </NewDropdownMenuTrigger>
+              <NewDropdownMenuContent>
+                <NewDropdownMenuItem
+                  href={`/w/${owner.sId}/vaults/${space.sId}/categories/managed`}
                   icon={CloudArrowLeftRightIcon}
-                  onClick={() => {
-                    redirectTo("managed");
-                  }}
+                  label="Connected Data"
                 />
-                <DropdownMenu.Item
-                  label="Upload Data"
+                <NewDropdownMenuItem
+                  href={`/w/${owner.sId}/vaults/${space.sId}/categories/folder`}
                   icon={ArrowUpOnSquareIcon}
-                  onClick={() => {
-                    redirectTo("folder");
-                  }}
+                  label="Upload Data"
                 />
-                <DropdownMenu.Item
-                  label="Scrap a website"
+                <NewDropdownMenuItem
+                  href={`/w/${owner.sId}/vaults/${space.sId}/categories/website`}
                   icon={GlobeAltIcon}
-                  onClick={() => {
-                    redirectTo("website");
-                  }}
+                  label="Scrape a website"
                 />
-                <DropdownMenu.Item
-                  label="Create a Dust App"
+                <NewDropdownMenuItem
+                  href={`/w/${owner.sId}/vaults/${space.sId}/categories/apps`}
                   icon={CommandLineIcon}
-                  onClick={() => {
-                    redirectTo("apps");
-                  }}
+                  label="Create a Dust App"
                 />
-              </DropdownMenu.Items>
-            </DropdownMenu>
+              </NewDropdownMenuContent>
+            </NewDropdownMenu>
           </div>
         )}
       </div>

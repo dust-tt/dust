@@ -1,4 +1,11 @@
-import { Button, Dialog, DropdownMenu } from "@dust-tt/sparkle";
+import {
+  Button,
+  Dialog,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
+} from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
@@ -100,14 +107,14 @@ export const AddToSpaceDialog = ({
       if (!res.ok) {
         const rawError: { error: APIError } = await res.json();
         sendNotification({
-          title: `Error while adding data to space`,
+          title: "Error while adding data to space",
           description: rawError.error.message,
           type: "error",
         });
         onClose(false);
       } else {
         sendNotification({
-          title: `Data added to space`,
+          title: "Data added to space",
           type: "success",
         });
         onClose(true);
@@ -115,7 +122,7 @@ export const AddToSpaceDialog = ({
       }
     } catch (e) {
       sendNotification({
-        title: `Error while adding data to space`,
+        title: "Error while adding data to space",
         description: `An Unknown error ${e} occurred while adding data to space.`,
         type: "error",
       });
@@ -137,25 +144,25 @@ export const AddToSpaceDialog = ({
           This data is already available in all spaces.
         </div>
       ) : (
-        <DropdownMenu>
-          <DropdownMenu.Button>
+        <NewDropdownMenu>
+          <NewDropdownMenuTrigger asChild>
             <Button
               label={space ? space.name : "Select space"}
               size="sm"
               isSelect
               variant="outline"
             />
-          </DropdownMenu.Button>
-          <DropdownMenu.Items>
+          </NewDropdownMenuTrigger>
+          <NewDropdownMenuContent>
             {availableSpaces.map((currentSpace) => (
-              <DropdownMenu.Item
+              <NewDropdownMenuItem
                 key={currentSpace.sId}
                 label={currentSpace.name}
                 onClick={() => setSpace(currentSpace)}
               />
             ))}
-          </DropdownMenu.Items>
-        </DropdownMenu>
+          </NewDropdownMenuContent>
+        </NewDropdownMenu>
       )}
     </Dialog>
   );
