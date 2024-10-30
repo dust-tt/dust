@@ -217,13 +217,13 @@ export default function SettingsView({
                         className={classNames(
                           "block w-full min-w-0 flex-1 rounded-none rounded-r-md text-sm",
                           appNameError
-                            ? "border-gray-300 border-red-500 focus:border-red-500 focus:ring-red-500"
+                            ? "border-red-500 focus:border-red-500 focus:ring-red-500"
                             : "border-gray-300 focus:border-action-500 focus:ring-action-500"
                         )}
                         value={appName}
                         onChange={(e) => setAppName(e.target.value)}
-                        showErrorLabel
-                        error={appNameError}
+                        message={appNameError}
+                        messageStatus="error"
                       />
                     </div>
                     <div>

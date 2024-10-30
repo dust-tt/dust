@@ -406,9 +406,9 @@ export default function SpaceWebsiteModal({
                     placeholder="https://example.com/articles"
                     value={dataSourceUrl}
                     onChange={(e) => updateUrl(e.target.value)}
-                    error={dataSourceUrlError}
+                    message={dataSourceUrlError}
+                    messageStatus="error"
                     name="dataSourceUrl"
-                    showErrorLabel
                   />
                   <ContentMessage
                     title="Ensure the website is public"

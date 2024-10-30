@@ -158,9 +158,9 @@ export default function SpaceFolderModal({
                   onChange={(e) => {
                     setName(e.target.value);
                   }}
-                  error={error}
+                  message={error}
+                  messageStatus="error"
                   disabled={!!dataSourceView} // We cannot change the name of a datasource
-                  showErrorLabel
                 />
                 <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
                   <ExclamationCircleStrokeIcon />{" "}

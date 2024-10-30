@@ -171,7 +171,7 @@ function PropertiesFields({
                       handlePropertyChange(index, "name", e.target.value);
                     }}
                     disabled={readOnly}
-                    error={
+                    message={
                       prop["name"].length === 0
                         ? "Name is required"
                         : properties.find(
@@ -180,6 +180,7 @@ function PropertiesFields({
                           ? "Name must be unique"
                           : undefined
                     }
+                    messageStatus="error"
                   />
                 </div>
 
@@ -196,11 +197,12 @@ function PropertiesFields({
                       );
                     }}
                     disabled={readOnly}
-                    error={
+                    message={
                       prop["description"].length === 0
                         ? "Description is required"
                         : undefined
                     }
+                    messageStatus="error"
                   />
                 </div>
 

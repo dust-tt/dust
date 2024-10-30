@@ -283,12 +283,12 @@ const DocumentUploadOrEditModal = ({
                       name: e.target.value,
                     }));
                   }}
-                  error={
+                  message={
                     !documentState.name && editionStatus.name
                       ? "You need to provide a name."
                       : null
                   }
-                  showErrorLabel
+                  messageStatus="error"
                 />
               </div>
 
