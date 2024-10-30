@@ -458,12 +458,10 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     blob: CreationAttributes<ZendeskTicket>;
     transaction?: Transaction;
   }): Promise<ZendeskTicketResource> {
-    let article;
-    if (transaction) {
-      article = await ZendeskTicket.create({ ...blob }, { transaction });
-    } else {
-      article = await ZendeskTicket.create({ ...blob });
-    }
+    const article = await ZendeskTicket.create(
+      { ...blob },
+      transaction && { transaction }
+    );
     return new this(this.model, article.get());
   }
 
@@ -600,12 +598,10 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     blob: CreationAttributes<ZendeskArticle>;
     transaction?: Transaction;
   }): Promise<ZendeskArticleResource> {
-    let article;
-    if (transaction) {
-      article = await ZendeskArticle.create({ ...blob }, { transaction });
-    } else {
-      article = await ZendeskArticle.create({ ...blob });
-    }
+    const article = await ZendeskArticle.create(
+      { ...blob },
+      transaction && { transaction }
+    );
     return new this(this.model, article.get());
   }
 
