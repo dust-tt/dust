@@ -12,13 +12,12 @@ import { ACTIVE_ROLES } from "@dust-tt/types";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 
-export function RoleDropDown({
-  selectedRole,
-  onChange,
-}: {
-  selectedRole: ActiveRoleType;
+interface RoleDropDownProps {
   onChange: (role: ActiveRoleType) => void;
-}) {
+  selectedRole: ActiveRoleType;
+}
+
+export function RoleDropDown({ onChange, selectedRole }: RoleDropDownProps) {
   return (
     <NewDropdownMenu>
       <NewDropdownMenuTrigger>
