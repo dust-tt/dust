@@ -69,7 +69,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     {
       className,
       message,
-      messageStatus = "default",
+      messageStatus ,
       value,
       label,
       isError,
