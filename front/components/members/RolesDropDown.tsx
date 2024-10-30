@@ -20,7 +20,7 @@ interface RoleDropDownProps {
 export function RoleDropDown({ onChange, selectedRole }: RoleDropDownProps) {
   return (
     <NewDropdownMenu>
-      <NewDropdownMenuTrigger>
+      <NewDropdownMenuTrigger asChild>
         <div className="group flex cursor-pointer items-center gap-2">
           <Chip
             color={ROLES_DATA[selectedRole]["color"]}

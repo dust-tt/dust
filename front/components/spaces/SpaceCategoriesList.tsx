@@ -174,7 +174,7 @@ export const SpaceCategoriesList = ({
               />
             )}
             <NewDropdownMenu>
-              <NewDropdownMenuTrigger>
+              <NewDropdownMenuTrigger asChild>
                 <Button label="Add data" icon={PlusIcon} />
               </NewDropdownMenuTrigger>
               <NewDropdownMenuContent>

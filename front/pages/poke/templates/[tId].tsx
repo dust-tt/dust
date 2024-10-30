@@ -159,7 +159,7 @@ function PickerInputField({
                   value={field.value} // Ensuring value is a string
                 />
                 <NewDropdownMenu>
-                  <NewDropdownMenuTrigger>
+                  <NewDropdownMenuTrigger asChild>
                     <div ref={pickerRef}>
                       <PokeButton variant="outline">{buttonLabel}</PokeButton>
                     </div>
