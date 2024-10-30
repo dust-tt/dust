@@ -35,8 +35,10 @@ import {
   revokeSyncZendeskTickets,
 } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import { launchZendeskSyncWorkflow } from "@connectors/connectors/zendesk/temporal/client";
-import { zendeskStopSyncWorkflow } from "@connectors/connectors/zendesk/temporal/workflows";
+import {
+  launchZendeskSyncWorkflow,
+  stopZendeskSyncWorkflow,
+} from "@connectors/connectors/zendesk/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -103,7 +105,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    const result = await zendeskStopSyncWorkflow(this.connectorId);
+    const result = await stopZendeskSyncWorkflow(this.connectorId);
     return result.isErr() ? result : new Ok(undefined);
   }
 
