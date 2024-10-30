@@ -342,9 +342,7 @@ const RenderConversations = ({
 
   return (
     <div>
-      <NavigationListLabel
-        label={dateLabel}
-      />
+      <NavigationListLabel label={dateLabel} />
       <NavigationList>
         {conversations.map((conversation) => (
           <RenderConversation
