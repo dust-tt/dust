@@ -7,7 +7,6 @@ import type {
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 
-import { launchIntercomSyncWorkflow } from "@connectors/connectors/intercom/temporal/client";
 import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import {
@@ -38,7 +37,6 @@ import {
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { launchZendeskSyncWorkflow } from "@connectors/connectors/zendesk/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { IntercomTeam } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -132,7 +130,26 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }
 
   async sync(): Promise<Result<string, Error>> {
-    throw new Error("Method not implemented.");
+    const connectorId = this.connectorId;
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
+      return new Err(new Error("Connector not found"));
+    }
+
+    const brands = await ZendeskBrandResource.fetchByConnectorId({
+      connectorId,
+    });
+
+    const sendSignalToWorkflowResult = await launchZendeskSyncWorkflow({
+      connectorId,
+      brandIds: brands.map((brand) => brand.brandId),
+      forceResync: true,
+    });
+    if (sendSignalToWorkflowResult.isErr()) {
+      return new Err(sendSignalToWorkflowResult.error);
+    }
+    return new Ok(connector.id.toString());
   }
 
   async retrievePermissions({
@@ -314,7 +331,23 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       }
     }
 
-    /// Launch a sync workflow here
+    if (
+      toBeSignaledBrandIds.size > 0 ||
+      toBeSignaledTicketsIds.size > 0 ||
+      toBeSignaledHelpCenterIds.size > 0 ||
+      toBeSignaledCategoryIds.size > 0
+    ) {
+      const sendSignalToWorkflowResult = await launchZendeskSyncWorkflow({
+        connectorId,
+        brandIds: [...toBeSignaledBrandIds],
+        ticketsBrandIds: [...toBeSignaledTicketsIds],
+        helpCenterBrandIds: [...toBeSignaledHelpCenterIds],
+        categoryIds: [...toBeSignaledCategoryIds],
+      });
+      if (sendSignalToWorkflowResult.isErr()) {
+        return new Err(sendSignalToWorkflowResult.error);
+      }
+    }
 
     return new Ok(undefined);
   }

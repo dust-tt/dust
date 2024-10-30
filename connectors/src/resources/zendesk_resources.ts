@@ -215,6 +215,15 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => new this(this.model, brand.get()));
   }
 
+  static async fetchByConnectorId({
+    connectorId,
+  }: {
+    connectorId: number;
+  }): Promise<ZendeskBrandResource[]> {
+    const brands = await ZendeskBrand.findAll({ where: { connectorId } });
+    return brands.map((brand) => new this(this.model, brand.get()));
+  }
+
   static async fetchAllWithHelpCenter({
     connectorId,
   }: {
