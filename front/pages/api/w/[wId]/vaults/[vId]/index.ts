@@ -132,7 +132,7 @@ async function handler(
     }
 
     case "PATCH": {
-      if (!auth.isAdmin()) {
+      if (!vault.canAdministrate(auth)) {
         // Only admins can update.
         return apiError(req, res, {
           status_code: 403,
@@ -211,7 +211,7 @@ async function handler(
     }
 
     case "DELETE": {
-      if (!auth.isAdmin()) {
+      if (!vault.canAdministrate(auth)) {
         // Only admins, who have access to the vault, can delete.
         return apiError(req, res, {
           status_code: 403,

@@ -19,7 +19,7 @@ export async function handlePatchDataSourceView(
   auth: Authenticator,
   dataSourceView: DataSourceViewResource
 ) {
-  if (!auth.isAdmin() && !auth.isBuilder()) {
+  if (!dataSourceView.canWrite(auth)) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -114,8 +114,8 @@ async function handler(
     }
 
     case "DELETE": {
-      if (!auth.isAdmin() || !auth.isBuilder()) {
-        // Only admins, or builders who have to the vault, can patch
+      if (!dataSourceView.canWrite(auth)) {
+        // Only admins, or builders who have to the space, can patch.
         return apiError(req, res, {
           status_code: 403,
           api_error: {

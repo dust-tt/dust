@@ -49,7 +49,7 @@ async function handler(
     });
   }
 
-  if (vault.isSystem() && !auth.isAdmin()) {
+  if (vault.isSystem() && !vault.canAdministrate(auth)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -58,7 +58,7 @@ async function handler(
           "Only the users that are `admins` for the current workspace can update a data source.",
       },
     });
-  } else if (vault.isGlobal() && !auth.isBuilder()) {
+  } else if (vault.isGlobal() && !vault.canWrite(auth)) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -82,17 +82,6 @@ async function handler(
 
   switch (req.method) {
     case "PATCH": {
-      if (!vault.canWrite(auth)) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "data_source_auth_error",
-            message:
-              "Only the users that have `write` permission for the current vault can update a data source.",
-          },
-        });
-      }
-
       if (dataSource.connectorId) {
         // Not implemented yet, next PR will allow patching a website.
         return apiError(req, res, {
@@ -127,8 +116,9 @@ async function handler(
     case "DELETE": {
       const isAuthorized =
         vault.canWrite(auth) ||
+        // Only allow to delete Snowflake connectors if the user is an admin.
         (vault.isSystem() &&
-          auth.isAdmin() &&
+          vault.canAdministrate(auth) &&
           dataSource.connectorProvider === "snowflake");
 
       if (!isAuthorized) {

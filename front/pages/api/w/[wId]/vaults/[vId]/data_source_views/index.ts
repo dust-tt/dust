@@ -152,7 +152,7 @@ async function handler(
     }
 
     case "POST": {
-      if (!auth.isAdmin() || !auth.isBuilder()) {
+      if (!vault.canWrite(auth)) {
         // Only admins, or builders who have to the vault, can create a new view
         return apiError(req, res, {
           status_code: 403,
