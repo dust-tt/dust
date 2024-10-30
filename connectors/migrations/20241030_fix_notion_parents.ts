@@ -24,7 +24,6 @@ async function updateParentsFieldForConnector(
     const pages = await NotionPage.findAll({
       where: {
         connectorId: connector.id,
-        parentId: "unknown",
         id: {
           [Op.gt]: pagesIdCursor,
         },
@@ -35,7 +34,6 @@ async function updateParentsFieldForConnector(
     const databases = await NotionDatabase.findAll({
       where: {
         connectorId: connector.id,
-        parentId: "unknown",
         id: {
           [Op.gt]: databasesIdCursor,
         },
