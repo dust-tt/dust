@@ -46,7 +46,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const user = await UserResource.fetchByEmail(email);
+      const user = await UserResource.fetchByEmail(email.toLowerCase());
 
       const workspace = auth.getNonNullableWorkspace();
 
