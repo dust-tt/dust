@@ -4,12 +4,10 @@ import {
   executeChild,
   proxyActivities,
   setHandler,
-  sleep,
   workflowInfo,
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
-import { INTERVAL_BETWEEN_SYNCS_MS } from "@connectors/connectors/zendesk/temporal/config";
 import type { ZendeskUpdateSignal } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
 
@@ -181,8 +179,6 @@ export async function zendeskSyncWorkflow({
   // run cleanup here if needed
 
   await saveZendeskConnectorSuccessSync({ connectorId });
-
-  await sleep(INTERVAL_BETWEEN_SYNCS_MS);
 }
 
 /**
