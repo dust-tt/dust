@@ -451,6 +451,20 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     super(ZendeskTicket, blob);
   }
 
+  static async makeNew({
+    blob,
+    transaction,
+  }: {
+    blob: CreationAttributes<ZendeskTicket>;
+    transaction?: Transaction;
+  }): Promise<ZendeskTicketResource> {
+    const article = await ZendeskTicket.create(
+      { ...blob },
+      transaction && { transaction }
+    );
+    return new this(this.model, article.get());
+  }
+
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -575,6 +589,20 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     blob: Attributes<ZendeskArticle>
   ) {
     super(ZendeskArticle, blob);
+  }
+
+  static async makeNew({
+    blob,
+    transaction,
+  }: {
+    blob: CreationAttributes<ZendeskArticle>;
+    transaction?: Transaction;
+  }): Promise<ZendeskArticleResource> {
+    const article = await ZendeskArticle.create(
+      { ...blob },
+      transaction && { transaction }
+    );
+    return new this(this.model, article.get());
   }
 
   async postFetchHook(): Promise<void> {

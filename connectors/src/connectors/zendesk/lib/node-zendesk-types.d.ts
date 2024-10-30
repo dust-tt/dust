@@ -2,7 +2,7 @@ import "node-zendesk";
 
 import type { ZendeskClientOptions } from "node-zendesk";
 
-interface Brand {
+interface ZendeskFetchedBrand {
   url: string;
   id: number;
   name: string;
@@ -27,7 +27,7 @@ interface Response {
   statusText: string;
 }
 
-interface Category {
+interface ZendeskFetchedCategory {
   id: number;
   url: string;
   html_url: string;
@@ -41,7 +41,7 @@ interface Category {
   outdated: boolean;
 }
 
-interface Article {
+export interface ZendeskFetchedArticle {
   id: number;
   url: string;
   html_url: string;
@@ -70,7 +70,7 @@ interface Article {
   user_segment_ids: number[];
 }
 
-interface Ticket {
+interface ZendeskFetchedTicket {
   assignee_id: number;
   collaborator_ids: number[];
   created_at: string; // ISO 8601 date string
@@ -93,6 +93,7 @@ interface Ticket {
   problem_id: number;
   raw_subject: string;
   recipient: string;
+  requester: { locale_id: number; name: string; email: string };
   requester_id: number;
   satisfaction_rating: {
     comment: string;
@@ -100,11 +101,11 @@ interface Ticket {
     score: string;
   };
   sharing_agreement_ids: number[];
-  status: string;
+  status: "new" | "open" | "pending" | "hold" | "solved" | "closed";
   subject: string;
   submitter_id: number;
   tags: string[];
-  type: string;
+  type: "problem" | "incident" | "question" | "task";
   updated_at: string; // ISO 8601 date string
   url: string;
   via: {
@@ -118,33 +119,38 @@ declare module "node-zendesk" {
     brand: {
       list: () => Promise<{
         response: Response;
-        result: Brand[];
+        result: ZendeskFetchedBrand[];
       }>;
-      show: (
-        brandId: number
-      ) => Promise<{ response: Response; result: { brand: Brand } }>;
+      show: (brandId: number) => Promise<{
+        response: Response;
+        result: { brand: ZendeskFetchedBrand };
+      }>;
     };
     helpcenter: {
       categories: {
-        list: () => Promise<Category[]>;
+        list: () => Promise<ZendeskFetchedCategory[]>;
         show: (
           categoryId: number
-        ) => Promise<{ response: Response; result: Category }>;
+        ) => Promise<{ response: Response; result: ZendeskFetchedCategory }>;
       };
       articles: {
-        list: () => Promise<Article[]>;
+        list: () => Promise<ZendeskFetchedArticle[]>;
         show: (
           articleId: number
-        ) => Promise<{ response: Response; result: Article }>;
-        listByCategory: (categoryId: number) => Promise<Article[]>;
-        listSinceStartTime: (startTime: number) => Promise<Article[]>;
+        ) => Promise<{ response: Response; result: ZendeskFetchedArticle }>;
+        listByCategory: (
+          categoryId: number
+        ) => Promise<ZendeskFetchedArticle[]>;
+        listSinceStartTime: (
+          startTime: number
+        ) => Promise<ZendeskFetchedArticle[]>;
       };
-      tickets: {
-        list: () => Promise<Ticket[]>;
-        show: (
-          ticketId: number
-        ) => Promise<{ response: Response; result: Ticket }>;
-      };
+    };
+    tickets: {
+      list: () => Promise<ZendeskFetchedTicket[]>;
+      show: (
+        ticketId: number
+      ) => Promise<{ response: Response; result: ZendeskFetchedTicket }>;
     };
   }
 
