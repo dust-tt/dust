@@ -3,7 +3,6 @@ import {
   ChatBubbleBottomCenterPlusIcon,
   Checkbox,
   Dialog,
-  Item,
   Label,
   ListCheckIcon,
   MoreIcon,
@@ -313,7 +312,6 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   isMultiSelect={isMultiSelect}
                   selectedConversations={selectedConversations}
                   toggleConversationSelection={toggleConversationSelection}
-                  setSidebarOpen={setSidebarOpen}
                   router={router}
                   owner={owner}
                 />
@@ -331,7 +329,6 @@ const RenderConversations = ({
   isMultiSelect,
   selectedConversations,
   toggleConversationSelection,
-  setSidebarOpen,
   router,
   owner,
 }: {
@@ -340,61 +337,54 @@ const RenderConversations = ({
   isMultiSelect: boolean;
   selectedConversations: ConversationType[];
   toggleConversationSelection: (c: ConversationType) => void;
-  setSidebarOpen: (open: boolean) => void;
   router: NextRouter;
   owner: WorkspaceType;
 }) => {
-  const renderConversationItem = (conversation: ConversationType) => {
-    const conversationLabel =
-      conversation.title ||
-      (moment(conversation.created).isSame(moment(), "day")
-        ? "New Conversation"
-        : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
+  const conversationLabel = (conversation: ConversationType) =>
+    conversation.title ||
+    (moment(conversation.created).isSame(moment(), "day")
+      ? "New Conversation"
+      : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
-    if (isMultiSelect) {
-      return (
-        <div className="flex items-center px-2 py-2" key={conversation.sId}>
-          <Checkbox
-            className="bg-white"
-            checked={selectedConversations.includes(conversation)}
-            onCheckedChange={() => toggleConversationSelection(conversation)}
-          />
-          <span className="ml-2 text-sm text-muted-foreground">
-            {conversationLabel}
-          </span>
-        </div>
-      );
-    }
-
-    return (
-      <NavigationListItem
-        key={conversation.sId}
-        selected={router.query.cId === conversation.sId}
-        label={conversationLabel}
-        onClick={() => setSidebarOpen(false)}
-        href={`/w/${owner.sId}/assistant/${conversation.sId}`}
-        className="px-2"
-      />
-    );
-  };
-
+  if (!conversations.length) {
+    return null;
+  }
   return (
-    conversations.length > 0 && (
-      <>
-        <NavigationListLabel
-          label={dateLabel.toUpperCase()}
-          className="py-1 text-xs font-medium text-element-800"
-        />
-        {isMultiSelect ? (
-          <div className="flex flex-col">
-            {conversations.map(renderConversationItem)}
-          </div>
-        ) : (
-          <NavigationList>
-            {conversations.map(renderConversationItem)}
-          </NavigationList>
-        )}
-      </>
-    )
+    <>
+      <NavigationListLabel
+        label={dateLabel.toUpperCase()}
+        className="py-1 text-xs font-medium text-element-800"
+      />
+      {isMultiSelect ? (
+        <div className="flex flex-col">
+          {conversations.map((conversation) => (
+            <div className="flex items-center px-2 py-2" key={conversation.sId}>
+              <Checkbox
+                className="bg-white"
+                checked={selectedConversations.includes(conversation)}
+                onCheckedChange={() =>
+                  toggleConversationSelection(conversation)
+                }
+              />
+              <span className="ml-2 text-sm text-muted-foreground">
+                {conversationLabel(conversation)}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <NavigationList>
+          {conversations.map((conversation) => (
+            <NavigationListItem
+              key={conversation.sId}
+              selected={router.query.cId === conversation.sId}
+              label={conversationLabel(conversation)}
+              href={`/w/${owner.sId}/assistant/${conversation.sId}`}
+              className="px-2"
+            />
+          ))}
+        </NavigationList>
+      )}
+    </>
   );
 };
