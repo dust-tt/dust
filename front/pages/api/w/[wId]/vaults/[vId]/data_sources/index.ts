@@ -91,7 +91,8 @@ async function handler(
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
 
-  if (typeof req.query.vId !== "string") {
+  const { vId } = req.query;
+  if (typeof vId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -100,8 +101,8 @@ async function handler(
       },
     });
   }
-  const space = await SpaceResource.fetchById(auth, req.query.vId);
 
+  const space = await SpaceResource.fetchById(auth, vId);
   if (!space) {
     return apiError(req, res, {
       status_code: 404,
@@ -113,7 +114,7 @@ async function handler(
   }
 
   if (space.isSystem()) {
-    if (!auth.isAdmin()) {
+    if (!space.canAdministrate(auth)) {
       return apiError(req, res, {
         status_code: 403,
         api_error: {

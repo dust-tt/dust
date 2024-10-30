@@ -47,11 +47,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     super(SpaceModel, blob);
   }
 
-  static fromModel(vault: SpaceModel) {
+  static fromModel(space: SpaceModel) {
     return new SpaceResource(
       SpaceModel,
-      vault.get(),
-      vault.groups.map((group) => new GroupResource(GroupModel, group.get()))
+      space.get(),
+      space.groups.map((group) => new GroupResource(GroupModel, group.get()))
     );
   }
 
@@ -60,19 +60,19 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     groups: GroupResource[]
   ) {
     return frontSequelize.transaction(async (transaction) => {
-      const vault = await SpaceModel.create(blob, { transaction });
+      const space = await SpaceModel.create(blob, { transaction });
 
       for (const group of groups) {
         await GroupSpaceModel.create(
           {
             groupId: group.id,
-            vaultId: vault.id,
+            vaultId: space.id,
           },
           { transaction }
         );
       }
 
-      return new this(SpaceModel, vault.get(), groups);
+      return new this(SpaceModel, space.get(), groups);
     });
   }
 
@@ -393,48 +393,48 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   }
 
   /**
-   * Computes resource permissions based on vault type and group configuration.
+   * Computes resource permissions based on space type and group configuration.
    *
-   * Permission patterns by vault type:
+   * Permission patterns by space type:
    *
-   * 1. System vaults:
+   * 1. System spaces:
    * - Restricted to workspace admins only
    *
-   * 2. Public vaults:
+   * 2. Public spaces:
    * - Read: Anyone
    * - Write: Workspace admins and builders
    *
-   * 3. Global vaults:
+   * 3. Global spaces:
    * - Read: All workspace members
    * - Write: Workspace admins and builders
    *
-   * 4. Open vaults:
+   * 4. Open spaces:
    * - Read: All workspace members
    * - Write: Admins and builders
    *
-   * 5. Restricted vaults:
+   * 5. Restricted spaces:
    * - Read/Write: Group members
    * - Admin: Workspace admins
    *
-   * @returns Array of ResourcePermission objects based on vault type
+   * @returns Array of ResourcePermission objects based on space type
    */
   requestedPermissions(): ResourcePermission[] {
     const globalGroup = this.isRegular()
       ? this.groups.find((group) => group.isGlobal())
       : undefined;
 
-    // System vaults.
+    // System space.
     if (this.isSystem()) {
       return [
         {
           workspaceId: this.workspaceId,
-          roles: [{ role: "admin", permissions: ["admin", "write"] }],
+          roles: [{ role: "admin", permissions: ["admin"] }],
           groups: [],
         },
       ];
     }
 
-    // Public vaults.
+    // Public space.
     if (this.isPublic()) {
       return [
         {
@@ -454,7 +454,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ];
     }
 
-    // Default Workspace vault.
+    // Default Workspace space.
     if (this.isGlobal()) {
       return [
         {
@@ -471,7 +471,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ];
     }
 
-    // Open vaults:
+    // Open space:
     // Currently only using global group for simplicity
     // TODO(2024-10-25 flav): Refactor to store a list of ResourcePermission on conversations
     // and agent_configurations. This will allow proper handling of multiple groups instead
@@ -496,7 +496,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       ];
     }
 
-    // Restricted vaults.
+    // Restricted space.
     return [
       {
         workspaceId: this.workspaceId,
