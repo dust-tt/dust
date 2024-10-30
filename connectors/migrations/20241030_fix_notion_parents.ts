@@ -24,7 +24,6 @@ async function updateParentsFieldForConnector(
     const pages = await NotionPage.findAll({
       where: {
         connectorId: connector.id,
-        parentId: "unknown",
         id: {
           [Op.gt]: pagesIdCursor,
         },
@@ -35,7 +34,6 @@ async function updateParentsFieldForConnector(
     const databases = await NotionDatabase.findAll({
       where: {
         connectorId: connector.id,
-        parentId: "unknown",
         id: {
           [Op.gt]: databasesIdCursor,
         },
@@ -79,9 +77,14 @@ async function updateParentsFieldForConnector(
 
         if ("notionPageId" in node) {
           // its a page
-          documentId = `notion-${node.notionPageId}`;
+          if (node.lastUpsertedTs) {
+            documentId = `notion-${node.notionPageId}`;
+          }
         } else {
-          tableId = `notion-${node.notionDatabaseId}`;
+          if (node.structuredDataUpsertedTs) {
+            tableId = `notion-${node.notionDatabaseId}`;
+          }
+
           documentId = `notion-database-${node.notionDatabaseId}`;
         }
 
@@ -123,6 +126,12 @@ makeScript({}, async ({ execute }) => {
 
   console.log(`Found ${connectors.length} Notion connectors`);
   for (const connector of connectors) {
+    if (connector.errorType) {
+      console.log(
+        `Skipping connector ${connector.id} (workspace ${connector.workspaceId}) because it has an error`
+      );
+      continue;
+    }
     console.log(
       `Processing connector ${connector.id} (workspace ${connector.workspaceId})`
     );

@@ -13,7 +13,9 @@ export const routes = [
     path: "*",
     element: (
       <ProtectedRoute>
-        <MainPage />,
+        {({ user, workspace }) => (
+          <MainPage user={user} workspace={workspace} />
+        )}
       </ProtectedRoute>
     ),
   },
@@ -21,7 +23,9 @@ export const routes = [
     path: "/conversations/:conversationId",
     element: (
       <ProtectedRoute>
-        <ConversationPage />
+        {({ user, workspace }) => (
+          <ConversationPage user={user} workspace={workspace} />
+        )}
       </ProtectedRoute>
     ),
   },
@@ -29,7 +33,9 @@ export const routes = [
     path: "/conversations",
     element: (
       <ProtectedRoute>
-        <ConversationsPage />
+        {({ user, workspace }) => (
+          <ConversationsPage user={user} workspace={workspace} />
+        )}
       </ProtectedRoute>
     ),
   },

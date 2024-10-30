@@ -129,7 +129,7 @@ const AddDataDropDownButton = ({
           onClick={() => {
             contentActionsRef.current?.callAction("MultipleDocumentsUpload");
           }}
-          label="Upload multiple files"
+          label="Upload multiple documents"
         />
       </DropdownMenu.Items>
     </DropdownMenu>
