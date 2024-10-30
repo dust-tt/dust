@@ -218,7 +218,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 />
                 <Button
                   size="xs"
-                  variant="ghost"
+                  variant="outline"
                   icon={XMarkIcon}
                   onClick={toggleMultiSelect}
                   className="mr-2"
@@ -227,7 +227,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   icon={TrashIcon}
                   size="xs"
                   variant={
-                    selectedConversations.length === 0 ? "ghost" : "warning"
+                    selectedConversations.length === 0 ? "outline" : "warning"
                   }
                   disabled={selectedConversations.length === 0}
                   onClick={() => setShowDeleteDialog("selection")}
@@ -305,47 +305,19 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </Label>
             )}
             {conversationsByDate &&
-              Object.keys(conversationsByDate).map((dateLabel) => {
-                const conversations =
-                  conversationsByDate[dateLabel as GroupLabel];
-                return (
-                  conversations.length > 0 && (
-                    <React.Fragment key={dateLabel}>
-                      <NavigationListLabel
-                        label={dateLabel.toUpperCase()}
-                        className="py-1 pl-1 text-xs font-medium text-element-800"
-                      />
-                      <NavigationList>
-                        {conversations.map((c: ConversationType) => (
-                          <NavigationListItem
-                            key={c.sId}
-                            selected={router.query.cId === c.sId}
-                            label={
-                              c.title ||
-                              (moment(c.created).isSame(moment(), "day")
-                                ? "New Conversation"
-                                : `Conversation from ${new Date(c.created).toLocaleDateString()}`)
-                            }
-                            onClick={() => {
-                              if (isMultiSelect) {
-                                toggleConversationSelection(c);
-                              } else {
-                                setSidebarOpen(false);
-                              }
-                            }}
-                            href={
-                              isMultiSelect
-                                ? undefined
-                                : `/w/${owner.sId}/assistant/${c.sId}`
-                            }
-                            className="px-2"
-                          />
-                        ))}
-                      </NavigationList>
-                    </React.Fragment>
-                  )
-                );
-              })}
+              Object.keys(conversationsByDate).map((dateLabel) => (
+                <RenderConversations
+                  key={dateLabel}
+                  conversations={conversationsByDate[dateLabel as GroupLabel]}
+                  dateLabel={dateLabel}
+                  isMultiSelect={isMultiSelect}
+                  selectedConversations={selectedConversations}
+                  toggleConversationSelection={toggleConversationSelection}
+                  setSidebarOpen={setSidebarOpen}
+                  router={router}
+                  owner={owner}
+                />
+              ))}
           </div>
         </div>
       </div>
@@ -353,8 +325,9 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
   );
 }
 
-const RenderConversation = ({
-  conversation,
+const RenderConversations = ({
+  conversations,
+  dateLabel,
   isMultiSelect,
   selectedConversations,
   toggleConversationSelection,
@@ -362,7 +335,8 @@ const RenderConversation = ({
   router,
   owner,
 }: {
-  conversation: ConversationType;
+  conversations: ConversationType[];
+  dateLabel: string;
   isMultiSelect: boolean;
   selectedConversations: ConversationType[];
   toggleConversationSelection: (c: ConversationType) => void;
@@ -370,42 +344,57 @@ const RenderConversation = ({
   router: NextRouter;
   owner: WorkspaceType;
 }) => {
-  const conversationLabel =
-    conversation.title ||
-    (moment(conversation.created).isSame(moment(), "day")
-      ? "New Conversation"
-      : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
+  const renderConversationItem = (conversation: ConversationType) => {
+    const conversationLabel =
+      conversation.title ||
+      (moment(conversation.created).isSame(moment(), "day")
+        ? "New Conversation"
+        : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
-  const conversationAction = isMultiSelect
-    ? () => (
-        <Checkbox
-          className="bg-white"
-          checked={selectedConversations.includes(conversation)}
-        />
-      )
-    : undefined;
+    if (isMultiSelect) {
+      return (
+        <div className="flex items-center px-2 py-2" key={conversation.sId}>
+          <Checkbox
+            className="bg-white"
+            checked={selectedConversations.includes(conversation)}
+            onChange={() => toggleConversationSelection(conversation)}
+          />
+          <span className="ml-2 text-sm text-muted-foreground">
+            {conversationLabel}
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <NavigationListItem
+        key={conversation.sId}
+        selected={router.query.cId === conversation.sId}
+        label={conversationLabel}
+        onClick={() => setSidebarOpen(false)}
+        href={`/w/${owner.sId}/assistant/${conversation.sId}`}
+        className="px-2"
+      />
+    );
+  };
 
   return (
-    <Item
-      style="item"
-      action={conversationAction}
-      hasAction="hover"
-      key={conversation.sId}
-      onClick={() => {
-        isMultiSelect
-          ? toggleConversationSelection(conversation)
-          : setSidebarOpen(false);
-      }}
-      selected={isMultiSelect ? false : router.query.cId === conversation.sId}
-      label={conversationLabel}
-      className="px-2"
-      link={
-        isMultiSelect
-          ? undefined
-          : {
-              href: `/w/${owner.sId}/assistant/${conversation.sId}`,
-            }
-      }
-    />
+    conversations.length > 0 && (
+      <>
+        <NavigationListLabel
+          label={dateLabel.toUpperCase()}
+          className="py-1 text-xs font-medium text-element-800"
+        />
+        {isMultiSelect ? (
+          <div className="flex flex-col">
+            {conversations.map(renderConversationItem)}
+          </div>
+        ) : (
+          <NavigationList>
+            {conversations.map(renderConversationItem)}
+          </NavigationList>
+        )}
+      </>
+    )
   );
 };
