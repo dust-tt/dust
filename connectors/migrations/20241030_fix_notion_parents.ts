@@ -26,7 +26,7 @@ async function updateParentsFieldForConnector(
         connectorId: connector.id,
         parentId: "unknown",
         id: {
-          [Op.gte]: pagesIdCursor,
+          [Op.gt]: pagesIdCursor,
         },
       },
       limit: pageSize,
@@ -37,7 +37,7 @@ async function updateParentsFieldForConnector(
         connectorId: connector.id,
         parentId: "unknown",
         id: {
-          [Op.gte]: databasesIdCursor,
+          [Op.gt]: databasesIdCursor,
         },
       },
       limit: pageSize,
