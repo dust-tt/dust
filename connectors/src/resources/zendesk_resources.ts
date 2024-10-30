@@ -25,7 +25,6 @@ import {
 } from "@connectors/lib/models/zendesk";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -98,23 +97,10 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
    */
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
-      where: {
-        connectorId: this.connectorId,
-      },
+      where: { connectorId: this.connectorId, brandId: this.brandId },
       transaction,
     });
     return new Ok(undefined);
-  }
-
-  /**
-   * Deletes the brand and all associated data (tickets, categories, articles).
-   */
-  // eslint-disable-next-line no-empty-pattern
-  async remove({}: {
-    dataSourceConfig: DataSourceConfig;
-    loggerArgs: Record<string, string | number>;
-  }) {
-    // TODO: implement removal for the children first.
   }
 
   toJSON(): Record<string, unknown> {
@@ -141,16 +127,14 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     blob: CreationAttributes<ZendeskBrand>;
     transaction?: Transaction;
   }): Promise<ZendeskBrandResource> {
-    let brand;
-    if (transaction) {
-      brand = await ZendeskBrand.create({ ...blob }, { transaction });
-    } else {
-      brand = await ZendeskBrand.create({ ...blob });
-    }
+    const brand = await ZendeskBrand.create(
+      { ...blob },
+      transaction && { transaction }
+    );
     return new this(this.model, brand.get());
   }
 
-  async revokePermissions(): Promise<void> {
+  async revokeAllPermissions(): Promise<void> {
     await this.revokeHelpCenterPermissions();
     await this.revokeTicketsPermissions();
   }
@@ -159,24 +143,12 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     if (this.helpCenterPermission === "read") {
       await this.update({ helpCenterPermission: "none" });
     }
-    await ZendeskCategory.update(
-      { permission: "none" },
-      { where: { brandId: this.brandId } }
-    );
-    await ZendeskArticle.update(
-      { permission: "none" },
-      { where: { brandId: this.brandId } }
-    );
   }
 
   async revokeTicketsPermissions(): Promise<void> {
     if (this.ticketsPermission === "read") {
       await this.update({ ticketsPermission: "none" });
     }
-    await ZendeskTicket.update(
-      { permission: "none" },
-      { where: { brandId: this.brandId } }
-    );
   }
 
   static async fetchByBrandId({
@@ -220,45 +192,14 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => new this(this.model, brand.get()));
   }
 
-  static async fetchReadOnlyTickets({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }): Promise<ZendeskTicketResource[]> {
-    const tickets = await ZendeskTicket.findAll({
-      where: { connectorId, brandId, permission: "read" },
-    });
-    return tickets.map(
-      (ticket) => new ZendeskTicketResource(ZendeskTicket, ticket)
-    );
-  }
-
-  static async fetchReadOnlyCategories({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }): Promise<ZendeskCategoryResource[]> {
-    const categories = await ZendeskCategory.findAll({
-      where: { connectorId, brandId, permission: "read" },
-    });
-    return categories.map(
-      (category) =>
-        category && new ZendeskCategoryResource(ZendeskCategory, category)
-    );
-  }
-
-  static async fetchBrandsWithHelpCenter({
+  static async fetchAllWithHelpCenter({
     connectorId,
   }: {
     connectorId: number;
   }): Promise<ZendeskBrandResource[]> {
     const brands = await ZendeskBrand.findAll({
       where: {
-        connectorId: connectorId,
+        connectorId,
         helpCenterPermission: "read",
         hasHelpCenter: true,
       },
@@ -343,12 +284,10 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     blob: CreationAttributes<ZendeskCategory>;
     transaction?: Transaction;
   }): Promise<ZendeskCategoryResource> {
-    let category;
-    if (transaction) {
-      category = await ZendeskCategory.create({ ...blob }, { transaction });
-    } else {
-      category = await ZendeskCategory.create({ ...blob });
-    }
+    const category = await ZendeskCategory.create(
+      { ...blob },
+      transaction && { transaction }
+    );
     return new this(this.model, category.get());
   }
 
@@ -358,23 +297,10 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
-      where: {
-        connectorId: this.connectorId,
-      },
+      where: { connectorId: this.connectorId, categoryId: this.categoryId },
       transaction,
     });
     return new Ok(undefined);
-  }
-
-  /**
-   * Deletes the category and all associated data (articles).
-   */
-  // eslint-disable-next-line no-empty-pattern
-  async remove({}: {
-    dataSourceConfig: DataSourceConfig;
-    loggerArgs: Record<string, string | number>;
-  }) {
-    // TODO: implement removal for the children first.
   }
 
   toJSON(): Record<string, unknown> {
@@ -421,6 +347,38 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     );
   }
 
+  static async fetchByBrandId({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskCategoryResource[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, brandId },
+    });
+    return categories.map(
+      (category) =>
+        category && new ZendeskCategoryResource(ZendeskCategory, category)
+    );
+  }
+
+  static async fetchByBrandIdReadOnly({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskCategoryResource[]> {
+    const categories = await ZendeskCategory.findAll({
+      where: { connectorId, brandId, permission: "read" },
+    });
+    return categories.map(
+      (category) =>
+        category && new ZendeskCategoryResource(ZendeskCategory, category)
+    );
+  }
+
   static async fetchAllReadOnly({
     connectorId,
   }: {
@@ -432,18 +390,26 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map((category) => new this(this.model, category.get()));
   }
 
-  static async fetchReadOnlyArticles({
+  static async deleteByBrandId({
     connectorId,
-    categoryId,
+    brandId,
   }: {
     connectorId: number;
-    categoryId: number;
-  }): Promise<ZendeskArticleResource[]> {
-    const articles = await ZendeskArticle.findAll({
-      where: { connectorId, categoryId, permission: "read" },
-    });
-    return articles.map(
-      (article) => new ZendeskArticleResource(ZendeskArticle, article)
+    brandId: number;
+  }): Promise<void> {
+    await ZendeskCategory.destroy({ where: { connectorId, brandId } });
+  }
+
+  static async revokePermissionsForBrand({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }) {
+    await ZendeskCategory.update(
+      { permission: "none" },
+      { where: { connectorId, brandId } }
     );
   }
 
@@ -491,9 +457,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
-      where: {
-        connectorId: this.connectorId,
-      },
+      where: { connectorId: this.connectorId, ticketId: this.ticketId },
       transaction,
     });
     return new Ok(undefined);
@@ -542,6 +506,59 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     });
     return ticket && new this(this.model, ticket.get());
   }
+
+  static async fetchByBrandIdReadOnly({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskTicketResource[]> {
+    const tickets = await ZendeskTicket.findAll({
+      where: { connectorId, brandId, permission: "read" },
+    });
+    return tickets.map(
+      (ticket) => new ZendeskTicketResource(ZendeskTicket, ticket)
+    );
+  }
+
+  static async fetchByBrandId({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskTicketResource[]> {
+    const tickets = await ZendeskTicket.findAll({
+      where: { connectorId, brandId },
+    });
+    return tickets.map(
+      (ticket) => new ZendeskTicketResource(ZendeskTicket, ticket)
+    );
+  }
+
+  static async deleteByBrandId({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<void> {
+    await ZendeskTicket.destroy({ where: { connectorId, brandId } });
+  }
+
+  static async revokePermissionsForBrand({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<void> {
+    await ZendeskTicket.update(
+      { permission: "none" },
+      { where: { connectorId, brandId } }
+    );
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -566,9 +583,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await this.model.destroy({
-      where: {
-        connectorId: this.connectorId,
-      },
+      where: { connectorId: this.connectorId, articleId: this.articleId },
       transaction,
     });
     return new Ok(undefined);
@@ -617,5 +632,83 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
       where: { connectorId, articleId },
     });
     return article && new this(this.model, article.get());
+  }
+
+  static async fetchByCategoryId({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }): Promise<ZendeskArticleResource[]> {
+    const articles = await ZendeskArticle.findAll({
+      where: { connectorId, categoryId },
+    });
+    return articles.map(
+      (article) => new ZendeskArticleResource(ZendeskArticle, article)
+    );
+  }
+
+  static async fetchByCategoryIdReadOnly({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }): Promise<ZendeskArticleResource[]> {
+    const articles = await ZendeskArticle.findAll({
+      where: { connectorId, categoryId, permission: "read" },
+    });
+    return articles.map(
+      (article) => new ZendeskArticleResource(ZendeskArticle, article)
+    );
+  }
+
+  static async fetchByBrandId({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskArticleResource[]> {
+    const articles = await ZendeskArticle.findAll({
+      where: { connectorId, brandId },
+    });
+    return articles.map(
+      (article) => new ZendeskArticleResource(ZendeskArticle, article)
+    );
+  }
+
+  static async deleteByCategoryId({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }) {
+    await ZendeskArticle.destroy({ where: { connectorId, categoryId } });
+  }
+
+  static async deleteByBrandId({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }) {
+    await ZendeskArticle.destroy({ where: { connectorId, brandId } });
+  }
+
+  static async revokePermissionsForBrand({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }) {
+    await ZendeskArticle.update(
+      { permission: "none" },
+      { where: { connectorId, brandId } }
+    );
   }
 }
