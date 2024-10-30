@@ -3,6 +3,7 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 
 import { IconButton } from "@sparkle/components/IconButton";
 import { CodeBlock } from "@sparkle/components/markdown/CodeBlock";
+import { ContentBlockWrapperContext } from "@sparkle/components/markdown/ContentBlockWrapper";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { SparklesIcon, WrenchIcon } from "@sparkle/icons";
 import { classNames } from "@sparkle/lib/utils";
@@ -34,9 +35,8 @@ export function CodeBlockWithExtendedSupport({
 
   const [showMermaid, setShowMermaid] = useState<boolean>(false);
   const [isValidMermaid, setIsValidMermaid] = useState<boolean>(false);
-  const { isStreaming, isDarkMode, setIsDarkMode } = useContext(
-    MarkdownContentContext
-  );
+  const { isStreaming } = useContext(MarkdownContentContext);
+  const { isDarkMode, setIsDarkMode } = useContext(ContentBlockWrapperContext);
 
   useEffect(() => {
     if (isStreaming || !validChildrenContent || isValidMermaid || showMermaid) {

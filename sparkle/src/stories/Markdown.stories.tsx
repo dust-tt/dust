@@ -1,10 +1,10 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { Button, Markdown } from "../index_with_tw_base";
+import { Button, LegacyMarkdown } from "../index_with_tw_base";
 
 const meta = {
-  title: "Primitives/Markdown",
+  title: "Components/Markdown",
   component: Button,
 } satisfies Meta<typeof Button>;
 
@@ -47,7 +47,7 @@ Another one, a short one:
 
 export const MarkdownExample = () => (
   <div className="s-flex s-flex-col s-bg-structure-50 s-p-8">
-    <Markdown content={example1} />
-    <Markdown content={example2} />
+    <LegacyMarkdown content={example1} />
+    <LegacyMarkdown content={example2} />
   </div>
 );

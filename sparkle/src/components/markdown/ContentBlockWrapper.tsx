@@ -1,8 +1,6 @@
-import { useCallback, useContext } from "react";
-import React from "react";
+import React, { useCallback, useContext } from "react";
 
 import { IconButton } from "@sparkle/components/IconButton";
-import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
   ArrowDownOnSquareIcon,
@@ -38,6 +36,14 @@ interface ContentBlockWrapperProps {
   getContentToDownload?: GetContentToDownloadFunction;
 }
 
+export const ContentBlockWrapperContext = React.createContext<{
+  setIsDarkMode: (v: boolean) => void;
+  isDarkMode: boolean;
+}>({
+  setIsDarkMode: () => {},
+  isDarkMode: false,
+});
+
 export function ContentBlockWrapper({
   children,
   className,
@@ -45,7 +51,7 @@ export function ContentBlockWrapper({
   getContentToDownload,
 }: ContentBlockWrapperProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
-  const { isDarkMode } = useContext(MarkdownContentContext);
+  const { isDarkMode } = useContext(ContentBlockWrapperContext);
   const handleCopyToClipboard = useCallback(() => {
     if (!content) {
       return;

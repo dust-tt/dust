@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { MarkdownCitation, RenderMessageMarkdown } from "../index_with_tw_base";
+import { ExtendedMarkdown } from "../index_with_tw_base";
 
-const meta: Meta<typeof RenderMessageMarkdown> = {
-  title: "Primitives/RenderMessageMarkdown",
-  component: RenderMessageMarkdown,
+const meta: Meta<typeof ExtendedMarkdown> = {
+  title: "Components/ExtendedMarkdown",
+  component: ExtendedMarkdown,
   decorators: [
     (Story) => (
       <div className="s-flex s-flex-col s-bg-structure-50 s-p-8">
@@ -35,7 +35,10 @@ const example = `
 
 ### Level 3 Title
 
-This is a paragraph with **bold** text and *italic* text.
+This is a paragraph with **bold** text and *italic* text. This is \`code\` block:
+\`\`\`
+Block 
+\`\`\`
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 
@@ -80,7 +83,7 @@ footnote [^1]
 |-------------|-----------------------|----------------------|-------------------------------|
 | October 25  | 19                    | 14                   | Passing showers, cloudy       |
 | October 26  | 17                    | 12                   | Light showers, overcast       |
-| October 27  | 16                    | 10                   | Overcast                      |
+| October 27  | 16                    | 10                   | Overcast :cite[xx]            |
 | October 28  | 16                    | 9                    | Increasing cloudiness          |
 | October 29  | 17                    | 8                    | Scattered clouds              |
 | October 30  | 19                    | 8                    | Sunny                         |
@@ -156,7 +159,7 @@ graph TD;
 
 `;
 
-export const RenderMessageMarkdownStory: Story = {
+export const ExtendedMarkdownStory: Story = {
   args: {
     content: example,
     textSize: "base",
@@ -173,10 +176,3 @@ export const RenderMessageMarkdownStory: Story = {
     },
   },
 };
-
-// export const RenderMessageMarkdownExample = () => (
-//   <div className="s-flex s-flex-col s-bg-structure-50 s-p-8">
-//     <RenderMessageMarkdown content={example1} />
-//     <RenderMessageMarkdown content={example2} />
-//   </div>
-// );
