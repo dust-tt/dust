@@ -60,8 +60,8 @@ async function handler(
     });
   }
 
-  const { dsvId, vId } = req.query;
-  if (typeof dsvId !== "string" || typeof vId !== "string") {
+  const { dsvId, spaceId } = req.query;
+  if (typeof dsvId !== "string" || typeof spaceId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -75,7 +75,7 @@ async function handler(
 
   if (
     !dataSourceView ||
-    vId !== dataSourceView.space.sId ||
+    spaceId !== dataSourceView.space.sId ||
     !dataSourceView.canList(auth)
   ) {
     return apiError(req, res, {

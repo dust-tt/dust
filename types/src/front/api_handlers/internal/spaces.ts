@@ -1,11 +1,11 @@
 import * as t from "io-ts";
 
-const PostRestrictedVault = t.type({
+const PostRestrictedSpace = t.type({
   memberIds: t.array(t.string),
   isRestricted: t.literal(true),
 });
 
-const PostUnrestrictedVault = t.type({
+const PostUnrestrictedSpace = t.type({
   memberIds: t.null,
   isRestricted: t.literal(false),
 });
@@ -14,12 +14,12 @@ export const PostSpaceRequestBodySchema = t.intersection([
   t.type({
     name: t.string,
   }),
-  t.union([PostRestrictedVault, PostUnrestrictedVault]),
+  t.union([PostRestrictedSpace, PostUnrestrictedSpace]),
 ]);
 
 export const PatchSpaceMembersRequestBodySchema = t.union([
-  PostRestrictedVault,
-  PostUnrestrictedVault,
+  PostRestrictedSpace,
+  PostUnrestrictedSpace,
 ]);
 
 export const ContentSchema = t.type({
@@ -31,9 +31,5 @@ export const PatchSpaceRequestBodySchema = t.type({
   name: t.union([t.string, t.undefined]),
   content: t.union([t.array(ContentSchema), t.undefined]),
 });
-
-export type PatchVaultRequestBodyType = t.TypeOf<
-  typeof PatchSpaceRequestBodySchema
->;
 
 export const PostDataSourceViewSchema = ContentSchema;
