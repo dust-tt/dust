@@ -163,7 +163,6 @@ export const NavigationSidebar = React.forwardRef<
                             icon={menu.icon}
                             href={menu.href}
                             target={menu.target}
-                            showMoreIcon={false}
                           />
                           {menu.subMenuLabel && (
                             <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase text-slate-400">
@@ -174,7 +173,6 @@ export const NavigationSidebar = React.forwardRef<
                             <div className="mb-2 flex flex-col">
                               {menu.subMenu.map((nav) => (
                                 <NavigationListItem
-                                  showMoreIcon={false}
                                   key={nav.id}
                                   selected={nav.current}
                                   label={nav.label}
