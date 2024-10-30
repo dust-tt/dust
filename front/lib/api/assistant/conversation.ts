@@ -1027,9 +1027,7 @@ export async function* postUserMessage(
   async function logIfUserUnknown() {
     try {
       if (!user && context.email) {
-        const macthingUser = await UserResource.fetchByEmail(
-          context.email.toLowerCase()
-        );
+        const macthingUser = await UserResource.fetchByEmail(context.email);
 
         if (!macthingUser) {
           logger.warn(
