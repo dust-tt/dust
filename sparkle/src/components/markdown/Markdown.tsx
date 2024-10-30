@@ -65,14 +65,6 @@ function showUnsupportedDirective() {
   };
 }
 
-export type CustomRenderers = {
-  visualization: (
-    code: string,
-    complete: boolean,
-    lineStart: number
-  ) => React.JSX.Element;
-};
-
 export function Markdown({
   content,
   isStreaming = false,
