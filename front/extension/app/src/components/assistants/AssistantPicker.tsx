@@ -44,8 +44,8 @@ export function AssistantPicker({
 
   return (
     <PopoverRoot>
-      <PopoverTrigger>
-        <>
+      <PopoverTrigger asChild>
+        <div>
           {pickerButton ? (
             pickerButton
           ) : (
@@ -57,7 +57,7 @@ export function AssistantPicker({
               tooltip="Pick an assistant"
             />
           )}
-        </>
+        </div>
       </PopoverTrigger>
       <PopoverContent className="mr-2 p-2">
         <Searchbar

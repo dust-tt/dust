@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import React, { useContext, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -17,7 +17,10 @@ import {
 } from "@app/components/assistant/markdown/CiteBlock";
 import { CodeBlockWithExtendedSupport } from "@app/components/assistant/markdown/CodeBlockWithExtendedSupport";
 import type { GetContentToDownloadFunction } from "@app/components/assistant/markdown/ContentBlockWrapper";
-import { ContentBlockWrapper } from "@app/components/assistant/markdown/ContentBlockWrapper";
+import {
+  ContentBlockWrapper,
+  ContentBlockWrapperContext,
+} from "@app/components/assistant/markdown/ContentBlockWrapper";
 import { MarkdownContentContext } from "@app/components/assistant/markdown/MarkdownContentContext";
 import {
   MentionBlock,
@@ -99,7 +102,6 @@ export function RenderMessageMarkdown({
   additionalMarkdownPlugins?: PluggableList;
 }) {
   const processedContent = useMemo(() => sanitizeContent(content), [content]);
-  const [isDarkMode, setIsDarkMode] = useState(true);
 
   // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
   // AST parsing rounds (happening at each token being streamed).
@@ -206,8 +208,6 @@ export function RenderMessageMarkdown({
             content: processedContent,
             isStreaming,
             isLastMessage,
-            setIsDarkMode,
-            isDarkMode,
           }}
         >
           <ReactMarkdown
@@ -365,7 +365,7 @@ function PreBlock({ children }: { children: React.ReactNode }) {
     Array.isArray(children) && children[0]
       ? children[0].props.children[0]
       : null;
-  const { isDarkMode } = useContext(MarkdownContentContext);
+  const [isDarkMode, setIsDarkMode] = useState(true);
   // Sometimes the children are not valid, but the meta data is
   let fallbackData: string | null = null;
   if (!validChildrenContent) {
@@ -391,25 +391,27 @@ function PreBlock({ children }: { children: React.ReactNode }) {
       : undefined;
 
   return (
-    <pre
-      className={classNames(
-        "my-2 w-full break-all rounded-lg",
-        isDarkMode ? "bg-slate-800" : "bg-slate-100"
-      )}
-    >
-      <div className="relative">
-        <ContentBlockWrapper
-          content={{
-            "text/plain": text,
-          }}
-          getContentToDownload={getContentToDownload}
-        >
-          <div className="overflow-auto pt-8 text-sm">
-            {validChildrenContent ? children : fallbackData || children}
-          </div>
-        </ContentBlockWrapper>
-      </div>
-    </pre>
+    <ContentBlockWrapperContext.Provider value={{ isDarkMode, setIsDarkMode }}>
+      <pre
+        className={classNames(
+          "my-2 w-full break-all rounded-lg",
+          isDarkMode ? "bg-slate-800" : "bg-slate-100"
+        )}
+      >
+        <div className="relative">
+          <ContentBlockWrapper
+            content={{
+              "text/plain": text,
+            }}
+            getContentToDownload={getContentToDownload}
+          >
+            <div className="overflow-auto pt-8 text-sm">
+              {validChildrenContent ? children : fallbackData || children}
+            </div>
+          </ContentBlockWrapper>
+        </div>
+      </pre>
+    </ContentBlockWrapperContext.Provider>
   );
 }
 
