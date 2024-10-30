@@ -329,14 +329,33 @@ async function deleteBrandChildren({
   brandId: number;
   dataSourceConfig: DataSourceConfig;
 }) {
-  /// deleting the upserted articles
-  await deleteUpsertedArticlesInBrand({
+  /// deleting the articles in the data source
+  const articles = await ZendeskArticleResource.fetchByBrandId({
     connectorId,
     brandId,
-    dataSourceConfig,
   });
-  /// deleting the upserted tickets
-  await deleteUpsertedTickets({ connectorId, brandId, dataSourceConfig });
+  await Promise.all(
+    articles.map((article) =>
+      deleteFromDataSource(
+        dataSourceConfig,
+        getArticleInternalId(connectorId, article.articleId)
+      )
+    )
+  );
+  /// deleting the tickets in the data source
+  const tickets = await ZendeskTicketResource.fetchByBrandId({
+    connectorId: connectorId,
+    brandId: brandId,
+  });
+  await Promise.all([
+    tickets.map((ticket) =>
+      deleteFromDataSource(
+        dataSourceConfig,
+        getTicketInternalId(ticket.connectorId, ticket.ticketId)
+      )
+    ),
+  ]);
+  /// deleting the articles stored in the db
   await ZendeskArticleResource.deleteByBrandId({
     connectorId,
     brandId,
@@ -359,29 +378,7 @@ async function deleteCategoryChildren({
   categoryId: number;
   dataSourceConfig: DataSourceConfig;
 }) {
-  await deleteUpsertedArticlesInCategory({
-    connectorId,
-    categoryId,
-    dataSourceConfig,
-  });
-  await ZendeskArticleResource.deleteByCategoryId({
-    connectorId,
-    categoryId,
-  });
-}
-
-/**
- * Deletes all the articles upserted for a category.
- */
-async function deleteUpsertedArticlesInCategory({
-  connectorId,
-  categoryId,
-  dataSourceConfig,
-}: {
-  connectorId: number;
-  categoryId: number;
-  dataSourceConfig: DataSourceConfig;
-}) {
+  /// deleting the articles in the data source
   const articles = await ZendeskArticleResource.fetchByCategoryId({
     connectorId,
     categoryId,
@@ -394,56 +391,9 @@ async function deleteUpsertedArticlesInCategory({
       )
     )
   );
-}
-
-/**
- * Deletes all the articles upserted for an entire brand.
- */
-async function deleteUpsertedArticlesInBrand({
-  connectorId,
-  brandId,
-  dataSourceConfig,
-}: {
-  connectorId: number;
-  brandId: number;
-  dataSourceConfig: DataSourceConfig;
-}) {
-  const articles = await ZendeskArticleResource.fetchByBrandId({
+  /// deleting the articles stored in the db
+  await ZendeskArticleResource.deleteByCategoryId({
     connectorId,
-    brandId,
+    categoryId,
   });
-  await Promise.all(
-    articles.map((article) =>
-      deleteFromDataSource(
-        dataSourceConfig,
-        getArticleInternalId(connectorId, article.articleId)
-      )
-    )
-  );
-}
-
-/**
- * Deletes all the tickets upserted for a brand.
- */
-async function deleteUpsertedTickets({
-  connectorId,
-  brandId,
-  dataSourceConfig,
-}: {
-  connectorId: number;
-  brandId: number;
-  dataSourceConfig: DataSourceConfig;
-}) {
-  const tickets = await ZendeskTicketResource.fetchByBrandId({
-    connectorId: connectorId,
-    brandId: brandId,
-  });
-  await Promise.all([
-    tickets.map((ticket) =>
-      deleteFromDataSource(
-        dataSourceConfig,
-        getTicketInternalId(ticket.connectorId, ticket.ticketId)
-      )
-    ),
-  ]);
 }
