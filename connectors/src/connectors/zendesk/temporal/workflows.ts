@@ -1,5 +1,4 @@
 import type { ModelId } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import {
   executeChild,
   proxyActivities,
@@ -29,6 +28,14 @@ const {
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
+
+function assertNever(x: never): never {
+  throw new Error(
+    `${
+      typeof x === "object" ? JSON.stringify(x) : x
+    } is not of type never. This should never happen.`
+  );
+}
 
 /**
  * Sync Workflow for Zendesk.
