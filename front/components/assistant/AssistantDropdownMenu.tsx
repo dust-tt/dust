@@ -202,6 +202,7 @@ export function AssistantDropdownMenu({
                 <NewDropdownMenuItem
                   label="Delete"
                   icon={TrashIcon}
+                  variant="warning"
                   onClick={() => setShowDeletionModal(true)}
                 />
               )}

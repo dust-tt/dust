@@ -1,11 +1,15 @@
 import {
   Button,
   ContentMessage,
-  DropdownMenu,
   ExclamationCircleStrokeIcon,
   Input,
   Label,
   Modal,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuRadioGroup,
+  NewDropdownMenuRadioItem,
+  NewDropdownMenuTrigger,
   Page,
   RadioGroup,
   RadioGroupChoice,
@@ -460,58 +464,62 @@ export default function SpaceWebsiteModal({
                       title="Refresh schedule"
                       description="How often would you like to check for updates?"
                     />
-                    {(() => {
-                      return (
-                        <DropdownMenu>
-                          <DropdownMenu.Button
-                            label={frequencyDisplayText[selectedCrawlFrequency]}
-                          />
-                          <DropdownMenu.Items origin="topLeft">
-                            {CrawlingFrequencies.map((frequency) => {
-                              return (
-                                <DropdownMenu.Item
-                                  selected={selectedCrawlFrequency == frequency}
-                                  key={frequency}
-                                  label={frequencyDisplayText[frequency]}
-                                  onClick={() => {
-                                    setSelectedCrawlFrequency(frequency);
-                                  }}
-                                />
-                              );
-                            })}
-                          </DropdownMenu.Items>
-                        </DropdownMenu>
-                      );
-                    })()}
+                    <NewDropdownMenu>
+                      <NewDropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          label={frequencyDisplayText[selectedCrawlFrequency]}
+                          isSelect
+                        />
+                      </NewDropdownMenuTrigger>
+                      <NewDropdownMenuContent>
+                        <NewDropdownMenuRadioGroup>
+                          {CrawlingFrequencies.map((frequency) => {
+                            return (
+                              <NewDropdownMenuRadioItem
+                                key={frequency}
+                                value={frequency}
+                                label={frequencyDisplayText[frequency]}
+                                onClick={() => {
+                                  setSelectedCrawlFrequency(frequency);
+                                }}
+                              />
+                            );
+                          })}
+                        </NewDropdownMenuRadioGroup>
+                      </NewDropdownMenuContent>
+                    </NewDropdownMenu>
                   </Page.Layout>
                   <Page.Layout direction="vertical" sizing="grow">
                     <Page.SectionHeader
                       title="Depth of Search"
                       description="How far from the initial page would you like to go?"
                     />
-                    {(() => {
-                      return (
-                        <DropdownMenu>
-                          <DropdownMenu.Button
-                            label={depthDisplayText[maxDepth]}
-                          />
-                          <DropdownMenu.Items origin="bottomLeft">
-                            {DepthOptions.map((depthOption) => {
-                              return (
-                                <DropdownMenu.Item
-                                  selected={depthOption === maxDepth}
-                                  key={depthOption}
-                                  label={depthDisplayText[depthOption]}
-                                  onClick={() => {
-                                    setMaxDepth(depthOption);
-                                  }}
-                                />
-                              );
-                            })}
-                          </DropdownMenu.Items>
-                        </DropdownMenu>
-                      );
-                    })()}
+                    <NewDropdownMenu>
+                      <NewDropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          label={depthDisplayText[maxDepth]}
+                          isSelect
+                        />
+                      </NewDropdownMenuTrigger>
+                      <NewDropdownMenuContent>
+                        <NewDropdownMenuRadioGroup>
+                          {DepthOptions.map((depthOption) => {
+                            return (
+                              <NewDropdownMenuRadioItem
+                                key={depthOption}
+                                value={depthOption.toString()}
+                                label={depthDisplayText[depthOption]}
+                                onClick={() => {
+                                  setMaxDepth(depthOption);
+                                }}
+                              />
+                            );
+                          })}
+                        </NewDropdownMenuRadioGroup>
+                      </NewDropdownMenuContent>
+                    </NewDropdownMenu>
                   </Page.Layout>
                   <Page.Layout direction="vertical" sizing="grow">
                     <Page.SectionHeader

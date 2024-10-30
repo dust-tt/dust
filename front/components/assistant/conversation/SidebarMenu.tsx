@@ -243,19 +243,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                       <>
                         <NewDropdownMenuItem
                           label="Create new assistant"
-                          onClick={async () => {
-                            await router.push(
-                              `/w/${owner.sId}/builder/assistants/create`
-                            );
-                          }}
+                          href={`/w/${owner.sId}/builder/assistants/create`}
                           icon={PlusIcon}
                         />
                         <NewDropdownMenuItem
-                          onClick={async () => {
-                            await router.push(
-                              `/w/${owner.sId}/builder/assistants`
-                            );
-                          }}
+                          href={`/w/${owner.sId}/builder/assistants`}
                           label="Manage assistants"
                           icon={RobotIcon}
                         />

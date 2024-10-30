@@ -1,11 +1,9 @@
-import { Button, DropdownMenu } from "@dust-tt/sparkle";
 import type { SpaceType, WorkspaceType } from "@dust-tt/types";
-import type { TimeframeUnit } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
+import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
-import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderRetrievalConfiguration,
@@ -186,36 +184,11 @@ export function ActionRetrievalExhaustive({
             }
           }}
         />
-        <DropdownMenu>
-          <DropdownMenu.Button>
-            <Button
-              isSelect
-              label={
-                TIME_FRAME_UNIT_TO_LABEL[actionConfiguration.timeFrame.unit]
-              }
-              variant="outline"
-              size="sm"
-            />
-          </DropdownMenu.Button>
-          <DropdownMenu.Items origin="bottomLeft">
-            {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(([key, value]) => (
-              <DropdownMenu.Item
-                key={key}
-                label={value}
-                onClick={() => {
-                  setEdited(true);
-                  updateAction((previousAction) => ({
-                    ...previousAction,
-                    timeFrame: {
-                      value: previousAction.timeFrame.value,
-                      unit: key as TimeframeUnit,
-                    },
-                  }));
-                }}
-              />
-            ))}
-          </DropdownMenu.Items>
-        </DropdownMenu>
+        <TimeUnitDropdown
+          actionConfiguration={actionConfiguration}
+          updateAction={updateAction}
+          onEdit={() => setEdited(true)}
+        />
       </div>
     </>
   );

@@ -1,9 +1,13 @@
 import {
   Avatar,
   BookOpenIcon,
-  DropdownMenu,
   LightbulbIcon,
   LogoutIcon,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuLabel,
+  NewDropdownMenuTrigger,
   StarIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
@@ -53,53 +57,57 @@ export function UserMenu({
   );
 
   return (
-    <DropdownMenu>
-      <DropdownMenu.Button className="flex rounded-full bg-gray-800 text-sm focus:outline-none">
-        <span className="sr-only">Open user menu</span>
-        <Avatar
-          size="md"
-          visual={
-            user.image
-              ? user.image
-              : "https://gravatar.com/avatar/anonymous?d=mp"
-          }
-          onClick={() => {
-            "clickable";
-          }}
-        />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items origin="topRight" width={220}>
+    <NewDropdownMenu>
+      <NewDropdownMenuTrigger>
+        <>
+          <span className="sr-only">Open user menu</span>
+          <Avatar
+            size="md"
+            visual={
+              user.image
+                ? user.image
+                : "https://gravatar.com/avatar/anonymous?d=mp"
+            }
+            onClick={() => {
+              "clickable";
+            }}
+          />
+        </>
+      </NewDropdownMenuTrigger>
+
+      <NewDropdownMenuContent>
         {hasBetaAccess && (
           <>
-            <DropdownMenu.SectionHeader label="Beta" />
+            <NewDropdownMenuLabel label="Beta" />
             {featureFlags.includes("labs_transcripts") && (
-              <DropdownMenu.Item
+              <NewDropdownMenuItem
                 label="Meeting transcripts"
-                link={{ href: `/w/${owner.sId}/assistant/labs/transcripts` }}
                 icon={BookOpenIcon}
+                href={`/w/${owner.sId}/assistant/labs/transcripts`}
               />
             )}
           </>
         )}
+
         {canForceUserRole(owner) && (
           <>
-            <DropdownMenu.SectionHeader label="Dev Tools" />
+            <NewDropdownMenuLabel label="Dev Tools" />
             {!isOnlyAdmin(owner) && (
-              <DropdownMenu.Item
+              <NewDropdownMenuItem
                 label="Become Admin"
                 onClick={() => forceRoleUpdate("admin")}
                 icon={StarIcon}
               />
             )}
             {!isOnlyBuilder(owner) && (
-              <DropdownMenu.Item
+              <NewDropdownMenuItem
                 label="Become Builder"
                 onClick={() => forceRoleUpdate("builder")}
                 icon={LightbulbIcon}
               />
             )}
             {!isOnlyUser(owner) && (
-              <DropdownMenu.Item
+              <NewDropdownMenuItem
                 label="Become User"
                 onClick={() => forceRoleUpdate("user")}
                 icon={UserIcon}
@@ -107,13 +115,14 @@ export function UserMenu({
             )}
           </>
         )}
-        <DropdownMenu.SectionHeader label="Account" />
-        <DropdownMenu.Item
-          label="Sign&nbsp;out"
-          link={{ href: "/api/auth/logout" }}
+
+        <NewDropdownMenuLabel label="Account" />
+        <NewDropdownMenuItem
+          href="/api/auth/logout"
           icon={LogoutIcon}
+          label="Sign&nbsp;out"
         />
-      </DropdownMenu.Items>
-    </DropdownMenu>
+      </NewDropdownMenuContent>
+    </NewDropdownMenu>
   );
 }

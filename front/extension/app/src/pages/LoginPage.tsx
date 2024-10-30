@@ -1,5 +1,12 @@
 import { useAuth } from "@app/extension/app/src/components/auth/AuthProvider";
-import { Button, DropdownMenu, LoginIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  LoginIcon,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
+} from "@dust-tt/sparkle";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -33,20 +40,22 @@ export const LoginPage = () => {
           />
         )}
         {isAuthenticated && !isUserSetup && user?.workspaces.length && (
-          <DropdownMenu className="flex">
-            <DropdownMenu.Button label="Select workspace" />
-            <DropdownMenu.Items>
+          <NewDropdownMenu>
+            <NewDropdownMenuTrigger asChild>
+              <Button label="Select workspace" variant="ghost" />
+            </NewDropdownMenuTrigger>
+            <NewDropdownMenuContent>
               {user.workspaces.map((w) => {
                 return (
-                  <DropdownMenu.Item
+                  <NewDropdownMenuItem
                     key={w.sId}
                     onClick={() => handleSelectWorkspace(w.sId)}
                     label={w.name}
                   />
                 );
               })}
-            </DropdownMenu.Items>
-          </DropdownMenu>
+            </NewDropdownMenuContent>
+          </NewDropdownMenu>
         )}
       </div>
     </div>
