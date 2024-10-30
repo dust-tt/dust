@@ -131,8 +131,8 @@ export const SpaceCreateAppModal = ({
                     setErrors({ ...errors, name: null });
                   }
                 }}
-                error={errors.name}
-                showErrorLabel
+                message={errors.name}
+                messageStatus="error"
               />
               <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
                 <ExclamationCircleStrokeIcon /> Must be unique and only use

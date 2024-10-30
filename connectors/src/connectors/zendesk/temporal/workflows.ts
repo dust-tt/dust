@@ -360,7 +360,6 @@ async function runZendeskBrandHelpCenterSyncActivities({
 /**
  * Run the activities necessary to sync the Tickets of a Brand.
  */
-// eslint-disable-next-line no-empty-pattern
 async function runZendeskBrandTicketsSyncActivities({
   connectorId,
   brandId,
@@ -372,15 +371,11 @@ async function runZendeskBrandTicketsSyncActivities({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  let hasMore = true;
-  let afterCursor = null;
-  do {
-    ({ hasMore, afterCursor } = await syncZendeskTicketsActivity({
-      connectorId,
-      brandId,
-      currentSyncDateMs,
-      forceResync,
-      afterCursor,
-    }));
-  } while (hasMore);
+  // TODO(2024-10-29 aubin): see how we can batch the tickets into multiple activities
+  await syncZendeskTicketsActivity({
+    connectorId,
+    brandId,
+    currentSyncDateMs,
+    forceResync,
+  });
 }

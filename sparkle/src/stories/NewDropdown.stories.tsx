@@ -111,6 +111,7 @@ function ComplexDropdownDemo() {
           icon={LogoutIcon}
           label="Log out"
           variant="warning"
+          href="/api/auth/logout"
         />
       </NewDropdownMenuContent>
     </NewDropdownMenu>

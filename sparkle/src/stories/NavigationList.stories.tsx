@@ -2,11 +2,19 @@ import type { Meta } from "@storybook/react";
 import React, { useEffect, useState } from "react";
 
 import {
+  Button,
+  MoreIcon,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
+  PencilSquareIcon,
   ScrollArea,
   ScrollBar,
+  TrashIcon,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -27,16 +35,34 @@ export const NewNavigationListDemo = () => {
   >([]);
 
   useEffect(() => {
-    // Generate random titles for each date section only once
     setConversationTitles([
       { label: "Today", items: getRandomTitles(5) },
       { label: "Yesterday", items: getRandomTitles(10) },
     ]);
-    console.log(conversationTitles); // Add this line
   }, []);
 
-  // Flatten the items array to easily manage indices
   const allItems = conversationTitles.flatMap((section) => section.items);
+
+  const getMoreMenu = (title: string) => (
+    <NewDropdownMenu>
+      <NewDropdownMenuTrigger asChild>
+        <Button variant="ghost" icon={MoreIcon} size="xs" />
+      </NewDropdownMenuTrigger>
+      <NewDropdownMenuContent>
+        <NewDropdownMenuItem
+          label={`Rename ${title}`}
+          icon={PencilSquareIcon}
+          onClick={(e) => e.stopPropagation()}
+        />
+        <NewDropdownMenuItem
+          label="Delete"
+          icon={TrashIcon}
+          variant="warning"
+          onClick={(e) => e.stopPropagation()}
+        />
+      </NewDropdownMenuContent>
+    </NewDropdownMenu>
+  );
 
   return (
     <div className="s-h-[400px] s-w-[200px] s-py-12">
@@ -46,7 +72,7 @@ export const NewNavigationListDemo = () => {
             <React.Fragment key={sectionIndex}>
               <NavigationListLabel label={section.label} />
               {section.items.map((title, index) => {
-                const itemIndex = allItems.indexOf(title); // Calculate the global index
+                const itemIndex = allItems.indexOf(title);
                 return (
                   <NavigationListItem
                     key={index}
@@ -54,6 +80,7 @@ export const NewNavigationListDemo = () => {
                     onClick={() => setSelectedIndex(itemIndex)}
                     label={title}
                     className="s-w-full"
+                    moreMenu={getMoreMenu(title)}
                   />
                 );
               })}

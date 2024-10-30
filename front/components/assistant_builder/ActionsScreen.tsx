@@ -864,7 +864,8 @@ function ActionEditor({
                         });
                         setShowInvalidActionNameError(null);
                       }}
-                      error={showInvalidActionNameError}
+                      message={showInvalidActionNameError}
+                      messageStatus="error"
                       className="text-sm"
                     />
                   </div>
