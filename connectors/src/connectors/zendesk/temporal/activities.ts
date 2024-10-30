@@ -260,7 +260,8 @@ export async function syncZendeskCategoryActivity({
 
   // if all rights were revoked, we delete the category data.
   if (categoryInDb.permission === "none") {
-    await deleteCategoryWithChildren({ categoryInDb, dataSourceConfig });
+    await deleteUpsertedArticles({ connectorId, categoryId, dataSourceConfig });
+    await categoryInDb.delete();
     return false;
   }
 
@@ -274,7 +275,8 @@ export async function syncZendeskCategoryActivity({
   const { result: fetchedCategory } =
     await zendeskApiClient.helpcenter.categories.show(categoryId);
   if (!fetchedCategory) {
-    await deleteCategoryWithChildren({ categoryInDb, dataSourceConfig });
+    await deleteUpsertedArticles({ connectorId, categoryId, dataSourceConfig });
+    await categoryInDb.delete();
     return false;
   }
 
@@ -334,7 +336,11 @@ async function deleteBrandWithChildren({
   });
   await Promise.all([
     ...categories.map((categoryInDb) =>
-      deleteCategoryWithChildren({ categoryInDb, dataSourceConfig })
+      deleteUpsertedArticles({
+        connectorId: categoryInDb.connectorId,
+        categoryId: categoryInDb.categoryId,
+        dataSourceConfig,
+      })
     ),
     ...tickets.map((ticket) =>
       deleteFromDataSource(
@@ -343,6 +349,10 @@ async function deleteBrandWithChildren({
       )
     ),
   ]);
+  await ZendeskCategoryResource.deleteByBrandId({
+    connectorId: brandInDb.connectorId,
+    brandId: brandInDb.brandId,
+  });
   await ZendeskTicketResource.deleteByBrandId({
     connectorId: brandInDb.connectorId,
     brandId: brandInDb.brandId,
@@ -351,18 +361,20 @@ async function deleteBrandWithChildren({
 }
 
 /**
- * Deletes all the data relative to a category stored in the db and in the data source (category and articles).
+ * Deletes all the articles upserted for a category.
  */
-async function deleteCategoryWithChildren({
-  categoryInDb,
+async function deleteUpsertedArticles({
+  connectorId,
+  categoryId,
   dataSourceConfig,
 }: {
-  categoryInDb: ZendeskCategoryResource;
+  connectorId: number;
+  categoryId: number;
   dataSourceConfig: DataSourceConfig;
 }) {
   const articles = await ZendeskArticleResource.fetchByCategoryId({
-    connectorId: categoryInDb.connectorId,
-    categoryId: categoryInDb.brandId,
+    connectorId,
+    categoryId,
   });
   await Promise.all(
     articles.map((article) =>
@@ -373,8 +385,7 @@ async function deleteCategoryWithChildren({
     )
   );
   await ZendeskArticleResource.deleteByCategoryId({
-    connectorId: categoryInDb.connectorId,
-    categoryId: categoryInDb.brandId,
+    connectorId,
+    categoryId,
   });
-  await categoryInDb.delete();
 }
