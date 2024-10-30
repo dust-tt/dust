@@ -1,5 +1,4 @@
 import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
-import { classNames } from "@app/lib/utils";
 import type {
   AgentMessageType,
   ContentFragmentType,
@@ -10,6 +9,7 @@ import { isContentFragmentType, isUserMessageType } from "@dust-tt/types";
 import MessageGroup from "@extension/components/conversation/MessageGroup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
 import type { StoredUser } from "@extension/lib/storage";
+import { classNames } from "@extension/lib/utils";
 import { useMemo } from "react";
 
 interface ConversationViewerProps {

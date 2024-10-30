@@ -1,4 +1,3 @@
-import { usePublicConversation } from "@app/extension/app/src/components/conversation/usePublicConversation";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentMessageWithRankType,
@@ -9,6 +8,7 @@ import type {
 } from "@dust-tt/types";
 import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
 import { ReachedLimitPopup } from "@extension/components/conversation/ReachedLimitPopup";
+import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
 import { AssistantInputBar } from "@extension/components/input_bar/InputBar";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";

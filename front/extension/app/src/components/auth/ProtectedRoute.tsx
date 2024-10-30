@@ -1,4 +1,3 @@
-import type { StoredUser } from "@app/extension/app/src/lib/storage";
 import {
   Button,
   ExternalLinkIcon,
@@ -8,6 +7,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { useAuth } from "@extension/components/auth/AuthProvider";
+import type { StoredUser } from "@extension/lib/storage";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";

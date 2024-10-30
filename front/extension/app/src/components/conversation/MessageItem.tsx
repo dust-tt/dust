@@ -1,5 +1,4 @@
 import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
-import type { StoredUser } from "@app/extension/app/src/lib/storage";
 import { Citation, ZoomableImageCitationWrapper } from "@dust-tt/sparkle";
 import type { CitationType } from "@dust-tt/sparkle/dist/esm/components/Citation";
 import type {
@@ -9,6 +8,7 @@ import type {
 import { isSupportedImageContentType } from "@dust-tt/types";
 import { AgentMessage } from "@extension/components/conversation/AgentMessage";
 import { UserMessage } from "@extension/components/conversation/UserMessage";
+import type { StoredUser } from "@extension/lib/storage";
 import React from "react";
 
 interface MessageItemProps {

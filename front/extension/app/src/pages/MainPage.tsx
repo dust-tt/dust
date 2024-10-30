@@ -1,6 +1,6 @@
-import type { ProtectedRouteChildrenProps } from "@app/extension/app/src/components/auth/ProtectedRoute";
-import { ConversationContainer } from "@app/extension/app/src/components/conversation/ConversationContainer";
 import { Button, HistoryIcon, Page } from "@dust-tt/sparkle";
+import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
+import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
 import { useNavigate } from "react-router-dom";
 
 export const MainPage = ({ user, workspace }: ProtectedRouteChildrenProps) => {

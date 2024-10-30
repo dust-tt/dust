@@ -1,6 +1,6 @@
-import type { ProtectedRouteChildrenProps } from "@app/extension/app/src/components/auth/ProtectedRoute";
-import { ConversationContainer } from "@app/extension/app/src/components/conversation/ConversationContainer";
 import { BarHeader, ChevronLeftIcon, Page } from "@dust-tt/sparkle";
+import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
+import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 export const ConversationPage = ({
