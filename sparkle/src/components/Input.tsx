@@ -13,7 +13,7 @@ type MessageStatus = (typeof MESSAGE_STATUS)[number];
 
 export interface InputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> {
-  message?: string;
+  message?: string | null;
   messageStatus?: MessageStatus;
   value?: string | null;
   isError?: boolean;
@@ -69,7 +69,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     {
       className,
       message,
-      messageStatus ,
+      messageStatus,
       value,
       label,
       isError,
@@ -78,7 +78,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     },
     ref
   ) => {
-    const state = isError ? "error" : disabled ? "disabled" : "default";
+    const state =
+      isError || (message && messageStatus === "error")
+        ? "error"
+        : disabled
+          ? "disabled"
+          : "default";
     return (
       <div className="s-flex s-flex-col s-gap-1">
         {label && <Label htmlFor={props.name}>{label}</Label>}
