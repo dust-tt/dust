@@ -2,7 +2,10 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   Dialog,
-  DropdownMenu,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
@@ -347,18 +350,18 @@ export const AddConnectionMenu = ({
         >
           Please email us at support@dust.tt for early access.
         </Dialog>
-        <DropdownMenu>
-          <DropdownMenu.Button>
+        <NewDropdownMenu>
+          <NewDropdownMenuTrigger asChild>
             <Button
               label="Add Connections"
               variant="primary"
               icon={CloudArrowLeftRightIcon}
               size="sm"
             />
-          </DropdownMenu.Button>
-          <DropdownMenu.Items width={180}>
+          </NewDropdownMenuTrigger>
+          <NewDropdownMenuContent>
             {availableIntegrations.map((i) => (
-              <DropdownMenu.Item
+              <NewDropdownMenuItem
                 key={i.connectorProvider}
                 label={CONNECTOR_CONFIGURATIONS[i.connectorProvider].name}
                 icon={getConnectorProviderLogoWithFallback(i.connectorProvider)}
@@ -367,8 +370,8 @@ export const AddConnectionMenu = ({
                 }}
               />
             ))}
-          </DropdownMenu.Items>
-        </DropdownMenu>
+          </NewDropdownMenuContent>
+        </NewDropdownMenu>
       </>
     )
   );

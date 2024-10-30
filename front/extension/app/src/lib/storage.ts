@@ -14,6 +14,7 @@ export type StoredUser = {
   userId: string;
   email: string;
   username: string;
+  firstName: string;
   fullName: string;
   selectedWorkspace: string | null;
   workspaces: LightWorkspaceType[];
@@ -69,6 +70,7 @@ export const saveUser = async (
     userId: user.sId,
     email: user.email,
     username: user.username,
+    firstName: user.firstName,
     fullName: user.fullName,
     selectedWorkspace:
       user.workspaces.length === 1 ? user.workspaces[0].sId : null,

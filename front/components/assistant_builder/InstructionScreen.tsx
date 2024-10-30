@@ -1,7 +1,11 @@
 import {
   Button,
   ContentMessage,
-  DropdownMenu,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuLabel,
+  NewDropdownMenuTrigger,
   Page,
   Popover,
   Spinner,
@@ -313,7 +317,7 @@ function ModelList({ modelConfigs, onClick }: ModelListProps) {
   return (
     <>
       {modelConfigs.map((modelConfig) => (
-        <DropdownMenu.Item
+        <NewDropdownMenuItem
           key={modelConfig.modelId}
           icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
           description={modelConfig.shortDescription}
@@ -384,8 +388,8 @@ function AdvancedSettings({
             <div className="w-full grow text-sm font-bold text-element-800">
               Model selection
             </div>
-            <DropdownMenu>
-              <DropdownMenu.Button>
+            <NewDropdownMenu>
+              <NewDropdownMenuTrigger asChild>
                 <Button
                   isSelect
                   label={
@@ -395,43 +399,37 @@ function AdvancedSettings({
                   variant="outline"
                   size="sm"
                 />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topRight" width={250}>
-                <div className="z-[120]">
-                  <span className="text-sm uppercase text-element-700">
-                    Best performing models
-                  </span>
-                  <ModelList
-                    modelConfigs={bestPerformingModelConfig}
-                    onClick={(modelSettings) => {
-                      setGenerationSettings({
-                        ...generationSettings,
-                        modelSettings,
-                      });
-                    }}
-                  />
-                  <span className="text-sm uppercase text-element-700">
-                    Other models
-                  </span>
-                  <ModelList
-                    modelConfigs={otherModelsConfig}
-                    onClick={(modelSettings) => {
-                      setGenerationSettings({
-                        ...generationSettings,
-                        modelSettings,
-                      });
-                    }}
-                  />
-                </div>
-              </DropdownMenu.Items>
-            </DropdownMenu>
+              </NewDropdownMenuTrigger>
+              <NewDropdownMenuContent>
+                <NewDropdownMenuLabel label="Best performing models" />
+                <ModelList
+                  modelConfigs={bestPerformingModelConfig}
+                  onClick={(modelSettings) => {
+                    setGenerationSettings({
+                      ...generationSettings,
+                      modelSettings,
+                    });
+                  }}
+                />
+                <NewDropdownMenuLabel label="Other models" />
+                <ModelList
+                  modelConfigs={otherModelsConfig}
+                  onClick={(modelSettings) => {
+                    setGenerationSettings({
+                      ...generationSettings,
+                      modelSettings,
+                    });
+                  }}
+                />
+              </NewDropdownMenuContent>
+            </NewDropdownMenu>
           </div>
           <div className="flex flex-col items-end gap-2">
             <div className="w-full grow text-sm font-bold text-element-800">
               Creativity level
             </div>
-            <DropdownMenu>
-              <DropdownMenu.Button>
+            <NewDropdownMenu>
+              <NewDropdownMenuTrigger asChild>
                 <Button
                   isSelect
                   label={
@@ -442,10 +440,10 @@ function AdvancedSettings({
                   variant="outline"
                   size="sm"
                 />
-              </DropdownMenu.Button>
-              <DropdownMenu.Items origin="topRight">
+              </NewDropdownMenuTrigger>
+              <NewDropdownMenuContent>
                 {CREATIVITY_LEVELS.map(({ label, value }) => (
-                  <DropdownMenu.Item
+                  <NewDropdownMenuItem
                     key={label}
                     label={label}
                     onClick={() => {
@@ -456,8 +454,8 @@ function AdvancedSettings({
                     }}
                   />
                 ))}
-              </DropdownMenu.Items>
-            </DropdownMenu>
+              </NewDropdownMenuContent>
+            </NewDropdownMenu>
           </div>
         </div>
       }

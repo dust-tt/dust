@@ -96,6 +96,6 @@ export async function revokeSyncZendeskBrand({
     return null;
   }
 
-  await brand.revokePermissions();
+  await brand.revokeAllPermissions();
   return brand;
 }

@@ -2,7 +2,10 @@ import {
   Button,
   Cog6ToothIcon,
   DataTable,
-  DropdownMenu,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
   Searchbar,
   Spinner,
   useHashParam,
@@ -380,27 +383,26 @@ export const SpaceDataSourceViewContentList = ({
           <>
             {((viewType === "tables" && hasDocuments) ||
               (viewType === "documents" && hasTables)) && (
-              <DropdownMenu>
-                <DropdownMenu.Button>
+              <NewDropdownMenu>
+                <NewDropdownMenuTrigger asChild>
                   <Button
                     size="sm"
                     label={viewType === "documents" ? "Documents" : "Tables"}
                     variant="outline"
                     isSelect
                   />
-                </DropdownMenu.Button>
-
-                <DropdownMenu.Items>
-                  <DropdownMenu.Item
+                </NewDropdownMenuTrigger>
+                <NewDropdownMenuContent>
+                  <NewDropdownMenuItem
                     label="Documents"
                     onClick={() => handleViewTypeChange("documents")}
                   />
-                  <DropdownMenu.Item
+                  <NewDropdownMenuItem
                     label="Tables"
                     onClick={() => handleViewTypeChange("tables")}
                   />
-                </DropdownMenu.Items>
-              </DropdownMenu>
+                </NewDropdownMenuContent>
+              </NewDropdownMenu>
             )}
             <FoldersHeaderMenu
               owner={owner}

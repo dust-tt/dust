@@ -3,7 +3,10 @@ import type { ModelId } from "@dust-tt/types";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
-import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
+import {
+  ZendeskBrandResource,
+  ZendeskTicketResource,
+} from "@connectors/resources/zendesk_resources";
 
 export async function allowSyncZendeskTickets({
   subdomain,
@@ -81,6 +84,12 @@ export async function revokeSyncZendeskTickets({
     return null;
   }
 
+  // updating the field ticketsPermission to "none" for the brand
   await brand.revokeTicketsPermissions();
+  // revoking the permissions for all the children tickets
+  await ZendeskTicketResource.revokePermissionsForBrand({
+    connectorId,
+    brandId,
+  });
   return brand;
 }

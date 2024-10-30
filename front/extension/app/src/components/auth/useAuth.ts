@@ -114,6 +114,7 @@ export const useAuthHook = () => {
     token: tokens?.accessToken ?? null,
     isAuthenticated,
     user,
+    workspace: user?.workspaces.find((w) => w.sId === user.selectedWorkspace),
     isUserSetup,
     isLoading,
     handleLogin,
