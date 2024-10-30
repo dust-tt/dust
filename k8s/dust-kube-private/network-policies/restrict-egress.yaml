@@ -1,0 +1,54 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: restrict-egress
+  namespace: default
+spec:
+  podSelector: {}  # Applies to all pods
+  policyTypes:
+  - Egress
+  egress:
+  # Internal cluster communication
+  - to:
+    - ipBlock:
+        cidr: 10.11.0.0/17     # VPC CIDR - adjust as needed
+    
+  # DNS resolution
+  - to:
+    - namespaceSelector: {}
+    - ipBlock:
+        cidr: 8.8.8.8/32      # Google DNS primary
+    - ipBlock:
+        cidr: 8.8.4.4/32      # Google DNS secondary    
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # Kubernetes API access
+  - to:
+    - ipBlock:
+        cidr: 34.44.36.75/32 # Your control plane IP
+    ports:
+    - port: 443
+    - port: 6443
+
+  # Allow metadata access for Cloud NAT
+  - to:
+    - ipBlock:
+        cidr: 169.254.169.254/32  # GCP metadata server
+    ports:
+    - protocol: TCP
+      port: 80
+
+# Allow external internet access through Cloud NAT
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+        except:
+        - 10.0.0.0/8     # RFC1918 private ranges
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+        - 169.254.0.0/16 # Link local
+
