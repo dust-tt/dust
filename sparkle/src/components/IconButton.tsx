@@ -16,9 +16,6 @@ type IconButtonProps = {
   disabled?: boolean;
 };
 
-const baseClasses =
-  "s-transition-all s-ease-out s-duration-300 s-cursor-pointer hover:s-scale-110";
-
 const styleVariants: Record<ButtonVariantType, string> = {
   primary:
     "s-text-action-500 dark:s-text-action-500-dark" +
@@ -52,18 +49,21 @@ const styleVariants: Record<ButtonVariantType, string> = {
     "s-text-element-500 dark:s-text-element-500-dark",
 };
 
-const iconButtonVariants = cva(baseClasses, {
-  variants: {
-    variant: styleVariants,
-    disabled: {
-      true: "s-text-element-500 s-cursor-default hover:s-scale-100",
+const iconButtonVariants = cva(
+  "s-transition-all s-ease-out s-duration-300 s-cursor-pointer hover:s-scale-110",
+  {
+    variants: {
+      variant: styleVariants,
+      disabled: {
+        true: "s-text-element-500 s-cursor-default hover:s-scale-100",
+      },
     },
-  },
-  defaultVariants: {
-    variant: "outline",
-    disabled: false,
-  },
-});
+    defaultVariants: {
+      variant: "outline",
+      disabled: false,
+    },
+  }
+);
 
 const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
   (
