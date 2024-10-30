@@ -97,7 +97,7 @@ export type CustomRenderers = {
   ) => React.JSX.Element;
 };
 
-export function ExtendedMarkdown({
+export function Markdown({
   content,
   isStreaming = false,
   textSize = "base",
