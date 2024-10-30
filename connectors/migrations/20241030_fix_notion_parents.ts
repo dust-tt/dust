@@ -79,9 +79,14 @@ async function updateParentsFieldForConnector(
 
         if ("notionPageId" in node) {
           // its a page
-          documentId = `notion-${node.notionPageId}`;
+          if (node.lastUpsertedTs) {
+            documentId = `notion-${node.notionPageId}`;
+          }
         } else {
-          tableId = `notion-${node.notionDatabaseId}`;
+          if (node.structuredDataUpsertedTs) {
+            tableId = `notion-${node.notionDatabaseId}`;
+          }
+
           documentId = `notion-database-${node.notionDatabaseId}`;
         }
 
