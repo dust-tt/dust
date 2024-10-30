@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import { assertNever } from "@temporalio/common/lib/type-helpers";
 import {
   executeChild,
   proxyActivities,
@@ -28,14 +29,6 @@ const {
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
-
-function assertNever(x: never): never {
-  throw new Error(
-    `${
-      typeof x === "object" ? JSON.stringify(x) : x
-    } is not of type never. This should never happen.`
-  );
-}
 
 /**
  * Sync Workflow for Zendesk.
@@ -85,7 +78,10 @@ export async function zendeskSyncWorkflow({
           break;
         }
         default:
-          assertNever(signal.type);
+          assertNever(
+            `Unexpected signal type ${signal.type} received within Zendesk sync workflow.`,
+            signal.type
+          );
       }
     });
   });
