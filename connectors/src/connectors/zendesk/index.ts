@@ -137,19 +137,16 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const brands = await ZendeskBrandResource.fetchByConnectorId({
+    const brandIds = await ZendeskBrandResource.fetchAllBrandIds({
       connectorId,
     });
-
-    const sendSignalToWorkflowResult = await launchZendeskSyncWorkflow({
+    const result = await launchZendeskSyncWorkflow({
       connectorId,
-      brandIds: brands.map((brand) => brand.brandId),
+      brandIds,
       forceResync: true,
     });
-    if (sendSignalToWorkflowResult.isErr()) {
-      return new Err(sendSignalToWorkflowResult.error);
-    }
-    return new Ok(connector.id.toString());
+
+    return result.isErr() ? result : new Ok(connector.id.toString());
   }
 
   async retrievePermissions({
