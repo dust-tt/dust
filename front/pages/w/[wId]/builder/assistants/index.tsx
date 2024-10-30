@@ -274,6 +274,7 @@ export default function WorkspaceAssistants({
                       value={tab.scope}
                       label={tab.label}
                       icon={tab.icon}
+                      disabled={!!assistantSearch}
                       className={assistantSearch ? disabledTablineClass : ""}
                       onClick={() => setSelectedTab(tab.scope)}
                     />
@@ -284,20 +285,20 @@ export default function WorkspaceAssistants({
                 <SearchOrderDropdown
                   orderBy={orderBy}
                   setOrderBy={setOrderBy}
-                  disabled={tabScope === "global"}
+                  disabled={activeTab === "global"}
                 />
               </div>
             </div>
             <Page.P>
               {assistantSearch
                 ? "Searching across all assistants"
-                : SCOPE_INFO[tabScope].text}
+                : SCOPE_INFO[activeTab].text}
             </Page.P>
             {filteredAgents.length > 0 || isAgentConfigurationsLoading ? (
               <AgentViewForScope
                 owner={owner}
                 agents={filteredAgents}
-                scopeView={assistantSearch ? "search-view" : tabScope}
+                scopeView={assistantSearch ? "search-view" : activeTab}
                 setShowDetails={setShowDetails}
                 handleToggleAgentStatus={handleToggleAgentStatus}
                 showDisabledFreeWorkspacePopup={showDisabledFreeWorkspacePopup}
