@@ -1,10 +1,9 @@
 import { cva } from "class-variance-authority";
 import React, { ComponentType, MouseEventHandler } from "react";
 
+import { Tooltip } from "@sparkle/components";
 import { Button, ButtonVariantType } from "@sparkle/components/Button";
-
-import { Icon } from "./Icon";
-import { Tooltip } from "./Tooltip";
+import { cn } from "@sparkle/lib/utils";
 
 type IconButtonProps = {
   variant?: React.ComponentProps<typeof Button>["variant"];
@@ -66,33 +65,32 @@ const iconButtonVariants = cva(baseClasses, {
   },
 });
 
-export function IconButton({
-  variant,
-  onClick,
-  disabled = false,
-  tooltip,
-  tooltipPosition,
-  icon,
-  className,
-  size,
-}: IconButtonProps) {
-  const iconSize = size || "sm";
-  const buttonClasses = iconButtonVariants({ variant, disabled, className });
-
-  const IconButtonContent = (
-    <button className={buttonClasses} onClick={onClick} disabled={disabled}>
-      <Icon visual={icon} size={iconSize} />
-    </button>
-  );
-
-  return tooltip ? (
-    <Tooltip
-      trigger={IconButtonContent}
-      label={tooltip}
-      side={tooltipPosition}
-      tooltipTriggerAsChild
+const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
+  (
+    {
+      variant = "outline",
+      onClick,
+      disabled = false,
+      tooltip,
+      icon,
+      className,
+      size = "sm",
+      ...props
+    },
+    ref
+  ) => (
+    <Button
+      tooltip={tooltip}
+      className={cn(iconButtonVariants({ variant, disabled }), className)}
+      onClick={onClick}
+      disabled={disabled}
+      ref={ref}
+      size={size}
+      icon={icon}
+      variant={null}
+      {...props}
     />
-  ) : (
-    IconButtonContent
-  );
-}
+  )
+);
+
+export { IconButton };
