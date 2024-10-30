@@ -343,8 +343,7 @@ const RenderConversations = ({
   return (
     <div>
       <NavigationListLabel
-        label={dateLabel.toUpperCase()}
-        className="py-1 text-xs font-medium text-element-800"
+        label={dateLabel}
       />
       <NavigationList>
         {conversations.map((conversation) => (
@@ -398,7 +397,6 @@ const RenderConversation = ({
           selected={router.query.cId === conversation.sId}
           label={conversationLabel}
           href={`/w/${owner.sId}/assistant/${conversation.sId}`}
-          className="px-2"
         />
       )}
     </>
