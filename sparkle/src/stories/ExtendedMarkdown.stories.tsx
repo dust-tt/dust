@@ -1,12 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import {
-  CitationsContext,
-  CiteBlock,
-  citeDirective,
-  ExtendedMarkdown,
-} from "../index_with_tw_base";
+import { ExtendedMarkdown } from "../index_with_tw_base";
 
 const meta: Meta<typeof ExtendedMarkdown> = {
   title: "Components/ExtendedMarkdown",
@@ -14,20 +9,7 @@ const meta: Meta<typeof ExtendedMarkdown> = {
   decorators: [
     (Story) => (
       <div className="s-flex s-flex-col s-bg-structure-50 s-p-8">
-        <CitationsContext.Provider
-          value={{
-            references: {
-              xx: {
-                title: "test",
-                type: "snowflake",
-              },
-            },
-            updateActiveReferences: () => {},
-            setHoveredReference: () => {},
-          }}
-        >
-          <Story />
-        </CitationsContext.Provider>
+        <Story />
       </div>
     ),
   ],
@@ -97,12 +79,12 @@ footnote [^1]
 
 ### Table
 
-| Date        | High Temperature (°C) | Low Temperature (°C) | Weather Condition            |
+| Date        | High Temperature (°C) | Low Temperature (°C) | Weather Condition             |
 |-------------|-----------------------|----------------------|-------------------------------|
 | October 25  | 19                    | 14                   | Passing showers, cloudy       |
 | October 26  | 17                    | 12                   | Light showers, overcast       |
-| October 27  | 16                    | 10                   | Overcast :cite[xx]            |
-| October 28  | 16                    | 9                    | Increasing cloudiness          |
+| October 27  | 16                    | 10                   | Overcast                      |
+| October 28  | 16                    | 9                    | Increasing cloudiness         |
 | October 29  | 17                    | 8                    | Scattered clouds              |
 | October 30  | 19                    | 8                    | Sunny                         |
 | October 31  | 19                    | 10                   | Sunny                         |
@@ -170,11 +152,6 @@ graph TD;
     F -->|Low: 12°C| M[End]
 \`\`\`
 
-### Custom directives :
-
-- Mention :mention[soupinou]{sId=gTgtNcPqh4}
-- Cite citation :cite[xx]
-
 `;
 
 export const ExtendedMarkdownStory: Story = {
@@ -182,7 +159,5 @@ export const ExtendedMarkdownStory: Story = {
     content: example,
     textSize: "base",
     textColor: "s-text-element-800",
-    additionalMarkdownComponents: { sup: CiteBlock },
-    additionalMarkdownPlugins: [citeDirective()],
   },
 };

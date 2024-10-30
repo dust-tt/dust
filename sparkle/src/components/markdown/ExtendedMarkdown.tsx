@@ -18,10 +18,6 @@ import {
   GetContentToDownloadFunction,
 } from "@sparkle/components/markdown/ContentBlockWrapper";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
-import {
-  MentionBlock,
-  mentionDirective,
-} from "@sparkle/components/markdown/MentionBlock";
 import { classNames } from "@sparkle/lib/utils";
 
 const headerColor = "s-text-element-900";
@@ -237,7 +233,6 @@ export function ExtendedMarkdown({
       ),
       blockquote: BlockquoteBlock,
       hr: () => <div className="s-my-6 s-border-b s-border-structure-200" />,
-      mention: MentionBlock,
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
@@ -246,7 +241,6 @@ export function ExtendedMarkdown({
   const markdownPlugins: PluggableList = useMemo(
     () => [
       remarkDirective,
-      mentionDirective,
       remarkGfm,
       [remarkMath, { singleDollarTextMath: false }],
       ...(additionalMarkdownPlugins || []),
