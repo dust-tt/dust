@@ -1,6 +1,6 @@
-import type { EditorSuggestion } from "@app/extension/app/src/components/input_bar/editor/suggestion";
-import { classNames } from "@app/extension/app/src/lib/utils";
 import { Avatar } from "@dust-tt/sparkle";
+import type { EditorSuggestion } from "@extension/components/input_bar/editor/suggestion";
+import { classNames } from "@extension/lib/utils";
 import React, {
   forwardRef,
   useEffect,

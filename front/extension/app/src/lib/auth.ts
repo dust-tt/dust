@@ -1,19 +1,16 @@
+import type { UserTypeWithWorkspaces } from "@dust-tt/types";
 import {
   sendAuthMessage,
   sendRefreshTokenMessage,
   sentLogoutMessage,
-} from "@app/extension/app/src/lib/messages";
-import type {
-  StoredTokens,
-  StoredUser,
-} from "@app/extension/app/src/lib/storage";
+} from "@extension/lib/messages";
+import type { StoredTokens, StoredUser } from "@extension/lib/storage";
 import {
   clearStoredData,
   getStoredTokens,
   saveTokens,
   saveUser,
-} from "@app/extension/app/src/lib/storage";
-import type { UserTypeWithWorkspaces } from "@dust-tt/types";
+} from "@extension/lib/storage";
 
 const log = console.error;
 

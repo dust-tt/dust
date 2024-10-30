@@ -1,7 +1,3 @@
-import {
-  getAccessToken,
-  getStoredUser,
-} from "@app/extension/app/src/lib/storage";
 import type {
   ConversationType,
   ConversationVisibility,
@@ -13,6 +9,7 @@ import type {
   UserMessageWithRankType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import { getAccessToken, getStoredUser } from "@extension/lib/storage";
 
 export async function postConversation({
   owner,
@@ -105,6 +102,16 @@ export async function postMessage({
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const { input, mentions } = messageData;
   const token = await getAccessToken();
+  const user = await getStoredUser();
+
+  if (!user) {
+    // This should never happen.
+    return new Err({
+      type: "user_not_found",
+      title: "User not found.",
+      message: "Please log in again.",
+    });
+  }
 
   // Create a new user message.
   const mRes = await fetch(
@@ -118,8 +125,12 @@ export async function postMessage({
       body: JSON.stringify({
         content: input,
         context: {
+          username: user.username,
+          email: user.email,
+          fullName: user.fullName,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
           profilePictureUrl: null, // todo daph
+          origin: "extension",
         },
         mentions,
       }),

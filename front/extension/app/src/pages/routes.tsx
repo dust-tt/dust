@@ -1,6 +1,6 @@
-import { ConversationPage } from "@app/extension/app/src/pages/ConversationPage";
-import { ConversationsPage } from "@app/extension/app/src/pages/ConversationsPage";
 import { ProtectedRoute } from "@extension/components/auth/ProtectedRoute";
+import { ConversationPage } from "@extension/pages/ConversationPage";
+import { ConversationsPage } from "@extension/pages/ConversationsPage";
 import { LoginPage } from "@extension/pages/LoginPage";
 import { MainPage } from "@extension/pages/MainPage";
 

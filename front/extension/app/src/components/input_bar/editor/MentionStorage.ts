@@ -1,4 +1,4 @@
-import type { EditorSuggestions } from "@app/extension/app/src/components/input_bar/editor/suggestion";
+import type { EditorSuggestions } from "@extension/components/input_bar/editor/suggestion";
 import { Extension } from "@tiptap/react";
 
 // Storage extension to manage mention suggestions.

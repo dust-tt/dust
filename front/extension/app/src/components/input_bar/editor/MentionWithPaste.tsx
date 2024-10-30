@@ -1,4 +1,4 @@
-import type { EditorSuggestions } from "@app/extension/app/src/components/input_bar/editor/suggestion";
+import type { EditorSuggestions } from "@extension/components/input_bar/editor/suggestion";
 import Mention from "@tiptap/extension-mention";
 import type { PasteRuleMatch } from "@tiptap/react";
 import { nodePasteRule } from "@tiptap/react";

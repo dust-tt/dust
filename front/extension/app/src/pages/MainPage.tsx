@@ -17,7 +17,11 @@ export const MainPage = ({ user, workspace }: ProtectedRouteChildrenProps) => {
           size="xs"
         />
       </div>
-      <ConversationContainer owner={workspace} conversationId={null} />
+      <ConversationContainer
+        owner={workspace}
+        conversationId={null}
+        user={user}
+      />
     </div>
   );
 };

@@ -1,4 +1,3 @@
-import { filterAndSortAgents } from "@app/extension/app/src/lib/utils";
 import {
   Button,
   Item,
@@ -13,6 +12,7 @@ import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@dust-tt/types";
+import { filterAndSortAgents } from "@extension/lib/utils";
 import { useEffect, useState } from "react";
 
 export function AssistantPicker({

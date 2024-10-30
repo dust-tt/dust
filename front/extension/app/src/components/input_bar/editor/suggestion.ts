@@ -1,8 +1,5 @@
-import { MentionList } from "@app/extension/app/src/components/input_bar/editor/MentionList";
-import {
-  compareForFuzzySort,
-  subFilter,
-} from "@app/extension/app/src/lib/utils";
+import { MentionList } from "@extension/components/input_bar/editor/MentionList";
+import { compareForFuzzySort, subFilter } from "@extension/lib/utils";
 import type { Editor } from "@tiptap/core";
 import { ReactRenderer } from "@tiptap/react";
 import tippy from "tippy.js";

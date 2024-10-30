@@ -1,8 +1,8 @@
+import type { AgentMention, LightAgentConfigurationType } from "@dust-tt/types";
 import type {
   EditorMention,
   EditorService,
-} from "@app/extension/app/src/components/input_bar/editor/useCustomEditor";
-import type { AgentMention, LightAgentConfigurationType } from "@dust-tt/types";
+} from "@extension/components/input_bar/editor/useCustomEditor";
 import { useEffect, useRef } from "react";
 
 const useHandleMentions = (
