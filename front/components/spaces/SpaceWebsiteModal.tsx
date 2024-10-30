@@ -529,20 +529,13 @@ export default function SpaceWebsiteModal({
                           setMaxPages(null);
                         }
                       }}
-                      showErrorLabel={
-                        maxPages &&
-                        maxPages > WEBCRAWLER_MAX_PAGES &&
-                        maxPages &&
-                        maxPages < 1
-                          ? false
-                          : true
-                      }
-                      error={
+                      message={
                         (maxPages && maxPages > WEBCRAWLER_MAX_PAGES) ||
                         (maxPages && maxPages < 1)
                           ? `Maximum pages must be between 1 and ${WEBCRAWLER_MAX_PAGES}`
                           : null
                       }
+                      messageStatus="error"
                       name="maxPages"
                     />
                   </Page.Layout>
@@ -562,9 +555,9 @@ export default function SpaceWebsiteModal({
                   <Input
                     value={dataSourceName}
                     onChange={(e) => setDataSourceName(e.target.value)}
-                    error={dataSourceNameError}
+                    message={dataSourceNameError}
+                    messageStatus="error"
                     name="dataSourceName"
-                    showErrorLabel
                     placeholder="Articles"
                     disabled={webCrawlerConfiguration !== null}
                   />

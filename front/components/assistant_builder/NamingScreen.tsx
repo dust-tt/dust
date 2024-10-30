@@ -411,8 +411,8 @@ export default function NamingScreen({
                   }));
                 }}
                 name="assistantDescription"
-                error={descriptionError}
-                className="text-sm"
+                message={descriptionError}
+                messageStatus="error"
                 disabled={generatingDescription}
               />
             </div>

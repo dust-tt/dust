@@ -1,6 +1,5 @@
 import {
   Button,
-  ExclamationCircleStrokeIcon,
   Input,
   Modal,
   Page,
@@ -158,16 +157,10 @@ export default function SpaceFolderModal({
                   onChange={(e) => {
                     setName(e.target.value);
                   }}
-                  message={error}
-                  messageStatus="error"
+                  message={error ?? "Folder name must be unique"}
+                  messageStatus={error ? "error": "info"}
                   disabled={!!dataSourceView} // We cannot change the name of a datasource
                 />
-                <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-                  <ExclamationCircleStrokeIcon />{" "}
-                  {!dataSourceView
-                    ? "Folder name must be unique."
-                    : "Folder name cannot be changed."}
-                </p>
               </div>
 
               <Page.Separator />

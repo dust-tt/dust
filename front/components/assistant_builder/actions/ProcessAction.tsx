@@ -473,7 +473,7 @@ export function ActionProcess({
                         };
                       });
                     }}
-                    error={
+                    message={
                       t.length === 0
                         ? "Tag is required"
                         : (actionConfiguration.tagsFilter?.in || []).filter(
@@ -482,6 +482,7 @@ export function ActionProcess({
                           ? "Tag must be unique"
                           : undefined
                     }
+                    messageStatus="error"
                   />
                 </div>
                 <div className="flex items-end pb-2">
