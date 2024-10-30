@@ -36,6 +36,7 @@ import {
 } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { launchZendeskSyncWorkflow } from "@connectors/connectors/zendesk/temporal/client";
+import { zendeskStopSyncWorkflow } from "@connectors/connectors/zendesk/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -102,7 +103,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    const result = await zendeskStopSyncWorkflow(this.connectorId);
+    return result.isErr() ? result : new Ok(undefined);
   }
 
   async resume(): Promise<Result<undefined, Error>> {
@@ -537,11 +539,33 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }
 
   async pause(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    const connectorId = this.connectorId;
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
+      return new Err(new Error("Connector not found"));
+    }
+    await connector.markAsPaused();
+    const result = await this.stop();
+
+    return result.isErr() ? result : new Ok(undefined);
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    const connectorId = this.connectorId;
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
+      return new Err(new Error("Connector not found"));
+    }
+    await connector.markAsUnpaused();
+
+    const brandIds = await ZendeskBrandResource.fetchAllBrandIds({
+      connectorId,
+    });
+    const result = await launchZendeskSyncWorkflow({ connectorId, brandIds });
+
+    return result.isErr() ? result : new Ok(undefined);
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

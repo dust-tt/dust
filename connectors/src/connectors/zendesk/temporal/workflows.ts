@@ -1,4 +1,7 @@
-import type { ModelId } from "@dust-tt/types";
+import type { ModelId, Result } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
+import type { WorkflowHandle } from "@temporalio/client";
+import { WorkflowNotFoundError } from "@temporalio/client";
 import { assertNever } from "@temporalio/common/lib/type-helpers";
 import {
   executeChild,
@@ -8,8 +11,12 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
+import { getZendeskSyncWorkflowId } from "@connectors/connectors/zendesk/temporal/client";
 import type { ZendeskUpdateSignal } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
+import { getTemporalClient } from "@connectors/lib/temporal";
+import logger from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const {
   getZendeskCategoriesActivity,
@@ -376,4 +383,37 @@ async function runZendeskBrandTicketsSyncActivities({
     currentSyncDateMs,
     forceResync,
   });
+}
+
+export async function zendeskStopSyncWorkflow(
+  connectorId: ModelId
+): Promise<Result<void, Error>> {
+  const client = await getTemporalClient();
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(
+      `[Zendesk] Connector not found, connectorId: ${connectorId}`
+    );
+  }
+
+  const workflowId = getZendeskSyncWorkflowId(connectorId);
+
+  try {
+    const handle: WorkflowHandle<typeof zendeskSyncWorkflow> =
+      client.workflow.getHandle(workflowId);
+    try {
+      await handle.terminate();
+    } catch (e) {
+      if (!(e instanceof WorkflowNotFoundError)) {
+        throw e;
+      }
+    }
+    return new Ok(undefined);
+  } catch (error) {
+    logger.error(
+      { workflowId, error },
+      "[Zendesk] Failed to stop the sync workflow."
+    );
+    return new Err(error as Error);
+  }
 }
