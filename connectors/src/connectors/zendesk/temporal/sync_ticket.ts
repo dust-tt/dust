@@ -1,11 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 
 import type { ZendeskFetchedTicket } from "@connectors/connectors/zendesk/lib/node-zendesk-types";
-import logger from "@connectors/logger/logger";
-import {
-  ZendeskConfigurationResource,
-  ZendeskTicketResource,
-} from "@connectors/resources/zendesk_resources";
+import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export async function syncTicket({
@@ -13,7 +9,6 @@ export async function syncTicket({
   ticket,
   brandId,
   currentSyncDateMs,
-  loggerArgs,
 }: {
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
@@ -23,16 +18,6 @@ export async function syncTicket({
   loggerArgs: Record<string, string | number | null>;
   forceResync: boolean;
 }) {
-  const configuration =
-    await ZendeskConfigurationResource.fetchById(connectorId);
-  if (!configuration) {
-    logger.error("[Zendesk] ZendeskConfiguration not found", {
-      connectorId,
-      loggerArgs,
-    });
-    return;
-  }
-
   let ticketInDb = await ZendeskTicketResource.fetchByTicketId({
     connectorId,
     ticketId: ticket.id,
