@@ -29,7 +29,6 @@ export function LinkWrapper({
         rel={rel}
         replace={replace}
         shallow={shallow}
-        // className={className}
       >
         {children}
       </components.link>
