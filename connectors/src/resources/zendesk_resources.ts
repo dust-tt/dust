@@ -664,6 +664,21 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     );
   }
 
+  static async fetchByBrandId({
+    connectorId,
+    brandId,
+  }: {
+    connectorId: number;
+    brandId: number;
+  }): Promise<ZendeskArticleResource[]> {
+    const articles = await ZendeskArticle.findAll({
+      where: { connectorId, brandId },
+    });
+    return articles.map(
+      (article) => new ZendeskArticleResource(ZendeskArticle, article)
+    );
+  }
+
   static async deleteByCategoryId({
     connectorId,
     categoryId,

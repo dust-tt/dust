@@ -261,7 +261,11 @@ export async function syncZendeskCategoryActivity({
 
   // if all rights were revoked, we delete the category data.
   if (categoryInDb.permission === "none") {
-    await deleteUpsertedArticles({ connectorId, categoryId, dataSourceConfig });
+    await deleteUpsertedArticlesInCategory({
+      connectorId,
+      categoryId,
+      dataSourceConfig,
+    });
     await ZendeskArticleResource.deleteByCategoryId({
       connectorId,
       categoryId,
@@ -280,7 +284,11 @@ export async function syncZendeskCategoryActivity({
   const { result: fetchedCategory } =
     await zendeskApiClient.helpcenter.categories.show(categoryId);
   if (!fetchedCategory) {
-    await deleteUpsertedArticles({ connectorId, categoryId, dataSourceConfig });
+    await deleteUpsertedArticlesInCategory({
+      connectorId,
+      categoryId,
+      dataSourceConfig,
+    });
     await ZendeskArticleResource.deleteByCategoryId({
       connectorId,
       categoryId,
@@ -338,19 +346,11 @@ async function deleteBrandChildren({
   dataSourceConfig: DataSourceConfig;
 }) {
   /// deleting the upserted articles
-  const categories = await ZendeskCategoryResource.fetchByBrandId({
+  await deleteUpsertedArticlesInBrand({
     connectorId,
     brandId,
+    dataSourceConfig,
   });
-  await Promise.all(
-    categories.map((categoryInDb) =>
-      deleteUpsertedArticles({
-        connectorId,
-        categoryId: categoryInDb.categoryId,
-        dataSourceConfig,
-      })
-    )
-  );
   /// deleting the upserted tickets
   await deleteUpsertedTickets({ connectorId, brandId, dataSourceConfig });
   await ZendeskArticleResource.deleteByBrandId({
@@ -366,7 +366,7 @@ async function deleteBrandChildren({
 /**
  * Deletes all the articles upserted for a category.
  */
-async function deleteUpsertedArticles({
+async function deleteUpsertedArticlesInCategory({
   connectorId,
   categoryId,
   dataSourceConfig,
@@ -383,7 +383,33 @@ async function deleteUpsertedArticles({
     articles.map((article) =>
       deleteFromDataSource(
         dataSourceConfig,
-        getArticleInternalId(article.connectorId, article.articleId)
+        getArticleInternalId(connectorId, article.articleId)
+      )
+    )
+  );
+}
+
+/**
+ * Deletes all the articles upserted for an entire brand.
+ */
+async function deleteUpsertedArticlesInBrand({
+  connectorId,
+  brandId,
+  dataSourceConfig,
+}: {
+  connectorId: number;
+  brandId: number;
+  dataSourceConfig: DataSourceConfig;
+}) {
+  const articles = await ZendeskArticleResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  await Promise.all(
+    articles.map((article) =>
+      deleteFromDataSource(
+        dataSourceConfig,
+        getArticleInternalId(connectorId, article.articleId)
       )
     )
   );
