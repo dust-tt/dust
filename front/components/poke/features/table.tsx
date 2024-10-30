@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 
 import { makeColumnsForFeatureFlags } from "@app/components/poke/features/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { usePokeFeatureFlags } from "@app/lib/swr/poke";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface FeatureFlagsDataTableProps {
@@ -30,7 +31,7 @@ export function FeatureFlagsDataTable({
   whitelistableFeatures,
 }: FeatureFlagsDataTableProps) {
   const router = useRouter();
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { featureFlags } = usePokeFeatureFlags({ workspaceId: owner.sId });
   const sendNotification = useSendNotification();
 
   return (
