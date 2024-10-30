@@ -8,6 +8,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import {
   launchRetrieveTranscriptsWorkflow,
@@ -101,6 +102,8 @@ async function handler(
         });
       }
 
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration, false);
+
       const {
         agentConfigurationId: patchAgentId,
         isActive,
@@ -114,6 +117,13 @@ async function handler(
       }
 
       if (isActive !== undefined) {
+        logger.info(
+          {
+            configurationId: transcriptsConfiguration.id,
+            isActive,
+          },
+          "Setting transcript configuration active status."
+        );
         await transcriptsConfiguration.setIsActive(isActive);
       }
 
@@ -125,21 +135,20 @@ async function handler(
       }
 
       const shouldStartWorkflow = isActive || dataSourceViewId;
-      const shouldStopWorkflow =
-        isActive === false || (isActive === undefined && !dataSourceViewId);
 
       if (shouldStartWorkflow) {
+        logger.info(
+          {
+            configurationId: transcriptsConfiguration.id,
+          },
+          "Starting transcript retrieval workflow."
+        );
         await launchRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-      } else if (shouldStopWorkflow) {
-        await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       }
-
       return res.status(200).json({ configuration: transcriptsConfiguration });
 
     case "DELETE":
-      if (transcriptsConfiguration.isActive) {
-        await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-      }
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
       await transcriptsConfiguration.delete(auth);
       return res.status(200).json({ configuration: null });
 

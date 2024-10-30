@@ -1,4 +1,4 @@
-import { isAPIErrorResponse } from "@dust-tt/types";
+import { isAPIErrorResponse, safeParseJSON } from "@dust-tt/types";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
@@ -122,6 +122,14 @@ const resHandler = async (res: Response) => {
       res.headers,
       errorText
     );
+
+    const parseRes = safeParseJSON(errorText);
+    if (parseRes.isOk()) {
+      if (isAPIErrorResponse(parseRes.value)) {
+        throw parseRes.value;
+      }
+    }
+
     throw new Error(errorText);
   }
   return res.json();

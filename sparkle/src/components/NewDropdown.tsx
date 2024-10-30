@@ -121,7 +121,7 @@ const NewDropdownMenuSubTrigger = React.forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      menuStyleClasses.item,
+      menuStyleClasses.item({ variant: "default" }),
       inset ? menuStyleClasses.inset : "",
       className
     )}
@@ -243,7 +243,11 @@ const NewDropdownMenuCheckboxItem = React.forwardRef<
 >(({ className, children, checked, ...props }, ref) => (
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
-    className={cn(menuStyleClasses.item, menuStyleClasses.inset, className)}
+    className={cn(
+      menuStyleClasses.item({ variant: "default" }),
+      menuStyleClasses.inset,
+      className
+    )}
     checked={checked}
     {...props}
   >
@@ -267,7 +271,11 @@ const NewDropdownMenuRadioItem = React.forwardRef<
 >(({ className, children, description, label, icon, ...props }, ref) => (
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
-    className={cn(menuStyleClasses.item, menuStyleClasses.inset, className)}
+    className={cn(
+      menuStyleClasses.item({ variant: "default" }),
+      menuStyleClasses.inset,
+      className
+    )}
     {...props}
   >
     <span className={menuStyleClasses.subTrigger.span}>
