@@ -12,6 +12,7 @@ import {
   Button,
   ChatBubbleThoughtIcon,
   Chip,
+  Citation,
   ContentMessage,
   ConversationMessage,
   DocumentDuplicateIcon,
@@ -38,7 +39,7 @@ import {
   removeNulls,
 } from "@dust-tt/types";
 import { useEventSource } from "@extension/hooks/useEventSource";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface AgentMessageProps {
   conversationId: string;
@@ -327,6 +328,11 @@ export function AgentMessage({
   ]);
   const { configuration: agentConfiguration } = agentMessageToRender;
 
+  const citations = useMemo(
+    () => getCitations({ activeReferences, lastHoveredReference }),
+    [activeReferences, lastHoveredReference]
+  );
+
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
@@ -346,6 +352,7 @@ export function AgentMessage({
       }}
       type="agent"
       size={size}
+      citations={citations}
     >
       <div>
         {renderAgentMessage({
@@ -460,6 +467,33 @@ export function AgentMessage({
   //   );
   //   setIsRetryHandlerProcessing(false);
   // }
+}
+
+function getCitations({
+  activeReferences,
+  lastHoveredReference,
+}: {
+  activeReferences: {
+    index: number;
+    document: MarkdownCitation;
+  }[];
+  lastHoveredReference: number | null;
+}) {
+  activeReferences.sort((a, b) => a.index - b.index);
+  return activeReferences.map(({ document, index }) => {
+    return (
+      <Citation
+        key={index}
+        size="xs"
+        sizing="fluid"
+        isBlinking={lastHoveredReference === index}
+        type={document.type}
+        title={document.title}
+        href={document.href}
+        index={index}
+      />
+    );
+  });
 }
 
 function ErrorMessage({
