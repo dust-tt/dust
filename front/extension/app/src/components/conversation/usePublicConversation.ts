@@ -10,7 +10,7 @@ import {
   useSWRWithDefaults,
 } from "@extension/lib/swr";
 import { useMemo } from "react";
-import type { Fetcher } from "swr";
+import type { Fetcher, KeyedMutator } from "swr";
 
 export function usePublicConversation({
   conversationId,
@@ -22,7 +22,11 @@ export function usePublicConversation({
   conversation: ConversationType | null;
   isConversationLoading: boolean;
   conversationError: ConversationError;
-  mutateConversation: () => void;
+  mutateConversation:
+    | (() => Promise<any>)
+    | KeyedMutator<{
+        conversation: ConversationType;
+      }>;
 } {
   const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
     fetcher;

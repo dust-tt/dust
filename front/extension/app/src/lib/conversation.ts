@@ -102,6 +102,16 @@ export async function postMessage({
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const { input, mentions } = messageData;
   const token = await getAccessToken();
+  const user = await getStoredUser();
+
+  if (!user) {
+    // This should never happen.
+    return new Err({
+      type: "user_not_found",
+      title: "User not found.",
+      message: "Please log in again.",
+    });
+  }
 
   // Create a new user message.
   const mRes = await fetch(
@@ -115,8 +125,12 @@ export async function postMessage({
       body: JSON.stringify({
         content: input,
         context: {
+          username: user.username,
+          email: user.email,
+          fullName: user.fullName,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
           profilePictureUrl: null, // todo daph
+          origin: "extension",
         },
         mentions,
       }),
