@@ -1,34 +1,11 @@
-import { useAuth } from "@app/extension/app/src/components/auth/AuthProvider";
-import { BarHeader, ChevronLeftIcon, Page, Spinner } from "@dust-tt/sparkle";
-import { Link, useNavigate } from "react-router-dom";
+import type { ProtectedRouteChildrenProps } from "@app/extension/app/src/components/auth/ProtectedRoute";
+import { BarHeader, ChevronLeftIcon, Page } from "@dust-tt/sparkle";
+import { Link } from "react-router-dom";
 
-export const ConversationsPage = () => {
-  const navigate = useNavigate();
-  const { isLoading, isAuthenticated, user } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="h-full w-full">
-        <div className="flex h-full w-full items-center justify-center">
-          <Spinner />
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || !user) {
-    navigate("/login");
-    return;
-  }
-
-  const workspace = user.workspaces.find(
-    (w) => w.sId === user.selectedWorkspace
-  );
-
-  if (!workspace) {
-    navigate("/login");
-    return;
-  }
+export const ConversationsPage = ({
+  workspace,
+}: ProtectedRouteChildrenProps) => {
+  console.log(workspace);
 
   return (
     <>

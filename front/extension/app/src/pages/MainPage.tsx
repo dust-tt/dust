@@ -1,40 +1,15 @@
-import { useAuth } from "@app/extension/app/src/components/auth/AuthProvider";
+import type { ProtectedRouteChildrenProps } from "@app/extension/app/src/components/auth/ProtectedRoute";
 import { ConversationContainer } from "@app/extension/app/src/components/conversation/ConversationContainer";
-import { Button, HistoryIcon, Page, Spinner } from "@dust-tt/sparkle";
+import { Button, HistoryIcon, Page } from "@dust-tt/sparkle";
 import { useNavigate } from "react-router-dom";
 
-export const MainPage = () => {
+export const MainPage = ({ user, workspace }: ProtectedRouteChildrenProps) => {
   const navigate = useNavigate();
-  const { isLoading, isAuthenticated, user } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="h-full w-full">
-        <div className="flex h-full w-full items-center justify-center">
-          <Spinner />
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || !user) {
-    navigate("/login");
-    return;
-  }
-
-  const workspace = user.workspaces.find(
-    (w) => w.sId === user.selectedWorkspace
-  );
-
-  if (!workspace) {
-    navigate("/login");
-    return;
-  }
 
   return (
     <div className="h-full w-full pt-4">
       <div className="flex items-center justify-between pb-2">
-        <Page.SectionHeader title="Conversation" />
+        <Page.SectionHeader title={`Hi ${user.firstName},`} />
         <Button
           icon={HistoryIcon}
           variant="outline"
