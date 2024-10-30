@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { ReactNode } from "react";
 import React, { useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
@@ -18,6 +17,17 @@ import {
   GetContentToDownloadFunction,
 } from "@sparkle/components/markdown/ContentBlockWrapper";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
+import {
+  TableBlock,
+  TableBodyBlock,
+  TableDataBlock,
+  TableHeadBlock,
+  TableHeaderBlock,
+} from "@sparkle/components/markdown/TableBlock";
+import {
+  detectLanguage,
+  sanitizeContent,
+} from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
 
 const headerColor = "s-text-element-900";
@@ -53,40 +63,6 @@ function showUnsupportedDirective() {
       }
     });
   };
-}
-
-function sanitizeContent(str: string): string {
-  // (1) Add closing backticks if they are missing such that we render a code block or inline
-  // element during streaming.
-
-  // Regular expression to find either a single backtick or triple backticks
-  const regex = /(`{1,3})/g;
-  let singleBackticks = 0;
-  let tripleBackticks = 0;
-
-  // Search for all backticks in the string and update counts
-  let match;
-  while ((match = regex.exec(str)) !== null) {
-    if (match[1] === "```") {
-      tripleBackticks++;
-    } else if (match[1] === "`") {
-      singleBackticks++;
-    }
-  }
-  // Append closing backticks if needed
-  if (tripleBackticks % 2 !== 0) {
-    if (str.endsWith("`")) {
-      str += "``";
-    } else if (str.endsWith("``")) {
-      str += "`";
-    } else {
-      str += str.includes("\n") ? "\n```" : "```";
-    }
-  } else if (singleBackticks % 2 !== 0) {
-    str += "`";
-  }
-
-  return str;
 }
 
 export type CustomRenderers = {
@@ -241,113 +217,6 @@ export function Markdown({
   );
 }
 
-const getNodeText = (node: ReactNode): string => {
-  if (["string", "number"].includes(typeof node)) {
-    return node as string;
-  }
-  if (node instanceof Array) {
-    return node.map(getNodeText).join("");
-  }
-  if (node && typeof node === "object" && "props" in node) {
-    return getNodeText(node.props.children);
-  }
-
-  return "";
-};
-
-function TableBlock({ children }: { children: React.ReactNode }) {
-  const tableData = useMemo(() => {
-    const [headNode, bodyNode] = Array.from(children as [any, any]);
-    if (
-      !headNode ||
-      !bodyNode ||
-      !("props" in headNode) ||
-      !("props" in bodyNode)
-    ) {
-      return;
-    }
-
-    const headCells = headNode.props.children[0].props.children.map((c: any) =>
-      getNodeText(c.props.children)
-    );
-
-    const headHtml = `<thead><tr>${headCells
-      .map((c: any) => `<th><b>${c}</b></th>`)
-      .join("")}</tr></thead>`;
-    const headPlain = headCells.join("\t");
-
-    const bodyRows = bodyNode.props.children.map((row: any) =>
-      row.props.children.map((cell: any) => {
-        const children = cell.props.children;
-        return (Array.isArray(children) ? children : [children])
-          .map((child: any) =>
-            child?.type?.name === "CiteBlock" ? "" : getNodeText(child)
-          )
-          .join("");
-      })
-    );
-    const bodyHtml = `<tbody>${bodyRows
-      .map((row: any) => {
-        return `<tr>${row
-          .map((cell: any) => `<td>${cell}</td>`)
-          .join("")}</tr>`;
-      })
-      .join("")}</tbody>`;
-    const bodyPlain = bodyRows.map((row: any) => row.join("\t")).join("\n");
-
-    return {
-      "text/html": `<table>${headHtml}${bodyHtml}</table>`,
-      "text/plain": headPlain + "\n" + bodyPlain,
-    };
-  }, [children]);
-
-  return (
-    <ContentBlockWrapper
-      className="s-dark:border-structure-200-dark s-border s-border-structure-200"
-      content={tableData}
-    >
-      <table className="s-w-full s-table-auto">{children}</table>
-    </ContentBlockWrapper>
-  );
-}
-
-function TableHeadBlock({ children }: { children: React.ReactNode }) {
-  return (
-    <thead className="s-dark:bg-structure-50-dark s-bg-structure-50 s-px-2 s-py-2">
-      {children}
-    </thead>
-  );
-}
-
-function TableBodyBlock({ children }: { children: React.ReactNode }) {
-  return <tbody className="s-bg-white">{children}</tbody>;
-}
-
-function TableHeaderBlock({ children }: { children: React.ReactNode }) {
-  return (
-    <th className="s-dark:text-element-700-dark s-whitespace-nowrap s-px-6 s-py-3 s-text-left s-text-xs s-font-semibold s-uppercase s-tracking-wider s-text-element-700">
-      {children}
-    </th>
-  );
-}
-
-function TableDataBlock({ children }: { children: React.ReactNode }) {
-  return (
-    <td className="s-dark:text-element-800-dark s-px-6 s-py-4 s-text-sm s-text-element-800">
-      {Array.isArray(children) ? (
-        children.map((child: any, i) => {
-          if (child === "<br>") {
-            return <br key={i} />;
-          }
-          return <React.Fragment key={i}>{child}</React.Fragment>;
-        })
-      ) : (
-        <>{children}</>
-      )}
-    </td>
-  );
-}
-
 function LinkBlock({
   href,
   children,
@@ -366,14 +235,6 @@ function LinkBlock({
     </a>
   );
 }
-
-const detectLanguage = (children: React.ReactNode) => {
-  if (Array.isArray(children) && children[0]) {
-    return children[0].props.className?.replace("language-", "") || "text";
-  }
-
-  return "text";
-};
 
 function PreBlock({ children }: { children: React.ReactNode }) {
   const validChildrenContent =
