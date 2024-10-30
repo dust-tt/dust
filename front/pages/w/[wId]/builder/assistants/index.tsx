@@ -16,6 +16,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
+  AgentsGetViewType,
   LightAgentConfigurationType,
   SubscriptionType,
   WorkspaceType,
@@ -105,7 +106,8 @@ export default function WorkspaceAssistants({
     isAgentConfigurationsLoading,
   } = useAgentConfigurations({
     workspaceId: owner.sId,
-    agentsGetView: tabScope === "private" ? "list" : tabScope,
+    agentsGetView:
+      selectedTab === "private" ? "list" : (selectedTab as AgentsGetViewType),
     includes,
   });
 
@@ -120,7 +122,7 @@ export default function WorkspaceAssistants({
   ).filter((a) => {
     return (
       // filter by tab only if no search
-      (assistantSearch || a.scope === tabScope) &&
+      (assistantSearch || a.scope === selectedTab) &&
       subFilter(assistantSearch.toLowerCase(), a.name.toLowerCase())
     );
   });
@@ -164,7 +166,7 @@ export default function WorkspaceAssistants({
   ).map((scope) => ({
     label: SCOPE_INFO[scope].shortLabel,
     icon: SCOPE_INFO[scope].icon,
-    href: `/w/${owner.sId}/builder/assistants?tabScope=${scope}`,
+    scope,
   }));
 
   const disabledTablineClass =
@@ -223,9 +225,7 @@ export default function WorkspaceAssistants({
   }, [tabScope]);
 
   const activeTab = useMemo(() => {
-    return selectedTab && isValidTab(selectedTab)
-      ? SCOPE_INFO[selectedTab].shortLabel
-      : SCOPE_INFO["workspace"].shortLabel;
+    return selectedTab && isValidTab(selectedTab) ? selectedTab : "workspace";
   }, [selectedTab]);
 
   return (
@@ -271,15 +271,11 @@ export default function WorkspaceAssistants({
                   {tabs.map((tab) => (
                     <TabsTrigger
                       key={tab.label}
-                      value={tab.label}
+                      value={tab.scope}
                       label={tab.label}
                       icon={tab.icon}
                       className={assistantSearch ? disabledTablineClass : ""}
-                      onClick={() => {
-                        if (tab.href) {
-                          setSelectedTab(tab.href);
-                        }
-                      }}
+                      onClick={() => setSelectedTab(tab.scope)}
                     />
                   ))}
                 </TabsList>
