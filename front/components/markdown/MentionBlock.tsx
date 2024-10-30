@@ -10,7 +10,6 @@ export function MentionBlock({ agentName }: { agentName: string }) {
 }
 
 export function mentionDirective() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
       if (node.name === "mention" && node.children[0]) {

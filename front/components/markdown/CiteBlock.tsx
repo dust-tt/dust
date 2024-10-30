@@ -89,7 +89,6 @@ export function getCiteDirective() {
   };
 
   return () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (tree: any) => {
       visit(tree, ["textDirective"], (node) => {
         if (node.name === "cite" && node.children[0]?.value) {
