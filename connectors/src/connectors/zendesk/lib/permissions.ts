@@ -1,4 +1,9 @@
-import type { ConnectorPermission, ContentNode, ContentNodesViewType, ModelId } from "@dust-tt/types";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+  ModelId,
+} from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
 import {
@@ -9,7 +14,10 @@ import {
   getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import { changeZendeskClientSubdomain, createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import {
+  changeZendeskClientSubdomain,
+  createZendeskClient,
+} from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
