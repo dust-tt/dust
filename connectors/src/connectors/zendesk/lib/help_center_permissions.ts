@@ -105,7 +105,9 @@ export async function revokeSyncZendeskHelpCenter({
     return null;
   }
 
+  // updating the field helpCenterPermission to "none" for the brand
   await brand.revokeHelpCenterPermissions();
+  // revoking the permissions for all the children categories and articles
   await ZendeskCategoryResource.revokePermissionsForBrand({
     connectorId,
     brandId,

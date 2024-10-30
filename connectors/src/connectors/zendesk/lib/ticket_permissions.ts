@@ -84,7 +84,9 @@ export async function revokeSyncZendeskTickets({
     return null;
   }
 
+  // updating the field ticketsPermission to "none" for the brand
   await brand.revokeTicketsPermissions();
+  // revoking the permissions for all the children tickets
   await ZendeskTicketResource.revokePermissionsForBrand({
     connectorId,
     brandId,
