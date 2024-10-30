@@ -113,7 +113,7 @@ export async function retrieveChildrenNodes({
   if (!parentInternalId) {
     if (isReadPermissionsOnly) {
       const brandsInDatabase =
-        await ZendeskBrandResource.fetchBrandsWithHelpCenter({ connectorId });
+        await ZendeskBrandResource.fetchAllWithHelpCenter({ connectorId });
       nodes = brandsInDatabase.map((brand) =>
         brand.toContentNode({ connectorId })
       );

@@ -192,7 +192,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => new this(this.model, brand.get()));
   }
 
-  static async fetchBrandsWithHelpCenter({
+  static async fetchAllWithHelpCenter({
     connectorId,
   }: {
     connectorId: number;
