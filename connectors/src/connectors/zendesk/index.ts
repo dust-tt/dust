@@ -5,10 +5,9 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-import { Err } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 
+import { launchIntercomSyncWorkflow } from "@connectors/connectors/intercom/temporal/client";
 import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import {
@@ -37,13 +36,16 @@ import {
   revokeSyncZendeskTickets,
 } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
+import { launchZendeskSyncWorkflow } from "@connectors/connectors/zendesk/temporal/client";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { IntercomTeam } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
 import {
   ZendeskArticleResource,
   ZendeskBrandResource,
   ZendeskCategoryResource,
+  ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -69,6 +71,22 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       { subdomain: "d3v-dust", conversationsSlidingWindow: 90 }
     );
 
+    const workflowStartResult = await launchZendeskSyncWorkflow({
+      connectorId: connector.id,
+    });
+
+    if (workflowStartResult.isErr()) {
+      await connector.delete();
+      logger.error(
+        {
+          workspaceId: dataSourceConfig.workspaceId,
+          error: workflowStartResult.error,
+        },
+        "[Zendesk] Error creating connector, could not launch sync workflow."
+      );
+      throw workflowStartResult.error;
+    }
+
     return new Ok(connector.id.toString());
   }
 
@@ -90,7 +108,27 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    const connectorId = this.connectorId;
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
+      return new Err(new Error("Connector not found"));
+    }
+
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    try {
+      await launchZendeskSyncWorkflow({ connectorId });
+    } catch (e) {
+      logger.error(
+        {
+          workspaceId: dataSourceConfig.workspaceId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          error: e,
+        },
+        "[Zendesk] Error resuming the sync workflow."
+      );
+    }
+    return new Ok(undefined);
   }
 
   async sync(): Promise<Result<string, Error>> {
