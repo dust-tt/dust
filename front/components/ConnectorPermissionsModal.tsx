@@ -51,6 +51,7 @@ const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "microsoft",
   "intercom",
   "snowflake",
+  "zendesk",
 ]);
 
 const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
@@ -75,7 +76,10 @@ const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
   },
   notion: undefined,
   github: undefined,
-  zendesk: undefined,
+  zendesk: {
+    selected: "read",
+    unselected: "none",
+  },
   intercom: {
     selected: "read",
     unselected: "none",
