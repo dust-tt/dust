@@ -201,7 +201,7 @@ const NewDropdownMenuItem = React.forwardRef<
     },
     ref
   ) => {
-    const content = (
+    return (
       <DropdownMenuPrimitive.Item
         ref={ref}
         className={cn(
@@ -210,28 +210,24 @@ const NewDropdownMenuItem = React.forwardRef<
           className
         )}
         {...props}
-        asChild={!!href || asChild}
+        asChild={asChild}
       >
-        <ItemWithLabelIconAndDescription
-          label={label}
-          icon={icon}
-          description={description}
+        <LinkWrapper
+          href={href}
+          target={target}
+          rel={rel}
+          replace={replace}
+          shallow={shallow}
         >
-          {children}
-        </ItemWithLabelIconAndDescription>
+          <ItemWithLabelIconAndDescription
+            label={label}
+            icon={icon}
+            description={description}
+          >
+            {children}
+          </ItemWithLabelIconAndDescription>
+        </LinkWrapper>
       </DropdownMenuPrimitive.Item>
-    );
-
-    return (
-      <LinkWrapper
-        href={href}
-        target={target}
-        rel={rel}
-        replace={replace}
-        shallow={shallow}
-      >
-        {content}
-      </LinkWrapper>
     );
   }
 );
