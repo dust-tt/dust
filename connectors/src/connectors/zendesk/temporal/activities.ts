@@ -261,15 +261,7 @@ export async function syncZendeskCategoryActivity({
 
   // if all rights were revoked, we delete the category data.
   if (categoryInDb.permission === "none") {
-    await deleteUpsertedArticlesInCategory({
-      connectorId,
-      categoryId,
-      dataSourceConfig,
-    });
-    await ZendeskArticleResource.deleteByCategoryId({
-      connectorId,
-      categoryId,
-    });
+    await deleteCategoryChildren({ connectorId, dataSourceConfig, categoryId });
     await categoryInDb.delete();
     return false;
   }
@@ -284,15 +276,7 @@ export async function syncZendeskCategoryActivity({
   const { result: fetchedCategory } =
     await zendeskApiClient.helpcenter.categories.show(categoryId);
   if (!fetchedCategory) {
-    await deleteUpsertedArticlesInCategory({
-      connectorId,
-      categoryId,
-      dataSourceConfig,
-    });
-    await ZendeskArticleResource.deleteByCategoryId({
-      connectorId,
-      categoryId,
-    });
+    await deleteCategoryChildren({ connectorId, categoryId, dataSourceConfig });
     await categoryInDb.delete();
     return false;
   }
@@ -361,6 +345,29 @@ async function deleteBrandChildren({
   await ZendeskCategoryResource.deleteByBrandId({ connectorId, brandId });
   /// deleting the tickets stored in the db
   await ZendeskTicketResource.deleteByBrandId({ connectorId, brandId });
+}
+
+/**
+ * Deletes all the data stored in the db and in the data source relative to a category (articles).
+ */
+async function deleteCategoryChildren({
+  connectorId,
+  categoryId,
+  dataSourceConfig,
+}: {
+  connectorId: number;
+  categoryId: number;
+  dataSourceConfig: DataSourceConfig;
+}) {
+  await deleteUpsertedArticlesInCategory({
+    connectorId,
+    categoryId,
+    dataSourceConfig,
+  });
+  await ZendeskArticleResource.deleteByCategoryId({
+    connectorId,
+    categoryId,
+  });
 }
 
 /**
