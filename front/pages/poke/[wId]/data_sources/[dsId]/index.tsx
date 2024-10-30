@@ -124,13 +124,13 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         query: `ExecutionStatus = 'Running' AND connectorId = ${connector.id}`,
       });
 
-      for await (const infos of res) {
-        workflowInfos.push({
-          workflowId: infos.workflowId,
-          runId: infos.runId,
-          status: infos.status.name,
-        });
-      }
+      // for await (const infos of res) {
+      //   workflowInfos.push({
+      //     workflowId: infos.workflowId,
+      //     runId: infos.runId,
+      //     status: infos.status.name,
+      //   });
+      // }
     }
   }
 
@@ -886,16 +886,16 @@ function SlackWhitelistBot({
       <div className="flex items-center gap-2">
         <div className="grow">
           <Input
-            placeholder={`Bot or workflow name`}
+            placeholder="Bot or workflow name"
             onChange={(e) => setBotName(e.target.value)}
             value={botName}
           />
         </div>
         <div>
           <NewDropdownMenu>
-            <NewDropdownMenuTrigger>
+            <NewDropdownMenuTrigger asChild>
               <Button
-                variant="tertiary"
+                variant="outline"
                 label={selectedGroupName ?? "Select a group"}
               />
             </NewDropdownMenuTrigger>
@@ -909,6 +909,7 @@ function SlackWhitelistBot({
                     value={group.sId}
                     key={group.sId}
                     label={group.name}
+                    className="p-1"
                   />
                 ))}
               </NewDropdownMenuRadioGroup>

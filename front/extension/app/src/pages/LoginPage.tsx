@@ -41,8 +41,8 @@ export const LoginPage = () => {
         )}
         {isAuthenticated && !isUserSetup && user?.workspaces.length && (
           <NewDropdownMenu>
-            <NewDropdownMenuTrigger>
-              <Button label="Select workspace" variant="tertiary" />
+            <NewDropdownMenuTrigger asChild>
+              <Button label="Select workspace" variant="ghost" />
             </NewDropdownMenuTrigger>
             <NewDropdownMenuContent>
               {user.workspaces.map((w) => {

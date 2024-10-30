@@ -22,11 +22,10 @@ export default function WorkspacePicker({
 }) {
   return (
     <NewDropdownMenu>
-      <NewDropdownMenuTrigger>
+      <NewDropdownMenuTrigger asChild>
         <Button
           label={workspace ? workspace.name : "Select workspace"}
-          variant="tertiary"
-          type="menu"
+          variant="ghost"
         />
       </NewDropdownMenuTrigger>
 

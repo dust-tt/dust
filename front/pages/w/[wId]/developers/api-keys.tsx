@@ -188,11 +188,11 @@ export function APIKeys({
             Assign permissions to space:{" "}
           </span>
           <NewDropdownMenu>
-            <NewDropdownMenuTrigger>
+            <NewDropdownMenuTrigger asChild>
               <Button
                 label={prettifyGroupName(newApiKeyGroup)}
                 size="sm"
-                variant="tertiary"
+                variant="outline"
               />
             </NewDropdownMenuTrigger>
             <NewDropdownMenuContent>

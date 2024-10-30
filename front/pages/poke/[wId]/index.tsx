@@ -203,7 +203,7 @@ const WorkspacePage = ({
             </div>
             <div>
               <NewDropdownMenu>
-                <NewDropdownMenuTrigger>
+                <NewDropdownMenuTrigger asChild>
                   <Button
                     isSelect
                     label={`Segmentation: ${owner.segmentation ?? "none"}`}
