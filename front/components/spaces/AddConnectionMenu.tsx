@@ -33,7 +33,7 @@ import {
 } from "@app/lib/connector_providers";
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
+import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 
 export type DataSourceIntegration = {
   connectorProvider: ConnectorProvider;
@@ -134,8 +134,8 @@ export const AddConnectionMenu = ({
       suffix
         ? `/api/w/${
             owner.sId
-          }/vaults/${systemSpace.sId}/data_sources?suffix=${encodeURIComponent(suffix)}`
-        : `/api/w/${owner.sId}/vaults/${systemSpace.sId}/data_sources`,
+          }/spaces/${systemSpace.sId}/data_sources?suffix=${encodeURIComponent(suffix)}`
+        : `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources`,
       {
         method: "POST",
         headers: {

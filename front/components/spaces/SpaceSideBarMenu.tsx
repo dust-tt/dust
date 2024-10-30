@@ -260,7 +260,7 @@ const SystemSpaceItem = ({
 }) => {
   const router = useRouter();
 
-  const itemPath = `/w/${owner.sId}/vaults/${space.sId}/categories/${category}`;
+  const itemPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
   const isAncestorToCurrentPage =
     router.asPath.startsWith(itemPath + "/") || router.asPath === itemPath;
 
@@ -336,7 +336,7 @@ const SpaceMenuItem = ({
 }) => {
   const router = useRouter();
 
-  const spacePath = `/w/${owner.sId}/vaults/${space.sId}`;
+  const spacePath = `/w/${owner.sId}/spaces/${space.sId}`;
   const isAncestorToCurrentPage =
     router.asPath.startsWith(spacePath + "/") || router.asPath === spacePath;
 
@@ -451,7 +451,7 @@ const SpaceDataSourceViewItem = ({
     },
   });
 
-  const basePath = `/w/${owner.sId}/vaults/${space.sId}/categories/${item.category}/data_source_views/${item.sId}`;
+  const basePath = `/w/${owner.sId}/spaces/${space.sId}/categories/${item.category}/data_source_views/${item.sId}`;
 
   // Load the currently selected node from router.query.parentId
   const {
@@ -545,7 +545,7 @@ const SpaceDataSourceViewSubMenu = ({
 }) => {
   const router = useRouter();
 
-  const spaceCategoryPath = `/w/${owner.sId}/vaults/${space.sId}/categories/${category}`;
+  const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
   const isAncestorToCurrentPage =
     router.asPath.startsWith(spaceCategoryPath + "/") ||
     router.asPath === spaceCategoryPath;
@@ -612,7 +612,7 @@ const SpaceAppItem = ({
 }): ReactElement => {
   const router = useRouter();
 
-  const appPath = `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}`;
+  const appPath = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`;
 
   return (
     <Tree.Item
@@ -642,7 +642,7 @@ const SpaceAppSubMenu = ({
 }) => {
   const router = useRouter();
 
-  const spaceCategoryPath = `/w/${owner.sId}/vaults/${space.sId}/categories/${category}`;
+  const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
   const isAncestorToCurrentPage =
     router.asPath.startsWith(spaceCategoryPath + "/") ||
     router.asPath === spaceCategoryPath;

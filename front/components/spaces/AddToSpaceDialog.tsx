@@ -77,7 +77,7 @@ export const AddToSpaceDialog = ({
       let res;
       if (existingViewForSpace) {
         res = await fetch(
-          `/api/w/${owner.sId}/vaults/${space.sId}/data_source_views/${existingViewForSpace.sId}`,
+          `/api/w/${owner.sId}/spaces/${space.sId}/data_source_views/${existingViewForSpace.sId}`,
           {
             method: "PATCH",
             headers: {
@@ -90,7 +90,7 @@ export const AddToSpaceDialog = ({
         );
       } else {
         res = await fetch(
-          `/api/w/${owner.sId}/vaults/${space.sId}/data_source_views`,
+          `/api/w/${owner.sId}/spaces/${space.sId}/data_source_views`,
           {
             method: "POST",
             headers: {

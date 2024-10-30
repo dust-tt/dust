@@ -104,7 +104,7 @@ export function SpaceLayout({
             isOpen={!isLimitReached && spaceCreationModalState.isOpen}
             onClose={closeSpaceCreationModal}
             onCreated={(space) => {
-              void router.push(`/w/${owner.sId}/vaults/${space.sId}`);
+              void router.push(`/w/${owner.sId}/spaces/${space.sId}`);
             }}
             defaultRestricted={spaceCreationModalState.defaultRestricted}
           />
@@ -170,11 +170,11 @@ function SpaceBreadCrumbs({
       {
         icon: getSpaceIcon(space),
         label: space.kind === "global" ? "Company Data" : space.name,
-        href: `/w/${owner.sId}/vaults/${space.sId}`,
+        href: `/w/${owner.sId}/spaces/${space.sId}`,
       },
       {
         label: CATEGORY_DETAILS[category].label,
-        href: `/w/${owner.sId}/vaults/${space.sId}/categories/${category}`,
+        href: `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`,
       },
     ];
 
@@ -203,13 +203,13 @@ function SpaceBreadCrumbs({
 
       items.push({
         label: getDataSourceNameFromView(dataSourceView),
-        href: `/w/${owner.sId}/vaults/${space.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
+        href: `/w/${owner.sId}/spaces/${space.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
       });
 
       for (const node of [...folders].reverse()) {
         items.push({
           label: node.title,
-          href: `/w/${owner.sId}/vaults/${space.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${node.internalId}`,
+          href: `/w/${owner.sId}/spaces/${space.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${node.internalId}`,
         });
       }
     }

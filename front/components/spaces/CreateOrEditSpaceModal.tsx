@@ -183,7 +183,7 @@ export function CreateOrEditSpaceModal({
 
     if (res) {
       handleClose();
-      await router.push(`/w/${owner.sId}/vaults`);
+      await router.push(`/w/${owner.sId}/spaces`);
     }
   }, [doDelete, handleClose, owner.sId, router, space]);
 

@@ -83,7 +83,7 @@ export default function DataSourcePicker({
   ]);
 
   const getEditLink = (dsv: DataSourceViewType) => {
-    return `/w/${owner.sId}/vaults/${dsv.spaceId}/categories/${dsv.category}/data_source_views/${dsv.sId}`;
+    return `/w/${owner.sId}/spaces/${dsv.spaceId}/categories/${dsv.category}/data_source_views/${dsv.sId}`;
   };
 
   useEffect(() => {
@@ -134,7 +134,7 @@ export default function DataSourcePicker({
                   "Select DataSource"
                 ) : (
                   <Link
-                    href={`/w/${owner.sId}/data-sources/vaults`}
+                    href={`/w/${owner.sId}/data-sources/spaces`}
                     className={classNames(
                       readOnly
                         ? "border-white text-gray-300"

@@ -334,7 +334,7 @@ export const SpaceDataSourceViewContentList = ({
           onClick={() => {
             if (systemSpace) {
               void router.push(
-                `/w/${owner.sId}/vaults/${systemSpace.sId}/categories/${dataSourceView.category}`
+                `/w/${owner.sId}/spaces/${systemSpace.sId}/categories/${dataSourceView.category}`
               );
             }
           }}

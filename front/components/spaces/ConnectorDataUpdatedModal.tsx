@@ -66,7 +66,7 @@ export const ConnectorDataUpdatedModal = ({
                 Add {isRemoteDbProvider ? "tables" : "data"} to{" "}
                 <Link
                   className="cursor-pointer font-bold text-action-500"
-                  href={`/w/${owner.sId}/vaults`}
+                  href={`/w/${owner.sId}/spaces`}
                 >
                   <Hoverable onClick={() => {}}>Company Data</Hoverable>
                 </Link>{" "}
