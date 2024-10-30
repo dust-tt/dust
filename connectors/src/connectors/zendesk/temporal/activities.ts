@@ -330,13 +330,12 @@ export async function syncZendeskArticlesActivity({
     provider: "zendesk",
     dataSourceId: dataSourceConfig.dataSourceId,
   };
-  const configuration = await _getZendeskConfigurationOrRaise(connectorId);
-  const categoryInDb = await _getZendeskCategoryOrRaise({
-    connectorId,
-    categoryId,
-  });
 
-  const accessToken = await getZendeskAccessToken(connector.connectionId);
+  const [configuration, categoryInDb, accessToken] = await Promise.all([
+    _getZendeskConfigurationOrRaise(connectorId),
+    _getZendeskCategoryOrRaise({ connectorId, categoryId }),
+    getZendeskAccessToken(connector.connectionId),
+  ]);
   const zendeskApiClient = createZendeskClient({
     token: accessToken,
     subdomain: configuration.subdomain,
@@ -384,9 +383,11 @@ export async function syncZendeskTicketsActivity({
     provider: "zendesk",
     dataSourceId: dataSourceConfig.dataSourceId,
   };
-  const configuration = await _getZendeskConfigurationOrRaise(connectorId);
+  const [configuration, accessToken] = await Promise.all([
+    _getZendeskConfigurationOrRaise(connectorId),
+    getZendeskAccessToken(connector.connectionId),
+  ]);
 
-  const accessToken = await getZendeskAccessToken(connector.connectionId);
   const zendeskApiClient = createZendeskClient({
     token: accessToken,
     subdomain: configuration.subdomain,
