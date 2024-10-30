@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import { visit } from "unist-util-visit";
 
-import type { MarkdownCitation } from "@app/components/assistant/markdown/MarkdownCitation";
+import type { MarkdownCitation } from "./MarkdownCitation";
 
 export type CitationsContextType = {
   references: {
@@ -89,6 +89,7 @@ export function citeDirective() {
   };
 
   return () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (tree: any) => {
       visit(tree, ["textDirective"], (node) => {
         if (node.name === "cite" && node.children[0]?.value) {

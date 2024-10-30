@@ -2,6 +2,7 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   DropdownMenu,
+  Markdown,
   LightbulbIcon,
   MagicIcon,
   Markdown,

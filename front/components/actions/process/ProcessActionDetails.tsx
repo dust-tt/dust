@@ -1,13 +1,13 @@
+import type { GetContentToDownloadFunction } from "@dust-tt/sparkle";
 import { Chip, Collapsible, ScanIcon, Tooltip } from "@dust-tt/sparkle";
+import { CodeBlock } from "@dust-tt/sparkle";
+import { ContentBlockWrapper } from "@dust-tt/sparkle";
 import type { ProcessActionType } from "@dust-tt/types";
 import { PROCESS_ACTION_TOP_K } from "@dust-tt/types";
 import { useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import { CodeBlock } from "@app/components/assistant/markdown/CodeBlock";
-import type { GetContentToDownloadFunction } from "@app/components/assistant/markdown/ContentBlockWrapper";
-import { ContentBlockWrapper } from "@app/components/assistant/markdown/ContentBlockWrapper";
 
 export function ProcessActionDetails({
   action,
