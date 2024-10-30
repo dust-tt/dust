@@ -17,7 +17,7 @@ export const ConversationPage = ({
   return (
     <>
       <BarHeader
-        title="Back"
+        title="Home"
         leftActions={
           <Link to="/">
             <ChevronLeftIcon />
