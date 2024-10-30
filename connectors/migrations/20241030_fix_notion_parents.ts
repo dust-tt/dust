@@ -123,6 +123,12 @@ makeScript({}, async ({ execute }) => {
 
   console.log(`Found ${connectors.length} Notion connectors`);
   for (const connector of connectors) {
+    if (connector.errorType) {
+      console.log(
+        `Skipping connector ${connector.id} (workspace ${connector.workspaceId}) because it has an error`
+      );
+      continue;
+    }
     console.log(
       `Processing connector ${connector.id} (workspace ${connector.workspaceId})`
     );
