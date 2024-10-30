@@ -20,7 +20,7 @@ async function updateParentsFieldForConnector(
 
   const pageSize = 512;
   let nodes: (NotionPage | NotionDatabase)[] = [];
-  do {
+  for (;;) {
     const pages = await NotionPage.findAll({
       where: {
         connectorId: connector.id,
@@ -60,6 +60,10 @@ async function updateParentsFieldForConnector(
     }
 
     nodes = [...pages, ...databases];
+    if (!nodes.length) {
+      break;
+    }
+
     const res = await concurrentExecutor(
       nodes,
       async (node) => {
@@ -107,7 +111,7 @@ async function updateParentsFieldForConnector(
     console.log(
       `Processed ${res.length} nodes, (pages cursor: ${pagesIdCursor}, databases cursor: ${databasesIdCursor})`
     );
-  } while (nodes.length > 0);
+  }
 
   console.log(
     `Finished processing connector ${connector.id} (workspace ${connector.workspaceId})`
