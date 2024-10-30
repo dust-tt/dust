@@ -426,7 +426,7 @@ export default function SpaceWebsiteModal({
                     interested in.
                   </Page.P>
                 </Page.Layout>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-8 mr-1">
+                <div className="mr-1 grid grid-cols-2 gap-x-6 gap-y-8">
                   <Page.Layout direction="vertical" sizing="grow">
                     <Page.SectionHeader
                       title="Crawling strategy"

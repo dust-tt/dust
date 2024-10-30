@@ -158,7 +158,7 @@ export default function SpaceFolderModal({
                     setName(e.target.value);
                   }}
                   message={error ?? "Folder name must be unique"}
-                  messageStatus={error ? "error": "info"}
+                  messageStatus={error ? "error" : "info"}
                   disabled={!!dataSourceView} // We cannot change the name of a datasource
                 />
               </div>
