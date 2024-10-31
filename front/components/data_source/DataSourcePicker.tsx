@@ -138,7 +138,7 @@ export default function DataSourcePicker({
                 <Button variant="outline" label="Select DataSource" isSelect />
               ) : (
                 <Link
-                  href={`/w/${owner.sId}/data-sources/vaults`}
+                  href={`/w/${owner.sId}/data-sources/spaces`}
                   className={classNames(
                     readOnly ? "text-gray-300" : "text-gray-700"
                   )}
