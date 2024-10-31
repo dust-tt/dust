@@ -1,5 +1,6 @@
-import type { DustAPIResponse, DustAppConfigType } from "@dust-tt/client";
+import type { DustAppConfigType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
+import type { APIError, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { isLeft, isRight } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -41,7 +42,7 @@ interface CallActionParams<V extends t.Mixed> {
 export async function callAction<V extends t.Mixed>(
   auth: Authenticator,
   { input, action, config, responseValueSchema }: CallActionParams<V>
-): Promise<DustAPIResponse<t.TypeOf<typeof responseValueSchema>>> {
+): Promise<Result<t.TypeOf<typeof responseValueSchema>, APIError>> {
   const app = cloneBaseConfig(action.app);
 
   const prodCredentials = await prodAPICredentialsForOwner(

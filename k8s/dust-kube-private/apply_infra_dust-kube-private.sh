@@ -37,5 +37,5 @@ echo "-----------------------------------"
 echo "Applying network policies"
 echo "-----------------------------------"
 
-# kubectl apply -f "$(dirname "$0")/network-policies/allow-same-namespace.yaml"
-# kubectl apply -f "$(dirname "$0")/network-policies/default-deny-ingress.yaml"
+kubectl apply -f "$(dirname "$0")/network-policies/restrict-egress.yaml"
+kubectl apply -f "$(dirname "$0")/network-policies/restrict-ingress.yaml"
