@@ -242,8 +242,8 @@ export default function WorkspaceAdmin({
                   placeholder="Workspace name"
                   value={workspaceName}
                   onChange={(e) => setWorkspaceName(e.target.value)}
-                  error={workspaceNameError}
-                  showErrorLabel
+                  message={workspaceNameError}
+                  messageStatus="error"
                 />
                 {!disable && (
                   <Button

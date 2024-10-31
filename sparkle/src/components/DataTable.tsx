@@ -15,13 +15,18 @@ import {
 import React, { ReactNode, useEffect, useState } from "react";
 
 import { Avatar } from "@sparkle/components/Avatar";
-import {
-  DropdownItemProps,
-  DropdownMenu,
-} from "@sparkle/components/DropdownMenu";
 import { IconButton } from "@sparkle/components/IconButton";
+import {
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuGroup,
+  NewDropdownMenuItem,
+  NewDropdownMenuItemProps,
+  NewDropdownMenuTrigger,
+} from "@sparkle/components/NewDropdown";
 import { Pagination } from "@sparkle/components/Pagination";
 import { Tooltip } from "@sparkle/components/Tooltip";
+import { useCopyToClipboard } from "@sparkle/hooks";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -29,7 +34,7 @@ import {
   ClipboardIcon,
   MoreIcon,
 } from "@sparkle/icons";
-import { classNames, useCopyToClipboard } from "@sparkle/lib/utils";
+import { classNames } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 import { breakpoints, useWindowSize } from "./WindowUtility";
@@ -45,7 +50,7 @@ declare module "@tanstack/react-table" {
 
 interface TBaseData {
   onClick?: () => void;
-  moreMenuItems?: DropdownItemProps[];
+  moreMenuItems?: NewDropdownMenuItemProps[];
 }
 
 interface ColumnBreakpoint {
@@ -327,7 +332,7 @@ DataTable.Body = function Body({
 interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   onClick?: () => void;
-  moreMenuItems?: DropdownItemProps[];
+  moreMenuItems?: NewDropdownMenuItemProps[];
   widthClassName: string;
 }
 
@@ -353,21 +358,24 @@ DataTable.Row = function Row({
       {children}
       <td className="s-flex s-w-8 s-cursor-pointer s-items-center s-pl-1 s-text-element-600">
         {moreMenuItems && moreMenuItems.length > 0 && (
-          <DropdownMenu className="s-mr-1.5 s-flex">
-            <DropdownMenu.Button>
+          <NewDropdownMenu>
+            <NewDropdownMenuTrigger asChild>
               <IconButton
                 icon={MoreIcon}
                 size="sm"
                 variant="outline"
                 className="s-m-1"
               />
-            </DropdownMenu.Button>
-            <DropdownMenu.Items origin="topRight" width={220}>
-              {moreMenuItems?.map((item, index) => (
-                <DropdownMenu.Item key={index} {...item} />
-              ))}
-            </DropdownMenu.Items>
-          </DropdownMenu>
+            </NewDropdownMenuTrigger>
+
+            <NewDropdownMenuContent align="end">
+              <NewDropdownMenuGroup>
+                {moreMenuItems?.map((item, index) => (
+                  <NewDropdownMenuItem key={index} {...item} />
+                ))}
+              </NewDropdownMenuGroup>
+            </NewDropdownMenuContent>
+          </NewDropdownMenu>
         )}
       </td>
     </tr>

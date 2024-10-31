@@ -5,12 +5,18 @@ import {
   Checkbox,
   Chip,
   ContentMessage,
-  DropdownMenu,
   Icon,
   IconButton,
   Input,
   Modal,
   MoreIcon,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuGroup,
+  NewDropdownMenuItem,
+  NewDropdownMenuLabel,
+  NewDropdownMenuSeparator,
+  NewDropdownMenuTrigger,
   Page,
   PlusIcon,
   Popover,
@@ -834,74 +840,72 @@ function ActionEditor({
   return (
     <>
       <ActionModeSection show={true}>
-        <>
-          <div className="flex w-full flex-row items-center justify-center justify-between">
-            <Page.Header
-              title={ACTION_SPECIFICATIONS[action.type].label}
-              icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
-            />
-            {shouldDisplayAdvancedSettings && (
-              <DropdownMenu className="pr-2">
-                <DropdownMenu.Button>
-                  <Button icon={MoreIcon} size="sm" variant="ghost" />
-                </DropdownMenu.Button>
-                <DropdownMenu.Items width={320} overflow="visible">
-                  <div className="flex flex-col gap-4">
-                    <div className="flex flex-col items-end gap-2">
-                      <div className="w-full grow text-sm font-bold text-element-800">
-                        Name of the tool
-                      </div>
-                    </div>
-                    <Input
-                      name="actionName"
-                      placeholder="My tool name…"
-                      value={action.name}
-                      onChange={(e) => {
-                        updateAction({
-                          actionName: e.target.value.toLowerCase(),
-                          actionDescription: action.description,
-                          getNewActionConfig: (old) => old,
-                        });
-                        setShowInvalidActionNameError(null);
-                      }}
-                      error={showInvalidActionNameError}
-                      className="text-sm"
-                    />
-                  </div>
-                </DropdownMenu.Items>
-              </DropdownMenu>
-            )}
-          </div>
-
-          {showInvalidActionNameError && (
-            <div className="text-sm text-warning-500">
-              {showInvalidActionNameError}
-            </div>
-          )}
-
-          <ActionConfigEditor
-            owner={owner}
-            action={action}
-            spacesUsedInActions={spacesUsedInActions}
-            instructions={builderState.instructions}
-            updateAction={updateAction}
-            setEdited={setEdited}
-            description={action.description}
-            onDescriptionChange={(v) => {
-              updateAction({
-                actionName: action.name,
-                actionDescription: v,
-                getNewActionConfig: (old) => old,
-              });
-              setShowInvalidActionDescError(null);
-            }}
+        <div className="flex w-full flex-row items-center justify-between px-1">
+          <Page.Header
+            title={ACTION_SPECIFICATIONS[action.type].label}
+            icon={ACTION_SPECIFICATIONS[action.type].cardIcon}
           />
-          {showInvalidActionError && (
-            <div className="text-sm text-warning-500">
-              {showInvalidActionError}
-            </div>
+          {shouldDisplayAdvancedSettings && (
+            <Popover
+              trigger={<Button icon={MoreIcon} size="sm" variant="ghost" />}
+              popoverTriggerAsChild
+              content={
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="w-full grow text-sm font-bold text-element-800">
+                      Name of the tool
+                    </div>
+                  </div>
+                  <Input
+                    name="actionName"
+                    placeholder="My tool name…"
+                    value={action.name}
+                    onChange={(e) => {
+                      updateAction({
+                        actionName: e.target.value.toLowerCase(),
+                        actionDescription: action.description,
+                        getNewActionConfig: (old) => old,
+                      });
+                      setShowInvalidActionNameError(null);
+                    }}
+                    message={showInvalidActionNameError}
+                    messageStatus="error"
+                    className="text-sm"
+                  />
+                </div>
+              }
+            />
           )}
-        </>
+        </div>
+
+        {showInvalidActionNameError && (
+          <div className="text-sm text-warning-500">
+            {showInvalidActionNameError}
+          </div>
+        )}
+
+        <ActionConfigEditor
+          owner={owner}
+          action={action}
+          spacesUsedInActions={spacesUsedInActions}
+          instructions={builderState.instructions}
+          updateAction={updateAction}
+          setEdited={setEdited}
+          description={action.description}
+          onDescriptionChange={(v) => {
+            updateAction({
+              actionName: action.name,
+              actionDescription: v,
+              getNewActionConfig: (old) => old,
+            });
+            setShowInvalidActionDescError(null);
+          }}
+        />
+        {showInvalidActionError && (
+          <div className="text-sm text-warning-500">
+            {showInvalidActionError}
+          </div>
+        )}
       </ActionModeSection>
       {shouldDisplayDescription && (
         <div className="flex flex-col gap-4 pt-8">
@@ -1006,50 +1010,55 @@ interface AddActionProps {
 
 function AddAction({ onAddAction }: AddActionProps) {
   return (
-    <DropdownMenu>
-      <DropdownMenu.Button>
+    <NewDropdownMenu>
+      <NewDropdownMenuTrigger asChild>
         <Button variant="primary" label="Add a tool" icon={PlusIcon} />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items origin="topLeft" width={320} overflow="visible">
-        <DropdownMenu.SectionHeader label="DATA SOURCES" />
-        {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
-          const spec = ACTION_SPECIFICATIONS[key];
-          const defaultAction = getDefaultActionConfiguration(key);
-          if (!defaultAction) {
-            // Unreachable
-            return null;
-          }
-          return (
-            <DropdownMenu.Item
-              key={key}
-              label={spec.label}
-              icon={spec.dropDownIcon}
-              description={spec.description}
-              onClick={() => onAddAction(defaultAction)}
-            />
-          );
-        })}
+      </NewDropdownMenuTrigger>
 
-        <DropdownMenu.SectionHeader label="ADVANCED ACTIONS" />
-        {ADVANCED_ACTION_CATEGORIES.map((key) => {
-          const spec = ACTION_SPECIFICATIONS[key];
-          const defaultAction = getDefaultActionConfiguration(key);
-          if (!defaultAction) {
-            // Unreachable
-            return null;
-          }
-          return (
-            <DropdownMenu.Item
-              key={key}
-              label={spec.label}
-              icon={spec.dropDownIcon}
-              description={spec.description}
-              onClick={() => onAddAction(defaultAction)}
-            />
-          );
-        })}
-      </DropdownMenu.Items>
-    </DropdownMenu>
+      <NewDropdownMenuContent>
+        <NewDropdownMenuGroup>
+          <NewDropdownMenuLabel label="Data Sources" />
+          {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
+            const spec = ACTION_SPECIFICATIONS[key];
+            const defaultAction = getDefaultActionConfiguration(key);
+            if (!defaultAction) {
+              return null;
+            }
+
+            return (
+              <NewDropdownMenuItem
+                key={key}
+                onClick={() => onAddAction(defaultAction)}
+                icon={spec.dropDownIcon}
+                label={spec.label}
+                description={spec.description}
+              />
+            );
+          })}
+        </NewDropdownMenuGroup>
+        <NewDropdownMenuSeparator />
+        <NewDropdownMenuGroup>
+          <NewDropdownMenuLabel label="Advanced Actions" />
+          {ADVANCED_ACTION_CATEGORIES.map((key) => {
+            const spec = ACTION_SPECIFICATIONS[key];
+            const defaultAction = getDefaultActionConfiguration(key);
+            if (!defaultAction) {
+              return null;
+            }
+
+            return (
+              <NewDropdownMenuItem
+                key={key}
+                onClick={() => onAddAction(defaultAction)}
+                icon={spec.dropDownIcon}
+                label={spec.label}
+                description={spec.description}
+              />
+            );
+          })}
+        </NewDropdownMenuGroup>
+      </NewDropdownMenuContent>
+    </NewDropdownMenu>
   );
 }
 

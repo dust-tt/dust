@@ -582,7 +582,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       ...this.toJSON(),
       dataSource: await this.dataSource.toPokeJSON(),
       link: workspace
-        ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/vaults/${this.space.sId}/data_source_views/${this.sId}`
+        ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/spaces/${this.space.sId}/data_source_views/${this.sId}`
         : null,
       name: `Data Source (${this.dataSource.name})`,
       space: this.space.toPokeJSON(),

@@ -107,6 +107,7 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
         />
         <Popover
           fullWidth
+          popoverTriggerAsChild
           trigger={
             <div ref={colorButtonRef}>
               <Button variant="outline" icon={PaintIcon} label="Pick a color" />

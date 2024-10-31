@@ -4,7 +4,7 @@ import {
   getTitleFromRetrievedDocument,
 } from "@dust-tt/types";
 
-import type { MarkdownCitation } from "@app/components/assistant/markdown/MarkdownCitation";
+import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 
 export function makeDocumentCitation(
   document: RetrievalDocumentType

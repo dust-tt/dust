@@ -11,7 +11,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, SpaceType, UserType } from "@dust-tt/types";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, PaginationState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -183,7 +183,7 @@ export function CreateOrEditSpaceModal({
 
     if (res) {
       handleClose();
-      await router.push(`/w/${owner.sId}/vaults`);
+      await router.push(`/w/${owner.sId}/spaces`);
     }
   }, [doDelete, handleClose, owner.sId, router, space]);
 
@@ -284,6 +284,10 @@ function MembersSearchAndList({
   selectedMembers,
 }: MembersSearchAndListProps) {
   const sendNotifications = useSendNotification();
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   const getTableColumns = useCallback(() => {
     const removeMember = (userId: string) => {
@@ -366,6 +370,9 @@ function MembersSearchAndList({
         columnsBreakpoints={{
           email: "md",
         }}
+        pagination={pagination}
+        setPagination={setPagination}
+        totalRowCount={rows.length}
       />
     </div>
   );

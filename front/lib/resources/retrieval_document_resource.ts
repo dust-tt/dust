@@ -186,7 +186,7 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
 
     return `${config.getClientFacingUrl()}/w/${
       auth.getNonNullableWorkspace().sId
-    }/vaults/${dsv.spaceId}/categories/${
+    }/spaces/${dsv.spaceId}/categories/${
       dsv.category
     }/data_source_views/${dsv.sId}#?documentId=${encodeURIComponent(this.documentId)}`;
   }

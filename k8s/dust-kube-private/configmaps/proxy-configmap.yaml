@@ -18,9 +18,17 @@ data:
     }
 
     http {
-      resolver 8.8.8.8 8.8.4.4 valid=300s;
+      resolver 8.8.8.8 8.8.4.4 valid=300s ipv6=off;
+
       resolver_timeout 5s;
-    
+      
+      proxy_bind 0.0.0.0;  # Force IPv4
+
+      proxy_connect_timeout 30s;
+      proxy_send_timeout 30s;
+      proxy_read_timeout 30s;
+      keepalive_timeout 30s;
+
       server {
         listen 80;
 

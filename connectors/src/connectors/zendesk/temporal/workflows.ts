@@ -1,25 +1,22 @@
 import type { ModelId } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever } from "@temporalio/common/lib/type-helpers";
 import {
   executeChild,
   proxyActivities,
   setHandler,
-  sleep,
   workflowInfo,
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
-import { syncZendeskTicketsActivity } from "@connectors/connectors/zendesk/temporal/activities";
-import { INTERVAL_BETWEEN_SYNCS_MS } from "@connectors/connectors/zendesk/temporal/config";
 import type { ZendeskUpdateSignal } from "@connectors/connectors/zendesk/temporal/signals";
-
-import { zendeskUpdatesSignal } from "./signals";
+import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
 
 const {
   getZendeskCategoriesActivity,
   syncZendeskBrandActivity,
   syncZendeskCategoryActivity,
   syncZendeskArticlesActivity,
+  syncZendeskTicketsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -81,7 +78,10 @@ export async function zendeskSyncWorkflow({
           break;
         }
         default:
-          assertNever(signal.type);
+          assertNever(
+            `Unexpected signal type ${signal.type} received within Zendesk sync workflow.`,
+            signal.type
+          );
       }
     });
   });
@@ -182,8 +182,6 @@ export async function zendeskSyncWorkflow({
   // run cleanup here if needed
 
   await saveZendeskConnectorSuccessSync({ connectorId });
-
-  await sleep(INTERVAL_BETWEEN_SYNCS_MS);
 }
 
 /**
@@ -360,7 +358,6 @@ async function runZendeskBrandHelpCenterSyncActivities({
 /**
  * Run the activities necessary to sync the Tickets of a Brand.
  */
-// eslint-disable-next-line no-empty-pattern
 async function runZendeskBrandTicketsSyncActivities({
   connectorId,
   brandId,
@@ -372,15 +369,11 @@ async function runZendeskBrandTicketsSyncActivities({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  let hasMore = true;
-  let afterCursor = null;
-  do {
-    ({ hasMore, afterCursor } = await syncZendeskTicketsActivity({
-      connectorId,
-      brandId,
-      currentSyncDateMs,
-      forceResync,
-      afterCursor,
-    }));
-  } while (hasMore);
+  // TODO(2024-10-29 aubin): see how we can batch the tickets into multiple activities
+  await syncZendeskTicketsActivity({
+    connectorId,
+    brandId,
+    currentSyncDateMs,
+    forceResync,
+  });
 }

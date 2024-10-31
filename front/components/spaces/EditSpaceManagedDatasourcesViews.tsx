@@ -139,7 +139,7 @@ export function EditSpaceManagedDataSourcesViews({
       deletedViews.map(async (deletedView) => {
         try {
           const res = await fetch(
-            `/api/w/${owner.sId}/vaults/${space.sId}/data_source_views/${deletedView.sId}?force=true`,
+            `/api/w/${owner.sId}/spaces/${space.sId}/data_source_views/${deletedView.sId}?force=true`,
             {
               method: "DELETE",
               headers: {
@@ -191,7 +191,7 @@ export function EditSpaceManagedDataSourcesViews({
                 );
               } else {
                 res = await fetch(
-                  `/api/w/${owner.sId}/vaults/${space.sId}/data_source_views/${existingViewForDs.sId}`,
+                  `/api/w/${owner.sId}/spaces/${space.sId}/data_source_views/${existingViewForDs.sId}`,
                   {
                     method: "PATCH",
                     headers: {
@@ -203,7 +203,7 @@ export function EditSpaceManagedDataSourcesViews({
               }
             } else {
               res = await fetch(
-                `/api/w/${owner.sId}/vaults/${space.sId}/data_source_views`,
+                `/api/w/${owner.sId}/spaces/${space.sId}/data_source_views`,
                 {
                   method: "POST",
                   headers: {
@@ -272,7 +272,7 @@ export function EditSpaceManagedDataSourcesViews({
         validateLabel="Go to connections management"
         onValidate={() => {
           void router.push(
-            `/w/${owner.sId}/vaults/${systemSpace.sId}/categories/managed`
+            `/w/${owner.sId}/spaces/${systemSpace.sId}/categories/managed`
           );
         }}
         title="No connection set up"

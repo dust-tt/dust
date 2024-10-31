@@ -1,0 +1,37 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: restrict-ingress
+  namespace: default
+spec:
+  podSelector: {}  # Applies to all pods
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow specific ports for external access
+  - ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 1080
+  
+  # Kubernetes API Server access
+  - from:
+    - ipBlock:
+        cidr: 134.44.36.75/32 # Your control plane IP
+    ports:
+    - port: 10250  # kubelet metrics
+    - port: 9153   # kube-dns metrics
+    - port: 443    # kubernetes API server
+    
+  # Datadog Agent communication
+  - from:
+    - podSelector:
+        matchLabels:
+          name: datadog-agent
+
+    ports:
+    - port: 10250  # kubelet
+    - port: 4194   # cadvisor
+    - port: 8125   # dogstatsd
+    - port: 8126   # trace agent

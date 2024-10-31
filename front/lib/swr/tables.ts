@@ -17,7 +17,7 @@ export function useTable({
 }) {
   const tableFetcher: Fetcher<GetTableResponseBody> = fetcher;
 
-  const endpoint = `/api/w/${owner.sId}/vaults/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/tables/${tableId}`;
+  const endpoint = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/tables/${tableId}`;
   const { data, error, mutate } = useSWRWithDefaults(
     tableId ? endpoint : null,
     tableFetcher,

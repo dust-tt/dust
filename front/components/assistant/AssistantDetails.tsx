@@ -65,16 +65,14 @@ export function AssistantDetails({
             )}
           >{`@${agentConfiguration.name}`}</div>
           {agentConfiguration.status === "active" && (
-            <>
-              <SharingDropdown
-                owner={owner}
-                agentConfiguration={agentConfiguration}
-                initialScope={agentConfiguration.scope}
-                newScope={agentConfiguration.scope}
-                disabled={isUpdatingScope}
-                setNewScope={(scope) => updateScope(scope)}
-              />
-            </>
+            <SharingDropdown
+              owner={owner}
+              agentConfiguration={agentConfiguration}
+              initialScope={agentConfiguration.scope}
+              newScope={agentConfiguration.scope}
+              disabled={isUpdatingScope}
+              setNewScope={(scope) => updateScope(scope)}
+            />
           )}
         </div>
       </div>

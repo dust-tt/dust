@@ -1,9 +1,12 @@
 import {
   Button,
-  DropdownMenu,
   Hoverable,
   IconButton,
   Input,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
   PlusIcon,
   SparklesIcon,
   Spinner,
@@ -17,15 +20,14 @@ import type {
   ProcessSchemaPropertyType,
   Result,
   SpaceType,
-  TimeframeUnit,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import React, { useEffect, useState } from "react";
 
+import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
-import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderProcessConfiguration,
@@ -171,7 +173,7 @@ function PropertiesFields({
                       handlePropertyChange(index, "name", e.target.value);
                     }}
                     disabled={readOnly}
-                    error={
+                    message={
                       prop["name"].length === 0
                         ? "Name is required"
                         : properties.find(
@@ -180,6 +182,7 @@ function PropertiesFields({
                           ? "Name must be unique"
                           : undefined
                     }
+                    messageStatus="error"
                   />
                 </div>
 
@@ -196,27 +199,28 @@ function PropertiesFields({
                       );
                     }}
                     disabled={readOnly}
-                    error={
+                    message={
                       prop["description"].length === 0
                         ? "Description is required"
                         : undefined
                     }
+                    messageStatus="error"
                   />
                 </div>
 
                 <div className="col-span-2">
-                  <DropdownMenu>
-                    <DropdownMenu.Button tooltipPosition="top">
+                  <NewDropdownMenu>
+                    <NewDropdownMenuTrigger asChild>
                       <Button
                         isSelect
                         label={prop["type"]}
                         variant="ghost"
                         size="sm"
                       />
-                    </DropdownMenu.Button>
-                    <DropdownMenu.Items origin="bottomLeft">
+                    </NewDropdownMenuTrigger>
+                    <NewDropdownMenuContent>
                       {["string", "number", "boolean"].map((value, i) => (
-                        <DropdownMenu.Item
+                        <NewDropdownMenuItem
                           key={`${value}-${i}`}
                           label={value}
                           onClick={() => {
@@ -227,8 +231,8 @@ function PropertiesFields({
                           }}
                         />
                       ))}
-                    </DropdownMenu.Items>
-                  </DropdownMenu>
+                    </NewDropdownMenuContent>
+                  </NewDropdownMenu>
                 </div>
 
                 <div className="col-span-1 flex flex-row items-end pb-2">
@@ -471,7 +475,7 @@ export function ActionProcess({
                         };
                       });
                     }}
-                    error={
+                    message={
                       t.length === 0
                         ? "Tag is required"
                         : (actionConfiguration.tagsFilter?.in || []).filter(
@@ -480,6 +484,7 @@ export function ActionProcess({
                           ? "Tag must be unique"
                           : undefined
                     }
+                    messageStatus="error"
                   />
                 </div>
                 <div className="flex items-end pb-2">
@@ -562,36 +567,11 @@ export function ActionProcess({
             }
           }}
         />
-        <DropdownMenu>
-          <DropdownMenu.Button tooltipPosition="top">
-            <Button
-              isSelect
-              label={
-                TIME_FRAME_UNIT_TO_LABEL[actionConfiguration.timeFrame.unit]
-              }
-              variant="outline"
-              size="sm"
-            />
-          </DropdownMenu.Button>
-          <DropdownMenu.Items origin="bottomLeft">
-            {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(([key, value]) => (
-              <DropdownMenu.Item
-                key={key}
-                label={value}
-                onClick={() => {
-                  setEdited(true);
-                  updateAction((previousAction) => ({
-                    ...previousAction,
-                    timeFrame: {
-                      value: previousAction.timeFrame.value,
-                      unit: key as TimeframeUnit,
-                    },
-                  }));
-                }}
-              />
-            ))}
-          </DropdownMenu.Items>
-        </DropdownMenu>
+        <TimeUnitDropdown
+          actionConfiguration={actionConfiguration}
+          updateAction={updateAction}
+          onEdit={() => setEdited(true)}
+        />
       </div>
 
       <div className="flex flex-col">

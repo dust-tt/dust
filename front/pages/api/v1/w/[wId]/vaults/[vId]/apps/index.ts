@@ -105,7 +105,7 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "vault_not_found",
+        type: "space_not_found",
         message: "The vault you're trying to access was not found",
       },
     });

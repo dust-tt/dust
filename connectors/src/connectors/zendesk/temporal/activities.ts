@@ -1,18 +1,29 @@
 import type { ModelId } from "@dust-tt/types";
 
+import {
+  getArticleInternalId,
+  getTicketInternalId,
+} from "@connectors/connectors/zendesk/lib/id_conversions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { syncArticle } from "@connectors/connectors/zendesk/temporal/sync_article";
+import { syncTicket } from "@connectors/connectors/zendesk/temporal/sync_ticket";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { deleteFromDataSource } from "@connectors/lib/data_sources";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
+  ZendeskArticleResource,
   ZendeskBrandResource,
   ZendeskCategoryResource,
   ZendeskConfigurationResource,
+  ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
+import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 async function _getZendeskConnectorOrRaise(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -29,6 +40,25 @@ async function _getZendeskConfigurationOrRaise(connectorId: ModelId) {
     throw new Error("[Zendesk] Configuration not found.");
   }
   return configuration;
+}
+
+async function _getZendeskCategoryOrRaise({
+  connectorId,
+  categoryId,
+}: {
+  connectorId: ModelId;
+  categoryId: number;
+}) {
+  const category = await ZendeskCategoryResource.fetchByCategoryId({
+    connectorId,
+    categoryId,
+  });
+  if (!category) {
+    throw new Error(
+      `[Zendesk] Category not found, connectorId: ${connectorId}, categoryId: ${categoryId}`
+    );
+  }
+  return category;
 }
 
 /**
@@ -82,12 +112,6 @@ export async function syncZendeskBrandActivity({
 }): Promise<{ helpCenterAllowed: boolean; ticketsAllowed: boolean }> {
   const connector = await _getZendeskConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    provider: "zendesk",
-    dataSourceId: dataSourceConfig.dataSourceId,
-  };
   const configuration = await _getZendeskConfigurationOrRaise(connectorId);
 
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
@@ -105,7 +129,7 @@ export async function syncZendeskBrandActivity({
     brandInDb.helpCenterPermission === "none" &&
     brandInDb.ticketsPermission === "none"
   ) {
-    await brandInDb.remove({ dataSourceConfig, loggerArgs });
+    await brandInDb.delete();
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
@@ -120,12 +144,13 @@ export async function syncZendeskBrandActivity({
     result: { brand: fetchedBrand },
   } = await zendeskApiClient.brand.show(brandId);
   if (!fetchedBrand) {
-    await brandInDb.remove({ dataSourceConfig, loggerArgs });
+    await deleteBrandChildren({ connectorId, brandId, dataSourceConfig });
+    await brandInDb.delete();
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
   const categoriesWithReadPermissions =
-    await ZendeskBrandResource.fetchReadOnlyCategories({
+    await ZendeskCategoryResource.fetchByBrandIdReadOnly({
       connectorId,
       brandId,
     });
@@ -134,7 +159,7 @@ export async function syncZendeskBrandActivity({
   if (noMoreAllowedCategories) {
     // if the tickets and all children categories are not allowed anymore, we delete the brand data
     if (brandInDb.ticketsPermission !== "read") {
-      await brandInDb.remove({ dataSourceConfig, loggerArgs });
+      await deleteBrandChildren({ connectorId, brandId, dataSourceConfig });
       return { helpCenterAllowed: false, ticketsAllowed: false };
     }
     await brandInDb.update({ helpCenterPermission: "none" });
@@ -245,26 +270,16 @@ export async function syncZendeskCategoryActivity({
 }): Promise<boolean> {
   const connector = await _getZendeskConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    provider: "zendesk",
-    dataSourceId: dataSourceConfig.dataSourceId,
-  };
   const configuration = await _getZendeskConfigurationOrRaise(connectorId);
-  const categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
+  const categoryInDb = await _getZendeskCategoryOrRaise({
     connectorId,
     categoryId,
   });
-  if (!categoryInDb) {
-    throw new Error(
-      `[Zendesk] Category not found, connectorId: ${connectorId}, categoryId: ${categoryId}`
-    );
-  }
 
   // if all rights were revoked, we delete the category data.
   if (categoryInDb.permission === "none") {
-    await categoryInDb.remove({ dataSourceConfig, loggerArgs });
+    await deleteCategoryChildren({ connectorId, dataSourceConfig, categoryId });
+    await categoryInDb.delete();
     return false;
   }
 
@@ -278,7 +293,8 @@ export async function syncZendeskCategoryActivity({
   const { result: fetchedCategory } =
     await zendeskApiClient.helpcenter.categories.show(categoryId);
   if (!fetchedCategory) {
-    await categoryInDb.remove({ dataSourceConfig, loggerArgs });
+    await deleteCategoryChildren({ connectorId, categoryId, dataSourceConfig });
+    await categoryInDb.delete();
     return false;
   }
 
@@ -293,27 +309,184 @@ export async function syncZendeskCategoryActivity({
 /**
  * This activity is responsible for syncing all the articles in a Category.
  * It does not sync the Category, only the Articles.
- *
- * @returns true if the Category was updated, false if it was deleted.
  */
-// eslint-disable-next-line no-empty-pattern
-export async function syncZendeskArticlesActivity({}: {
+export async function syncZendeskArticlesActivity({
+  connectorId,
+  categoryId,
+  currentSyncDateMs,
+  forceResync,
+}: {
   connectorId: ModelId;
   categoryId: number;
   currentSyncDateMs: number;
   forceResync: boolean;
-}) {}
+}) {
+  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+
+  const [configuration, categoryInDb, accessToken] = await Promise.all([
+    _getZendeskConfigurationOrRaise(connectorId),
+    _getZendeskCategoryOrRaise({ connectorId, categoryId }),
+    getZendeskAccessToken(connector.connectionId),
+  ]);
+  const zendeskApiClient = createZendeskClient({
+    token: accessToken,
+    subdomain: configuration.subdomain,
+  });
+
+  const articles =
+    await zendeskApiClient.helpcenter.articles.listByCategory(categoryId);
+
+  await concurrentExecutor(
+    articles,
+    (article) =>
+      syncArticle({
+        connectorId,
+        brandId: categoryInDb.brandId,
+        categoryId,
+        article,
+        dataSourceConfig,
+        currentSyncDateMs,
+        loggerArgs,
+        forceResync,
+      }),
+    { concurrency: 10 }
+  );
+}
 
 /**
  * This activity is responsible for syncing all the tickets for a Brand.
  */
-// eslint-disable-next-line no-empty-pattern
-export async function syncZendeskTicketsActivity({}: {
+export async function syncZendeskTicketsActivity({
+  connectorId,
+  brandId,
+  currentSyncDateMs,
+  forceResync,
+}: {
   connectorId: ModelId;
   brandId: number;
   currentSyncDateMs: number;
   forceResync: boolean;
-  afterCursor: string | null;
-}): Promise<{ hasMore: boolean; afterCursor: string }> {
-  return { hasMore: false, afterCursor: "" };
+}) {
+  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+  const [configuration, accessToken] = await Promise.all([
+    _getZendeskConfigurationOrRaise(connectorId),
+    getZendeskAccessToken(connector.connectionId),
+  ]);
+
+  const zendeskApiClient = createZendeskClient({
+    token: accessToken,
+    subdomain: configuration.subdomain,
+  });
+  await changeZendeskClientSubdomain({ client: zendeskApiClient, brandId });
+  const tickets = await zendeskApiClient.tickets.list();
+
+  await concurrentExecutor(
+    tickets,
+    (ticket) =>
+      syncTicket({
+        connectorId,
+        brandId,
+        ticket,
+        dataSourceConfig,
+        currentSyncDateMs,
+        loggerArgs,
+        forceResync,
+      }),
+    { concurrency: 10 }
+  );
+}
+
+/**
+ * Deletes all the data stored in the db and in the data source relative to a brand (category, articles and tickets).
+ */
+async function deleteBrandChildren({
+  connectorId,
+  brandId,
+  dataSourceConfig,
+}: {
+  connectorId: number;
+  brandId: number;
+  dataSourceConfig: DataSourceConfig;
+}) {
+  /// deleting the articles in the data source
+  const articles = await ZendeskArticleResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  await Promise.all(
+    articles.map((article) =>
+      deleteFromDataSource(
+        dataSourceConfig,
+        getArticleInternalId(connectorId, article.articleId)
+      )
+    )
+  );
+  /// deleting the tickets in the data source
+  const tickets = await ZendeskTicketResource.fetchByBrandId({
+    connectorId: connectorId,
+    brandId: brandId,
+  });
+  await Promise.all([
+    tickets.map((ticket) =>
+      deleteFromDataSource(
+        dataSourceConfig,
+        getTicketInternalId(ticket.connectorId, ticket.ticketId)
+      )
+    ),
+  ]);
+  /// deleting the articles stored in the db
+  await ZendeskArticleResource.deleteByBrandId({
+    connectorId,
+    brandId,
+  });
+  /// deleting the categories stored in the db
+  await ZendeskCategoryResource.deleteByBrandId({ connectorId, brandId });
+  /// deleting the tickets stored in the db
+  await ZendeskTicketResource.deleteByBrandId({ connectorId, brandId });
+}
+
+/**
+ * Deletes all the data stored in the db and in the data source relative to a category (articles).
+ */
+async function deleteCategoryChildren({
+  connectorId,
+  categoryId,
+  dataSourceConfig,
+}: {
+  connectorId: number;
+  categoryId: number;
+  dataSourceConfig: DataSourceConfig;
+}) {
+  /// deleting the articles in the data source
+  const articles = await ZendeskArticleResource.fetchByCategoryId({
+    connectorId,
+    categoryId,
+  });
+  await Promise.all(
+    articles.map((article) =>
+      deleteFromDataSource(
+        dataSourceConfig,
+        getArticleInternalId(connectorId, article.articleId)
+      )
+    )
+  );
+  /// deleting the articles stored in the db
+  await ZendeskArticleResource.deleteByCategoryId({
+    connectorId,
+    categoryId,
+  });
 }

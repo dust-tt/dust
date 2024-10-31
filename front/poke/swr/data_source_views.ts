@@ -15,7 +15,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { PokeListDataSourceViews } from "@app/pages/api/poke/workspaces/[wId]/data_source_views";
-import type { PokeGetDataSourceViewContentNodes } from "@app/pages/api/poke/workspaces/[wId]/vaults/[vId]/data_source_views/[dsvId]/content-nodes";
+import type { PokeGetDataSourceViewContentNodes } from "@app/pages/api/poke/workspaces/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 
 export function usePokeDataSourceViews({
@@ -69,7 +69,7 @@ export function usePokeDataSourceViewContentNodes({
 
   const url =
     dataSourceView && viewType
-      ? `/api/poke/workspaces/${owner.sId}/vaults/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
+      ? `/api/poke/workspaces/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
       : null;
 
   const body = JSON.stringify({
@@ -138,7 +138,7 @@ export function usePokeDataSourceViewContentNodesWithInfiniteScroll({
 } {
   const url =
     dataSourceView && viewType
-      ? `/api/poke/workspaces/${owner.sId}/vaults/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes`
+      ? `/api/poke/workspaces/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes`
       : null;
 
   const body = {

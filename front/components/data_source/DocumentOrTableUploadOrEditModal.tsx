@@ -148,7 +148,7 @@ const DocumentUploadOrEditModal = ({
   const handleDocumentUpload = async (document: Document) => {
     setUploading(true);
     try {
-      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
+      const base = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
       const endpoint = initialId
         ? `${base}/${encodeURIComponent(document.name)}`
         : base;
@@ -283,12 +283,12 @@ const DocumentUploadOrEditModal = ({
                       name: e.target.value,
                     }));
                   }}
-                  error={
+                  message={
                     !documentState.name && editionStatus.name
                       ? "You need to provide a name."
                       : null
                   }
-                  showErrorLabel
+                  messageStatus="error"
                 />
               </div>
 
@@ -512,7 +512,7 @@ const TableUploadOrEditModal = ({
         throw new Error("File too large");
       }
 
-      const base = `/api/w/${owner.sId}/vaults/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/tables`;
+      const base = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/tables`;
       const endpoint = initialId ? `${base}/${initialId}` : base;
 
       const body = JSON.stringify({
@@ -631,13 +631,13 @@ const TableUploadOrEditModal = ({
                       name: e.target.value,
                     }));
                   }}
-                  error={
+                  message={
                     editionStatus.name &&
                     (!tableState.name || !isSlugified(tableState.name))
                       ? "Invalid name: Must be alphanumeric, max 32 characters and no space."
                       : null
                   }
-                  showErrorLabel
+                  messageStatus="error"
                 />
               </div>
 

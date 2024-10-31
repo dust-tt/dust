@@ -154,6 +154,17 @@ module.exports = {
             transform: "scale(0.95)",
           },
         },
+        "cursor-blink": {
+          "0%": {
+            opacity: 1,
+          },
+          "90%": {
+            opacity: 1,
+          },
+          "100%": {
+            opacity: 0,
+          },
+        },
       },
       animation: {
         pulse: "pulse var(--duration) ease-out infinite",
@@ -162,6 +173,7 @@ module.exports = {
           "background-position-spin 2000ms infinite alternate",
         breathing: "breathing 3s infinite ease-in-out",
         "breathing-scale": "breathing-scale 3s infinite ease-in-out",
+        "cursor-blink": "cursor-blink 0.9s infinite;",
         "move-square": "move-square 3s ease-out infinite",
       },
       colors: {

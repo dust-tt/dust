@@ -3,11 +3,11 @@ import type {
   AgentGenerationCancelledEvent,
   AgentMention,
   AgentMessageNewEvent,
-  AgentMessageType,
   ContentFragmentType,
   ConversationTitleEvent,
+  FetchConversationMessagesResponse,
+  MessageWithContentFragmentsType,
   UserMessageNewEvent,
-  UserMessageType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -22,7 +22,6 @@ import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/con
 import MessageGroup from "@app/components/assistant/conversation/MessageGroup";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useLastMessageGroupObserver } from "@app/hooks/useLastMessageGroupObserver";
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import {
   getUpdatedMessagesFromEvent,
   getUpdatedParticipantsFromEvent,
@@ -37,12 +36,6 @@ import {
 import { classNames } from "@app/lib/utils";
 
 const DEFAULT_PAGE_LIMIT = 50;
-
-export type MessageWithContentFragmentsType =
-  | AgentMessageType
-  | (UserMessageType & {
-      contenFragments?: ContentFragmentType[];
-    });
 
 interface ConversationViewerProps {
   conversationId: string;

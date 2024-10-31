@@ -1,6 +1,5 @@
 import {
   Button,
-  ExclamationCircleStrokeIcon,
   Input,
   Modal,
   Page,
@@ -108,7 +107,7 @@ export default function SpaceFolderModal({
       if (dataSourceView) {
         onClose();
         await router.push(
-          `/w/${owner.sId}/vaults/${space.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
+          `/w/${owner.sId}/spaces/${space.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
         );
       }
     } else {
@@ -125,7 +124,7 @@ export default function SpaceFolderModal({
     if (res) {
       onClose();
       await router.push(
-        `/w/${owner.sId}/vaults/${space.sId}/categories/folder`
+        `/w/${owner.sId}/spaces/${space.sId}/categories/folder`
       );
     }
   };
@@ -158,16 +157,10 @@ export default function SpaceFolderModal({
                   onChange={(e) => {
                     setName(e.target.value);
                   }}
-                  error={error}
+                  message={error ?? "Folder name must be unique"}
+                  messageStatus={error ? "error" : "info"}
                   disabled={!!dataSourceView} // We cannot change the name of a datasource
-                  showErrorLabel
                 />
-                <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-                  <ExclamationCircleStrokeIcon />{" "}
-                  {!dataSourceView
-                    ? "Folder name must be unique."
-                    : "Folder name cannot be changed."}
-                </p>
               </div>
 
               <Page.Separator />

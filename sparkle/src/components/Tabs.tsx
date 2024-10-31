@@ -1,7 +1,8 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import * as React from "react";
 
-import { Button, LinkWrapper, LinkWrapperProps } from "@sparkle/components";
+import { Button } from "@sparkle/components/Button";
+import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { cn } from "@sparkle/lib/utils";
 
 const Tabs = TabsPrimitive.Root;
@@ -37,7 +38,18 @@ const TabsTrigger = React.forwardRef<
   } & Omit<LinkWrapperProps, "children" | "className">
 >(
   (
-    { className, label, icon, href, target, rel, replace, shallow, ...props },
+    {
+      className,
+      label,
+      icon,
+      href,
+      target,
+      rel,
+      replace,
+      shallow,
+      disabled,
+      ...props
+    },
     ref
   ) => {
     const content = (
@@ -47,11 +59,18 @@ const TabsTrigger = React.forwardRef<
           "s-border-0 s-border-b-2 s-border-primary-800/0 s-pb-1 disabled:s-pointer-events-none data-[state=active]:s-border-primary-800",
           className
         )}
+        disabled={disabled}
         asChild
         {...props}
       >
         <div>
-          <Button variant="ghost" size="sm" label={label} icon={icon} />
+          <Button
+            variant="ghost"
+            size="sm"
+            label={label}
+            icon={icon}
+            disabled={disabled}
+          />
         </div>
       </TabsPrimitive.Trigger>
     );
@@ -63,7 +82,6 @@ const TabsTrigger = React.forwardRef<
         rel={rel}
         replace={replace}
         shallow={shallow}
-        className={className}
       >
         {content}
       </LinkWrapper>

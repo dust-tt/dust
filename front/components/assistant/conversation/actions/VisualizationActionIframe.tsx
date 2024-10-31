@@ -1,4 +1,6 @@
 import { Button, Spinner } from "@dust-tt/sparkle";
+import { MarkdownContentContext } from "@dust-tt/sparkle";
+import { Markdown } from "@dust-tt/sparkle";
 import type {
   CommandResultMap,
   LightWorkspaceType,
@@ -16,8 +18,6 @@ import {
   useState,
 } from "react";
 
-import { MarkdownContentContext } from "@app/components/assistant/markdown/MarkdownContentContext";
-import { RenderMessageMarkdown } from "@app/components/assistant/markdown/RenderMessageMarkdown";
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
@@ -219,7 +219,7 @@ export function VisualizationActionIframe({
         <div className="flex">
           {!codeFullyGenerated ? (
             <div className="flex h-full w-full shrink-0">
-              <RenderMessageMarkdown
+              <Markdown
                 content={"```javascript\n" + (code ?? "") + "\n```"}
                 isStreaming={!codeFullyGenerated}
                 isLastMessage={true}

@@ -17,6 +17,7 @@ use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::convert::Infallible;
 use std::sync::Arc;
+use tikv_jemallocator::Jemalloc;
 use tokio::{
     net::TcpListener,
     signal::unix::{signal, SignalKind},
@@ -51,6 +52,9 @@ use dust::{
     stores::{postgres, store},
     utils::{self, error_response, APIError, APIResponse, CoreRequestMakeSpan},
 };
+
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
 
 /// API State
 
