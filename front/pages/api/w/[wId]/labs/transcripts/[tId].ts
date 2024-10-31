@@ -134,7 +134,9 @@ async function handler(
         );
       }
 
-      const shouldStartWorkflow = isActive || dataSourceViewId;
+      const shouldStartWorkflow =
+        !!transcriptsConfiguration.isActive ||
+        !!transcriptsConfiguration.dataSourceViewId;
 
       if (shouldStartWorkflow) {
         logger.info(
