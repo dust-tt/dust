@@ -16,7 +16,7 @@ export function getZendeskSyncWorkflowId(connectorId: ModelId): string {
 }
 
 export async function launchZendeskSyncWorkflow({
-  connectorId,
+  connector,
   startFromTs = null,
   brandIds = [],
   ticketsBrandIds = [],
@@ -24,7 +24,7 @@ export async function launchZendeskSyncWorkflow({
   categoryIds = [],
   forceResync = false,
 }: {
-  connectorId: ModelId;
+  connector: ConnectorResource;
   startFromTs?: number | null;
   brandIds?: number[];
   ticketsBrandIds?: number[];
@@ -37,12 +37,6 @@ export async function launchZendeskSyncWorkflow({
   }
 
   const client = await getTemporalClient();
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error(
-      `[Zendesk] Connector not found, connectorId: ${connectorId}`
-    );
-  }
 
   const signals: ZendeskUpdateSignal[] = [
     ...brandIds.map(
@@ -75,16 +69,16 @@ export async function launchZendeskSyncWorkflow({
     ),
   ];
 
-  const workflowId = getZendeskSyncWorkflowId(connectorId);
+  const workflowId = getZendeskSyncWorkflowId(connector.id);
   try {
     await client.workflow.signalWithStart(zendeskSyncWorkflow, {
       args: [{ connectorId: connector.id }],
       taskQueue: QUEUE_NAME,
       workflowId,
-      searchAttributes: { connectorId: [connectorId] },
+      searchAttributes: { connectorId: [connector.id] },
       signal: zendeskUpdatesSignal,
       signalArgs: [signals],
-      memo: { connectorId },
+      memo: { connectorId: connector.id },
       cronSchedule: "*/5 * * * *", // Every 5 minutes.
     });
   } catch (err) {

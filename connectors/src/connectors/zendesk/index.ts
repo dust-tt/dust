@@ -73,7 +73,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     );
 
     const workflowStartResult = await launchZendeskSyncWorkflow({
-      connectorId: connector.id,
+      connector,
     });
 
     if (workflowStartResult.isErr()) {
@@ -119,7 +119,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
 
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
     try {
-      await launchZendeskSyncWorkflow({ connectorId });
+      await launchZendeskSyncWorkflow({ connector });
     } catch (e) {
       logger.error(
         {
@@ -145,7 +145,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       connectorId,
     });
     const result = await launchZendeskSyncWorkflow({
-      connectorId,
+      connector,
       brandIds,
       forceResync: true,
     });
@@ -338,7 +338,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       toBeSignaledCategoryIds.size > 0
     ) {
       const sendSignalToWorkflowResult = await launchZendeskSyncWorkflow({
-        connectorId,
+        connector,
         brandIds: [...toBeSignaledBrandIds],
         ticketsBrandIds: [...toBeSignaledTicketsIds],
         helpCenterBrandIds: [...toBeSignaledHelpCenterIds],
@@ -564,7 +564,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const brandIds = await ZendeskBrandResource.fetchAllBrandIds({
       connectorId,
     });
-    const result = await launchZendeskSyncWorkflow({ connectorId, brandIds });
+    const result = await launchZendeskSyncWorkflow({ connector, brandIds });
 
     return result.isErr() ? result : new Ok(undefined);
   }
