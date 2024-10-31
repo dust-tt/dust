@@ -1,4 +1,5 @@
 import React, { Suspense } from "react";
+import { LightAsync as SyntaxHighlighter } from "react-syntax-highlighter";
 import {
   amber,
   blue,
@@ -8,10 +9,6 @@ import {
   violet,
   yellow,
 } from "tailwindcss/colors";
-
-const SyntaxHighlighter = React.lazy(() =>
-  import("react-syntax-highlighter").then((mod) => ({ default: mod.Light }))
-);
 
 type CodeBlockProps = {
   children?: React.ReactNode;
@@ -46,111 +43,109 @@ export function CodeBlock({
   const languageToUse = languageOverrides[language] || language;
 
   return !inline && language ? (
-    <Suspense fallback={String(children)}>
-      <SyntaxHighlighter
-        wrapLongLines={wrapLongLines}
-        style={{
-          "hljs-comment": {
-            color: amber200,
-          },
-          "hljs-quote": {
-            color: amber200,
-          },
-          "hljs-variable": {
-            color: emerald500,
-          },
-          "hljs-template-variable": {
-            color: pink400,
-          },
-          "hljs-tag": {
-            color: pink400,
-          },
-          "hljs-name": {
-            color: pink400,
-          },
-          "hljs-selector-id": {
-            color: pink400,
-          },
-          "hljs-selector-class": {
-            color: pink400,
-          },
-          "hljs-regexp": {
-            color: pink400,
-          },
-          "hljs-deletion": {
-            color: pink400,
-          },
-          "hljs-number": {
-            color: amber400,
-          },
-          "hljs-built_in": {
-            color: amber400,
-          },
-          "hljs-builtin-name": {
-            color: amber400,
-          },
-          "hljs-literal": {
-            color: amber400,
-          },
-          "hljs-type": {
-            color: amber400,
-          },
-          "hljs-params": {
-            color: amber400,
-          },
-          "hljs-meta": {
-            color: amber400,
-          },
-          "hljs-link": {
-            color: amber400,
-          },
-          "hljs-attribute": {
-            color: yellow300,
-          },
-          "hljs-string": {
-            color: emerald500,
-          },
-          "hljs-symbol": {
-            color: emerald500,
-          },
-          "hljs-bullet": {
-            color: emerald500,
-          },
-          "hljs-addition": {
-            color: emerald500,
-          },
-          "hljs-title": {
-            color: blue400,
-          },
-          "hljs-section": {
-            color: blue400,
-          },
-          "hljs-keyword": {
-            color: violet400,
-          },
-          "hljs-selector-tag": {
-            color: violet400,
-          },
-          hljs: {
-            display: "block",
-            overflowX: "auto",
-            background: slate900,
-            color: slate50,
-            padding: "1em",
-          },
-          "hljs-emphasis": {
-            fontStyle: "italic",
-          },
-          "hljs-strong": {
-            fontWeight: "bold",
-          },
-        }}
-        language={languageToUse}
-        PreTag="div"
-      >
-        {String(children).replace(/\n$/, "")}
-      </SyntaxHighlighter>
-    </Suspense>
+    <SyntaxHighlighter
+      wrapLongLines={wrapLongLines}
+      style={{
+        "hljs-comment": {
+          color: amber200,
+        },
+        "hljs-quote": {
+          color: amber200,
+        },
+        "hljs-variable": {
+          color: emerald500,
+        },
+        "hljs-template-variable": {
+          color: pink400,
+        },
+        "hljs-tag": {
+          color: pink400,
+        },
+        "hljs-name": {
+          color: pink400,
+        },
+        "hljs-selector-id": {
+          color: pink400,
+        },
+        "hljs-selector-class": {
+          color: pink400,
+        },
+        "hljs-regexp": {
+          color: pink400,
+        },
+        "hljs-deletion": {
+          color: pink400,
+        },
+        "hljs-number": {
+          color: amber400,
+        },
+        "hljs-built_in": {
+          color: amber400,
+        },
+        "hljs-builtin-name": {
+          color: amber400,
+        },
+        "hljs-literal": {
+          color: amber400,
+        },
+        "hljs-type": {
+          color: amber400,
+        },
+        "hljs-params": {
+          color: amber400,
+        },
+        "hljs-meta": {
+          color: amber400,
+        },
+        "hljs-link": {
+          color: amber400,
+        },
+        "hljs-attribute": {
+          color: yellow300,
+        },
+        "hljs-string": {
+          color: emerald500,
+        },
+        "hljs-symbol": {
+          color: emerald500,
+        },
+        "hljs-bullet": {
+          color: emerald500,
+        },
+        "hljs-addition": {
+          color: emerald500,
+        },
+        "hljs-title": {
+          color: blue400,
+        },
+        "hljs-section": {
+          color: blue400,
+        },
+        "hljs-keyword": {
+          color: violet400,
+        },
+        "hljs-selector-tag": {
+          color: violet400,
+        },
+        hljs: {
+          display: "block",
+          overflowX: "auto",
+          background: slate900,
+          color: slate50,
+          padding: "1em",
+        },
+        "hljs-emphasis": {
+          fontStyle: "italic",
+        },
+        "hljs-strong": {
+          fontWeight: "bold",
+        },
+      }}
+      language={languageToUse}
+      PreTag="div"
+    >
+      {String(children).replace(/\n$/, "")}
+    </SyntaxHighlighter>
   ) : (
     <code className="s-dark:border-structure-200-dark s-dark:bg-structure-100-dark s-dark:text-amber-400 s-rounded-lg s-border-structure-200 s-bg-structure-100 s-px-1.5 s-py-1 s-text-sm s-text-amber-600">
       {children}
