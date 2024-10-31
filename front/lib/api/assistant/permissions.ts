@@ -1,4 +1,5 @@
 import type {
+  DustAppRunConfigurationType,
   ModelId,
   PostOrPatchAgentConfigurationRequestBody,
 } from "@dust-tt/types";
@@ -68,7 +69,7 @@ export async function getAgentConfigurationGroupIdsFromActions(
     auth,
     actions
       .filter((action) => isDustAppRunConfiguration(action))
-      .map((action) => action.appId)
+      .map((action) => (action as DustAppRunConfigurationType).appId)
   );
 
   // TODO(2024-10-25 flav) Refactor to store a list of ResourcePermission.
