@@ -105,26 +105,6 @@ export function CreateConnectionConfirmationModal({
             </>
           )}
 
-          {connectorProviderConfiguration.connectorProvider === "zendesk" && (
-            <>
-              <Page.SectionHeader title="Zendesk Configuration" />
-
-              <div className="w-full space-y-4">
-                <Input
-                  label="Zendesk account subdomain"
-                  message="The first part of your Zendesk account URL."
-                  messageStatus="info"
-                  name="subdomain"
-                  value={extraConfig ?? ""}
-                  placeholder="my-subdomain"
-                  onChange={(e) => {
-                    setExtraConfig(e.target.value);
-                  }}
-                />
-              </div>
-            </>
-          )}
-
           {connectorProviderConfiguration.limitations && (
             <div className="flex flex-col gap-y-2">
               <div className="grow text-sm font-medium text-element-800">
@@ -134,6 +114,20 @@ export function CreateConnectionConfirmationModal({
                 {connectorProviderConfiguration.limitations}
               </div>
             </div>
+          )}
+
+          {connectorProviderConfiguration.connectorProvider === "zendesk" && (
+            <Input
+              label="Zendesk account subdomain"
+              message="The first part of your Zendesk account URL."
+              messageStatus="info"
+              name="subdomain"
+              value={extraConfig ?? ""}
+              placeholder="my-subdomain"
+              onChange={(e) => {
+                setExtraConfig(e.target.value);
+              }}
+            />
           )}
 
           <div className="flex justify-center pt-2">
