@@ -1,7 +1,4 @@
-import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
-import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
-import type { MarkdownCitation } from "@app/components/assistant/markdown/MarkdownCitation";
-import { RenderMessageMarkdown } from "@app/components/assistant/markdown/RenderMessageMarkdown";
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type {
   ConversationMessageEmojiSelectorProps,
   ConversationMessageSizeType,
@@ -25,18 +22,12 @@ import type {
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
+  AgentMessageType,
   GenerationTokensEvent,
   LightWorkspaceType,
-  RetrievalActionType,
-  WebsearchActionType,
 } from "@dust-tt/types";
-import type { AgentMessageType } from "@dust-tt/types";
-import {
-  assertNever,
-  isRetrievalActionType,
-  isWebsearchActionType,
-  removeNulls,
-} from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
+import type { MarkdownCitation } from "@extension/components/conversation/MarkdownCitation";
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import { useEventSource } from "@extension/hooks/useEventSource";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -290,42 +281,42 @@ export function AgentMessage({
     return () => clearTimeout(timer);
   }, [lastHoveredReference]);
 
-  useEffect(() => {
-    // Retrieval actions
-    const retrievalActionsWithDocs = agentMessageToRender.actions
-      .filter((a) => isRetrievalActionType(a) && a.documents)
-      .sort((a, b) => a.id - b.id) as RetrievalActionType[];
-    const allDocs = removeNulls(
-      retrievalActionsWithDocs.map((a) => a.documents).flat()
-    );
-    const allDocsReferences = allDocs.reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, d) => {
-      acc[d.reference] = makeDocumentCitation(d);
-      return acc;
-    }, {});
+  // useEffect(() => {
+  //   // Retrieval actions
+  //   const retrievalActionsWithDocs = agentMessageToRender.actions
+  //     .filter((a) => isRetrievalActionType(a) && a.documents)
+  //     .sort((a, b) => a.id - b.id) as RetrievalActionType[];
+  //   const allDocs = removeNulls(
+  //     retrievalActionsWithDocs.map((a) => a.documents).flat()
+  //   );
+  //   const allDocsReferences = allDocs.reduce<{
+  //     [key: string]: MarkdownCitation;
+  //   }>((acc, d) => {
+  //     acc[d.reference] = makeDocumentCitation(d);
+  //     return acc;
+  //   }, {});
 
-    // Websearch actions
-    const websearchActionsWithResults = agentMessageToRender.actions
-      .filter((a) => isWebsearchActionType(a) && a.output?.results?.length)
-      .sort((a, b) => a.id - b.id) as WebsearchActionType[];
-    const allWebResults = removeNulls(
-      websearchActionsWithResults.map((a) => a.output?.results).flat()
-    );
-    const allWebReferences = allWebResults.reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, l) => {
-      acc[l.reference] = makeWebsearchResultsCitation(l);
-      return acc;
-    }, {});
+  //   // Websearch actions
+  //   const websearchActionsWithResults = agentMessageToRender.actions
+  //     .filter((a) => isWebsearchActionType(a) && a.output?.results?.length)
+  //     .sort((a, b) => a.id - b.id) as WebsearchActionType[];
+  //   const allWebResults = removeNulls(
+  //     websearchActionsWithResults.map((a) => a.output?.results).flat()
+  //   );
+  //   const allWebReferences = allWebResults.reduce<{
+  //     [key: string]: MarkdownCitation;
+  //   }>((acc, l) => {
+  //     acc[l.reference] = makeWebsearchResultsCitation(l);
+  //     return acc;
+  //   }, {});
 
-    // Merge all references
-    setReferences({ ...allDocsReferences, ...allWebReferences });
-  }, [
-    agentMessageToRender.actions,
-    agentMessageToRender.status,
-    agentMessageToRender.sId,
-  ]);
+  //   // Merge all references
+  //   setReferences({ ...allDocsReferences, ...allWebReferences });
+  // }, [
+  //   agentMessageToRender.actions,
+  //   agentMessageToRender.status,
+  //   agentMessageToRender.sId,
+  // ]);
   const { configuration: agentConfiguration } = agentMessageToRender;
 
   const citations = useMemo(
@@ -407,13 +398,7 @@ export function AgentMessage({
             variant="purple"
             icon={ChatBubbleThoughtIcon}
           >
-            <RenderMessageMarkdown
-              content={agentMessage.chainOfThought}
-              isStreaming={false}
-              textSize="sm"
-              textColor="purple-800"
-              isLastMessage={isLastMessage}
-            />
+            {agentMessage.chainOfThought}
           </ContentMessage>
         ) : null}
 
@@ -425,20 +410,7 @@ export function AgentMessage({
                 <span></span>
               </div>
             ) : (
-              <>
-                <RenderMessageMarkdown
-                  content={agentMessage.content}
-                  isStreaming={
-                    streaming && lastTokenClassification === "tokens"
-                  }
-                  citationsContext={{
-                    references,
-                    updateActiveReferences,
-                    setHoveredReference: setLastHoveredReference,
-                  }}
-                  isLastMessage={isLastMessage}
-                />
-              </>
+              agentMessage.content
             )}
           </div>
         )}

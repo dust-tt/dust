@@ -14,7 +14,6 @@ import { InputBarContext } from "@extension/components/input_bar/InputBarContext
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import { postConversation, postMessage } from "@extension/lib/conversation";
 import type { StoredUser } from "@extension/lib/storage";
-import { cloneDeep } from "lodash";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -30,8 +29,8 @@ export function updateConversationWithOptimisticData(
     throw new Error("Conversation not found");
   }
 
-  const conversation = cloneDeep(currentConversation.conversation);
-  conversation.content.at(0)?.push(messageOrPlaceholder);
+  // const conversation = cloneDeep(currentConversation.conversation);
+  // conversation.content.at(0)?.push(messageOrPlaceholder);
 
   return currentConversation;
 }

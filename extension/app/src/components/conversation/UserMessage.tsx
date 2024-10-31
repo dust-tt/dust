@@ -1,4 +1,4 @@
-import { RenderMessageMarkdown } from "@app/components/assistant/markdown/RenderMessageMarkdown";
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type {
   ConversationMessageEmojiSelectorProps,
   ConversationMessageSizeType,
@@ -34,13 +34,7 @@ export function UserMessage({
       size={size}
     >
       <div className="flex flex-col gap-4">
-        <div>
-          <RenderMessageMarkdown
-            content={message.content}
-            isStreaming={false}
-            isLastMessage={isLastMessage}
-          />
-        </div>
+        <div>{message.content}</div>
         {/* {message.mentions.length === 0 && isLastMessage && (
           TODO: Handle agent suggestions
           <AgentSuggestion

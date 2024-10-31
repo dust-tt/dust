@@ -56,11 +56,10 @@ export const getConfig = async ({
     resolve: {
       extensions: [".js", ".json", ".mjs", ".jsx", ".ts", ".tsx"],
       alias: {
-        "@app": path.resolve(__dirname, "../.."),
-        "@extension": path.resolve(__dirname, "../app/src"),
+        "@extension": path.resolve("./app/src"),
         redis: false,
-        stream: "stream-browserify",
-        next: false,
+        // stream: "stream-browserify",
+        // next: false,
       },
       fallback: {
         url: false,
@@ -108,16 +107,14 @@ export const getConfig = async ({
         name: `DustExt [${env}]`,
         color: "#3B82F6",
       }),
-      new webpack.ProvidePlugin({
-        Buffer: ["buffer", "Buffer"],
-      }),
       new webpack.EnvironmentPlugin({
         VERSION: version,
       }),
+      new webpack.ProvidePlugin({
+        Buffer: ["buffer", "Buffer"],
+      }),
       new Dotenv({
-        path: isDevelopment
-          ? resolvePath("./.env.development")
-          : resolvePath("./.env.production"),
+        path: isDevelopment ? "./.env.development" : "./.env.production",
       }),
       new CopyPlugin({
         patterns: [
