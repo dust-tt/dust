@@ -39,6 +39,7 @@ const PROVIDER_STRATEGIES: Record<
     setupUri: (connection: OAuthConnectionType) => string;
     codeFromQuery: (query: ParsedUrlQuery) => string | null;
     connectionIdFromQuery: (query: ParsedUrlQuery) => string | null;
+    isExtraConfigValid: (extraConfig: Record<string, string>) => boolean;
   }
 > = {
   github: {
@@ -60,6 +61,9 @@ const PROVIDER_STRATEGIES: Record<
     },
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
+    },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
     },
   },
   google_drive: {
@@ -85,6 +89,9 @@ const PROVIDER_STRATEGIES: Record<
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
     },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
+    },
   },
   notion: {
     setupUri: (connection) => {
@@ -105,6 +112,9 @@ const PROVIDER_STRATEGIES: Record<
     },
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
+    },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
     },
   },
   slack: {
@@ -138,6 +148,9 @@ const PROVIDER_STRATEGIES: Record<
     },
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
+    },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
     },
   },
   confluence: {
@@ -175,6 +188,9 @@ const PROVIDER_STRATEGIES: Record<
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
     },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
+    },
   },
   intercom: {
     setupUri: (connection) => {
@@ -190,6 +206,9 @@ const PROVIDER_STRATEGIES: Record<
     },
     connectionIdFromQuery: (connection) => {
       return getStringFromQuery(connection, "state");
+    },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
     },
   },
   gong: {
@@ -214,6 +233,9 @@ const PROVIDER_STRATEGIES: Record<
     },
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
+    },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
     },
   },
   microsoft: {
@@ -243,6 +265,9 @@ const PROVIDER_STRATEGIES: Record<
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
     },
+    isExtraConfigValid: (extraConfig) => {
+      return Object.keys(extraConfig).length === 0;
+    },
   },
   zendesk: {
     setupUri: (connection) => {
@@ -265,6 +290,13 @@ const PROVIDER_STRATEGIES: Record<
     connectionIdFromQuery: (query) => {
       return getStringFromQuery(query, "state");
     },
+    isExtraConfigValid: (extraConfig) => {
+      if (Object.keys(extraConfig).length !== 1) {
+        return false;
+      }
+      // Ensure the string is less than 63 characters.
+      return isValidZendeskSubdomain(extraConfig.zendesk_subdomain);
+    },
   },
 };
 
@@ -275,6 +307,17 @@ export async function createConnectionAndGetSetupUrl(
   extraConfig: Record<string, string>
 ): Promise<Result<string, OAuthError>> {
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+
+  if (!PROVIDER_STRATEGIES[provider].isExtraConfigValid(extraConfig)) {
+    logger.error(
+      { provider, useCase, extraConfig },
+      "OAuth: Invalid extraConfig"
+    );
+    return new Err({
+      code: "connection_creation_failed",
+      message: "Invalid OAuth connection extraConfig for provider",
+    });
+  }
 
   const metadata: Record<string, string> = {
     use_case: useCase,
