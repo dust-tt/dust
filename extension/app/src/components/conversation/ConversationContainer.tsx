@@ -1,5 +1,6 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
+  AgentMention,
   AgentMessageWithRankType,
   ConversationType,
   LightWorkspaceType,
@@ -50,6 +51,7 @@ export function ConversationContainer({
   const [activeConversationId, setActiveConversationId] =
     useState(conversationId);
   const [planLimitReached, setPlanLimitReached] = useState(false);
+  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
 
   const { animate, setAnimate } = useContext(InputBarContext);
   const sendNotification = useSendNotification();
@@ -143,6 +145,13 @@ export function ConversationContainer({
     )
   );
 
+  const onStickyMentionsChange = useCallback(
+    (mentions: AgentMention[]) => {
+      setStickyMentions(mentions);
+    },
+    [setStickyMentions]
+  );
+
   return (
     <>
       {activeConversationId && (
@@ -150,6 +159,7 @@ export function ConversationContainer({
           conversationId={activeConversationId}
           owner={owner}
           user={user}
+          onStickyMentionsChange={onStickyMentionsChange}
         />
       )}
       <AssistantInputBar
@@ -157,7 +167,7 @@ export function ConversationContainer({
         onSubmit={
           activeConversationId ? handlePostMessage : handlePostConversation
         }
-        stickyMentions={[]} //TODO(Ext) do we need this.
+        stickyMentions={stickyMentions}
       />
       <ReachedLimitPopup
         isOpened={planLimitReached}
