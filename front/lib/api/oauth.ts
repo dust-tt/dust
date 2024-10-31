@@ -268,17 +268,23 @@ const PROVIDER_STRATEGIES: Record<
 export async function createConnectionAndGetSetupUrl(
   auth: Authenticator,
   provider: OAuthProvider,
-  useCase: OAuthUseCase
+  useCase: OAuthUseCase,
+  extraConfig: string | null
 ): Promise<Result<string, OAuthError>> {
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
+  const metadata: Record<string, string> = {
+    use_case: useCase,
+    workspace_id: auth.getNonNullableWorkspace().sId,
+    user_id: auth.getNonNullableUser().sId,
+  };
+  if (extraConfig) {
+    metadata.extra_config = extraConfig;
+  }
+
   const cRes = await api.createConnection({
     provider,
-    metadata: {
-      use_case: useCase,
-      workspace_id: auth.getNonNullableWorkspace().sId,
-      user_id: auth.getNonNullableUser().sId,
-    },
+    metadata,
   });
   if (cRes.isErr()) {
     logger.error({ provider, useCase }, "OAuth: Failed to create connection");

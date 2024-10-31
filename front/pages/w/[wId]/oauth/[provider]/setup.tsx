@@ -11,15 +11,19 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
       };
     }
 
-    const provider = context.query.provider as string;
+    const { provider, useCase, extraConfig } = context.query;
+
     if (!isOAuthProvider(provider)) {
       return {
         notFound: true,
       };
     }
-
-    const useCase = context.query.useCase as string;
     if (!isOAuthUseCase(useCase)) {
+      return {
+        notFound: true,
+      };
+    }
+    if (extraConfig && typeof extraConfig !== "string") {
       return {
         notFound: true,
       };
@@ -28,7 +32,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
     const urlRes = await createConnectionAndGetSetupUrl(
       auth,
       provider,
-      useCase
+      useCase,
+      extraConfig || null
     );
 
     if (!urlRes.isOk()) {
