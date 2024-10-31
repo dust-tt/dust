@@ -46,7 +46,7 @@ export const SlugifiedString = t.brand(
 
 export function ioTsParsePayload<T>(
   payload: unknown,
-  codec: t.Type<T, T, unknown>
+  codec: t.Type<T>
 ): Result<T, string[]> {
   const bodyValidation = codec.decode(payload);
   if (isLeft(bodyValidation)) {
