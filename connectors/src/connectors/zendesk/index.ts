@@ -133,7 +133,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }
 
   async sync(): Promise<Result<string, Error>> {
-    const connectorId = this.connectorId;
+    const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
@@ -160,7 +160,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>> {
-    const connectorId = this.connectorId;
+    const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
@@ -192,7 +192,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }: {
     permissions: Record<string, ConnectorPermission>;
   }): Promise<Result<void, Error>> {
-    const connectorId = this.connectorId;
+    const { connectorId } = this;
 
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
@@ -397,7 +397,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       }
     });
 
-    const connectorId = this.connectorId;
+    const { connectorId } = this;
 
     const allBrandIds = [
       ...new Set([...brandIds, ...brandTicketsIds, ...brandHelpCenterIds]),
@@ -441,7 +441,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    const connectorId = this.connectorId;
+    const { connectorId } = this;
 
     const { type, objectId } = getIdFromInternalId(connectorId, internalId);
     switch (type) {
@@ -539,7 +539,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }
 
   async pause(): Promise<Result<undefined, Error>> {
-    const connectorId = this.connectorId;
+    const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
@@ -552,7 +552,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
-    const connectorId = this.connectorId;
+    const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
