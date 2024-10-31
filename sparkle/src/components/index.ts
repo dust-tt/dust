@@ -50,6 +50,7 @@ export {
   NavigationListItem,
   NavigationListLabel,
 } from "./NavigationList";
+export type { NewDropdownMenuItemProps } from "./NewDropdown";
 export {
   NewDropdownMenu,
   NewDropdownMenuCheckboxItem,
