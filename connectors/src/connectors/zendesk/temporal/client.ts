@@ -15,34 +15,29 @@ export function getZendeskSyncWorkflowId(connectorId: ModelId): string {
   return `zendesk-sync-${connectorId}`;
 }
 
-export async function launchZendeskSyncWorkflow({
-  connectorId,
-  startFromTs = null,
-  brandIds = [],
-  ticketsBrandIds = [],
-  helpCenterBrandIds = [],
-  categoryIds = [],
-  forceResync = false,
-}: {
-  connectorId: ModelId;
-  startFromTs?: number | null;
-  brandIds?: number[];
-  ticketsBrandIds?: number[];
-  helpCenterBrandIds?: number[];
-  categoryIds?: number[];
-  forceResync?: boolean;
-}): Promise<Result<string, Error>> {
+export async function launchZendeskSyncWorkflow(
+  connector: ConnectorResource,
+  {
+    startFromTs = null,
+    brandIds = [],
+    ticketsBrandIds = [],
+    helpCenterBrandIds = [],
+    categoryIds = [],
+    forceResync = false,
+  }: {
+    startFromTs?: number | null;
+    brandIds?: number[];
+    ticketsBrandIds?: number[];
+    helpCenterBrandIds?: number[];
+    categoryIds?: number[];
+    forceResync?: boolean;
+  } = {}
+): Promise<Result<undefined, Error>> {
   if (startFromTs) {
     throw new Error("[Zendesk] startFromTs not implemented yet.");
   }
 
   const client = await getTemporalClient();
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error(
-      `[Zendesk] Connector not found, connectorId: ${connectorId}`
-    );
-  }
 
   const signals: ZendeskUpdateSignal[] = [
     ...brandIds.map(
@@ -75,28 +70,28 @@ export async function launchZendeskSyncWorkflow({
     ),
   ];
 
-  const workflowId = getZendeskSyncWorkflowId(connectorId);
+  const workflowId = getZendeskSyncWorkflowId(connector.id);
   try {
     await client.workflow.signalWithStart(zendeskSyncWorkflow, {
       args: [{ connectorId: connector.id }],
       taskQueue: QUEUE_NAME,
       workflowId,
-      searchAttributes: { connectorId: [connectorId] },
+      searchAttributes: { connectorId: [connector.id] },
       signal: zendeskUpdatesSignal,
       signalArgs: [signals],
-      memo: { connectorId },
+      memo: { connectorId: connector.id },
       cronSchedule: "*/5 * * * *", // Every 5 minutes.
     });
   } catch (err) {
     return new Err(err as Error);
   }
 
-  return new Ok(workflowId);
+  return new Ok(undefined);
 }
 
 export async function stopZendeskSyncWorkflow(
   connectorId: ModelId
-): Promise<Result<void, Error>> {
+): Promise<Result<undefined, Error>> {
   const client = await getTemporalClient();
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
