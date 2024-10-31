@@ -1,5 +1,4 @@
-import type { GetDocumentsResponseType } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type { DocumentType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -10,6 +9,11 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+
+export type GetDocumentsResponseBody = {
+  documents: Array<DocumentType>;
+  total: number;
+};
 
 /**
  * @swagger
@@ -71,7 +75,7 @@ import { apiError } from "@app/logger/withlogging";
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetDocumentsResponseType>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetDocumentsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const { dsId } = req.query;

@@ -1,5 +1,4 @@
-import type { GetTableRowsResponseType } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type { CoreAPIRow, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -10,6 +9,10 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+
+type GetTableRowsResponseBody = {
+  row: CoreAPIRow;
+};
 
 /**
  * @swagger
@@ -113,7 +116,7 @@ import { apiError } from "@app/logger/withlogging";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetTableRowsResponseType | { success: boolean }>
+    WithAPIErrorResponse<GetTableRowsResponseBody | { success: boolean }>
   >,
   auth: Authenticator
 ): Promise<void> {

@@ -2,7 +2,6 @@
 // Disabling jsdoc rule, as we're not yet documentating dust apps endpoints under vaults.
 // We still document the legacy endpoint, which does the same thing.
 // Note: for now, an API key only has access to the global vault.
-import type { RunAppResponseType } from "@dust-tt/client";
 import type {
   BlockType,
   CredentialsType,
@@ -33,6 +32,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { Provider } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+
+export type PostRunResponseBody = {
+  run: RunType;
+};
 
 export const config = {
   api: {
@@ -176,7 +179,7 @@ function extractUsageFromExecutions(
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<RunAppResponseType>>,
+  res: NextApiResponse<WithAPIErrorResponse<PostRunResponseBody>>,
   auth: Authenticator,
   keyAuth: Authenticator
 ): Promise<void> {

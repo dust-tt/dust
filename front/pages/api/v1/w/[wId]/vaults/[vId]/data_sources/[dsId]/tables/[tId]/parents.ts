@@ -1,7 +1,8 @@
-import type { PostParentsResponseType } from "@dust-tt/client";
-import { PostTableParentsRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
@@ -12,6 +13,14 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
+const ParentsBodySchema = t.type({
+  parents: t.array(t.string),
+});
+
+export type PostParentsResponseBody = {
+  updated: true;
+};
+
 /**
  * @ignoreswagger
  * System API key only endpoint. Undocumented.
@@ -19,7 +28,7 @@ import { apiError } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostParentsResponseType>>,
+  res: NextApiResponse<WithAPIErrorResponse<PostParentsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isSystemKey()) {
@@ -77,19 +86,18 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const r = await PostTableParentsRequestSchema.safeParse(req.query);
-
-      if (r.error) {
+      const bodyValidation = ParentsBodySchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
-          status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: `Invalid request body: ${pathError}`,
           },
+          status_code: 400,
         });
       }
-
-      const { parents } = r.data;
+      const { parents } = bodyValidation.right;
 
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const updateRes = await coreAPI.updateTableParents({

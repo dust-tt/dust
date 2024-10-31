@@ -1,10 +1,8 @@
-import type {
-  ListTablesResponseType,
-  UpsertTableResponseType,
-} from "@dust-tt/client";
-import { UpsertDatabaseTableRequestSchema } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type { CoreAPITablePublic, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
@@ -15,6 +13,29 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateLegacyModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+
+export type ListTablesResponseBody = {
+  tables: CoreAPITablePublic[];
+};
+
+const UpsertDatabaseTableRequestBodySchema = t.intersection([
+  t.type({
+    table_id: t.union([t.string, t.undefined]),
+    name: t.string,
+    description: t.string,
+    timestamp: t.union([t.number, t.undefined, t.null]),
+    tags: t.union([t.array(t.string), t.undefined, t.null]),
+    parents: t.union([t.array(t.string), t.undefined, t.null]),
+  }),
+  t.partial({
+    remote_database_table_id: t.union([t.string, t.null]),
+    remote_database_secret_id: t.union([t.string, t.null]),
+  }),
+]);
+
+type UpsertTableResponseBody = {
+  table: CoreAPITablePublic;
+};
 
 /**
  * @swagger
@@ -127,7 +148,7 @@ import { apiError } from "@app/logger/withlogging";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<ListTablesResponseType | UpsertTableResponseType>
+    WithAPIErrorResponse<ListTablesResponseBody | UpsertTableResponseBody>
   >,
   auth: Authenticator
 ): Promise<void> {
@@ -221,18 +242,19 @@ async function handler(
       });
 
     case "POST":
-      const r = UpsertDatabaseTableRequestSchema.safeParse(req.body);
-
-      if (r.error) {
+      const bodyValidation = UpsertDatabaseTableRequestBodySchema.decode(
+        req.body
+      );
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
-          status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: `Invalid request body: ${pathError}`,
           },
+          status_code: 400,
         });
       }
-
       const {
         name,
         description,
@@ -242,7 +264,7 @@ async function handler(
         parents,
         remote_database_table_id: remoteDatabaseTableId,
         remote_database_secret_id: remoteDatabaseSecretId,
-      } = r.data;
+      } = bodyValidation.right;
 
       const tableId = maybeTableId || generateLegacyModelSId();
 

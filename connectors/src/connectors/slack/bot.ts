@@ -1,4 +1,3 @@
-import type { PublicPostContentFragmentRequestBody } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import type {
   AgentMessageSuccessEvent,
@@ -6,12 +5,14 @@ import type {
   ConversationType,
   LightAgentConfigurationType,
   ModelId,
+  PublicPostContentFragmentRequestBodySchema,
   Result,
   UserMessageType,
 } from "@dust-tt/types";
 import { Err, Ok, sectionFullText } from "@dust-tt/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
+import type * as t from "io-ts";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
@@ -692,7 +693,12 @@ async function makeContentFragment(
   threadTs: string,
   startingAtTs: string | null,
   connector: ConnectorResource
-): Promise<Result<PublicPostContentFragmentRequestBody | null, Error>> {
+): Promise<
+  Result<
+    t.TypeOf<typeof PublicPostContentFragmentRequestBodySchema> | null,
+    Error
+  >
+> {
   let allMessages: MessageElement[] = [];
 
   const slackBotMessages = await SlackChatBotMessage.findAll({
