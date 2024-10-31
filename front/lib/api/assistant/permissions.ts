@@ -23,7 +23,6 @@ export async function listAgentConfigurationsForGroups(
       workspaceId: auth.getNonNullableWorkspace().id,
       status: "active",
       groupIds: {
-        // TODO: Overlap or contains?
         [Op.overlap]: groups.map((g) => g.id),
       },
     },
