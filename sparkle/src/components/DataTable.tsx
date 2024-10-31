@@ -359,7 +359,7 @@ DataTable.Row = function Row({
       <td className="s-flex s-w-8 s-cursor-pointer s-items-center s-pl-1 s-text-element-600">
         {moreMenuItems && moreMenuItems.length > 0 && (
           <NewDropdownMenu>
-            <NewDropdownMenuTrigger>
+            <NewDropdownMenuTrigger asChild>
               <IconButton
                 icon={MoreIcon}
                 size="sm"
