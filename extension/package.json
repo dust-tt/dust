@@ -13,6 +13,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/chrome": "^0.0.276",
+    "@types/event-source-polyfill": "^1.0.5",
     "@types/lodash": "^4.17.13",
     "@types/node": "^22.7.4",
     "@types/react": "^18.3.11",

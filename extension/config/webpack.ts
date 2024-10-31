@@ -110,6 +110,9 @@ export const getConfig = async ({
       new webpack.EnvironmentPlugin({
         VERSION: version,
       }),
+      new webpack.ProvidePlugin({
+        Buffer: ["buffer", "Buffer"],
+      }),
       new Dotenv({
         path: isDevelopment ? "./.env.development" : "./.env.production",
       }),
