@@ -1,14 +1,21 @@
+import { MarkdownContentContext } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { useContext, useMemo } from "react";
 import { visit } from "unist-util-visit";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import { MarkdownContentContext } from "@app/components/assistant/markdown/MarkdownContentContext";
-import type { CustomRenderers } from "@app/components/assistant/markdown/RenderMessageMarkdown";
 
 const VISUALIZATION_MAGIC_LINE = "{/** visualization-complete */}";
 
 type PositionType = { start: { line: number }; end: { line: number } };
+
+export type CustomRenderers = {
+  visualization: (
+    code: string,
+    complete: boolean,
+    lineStart: number
+  ) => React.JSX.Element;
+};
 
 type VisualizationBlockProps = {
   position: PositionType;

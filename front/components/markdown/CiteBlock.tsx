@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import { visit } from "unist-util-visit";
 
-import type { MarkdownCitation } from "@app/components/assistant/markdown/MarkdownCitation";
+import type { MarkdownCitation } from "./MarkdownCitation";
 
 export type CitationsContextType = {
   references: {
@@ -76,7 +76,7 @@ export function CiteBlock(props: ReactMarkdownProps) {
   }
 }
 
-export function citeDirective() {
+export function getCiteDirective() {
   // Initialize a counter to keep track of citation references, starting from 1.
   let refCounter = 1;
   const refSeen: { [ref: string]: number } = {};

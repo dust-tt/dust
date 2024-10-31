@@ -1,13 +1,16 @@
-import { Collapsible, CommandLineIcon } from "@dust-tt/sparkle";
+import type { GetContentToDownloadFunction } from "@dust-tt/sparkle";
+import {
+  CodeBlock,
+  Collapsible,
+  CommandLineIcon,
+  ContentBlockWrapper,
+} from "@dust-tt/sparkle";
 import type { DustAppRunActionType } from "@dust-tt/types";
 import { capitalize } from "lodash";
 import { useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import { CodeBlock } from "@app/components/assistant/markdown/CodeBlock";
-import type { GetContentToDownloadFunction } from "@app/components/assistant/markdown/ContentBlockWrapper";
-import { ContentBlockWrapper } from "@app/components/assistant/markdown/ContentBlockWrapper";
 
 export function DustAppRunActionDetails({
   action,

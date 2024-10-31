@@ -13,6 +13,7 @@ import {
   ConversationMessage,
   DocumentDuplicateIcon,
   EyeIcon,
+  Markdown,
   Popover,
 } from "@dust-tt/sparkle";
 import type {
@@ -54,8 +55,16 @@ import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/
 import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import type { MarkdownCitation } from "@app/components/assistant/markdown/MarkdownCitation";
-import { RenderMessageMarkdown } from "@app/components/assistant/markdown/RenderMessageMarkdown";
+import {
+  CitationsContext,
+  CiteBlock,
+  getCiteDirective,
+} from "@app/components/markdown/CiteBlock";
+import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
+import {
+  MentionBlock,
+  mentionDirective,
+} from "@app/components/markdown/MentionBlock";
 import {
   getVisualizationPlugin,
   sanitizeVisualizationContent,
@@ -420,8 +429,6 @@ export function AgentMessage({
   ]);
   const { configuration: agentConfiguration } = agentMessageToRender;
 
-  // @ts-expect-error - `visualization` is a custom tag, currently refused by
-  // react-markdown types although the functionality is supported
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       visualization: getVisualizationPlugin(
@@ -430,12 +437,14 @@ export function AgentMessage({
         conversationId,
         message.sId
       ),
+      sup: CiteBlock,
+      mention: MentionBlock,
     }),
     [owner, conversationId, message.sId, agentConfiguration.sId]
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [visualizationDirective],
+    () => [mentionDirective, getCiteDirective(), visualizationDirective],
     []
   );
 
@@ -514,8 +523,6 @@ export function AgentMessage({
       );
     }
 
-    // TODO(2024-05-27 flav) Use <ConversationMessage.citations />.
-
     return (
       <div className="flex flex-col gap-y-4">
         <AgentMessageActions
@@ -530,7 +537,7 @@ export function AgentMessage({
             variant="purple"
             icon={ChatBubbleThoughtIcon}
           >
-            <RenderMessageMarkdown
+            <Markdown
               content={agentMessage.chainOfThought}
               isStreaming={false}
               textSize="sm"
@@ -548,22 +555,23 @@ export function AgentMessage({
                 <span></span>
               </div>
             ) : (
-              <>
-                <RenderMessageMarkdown
+              <CitationsContext.Provider
+                value={{
+                  references,
+                  updateActiveReferences,
+                  setHoveredReference: setLastHoveredReference,
+                }}
+              >
+                <Markdown
                   content={sanitizeVisualizationContent(agentMessage.content)}
                   isStreaming={
                     streaming && lastTokenClassification === "tokens"
                   }
-                  citationsContext={{
-                    references,
-                    updateActiveReferences,
-                    setHoveredReference: setLastHoveredReference,
-                  }}
                   isLastMessage={isLastMessage}
                   additionalMarkdownComponents={additionalMarkdownComponents}
                   additionalMarkdownPlugins={additionalMarkdownPlugins}
                 />
-              </>
+              </CitationsContext.Provider>
             )}
           </div>
         )}

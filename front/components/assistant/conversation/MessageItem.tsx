@@ -1,5 +1,5 @@
+import type { CitationType } from "@dust-tt/sparkle";
 import { Citation, ZoomableImageCitationWrapper } from "@dust-tt/sparkle";
-import type { CitationType } from "@dust-tt/sparkle/dist/esm/components/Citation";
 import type {
   ConversationMessageReactions,
   MessageWithContentFragmentsType,

@@ -225,8 +225,7 @@ export default function AssistantBuilderRightPanel({
                     <div>
                       <Markdown
                         content={template?.helpActions ?? ""}
-                        className=""
-                        size="sm"
+                        textSize="sm"
                       />
                     </div>
                     <Separator />
