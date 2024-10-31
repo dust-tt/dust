@@ -371,13 +371,7 @@ DataTable.Row = function Row({
             <NewDropdownMenuContent align="end" className="w-[220px]">
               <NewDropdownMenuGroup>
                 {moreMenuItems?.map((item, index) => (
-                  <NewDropdownMenuItem
-                    key={index}
-                    onClick={item.onClick}
-                    disabled={item.disabled}
-                    href={item.href}
-                    label={item.label}
-                  />
+                  <NewDropdownMenuItem key={index} {...item} />
                 ))}
               </NewDropdownMenuGroup>
             </NewDropdownMenuContent>
