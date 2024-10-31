@@ -117,21 +117,17 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
 
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    try {
-      const result = await launchZendeskSyncWorkflow({ connector });
-      if (result.isErr()) {
-        return result;
-      }
-    } catch (e) {
+    const result = await launchZendeskSyncWorkflow({ connector });
+    if (result.isErr()) {
       logger.error(
         {
           workspaceId: dataSourceConfig.workspaceId,
           dataSourceId: dataSourceConfig.dataSourceId,
-          error: e,
+          error: result.error,
         },
         "[Zendesk] Error resuming the sync workflow."
       );
-      return new Err(e as Error);
+      return result;
     }
     return new Ok(undefined);
   }
