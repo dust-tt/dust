@@ -72,36 +72,34 @@ export function CodeBlockWithExtendedSupport({
   if (!inline && isValidMermaid) {
     return (
       <div className="s-w-full s-gap-2 s-bg-slate-100 s-align-bottom">
-        <>
-          <div className="s-absolute s-left-2 s-top-2 s-mx-2 s-flex s-gap-2">
-            <div
-              className={cn(
-                "text-xs",
-                showMermaid ? "s-text-slate-400" : "s-text-slate-300"
-              )}
-            >
-              <a
-                onClick={() => setShowMermaid(!showMermaid)}
-                className="s-cursor-pointer"
-              >
-                {showMermaid ? "See Markdown" : "See Graph"}
-              </a>
-            </div>
-            <IconButton
-              variant={isDarkMode ? "ghost" : "outline"}
-              size="xs"
-              icon={showMermaid ? WrenchIcon : SparklesIcon}
+        <div className="s-absolute s-left-2 s-top-2 s-mx-2 s-flex s-gap-2">
+          <div
+            className={cn(
+              "text-xs",
+              showMermaid ? "s-text-slate-400" : "s-text-slate-300"
+            )}
+          >
+            <a
               onClick={() => setShowMermaid(!showMermaid)}
-            />
+              className="s-cursor-pointer"
+            >
+              {showMermaid ? "See Markdown" : "See Graph"}
+            </a>
           </div>
-          {showMermaid ? (
-            <MermaidGraph chart={validChildrenContent} />
-          ) : (
-            <CodeBlock className={className} inline={inline}>
-              {children}
-            </CodeBlock>
-          )}
-        </>
+          <IconButton
+            variant={isDarkMode ? "ghost" : "outline"}
+            size="xs"
+            icon={showMermaid ? WrenchIcon : SparklesIcon}
+            onClick={() => setShowMermaid(!showMermaid)}
+          />
+        </div>
+        {showMermaid ? (
+          <MermaidGraph chart={validChildrenContent} />
+        ) : (
+          <CodeBlock className={className} inline={inline}>
+            {children}
+          </CodeBlock>
+        )}
       </div>
     );
   }
