@@ -2,15 +2,14 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
+import { Icon } from "@sparkle/components/Icon";
+import Spinner, { SpinnerProps } from "@sparkle/components/Spinner";
 import {
-  Icon,
-  Spinner,
   TooltipContent,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
-} from "@sparkle/components";
-import { SpinnerProps } from "@sparkle/components/Spinner";
+} from "@sparkle/components/Tooltip";
 import { ChevronDownIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
