@@ -109,8 +109,8 @@ export function Markdown({
           {children}
         </UlBlock>
       ),
-      ol: ({ children }) => (
-        <OlBlock textSize={textSize} textColor={textColor}>
+      ol: ({ children, start }) => (
+        <OlBlock start={start} textSize={textSize} textColor={textColor}>
           {children}
         </OlBlock>
       ),
@@ -307,15 +307,18 @@ function UlBlock({
 }
 function OlBlock({
   children,
+  start,
   textColor,
   textSize,
 }: {
   children: React.ReactNode;
+  start?: number;
   textColor: string;
   textSize: TextSize;
 }) {
   return (
     <ol
+      start={start}
       className={cn(
         "s-list-decimal s-py-3 s-pl-8 first:s-pt-0 last:s-pb-0",
         textColor,
@@ -330,10 +333,12 @@ function LiBlock({
   children,
   textColor,
   textSize,
+  className = "",
 }: {
   children: React.ReactNode;
   textColor: string;
   textSize: TextSize;
+  className?: string;
 }) {
   return (
     <li
@@ -341,7 +346,8 @@ function LiBlock({
         "s-break-words first:s-pt-0 last:s-pb-0",
         textSize === "sm" ? "s-py-1" : "s-py-2",
         textColor,
-        sizes[textSize].p
+        sizes[textSize].p,
+        className
       )}
     >
       {children}
