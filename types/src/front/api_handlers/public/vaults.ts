@@ -33,10 +33,6 @@ export type LightContentNode = {
   type: ContentNodeType;
 };
 
-export type GetDataSourceViewContentResponseBody = {
-  nodes: LightContentNode[];
-};
-
 export const DATA_SOURCE_VIEW_CATEGORIES = [
   "managed",
   "folder",
