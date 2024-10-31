@@ -48,17 +48,17 @@ impl Provider for ZendeskConnectionProvider {
             "scope": "read"
         });
 
-        let sub_domain = match connection.metadata()["extra_config"].as_str() {
-            Some(c) => {
-                if !ZENDESK_SUBDOMAIN_RE.is_match(c) {
-                    Err(anyhow!("Zendesk extra_config subdomain format invalid"))?
+        let subdomain = match connection.metadata()["zendesk_subdomain"].as_str() {
+            Some(d) => {
+                if !ZENDESK_SUBDOMAIN_RE.is_match(d) {
+                    Err(anyhow!("Zendesk subdomain format invalid"))?
                 }
-                c
+                d
             }
-            None => Err(anyhow!("Zendesk extra_config subdomain is missing"))?,
+            None => Err(anyhow!("Zendesk subdomain is missing"))?,
         };
 
-        let url = format!("https://{}.zendesk.com/oauth/tokens", sub_domain);
+        let url = format!("https://{}.zendesk.com/oauth/tokens", subdomain);
 
         let req = reqwest::Client::new()
             .post(url)
