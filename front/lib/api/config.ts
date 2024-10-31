@@ -102,7 +102,7 @@ const config = {
       "DEVELOPMENT_DUST_APPS_WORKSPACE_ID"
     );
   },
-  getDevelopmentDustAppsVaultId: (): string | undefined => {
+  getDevelopmentDustAppsSpaceId: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "DEVELOPMENT_DUST_APPS_VAULT_ID"
     );

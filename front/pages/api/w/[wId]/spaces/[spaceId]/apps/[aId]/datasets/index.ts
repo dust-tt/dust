@@ -80,7 +80,7 @@ async function handler(
       api_error: {
         type: "app_auth_error",
         message:
-          "Interacting with datasets requires write access to the app's vault.",
+          "Interacting with datasets requires write access to the app's space.",
       },
     });
   }

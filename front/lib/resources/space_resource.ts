@@ -131,7 +131,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     id: ModelId;
     workspaceId: ModelId;
   }): string {
-    return makeSId("vault", {
+    return makeSId("space", {
       id,
       workspaceId,
     });

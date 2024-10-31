@@ -128,7 +128,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         space,
         transaction
       );
-      return this.createDefaultViewInVaultFromDataSourceIncludingAllDocuments(
+      return this.createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
         auth,
         dataSource.space,
         dataSource,
@@ -137,9 +137,9 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     });
   }
 
-  static async createViewInVaultFromDataSource(
+  static async createViewInSpaceFromDataSource(
     auth: Authenticator,
-    vault: SpaceResource,
+    space: SpaceResource,
     dataSource: DataSourceResource,
     parentsIn: string[]
   ) {
@@ -148,18 +148,18 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       {
         dataSourceId: dataSource.id,
         parentsIn,
-        workspaceId: vault.workspaceId,
+        workspaceId: space.workspaceId,
         kind: "custom",
       },
-      vault,
+      space,
       dataSource
     );
   }
 
   // This view has access to all documents, which is represented by null.
-  private static async createDefaultViewInVaultFromDataSourceIncludingAllDocuments(
+  private static async createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
     auth: Authenticator,
-    vault: SpaceResource,
+    space: SpaceResource,
     dataSource: DataSourceResource,
     transaction?: Transaction
   ) {
@@ -168,10 +168,10 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       {
         dataSourceId: dataSource.id,
         parentsIn: null,
-        workspaceId: vault.workspaceId,
+        workspaceId: space.workspaceId,
         kind: "default",
       },
-      vault,
+      space,
       dataSource,
       transaction
     );
@@ -273,7 +273,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     });
   }
 
-  static async listForDataSourcesInVault(
+  static async listForDataSourcesInSpace(
     auth: Authenticator,
     dataSources: DataSourceResource[],
     space: SpaceResource,

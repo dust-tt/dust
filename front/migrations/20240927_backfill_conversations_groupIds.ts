@@ -86,7 +86,7 @@ async function updateConversation(
   logger: Logger
 ) {
   // we get all messages without checking rank, because we only use them to get
-  // the agentConfigurationIds. At the time of writing (pre-vaults release), we
+  // the agentConfigurationIds. At the time of writing (pre-spaces release), we
   // don't need to consider message version at all for the backfill.
   const messages = await Message.findAll({
     where: {

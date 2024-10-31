@@ -451,7 +451,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
   });
 
   const doUpdate = async (
-    vault: SpaceType,
+    space: SpaceType,
     params: DoCreateOrUpdateAllowedParams
   ) => {
     const { name: newName, memberIds, isRestricted } = params;
@@ -460,7 +460,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     // Prepare space update request.
     if (newName) {
-      const spaceUrl = `/api/w/${owner.sId}/spaces/${vault.sId}`;
+      const spaceUrl = `/api/w/${owner.sId}/spaces/${space.sId}`;
       updatePromises.push(
         fetch(spaceUrl, {
           method: "PATCH",
@@ -475,7 +475,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     }
 
     // Prepare space members update request if provided.
-    const spaceMembersUrl = `/api/w/${owner.sId}/spaces/${vault.sId}/members`;
+    const spaceMembersUrl = `/api/w/${owner.sId}/spaces/${space.sId}/members`;
     updatePromises.push(
       fetch(spaceMembersUrl, {
         method: "PATCH",
@@ -533,11 +533,11 @@ export function useDeleteSpace({ owner }: { owner: LightWorkspaceType }) {
     disabled: true, // Needed just to mutate
   });
 
-  const doDelete = async (vault: SpaceType | null) => {
-    if (!vault) {
+  const doDelete = async (space: SpaceType | null) => {
+    if (!space) {
       return false;
     }
-    const url = `/api/w/${owner.sId}/spaces/${vault.sId}`;
+    const url = `/api/w/${owner.sId}/spaces/${space.sId}`;
     const res = await fetch(url, {
       method: "DELETE",
     });
@@ -548,15 +548,15 @@ export function useDeleteSpace({ owner }: { owner: LightWorkspaceType }) {
 
       sendNotification({
         type: "success",
-        title: `Successfully deleted ${getSpaceName(vault)}`,
-        description: `${getSpaceName(vault)} was successfully deleted.`,
+        title: `Successfully deleted ${getSpaceName(space)}`,
+        description: `${getSpaceName(space)} was successfully deleted.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendNotification({
         type: "error",
-        title: `Error deleting ${getSpaceName(vault)}`,
+        title: `Error deleting ${getSpaceName(space)}`,
         description: `Error: ${errorData.message}`,
       });
     }

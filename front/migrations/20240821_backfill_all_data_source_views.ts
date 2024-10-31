@@ -16,7 +16,7 @@ async function backfillDefaultViewForDataSource(
   const { space } = dataSource;
   // Check if there is already a view for this managed data source in the vault.
   const dataSourceViews =
-    await DataSourceViewResource.listForDataSourcesInVault(
+    await DataSourceViewResource.listForDataSourcesInSpace(
       auth,
       [dataSource],
       space
@@ -34,7 +34,7 @@ async function backfillDefaultViewForDataSource(
   }
 
   // Create a default view for this data source in the vault.
-  await DataSourceViewResource.createViewInVaultFromDataSource(
+  await DataSourceViewResource.createViewInSpaceFromDataSource(
     auth,
     space,
     dataSource,
@@ -65,7 +65,7 @@ async function backfillDataSourceViewsForWorkspace(
     if (dataSource.space.isSystem()) {
       // Update the kind to "custom" for the data source view created in the global vault.
       const dataSourceViews =
-        await DataSourceViewResource.listForDataSourcesInVault(
+        await DataSourceViewResource.listForDataSourcesInSpace(
           auth,
           [dataSource],
           globalVault

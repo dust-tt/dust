@@ -17,15 +17,15 @@ makeScript({}, async ({ execute }, logger) => {
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    const globalVault = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
     if (execute) {
-      await app.update({ vaultId: globalVault.id });
+      await app.update({ vaultId: globalSpace.id });
       logger.info(
         {
           workspaceId: workspace.sId,
           appId: app.sId,
-          vaultId: globalVault.sId,
+          vaultId: globalSpace.sId,
           execute,
         },
         "Updated app"
@@ -35,7 +35,7 @@ makeScript({}, async ({ execute }, logger) => {
         {
           workspaceId: workspace.sId,
           appId: app.sId,
-          vaultId: globalVault.sId,
+          vaultId: globalSpace.sId,
           execute,
         },
         "Would have updated app"

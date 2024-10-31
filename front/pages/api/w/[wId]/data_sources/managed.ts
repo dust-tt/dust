@@ -295,7 +295,7 @@ async function handler(
         });
       }
 
-      const vault = await (provider === "webcrawler"
+      const space = await (provider === "webcrawler"
         ? SpaceResource.fetchWorkspaceGlobalSpace(auth)
         : SpaceResource.fetchWorkspaceSystemSpace(auth));
 
@@ -312,7 +312,7 @@ async function handler(
             name: dataSourceName,
             workspaceId: owner.id,
           },
-          vault
+          space
         );
 
       const dataSource = dataSourceView.dataSource;
