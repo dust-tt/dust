@@ -12,16 +12,20 @@ export async function setupOAuthConnection({
   owner,
   provider,
   useCase,
+  extraConfig,
 }: {
   dustClientFacingUrl: string;
   owner: LightWorkspaceType;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
+  extraConfig: Record<string, string>;
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
-    const oauthPopup = window.open(
-      `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}`
-    );
+    let url = `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}`;
+    if (extraConfig) {
+      url += `&extraConfig=${encodeURIComponent(JSON.stringify(extraConfig))}`;
+    }
+    const oauthPopup = window.open(url);
     let authComplete = false;
 
     const popupMessageEventListener = (event: MessageEvent) => {

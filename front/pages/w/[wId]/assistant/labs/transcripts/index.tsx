@@ -386,6 +386,7 @@ export default function LabsTranscriptsIndex({
       owner,
       provider: "google_drive",
       useCase: "labs_transcripts",
+      extraConfig: {},
     });
 
     if (cRes.isErr()) {
@@ -440,6 +441,7 @@ export default function LabsTranscriptsIndex({
           owner,
           provider: "gong",
           useCase: "connection",
+          extraConfig: {},
         });
         if (!cRes.isOk()) {
           return cRes;
