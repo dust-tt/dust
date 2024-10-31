@@ -5,8 +5,8 @@ import "@dust-tt/sparkle/dist/sparkle.css";
 // Local tailwind components override sparkle styles
 import "@app/styles/components.css";
 
-import { AuthProvider } from "@app/extension/app/src/components/auth/AuthProvider";
-import { routes } from "@app/extension/app/src/pages/routes";
+import { AuthProvider } from "@extension/components/auth/AuthProvider";
+import { routes } from "@extension/pages/routes";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 

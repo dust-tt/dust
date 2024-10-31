@@ -1,8 +1,8 @@
-import { fetcher, useSWRWithDefaults } from "@app/extension/app/src/lib/swr";
 import type {
   AgentsGetViewType,
   LightAgentConfigurationType,
 } from "@dust-tt/types";
+import { fetcher, useSWRWithDefaults } from "@extension/lib/swr";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 

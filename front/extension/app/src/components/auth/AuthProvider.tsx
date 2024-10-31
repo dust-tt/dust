@@ -1,6 +1,6 @@
-import { useAuthHook } from "@app/extension/app/src/components/auth/useAuth";
-import type { StoredUser } from "@app/extension/app/src/lib/storage";
 import type { LightWorkspaceType } from "@dust-tt/types";
+import { useAuthHook } from "@extension/components/auth/useAuth";
+import type { StoredUser } from "@extension/lib/storage";
 import type { ReactNode } from "react";
 import React, { createContext, useContext } from "react";
 

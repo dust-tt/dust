@@ -1,10 +1,11 @@
-import type { ProtectedRouteChildrenProps } from "@app/extension/app/src/components/auth/ProtectedRoute";
-import { ConversationContainer } from "@app/extension/app/src/components/conversation/ConversationContainer";
 import { BarHeader, ChevronLeftIcon, Page } from "@dust-tt/sparkle";
+import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
+import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 export const ConversationPage = ({
   workspace,
+  user,
 }: ProtectedRouteChildrenProps) => {
   const navigate = useNavigate();
   const { conversationId } = useParams();
@@ -17,7 +18,7 @@ export const ConversationPage = ({
   return (
     <>
       <BarHeader
-        title="Back"
+        title="Home"
         leftActions={
           <Link to="/">
             <ChevronLeftIcon />
@@ -29,6 +30,7 @@ export const ConversationPage = ({
         <ConversationContainer
           owner={workspace}
           conversationId={conversationId}
+          user={user}
         />
       </div>
     </>

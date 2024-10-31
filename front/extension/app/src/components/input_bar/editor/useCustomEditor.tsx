@@ -1,7 +1,7 @@
-import { MentionStorage } from "@app/extension/app/src/components/input_bar/editor/MentionStorage";
-import { MentionWithPaste } from "@app/extension/app/src/components/input_bar/editor/MentionWithPaste";
-import type { EditorSuggestions } from "@app/extension/app/src/components/input_bar/editor/suggestion";
-import { makeGetAssistantSuggestions } from "@app/extension/app/src/components/input_bar/editor/suggestion";
+import { MentionStorage } from "@extension/components/input_bar/editor/MentionStorage";
+import { MentionWithPaste } from "@extension/components/input_bar/editor/MentionWithPaste";
+import type { EditorSuggestions } from "@extension/components/input_bar/editor/suggestion";
+import { makeGetAssistantSuggestions } from "@extension/components/input_bar/editor/suggestion";
 import { MentionPluginKey } from "@tiptap/extension-mention";
 import Paragraph from "@tiptap/extension-paragraph";
 import Placeholder from "@tiptap/extension-placeholder";

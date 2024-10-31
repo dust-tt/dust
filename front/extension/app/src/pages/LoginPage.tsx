@@ -1,4 +1,3 @@
-import { useAuth } from "@app/extension/app/src/components/auth/AuthProvider";
 import {
   Button,
   LoginIcon,
@@ -7,6 +6,7 @@ import {
   NewDropdownMenuItem,
   NewDropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { useAuth } from "@extension/components/auth/AuthProvider";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 

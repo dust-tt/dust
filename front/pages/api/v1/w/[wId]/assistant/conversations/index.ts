@@ -1,6 +1,7 @@
 import type {
   ContentFragmentType,
   ConversationType,
+  ConversationWithoutContentType,
   UserMessageType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
@@ -16,6 +17,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import {
   createConversation,
   getConversation,
+  getUserConversations,
   normalizeContentFragmentType,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
@@ -29,6 +31,9 @@ export type PostConversationsResponseBody = {
   conversation: ConversationType;
   message?: UserMessageType;
   contentFragment?: ContentFragmentType;
+};
+export type GetConversationsResponseBody = {
+  conversations: ConversationWithoutContentType[];
 };
 
 /**
@@ -93,7 +98,11 @@ export type PostConversationsResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostConversationsResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      PostConversationsResponseBody | GetConversationsResponseBody
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
@@ -260,13 +269,18 @@ async function handler(
         contentFragment: newContentFragment ?? undefined,
       });
       return;
+    case "GET":
+      const conversations = await getUserConversations(auth);
+      res.status(200).json({ conversations });
+      return;
 
     default:
       return apiError(req, res, {
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message:
+            "The method passed is not supported, POST or GET is expected.",
         },
       });
   }
