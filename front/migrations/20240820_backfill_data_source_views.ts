@@ -38,7 +38,7 @@ async function backfillDefaultViewForDataSource(
   }
 
   // Create a default view for this data source in the vault.
-  await DataSourceViewResource.createViewInVaultFromDataSource(
+  await DataSourceViewResource.createViewInSpaceFromDataSource(
     auth,
     vault,
     dataSource,

@@ -289,10 +289,10 @@ function DustAppLogsModal({
           ([
             action,
             {
-              app: { appId, workspaceId: appWorkspaceid, appVaultId },
+              app: { appId, workspaceId: appWorkspaceid, appSpaceId },
             },
           ]) => {
-            const url = `https://dust.tt/w/${appWorkspaceid}/spaces/${appVaultId}/apps/${appId}/runs?wIdTarget=${owner.sId}`;
+            const url = `https://dust.tt/w/${appWorkspaceid}/spaces/${appSpaceId}/apps/${appId}/runs?wIdTarget=${owner.sId}`;
 
             return (
               <div key={appId}>

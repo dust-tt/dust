@@ -52,7 +52,7 @@ async function handler(
       api_error: {
         type: "app_auth_error",
         message:
-          "Retrieving content of runs requires write access to the app's vault.",
+          "Retrieving content of runs requires write access to the app's space.",
       },
     });
   }

@@ -184,7 +184,7 @@ async function handler(
               dataSourceConfig.dataSourceId
             );
             if (dataSource) {
-              await DataSourceViewResource.createViewInVaultFromDataSource(
+              await DataSourceViewResource.createViewInSpaceFromDataSource(
                 auth,
                 space,
                 dataSource,

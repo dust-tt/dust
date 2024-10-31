@@ -21,7 +21,8 @@ const REGION = 1; // US.
 const RESOURCES_PREFIX = {
   file: "fil",
   group: "grp",
-  vault: "vlt",
+  // TODO(2024-10-31 flav) Add new prefix for space.
+  space: "vlt",
   data_source: "dts",
   data_source_view: "dsv",
 };

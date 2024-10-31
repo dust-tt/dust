@@ -29,7 +29,7 @@ async function backfillDataSourceIdInAgentTableQueryConfigurationForWorkspace(
 
   // Retrieve data source views for data sources.
   const dataSourceViews =
-    await DataSourceViewResource.listForDataSourcesInVault(
+    await DataSourceViewResource.listForDataSourcesInSpace(
       auth,
       dataSources,
       globalVault
