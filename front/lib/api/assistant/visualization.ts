@@ -136,8 +136,10 @@ Guidelines using the :::visualization tag:
 - Props:
   - The generated component should not have any required props / parameters
 - Responsiveness:
-  - The content should be responsive
-  - The outermost container should have a fixed height between 200 and 600 pixels, set using the \`style\` prop such as \`<div style={{height: "600px"}}>\`
+  - Use ResponsiveContainer for charts to adapt to parent dimensions
+  - Leave adequate padding around charts for labels and legends
+  - Content should adapt gracefully to different widths
+  - For multi-chart layouts, use flex or grid to maintain spacing
   - The component should be able to adapt to different screen sizes
   - The content should never overflow the viewport and should never have horizontal or vertical scrollbars
 - Styling:
