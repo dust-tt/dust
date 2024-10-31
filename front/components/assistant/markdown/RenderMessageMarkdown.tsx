@@ -420,26 +420,37 @@ function UlBlock({ children }: { children: React.ReactNode }) {
     <ul className="list-disc py-2 pl-8 first:pt-0 last:pb-0">{children}</ul>
   );
 }
-function OlBlock({ children }: { children: React.ReactNode }) {
+function OlBlock({
+  children,
+  start,
+}: {
+  children: React.ReactNode;
+  start?: number;
+}) {
   return (
-    <ol className="list-decimal py-3 pl-8 first:pt-0 last:pb-0">{children}</ol>
+    <ol start={start} className="list-decimal py-3 pl-8 first:pt-0 last:pb-0">
+      {children}
+    </ol>
   );
 }
 function LiBlock({
   textSize,
   textColor,
   children,
+  className = "",
 }: {
   textSize?: string;
   textColor?: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
     <li
       className={classNames(
         "break-words first:pt-0 last:pb-0",
         textSize === "sm" ? "py-1" : "py-2",
-        textColor ? textColor : "text-element-800"
+        textColor ? textColor : "text-element-800",
+        className
       )}
     >
       {children}

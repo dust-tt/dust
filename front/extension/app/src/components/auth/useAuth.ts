@@ -1,13 +1,10 @@
-import { login, logout, refreshToken } from "@app/extension/app/src/lib/auth";
-import type {
-  StoredTokens,
-  StoredUser,
-} from "@app/extension/app/src/lib/storage";
+import { login, logout, refreshToken } from "@extension/lib/auth";
+import type { StoredTokens, StoredUser } from "@extension/lib/storage";
 import {
   getStoredTokens,
   getStoredUser,
   saveSelectedWorkspace,
-} from "@app/extension/app/src/lib/storage";
+} from "@extension/lib/storage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const log = console.error;

@@ -1,4 +1,11 @@
-import { DropdownMenu, Input } from "@dust-tt/sparkle";
+import {
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  ScrollArea,
+  Searchbar,
+  Separator,
+} from "@dust-tt/sparkle";
 import type {
   DataSourceViewContentNode,
   LightWorkspaceType,
@@ -81,15 +88,13 @@ export default function TablePicker({
             "No Table"
           )
         ) : (
-          <DropdownMenu>
-            <div>
-              <DropdownMenu.Button
+          <PopoverRoot>
+            <PopoverTrigger asChild>
+              <div
                 className={classNames(
-                  "inline-flex items-center rounded-md py-1 text-sm font-normal text-gray-700",
+                  "inline-flex items-center rounded-md py-1 text-sm font-normal",
                   currentTable ? "px-0" : "border px-3",
-                  readOnly
-                    ? "border-white text-gray-300"
-                    : "border-orange-400 text-gray-700",
+                  readOnly ? "text-gray-300" : "text-gray-700",
                   "focus:outline-none focus:ring-0"
                 )}
               >
@@ -101,42 +106,46 @@ export default function TablePicker({
                     <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
                   </>
                 ) : tables && tables.length > 0 ? (
-                  "Select Table"
+                  <span>Select Table</span>
                 ) : (
-                  "No Tables"
+                  <span>No Tables</span>
                 )}
-              </DropdownMenu.Button>
-            </div>
+              </div>
+            </PopoverTrigger>
 
-            {(tables || []).length > 0 ? (
-              <DropdownMenu.Items width={300}>
-                <Input
+            {(tables || []).length > 0 && (
+              <PopoverContent className="mr-2 p-4">
+                <Searchbar
                   name="search"
                   placeholder="Search"
                   value={searchFilter}
-                  onChange={(e) => setSearchFilter(e.target.value)}
-                  className="mt-4 w-full"
+                  onChange={(e) => setSearchFilter(e)}
                 />
-                {(filteredTables || []).map((t) => {
-                  return (
-                    <DropdownMenu.Item
+                <ScrollArea className="mt-2 h-[300px]">
+                  {(filteredTables || []).map((t) => (
+                    <div
                       key={t.dustDocumentId}
-                      label={t.title}
+                      className="flex cursor-pointer flex-col items-start hover:opacity-80"
                       onClick={() => {
                         onTableUpdate(t);
                         setSearchFilter("");
                       }}
-                    />
-                  );
-                })}
-                {filteredTables.length === 0 && (
-                  <span className="block px-4 py-2 text-sm text-gray-700">
-                    No tables found
-                  </span>
-                )}
-              </DropdownMenu.Items>
-            ) : null}
-          </DropdownMenu>
+                    >
+                      <div className="my-1">
+                        <div className="text-sm">{t.title}</div>
+                      </div>
+                      <Separator />
+                    </div>
+                  ))}
+                  {filteredTables.length === 0 && (
+                    <span className="block px-4 py-2 text-sm text-gray-700">
+                      No tables found
+                    </span>
+                  )}
+                </ScrollArea>
+              </PopoverContent>
+            )}
+          </PopoverRoot>
         )}
       </div>
     </div>

@@ -3,7 +3,10 @@ import {
   CloudArrowUpIcon,
   Cog6ToothIcon,
   DocumentTextIcon,
-  DropdownMenu,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
   PlusIcon,
   TableIcon,
   Tooltip,
@@ -97,8 +100,8 @@ const AddDataDropDownButton = ({
   canWriteInSpace,
 }: AddDataDropDrownButtonProps) => {
   return (
-    <DropdownMenu>
-      <DropdownMenu.Button>
+    <NewDropdownMenu>
+      <NewDropdownMenuTrigger asChild>
         <Button
           size="sm"
           label="Add data"
@@ -107,32 +110,31 @@ const AddDataDropDownButton = ({
           isSelect
           disabled={!canWriteInSpace}
         />
-      </DropdownMenu.Button>
-
-      <DropdownMenu.Items width={300}>
-        <DropdownMenu.Item
+      </NewDropdownMenuTrigger>
+      <NewDropdownMenuContent>
+        <NewDropdownMenuItem
           icon={DocumentTextIcon}
           onClick={() => {
             contentActionsRef.current?.callAction("DocumentUploadOrEdit");
           }}
           label="Create a document"
         />
-        <DropdownMenu.Item
+        <NewDropdownMenuItem
           icon={TableIcon}
           onClick={() => {
             contentActionsRef.current?.callAction("TableUploadOrEdit");
           }}
           label="Create a table"
         />
-        <DropdownMenu.Item
+        <NewDropdownMenuItem
           icon={CloudArrowUpIcon}
           onClick={() => {
             contentActionsRef.current?.callAction("MultipleDocumentsUpload");
           }}
           label="Upload multiple documents"
         />
-      </DropdownMenu.Items>
-    </DropdownMenu>
+      </NewDropdownMenuContent>
+    </NewDropdownMenu>
   );
 };
 

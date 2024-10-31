@@ -2,6 +2,7 @@ import { Citation, ZoomableImageCitationWrapper } from "@dust-tt/sparkle";
 import type { CitationType } from "@dust-tt/sparkle/dist/esm/components/Citation";
 import type {
   ConversationMessageReactions,
+  MessageWithContentFragmentsType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -10,7 +11,6 @@ import React from "react";
 import { useSWRConfig } from "swr";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
-import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import { useSubmitFunction } from "@app/lib/client/utils";
 

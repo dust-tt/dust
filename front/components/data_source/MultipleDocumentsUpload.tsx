@@ -67,7 +67,7 @@ export const MultipleDocumentsUpload = ({
 
     try {
       const res = await fetch(
-        `/api/w/${owner.sId}/vaults/${dataSourceView.spaceId}/data_sources/${
+        `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${
           dataSourceView.dataSource.sId
         }/documents`,
         {

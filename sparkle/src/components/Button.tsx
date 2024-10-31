@@ -85,7 +85,7 @@ interface MetaButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
-  variant?: ButtonVariantType;
+  variant?: ButtonVariantType | null;
 }
 
 const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
@@ -97,7 +97,7 @@ const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
 
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size }), className)}
+        className={cn(variant && buttonVariants({ variant, size }), className)}
         ref={ref}
         {...props}
       >
@@ -135,8 +135,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const buttonSize = size || "sm";
     const spinnerVariant = isLoading
-      ? spinnerVariantsMapIsLoading[variant] || "slate400"
-      : spinnerVariantsMap[variant] || "slate400";
+      ? (variant && spinnerVariantsMapIsLoading[variant]) || "slate400"
+      : (variant && spinnerVariantsMap[variant]) || "slate400";
 
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
       <Icon visual={visual} size={buttonSize} className={extraClass} />

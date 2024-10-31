@@ -46,7 +46,7 @@ export function CodeBlock({
   const languageToUse = languageOverrides[language] || language;
 
   return !inline && language ? (
-    <Suspense fallback={String(children)}>
+    <Suspense fallback={<div />}>
       <SyntaxHighlighter
         wrapLongLines={wrapLongLines}
         style={{

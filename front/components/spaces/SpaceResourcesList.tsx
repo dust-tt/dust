@@ -380,7 +380,7 @@ export const SpaceResourcesList = ({
       const res = await doDelete(selectedDataSourceView);
       if (res) {
         await router.push(
-          `/w/${owner.sId}/vaults/${space.sId}/categories/${selectedDataSourceView.category}`
+          `/w/${owner.sId}/spaces/${space.sId}/categories/${selectedDataSourceView.category}`
         );
       }
     }

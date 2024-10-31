@@ -15,10 +15,10 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
-import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/content-nodes";
-import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/documents/[documentId]";
-import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]/tables";
-import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources/[dsId]/configuration";
+import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
+import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/documents/[documentId]";
+import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables";
+import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/configuration";
 
 type DataSourceViewsAndInternalIds = {
   dataSourceView: DataSourceViewType;
@@ -65,7 +65,7 @@ export function useMultipleDataSourceViewsContentNodes({
 } {
   const urlsAndOptions = dataSourceViewsAndInternalIds.map(
     ({ dataSourceView, internalIds }) => {
-      const url = `/api/w/${owner.sId}/vaults/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes`;
+      const url = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes`;
       const body = JSON.stringify({
         internalIds,
         viewType,
@@ -132,7 +132,7 @@ export function useDataSourceViewContentNodes({
   appendPaginationParams(params, pagination);
 
   const url = dataSourceView
-    ? `/api/w/${owner.sId}/vaults/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
+    ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
     : null;
 
   const body = {
@@ -185,7 +185,7 @@ export function useDataSourceViewDocument({
     fetcher;
   const url =
     dataSourceView && documentId
-      ? `/api/w/${owner.sId}/vaults/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`
+      ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`
       : null;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -218,7 +218,7 @@ export function useDataSourceViewConnectorConfiguration({
   const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
-      : `/api/w/${owner.sId}/vaults/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
+      : `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
     dataSourceViewDocumentFetcher
   );
 
@@ -243,7 +243,7 @@ export function useDataSourceViewTables({
   const { data, error, mutate } = useSWRWithDefaults(
     disabled
       ? null
-      : `/api/w/${workspaceId}/vaults/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/tables`,
+      : `/api/w/${workspaceId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/tables`,
     tablesFetcher
   );
 

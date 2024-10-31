@@ -1,25 +1,22 @@
 import type { ModelId } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever } from "@temporalio/common/lib/type-helpers";
 import {
   executeChild,
   proxyActivities,
   setHandler,
-  sleep,
   workflowInfo,
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
-import { syncZendeskTicketsActivity } from "@connectors/connectors/zendesk/temporal/activities";
-import { INTERVAL_BETWEEN_SYNCS_MS } from "@connectors/connectors/zendesk/temporal/config";
 import type { ZendeskUpdateSignal } from "@connectors/connectors/zendesk/temporal/signals";
-
-import { zendeskUpdatesSignal } from "./signals";
+import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
 
 const {
   getZendeskCategoriesActivity,
   syncZendeskBrandActivity,
   syncZendeskCategoryActivity,
   syncZendeskArticlesActivity,
+  syncZendeskTicketsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -81,7 +78,10 @@ export async function zendeskSyncWorkflow({
           break;
         }
         default:
-          assertNever(signal.type);
+          assertNever(
+            `Unexpected signal type ${signal.type} received within Zendesk sync workflow.`,
+            signal.type
+          );
       }
     });
   });
@@ -182,8 +182,6 @@ export async function zendeskSyncWorkflow({
   // run cleanup here if needed
 
   await saveZendeskConnectorSuccessSync({ connectorId });
-
-  await sleep(INTERVAL_BETWEEN_SYNCS_MS);
 }
 
 /**

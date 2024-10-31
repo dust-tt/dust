@@ -1,6 +1,6 @@
+import type { MessageWithContentFragmentsType } from "@dust-tt/types";
 import { useEffect } from "react";
 
-import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
 import { LAST_MESSAGE_GROUP_ID } from "@app/components/assistant/conversation/MessageGroup";
 
 /**

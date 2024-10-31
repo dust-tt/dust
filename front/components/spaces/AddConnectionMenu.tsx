@@ -2,7 +2,10 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   Dialog,
-  DropdownMenu,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
@@ -30,7 +33,7 @@ import {
 } from "@app/lib/connector_providers";
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
+import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 
 export type DataSourceIntegration = {
   connectorProvider: ConnectorProvider;
@@ -131,8 +134,8 @@ export const AddConnectionMenu = ({
       suffix
         ? `/api/w/${
             owner.sId
-          }/vaults/${systemSpace.sId}/data_sources?suffix=${encodeURIComponent(suffix)}`
-        : `/api/w/${owner.sId}/vaults/${systemSpace.sId}/data_sources`,
+          }/spaces/${systemSpace.sId}/data_sources?suffix=${encodeURIComponent(suffix)}`
+        : `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources`,
       {
         method: "POST",
         headers: {
@@ -347,18 +350,18 @@ export const AddConnectionMenu = ({
         >
           Please email us at support@dust.tt for early access.
         </Dialog>
-        <DropdownMenu>
-          <DropdownMenu.Button>
+        <NewDropdownMenu>
+          <NewDropdownMenuTrigger asChild>
             <Button
               label="Add Connections"
               variant="primary"
               icon={CloudArrowLeftRightIcon}
               size="sm"
             />
-          </DropdownMenu.Button>
-          <DropdownMenu.Items width={180}>
+          </NewDropdownMenuTrigger>
+          <NewDropdownMenuContent>
             {availableIntegrations.map((i) => (
-              <DropdownMenu.Item
+              <NewDropdownMenuItem
                 key={i.connectorProvider}
                 label={CONNECTOR_CONFIGURATIONS[i.connectorProvider].name}
                 icon={getConnectorProviderLogoWithFallback(i.connectorProvider)}
@@ -367,8 +370,8 @@ export const AddConnectionMenu = ({
                 }}
               />
             ))}
-          </DropdownMenu.Items>
-        </DropdownMenu>
+          </NewDropdownMenuContent>
+        </NewDropdownMenu>
       </>
     )
   );

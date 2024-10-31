@@ -107,7 +107,7 @@ export default function SpaceFolderModal({
       if (dataSourceView) {
         onClose();
         await router.push(
-          `/w/${owner.sId}/vaults/${space.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
+          `/w/${owner.sId}/spaces/${space.sId}/categories/folder/data_source_views/${dataSourceView.sId}`
         );
       }
     } else {
@@ -124,7 +124,7 @@ export default function SpaceFolderModal({
     if (res) {
       onClose();
       await router.push(
-        `/w/${owner.sId}/vaults/${space.sId}/categories/folder`
+        `/w/${owner.sId}/spaces/${space.sId}/categories/folder`
       );
     }
   };
