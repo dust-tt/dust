@@ -3,14 +3,8 @@ import React from "react";
 
 import {
   ArrowRightIcon,
-  Button,
   Item,
   LightbulbIcon,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuGroup,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
   PlusIcon,
 } from "../index_with_tw_base";
 import { Cog6ToothIcon } from "../index_with_tw_base";
@@ -81,80 +75,6 @@ export const ListItemExample = () => (
         />
       </Item.List>
     </div>
-    <div className="s-flex s-flex-col s-gap-8">
-      Dropdown example:
-      <div>
-        <NewDropdownMenu>
-          <NewDropdownMenuTrigger asChild>
-            <Button label="Dust" />
-          </NewDropdownMenuTrigger>
-          <NewDropdownMenuContent>
-            <NewDropdownMenuGroup>
-              <NewDropdownMenuItem label="item 1" href="#" />
-              <NewDropdownMenuItem label="item 2" href="#" />
-            </NewDropdownMenuGroup>
-          </NewDropdownMenuContent>
-        </NewDropdownMenu>
-      </div>
-      <div>
-        <NewDropdownMenu>
-          <NewDropdownMenuTrigger asChild>
-            <Button label="Dust" />
-          </NewDropdownMenuTrigger>
-          <NewDropdownMenuContent>
-            <NewDropdownMenuGroup>
-              <NewDropdownMenuItem
-                label="item 1"
-                href="#"
-                icon={Cog6ToothIcon}
-              />
-              <NewDropdownMenuItem
-                label="item 2"
-                href="#"
-                icon={Cog6ToothIcon}
-              />
-            </NewDropdownMenuGroup>
-          </NewDropdownMenuContent>
-        </NewDropdownMenu>
-      </div>
-      <div>
-        <NewDropdownMenu>
-          <NewDropdownMenuTrigger asChild>
-            <Button label="Dust" />
-          </NewDropdownMenuTrigger>
-          <NewDropdownMenuContent>
-            <NewDropdownMenuGroup>
-              <NewDropdownMenuItem
-                label="item 1"
-                href="#"
-                icon={Cog6ToothIcon}
-                description="Desciption of the item"
-              />
-              <NewDropdownMenuItem
-                label="Dust site"
-                href="https://dust.tt"
-                target="_blank"
-                icon={Cog6ToothIcon}
-                description="Desciption of the item"
-              />
-              <NewDropdownMenuItem
-                label="item 1"
-                href="#"
-                icon={Cog6ToothIcon}
-                description="Desciption of the item"
-              />
-              <NewDropdownMenuItem
-                label="item 2"
-                href="#"
-                icon={Cog6ToothIcon}
-                description="Desciption of the item"
-              />
-            </NewDropdownMenuGroup>
-          </NewDropdownMenuContent>
-        </NewDropdownMenu>
-      </div>
-    </div>
-
     <div>
       Avatar example:
       <Item.List className="s-w-40">
