@@ -35,7 +35,7 @@ async function _getZendeskConnectorOrRaise(connectorId: ModelId) {
 
 async function _getZendeskConfigurationOrRaise(connectorId: ModelId) {
   const configuration =
-    await ZendeskConfigurationResource.fetchById(connectorId);
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
     throw new Error("[Zendesk] Configuration not found.");
   }

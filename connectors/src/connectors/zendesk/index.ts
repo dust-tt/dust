@@ -202,9 +202,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
 
     const connectionId = connector.connectionId;
-    const zendeskConfiguration = await ZendeskConfigurationResource.fetchById(
-      this.connectorId
-    );
+    const zendeskConfiguration =
+      await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
     if (!zendeskConfiguration) {
       logger.error(
         { connectorId },
