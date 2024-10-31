@@ -90,7 +90,7 @@ export async function launchZendeskSyncWorkflow({
 
 export async function stopZendeskSyncWorkflow(
   connectorId: ModelId
-): Promise<Result<void, Error>> {
+): Promise<Result<undefined, Error>> {
   const client = await getTemporalClient();
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {

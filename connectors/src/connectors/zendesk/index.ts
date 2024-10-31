@@ -105,12 +105,11 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    const result = await stopZendeskSyncWorkflow(this.connectorId);
-    return result.isErr() ? result : new Ok(undefined);
+    return stopZendeskSyncWorkflow(this.connectorId);
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    const {connectorId} = this;
+    const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
