@@ -139,6 +139,9 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
           "/w/[wId]/members",
           "/w/[wId]/workspace",
           "/w/[wId]/subscription",
+          "/w/[wId]/developers/providers",
+          "/w/[wId]/developers/api-keys",
+          "/w/[wId]/developers/dev-secrets",
         ].includes(currentRoute),
       sizing: "hug",
     });
