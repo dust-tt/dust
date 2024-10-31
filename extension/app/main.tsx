@@ -1,9 +1,9 @@
 // Tailwind base globals
-import "@app/styles/global.css";
+import "./src/css/global.css";
 // Use sparkle styles, override local globals
 import "@dust-tt/sparkle/dist/sparkle.css";
 // Local tailwind components override sparkle styles
-import "@app/styles/components.css";
+import "./src/css/components.css";
 
 import { AuthProvider } from "@extension/components/auth/AuthProvider";
 import { routes } from "@extension/pages/routes";

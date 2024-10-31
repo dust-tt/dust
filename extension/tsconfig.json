@@ -9,9 +9,9 @@
     "declaration": false,
     "noEmit": false,
     "isolatedModules": true,
-    "baseUrl": "../",
+    "baseUrl": "./app",
     "outDir": "./build",
-    "rootDir": "..",
+    "rootDir": "./app",
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -22,8 +22,7 @@
     "noImplicitAny": true,
     "types": ["chrome", "react", "react-dom"],
     "paths": {
-      "@app/*": ["./*"],
-      "@extension/*": ["./extension/app/src/*"]
+      "@extension/*": ["./src/*"]
     }
   },
   "include": ["app/**/*"],
