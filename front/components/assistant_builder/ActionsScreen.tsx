@@ -11,6 +11,13 @@ import {
   Input,
   Modal,
   MoreIcon,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuGroup,
+  NewDropdownMenuItem,
+  NewDropdownMenuLabel,
+  NewDropdownMenuSeparator,
+  NewDropdownMenuTrigger,
   Page,
   PlusIcon,
   Popover,
@@ -1007,50 +1014,55 @@ interface AddActionProps {
 
 function AddAction({ onAddAction }: AddActionProps) {
   return (
-    <DropdownMenu>
-      <DropdownMenu.Button>
+    <NewDropdownMenu>
+      <NewDropdownMenuTrigger asChild>
         <Button variant="primary" label="Add a tool" icon={PlusIcon} />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items origin="topLeft" width={320} overflow="visible">
-        <DropdownMenu.SectionHeader label="DATA SOURCES" />
-        {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
-          const spec = ACTION_SPECIFICATIONS[key];
-          const defaultAction = getDefaultActionConfiguration(key);
-          if (!defaultAction) {
-            // Unreachable
-            return null;
-          }
-          return (
-            <DropdownMenu.Item
-              key={key}
-              label={spec.label}
-              icon={spec.dropDownIcon}
-              description={spec.description}
-              onClick={() => onAddAction(defaultAction)}
-            />
-          );
-        })}
+      </NewDropdownMenuTrigger>
 
-        <DropdownMenu.SectionHeader label="ADVANCED ACTIONS" />
-        {ADVANCED_ACTION_CATEGORIES.map((key) => {
-          const spec = ACTION_SPECIFICATIONS[key];
-          const defaultAction = getDefaultActionConfiguration(key);
-          if (!defaultAction) {
-            // Unreachable
-            return null;
-          }
-          return (
-            <DropdownMenu.Item
-              key={key}
-              label={spec.label}
-              icon={spec.dropDownIcon}
-              description={spec.description}
-              onClick={() => onAddAction(defaultAction)}
-            />
-          );
-        })}
-      </DropdownMenu.Items>
-    </DropdownMenu>
+      <NewDropdownMenuContent>
+        <NewDropdownMenuGroup>
+          <NewDropdownMenuLabel label="Data Sources" />
+          {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
+            const spec = ACTION_SPECIFICATIONS[key];
+            const defaultAction = getDefaultActionConfiguration(key);
+            if (!defaultAction) {
+              return null;
+            }
+
+            return (
+              <NewDropdownMenuItem
+                key={key}
+                onClick={() => onAddAction(defaultAction)}
+                icon={spec.dropDownIcon}
+                label={spec.label}
+                description={spec.description}
+              />
+            );
+          })}
+        </NewDropdownMenuGroup>
+        <NewDropdownMenuSeparator />
+        <NewDropdownMenuGroup>
+          <NewDropdownMenuLabel label="Advanced Actions" />
+          {ADVANCED_ACTION_CATEGORIES.map((key) => {
+            const spec = ACTION_SPECIFICATIONS[key];
+            const defaultAction = getDefaultActionConfiguration(key);
+            if (!defaultAction) {
+              return null;
+            }
+
+            return (
+              <NewDropdownMenuItem
+                key={key}
+                onClick={() => onAddAction(defaultAction)}
+                icon={spec.dropDownIcon}
+                label={spec.label}
+                description={spec.description}
+              />
+            );
+          })}
+        </NewDropdownMenuGroup>
+      </NewDropdownMenuContent>
+    </NewDropdownMenu>
   );
 }
 
