@@ -247,12 +247,11 @@ const PROVIDER_STRATEGIES: Record<
   zendesk: {
     setupUri: (connection) => {
       const scopes = ["read"];
-      let subdomain = "not-valid-will-fail";
-      if (isValidZendeskSubdomain(connection.metadata.extra_config)) {
-        subdomain = connection.metadata.extra_config;
+      if (!isValidZendeskSubdomain(connection.metadata.extra_config)) {
+        throw "Invalid Zendesk subdomain";
       }
       return (
-        `https://${subdomain}.zendesk.com/oauth/authorizations/new?` +
+        `https://${connection.metadata.extra_config}.zendesk.com/oauth/authorizations/new?` +
         `client_id=${config.getOAuthZendeskClientId()}` +
         `&scope=${encodeURIComponent(scopes.join(" "))}` +
         `&response_type=code` +
