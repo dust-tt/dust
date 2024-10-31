@@ -28,13 +28,16 @@ export function CreateConnectionConfirmationModal({
   const [isLoading, setIsLoading] = useState(false);
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
 
-  const isExtraConfigValid = useCallback(() => {
-    if (connectorProviderConfiguration.connectorProvider === "zendesk") {
-      return isValidZendeskSubdomain(extraConfig.zendesk_subdomain);
-    } else {
-      return true;
-    }
-  }, [connectorProviderConfiguration.connectorProvider, extraConfig]);
+  const isExtraConfigValid = useCallback(
+    (extraConfig: Record<string, string>) => {
+      if (connectorProviderConfiguration.connectorProvider === "zendesk") {
+        return isValidZendeskSubdomain(extraConfig.zendesk_subdomain);
+      } else {
+        return true;
+      }
+    },
+    [connectorProviderConfiguration.connectorProvider]
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -143,7 +146,7 @@ export function CreateConnectionConfirmationModal({
                   setIsLoading(true);
                   onConfirm(extraConfig);
                 }}
-                disabled={!isExtraConfigValid() || isLoading}
+                disabled={!isExtraConfigValid(extraConfig) || isLoading}
                 label={
                   isLoading
                     ? "Connecting..."
