@@ -12,6 +12,7 @@ import {
   NewDropdownMenuTrigger,
   Page,
   PlusIcon,
+  ScrollArea,
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -196,28 +197,30 @@ export function APIKeys({
               />
             </NewDropdownMenuTrigger>
             <NewDropdownMenuContent>
-              {groups
-                .sort((a, b) => {
-                  // Put global groups first
-                  if (a.kind === "global" && b.kind !== "global") {
-                    return -1;
-                  }
-                  if (a.kind !== "global" && b.kind === "global") {
-                    return 1;
-                  }
+              <ScrollArea className="h-[300px]">
+                {groups
+                  .sort((a, b) => {
+                    // Put global groups first
+                    if (a.kind === "global" && b.kind !== "global") {
+                      return -1;
+                    }
+                    if (a.kind !== "global" && b.kind === "global") {
+                      return 1;
+                    }
 
-                  // Then sort alphabetically case insensitive
-                  return prettifyGroupName(a)
-                    .toLowerCase()
-                    .localeCompare(prettifyGroupName(b).toLowerCase());
-                })
-                .map((group: GroupType) => (
-                  <NewDropdownMenuItem
-                    key={group.id}
-                    label={prettifyGroupName(group)}
-                    onClick={() => setNewApiKeyGroup(group)}
-                  />
-                ))}
+                    // Then sort alphabetically case insensitive
+                    return prettifyGroupName(a)
+                      .toLowerCase()
+                      .localeCompare(prettifyGroupName(b).toLowerCase());
+                  })
+                  .map((group: GroupType) => (
+                    <NewDropdownMenuItem
+                      key={group.id}
+                      label={prettifyGroupName(group)}
+                      onClick={() => setNewApiKeyGroup(group)}
+                    />
+                  ))}
+              </ScrollArea>
             </NewDropdownMenuContent>
           </NewDropdownMenu>
         </div>
