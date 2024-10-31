@@ -154,6 +154,7 @@ async function updateParentsFieldForConnector(
                 dataSourceConfig: dataSourceConfigFromConnector(connector),
                 documentId,
                 parents,
+                retries: 3,
               });
             }
             if (tableId) {
@@ -161,6 +162,7 @@ async function updateParentsFieldForConnector(
                 dataSourceConfig: dataSourceConfigFromConnector(connector),
                 tableId,
                 parents,
+                retries: 3,
               });
             }
           } catch (e) {
