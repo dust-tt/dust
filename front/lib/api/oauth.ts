@@ -4,7 +4,7 @@ import type {
   Result,
 } from "@dust-tt/types";
 import type { OAuthProvider, OAuthUseCase } from "@dust-tt/types";
-import { Err, OAuthAPI, Ok } from "@dust-tt/types";
+import { Err, isValidZendeskSubdomain, OAuthAPI, Ok } from "@dust-tt/types";
 import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
 
@@ -247,8 +247,12 @@ const PROVIDER_STRATEGIES: Record<
   zendesk: {
     setupUri: (connection) => {
       const scopes = ["read"];
+      let subdomain = "not-valid-will-fail";
+      if (isValidZendeskSubdomain(connection.metadata.extra_config)) {
+        subdomain = connection.metadata.extra_config;
+      }
       return (
-        `https://d3v-dust.zendesk.com/oauth/authorizations/new?` +
+        `https://${subdomain}.zendesk.com/oauth/authorizations/new?` +
         `client_id=${config.getOAuthZendeskClientId()}` +
         `&scope=${encodeURIComponent(scopes.join(" "))}` +
         `&response_type=code` +

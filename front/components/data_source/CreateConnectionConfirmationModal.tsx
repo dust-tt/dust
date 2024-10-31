@@ -6,6 +6,7 @@ import {
   Modal,
   Page,
 } from "@dust-tt/sparkle";
+import { isValidZendeskSubdomain } from "@dust-tt/types";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -29,7 +30,7 @@ export function CreateConnectionConfirmationModal({
 
   const isExtraConfigValid = useCallback(() => {
     if (connectorProviderConfiguration.connectorProvider === "zendesk") {
-      return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(extraConfig || "");
+      return isValidZendeskSubdomain(extraConfig);
     } else {
       return true;
     }
