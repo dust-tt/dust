@@ -82,23 +82,27 @@ const NavigationListItem = React.forwardRef<
 
     return (
       <div className={className} ref={ref} {...props}>
-        <div
-          className={listStyles({
-            layout: "item",
-            state: selected ? "selected" : isPressed ? "active" : "unselected",
-          })}
-          onMouseLeave={() => {
-            setIsPressed(false);
-          }}
-          onMouseDown={handleMouseDown}
-          onMouseUp={() => setIsPressed(false)}
+        <LinkWrapper
+          href={href}
+          target={target}
+          rel={rel}
+          replace={replace}
+          shallow={shallow}
         >
-          <LinkWrapper
-            href={href}
-            target={target}
-            rel={rel}
-            replace={replace}
-            shallow={shallow}
+          <div
+            className={listStyles({
+              layout: "item",
+              state: selected
+                ? "selected"
+                : isPressed
+                  ? "active"
+                  : "unselected",
+            })}
+            onMouseLeave={() => {
+              setIsPressed(false);
+            }}
+            onMouseDown={handleMouseDown}
+            onMouseUp={() => setIsPressed(false)}
           >
             {icon && <Icon visual={icon} size="sm" />}
             {label && (
@@ -111,8 +115,8 @@ const NavigationListItem = React.forwardRef<
                 {moreMenu}
               </div>
             )}
-          </LinkWrapper>
-        </div>
+          </div>
+        </LinkWrapper>
       </div>
     );
   }
