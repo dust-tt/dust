@@ -196,13 +196,28 @@ export function APIKeys({
               />
             </NewDropdownMenuTrigger>
             <NewDropdownMenuContent>
-              {groups.map((group: GroupType) => (
-                <NewDropdownMenuItem
-                  key={group.id}
-                  label={prettifyGroupName(group)}
-                  onClick={() => setNewApiKeyGroup(group)}
-                />
-              ))}
+              {groups
+                .sort((a, b) => {
+                  // Put global groups first
+                  if (a.kind === "global" && b.kind !== "global") {
+                    return -1;
+                  }
+                  if (a.kind !== "global" && b.kind === "global") {
+                    return 1;
+                  }
+
+                  // Then sort alphabetically case insensitive
+                  return prettifyGroupName(a)
+                    .toLowerCase()
+                    .localeCompare(prettifyGroupName(b).toLowerCase());
+                })
+                .map((group: GroupType) => (
+                  <NewDropdownMenuItem
+                    key={group.id}
+                    label={prettifyGroupName(group)}
+                    onClick={() => setNewApiKeyGroup(group)}
+                  />
+                ))}
             </NewDropdownMenuContent>
           </NewDropdownMenu>
         </div>
