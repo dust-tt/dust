@@ -44,6 +44,12 @@ export type MessageType =
   | UserMessageType
   | ContentFragmentType;
 
+export type MessageWithContentFragmentsType =
+  | AgentMessageType
+  | (UserMessageType & {
+      contenFragments?: ContentFragmentType[];
+    });
+
 export type WithRank<T> = T & {
   rank: number;
 };
@@ -248,3 +254,9 @@ export type SubmitMessageError = {
   title: string;
   message: string;
 };
+
+export interface FetchConversationMessagesResponse {
+  hasMore: boolean;
+  lastValue: number | null;
+  messages: MessageWithRankType[];
+}

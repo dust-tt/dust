@@ -1,8 +1,8 @@
-import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
 import type {
   AgentMessageType,
   ContentFragmentType,
   LightWorkspaceType,
+  MessageWithContentFragmentsType,
   UserMessageType,
 } from "@dust-tt/types";
 import { isContentFragmentType, isUserMessageType } from "@dust-tt/types";

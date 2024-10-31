@@ -1,7 +1,7 @@
-import { usePublicConversation } from "@app/extension/app/src/components/conversation/usePublicConversation";
 import { BarHeader, ExternalLinkIcon, IconButton } from "@dust-tt/sparkle";
 import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
 import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
+import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
 import { useNavigate, useParams } from "react-router-dom";
 
 export const ConversationPage = ({

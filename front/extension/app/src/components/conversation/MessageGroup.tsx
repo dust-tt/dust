@@ -1,8 +1,8 @@
-import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import type {
   ConversationMessageReactions,
+  FetchConversationMessagesResponse,
   LightWorkspaceType,
+  MessageWithContentFragmentsType,
 } from "@dust-tt/types";
 import MessageItem from "@extension/components/conversation/MessageItem";
 import type { StoredUser } from "@extension/lib/storage";

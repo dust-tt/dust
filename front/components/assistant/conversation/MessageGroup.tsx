@@ -1,13 +1,13 @@
 import type {
   ConversationMessageReactions,
+  FetchConversationMessagesResponse,
+  MessageWithContentFragmentsType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import React, { useEffect, useRef } from "react";
 
-import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
 import MessageItem from "@app/components/assistant/conversation/MessageItem";
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 
 interface MessageGroupProps {
   messages: MessageWithContentFragmentsType[][];
