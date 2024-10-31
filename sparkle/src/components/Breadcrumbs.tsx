@@ -68,7 +68,7 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
                   <Button variant="ghost" label={ELLIPSIS_STRING} />
                 </NewDropdownMenuTrigger>
 
-                <NewDropdownMenuContent align="start" className="min-w-[220px]">
+                <NewDropdownMenuContent align="start">
                   <NewDropdownMenuGroup>
                     {itemsHidden.map((item, index) => (
                       <NewDropdownMenuItem
