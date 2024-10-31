@@ -1,4 +1,3 @@
-import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -6,6 +5,7 @@ import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 
 /**
  * @swagger
@@ -48,7 +48,7 @@ import { apiError } from "@app/logger/withlogging";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetAgentConfigurationsResponseType>
+    WithAPIErrorResponse<GetAgentConfigurationsResponseBody>
   >,
   auth: Authenticator
 ): Promise<void> {

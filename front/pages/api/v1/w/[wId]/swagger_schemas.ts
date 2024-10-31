@@ -173,9 +173,9 @@
  *           type: string
  *           description: Scope of the agent configuration
  *           example: "workspace"
- *         userFavorite:
- *           type: boolean
- *           description: Status of the user favorite for this configuration
+ *         userListStatus:
+ *           type: string
+ *           description: Status of the user list for this configuration
  *           example: "all_users"
  *         model:
  *           type: object

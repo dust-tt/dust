@@ -225,15 +225,27 @@ export default function NamingScreen({
 
   const [generatingDescription, setGeneratingDescription] = useState(false);
   const [descriptionIsGenerated, setDescriptionIsGenerated] = useState(false);
+  const [isDescriptionInputDisabled, setIsDescriptionInputDisabled] =
+    useState(false);
+
   const suggestDescription = useCallback(
     async (fromUserClick?: boolean) => {
+      if (!fromUserClick && builderState.description?.trim()) {
+        return;
+      }
+
       setGeneratingDescription(true);
+      if (fromUserClick) {
+        setIsDescriptionInputDisabled(true);
+      }
+
       const notifyError = fromUserClick ? sendNotification : console.log;
       const descriptionSuggestions = await getDescriptionSuggestions({
         owner,
         instructions: builderState.instructions || "",
         name: builderState.handle || "",
       });
+
       if (descriptionSuggestions.isOk()) {
         const suggestion =
           descriptionSuggestions.value.status === "ok" &&
@@ -241,11 +253,21 @@ export default function NamingScreen({
             ? descriptionSuggestions.value.suggestions[0]
             : null;
         if (suggestion) {
-          setBuilderState((state) => ({
-            ...state,
-            description: suggestion,
-          }));
-          setDescriptionIsGenerated(true);
+          setBuilderState((currentState) => {
+            // For manual generation, always apply. For auto, only if empty
+            const shouldApplySuggestion =
+              fromUserClick || !currentState.description?.trim();
+
+            if (!shouldApplySuggestion) {
+              return currentState;
+            }
+
+            setDescriptionIsGenerated(true);
+            return {
+              ...currentState,
+              description: suggestion,
+            };
+          });
         } else {
           const errorMessage =
             descriptionSuggestions.value.status === "unavailable"
@@ -258,21 +280,26 @@ export default function NamingScreen({
             description: errorMessage,
           });
         }
-      } else {
+      } else if (fromUserClick) {
         notifyError({
           type: "error",
           title: "Error generating description suggestion.",
           description: descriptionSuggestions.error.message,
         });
       }
+
       setGeneratingDescription(false);
+      if (fromUserClick) {
+        setIsDescriptionInputDisabled(false);
+      }
     },
     [
-      owner,
+      builderState.description,
       builderState.instructions,
       builderState.handle,
-      setBuilderState,
       sendNotification,
+      owner,
+      setBuilderState,
     ]
   );
 
@@ -363,8 +390,7 @@ export default function NamingScreen({
                     handle: e.target.value.trim(),
                   }));
                 }}
-                message={assistantHandleError}
-                messageStatus="error"
+                isError={!!assistantHandleError}
                 name="assistantName"
                 className="text-sm"
               />
@@ -401,7 +427,7 @@ export default function NamingScreen({
                     ? "Generating description..."
                     : "Click on sparkles to generate a description"
                 }
-                value={generatingDescription ? "" : builderState.description}
+                value={builderState.description}
                 onChange={(e) => {
                   setEdited(true);
                   setDescriptionIsGenerated(false);
@@ -411,9 +437,8 @@ export default function NamingScreen({
                   }));
                 }}
                 name="assistantDescription"
-                message={descriptionError}
-                messageStatus="error"
-                disabled={generatingDescription}
+                isError={!!descriptionError}
+                disabled={isDescriptionInputDisabled}
               />
             </div>
             {generatingDescription ? (
@@ -433,7 +458,7 @@ export default function NamingScreen({
                         "Heads up! This will overwrite your current description. Are you sure you want to proceed?",
                     }))
                   ) {
-                    await suggestDescription();
+                    await suggestDescription(true);
                   }
                 }}
                 tooltip="Click to generate a description"

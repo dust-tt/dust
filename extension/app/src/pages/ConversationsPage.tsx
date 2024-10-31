@@ -1,4 +1,3 @@
-import type { ConversationWithoutContentPublicType } from "@dust-tt/client";
 import {
   BarHeader,
   ExternalLinkIcon,
@@ -7,6 +6,7 @@ import {
   NavigationListItem,
   NavigationListLabel,
 } from "@dust-tt/sparkle";
+import type { ConversationWithoutContentType } from "@dust-tt/types";
 import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
 import { useConversations } from "@extension/components/conversation/useConversations";
 import moment from "moment";
@@ -27,7 +27,7 @@ export const ConversationsPage = ({
   const conversations = useConversations({ workspaceId: workspace.sId });
 
   const groupConversationsByDate = (
-    conversations: ConversationWithoutContentPublicType[]
+    conversations: ConversationWithoutContentType[]
   ) => {
     const today = moment().startOf("day");
     const yesterday = moment().subtract(1, "days").startOf("day");
@@ -35,7 +35,7 @@ export const ConversationsPage = ({
     const lastMonth = moment().subtract(1, "months").startOf("day");
     const lastYear = moment().subtract(1, "years").startOf("day");
 
-    const groups: Record<GroupLabel, ConversationWithoutContentPublicType[]> = {
+    const groups: Record<GroupLabel, ConversationWithoutContentType[]> = {
       Today: [],
       Yesterday: [],
       "Last Week": [],
@@ -44,7 +44,7 @@ export const ConversationsPage = ({
       Older: [],
     };
 
-    conversations.forEach((conversation) => {
+    conversations.forEach((conversation: ConversationWithoutContentType) => {
       const createdDate = moment(conversation.created);
       if (createdDate.isSameOrAfter(today)) {
         groups["Today"].push(conversation);
@@ -66,7 +66,7 @@ export const ConversationsPage = ({
 
   const conversationsByDate = conversations.conversations.length
     ? groupConversationsByDate(conversations.conversations)
-    : ({} as Record<GroupLabel, ConversationWithoutContentPublicType[]>);
+    : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
 
   return (
     <>
@@ -107,7 +107,7 @@ const RenderConversations = ({
   dateLabel,
   navigate,
 }: {
-  conversations: ConversationWithoutContentPublicType[];
+  conversations: ConversationWithoutContentType[];
   dateLabel: string;
   navigate: (path: string) => void;
 }) => {
@@ -115,9 +115,7 @@ const RenderConversations = ({
     return null;
   }
 
-  const getLabel = (
-    conversation: ConversationWithoutContentPublicType
-  ): string => {
+  const getLabel = (conversation: ConversationWithoutContentType): string => {
     const conversationLabel =
       conversation.title ||
       (moment(conversation.created).isSame(moment(), "day")

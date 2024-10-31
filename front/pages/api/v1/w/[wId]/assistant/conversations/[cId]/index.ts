@@ -1,5 +1,4 @@
-import type { GetConversationResponseType } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type { ConversationType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
@@ -52,7 +51,9 @@ import { apiError } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetConversationResponseType>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<{ conversation: ConversationType }>
+  >,
   auth: Authenticator
 ): Promise<void> {
   const { cId } = req.query;
