@@ -83,7 +83,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           workspaceId: dataSourceConfig.workspaceId,
           error: workflowStartResult.error,
         },
-        "[Zendesk] Error creating connector, could not launch sync workflow."
+        "[Zendesk] Error launching the sync workflow."
       );
       throw workflowStartResult.error;
     }
