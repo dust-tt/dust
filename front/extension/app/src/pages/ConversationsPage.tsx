@@ -1,16 +1,16 @@
 import {
   BarHeader,
-  ChevronLeftIcon,
+  ExternalLinkIcon,
+  IconButton,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
-  Page,
 } from "@dust-tt/sparkle";
 import type { ConversationWithoutContentType } from "@dust-tt/types";
 import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
 import { useConversations } from "@extension/components/conversation/useConversations";
 import moment from "moment";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 type GroupLabel =
   | "Today"
@@ -71,16 +71,23 @@ export const ConversationsPage = ({
   return (
     <>
       <BarHeader
-        title="Home"
-        leftActions={
-          <Link to="/">
-            <ChevronLeftIcon />
-          </Link>
+        title="Conversations"
+        rightActions={
+          <div>
+            <a
+              href={`${process.env.DUST_DOMAIN}/w/${workspace.sId}`}
+              target="_blank"
+            >
+              <IconButton icon={ExternalLinkIcon} />
+            </a>
+            <BarHeader.ButtonBar
+              variant="close"
+              onClose={() => navigate("/")}
+            />
+          </div>
         }
       />
       <div className="h-full w-full pt-4">
-        <Page.SectionHeader title="Conversations" />
-
         {conversationsByDate &&
           Object.keys(conversationsByDate).map((dateLabel) => (
             <RenderConversations
