@@ -347,24 +347,24 @@
  *           example: "text/plain"
  *         context:
  *           $ref: '#/components/schemas/Context'
- *     Vault:
+ *     Space:
  *       type: object
  *       properties:
  *         sId:
  *           type: string
- *           description: Unique string identifier for the vault
+ *           description: Unique string identifier for the space
  *         name:
  *           type: string
- *           description: Name of the vault
+ *           description: Name of the space
  *         kind:
  *           type: string
  *           enum: [regular, global, system, public]
- *           description: The kind of the vault
+ *           description: The kind of the space
  *         groupIds:
  *           type: array
  *           items:
  *             type: string
- *           description: List of group IDs that have access to the vault
+ *           description: List of group IDs that have access to the space
  *     Datasource:
  *       type: object
  *       properties:
@@ -441,9 +441,9 @@
  *         updatedAt:
  *           type: number
  *           description: Timestamp of when the data source view was last updated
- *         vaultId:
+ *         spaceId:
  *           type: string
- *           description: ID of the vault containing the data source view
+ *           description: ID of the space containing the data source view
  *     Run:
  *       type: object
  *       properties:
