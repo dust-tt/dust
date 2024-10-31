@@ -76,6 +76,7 @@ export const NewNavigationListDemo = () => {
                 return (
                   <NavigationListItem
                     key={index}
+                    href={index / 2 === 0 ? "title" : undefined}
                     selected={itemIndex === selectedIndex}
                     onClick={() => setSelectedIndex(itemIndex)}
                     label={title}

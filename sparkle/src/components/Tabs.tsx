@@ -52,7 +52,7 @@ const TabsTrigger = React.forwardRef<
     },
     ref
   ) => {
-    const content = (
+    return (
       <TabsPrimitive.Trigger
         ref={ref}
         className={cn(
@@ -64,27 +64,23 @@ const TabsTrigger = React.forwardRef<
         {...props}
       >
         <div>
-          <Button
-            variant="ghost"
-            size="sm"
-            label={label}
-            icon={icon}
-            disabled={disabled}
-          />
+          <LinkWrapper
+            href={href}
+            target={target}
+            rel={rel}
+            replace={replace}
+            shallow={shallow}
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              label={label}
+              icon={icon}
+              disabled={disabled}
+            />
+          </LinkWrapper>
         </div>
       </TabsPrimitive.Trigger>
-    );
-
-    return (
-      <LinkWrapper
-        href={href}
-        target={target}
-        rel={rel}
-        replace={replace}
-        shallow={shallow}
-      >
-        {content}
-      </LinkWrapper>
     );
   }
 );
