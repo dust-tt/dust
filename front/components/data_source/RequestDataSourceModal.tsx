@@ -1,7 +1,10 @@
 import {
   Button,
-  DropdownMenu,
   Modal,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
   PlusIcon,
   TextArea,
 } from "@dust-tt/sparkle";
@@ -76,11 +79,11 @@ export function RequestDataSourceModal({
                 <label className="block text-sm font-medium text-element-800">
                   <p>Where are the requested Data hosted?</p>
                 </label>
-                <DropdownMenu>
-                  <DropdownMenu.Button>
+                <NewDropdownMenu>
+                  <NewDropdownMenuTrigger asChild>
                     {selectedDataSource && isManaged(selectedDataSource) ? (
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         label={getDisplayNameForDataSource(selectedDataSource)}
                         icon={getConnectorProviderLogoWithFallback(
                           selectedDataSource.connectorProvider
@@ -89,17 +92,17 @@ export function RequestDataSourceModal({
                     ) : (
                       <Button
                         label="Pick your platform"
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         isSelect
                       />
                     )}
-                  </DropdownMenu.Button>
-                  <DropdownMenu.Items width={180}>
+                  </NewDropdownMenuTrigger>
+                  <NewDropdownMenuContent>
                     {dataSources.map(
                       (dataSource) =>
                         dataSource.connectorProvider && (
-                          <DropdownMenu.Item
+                          <NewDropdownMenuItem
                             key={dataSource.sId}
                             label={getDisplayNameForDataSource(dataSource)}
                             onClick={() => setSelectedDataSource(dataSource)}
@@ -109,8 +112,8 @@ export function RequestDataSourceModal({
                           />
                         )
                     )}
-                  </DropdownMenu.Items>
-                </DropdownMenu>
+                  </NewDropdownMenuContent>
+                </NewDropdownMenu>
               </>
             )}
           </div>

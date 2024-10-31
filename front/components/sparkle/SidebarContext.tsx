@@ -1,12 +1,16 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 
 export const SidebarContext = React.createContext<{
   sidebarOpen: boolean;
   setSidebarOpen: (value: boolean) => void;
+  toggleSidebar: () => void;
 }>({
   sidebarOpen: false,
   setSidebarOpen: (value) => {
     throw new Error("SidebarContext not initialized: " + value);
+  },
+  toggleSidebar: () => {
+    throw new Error("SidebarContext not initialized");
   },
 });
 
@@ -17,8 +21,14 @@ export const SidebarProvider = ({
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen((prev) => !prev);
+  }, []);
+
   return (
-    <SidebarContext.Provider value={{ sidebarOpen, setSidebarOpen }}>
+    <SidebarContext.Provider
+      value={{ sidebarOpen, setSidebarOpen, toggleSidebar }}
+    >
       {children}
     </SidebarContext.Provider>
   );

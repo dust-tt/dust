@@ -13,7 +13,7 @@ import { useState } from "react";
 
 import { useApps } from "@app/lib/swr/apps";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
-import type { PostAppResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/apps";
+import type { PostAppResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps";
 
 interface SpaceCreateAppModalProps {
   isOpen: boolean;
@@ -70,7 +70,7 @@ export const SpaceCreateAppModal = ({
     });
 
     if (name && description && !nameError && !descriptionError) {
-      const res = await fetch(`/api/w/${owner.sId}/vaults/${space.sId}/apps`, {
+      const res = await fetch(`/api/w/${owner.sId}/spaces/${space.sId}/apps`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -85,7 +85,7 @@ export const SpaceCreateAppModal = ({
         const response: PostAppResponseBody = await res.json();
         const { app } = response;
         await router.push(
-          `/w/${owner.sId}/vaults/${app.space.sId}/apps/${app.sId}`
+          `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`
         );
         setIsOpen(false);
 

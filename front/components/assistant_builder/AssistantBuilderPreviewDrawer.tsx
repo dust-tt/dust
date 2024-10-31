@@ -1,11 +1,14 @@
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
-  DropdownMenu,
   LightbulbIcon,
   MagicIcon,
   Markdown,
   MoreIcon,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
   Page,
   Spinner,
   Tabs,
@@ -291,28 +294,30 @@ const TemplateAddActionButton = ({
   );
 };
 
-const TemplateDropDownMenu = ({
-  screen,
-  removeTemplate,
-  resetToTemplateInstructions,
-  resetToTemplateActions,
-  openRightPanelTab,
-}: {
-  screen: BuilderScreen;
-  removeTemplate: () => Promise<void>;
-  resetToTemplateInstructions: () => Promise<void>;
-  resetToTemplateActions: () => Promise<void>;
+interface TemplateDropDownMenuProps {
   openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
-}) => {
+  removeTemplate: () => Promise<void>;
+  resetToTemplateActions: () => Promise<void>;
+  resetToTemplateInstructions: () => Promise<void>;
+  screen: BuilderScreen;
+}
+
+const TemplateDropDownMenu = ({
+  openRightPanelTab,
+  removeTemplate,
+  resetToTemplateActions,
+  resetToTemplateInstructions,
+  screen,
+}: TemplateDropDownMenuProps) => {
   const confirm = useContext(ConfirmContext);
 
   return (
-    <DropdownMenu className="text-element-700">
-      <DropdownMenu.Button>
+    <NewDropdownMenu>
+      <NewDropdownMenuTrigger asChild>
         <Button icon={MoreIcon} size="sm" variant="ghost" />
-      </DropdownMenu.Button>
-      <DropdownMenu.Items width={320} origin="topRight">
-        <DropdownMenu.Item
+      </NewDropdownMenuTrigger>
+      <NewDropdownMenuContent>
+        <NewDropdownMenuItem
           label="Close the template"
           onClick={async () => {
             const confirmed = await confirm({
@@ -329,7 +334,7 @@ const TemplateDropDownMenu = ({
           icon={XMarkIcon}
         />
         {screen === "instructions" && (
-          <DropdownMenu.Item
+          <NewDropdownMenuItem
             label="Reset instructions"
             description="Set instructions back to template's default"
             onClick={async () => {
@@ -347,9 +352,9 @@ const TemplateDropDownMenu = ({
           />
         )}
         {screen === "actions" && (
-          <DropdownMenu.Item
-            label={"Reset tools"}
-            description={"Remove all tools"}
+          <NewDropdownMenuItem
+            label="Reset tools"
+            description="Remove all tools"
             onClick={async () => {
               const confirmed = await confirm({
                 title: "Are you sure?",
@@ -364,7 +369,7 @@ const TemplateDropDownMenu = ({
             icon={MagicIcon}
           />
         )}
-      </DropdownMenu.Items>
-    </DropdownMenu>
+      </NewDropdownMenuContent>
+    </NewDropdownMenu>
   );
 };

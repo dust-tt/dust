@@ -38,6 +38,10 @@ export const ACTION_MODES = [
 
 // Retrieval configuration
 
+export interface AssistantBuilderBaseConfiguration {
+  timeFrame: AssistantBuilderTimeFrame;
+}
+
 export type AssistantBuilderTimeFrame = {
   value: number;
   unit: TimeframeUnit;
@@ -47,10 +51,10 @@ export type AssistantBuilderTagsFilter = {
   in: string[];
 };
 
-export type AssistantBuilderRetrievalConfiguration = {
-  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
-  timeFrame: AssistantBuilderTimeFrame;
-};
+export type AssistantBuilderRetrievalConfiguration =
+  AssistantBuilderBaseConfiguration & {
+    dataSourceConfigurations: DataSourceViewSelectionConfigurations;
+  };
 
 // DustAppRun configuration
 
@@ -65,12 +69,12 @@ export type AssistantBuilderTableConfiguration =
 
 // Process configuration
 
-export type AssistantBuilderProcessConfiguration = {
-  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
-  timeFrame: AssistantBuilderTimeFrame;
-  tagsFilter: AssistantBuilderTagsFilter | null;
-  schema: ProcessSchemaPropertyType[];
-};
+export type AssistantBuilderProcessConfiguration =
+  AssistantBuilderBaseConfiguration & {
+    dataSourceConfigurations: DataSourceViewSelectionConfigurations;
+    tagsFilter: AssistantBuilderTagsFilter | null;
+    schema: ProcessSchemaPropertyType[];
+  };
 
 // Websearch configuration
 export type AssistantBuilderWebNavigationConfiguration = Record<string, never>; // no relevant params identified yet

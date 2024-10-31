@@ -93,23 +93,18 @@ export const NavigationSidebar = React.forwardRef<
               </Link>
             </div>
             {user && user.workspaces.length > 1 ? (
-              <div className="flex flex-row gap-2">
-                <div className="text-sm text-slate-500">Workspace:</div>
-                <WorkspacePicker
-                  user={user}
-                  workspace={owner}
-                  readOnly={false}
-                  displayDropDownOrigin="topLeft"
-                  onWorkspaceUpdate={(workspace) => {
-                    const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-                    if (workspace.id !== owner.id) {
-                      void router
-                        .push(assistantRoute)
-                        .then(() => router.reload());
-                    }
-                  }}
-                />
-              </div>
+              <WorkspacePicker
+                user={user}
+                workspace={owner}
+                onWorkspaceUpdate={(workspace) => {
+                  const assistantRoute = `/w/${workspace.sId}/assistant/new`;
+                  if (workspace.id !== owner.id) {
+                    void router
+                      .push(assistantRoute)
+                      .then(() => router.reload());
+                  }
+                }}
+              />
             ) : null}
           </div>
           {user && <UserMenu user={user} owner={owner} />}

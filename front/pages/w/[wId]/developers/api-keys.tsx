@@ -3,12 +3,16 @@ import {
   Button,
   ClipboardIcon,
   Dialog,
-  DropdownMenu,
   IconButton,
   Input,
   Modal,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
   Page,
   PlusIcon,
+  ScrollArea,
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -184,21 +188,41 @@ export function APIKeys({
           <span className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
             Assign permissions to space:{" "}
           </span>
-          <DropdownMenu>
-            <DropdownMenu.Button
-              type="select"
-              label={prettifyGroupName(newApiKeyGroup)}
-            />
-            <DropdownMenu.Items width={220}>
-              {groups.map((group: GroupType) => (
-                <DropdownMenu.Item
-                  key={group.id}
-                  label={prettifyGroupName(group)}
-                  onClick={() => setNewApiKeyGroup(group)}
-                />
-              ))}
-            </DropdownMenu.Items>
-          </DropdownMenu>
+          <NewDropdownMenu>
+            <NewDropdownMenuTrigger asChild>
+              <Button
+                label={prettifyGroupName(newApiKeyGroup)}
+                size="sm"
+                variant="outline"
+              />
+            </NewDropdownMenuTrigger>
+            <NewDropdownMenuContent>
+              <ScrollArea className="h-[300px]">
+                {groups
+                  .sort((a, b) => {
+                    // Put global groups first
+                    if (a.kind === "global" && b.kind !== "global") {
+                      return -1;
+                    }
+                    if (a.kind !== "global" && b.kind === "global") {
+                      return 1;
+                    }
+
+                    // Then sort alphabetically case insensitive
+                    return prettifyGroupName(a)
+                      .toLowerCase()
+                      .localeCompare(prettifyGroupName(b).toLowerCase());
+                  })
+                  .map((group: GroupType) => (
+                    <NewDropdownMenuItem
+                      key={group.id}
+                      label={prettifyGroupName(group)}
+                      onClick={() => setNewApiKeyGroup(group)}
+                    />
+                  ))}
+              </ScrollArea>
+            </NewDropdownMenuContent>
+          </NewDropdownMenu>
         </div>
       </Dialog>
       <Page.Horizontal align="stretch">

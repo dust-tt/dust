@@ -1,38 +1,50 @@
-import { DropdownMenu } from "@dust-tt/sparkle";
+import {
+  Button,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
+} from "@dust-tt/sparkle";
 import type {
   LightWorkspaceType,
   UserTypeWithWorkspaces,
 } from "@dust-tt/types";
 
+interface WorkspacePickerProps {
+  onWorkspaceUpdate: (w: LightWorkspaceType) => void;
+  user: UserTypeWithWorkspaces;
+  workspace: LightWorkspaceType;
+}
+
 export default function WorkspacePicker({
+  onWorkspaceUpdate,
   user,
   workspace,
-  onWorkspaceUpdate,
-  displayDropDownOrigin,
-}: {
-  user: UserTypeWithWorkspaces;
-  workspace: LightWorkspaceType | null;
-  readOnly: boolean;
-  displayDropDownOrigin: "topRight" | "topLeft";
-  onWorkspaceUpdate: (w: LightWorkspaceType) => void;
-}) {
+}: WorkspacePickerProps) {
   return (
-    <DropdownMenu className="flex">
-      <DropdownMenu.Button
-        label={workspace ? workspace.name : "Select workspace"}
-      />
+    <div className="flex flex-row items-center gap-2">
+      <p className="text-sm text-slate-500">Workspace:</p>
+      <NewDropdownMenu>
+        <NewDropdownMenuTrigger asChild>
+          <Button
+            label={workspace ? workspace.name : "Select workspace"}
+            variant="ghost"
+            isSelect
+          />
+        </NewDropdownMenuTrigger>
 
-      <DropdownMenu.Items origin={displayDropDownOrigin}>
-        {user.workspaces.map((w) => {
-          return (
-            <DropdownMenu.Item
-              key={w.sId}
-              onClick={() => void onWorkspaceUpdate(w)}
-              label={w.name}
-            />
-          );
-        })}
-      </DropdownMenu.Items>
-    </DropdownMenu>
+        <NewDropdownMenuContent>
+          {user.workspaces.map((w) => {
+            return (
+              <NewDropdownMenuItem
+                key={w.sId}
+                onClick={() => void onWorkspaceUpdate(w)}
+                label={w.name}
+              />
+            );
+          })}
+        </NewDropdownMenuContent>
+      </NewDropdownMenu>
+    </div>
   );
 }

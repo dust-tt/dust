@@ -34,7 +34,7 @@ export const dustAppsListUrl = (
   owner: WorkspaceType,
   space: SpaceType
 ): string => {
-  return `/w/${owner.sId}/vaults/${space.sId}/categories/apps`;
+  return `/w/${owner.sId}/spaces/${space.sId}/categories/apps`;
 };
 
 export const groupSpaces = (spaces: SpaceType[]) => {

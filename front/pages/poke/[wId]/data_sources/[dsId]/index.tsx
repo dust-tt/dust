@@ -2,9 +2,13 @@ import {
   Button,
   ContextItem,
   DocumentTextIcon,
-  DropdownMenu,
   EyeIcon,
   Input,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuRadioGroup,
+  NewDropdownMenuRadioItem,
+  NewDropdownMenuTrigger,
   Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
@@ -882,28 +886,35 @@ function SlackWhitelistBot({
       <div className="flex items-center gap-2">
         <div className="grow">
           <Input
-            placeholder={`Bot or workflow name`}
+            placeholder="Bot or workflow name"
             onChange={(e) => setBotName(e.target.value)}
             value={botName}
           />
         </div>
         <div>
-          <DropdownMenu>
-            <DropdownMenu.Button
-              label={selectedGroupName ?? "Select a group"}
-            />
-
-            <DropdownMenu.Items width={220}>
-              {groups.map((group) => (
-                <DropdownMenu.Item
-                  selected={selectedGroup === group.sId}
-                  key={group.sId}
-                  label={group.name}
-                  onClick={() => setSelectedGroup(group.sId)}
-                />
-              ))}
-            </DropdownMenu.Items>
-          </DropdownMenu>
+          <NewDropdownMenu>
+            <NewDropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                label={selectedGroupName ?? "Select a group"}
+              />
+            </NewDropdownMenuTrigger>
+            <NewDropdownMenuContent>
+              <NewDropdownMenuRadioGroup
+                value={selectedGroup ?? undefined}
+                onValueChange={setSelectedGroup}
+              >
+                {groups.map((group) => (
+                  <NewDropdownMenuRadioItem
+                    value={group.sId}
+                    key={group.sId}
+                    label={group.name}
+                    className="p-1"
+                  />
+                ))}
+              </NewDropdownMenuRadioGroup>
+            </NewDropdownMenuContent>
+          </NewDropdownMenu>
         </div>
         <Button
           variant="outline"
