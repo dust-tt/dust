@@ -30,6 +30,7 @@ import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappe
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { launchUpdateSpacePermissionsWorkflow } from "@app/temporal/permissions_queue/client";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -340,6 +341,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const [defaultSpaceGroup] = regularGroups;
 
     const wasRestricted = this.groups.every((g) => !g.isGlobal());
+    const hasRestrictionChanged = wasRestricted !== isRestricted;
 
     const groupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
     if (groupRes.isErr()) {
@@ -356,13 +358,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       if (memberIds) {
         const users = await UserResource.fetchByIds(memberIds);
 
-        return defaultSpaceGroup.setMembers(
+        const setMembersRes = await defaultSpaceGroup.setMembers(
           auth,
           users.map((u) => u.toJSON())
         );
+        if (setMembersRes.isErr()) {
+          return setMembersRes;
+        }
       }
-
-      return new Ok(undefined);
     } else {
       // If the space should not be restricted and was restricted before, add the global group.
       if (wasRestricted) {
@@ -370,10 +373,19 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       }
 
       // Remove all members.
-      await defaultSpaceGroup.setMembers(auth, []);
-
-      return new Ok(undefined);
+      const setMembersRes = await defaultSpaceGroup.setMembers(auth, []);
+      if (setMembersRes.isErr()) {
+        return setMembersRes;
+      }
     }
+
+    // If the restriction has changed, start a workflow to update all associated resource
+    // permissions.
+    if (hasRestrictionChanged) {
+      await launchUpdateSpacePermissionsWorkflow(auth, this);
+    }
+
+    return new Ok(undefined);
   }
 
   private async addGroup(group: GroupResource) {
@@ -537,6 +549,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return this.kind === "regular";
   }
 
+  isRegularAndRestricted() {
+    return this.isRegular() && !this.groups.some((group) => group.isGlobal());
+  }
+
   isPublic() {
     return this.kind === "public";
   }
@@ -550,7 +566,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   toJSON(): SpaceType {
     return {
       groupIds: this.groups.map((group) => group.sId),
-      isRestricted: !this.groups.some((group) => group.isGlobal()),
+      isRestricted: this.isRegularAndRestricted(),
       kind: this.kind,
       name: this.name,
       sId: this.sId,
