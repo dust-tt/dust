@@ -30,6 +30,7 @@ import {
 } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
 
+// TODO(thomas): use CVA
 const headerColor = "s-text-element-900";
 const sizes = {
   sm: {
