@@ -12,7 +12,6 @@ import {
   GetAgentConfigurationsQuerySchema,
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
-  removeNulls,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
