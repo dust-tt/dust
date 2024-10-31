@@ -34,7 +34,7 @@ export function Navigation({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === "b" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setSidebarOpen(!sidebarOpen);
+        setNavigationBarOpen(!isNavigationBarOpen);
       }
     };
 
