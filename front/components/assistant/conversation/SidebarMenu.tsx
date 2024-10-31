@@ -96,17 +96,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
       type: "success",
       title: "Conversations successfully deleted",
       description:
-        conversations.length > 1
-          ? `${conversations.length} conversations have been deleted.`
-          : `${conversations.length} conversation has been deleted.`,
+        selectedConversations.length > 1
+          ? `${selectedConversations.length} conversations have been deleted.`
+          : `${selectedConversations.length} conversation has been deleted.`,
     });
-  }, [
-    conversations.length,
-    doDelete,
-    selectedConversations,
-    sendNotification,
-    toggleMultiSelect,
-  ]);
+  }, [doDelete, selectedConversations, sendNotification, toggleMultiSelect]);
 
   const deleteAll = useCallback(async () => {
     setIsDeleting(true);

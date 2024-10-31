@@ -1,8 +1,8 @@
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import type {
   ConversationError,
   ConversationMessageReactions,
   ConversationType,
+  FetchConversationMessagesResponse,
 } from "@dust-tt/types";
 import {
   fetcher,

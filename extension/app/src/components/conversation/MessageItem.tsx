@@ -1,9 +1,9 @@
-import type { MessageWithContentFragmentsType } from "@app/components/assistant/conversation/ConversationViewer";
 import { Citation, ZoomableImageCitationWrapper } from "@dust-tt/sparkle";
 import type { CitationType } from "@dust-tt/sparkle/dist/esm/components/Citation";
 import type {
   ConversationMessageReactions,
   LightWorkspaceType,
+  MessageWithContentFragmentsType,
 } from "@dust-tt/types";
 import { isSupportedImageContentType } from "@dust-tt/types";
 import { AgentMessage } from "@extension/components/conversation/AgentMessage";
