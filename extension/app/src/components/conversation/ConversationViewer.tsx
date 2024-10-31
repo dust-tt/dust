@@ -1,25 +1,32 @@
 import type {
+  AgentMention,
   AgentMessageType,
   ContentFragmentType,
   LightWorkspaceType,
   MessageWithContentFragmentsType,
   UserMessageType,
 } from "@dust-tt/types";
-import { isContentFragmentType, isUserMessageType } from "@dust-tt/types";
+import {
+  isAgentMention,
+  isContentFragmentType,
+  isUserMessageType,
+} from "@dust-tt/types";
 import MessageGroup from "@extension/components/conversation/MessageGroup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
 import type { StoredUser } from "@extension/lib/storage";
 import { classNames } from "@extension/lib/utils";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 interface ConversationViewerProps {
   conversationId: string;
+  onStickyMentionsChange?: (mentions: AgentMention[]) => void;
   owner: LightWorkspaceType;
   user: StoredUser;
 }
 
 export function ConversationViewer({
   conversationId,
+  onStickyMentionsChange,
   owner,
   user,
 }: ConversationViewerProps) {
@@ -28,7 +35,34 @@ export function ConversationViewer({
     workspaceId: owner.sId,
   });
 
-  const messages = conversation?.content;
+  const messages = (conversation?.content || []).flat();
+
+  const lastUserMessage = useMemo(() => {
+    return messages.findLast(
+      (message) =>
+        isUserMessageType(message) &&
+        message.visibility !== "deleted" &&
+        message.user?.sId === user.userId
+    );
+  }, [messages, user.userId]);
+
+  const agentMentions = useMemo(() => {
+    if (!lastUserMessage || !isUserMessageType(lastUserMessage)) {
+      return [];
+    }
+    return lastUserMessage.mentions.filter(isAgentMention);
+  }, [lastUserMessage]);
+
+  // Handle sticky mentions changes.
+  useEffect(() => {
+    if (!onStickyMentionsChange) {
+      return;
+    }
+
+    if (agentMentions.length > 0) {
+      onStickyMentionsChange(agentMentions);
+    }
+  }, [agentMentions, onStickyMentionsChange]);
 
   const typedGroupedMessages = useMemo(
     () => (messages ? groupMessagesByType(messages) : []),
@@ -78,41 +112,39 @@ export function ConversationViewer({
  * and displays content_fragments within user_messages.
  */
 const groupMessagesByType = (
-  messages: (ContentFragmentType[] | UserMessageType[] | AgentMessageType[])[]
+  messages: (ContentFragmentType | UserMessageType | AgentMessageType)[]
 ): MessageWithContentFragmentsType[][][] => {
   const groupedMessages: MessageWithContentFragmentsType[][][] = [];
   let tempContentFragments: ContentFragmentType[] = [];
 
-  messages.forEach((page) =>
-    page.forEach((message) => {
-      if (isContentFragmentType(message)) {
-        tempContentFragments.push(message); // Collect content fragments.
-      } else {
-        let messageWithContentFragments: MessageWithContentFragmentsType;
-        if (isUserMessageType(message)) {
-          // Attach collected content fragments to the user message.
-          messageWithContentFragments = {
-            ...message,
-            contenFragments: tempContentFragments,
-          };
-          tempContentFragments = []; // Reset the collected content fragments.
+  messages.forEach((message) => {
+    if (isContentFragmentType(message)) {
+      tempContentFragments.push(message); // Collect content fragments.
+    } else {
+      let messageWithContentFragments: MessageWithContentFragmentsType;
+      if (isUserMessageType(message)) {
+        // Attach collected content fragments to the user message.
+        messageWithContentFragments = {
+          ...message,
+          contenFragments: tempContentFragments,
+        };
+        tempContentFragments = []; // Reset the collected content fragments.
 
-          // Start a new group for user messages.
+        // Start a new group for user messages.
+        groupedMessages.push([[messageWithContentFragments]]);
+      } else {
+        messageWithContentFragments = message;
+
+        const lastGroup = groupedMessages[groupedMessages.length - 1];
+
+        if (!lastGroup) {
           groupedMessages.push([[messageWithContentFragments]]);
         } else {
-          messageWithContentFragments = message;
-
-          const lastGroup = groupedMessages[groupedMessages.length - 1];
-
-          if (!lastGroup) {
-            groupedMessages.push([[messageWithContentFragments]]);
-          } else {
-            const [lastMessageGroup] = lastGroup;
-            lastMessageGroup.push(messageWithContentFragments); // Add agent messages to the last group.
-          }
+          const [lastMessageGroup] = lastGroup;
+          lastMessageGroup.push(messageWithContentFragments); // Add agent messages to the last group.
         }
       }
-    })
-  );
+    }
+  });
   return groupedMessages;
 };
