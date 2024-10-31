@@ -2,7 +2,7 @@ import { XMarkIcon } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { Dialog, Transition } from "@headlessui/react";
 import { Bars3Icon } from "@heroicons/react/20/solid";
-import React, { Fragment, useContext, useState } from "react";
+import React, { Fragment, useContext, useEffect, useState } from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import {
@@ -29,6 +29,18 @@ export function Navigation({
 }: NavigationProps) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
   const [isNavigationBarOpen, setNavigationBarOpen] = useState(true);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "b" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setSidebarOpen(!sidebarOpen);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isNavigationBarOpen, setSidebarOpen, sidebarOpen]);
 
   if (hideSidebar) {
     return null;
