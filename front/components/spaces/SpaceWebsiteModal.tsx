@@ -46,7 +46,7 @@ import { DeleteStaticDataSourceDialog } from "@app/components/data_source/Delete
 import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { isUrlValid, urlToDataSourceName } from "@app/lib/webcrawler";
-import type { PostDataSourceWithProviderRequestBodySchema } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
+import type { PostDataSourceWithProviderRequestBodySchema } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 
 const WEBSITE_CAT = "website";
 
@@ -241,7 +241,7 @@ export default function SpaceWebsiteModal({
     setIsSaving(true);
     const sanitizedDataSourceUrl = dataSourceUrl.trim();
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${space.sId}/data_sources`,
+      `/api/w/${owner.sId}/spaces/${space.sId}/data_sources`,
       {
         method: "POST",
         headers: {
@@ -284,7 +284,7 @@ export default function SpaceWebsiteModal({
 
     setIsSaving(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${space.sId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
+      `/api/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSourceView.dataSource.sId}/configuration`,
       {
         method: "PATCH",
         headers: {
@@ -345,7 +345,7 @@ export default function SpaceWebsiteModal({
     }
     setIsSaving(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${space.sId}/data_sources/${dataSourceView.dataSource.sId}`,
+      `/api/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSourceView.dataSource.sId}`,
       {
         method: "DELETE",
       }
@@ -354,7 +354,7 @@ export default function SpaceWebsiteModal({
     if (res.ok) {
       void mutateSpaceDataSourceViews();
       await router.push(
-        `/w/${owner.sId}/vaults/${space.sId}/categories/${WEBSITE_CAT}`
+        `/w/${owner.sId}/spaces/${space.sId}/categories/${WEBSITE_CAT}`
       );
       onClose();
     } else {

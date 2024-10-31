@@ -5,8 +5,8 @@ import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { PatchDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]";
-import { handlePatchDataSourceView } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]";
+import type { PatchDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
+import { handlePatchDataSourceView } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 
 export type GetOrPostDataSourceViewsResponseBody = {
   dataSourceView: DataSourceViewType;

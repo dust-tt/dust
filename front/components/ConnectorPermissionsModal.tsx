@@ -402,7 +402,7 @@ function DataSourceDeletionModal({
   const handleDelete = async () => {
     setIsLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${systemSpace.sId}/data_sources/${dataSource.sId}`,
+      `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources/${dataSource.sId}`,
       {
         method: "DELETE",
       }

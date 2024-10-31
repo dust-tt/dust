@@ -179,22 +179,22 @@ export const SpaceCategoriesList = ({
               </NewDropdownMenuTrigger>
               <NewDropdownMenuContent>
                 <NewDropdownMenuItem
-                  href={`/w/${owner.sId}/vaults/${space.sId}/categories/managed`}
+                  href={`/w/${owner.sId}/spaces/${space.sId}/categories/managed`}
                   icon={CloudArrowLeftRightIcon}
                   label="Connected Data"
                 />
                 <NewDropdownMenuItem
-                  href={`/w/${owner.sId}/vaults/${space.sId}/categories/folder`}
+                  href={`/w/${owner.sId}/spaces/${space.sId}/categories/folder`}
                   icon={ArrowUpOnSquareIcon}
                   label="Upload Data"
                 />
                 <NewDropdownMenuItem
-                  href={`/w/${owner.sId}/vaults/${space.sId}/categories/website`}
+                  href={`/w/${owner.sId}/spaces/${space.sId}/categories/website`}
                   icon={GlobeAltIcon}
                   label="Scrape a website"
                 />
                 <NewDropdownMenuItem
-                  href={`/w/${owner.sId}/vaults/${space.sId}/categories/apps`}
+                  href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps`}
                   icon={CommandLineIcon}
                   label="Create a Dust App"
                 />

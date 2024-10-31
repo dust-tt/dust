@@ -16,16 +16,16 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
-  GetVaultsResponseBody,
-  PostVaultsResponseBody,
-} from "@app/pages/api/w/[wId]/vaults";
+  GetSpacesResponseBody,
+  PostSpacesResponseBody,
+} from "@app/pages/api/w/[wId]/spaces";
 import type {
-  GetVaultResponseBody,
-  PatchVaultResponseBody,
-} from "@app/pages/api/w/[wId]/vaults/[vId]";
-import type { GetVaultDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views";
-import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_source_views/[dsvId]";
-import type { PostVaultDataSourceResponseBody } from "@app/pages/api/w/[wId]/vaults/[vId]/data_sources";
+  GetSpaceResponseBody,
+  PatchSpaceResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]";
+import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
+import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
+import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 
 export function useSpaces({
   workspaceId,
@@ -34,16 +34,16 @@ export function useSpaces({
   workspaceId: string;
   disabled?: boolean;
 }) {
-  const spacesFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
+  const spacesFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/vaults`,
+    `/api/w/${workspaceId}/spaces`,
     spacesFetcher,
     { disabled }
   );
 
   return {
-    spaces: useMemo(() => (data ? data.vaults : []), [data]),
+    spaces: useMemo(() => (data ? data.spaces : []), [data]),
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
@@ -57,16 +57,16 @@ export function useSpacesAsAdmin({
   workspaceId: string;
   disabled?: boolean;
 }) {
-  const spacesFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
+  const spacesFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/vaults?role=admin`,
+    `/api/w/${workspaceId}/spaces?role=admin`,
     spacesFetcher,
     { disabled }
   );
 
   return {
-    spaces: useMemo(() => (data ? data.vaults : []), [data]),
+    spaces: useMemo(() => (data ? data.spaces : []), [data]),
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
@@ -82,18 +82,18 @@ export function useSpaceInfo({
   spaceId: string | null;
   disabled?: boolean;
 }) {
-  const vaultsCategoriesFetcher: Fetcher<GetVaultResponseBody> = fetcher;
+  const spacesCategoriesFetcher: Fetcher<GetSpaceResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/vaults/${spaceId}`,
-    vaultsCategoriesFetcher,
+    `/api/w/${workspaceId}/spaces/${spaceId}`,
+    spacesCategoriesFetcher,
     {
       disabled: disabled || spaceId === null,
     }
   );
 
   return {
-    spaceInfo: data ? data.vault : null,
+    spaceInfo: data ? data.space : null,
     mutateSpaceInfo: mutate,
     isSpaceInfoLoading: !error && !data && !disabled,
     isSpaceInfoError: error,
@@ -116,7 +116,7 @@ export function useSpaceDataSourceView({
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
-      `/api/w/${owner.sId}/vaults/${spaceId}/data_source_views/${dataSourceViewId}`,
+      `/api/w/${owner.sId}/spaces/${spaceId}/data_source_views/${dataSourceViewId}`,
       dataSourceViewsFetcher,
       { disabled }
     );
@@ -141,8 +141,8 @@ export function useSpaceDataSourceViews({
   spaceId: string;
   workspaceId: string;
 }) {
-  const vaultsDataSourceViewsFetcher: Fetcher<
-    GetVaultDataSourceViewsResponseBody<false>
+  const spacesDataSourceViewsFetcher: Fetcher<
+    GetSpaceDataSourceViewsResponseBody<false>
   > = fetcher;
 
   const queryParams = new URLSearchParams();
@@ -152,14 +152,14 @@ export function useSpaceDataSourceViews({
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
-      `/api/w/${workspaceId}/vaults/${spaceId}/data_source_views?${queryParams.toString()}`,
-      vaultsDataSourceViewsFetcher,
+      `/api/w/${workspaceId}/spaces/${spaceId}/data_source_views?${queryParams.toString()}`,
+      spacesDataSourceViewsFetcher,
       { disabled }
     );
 
   const spaceDataSourceViews = useMemo(() => {
     return (data?.dataSourceViews ??
-      []) as GetVaultDataSourceViewsResponseBody<false>["dataSourceViews"];
+      []) as GetSpaceDataSourceViewsResponseBody<false>["dataSourceViews"];
   }, [data]);
 
   return {
@@ -182,8 +182,8 @@ export function useSpaceDataSourceViewsWithDetails({
   spaceId: string;
   workspaceId: string;
 }) {
-  const vaultsDataSourceViewsFetcher: Fetcher<
-    GetVaultDataSourceViewsResponseBody<true>
+  const spacesDataSourceViewsFetcher: Fetcher<
+    GetSpaceDataSourceViewsResponseBody<true>
   > = fetcher;
 
   const queryParams = new URLSearchParams();
@@ -194,14 +194,14 @@ export function useSpaceDataSourceViewsWithDetails({
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
-      `/api/w/${workspaceId}/vaults/${spaceId}/data_source_views?${queryParams.toString()}`,
-      vaultsDataSourceViewsFetcher,
+      `/api/w/${workspaceId}/spaces/${spaceId}/data_source_views?${queryParams.toString()}`,
+      spacesDataSourceViewsFetcher,
       { disabled }
     );
 
   const spaceDataSourceViews = useMemo(() => {
     return (data?.dataSourceViews ??
-      []) as GetVaultDataSourceViewsResponseBody<true>["dataSourceViews"];
+      []) as GetSpaceDataSourceViewsResponseBody<true>["dataSourceViews"];
   }, [data]);
 
   return {
@@ -236,7 +236,7 @@ export function useCreateFolder({
     }
 
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${spaceId}/data_sources`,
+      `/api/w/${owner.sId}/spaces/${spaceId}/data_sources`,
       {
         method: "POST",
         headers: {
@@ -250,7 +250,7 @@ export function useCreateFolder({
     );
     if (res.ok) {
       void mutateSpaceDataSourceViews();
-      const response: PostVaultDataSourceResponseBody = await res.json();
+      const response: PostSpaceDataSourceResponseBody = await res.json();
       const { dataSourceView } = response;
       sendNotification({
         type: "success",
@@ -289,7 +289,7 @@ export function useUpdateFolder({
       return false;
     }
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
+      `/api/w/${owner.sId}/spaces/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
       {
         method: "PATCH",
         headers: {
@@ -344,7 +344,7 @@ export function useDeleteFolderOrWebsite({
       return false;
     }
     const res = await fetch(
-      `/api/w/${owner.sId}/vaults/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
+      `/api/w/${owner.sId}/spaces/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
       { method: "DELETE" }
     );
 
@@ -399,7 +399,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
       return null;
     }
 
-    const url = `/api/w/${owner.sId}/vaults`;
+    const url = `/api/w/${owner.sId}/spaces`;
     const res = await fetch(url, {
       method: "POST",
       headers: {
@@ -431,8 +431,8 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
         description: "Space was successfully created.",
       });
 
-      const response: PostVaultsResponseBody = await res.json();
-      return response.vault;
+      const response: PostSpacesResponseBody = await res.json();
+      return response.space;
     }
   };
 
@@ -460,7 +460,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     // Prepare space update request.
     if (newName) {
-      const spaceUrl = `/api/w/${owner.sId}/vaults/${vault.sId}`;
+      const spaceUrl = `/api/w/${owner.sId}/spaces/${vault.sId}`;
       updatePromises.push(
         fetch(spaceUrl, {
           method: "PATCH",
@@ -475,7 +475,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     }
 
     // Prepare space members update request if provided.
-    const spaceMembersUrl = `/api/w/${owner.sId}/vaults/${vault.sId}/members`;
+    const spaceMembersUrl = `/api/w/${owner.sId}/spaces/${vault.sId}/members`;
     updatePromises.push(
       fetch(spaceMembersUrl, {
         method: "PATCH",
@@ -516,8 +516,8 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
       description: "Space was successfully updated.",
     });
 
-    const vaultResponse: PatchVaultResponseBody = await results[0].json();
-    return vaultResponse.vault;
+    const spaceResponse: PatchSpaceResponseBody = await results[0].json();
+    return spaceResponse.space;
   };
   return doUpdate;
 }
@@ -537,7 +537,7 @@ export function useDeleteSpace({ owner }: { owner: LightWorkspaceType }) {
     if (!vault) {
       return false;
     }
-    const url = `/api/w/${owner.sId}/vaults/${vault.sId}`;
+    const url = `/api/w/${owner.sId}/spaces/${vault.sId}`;
     const res = await fetch(url, {
       method: "DELETE",
     });
@@ -573,16 +573,16 @@ export function useSystemSpace({
   workspaceId: string;
   disabled?: boolean;
 }) {
-  const systemSpaceFetcher: Fetcher<GetVaultsResponseBody> = fetcher;
+  const systemSpaceFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/vaults?role=admin&kind=system`,
+    `/api/w/${workspaceId}/spaces?role=admin&kind=system`,
     systemSpaceFetcher,
     { disabled }
   );
 
   return {
-    systemSpace: data ? data.vaults[0] : null,
+    systemSpace: data ? data.spaces[0] : null,
     isSystemSpaceLoading: !error && !data && !disabled,
     isSystemSpaceError: error,
     mutateSystemSpace: mutate,
