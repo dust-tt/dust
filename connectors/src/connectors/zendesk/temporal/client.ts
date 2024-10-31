@@ -15,23 +15,24 @@ export function getZendeskSyncWorkflowId(connectorId: ModelId): string {
   return `zendesk-sync-${connectorId}`;
 }
 
-export async function launchZendeskSyncWorkflow({
-  connector,
-  startFromTs = null,
-  brandIds = [],
-  ticketsBrandIds = [],
-  helpCenterBrandIds = [],
-  categoryIds = [],
-  forceResync = false,
-}: {
-  connector: ConnectorResource;
-  startFromTs?: number | null;
-  brandIds?: number[];
-  ticketsBrandIds?: number[];
-  helpCenterBrandIds?: number[];
-  categoryIds?: number[];
-  forceResync?: boolean;
-}): Promise<Result<undefined, Error>> {
+export async function launchZendeskSyncWorkflow(
+  connector: ConnectorResource,
+  {
+    startFromTs = null,
+    brandIds = [],
+    ticketsBrandIds = [],
+    helpCenterBrandIds = [],
+    categoryIds = [],
+    forceResync = false,
+  }: {
+    startFromTs?: number | null;
+    brandIds?: number[];
+    ticketsBrandIds?: number[];
+    helpCenterBrandIds?: number[];
+    categoryIds?: number[];
+    forceResync?: boolean;
+  } = {}
+): Promise<Result<undefined, Error>> {
   if (startFromTs) {
     throw new Error("[Zendesk] startFromTs not implemented yet.");
   }

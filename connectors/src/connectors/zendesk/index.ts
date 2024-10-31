@@ -72,9 +72,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       { subdomain: "d3v-dust", conversationsSlidingWindow: 90 }
     );
 
-    const workflowStartResult = await launchZendeskSyncWorkflow({
-      connector,
-    });
+    const workflowStartResult = await launchZendeskSyncWorkflow(connector);
 
     if (workflowStartResult.isErr()) {
       await connector.delete();
@@ -117,7 +115,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
 
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
-    const result = await launchZendeskSyncWorkflow({ connector });
+    const result = await launchZendeskSyncWorkflow(connector);
     if (result.isErr()) {
       logger.error(
         {
@@ -143,8 +141,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const brandIds = await ZendeskBrandResource.fetchAllBrandIds({
       connectorId,
     });
-    const result = await launchZendeskSyncWorkflow({
-      connector,
+    const result = await launchZendeskSyncWorkflow(connector, {
       brandIds,
       forceResync: true,
     });
@@ -336,8 +333,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       toBeSignaledHelpCenterIds.size > 0 ||
       toBeSignaledCategoryIds.size > 0
     ) {
-      return launchZendeskSyncWorkflow({
-        connector,
+      return launchZendeskSyncWorkflow(connector, {
         brandIds: [...toBeSignaledBrandIds],
         ticketsBrandIds: [...toBeSignaledTicketsIds],
         helpCenterBrandIds: [...toBeSignaledHelpCenterIds],
@@ -558,7 +554,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const brandIds = await ZendeskBrandResource.fetchAllBrandIds({
       connectorId,
     });
-    return launchZendeskSyncWorkflow({ connector, brandIds });
+    return launchZendeskSyncWorkflow(connector, { brandIds });
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {
