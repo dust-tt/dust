@@ -1020,9 +1020,9 @@ function AddAction({ onAddAction }: AddActionProps) {
         <Button variant="primary" label="Add a tool" icon={PlusIcon} />
       </NewDropdownMenuTrigger>
 
-      <NewDropdownMenuContent className="w-[320px]">
+      <NewDropdownMenuContent>
         <NewDropdownMenuGroup>
-          <NewDropdownMenuLabel>Data Sources</NewDropdownMenuLabel>
+          <NewDropdownMenuLabel label="Data Sources" />
           {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
             const spec = ACTION_SPECIFICATIONS[key];
             const defaultAction = getDefaultActionConfiguration(key);
@@ -1034,23 +1034,16 @@ function AddAction({ onAddAction }: AddActionProps) {
               <NewDropdownMenuItem
                 key={key}
                 onClick={() => onAddAction(defaultAction)}
-              >
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <Icon visual={spec.dropDownIcon} />
-                    <Label>{spec.label}</Label>
-                  </div>
-                  <span className="text-sm text-element-700">
-                    {spec.description}
-                  </span>
-                </div>
-              </NewDropdownMenuItem>
+                icon={spec.dropDownIcon}
+                label={spec.label}
+                description={spec.description}
+              />
             );
           })}
         </NewDropdownMenuGroup>
         <NewDropdownMenuSeparator />
         <NewDropdownMenuGroup>
-          <NewDropdownMenuLabel>Advanced Actions</NewDropdownMenuLabel>
+          <NewDropdownMenuLabel label="Advanced Actions" />
           {ADVANCED_ACTION_CATEGORIES.map((key) => {
             const spec = ACTION_SPECIFICATIONS[key];
             const defaultAction = getDefaultActionConfiguration(key);
@@ -1062,17 +1055,10 @@ function AddAction({ onAddAction }: AddActionProps) {
               <NewDropdownMenuItem
                 key={key}
                 onClick={() => onAddAction(defaultAction)}
-              >
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <Icon visual={spec.dropDownIcon} />
-                    <Label>{spec.label}</Label>
-                  </div>
-                  <span className="text-sm text-element-700">
-                    {spec.description}
-                  </span>
-                </div>
-              </NewDropdownMenuItem>
+                icon={spec.dropDownIcon}
+                label={spec.label}
+                description={spec.description}
+              />
             );
           })}
         </NewDropdownMenuGroup>
