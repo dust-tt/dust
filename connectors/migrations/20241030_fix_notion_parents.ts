@@ -1,3 +1,4 @@
+import type { ModelId } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
@@ -10,6 +11,47 @@ import {
 } from "@connectors/lib/data_sources";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+
+async function findAllDescendants(
+  nodes: (NotionPage | NotionDatabase)[],
+  connectorId: ModelId
+): Promise<(NotionPage | NotionDatabase)[]> {
+  const getNodeId = (node: NotionPage | NotionDatabase) =>
+    "notionPageId" in node ? node.notionPageId : node.notionDatabaseId;
+
+  const descendants: (NotionPage | NotionDatabase)[] = [];
+  const seen = new Set<string>();
+
+  const nodeIds = nodes.map(getNodeId);
+  while (nodeIds.length > 0) {
+    const parentIds = nodeIds.splice(0, nodeIds.length);
+
+    const childPages = await NotionPage.findAll({
+      where: {
+        connectorId,
+        parentId: parentIds,
+      },
+    });
+    const childDatabases = await NotionDatabase.findAll({
+      where: {
+        connectorId,
+        parentId: parentIds,
+      },
+    });
+
+    // Add new descendants to the list and queue their IDs for next iteration
+    for (const node of [...childPages, ...childDatabases]) {
+      const nodeId = getNodeId(node);
+      if (!seen.has(nodeId)) {
+        seen.add(nodeId);
+        descendants.push(node);
+        nodeIds.push(nodeId);
+      }
+    }
+  }
+
+  return descendants;
+}
 
 async function updateParentsFieldForConnector(
   connector: ConnectorResource,
@@ -27,6 +69,7 @@ async function updateParentsFieldForConnector(
         id: {
           [Op.gt]: pagesIdCursor,
         },
+        parentId: "unknown",
       },
       limit: pageSize,
       order: [["id", "ASC"]],
@@ -37,10 +80,16 @@ async function updateParentsFieldForConnector(
         id: {
           [Op.gt]: databasesIdCursor,
         },
+        parentId: "unknown",
       },
       limit: pageSize,
       order: [["id", "ASC"]],
     });
+
+    nodes = [...pages, ...databases];
+
+    const descendants: (NotionPage | NotionDatabase)[] =
+      await findAllDescendants(nodes, connector.id);
 
     if (pages.length > 0) {
       const newCursor = pages[pages.length - 1]?.id;
@@ -62,15 +111,24 @@ async function updateParentsFieldForConnector(
       break;
     }
 
+    // Find all descendants of nodes with "unknown" parentId and update them
+    nodes = [...nodes, ...descendants];
+
     const res = await concurrentExecutor(
       nodes,
       async (node) => {
-        const parents = await getParents(
-          connector.id,
-          "notionPageId" in node ? node.notionPageId : node.notionDatabaseId,
-          [],
-          undefined
-        );
+        let parents: string[] | null = null;
+        try {
+          parents = await getParents(
+            connector.id,
+            "notionPageId" in node ? node.notionPageId : node.notionDatabaseId,
+            [],
+            undefined
+          );
+        } catch (e) {
+          console.error(`Error getting parents for node ${node.id}: ${e}`);
+          return;
+        }
 
         let documentId: string | null = null;
         let tableId: string | null = null;
@@ -88,23 +146,24 @@ async function updateParentsFieldForConnector(
           documentId = `notion-database-${node.notionDatabaseId}`;
         }
 
-        if (documentId) {
-          if (execute) {
-            await updateDocumentParentsField({
-              dataSourceConfig: dataSourceConfigFromConnector(connector),
-              documentId,
-              parents,
-            });
-          }
-        }
-
-        if (tableId) {
-          if (execute) {
-            await updateTableParentsField({
-              dataSourceConfig: dataSourceConfigFromConnector(connector),
-              tableId,
-              parents,
-            });
+        if (execute) {
+          try {
+            if (documentId) {
+              await updateDocumentParentsField({
+                dataSourceConfig: dataSourceConfigFromConnector(connector),
+                documentId,
+                parents,
+              });
+            }
+            if (tableId) {
+              await updateTableParentsField({
+                dataSourceConfig: dataSourceConfigFromConnector(connector),
+                tableId,
+                parents,
+              });
+            }
+          } catch (e) {
+            console.error(`Error updating parents for node ${node.id}: ${e}`);
           }
         }
       },
@@ -125,16 +184,24 @@ makeScript({}, async ({ execute }) => {
   const connectors = await ConnectorResource.listByType("notion", {});
 
   console.log(`Found ${connectors.length} Notion connectors`);
-  for (const connector of connectors) {
-    if (connector.errorType) {
+
+  const validConnectors = connectors.filter(
+    (connector) => !connector.errorType
+  );
+  console.log(
+    `Processing ${validConnectors.length} valid connectors in batches of 5`
+  );
+
+  await concurrentExecutor(
+    validConnectors,
+    async (connector) => {
       console.log(
-        `Skipping connector ${connector.id} (workspace ${connector.workspaceId}) because it has an error`
+        `Processing connector ${connector.id} (workspace ${connector.workspaceId})`
       );
-      continue;
-    }
-    console.log(
-      `Processing connector ${connector.id} (workspace ${connector.workspaceId})`
-    );
-    await updateParentsFieldForConnector(connector, execute);
-  }
+      await updateParentsFieldForConnector(connector, execute);
+    },
+    { concurrency: 5 }
+  );
+
+  console.log("Finished processing all connectors");
 });
