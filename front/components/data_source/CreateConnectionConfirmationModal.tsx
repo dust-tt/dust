@@ -146,7 +146,7 @@ export function CreateConnectionConfirmationModal({
                   setIsLoading(true);
                   onConfirm(extraConfig);
                 }}
-                disabled={!isExtraConfigValid() || isLoading}
+                disabled={!isExtraConfigValid(extraConfig) || isLoading}
                 label={
                   isLoading
                     ? "Connecting..."
