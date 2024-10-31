@@ -14,6 +14,8 @@ import type { OffsetPaginationParams } from "@app/lib/api/pagination";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
+const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 10_000;
+
 export function filterAndCropContentNodesByView(
   dataSourceView: DataSourceViewResource,
   contentNodes: DataSourceViewContentNode[]
@@ -148,6 +150,12 @@ async function getContentNodesForStaticDataSourceView(
 > {
   const { dataSource } = dataSourceView;
 
+  // Always set a limit for pagination of static data sources.
+  const paginationParams = pagination ?? {
+    limit: DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT,
+    offset: 0,
+  };
+
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   // Early return if there are no internalIds.
@@ -166,7 +174,7 @@ async function getContentNodesForStaticDataSourceView(
         projectId: dataSource.dustAPIProjectId,
         viewFilter: dataSourceView.toViewFilter(),
       },
-      pagination
+      paginationParams
     );
 
     if (documentsRes.isErr()) {
@@ -209,7 +217,7 @@ async function getContentNodesForStaticDataSourceView(
         tableIds: internalIds,
         viewFilter: dataSourceView.toViewFilter(),
       },
-      pagination
+      paginationParams
     );
 
     if (tablesRes.isErr()) {
