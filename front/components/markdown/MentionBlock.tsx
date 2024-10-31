@@ -1,4 +1,3 @@
-import React from "react";
 import { visit } from "unist-util-visit";
 
 export function MentionBlock({ agentName }: { agentName: string }) {
