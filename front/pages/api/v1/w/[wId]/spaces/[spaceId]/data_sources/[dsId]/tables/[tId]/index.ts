@@ -76,7 +76,7 @@ export type GetTableResponseBody = {
  *         schema:
  *           type: string
  *       - in: path
- *         name: vId
+ *         name: spaceId
  *         required: true
  *         description: ID of the space
  *         schema:

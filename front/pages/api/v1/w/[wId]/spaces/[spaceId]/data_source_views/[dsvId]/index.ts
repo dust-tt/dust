@@ -60,7 +60,7 @@ export type GetOrPostDataSourceViewsResponseBody = {
  *         required: true
  *         schema:
  *           type: string
- *       - name: vId
+ *       - name: spaceId
  *         in: path
  *         required: true
  *         schema:
@@ -124,7 +124,7 @@ export type GetOrPostDataSourceViewsResponseBody = {
  *         required: true
  *         schema:
  *           type: string
- *       - name: vId
+ *       - name: spaceId
  *         in: path
  *         required: true
  *         schema:

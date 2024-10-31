@@ -547,10 +547,10 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/apps/{aId}/runs/{runId}": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/apps/{aId}/runs/{runId}": {
       "get": {
         "summary": "Get an app run",
-        "description": "Retrieve a run for an app in the vault identified by {vId}.",
+        "description": "Retrieve a run for an app in the space identified by {spaceId}.",
         "tags": ["Apps"],
         "security": [
           {
@@ -569,9 +569,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -620,10 +620,10 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/apps/{aId}/runs": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/apps/{aId}/runs": {
       "post": {
         "summary": "Create an app run",
-        "description": "Create and execute a run for an app in the vault specified by {vId}.",
+        "description": "Create and execute a run for an app in the space specified by {spaceId}.",
         "tags": ["Apps"],
         "security": [
           {
@@ -642,9 +642,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -761,10 +761,10 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/apps": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/apps": {
       "get": {
         "summary": "List apps",
-        "description": "Get all apps in the vault identified by {vId}.",
+        "description": "Get all apps in the space identified by {spaceId}.",
         "tags": ["Apps"],
         "security": [
           {
@@ -783,9 +783,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -862,7 +862,7 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_source_views/{dsvId}": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_source_views/{dsvId}": {
       "get": {
         "tags": ["DatasourceViews"],
         "security": [
@@ -881,7 +881,7 @@
             }
           },
           {
-            "name": "vId",
+            "name": "spaceId",
             "in": "path",
             "required": true,
             "schema": {
@@ -934,7 +934,7 @@
             }
           },
           {
-            "name": "vId",
+            "name": "spaceId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1006,7 +1006,7 @@
             "description": "Invalid request body"
           },
           "403": {
-            "description": "Unauthorized - Only admins or builders can administrate vaults"
+            "description": "Unauthorized - Only admins or builders can administrate spaces"
           },
           "404": {
             "description": "Data source view not found"
@@ -1037,7 +1037,7 @@
             }
           },
           {
-            "name": "vId",
+            "name": "spaceId",
             "in": "path",
             "required": true,
             "schema": {
@@ -1072,7 +1072,7 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_source_views/{dsvId}/search": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_source_views/{dsvId}/search": {
       "get": {
         "summary": "Search the data source view",
         "description": "Search the data source view identified by {dsvId} in the workspace identified by {wId}.",
@@ -1094,9 +1094,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -1269,10 +1269,10 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_source_views": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_source_views": {
       "get": {
         "summary": "List Data Source Views",
-        "description": "Retrieves a list of data source views for the specified vault",
+        "description": "Retrieves a list of data source views for the specified space",
         "tags": ["DatasourceViews"],
         "security": [
           {
@@ -1291,9 +1291,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -1301,7 +1301,7 @@
         ],
         "responses": {
           "200": {
-            "description": "List of data source views in the vault",
+            "description": "List of data source views in the space",
             "content": {
               "application/json": {
                 "schema": {
@@ -1336,7 +1336,7 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/documents/{documentId}": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/documents/{documentId}": {
       "get": {
         "summary": "Retrieve a document from a data source",
         "description": "Retrieve a document from a data source identified by {dsId} in the workspace identified by {wId}.",
@@ -1353,9 +1353,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -1433,9 +1433,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -1576,9 +1576,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -1646,7 +1646,7 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/documents/{documentId}/parents": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/documents/{documentId}/parents": {
       "post": {
         "summary": "Update the parents of a document",
         "description": "Update the parents of a document in the data source identified by {dsId} in the workspace identified by {wId}.",
@@ -1663,9 +1663,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -1735,7 +1735,7 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/documents": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/documents": {
       "get": {
         "summary": "Get documents",
         "description": "Get documents in the data source identified by {dsId} in the workspace identified by {wId}.",
@@ -1757,9 +1757,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -1821,7 +1821,7 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/search": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/search": {
       "get": {
         "summary": "Search the data source",
         "description": "Search the data source identified by {dsId} in the workspace identified by {wId}.",
@@ -1843,9 +1843,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2018,7 +2018,7 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/tables/{tId}": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/tables/{tId}": {
       "get": {
         "summary": "Get a table",
         "description": "Get a table in the data source identified by {dsId} in the workspace identified by {wId}.",
@@ -2040,9 +2040,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2106,9 +2106,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2145,7 +2145,7 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/tables/{tId}/rows/{rId}": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/tables/{tId}/rows/{rId}": {
       "get": {
         "summary": "Get a row",
         "description": "Get a row in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.",
@@ -2167,9 +2167,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2242,9 +2242,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2290,7 +2290,7 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/tables/{tId}/rows": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/tables/{tId}/rows": {
       "get": {
         "summary": "List rows",
         "description": "List rows in the table identified by {tId} in the data source identified by {dsId} in the workspace identified by {wId}.",
@@ -2312,9 +2312,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2394,9 +2394,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2505,7 +2505,7 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources/{dsId}/tables": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources/{dsId}/tables": {
       "get": {
         "summary": "Get tables",
         "description": "Get tables in the data source identified by {dsId} in the workspace identified by {wId}.",
@@ -2527,9 +2527,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2584,9 +2584,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2663,7 +2663,7 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults/{vId}/data_sources": {
+    "/api/v1/w/{wId}/spaces/{spaceId}/data_sources": {
       "get": {
         "summary": "Get data sources",
         "description": "Get data sources in the workspace identified by {wId}.",
@@ -2680,9 +2680,9 @@
           },
           {
             "in": "path",
-            "name": "vId",
+            "name": "spaceId",
             "required": true,
-            "description": "ID of the vault",
+            "description": "ID of the space",
             "schema": {
               "type": "string"
             }
@@ -2721,11 +2721,11 @@
         }
       }
     },
-    "/api/v1/w/{wId}/vaults": {
+    "/api/v1/w/{wId}/spaces": {
       "get": {
-        "summary": "List Workspace Vaults",
-        "description": "Retrieves a list of vaults for the authenticated workspace.",
-        "tags": ["Vaults"],
+        "summary": "List Workspace Spaces",
+        "description": "Retrieves a list of spaces for the authenticated workspace.",
+        "tags": ["Spaces"],
         "security": [
           {
             "BearerAuth": []
@@ -2744,16 +2744,16 @@
         ],
         "responses": {
           "200": {
-            "description": "Vaults of the workspace",
+            "description": "Spaces of the workspace",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "vaults": {
+                    "spaces": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Vault"
+                        "$ref": "#/components/schemas/Space"
                       }
                     }
                   }
@@ -3335,28 +3335,28 @@
           }
         }
       },
-      "Vault": {
+      "Space": {
         "type": "object",
         "properties": {
           "sId": {
             "type": "string",
-            "description": "Unique string identifier for the vault"
+            "description": "Unique string identifier for the space"
           },
           "name": {
             "type": "string",
-            "description": "Name of the vault"
+            "description": "Name of the space"
           },
           "kind": {
             "type": "string",
             "enum": ["regular", "global", "system", "public"],
-            "description": "The kind of the vault"
+            "description": "The kind of the space"
           },
           "groupIds": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "List of group IDs that have access to the vault"
+            "description": "List of group IDs that have access to the space"
           }
         }
       },
@@ -3459,9 +3459,9 @@
             "type": "number",
             "description": "Timestamp of when the data source view was last updated"
           },
-          "vaultId": {
+          "spaceId": {
             "type": "string",
-            "description": "ID of the vault containing the data source view"
+            "description": "ID of the space containing the data source view"
           }
         }
       },
