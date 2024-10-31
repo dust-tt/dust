@@ -1,4 +1,4 @@
-import { isOAuthProvider, isOAuthUseCase } from "@dust-tt/types";
+import { isOAuthProvider, isOAuthUseCase, safeParseJSON } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 
@@ -30,21 +30,19 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
     }
 
     let parsedExtraConfig: Record<string, string> = {};
-    try {
-      const bodyValidation = ExtraConfigTypeSchema.decode(
-        JSON.parse(extraConfig as string)
-      );
-      if (isLeft(bodyValidation)) {
-        return {
-          notFound: true,
-        };
-      }
-      parsedExtraConfig = bodyValidation.right;
-    } catch (e) {
+    const parseRes = safeParseJSON(extraConfig as string);
+    if (parseRes.isErr()) {
       return {
         notFound: true,
       };
     }
+    const bodyValidation = ExtraConfigTypeSchema.decode(parseRes.value);
+    if (isLeft(bodyValidation)) {
+      return {
+        notFound: true,
+      };
+    }
+    parsedExtraConfig = bodyValidation.right;
 
     const urlRes = await createConnectionAndGetSetupUrl(
       auth,
