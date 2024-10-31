@@ -1,11 +1,11 @@
-name: Lint & Build (front)
+name: Lint & Build (extension)
 
 on:
   push:
     paths:
       - types/**
-      - front/**
-      - .github/workflows/build-and-lint-front.yml
+      - extension/**
+      - .github/workflows/build-and-lint-extension.yml
 
 jobs:
   check-eslint:
@@ -21,5 +21,5 @@ jobs:
         run: npm install && npm run build
       - working-directory: sdks/js
         run: npm install && npm run build
-      - working-directory: front
-        run: npm install && npm run tsc && npm run lint && npm run format:check && npm run docs:check
+      - working-directory: extension
+        run: npm install && npm run lint && npm run format:check && npm run build
