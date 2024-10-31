@@ -13,6 +13,7 @@ import {
   ConversationMessage,
   DocumentDuplicateIcon,
   EyeIcon,
+  Markdown,
   Popover,
 } from "@dust-tt/sparkle";
 import type {
@@ -25,12 +26,55 @@ import type {
   AgentMessageType,
   GenerationTokensEvent,
   LightWorkspaceType,
+  RetrievalActionType,
+  RetrievalDocumentType,
+  WebsearchActionType,
+  WebsearchResultType,
 } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import {
+  assertNever,
+  getProviderFromRetrievedDocument,
+  getTitleFromRetrievedDocument,
+  isRetrievalActionType,
+  isWebsearchActionType,
+  removeNulls,
+} from "@dust-tt/types";
 import type { MarkdownCitation } from "@extension/components/conversation/MarkdownCitation";
+import {
+  CitationsContext,
+  CiteBlock,
+  getCiteDirective,
+} from "@extension/components/markdown/CiteBlock";
+import {
+  MentionBlock,
+  mentionDirective,
+} from "@extension/components/markdown/MentionBlock";
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import { useEventSource } from "@extension/hooks/useEventSource";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
+
+export function makeDocumentCitation(
+  document: RetrievalDocumentType
+): MarkdownCitation {
+  return {
+    href: document.sourceUrl ?? undefined,
+    title: getTitleFromRetrievedDocument(document),
+    type: getProviderFromRetrievedDocument(document),
+  };
+}
+
+export function makeWebsearchResultsCitation(
+  result: WebsearchResultType
+): MarkdownCitation {
+  return {
+    description: result.snippet,
+    href: result.link,
+    title: result.title,
+    type: "document" as const,
+  };
+}
 
 interface AgentMessageProps {
   conversationId: string;
@@ -281,43 +325,56 @@ export function AgentMessage({
     return () => clearTimeout(timer);
   }, [lastHoveredReference]);
 
-  // useEffect(() => {
-  //   // Retrieval actions
-  //   const retrievalActionsWithDocs = agentMessageToRender.actions
-  //     .filter((a) => isRetrievalActionType(a) && a.documents)
-  //     .sort((a, b) => a.id - b.id) as RetrievalActionType[];
-  //   const allDocs = removeNulls(
-  //     retrievalActionsWithDocs.map((a) => a.documents).flat()
-  //   );
-  //   const allDocsReferences = allDocs.reduce<{
-  //     [key: string]: MarkdownCitation;
-  //   }>((acc, d) => {
-  //     acc[d.reference] = makeDocumentCitation(d);
-  //     return acc;
-  //   }, {});
+  useEffect(() => {
+    // Retrieval actions
+    const retrievalActionsWithDocs = agentMessageToRender.actions
+      .filter((a) => isRetrievalActionType(a) && a.documents)
+      .sort((a, b) => a.id - b.id) as RetrievalActionType[];
+    const allDocs = removeNulls(
+      retrievalActionsWithDocs.map((a) => a.documents).flat()
+    );
+    const allDocsReferences = allDocs.reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, d) => {
+      acc[d.reference] = makeDocumentCitation(d);
+      return acc;
+    }, {});
 
-  //   // Websearch actions
-  //   const websearchActionsWithResults = agentMessageToRender.actions
-  //     .filter((a) => isWebsearchActionType(a) && a.output?.results?.length)
-  //     .sort((a, b) => a.id - b.id) as WebsearchActionType[];
-  //   const allWebResults = removeNulls(
-  //     websearchActionsWithResults.map((a) => a.output?.results).flat()
-  //   );
-  //   const allWebReferences = allWebResults.reduce<{
-  //     [key: string]: MarkdownCitation;
-  //   }>((acc, l) => {
-  //     acc[l.reference] = makeWebsearchResultsCitation(l);
-  //     return acc;
-  //   }, {});
+    // Websearch actions
+    const websearchActionsWithResults = agentMessageToRender.actions
+      .filter((a) => isWebsearchActionType(a) && a.output?.results?.length)
+      .sort((a, b) => a.id - b.id) as WebsearchActionType[];
+    const allWebResults = removeNulls(
+      websearchActionsWithResults.map((a) => a.output?.results).flat()
+    );
+    const allWebReferences = allWebResults.reduce<{
+      [key: string]: MarkdownCitation;
+    }>((acc, l) => {
+      acc[l.reference] = makeWebsearchResultsCitation(l);
+      return acc;
+    }, {});
 
-  //   // Merge all references
-  //   setReferences({ ...allDocsReferences, ...allWebReferences });
-  // }, [
-  //   agentMessageToRender.actions,
-  //   agentMessageToRender.status,
-  //   agentMessageToRender.sId,
-  // ]);
+    // Merge all references
+    setReferences({ ...allDocsReferences, ...allWebReferences });
+  }, [
+    agentMessageToRender.actions,
+    agentMessageToRender.status,
+    agentMessageToRender.sId,
+  ]);
   const { configuration: agentConfiguration } = agentMessageToRender;
+
+  const additionalMarkdownComponents: Components = useMemo(
+    () => ({
+      sup: CiteBlock,
+      mention: MentionBlock,
+    }),
+    [owner, conversationId, message.sId, agentConfiguration.sId]
+  );
+
+  const additionalMarkdownPlugins: PluggableList = useMemo(
+    () => [mentionDirective, getCiteDirective()],
+    []
+  );
 
   const citations = useMemo(
     () => getCitations({ activeReferences, lastHoveredReference }),
@@ -410,7 +467,23 @@ export function AgentMessage({
                 <span></span>
               </div>
             ) : (
-              agentMessage.content
+              <CitationsContext.Provider
+                value={{
+                  references,
+                  updateActiveReferences,
+                  setHoveredReference: setLastHoveredReference,
+                }}
+              >
+                <Markdown
+                  content={agentMessage.content}
+                  isStreaming={
+                    streaming && lastTokenClassification === "tokens"
+                  }
+                  isLastMessage={isLastMessage}
+                  additionalMarkdownComponents={additionalMarkdownComponents}
+                  additionalMarkdownPlugins={additionalMarkdownPlugins}
+                />
+              </CitationsContext.Provider>
             )}
           </div>
         )}
