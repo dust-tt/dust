@@ -31,7 +31,7 @@ export async function launchZendeskSyncWorkflow({
   helpCenterBrandIds?: number[];
   categoryIds?: number[];
   forceResync?: boolean;
-}): Promise<Result<string, Error>> {
+}): Promise<Result<undefined, Error>> {
   if (startFromTs) {
     throw new Error("[Zendesk] startFromTs not implemented yet.");
   }
@@ -85,7 +85,7 @@ export async function launchZendeskSyncWorkflow({
     return new Err(err as Error);
   }
 
-  return new Ok(workflowId);
+  return new Ok(undefined);
 }
 
 export async function stopZendeskSyncWorkflow(

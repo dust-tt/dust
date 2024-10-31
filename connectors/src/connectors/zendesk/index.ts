@@ -336,16 +336,13 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       toBeSignaledHelpCenterIds.size > 0 ||
       toBeSignaledCategoryIds.size > 0
     ) {
-      const sendSignalToWorkflowResult = await launchZendeskSyncWorkflow({
+      return launchZendeskSyncWorkflow({
         connector,
         brandIds: [...toBeSignaledBrandIds],
         ticketsBrandIds: [...toBeSignaledTicketsIds],
         helpCenterBrandIds: [...toBeSignaledHelpCenterIds],
         categoryIds: [...toBeSignaledCategoryIds],
       });
-      if (sendSignalToWorkflowResult.isErr()) {
-        return new Err(sendSignalToWorkflowResult.error);
-      }
     }
 
     return new Ok(undefined);
@@ -561,9 +558,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const brandIds = await ZendeskBrandResource.fetchAllBrandIds({
       connectorId,
     });
-    const result = await launchZendeskSyncWorkflow({ connector, brandIds });
-
-    return result.isErr() ? result : new Ok(undefined);
+    return launchZendeskSyncWorkflow({ connector, brandIds });
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {
