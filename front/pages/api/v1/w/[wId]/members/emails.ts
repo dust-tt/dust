@@ -1,4 +1,3 @@
-import type { ListMemberEmailsResponseType } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -7,6 +6,10 @@ import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
+export type ListMemberEmailsResponseBody = {
+  emails: string[];
+};
+
 /**
  * @ignoreswagger
  * System API key only endpoint. Undocumented.
@@ -14,7 +17,7 @@ import { apiError } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<ListMemberEmailsResponseType>>,
+  res: NextApiResponse<WithAPIErrorResponse<ListMemberEmailsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isSystemKey()) {

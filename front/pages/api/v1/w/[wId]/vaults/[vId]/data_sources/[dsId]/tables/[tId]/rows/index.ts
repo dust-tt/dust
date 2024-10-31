@@ -1,11 +1,12 @@
 import type {
-  CellValueType,
-  ListTableRowsResponseType,
-  UpsertTableRowsResponseType,
-} from "@dust-tt/client";
-import { UpsertTableRowsRequestSchema } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+  CoreAPIRow,
+  CoreAPITableSchema,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import { CoreAPI, isSlugified } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
@@ -15,6 +16,48 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+
+const UpsertTableRowsRequestBodySchema = t.type({
+  rows: t.array(
+    t.type({
+      row_id: t.string,
+      value: t.record(
+        t.string,
+        t.union([
+          t.string,
+          t.null,
+          t.number,
+          t.boolean,
+          t.type({
+            type: t.literal("datetime"),
+            epoch: t.number,
+          }),
+        ])
+      ),
+    })
+  ),
+  truncate: t.union([t.boolean, t.undefined]),
+});
+
+type CellValueType = t.TypeOf<
+  typeof UpsertTableRowsRequestBodySchema
+>["rows"][number]["value"][string];
+
+type UpsertTableRowsResponseBody = {
+  table: {
+    name: string;
+    table_id: string;
+    description: string;
+    schema: CoreAPITableSchema | null;
+  };
+};
+
+type ListTableRowsResponseBody = {
+  rows: CoreAPIRow[];
+  offset: number;
+  limit: number;
+  total: number;
+};
 
 /**
  * @swagger
@@ -160,7 +203,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      UpsertTableRowsResponseType | ListTableRowsResponseType
+      UpsertTableRowsResponseBody | ListTableRowsResponseBody
     >
   >,
   auth: Authenticator
@@ -250,20 +293,19 @@ async function handler(
       return res.status(200).json({ rows: rowsList, offset, limit, total });
 
     case "POST":
-      const r = await UpsertTableRowsRequestSchema.safeParse(req.query);
-
-      if (r.error) {
+      const bodyValidation = UpsertTableRowsRequestBodySchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
-          status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: `Invalid request body: ${pathError}`,
           },
+          status_code: 400,
         });
       }
-
-      const { truncate } = r.data;
-      let { rows: rowsToUpsert } = r.data;
+      const { truncate } = bodyValidation.right;
+      let { rows: rowsToUpsert } = bodyValidation.right;
 
       // Make sure every key in the rows are lowercase
       const allKeys = new Set(

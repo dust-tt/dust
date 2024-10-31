@@ -1,11 +1,14 @@
-import type { GetWorkspaceVerifiedDomainsResponseType } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse, WorkspaceDomain } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+
+export type ListMemberEmailsResponseBody = {
+  verified_domains: WorkspaceDomain[];
+};
 
 /**
  * @ignoreswagger
@@ -14,9 +17,7 @@ import { apiError } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetWorkspaceVerifiedDomainsResponseType>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<ListMemberEmailsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isSystemKey()) {

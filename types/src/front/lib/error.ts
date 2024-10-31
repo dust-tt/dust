@@ -109,7 +109,7 @@ export type APIError = {
   connectors_error?: ConnectorsAPIError;
 };
 
-function isAPIError(obj: unknown): obj is APIError {
+export function isAPIError(obj: unknown): obj is APIError {
   return (
     typeof obj === "object" &&
     obj !== null &&

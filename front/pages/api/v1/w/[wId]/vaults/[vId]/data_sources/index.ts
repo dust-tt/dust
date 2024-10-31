@@ -1,5 +1,4 @@
-import type { GetDataSourcesResponseType } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
@@ -7,6 +6,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
+
+export type GetDataSourcesResponseBody = {
+  data_sources: Array<DataSourceType>;
+};
 
 /**
  * @swagger
@@ -51,7 +54,7 @@ import { apiError } from "@app/logger/withlogging";
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetDataSourcesResponseType>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetDataSourcesResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const { vId } = req.query;

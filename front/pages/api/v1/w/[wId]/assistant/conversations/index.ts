@@ -1,14 +1,17 @@
 import type {
-  GetConversationsResponseType,
-  PostConversationsResponseType,
-} from "@dust-tt/client";
-import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
-import type {
   ContentFragmentType,
+  ConversationType,
+  ConversationWithoutContentType,
   UserMessageType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { ConversationError, isEmptyString } from "@dust-tt/types";
+import {
+  ConversationError,
+  isEmptyString,
+  PublicPostConversationsRequestBodySchema,
+} from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -23,6 +26,15 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+
+export type PostConversationsResponseBody = {
+  conversation: ConversationType;
+  message?: UserMessageType;
+  contentFragment?: ContentFragmentType;
+};
+export type GetConversationsResponseBody = {
+  conversations: ConversationWithoutContentType[];
+};
 
 /**
  * @swagger
@@ -88,26 +100,31 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      PostConversationsResponseType | GetConversationsResponseType
+      PostConversationsResponseBody | GetConversationsResponseBody
     >
   >,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
     case "POST":
-      const r = PublicPostConversationsRequestBodySchema.safeParse(req.body);
+      const bodyValidation = PublicPostConversationsRequestBodySchema.decode(
+        req.body
+      );
 
-      if (r.error) {
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: `Invalid request body: ${pathError}`,
           },
         });
       }
 
-      const { title, visibility, message, contentFragment, blocking } = r.data;
+      const { title, visibility, message, contentFragment, blocking } =
+        bodyValidation.right;
 
       if (message) {
         if (isEmptyString(message.context.username)) {

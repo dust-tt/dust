@@ -1,7 +1,14 @@
-import type { PostMessagesResponseBody } from "@dust-tt/client";
-import { PublicPostMessagesRequestBodySchema } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { isEmptyString } from "@dust-tt/types";
+import type {
+  AgentMessageType,
+  UserMessageType,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
+import {
+  isEmptyString,
+  PublicPostMessagesRequestBodySchema,
+} from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
@@ -10,6 +17,11 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+
+export type PostMessagesResponseBody = {
+  message: UserMessageType;
+  agentMessages?: AgentMessageType[];
+};
 
 /**
  * @swagger
@@ -81,18 +93,21 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const r = PublicPostMessagesRequestBodySchema.safeParse(req.body);
-      if (r.error) {
+      const bodyValidation = PublicPostMessagesRequestBodySchema.decode(
+        req.body
+      );
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${r.error.message}`,
+            message: `Invalid request body: ${pathError}`,
           },
         });
       }
 
-      const { content, context, mentions, blocking } = r.data;
+      const { content, context, mentions, blocking } = bodyValidation.right;
 
       if (isEmptyString(context.username)) {
         return apiError(req, res, {

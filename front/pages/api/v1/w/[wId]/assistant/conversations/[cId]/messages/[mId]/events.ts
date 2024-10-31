@@ -1,4 +1,3 @@
-import type { AgentMessageEventType } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -145,8 +144,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const eventStream: AsyncGenerator<AgentMessageEventType> =
-        getMessagesEvents(mId, lastEventId);
+      const eventStream = getMessagesEvents(mId, lastEventId);
 
       res.writeHead(200, {
         "Content-Type": "text/event-stream",

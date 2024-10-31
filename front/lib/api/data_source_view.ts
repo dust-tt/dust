@@ -3,7 +3,6 @@ import type {
   CoreAPIError,
   DataSourceViewContentNode,
   DataSourceViewType,
-  PatchDataSourceViewType,
   Result,
 } from "@dust-tt/types";
 import { ConnectorsAPI, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
@@ -12,8 +11,6 @@ import assert from "assert";
 import config from "@app/lib/api/config";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import type { OffsetPaginationParams } from "@app/lib/api/pagination";
-import type { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
@@ -287,54 +284,4 @@ export async function getContentNodesForDataSourceView(
     nodes: contentNodesInView,
     total: contentNodesResult.total,
   });
-}
-
-export async function handlePatchDataSourceView(
-  auth: Authenticator,
-  patchBody: PatchDataSourceViewType,
-  dataSourceView: DataSourceViewResource
-): Promise<
-  Result<
-    DataSourceViewResource,
-    Omit<DustError, "code"> & {
-      code: "unauthorized" | "internal_error";
-    }
-  >
-> {
-  if (!dataSourceView.canWrite(auth)) {
-    return new Err({
-      name: "dust_error",
-      code: "unauthorized",
-      message: "Only admins and builders can update data source views.",
-    });
-  }
-
-  let updateResultRes;
-  if ("parentsIn" in patchBody) {
-    const { parentsIn } = patchBody;
-    updateResultRes = await dataSourceView.setParents(parentsIn ?? []);
-  } else {
-    const parentsToAdd =
-      "parentsToAdd" in patchBody ? patchBody.parentsToAdd : [];
-    const parentsToRemove =
-      "parentsToRemove" in patchBody ? patchBody.parentsToRemove : [];
-
-    updateResultRes = await dataSourceView.updateParents(
-      parentsToAdd,
-      parentsToRemove
-    );
-  }
-
-  if (updateResultRes.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_error",
-      message: updateResultRes.error.message,
-    });
-  }
-
-  if (auth.user()) {
-    await dataSourceView.setEditedBy(auth);
-  }
-  return new Ok(dataSourceView);
 }
