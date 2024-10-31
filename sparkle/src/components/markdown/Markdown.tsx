@@ -222,7 +222,7 @@ function LinkBlock({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="s-hover:text-action-400 s-hover:underline s-active:text-action-600 s-break-all s-font-semibold s-text-action-500 s-transition-all s-duration-200 s-ease-in-out"
+      className="s-break-all s-font-semibold s-text-action-500 s-transition-all s-duration-200 s-ease-in-out hover:s-text-action-400 hover:s-underline active:s-text-action-600"
     >
       {children}
     </a>
@@ -296,7 +296,7 @@ function UlBlock({
   return (
     <ul
       className={cn(
-        "s-first:pt-0 s-last:pb-0 s-list-disc s-py-2 s-pl-8",
+        "s-list-disc s-py-2 s-pl-8 first:s-pt-0 last:s-pb-0",
         textColor,
         sizes[textSize].p
       )}
@@ -317,7 +317,7 @@ function OlBlock({
   return (
     <ol
       className={cn(
-        "s-first:pt-0 s-last:pb-0 s-list-decimal s-py-3 s-pl-8",
+        "s-list-decimal s-py-3 s-pl-8 first:s-pt-0 last:s-pb-0",
         textColor,
         sizes[textSize].p
       )}
@@ -338,7 +338,7 @@ function LiBlock({
   return (
     <li
       className={cn(
-        "s-first:pt-0 s-last:pb-0 s-break-words",
+        "s-break-words first:s-pt-0 last:s-pb-0",
         textSize === "sm" ? "s-py-1" : "s-py-2",
         textColor,
         sizes[textSize].p
@@ -360,7 +360,7 @@ function ParagraphBlock({
   return (
     <div
       className={cn(
-        "s-first:pt-0 s-last:pb-0 s-whitespace-pre-wrap s-break-words s-font-normal",
+        "s-whitespace-pre-wrap s-break-words s-font-normal first:s-pt-0 last:s-pb-0",
         textSize === "sm" ? "s-py-1" : "s-py-2 s-leading-7",
         sizes[textSize].p,
         textColor

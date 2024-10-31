@@ -65,7 +65,7 @@ export function TableBlock({ children }: { children: React.ReactNode }) {
 
   return (
     <ContentBlockWrapper
-      className="s-dark:border-structure-200-dark s-border s-border-structure-200"
+      className="s-border s-border-structure-200 dark:s-border-structure-200-dark"
       content={tableData}
     >
       <table className="s-w-full s-table-auto">{children}</table>
@@ -75,7 +75,7 @@ export function TableBlock({ children }: { children: React.ReactNode }) {
 
 export function TableHeadBlock({ children }: { children: React.ReactNode }) {
   return (
-    <thead className="s-dark:bg-structure-50-dark s-bg-structure-50 s-px-2 s-py-2">
+    <thead className="s-bg-structure-50 s-px-2 s-py-2 dark:s-bg-structure-50-dark">
       {children}
     </thead>
   );
@@ -87,7 +87,7 @@ export function TableBodyBlock({ children }: { children: React.ReactNode }) {
 
 export function TableHeaderBlock({ children }: { children: React.ReactNode }) {
   return (
-    <th className="s-dark:text-element-700-dark s-whitespace-nowrap s-px-6 s-py-3 s-text-left s-text-xs s-font-semibold s-uppercase s-tracking-wider s-text-element-700">
+    <th className="s-whitespace-nowrap s-px-6 s-py-3 s-text-left s-text-xs s-font-semibold s-uppercase s-tracking-wider s-text-element-700 dark:s-text-element-700-dark">
       {children}
     </th>
   );
@@ -95,7 +95,7 @@ export function TableHeaderBlock({ children }: { children: React.ReactNode }) {
 
 export function TableDataBlock({ children }: { children: React.ReactNode }) {
   return (
-    <td className="s-dark:text-element-800-dark s-px-6 s-py-4 s-text-sm s-text-element-800">
+    <td className="s-px-6 s-py-4 s-text-sm s-text-element-800 dark:s-text-element-800-dark">
       {Array.isArray(children) ? (
         children.map((child: any, i) => {
           if (child === "<br>") {
