@@ -55,7 +55,8 @@ async function findAllDescendants(
 
 async function updateParentsFieldForConnector(
   connector: ConnectorResource,
-  execute = false
+  execute = false,
+  nodeConcurrency: number
 ) {
   let pagesIdCursor = 0;
   let databasesIdCursor = 0;
@@ -167,7 +168,7 @@ async function updateParentsFieldForConnector(
           }
         }
       },
-      { concurrency: 8 }
+      { concurrency: nodeConcurrency }
     );
 
     console.log(
@@ -180,28 +181,48 @@ async function updateParentsFieldForConnector(
   );
 }
 
-makeScript({}, async ({ execute }) => {
-  const connectors = await ConnectorResource.listByType("notion", {});
-
-  console.log(`Found ${connectors.length} Notion connectors`);
-
-  const validConnectors = connectors.filter(
-    (connector) => !connector.errorType
-  );
-  console.log(
-    `Processing ${validConnectors.length} valid connectors in batches of 5`
-  );
-
-  await concurrentExecutor(
-    validConnectors,
-    async (connector) => {
-      console.log(
-        `Processing connector ${connector.id} (workspace ${connector.workspaceId})`
-      );
-      await updateParentsFieldForConnector(connector, execute);
+makeScript(
+  {
+    connectorConcurrency: {
+      type: "number",
+      demandOption: false,
+      default: 5,
+      description: "Number of connectors to process concurrently",
     },
-    { concurrency: 5 }
-  );
+    nodeConcurrency: {
+      type: "number",
+      demandOption: false,
+      default: 8,
+      description: "Number of nodes to process concurrently per connector",
+    },
+  },
+  async ({ execute, connectorConcurrency, nodeConcurrency }) => {
+    const connectors = await ConnectorResource.listByType("notion", {});
 
-  console.log("Finished processing all connectors");
-});
+    console.log(`Found ${connectors.length} Notion connectors`);
+
+    const validConnectors = connectors.filter(
+      (connector) => !connector.errorType
+    );
+    console.log(
+      `Processing ${validConnectors.length} valid connectors with connector concurrency ${connectorConcurrency} and node concurrency ${nodeConcurrency}`
+    );
+
+    await concurrentExecutor(
+      validConnectors,
+      async (connector) => {
+        console.log(
+          `Processing connector ${connector.id} (workspace ${connector.workspaceId})`
+        );
+        await updateParentsFieldForConnector(
+          connector,
+          execute,
+          nodeConcurrency
+        );
+      },
+      { concurrency: connectorConcurrency }
+    );
+
+    console.log("Finished processing all connectors");
+  }
+);
