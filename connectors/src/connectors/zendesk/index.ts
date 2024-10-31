@@ -546,9 +546,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
     await connector.markAsPaused();
-    const result = await this.stop();
-
-    return result.isErr() ? result : new Ok(undefined);
+    return this.stop();
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
