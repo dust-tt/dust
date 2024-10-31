@@ -3,7 +3,6 @@ import React from "react";
 
 import {
   ArrowRightIcon,
-  DropdownMenu,
   Item,
   LightbulbIcon,
   PlusIcon,
@@ -76,67 +75,6 @@ export const ListItemExample = () => (
         />
       </Item.List>
     </div>
-    <div className="s-flex s-flex-col s-gap-8">
-      Dropdown example:
-      <div>
-        <DropdownMenu>
-          <DropdownMenu.Button label="Dust" />
-          <DropdownMenu.Items>
-            <DropdownMenu.Item label="item 1" link={{ href: "#" }} />
-            <DropdownMenu.Item label="item 2" link={{ href: "#" }} />
-          </DropdownMenu.Items>
-        </DropdownMenu>
-      </div>
-      <div>
-        <DropdownMenu>
-          <DropdownMenu.Button label="Dust" />
-          <DropdownMenu.Items>
-            <DropdownMenu.Item
-              label="item 1"
-              link={{ href: "#" }}
-              icon={Cog6ToothIcon}
-            />
-            <DropdownMenu.Item
-              label="item 2"
-              link={{ href: "#" }}
-              icon={Cog6ToothIcon}
-            />
-          </DropdownMenu.Items>
-        </DropdownMenu>
-      </div>
-      <div>
-        <DropdownMenu>
-          <DropdownMenu.Button label="Dust" />
-          <DropdownMenu.Items>
-            <DropdownMenu.Item
-              label="item 1"
-              link={{ href: "#" }}
-              icon={Cog6ToothIcon}
-              description="Desciption of the item"
-            />
-            <DropdownMenu.Item
-              label="Dust site"
-              link={{ href: "https://dust.tt", target: "_blank" }}
-              icon={Cog6ToothIcon}
-              description="Desciption of the item"
-            />
-            <DropdownMenu.Item
-              label="item 1"
-              link={{ href: "#" }}
-              icon={Cog6ToothIcon}
-              description="Desciption of the item"
-            />
-            <DropdownMenu.Item
-              label="item 2"
-              link={{ href: "#" }}
-              icon={Cog6ToothIcon}
-              description="Desciption of the item"
-            />
-          </DropdownMenu.Items>
-        </DropdownMenu>
-      </div>
-    </div>
-
     <div>
       Avatar example:
       <Item.List className="s-w-40">

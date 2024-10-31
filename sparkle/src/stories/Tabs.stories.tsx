@@ -27,7 +27,12 @@ export function TabExample() {
           href="hello"
           icon={CommandIcon}
         />
-        <TabsTrigger disabled value="password" label="World" icon={LightbulbIcon} />
+        <TabsTrigger
+          disabled
+          value="password"
+          label="World"
+          icon={LightbulbIcon}
+        />
         <TabsTrigger value="settings" icon={Cog6ToothIcon} />
       </TabsList>
       <TabsContent value="account">Hello</TabsContent>

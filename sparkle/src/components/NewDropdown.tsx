@@ -171,7 +171,7 @@ const NewDropdownMenuContent = React.forwardRef<
 ));
 NewDropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
-type NewDropdownMenuItemProps = MutuallyExclusiveProps<
+export type NewDropdownMenuItemProps = MutuallyExclusiveProps<
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
     inset?: boolean;
     variant?: ItemVariantType;

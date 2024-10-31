@@ -27,7 +27,6 @@ export { ConversationMessageContent } from "./ConversationMessageContent";
 export { ConversationMessageHeader } from "./ConversationMessageHeader";
 export { DataTable } from "./DataTable";
 export { Dialog } from "./Dialog";
-export { DropdownMenu } from "./DropdownMenu";
 export { default as DropzoneOverlay } from "./DropzoneOverlay";
 export { ElementDialog } from "./ElementDialog";
 export { ElementModal } from "./ElementModal";
@@ -51,6 +50,7 @@ export {
   NavigationListItem,
   NavigationListLabel,
 } from "./NavigationList";
+export type { NewDropdownMenuItemProps } from "./NewDropdown";
 export {
   NewDropdownMenu,
   NewDropdownMenuCheckboxItem,
