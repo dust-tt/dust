@@ -150,7 +150,8 @@ async function getContentNodesForStaticDataSourceView(
 > {
   const { dataSource } = dataSourceView;
 
-  // Always set a limit for pagination of static data sources.
+  // Use a high pagination limit since the product UI doesn't support pagination yet,
+  // even though static data sources can contain many documents via API ingestion.
   const paginationParams = pagination ?? {
     limit: DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT,
     offset: 0,
