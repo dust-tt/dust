@@ -24,6 +24,7 @@ import {
   isTimeFrame,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   Ok,
+  removeNulls,
 } from "@dust-tt/types";
 import assert from "assert";
 import type { Order, Transaction } from "sequelize";
@@ -118,7 +119,7 @@ export async function getAgentConfiguration(
 export async function searchAgentConfigurationsByName(
   auth: Authenticator,
   name: string
-): Promise<AgentConfiguration[] | []> {
+): Promise<LightAgentConfigurationType[]> {
   const owner = auth.getNonNullableWorkspace();
 
   const agentConfigurations = await AgentConfiguration.findAll({
@@ -131,7 +132,15 @@ export async function searchAgentConfigurationsByName(
       },
     },
   });
-  return agentConfigurations || [];
+  const r = removeNulls(
+    await getAgentConfigurations({
+      auth,
+      agentsGetView: { agentIds: agentConfigurations.map((c) => c.sId) },
+      variant: "light",
+    })
+  );
+
+  return r;
 }
 
 function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {

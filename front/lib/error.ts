@@ -3,10 +3,15 @@ export type DustErrorCode =
   | "unauthorized"
   | "invalid_id"
   | "core_api_error"
+  | "internal_error"
   // Data source
+  | "data_source_error"
   | "data_source_quota_error"
   | "text_or_section_required"
   | "invalid_url"
+  // Table
+  | "missing_csv"
+  | "invalid_rows"
   // Group errors
   | "user_not_found"
   | "user_not_member"

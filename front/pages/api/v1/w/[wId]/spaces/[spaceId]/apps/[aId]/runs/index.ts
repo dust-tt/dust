@@ -1,3 +1,8 @@
+/* eslint jsdoc/no-missing-syntax: 0 */ //
+// Disabling jsdoc rule, as we're not yet documentating dust apps endpoints under vaults.
+// We still document the legacy endpoint, which does the same thing.
+// Note: for now, an API key only has access to the global vault.
+import type { RunAppResponseType } from "@dust-tt/client";
 import type {
   BlockType,
   CredentialsType,
@@ -28,10 +33,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { Provider } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-
-export type PostRunResponseBody = {
-  run: RunType;
-};
 
 export const config = {
   api: {
@@ -175,7 +176,7 @@ function extractUsageFromExecutions(
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostRunResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<RunAppResponseType>>,
   auth: Authenticator,
   keyAuth: Authenticator
 ): Promise<void> {
@@ -222,7 +223,8 @@ async function handler(
 
   // This variable is used in the context of the DustAppRun action to use the workspace credentials
   // instead of our managed credentials when running an app with a system API key.
-  const useWorkspaceCredentials = !!req.query["use_workspace_credentials"];
+  const useWorkspaceCredentials =
+    req.query["use_workspace_credentials"] === "true";
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   const runFlavor: RunFlavor = req.body.stream
     ? "streaming"
