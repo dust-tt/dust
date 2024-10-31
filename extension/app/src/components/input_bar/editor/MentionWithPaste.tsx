@@ -2,7 +2,10 @@ import type { EditorSuggestions } from "@extension/components/input_bar/editor/s
 import Mention from "@tiptap/extension-mention";
 import type { PasteRuleMatch } from "@tiptap/react";
 import { nodePasteRule } from "@tiptap/react";
-import { escapeRegExp } from "lodash";
+
+const escapeRegExp = (string: string): string => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
 
 export const MentionWithPaste = Mention.extend({
   addPasteRules() {
