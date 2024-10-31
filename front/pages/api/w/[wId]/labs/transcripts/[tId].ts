@@ -138,8 +138,6 @@ async function handler(
         !!transcriptsConfiguration.isActive ||
         !!transcriptsConfiguration.dataSourceViewId;
 
-      console.log("shouldStartWorkflow", shouldStartWorkflow);
-
       if (shouldStartWorkflow) {
         logger.info(
           {
