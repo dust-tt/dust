@@ -9,7 +9,6 @@ import {
   Icon,
   IconButton,
   Input,
-  Label,
   Modal,
   MoreIcon,
   NewDropdownMenu,
