@@ -247,11 +247,11 @@ const PROVIDER_STRATEGIES: Record<
   zendesk: {
     setupUri: (connection) => {
       const scopes = ["read"];
-      if (!isValidZendeskSubdomain(connection.metadata.extra_config)) {
+      if (!isValidZendeskSubdomain(connection.metadata.zendesk_subdomain)) {
         throw "Invalid Zendesk subdomain";
       }
       return (
-        `https://${connection.metadata.extra_config}.zendesk.com/oauth/authorizations/new?` +
+        `https://${connection.metadata.zendesk_subdomain}.zendesk.com/oauth/authorizations/new?` +
         `client_id=${config.getOAuthZendeskClientId()}` +
         `&scope=${encodeURIComponent(scopes.join(" "))}` +
         `&response_type=code` +
@@ -272,7 +272,7 @@ export async function createConnectionAndGetSetupUrl(
   auth: Authenticator,
   provider: OAuthProvider,
   useCase: OAuthUseCase,
-  extraConfig: string | null
+  extraConfig: Record<string, string>
 ): Promise<Result<string, OAuthError>> {
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
@@ -280,10 +280,8 @@ export async function createConnectionAndGetSetupUrl(
     use_case: useCase,
     workspace_id: auth.getNonNullableWorkspace().sId,
     user_id: auth.getNonNullableUser().sId,
+    ...extraConfig,
   };
-  if (extraConfig) {
-    metadata.extra_config = extraConfig;
-  }
 
   const cRes = await api.createConnection({
     provider,

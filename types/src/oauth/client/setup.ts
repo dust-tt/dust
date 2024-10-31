@@ -18,12 +18,12 @@ export async function setupOAuthConnection({
   owner: LightWorkspaceType;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
-  extraConfig: string | null;
+  extraConfig: Record<string, string>;
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
     let url = `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}`;
     if (extraConfig) {
-      url += `&extraConfig=${extraConfig}`;
+      url += `&extraConfig=${encodeURIComponent(JSON.stringify(extraConfig))}`;
     }
     const oauthPopup = window.open(url);
     let authComplete = false;

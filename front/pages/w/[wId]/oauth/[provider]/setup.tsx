@@ -1,7 +1,12 @@
 import { isOAuthProvider, isOAuthUseCase } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+
+export const ExtraConfigTypeSchema = t.record(t.string, t.string);
+export type ExtraConfigType = t.TypeOf<typeof ExtraConfigTypeSchema>;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<object>(
   async (context, auth) => {
@@ -23,7 +28,19 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
         notFound: true,
       };
     }
-    if (extraConfig && typeof extraConfig !== "string") {
+
+    let parsedExtraConfig: Record<string, string> = {};
+    try {
+      const bodyValidation = ExtraConfigTypeSchema.decode(
+        JSON.parse(extraConfig as string)
+      );
+      if (isLeft(bodyValidation)) {
+        return {
+          notFound: true,
+        };
+      }
+      parsedExtraConfig = bodyValidation.right;
+    } catch (e) {
       return {
         notFound: true,
       };
@@ -33,7 +50,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
       auth,
       provider,
       useCase,
-      extraConfig || null
+      parsedExtraConfig
     );
 
     if (!urlRes.isOk()) {

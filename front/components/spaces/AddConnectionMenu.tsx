@@ -56,7 +56,7 @@ export async function setupConnection({
 }: {
   owner: LightWorkspaceType;
   provider: ConnectorProvider;
-  extraConfig: string | null;
+  extraConfig: Record<string, string>;
 }): Promise<Result<string, Error>> {
   let connectionId: string;
 
@@ -158,7 +158,7 @@ export const AddConnectionMenu = ({
   const handleOauthProviderManagedDataSource = async (
     provider: ConnectorProvider,
     suffix: string | null,
-    extraConfig: string | null
+    extraConfig: Record<string, string>
   ) => {
     try {
       const connectionIdRes = await setupConnection({
@@ -326,7 +326,7 @@ export const AddConnectionMenu = ({
                   integration: prev.integration,
                 }))
               }
-              onConfirm={(extraConfig: string | null) => {
+              onConfirm={(extraConfig: Record<string, string>) => {
                 if (showConfirmConnection.integration) {
                   void handleOauthProviderManagedDataSource(
                     connectorProvider,

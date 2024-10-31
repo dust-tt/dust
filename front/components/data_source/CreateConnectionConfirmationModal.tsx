@@ -16,7 +16,7 @@ type CreateConnectionConfirmationModalProps = {
   connectorProviderConfiguration: ConnectorProviderConfiguration;
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (extraConfig: string | null) => void;
+  onConfirm: (extraConfig: Record<string, string>) => void;
 };
 
 export function CreateConnectionConfirmationModal({
@@ -26,11 +26,11 @@ export function CreateConnectionConfirmationModal({
   onConfirm,
 }: CreateConnectionConfirmationModalProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [extraConfig, setExtraConfig] = useState<string | null>(null);
+  const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
 
   const isExtraConfigValid = useCallback(() => {
     if (connectorProviderConfiguration.connectorProvider === "zendesk") {
-      return isValidZendeskSubdomain(extraConfig);
+      return isValidZendeskSubdomain(extraConfig.zendesk_subdomain);
     } else {
       return true;
     }
@@ -39,6 +39,8 @@ export function CreateConnectionConfirmationModal({
   useEffect(() => {
     if (isOpen) {
       setIsLoading(false);
+      // Clean-up extraConfig at mount since the component is reused across providers.
+      setExtraConfig({});
     }
   }, [isOpen, setIsLoading]);
 
@@ -123,10 +125,10 @@ export function CreateConnectionConfirmationModal({
               message="The first part of your Zendesk account URL."
               messageStatus="info"
               name="subdomain"
-              value={extraConfig ?? ""}
+              value={extraConfig.zendesk_subdomain ?? ""}
               placeholder="my-subdomain"
               onChange={(e) => {
-                setExtraConfig(e.target.value);
+                setExtraConfig({ zendesk_subdomain: e.target.value });
               }}
             />
           )}
