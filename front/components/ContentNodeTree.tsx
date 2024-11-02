@@ -151,7 +151,7 @@ function ContentNodeTreeChildren({
 
   if (isResourcesError) {
     return (
-      <div className="text-warning text-sm">
+      <div className="text-sm text-warning">
         Failed to retrieve permissions likely due to a revoked authorization.
       </div>
     );
