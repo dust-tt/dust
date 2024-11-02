@@ -36,8 +36,8 @@ export function BlogSection() {
       <div className="col-span-12 flex flex-col items-center gap-4">
         <Carousel className="w-full">
           <div className="flex w-full flex-row gap-4 md:justify-center">
-            <CarouselPrevious variant="white" />
-            <CarouselNext variant="white" />
+            <CarouselPrevious />
+            <CarouselNext />
           </div>
           <CarouselContent>
             <CarouselItem className="basis-full md:basis-1/2 md:px-6 lg:basis-1/3">
