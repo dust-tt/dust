@@ -7,14 +7,21 @@ import { cn } from "@sparkle/lib/utils";
 
 const Tabs = TabsPrimitive.Root;
 
+type TabsListProps = React.ComponentPropsWithoutRef<
+  typeof TabsPrimitive.List
+> & {
+  isFullSize?: boolean;
+};
+
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, ...props }, ref) => (
+  TabsListProps
+>(({ className, isFullSize = true, ...props }, ref) => (
   <TabsPrimitive.List
     ref={ref}
     className={cn(
       "s-inline-flex s-h-10 s-items-center s-gap-2 s-border-b s-border-separator",
+      isFullSize && "s-w-full",
       className
     )}
     {...props}
