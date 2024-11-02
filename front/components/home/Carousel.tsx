@@ -198,8 +198,7 @@ CarouselItem.displayName = "CarouselItem";
 const CarouselPrevious = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<typeof Button>
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
->(({ className = "", variant = "tertiary", size = "sm", ...props }, ref) => {
+>(({ className, variant = "outline", size = "sm", ...props }, ref) => {
   const { scrollPrev, canScrollPrev, isLooping } = useCarousel();
 
   return (
@@ -220,8 +219,7 @@ CarouselPrevious.displayName = "CarouselPrevious";
 const CarouselNext = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<typeof Button>
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
->(({ className = "", variant = "tertiary", size = "sm", ...props }, ref) => {
+>(({ className, variant = "outline", size = "sm", ...props }, ref) => {
   const { scrollNext, canScrollNext, isLooping } = useCarousel();
 
   return (
