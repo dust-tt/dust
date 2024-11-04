@@ -61,6 +61,7 @@ export {
   NewDropdownMenuPortal,
   NewDropdownMenuRadioGroup,
   NewDropdownMenuRadioItem,
+  NewDropdownMenuSearchbar,
   NewDropdownMenuSeparator,
   NewDropdownMenuShortcut,
   NewDropdownMenuSub,
