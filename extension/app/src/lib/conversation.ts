@@ -1,3 +1,4 @@
+import type { PublicPostConversationsRequestBody } from "@dust-tt/client";
 import type {
   AgentMessageNewEvent,
   AgentMessageType,
@@ -5,7 +6,6 @@ import type {
   ConversationVisibility,
   LightWorkspaceType,
   MentionType,
-  PublicPostConversationsRequestBody,
   Result,
   SubmitMessageError,
   UserMessageNewEvent,
