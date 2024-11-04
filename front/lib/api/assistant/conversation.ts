@@ -47,6 +47,7 @@ import {
   Ok,
   rateLimiter,
 } from "@dust-tt/types";
+import { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -912,11 +913,18 @@ export async function* postUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
+      // TODO(2024-11-04 flav) `group-id` clean-up.
       await updateConversationGroups({
         mentionedAgents: nonNullResults.map(({ m }) => m.configuration),
         conversation,
         t,
       });
+
+      await updateConversationRequestedGroupIds(
+        nonNullResults.map(({ m }) => m.configuration),
+        conversation,
+        t
+      );
 
       return {
         userMessage,
@@ -1389,6 +1397,7 @@ export async function* editUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
+      // TODO(2024-11-04 flav) `group-id` clean-up.
       // updateConversationGroups is purely additive, this will not remove any
       // group from the conversation (see function description)
       await updateConversationGroups({
@@ -1396,6 +1405,12 @@ export async function* editUserMessage(
         conversation,
         t,
       });
+
+      await updateConversationRequestedGroupIds(
+        nonNullResults.map(({ m }) => m.configuration),
+        conversation,
+        t
+      );
 
       return {
         userMessage,
@@ -1601,11 +1616,18 @@ export async function* retryAgentMessage(
         }
       );
 
+      // TODO(2024-11-04 flav) `group-id` clean-up.
       await updateConversationGroups({
         mentionedAgents: [message.configuration],
         conversation,
         t,
       });
+
+      await updateConversationRequestedGroupIds(
+        [message.configuration],
+        conversation,
+        t
+      );
 
       const agentMessage: AgentMessageWithRankType = {
         id: m.id,
@@ -2016,7 +2038,7 @@ async function updateConversationGroups({
 
   const currentGroupIds = new Set(conversation.groupIds);
 
-  // no need to update if  newGroupIds is a subset of currentGroupIds
+  // No need to update if newGroupIds is a subset of currentGroupIds.
   if (newGroupIds.every((g) => currentGroupIds.has(g))) {
     return;
   }
@@ -2034,6 +2056,78 @@ async function updateConversationGroups({
   await Conversation.update(
     {
       groupIds,
+    },
+    {
+      where: {
+        id: conversation.id,
+      },
+      transaction: t,
+    }
+  );
+}
+
+/**
+ * Update the conversation requestedGroupIds based on the mentioned agents.
+ * This function is purely additive - requirements are never removed.
+ *
+ * Each agent's requestedGroupIds represents a set of requirements that must be
+ * satisfied. When an agent is mentioned in a conversation, its requirements are
+ * added to the conversation's requirements.
+ *
+ * Within each requirement (sub-array), groups are combined with OR logic.
+ * Different requirements (different sub-arrays) are combined with AND logic.
+ */
+async function updateConversationRequestedGroupIds(
+  mentionedAgents: LightAgentConfigurationType[],
+  conversation: ConversationType,
+  t: Transaction
+): Promise<void> {
+  const newRequirements = mentionedAgents.flatMap(
+    (agent) => agent.requestedGroupIds
+  );
+  const currentRequirements = conversation.requestedGroupIds;
+
+  // Check if each new requirement already exists in current requirements.
+  const hasNewRequirements = newRequirements.every((newReq) =>
+    currentRequirements.some((currentReq) =>
+      isEqual(sortBy(newReq), sortBy(currentReq))
+    )
+  );
+
+  // Early return if all new requirements are already present.
+  if (hasNewRequirements) {
+    return;
+  }
+
+  // Get missing requirements.
+  const missingRequirements = newRequirements.filter(
+    (newReq) =>
+      !currentRequirements.some((currentReq) =>
+        isEqual(sortBy(newReq), sortBy(currentReq))
+      )
+  );
+
+  // Convert all sIds to modelIds.
+  const sIdToModelId = new Map<string, number>();
+  const getModelId = (sId: string) => {
+    if (!sIdToModelId.has(sId)) {
+      const id = getResourceIdFromSId(sId);
+      if (id === null) {
+        throw new Error("Unexpected: invalid group id");
+      }
+      sIdToModelId.set(sId, id);
+    }
+    return sIdToModelId.get(sId)!;
+  };
+
+  const allRequirements = [
+    ...currentRequirements.map((req) => sortBy(req.map(getModelId))),
+    ...missingRequirements.map((req) => sortBy(req.map(getModelId))),
+  ];
+
+  await Conversation.update(
+    {
+      requestedGroupIds: allRequirements,
     },
     {
       where: {
