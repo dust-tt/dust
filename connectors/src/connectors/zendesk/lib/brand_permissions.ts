@@ -61,13 +61,11 @@ export async function allowSyncZendeskBrand({
   }
 
   await allowSyncZendeskHelpCenter({
-    subdomain,
     connectorId,
     connectionId,
     brandId,
   });
   await allowSyncZendeskTickets({
-    subdomain,
     connectorId,
     connectionId,
     brandId,
