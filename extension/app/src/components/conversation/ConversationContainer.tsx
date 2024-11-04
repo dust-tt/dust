@@ -1,10 +1,8 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentMention,
-  ConversationType,
   LightWorkspaceType,
   MentionType,
-  UserMessageType,
 } from "@dust-tt/types";
 import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
 import { ReachedLimitPopup } from "@extension/components/conversation/ReachedLimitPopup";
@@ -16,32 +14,11 @@ import {
   createPlaceholderUserMessage,
   postConversation,
   postMessage,
+  updateConversationWithOptimisticData,
 } from "@extension/lib/conversation";
 import type { StoredUser } from "@extension/lib/storage";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-export function updateConversationWithOptimisticData(
-  currentConversation: { conversation: ConversationType } | undefined,
-  messageOrPlaceholder: UserMessageType
-): { conversation: ConversationType } {
-  console.log("messageOrPlaceholder", messageOrPlaceholder);
-  if (
-    !currentConversation?.conversation ||
-    currentConversation.conversation.content.length === 0
-  ) {
-    throw new Error("Conversation not found");
-  }
-
-  const conversation: ConversationType = {
-    ...currentConversation.conversation,
-    content: [...currentConversation.conversation.content],
-  };
-
-  conversation.content.push([messageOrPlaceholder]);
-
-  return { conversation };
-}
 
 interface ConversationContainerProps {
   conversationId: string | null;

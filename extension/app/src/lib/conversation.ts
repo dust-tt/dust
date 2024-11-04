@@ -1,4 +1,6 @@
 import type {
+  AgentMessageNewEvent,
+  AgentMessageType,
   ConversationType,
   ConversationVisibility,
   LightWorkspaceType,
@@ -6,6 +8,7 @@ import type {
   PublicPostConversationsRequestBody,
   Result,
   SubmitMessageError,
+  UserMessageNewEvent,
   UserMessageType,
   UserMessageWithRankType,
   UserType,
@@ -44,6 +47,59 @@ export function createPlaceholderUserMessage({
       origin: "web",
     },
   };
+}
+
+// Function to update the message pages with the new message from the event.
+export function getUpdatedMessagesFromEvent(
+  currentConversation: { conversation: ConversationType } | undefined,
+  event: AgentMessageNewEvent | UserMessageNewEvent
+) {
+  if (!currentConversation || !currentConversation.conversation) {
+    return undefined;
+  }
+
+  // Check if the message already exists in the cache.
+  const isMessageAlreadyInCache = currentConversation.conversation.content.some(
+    (messages) => messages.some((message) => message.sId === event.message.sId)
+  );
+
+  // If the message is already in the cache, ignore the event.
+  if (isMessageAlreadyInCache) {
+    return currentConversation;
+  }
+
+  return updateConversationWithOptimisticData(
+    currentConversation,
+    event.message
+  );
+}
+
+export function updateConversationWithOptimisticData(
+  currentConversation: { conversation: ConversationType } | undefined,
+  messageOrPlaceholder: UserMessageType | AgentMessageType
+): { conversation: ConversationType } {
+  console.log("messageOrPlaceholder", messageOrPlaceholder);
+  if (
+    !currentConversation?.conversation ||
+    currentConversation.conversation.content.length === 0
+  ) {
+    throw new Error("Conversation not found");
+  }
+
+  const conversation: ConversationType = {
+    ...currentConversation.conversation,
+    content: [...currentConversation.conversation.content],
+  };
+
+  // To please typescript
+  const message =
+    messageOrPlaceholder.type === "user_message"
+      ? [messageOrPlaceholder]
+      : [messageOrPlaceholder];
+
+  conversation.content.push(message);
+
+  return { conversation };
 }
 
 export async function postConversation({
