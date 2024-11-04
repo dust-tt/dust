@@ -1,6 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 
-import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
+import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import {
@@ -9,13 +9,11 @@ import {
 } from "@connectors/resources/zendesk_resources";
 
 export async function allowSyncZendeskTickets({
-  subdomain,
   connectorId,
   connectionId,
   brandId,
   withChildren = false,
 }: {
-  subdomain: string;
   connectorId: ModelId;
   connectionId: string;
   brandId: number;
@@ -29,8 +27,12 @@ export async function allowSyncZendeskTickets({
     await brand.update({ ticketsPermission: "read" });
   }
 
-  const token = await getZendeskAccessToken(connectionId);
-  const zendeskApiClient = createZendeskClient({ token, subdomain });
+  const { accessToken, subdomain } =
+    await getZendeskSubdomainAndAccessToken(connectionId);
+  const zendeskApiClient = createZendeskClient({
+    token: accessToken,
+    subdomain,
+  });
 
   if (!brand) {
     const {
