@@ -136,7 +136,7 @@ export function AssistantBrowser({
       {/* Search bar */}
       <div
         id="search-container"
-        className="flex w-full flex-row items-center justify-center gap-4 px-4 align-middle"
+        className="flex w-full flex-row items-center justify-center gap-2 px-4 align-middle"
       >
         <Searchbar
           name="search"
@@ -192,27 +192,32 @@ export function AssistantBrowser({
       </div>
 
       {/* Assistant tabs */}
-      <div className="flex flex-row space-x-4 px-4">
-        <Tabs className="w-full" value={viewTab} onValueChange={setSelectedTab}>
-          <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
-            {visibleTabs.map((tab) => (
-              <TabsTrigger
-                key={tab.id}
-                value={tab.id}
-                label={tab.label}
-                icon={tab.icon}
-                className={
-                  assistantSearch !== ""
-                    ? "border-element-700 text-element-700"
-                    : ""
-                }
-              />
-            ))}
-          </TabsList>
-        </Tabs>
-      </div>
-      {!viewTab && (
-        <div className="text-center">
+      {viewTab ? (
+        <div className="flex flex-row space-x-4 px-4">
+          <Tabs
+            className="w-full"
+            value={viewTab}
+            onValueChange={setSelectedTab}
+          >
+            <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
+              {visibleTabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  label={tab.label}
+                  icon={tab.icon}
+                  className={
+                    assistantSearch !== ""
+                      ? "border-element-700 text-element-700"
+                      : ""
+                  }
+                />
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
+      ) : (
+        <div className="text-center text-sm text-muted-foreground">
           No assistants found. Try adjusting your search criteria.
         </div>
       )}

@@ -11,14 +11,14 @@ import { Label } from "./Label";
 const checkboxStyles = cva(
   cn(
     "s-shrink-0 s-peer s-border s-text-foreground s-border-border-darker",
-    "data-[state=checked]:s-text-white data-[state=checked]:s-border-highlight",
+    "data-[state=checked]:s-text-white data-[state=checked]:s-border-primary",
     "focus-visible:s-ring-ring s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2",
     "disabled:s-cursor-not-allowed disabled:s-opacity-50"
   ),
   {
     variants: {
       checked: {
-        true: "data-[state=checked]:s-bg-highlight",
+        true: "data-[state=checked]:s-bg-primary",
         partial: "data-[state=checked]:s-bg-muted-foreground",
         false: "",
       },

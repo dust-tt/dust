@@ -5,7 +5,7 @@ import {
   ChatBubbleBottomCenterTextIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  IconButton,
+  cn,
   MagicIcon,
   Tabs,
   TabsList,
@@ -65,7 +65,6 @@ import {
   AppLayoutSimpleSaveCancelTitle,
 } from "@app/components/sparkle/AppLayoutTitle";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { classNames } from "@app/lib/utils";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);
@@ -408,9 +407,34 @@ export default function AssistantBuilder({
                         icon={tab.icon}
                       />
                     ))}
+                    <div className="-mt-2 flex hidden h-full w-full justify-end sm:flex">
+                      <SharingButton
+                        agentConfigurationId={agentConfigurationId}
+                        initialScope={
+                          initialBuilderState?.scope ?? defaultScope
+                        }
+                        isAdmin={isAdmin}
+                        newScope={builderState.scope}
+                        owner={owner}
+                        showSlackIntegration={showSlackIntegration}
+                        slackChannelSelected={selectedSlackChannels || []}
+                        slackDataSource={slackDataSource}
+                        setNewScope={(
+                          scope: Exclude<AgentConfigurationScope, "global">
+                        ) => {
+                          setEdited(scope !== initialBuilderState?.scope);
+                          setBuilderState((state) => ({ ...state, scope }));
+                        }}
+                        baseUrl={baseUrl}
+                        setNewLinkedSlackChannels={(channels) => {
+                          setSelectedSlackChannels(channels);
+                          setEdited(true);
+                        }}
+                      />
+                    </div>
                   </TabsList>
                 </Tabs>
-                <div className="flex flex-row gap-2 self-end pt-0.5">
+                <div className="flex flex-row gap-2 self-end pt-0.5 sm:hidden">
                   <SharingButton
                     agentConfigurationId={agentConfigurationId}
                     initialScope={initialBuilderState?.scope ?? defaultScope}
@@ -484,9 +508,9 @@ export default function AssistantBuilder({
           }
           buttonsRightPanel={
             <>
-              <IconButton
-                size="md"
-                variant="outline"
+              <Button
+                size="sm"
+                variant="ghost"
                 icon={
                   rightPanelStatus.tab !== null
                     ? ChevronRightIcon
@@ -505,26 +529,28 @@ export default function AssistantBuilder({
                       ? "Add instructions or tools to Preview"
                       : "Preview"
                   }
-                  variant="primary"
+                  variant="highlight"
                   disabled={isBuilderStateEmpty}
-                  className={classNames(
-                    isPreviewButtonAnimating ? "animate-breathing-scale" : ""
+                  className={cn(
+                    isPreviewButtonAnimating && "animate-breathing-scale"
                   )}
                 />
               )}
               {rightPanelStatus.tab === null && template !== null && (
-                <div className="flex flex-col gap-3 rounded-full border border-structure-200 p-4">
-                  <IconButton
+                <div className="flex flex-col gap-3">
+                  <Button
                     icon={ChatBubbleBottomCenterTextIcon}
                     onClick={() => openRightPanelTab("Preview")}
-                    size="md"
-                    variant="ghost"
+                    size="sm"
+                    variant="outline"
+                    tooltip="Preview your assistant"
                   />
-                  <IconButton
+                  <Button
                     icon={MagicIcon}
                     onClick={() => openRightPanelTab("Template")}
-                    size="md"
-                    variant="ghost"
+                    size="sm"
+                    variant="outline"
+                    tooltip="Template instructions"
                   />
                 </div>
               )}

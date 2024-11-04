@@ -118,7 +118,7 @@ export const NavigationSidebar = React.forwardRef<
         {nav.length > 1 && (
           <div className="pt-2">
             <Tabs value={currentTab?.id}>
-              <TabsList>
+              <TabsList className="px-2">
                 {navs.map((tab) => (
                   <TabsTrigger
                     key={tab.id}

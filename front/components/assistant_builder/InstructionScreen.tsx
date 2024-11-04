@@ -233,7 +233,7 @@ export function InstructionScreen({
           </Page.P>
         </div>
         <div className="flex-grow" />
-        <div className="self-end">
+        <div className="mt-2 self-end">
           <AdvancedSettings
             owner={owner}
             plan={plan}

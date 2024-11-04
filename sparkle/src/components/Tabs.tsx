@@ -35,12 +35,14 @@ const TabsTrigger = React.forwardRef<
     label?: string;
     icon?: React.ComponentType;
     isLoading?: boolean;
+    hideLabel?: boolean;
   } & Omit<LinkWrapperProps, "children" | "className">
 >(
   (
     {
       className,
       label,
+      hideLabel,
       icon,
       href,
       target,
@@ -56,18 +58,20 @@ const TabsTrigger = React.forwardRef<
       <TabsPrimitive.Trigger
         ref={ref}
         className={cn(
-          "s-border-0 s-border-b-2 s-border-primary-800/0 s-pb-1 disabled:s-pointer-events-none data-[state=active]:s-border-primary-800",
+          "s-h-[43px]",
+          "data-[state=active]:s-shadow-inner-border disabled:s-pointer-events-none",
           className
         )}
         disabled={disabled}
         asChild
         {...props}
       >
-        <div>
+        <div className="s-mb-1">
           <Button
             variant="ghost"
             size="sm"
-            label={label}
+            label={hideLabel ? undefined : label}
+            tooltip={hideLabel ? label : undefined}
             icon={icon}
             disabled={disabled}
           />

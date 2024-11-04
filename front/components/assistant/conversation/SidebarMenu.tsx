@@ -12,6 +12,7 @@ import {
   NewDropdownMenu,
   NewDropdownMenuContent,
   NewDropdownMenuItem,
+  NewDropdownMenuLabel,
   NewDropdownMenuTrigger,
   PlusIcon,
   RobotIcon,
@@ -228,39 +229,6 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </div>
             ) : (
               <div className={classNames("flex justify-end gap-2 pt-2")}>
-                <NewDropdownMenu>
-                  <NewDropdownMenuTrigger asChild>
-                    <Button size="sm" icon={MoreIcon} variant="outline" />
-                  </NewDropdownMenuTrigger>
-                  <NewDropdownMenuContent>
-                    {isBuilder(owner) && (
-                      <>
-                        <NewDropdownMenuItem
-                          label="Create new assistant"
-                          href={`/w/${owner.sId}/builder/assistants/create`}
-                          icon={PlusIcon}
-                        />
-                        <NewDropdownMenuItem
-                          href={`/w/${owner.sId}/builder/assistants`}
-                          label="Manage assistants"
-                          icon={RobotIcon}
-                        />
-                      </>
-                    )}
-                    <NewDropdownMenuItem
-                      label="Edit conversations"
-                      onClick={toggleMultiSelect}
-                      icon={ListCheckIcon}
-                      disabled={conversations.length === 0}
-                    />
-                    <NewDropdownMenuItem
-                      label="Clear conversation history"
-                      onClick={() => setShowDeleteDialog("all")}
-                      icon={TrashIcon}
-                      disabled={conversations.length === 0}
-                    />
-                  </NewDropdownMenuContent>
-                </NewDropdownMenu>
                 <Link
                   href={`/w/${owner.sId}/assistant/new`}
                   onClick={() => {
@@ -277,11 +245,45 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   }}
                 >
                   <Button
-                    label="New conversation"
+                    label="New"
                     icon={ChatBubbleBottomCenterPlusIcon}
                     className="flex-none shrink"
+                    tooltip="Create a new conversation"
                   />
                 </Link>
+                <NewDropdownMenu>
+                  <NewDropdownMenuTrigger asChild>
+                    <Button size="sm" icon={MoreIcon} variant="outline" />
+                  </NewDropdownMenuTrigger>
+                  <NewDropdownMenuContent>
+                    <NewDropdownMenuLabel>Assistants</NewDropdownMenuLabel>
+                    <NewDropdownMenuItem
+                      label="Create new assistant"
+                      href={`/w/${owner.sId}/builder/assistants/create`}
+                      icon={PlusIcon}
+                    />
+                    {isBuilder(owner) && (
+                      <NewDropdownMenuItem
+                        href={`/w/${owner.sId}/builder/assistants`}
+                        label="Manage assistants"
+                        icon={RobotIcon}
+                      />
+                    )}
+                    <NewDropdownMenuLabel>Conversations</NewDropdownMenuLabel>
+                    <NewDropdownMenuItem
+                      label="Edit conversations"
+                      onClick={toggleMultiSelect}
+                      icon={ListCheckIcon}
+                      disabled={conversations.length === 0}
+                    />
+                    <NewDropdownMenuItem
+                      label="Clear conversation history"
+                      onClick={() => setShowDeleteDialog("all")}
+                      icon={TrashIcon}
+                      disabled={conversations.length === 0}
+                    />
+                  </NewDropdownMenuContent>
+                </NewDropdownMenu>
               </div>
             )}
             {isConversationsError && (

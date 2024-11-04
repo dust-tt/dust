@@ -103,7 +103,7 @@ const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
 );
 MetaButton.displayName = "MetaButton";
 
-export interface ButtonProps extends MetaButtonProps {
+interface ButtonProps extends MetaButtonProps {
   label?: string;
   icon?: React.ComponentType;
   isSelect?: boolean;
@@ -186,4 +186,5 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   }
 );
 
-export { Button, buttonVariants, MetaButton };
+export { Button, buttonVariants };
+export type { ButtonProps };
