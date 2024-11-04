@@ -1,8 +1,7 @@
 import {
   Avatar,
-  Button, EyeIcon,
+  Button,
   IconButton,
-  Item,
   MoreIcon,
   NewDropdownMenu,
   NewDropdownMenuContent,
@@ -10,19 +9,13 @@ import {
   NewDropdownMenuSeparator,
   NewDropdownMenuTrigger,
   PlusIcon,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
   RobotIcon,
   ScrollArea,
-  Searchbar,
-  Separator,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 
@@ -140,18 +133,15 @@ export function AssistantPicker({
         {showFooterButtons && (
           <>
             <NewDropdownMenuSeparator />
-            <div className="py-1 flex justify-end">
-              <Link
-                href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-              >
+            <div className="flex justify-end">
                 <Button
                   label="Create"
                   size="xs"
                   variant="primary"
                   icon={PlusIcon}
                   className="mr-2"
+                  href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
                 />
-              </Link>
             </div>
           </>
         )}
