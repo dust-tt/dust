@@ -13,6 +13,7 @@ import {
   renderMarkdownSection,
   upsertToDatasource,
 } from "@connectors/lib/data_sources";
+import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskArticleResource } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -117,5 +118,10 @@ export async function syncArticle({
       async: true,
     });
     await articleInDb.update({ lastUpsertedTs: new Date(currentSyncDateMs) });
+  } else {
+    logger.warn(
+      { ...loggerArgs, connectorId, articleId: article.id },
+      "[Zendesk] Article has no content. Skipping sync."
+    );
   }
 }
