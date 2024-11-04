@@ -99,7 +99,21 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }
 
   async clean(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    const { connectorId } = this;
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
+      return new Err(new Error("Connector not found"));
+    }
+
+    const result = await connector.delete();
+    if (result.isErr()) {
+      logger.error(
+        { connectorId, error: result.error },
+        "[Zendesk] Error while cleaning up the connector."
+      );
+    }
+    return result;
   }
 
   async stop(): Promise<Result<undefined, Error>> {
