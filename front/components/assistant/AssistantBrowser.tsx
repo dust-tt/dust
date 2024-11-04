@@ -194,10 +194,10 @@ export function AssistantBrowser({
       </div>
 
       {/* Assistant tabs */}
-      <div className="relative w-full px-4">
-        <ScrollArea className="w-full" aria-orientation="horizontal">
+      <div className="w-full px-4">
+        <ScrollArea aria-orientation="horizontal">
           <Tabs value={viewTab} onValueChange={setSelectedTab}>
-            <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
+            <TabsList>
               {visibleTabs.map((tab) => (
                 <TabsTrigger
                   key={tab.id}
