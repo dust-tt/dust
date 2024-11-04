@@ -8,6 +8,12 @@ import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/permissions_queue/config";
 import { updateSpacePermissionsWorkflow } from "@app/temporal/permissions_queue/workflows";
+import {
+  updateSpacePermissionsSignal,
+  UpdateSpacePermissionsSignal,
+} from "@app/temporal/permissions_queue/signals";
+
+const DEBOUNCE_MS = 10 * 1000; // 10 seconds.
 
 export async function launchUpdateSpacePermissionsWorkflow(
   auth: Authenticator,
@@ -20,22 +26,30 @@ export async function launchUpdateSpacePermissionsWorkflow(
 
   const client = await getTemporalClient();
 
+  const signalArgs: UpdateSpacePermissionsSignal[] = [
+    {
+      debounceMs: DEBOUNCE_MS,
+    },
+  ];
+
   try {
-    await client.workflow.start(updateSpacePermissionsWorkflow, {
-      args: [{ spaceId, workspaceId }],
+    await client.workflow.signalWithStart(updateSpacePermissionsWorkflow, {
+      args: [{ debounceMs: DEBOUNCE_MS, spaceId, workspaceId }],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
       memo: {
         spaceId,
         workspaceId,
       },
+      signal: updateSpacePermissionsSignal,
+      signalArgs: [signalArgs],
     });
 
     logger.info(
       {
         workflowId,
       },
-      "Started usage workflow."
+      "Started update space permissions workflow."
     );
 
     return new Ok(undefined);
@@ -46,9 +60,10 @@ export async function launchUpdateSpacePermissionsWorkflow(
           workflowId,
           error: e,
         },
-        "Failed starting usage workflow."
+        "Failed to start update space permissions workflow."
       );
     }
+
     return new Err(e as Error);
   }
 }

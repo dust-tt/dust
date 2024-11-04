@@ -1,24 +1,57 @@
-import { proxyActivities, sleep } from "@temporalio/workflow";
+import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 
 import type * as activities from "@app/temporal/permissions_queue/activities";
+import { updateSpacePermissionsSignal } from "@app/temporal/permissions_queue/signals";
+import assert from "assert";
 
 const { updateSpacePermissions } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
 
-const DEBOUNCE_TIME = 10 * 1000; // 10 seconds.
-
 export async function updateSpacePermissionsWorkflow({
+  debounceMs,
   spaceId,
   workspaceId,
 }: {
+  debounceMs: number;
   spaceId: string;
   workspaceId: string;
 }) {
-  await sleep(DEBOUNCE_TIME);
+  let lastSignalTime = 0;
+  let currentDebounceMs = debounceMs;
 
-  await updateSpacePermissions({
-    spaceId,
-    workspaceId,
+  // Simplified signal handler.
+  setHandler(updateSpacePermissionsSignal, (params) => {
+    assert(params.length === 1, "Expected exactly one signal.");
+
+    const [{ debounceMs: newDebounceMs }] = params;
+    lastSignalTime = Date.now();
+
+    // Update debounce time if provided.
+    if (newDebounceMs) {
+      currentDebounceMs = newDebounceMs;
+    }
   });
+
+  // Initial processing.
+  lastSignalTime = Date.now();
+
+  // Keep waiting until we've had no signals for `debounceMs`.
+  while (true) {
+    const elapsed = Date.now() - lastSignalTime;
+    const remainingDebounceTime = currentDebounceMs - elapsed;
+
+    if (remainingDebounceTime > 0) {
+      await sleep(remainingDebounceTime);
+    }
+
+    if (Date.now() - lastSignalTime >= debounceMs) {
+      // No new signals during debounce period, do the update and exit.
+      await updateSpacePermissions({
+        spaceId,
+        workspaceId,
+      });
+      return;
+    }
+  }
 }

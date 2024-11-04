@@ -7,6 +7,7 @@ import logger from "@app/logger/logger";
 import * as activities from "@app/temporal/permissions_queue/activities";
 
 import { QUEUE_NAME } from "./config";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 export async function runPermissionsWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
@@ -23,6 +24,15 @@ export async function runPermissionsWorker() {
           return new ActivityInboundLogInterceptor(ctx, logger);
         },
       ],
+    },
+    bundlerOptions: {
+      // Update the webpack config to use aliases from our tsconfig.json.
+      webpackConfigHook: (config) => {
+        const plugins = config.resolve?.plugins ?? [];
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
+        return config;
+      },
     },
   });
 
