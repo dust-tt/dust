@@ -12,6 +12,7 @@ import {
   NewDropdownMenuPortal,
   NewDropdownMenuRadioGroup,
   NewDropdownMenuRadioItem,
+  NewDropdownMenuSearchbar,
   NewDropdownMenuSeparator,
   NewDropdownMenuSub,
   NewDropdownMenuSubContent,
@@ -33,6 +34,7 @@ import {
   Cog6ToothIcon,
   LogoutIcon,
   MagicIcon,
+  ScrollArea,
   UserGroupIcon,
   UserIcon,
 } from "../index_with_tw_base";
@@ -52,6 +54,7 @@ export const DropdownExamples = () => (
     <div>{DropdownMenuRadioGroupDemo()}</div>
     <div>{ModelsDropdownDemo()}</div>
     <div>{ModelsDropdownRadioGroupDemo()}</div>
+    <div>{DropdownMenuSearchbarDemo()}</div>
   </div>
 );
 
@@ -267,6 +270,71 @@ function ModelsDropdownRadioGroupDemo() {
             />
           ))}
         </NewDropdownMenuRadioGroup>
+      </NewDropdownMenuContent>
+    </NewDropdownMenu>
+  );
+}
+
+function DropdownMenuSearchbarDemo() {
+  const [searchText, setSearchText] = React.useState("");
+  const [selectedItem, setSelectedItem] = React.useState<string | null>(null);
+
+  const items = [
+    "Automated Data Processing",
+    "Business Intelligence Dashboard",
+    "Cloud Infrastructure Setup",
+    "Data Migration Service",
+    "Enterprise Resource Planning",
+    "Financial Analytics Platform",
+    "Geographic Information System",
+    "Human Resources Management",
+    "Inventory Control System",
+    "Knowledge Base Integration",
+    "Machine Learning Pipeline",
+    "Network Security Monitor",
+    "Operations Management Tool",
+    "Project Portfolio Tracker",
+    "Quality Assurance Framework",
+    "Real-time Analytics Engine",
+    "Supply Chain Optimizer",
+    "Team Collaboration Hub",
+    "User Authentication Service",
+    "Workflow Automation System",
+  ];
+
+  const filteredItems = items.filter((item) =>
+    item.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  return (
+    <NewDropdownMenu>
+      <NewDropdownMenuTrigger asChild>
+        <Button
+          label={selectedItem || "Select System"}
+          variant="outline"
+          size="sm"
+        />
+      </NewDropdownMenuTrigger>
+      <NewDropdownMenuContent className="s-w-[300px]">
+        <NewDropdownMenuSearchbar
+          placeholder="Search systems..."
+          name="search"
+          value={searchText}
+          onChange={setSearchText}
+        />
+        <NewDropdownMenuSeparator />
+        <ScrollArea className="s-h-[200px]">
+          {filteredItems.map((item) => (
+            <NewDropdownMenuItem
+              key={item}
+              label={item}
+              onClick={() => {
+                setSelectedItem(item);
+                setSearchText("");
+              }}
+            />
+          ))}
+        </ScrollArea>
       </NewDropdownMenuContent>
     </NewDropdownMenu>
   );

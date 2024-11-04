@@ -61,6 +61,7 @@ export {
   NewDropdownMenuPortal,
   NewDropdownMenuRadioGroup,
   NewDropdownMenuRadioItem,
+  NewDropdownMenuSearchbar,
   NewDropdownMenuSeparator,
   NewDropdownMenuShortcut,
   NewDropdownMenuSub,
@@ -83,6 +84,7 @@ export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupChoice, RadioGroupItem } from "./RadioGroup";
 export { ScrollArea, ScrollBar } from "./ScrollArea";
+export type { SearchbarProps } from "./Searchbar";
 export { Searchbar } from "./Searchbar";
 export { Separator } from "./Separator";
 export { SliderToggle } from "./SliderToggle";
