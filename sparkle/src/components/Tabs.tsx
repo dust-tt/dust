@@ -33,6 +33,7 @@ const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> & {
     label?: string;
+    tooltip?: string;
     icon?: React.ComponentType;
     isLoading?: boolean;
   } & Omit<LinkWrapperProps, "children" | "className">
@@ -41,6 +42,7 @@ const TabsTrigger = React.forwardRef<
     {
       className,
       label,
+      tooltip,
       icon,
       href,
       target,
@@ -56,7 +58,8 @@ const TabsTrigger = React.forwardRef<
       <TabsPrimitive.Trigger
         ref={ref}
         className={cn(
-          "s-border-0 s-border-b-2 s-border-primary-800/0 s-pb-1 disabled:s-pointer-events-none data-[state=active]:s-border-primary-800",
+          "s-h-[43px]",
+          "disabled:s-pointer-events-none data-[state=active]:s-shadow-inner-border",
           className
         )}
         disabled={disabled}
@@ -66,6 +69,7 @@ const TabsTrigger = React.forwardRef<
           variant="ghost"
           size="sm"
           label={label}
+          tooltip={tooltip}
           icon={icon}
           disabled={disabled}
           href={href}

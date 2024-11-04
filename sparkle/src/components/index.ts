@@ -32,6 +32,7 @@ export { ElementDialog } from "./ElementDialog";
 export { ElementModal } from "./ElementModal";
 export type { EmojiMartData } from "./EmojiPicker";
 export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
+export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
 export { FilterChips } from "./FilterChips";
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
