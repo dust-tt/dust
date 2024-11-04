@@ -2,7 +2,7 @@ import { parse } from "csv-parse";
 import * as fs from "fs";
 import { exit } from "process";
 
-import { sendEmail } from "@app/lib/api/email";
+import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
@@ -24,13 +24,10 @@ const sendIncidentEmailToAdmins = async (
       name: "Dust team",
       email: "team@dust.tt",
     },
-    subject: `[Dust] Workspace keys incident`,
-    html: `<p>Hello from Dust,</p>
-      <p>We had an incident on Thuesday 31st of October 2024 between 12:44 ECT and 13:20 ECT that affected your workspace.</p>
-      <p>During that time, as you had set up provider keys for your workspace, they have been used instead of our own keys.</p>
-      <p>In your case, the incident caused a cost of ${cost_in_cents / 100} USD in tokens. We will reimburse you via a ${reimbursement_in_cents / 100} EUR discount on your next invoice.</p>
-      <p>Please reply to this email if you have any questions.</p>
-      <p>The Dust team</p>`,
+    subject: `[Dust] Incident 2024/10/31`,
+    body: `<p>On October the 31st, due to a misconfiguration on our end, from 12:44 to 13:20 our API keys to OpenAI, Anthropic, Gemini and Mistral became unavailable to our systems triggering a fallback to your own API keys for assistants interactions within your workspace.</p>
+      <p>We estimated the tokens cost of the execution of these assistants to ${cost_in_cents / 100} USD. We are applying a discount of ${reimbursement_in_cents / 100} EUR to your account to compensate for it.</p>
+      <p>Please reply to this email if you have any questions.</p>`,
   };
 
   const workspace = await Workspace.findByPk(workspaceId);
@@ -45,7 +42,9 @@ const sendIncidentEmailToAdmins = async (
   const { members: admins } = await getMembers(auth, { roles: ["admin"] });
   const adminEmails = admins.map((u) => u.email);
 
-  return Promise.all(adminEmails.map((email) => sendEmail(email, message)));
+  return Promise.all(
+    adminEmails.map((email) => sendEmailWithTemplate({ ...message, to: email }))
+  );
 };
 
 // Basic file read
