@@ -202,7 +202,9 @@ function _getHelperGlobalAgent({
     maxStepsPerRun: 3,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -234,7 +236,9 @@ function _getGPT35TurboGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 function _getGPT4GlobalAgent({
@@ -275,7 +279,9 @@ function _getGPT4GlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 function _getO1PreviewGlobalAgent({
@@ -312,7 +318,9 @@ function _getO1PreviewGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 function _getO1MiniGlobalAgent({
@@ -349,7 +357,9 @@ function _getO1MiniGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -381,7 +391,9 @@ function _getClaudeInstantGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -420,7 +432,9 @@ function _getClaude2GlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -453,7 +467,9 @@ function _getClaude3HaikuGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -491,7 +507,9 @@ function _getClaude3OpusGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -530,7 +548,9 @@ function _getClaude3GlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -568,7 +588,9 @@ function _getMistralLargeGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -606,7 +628,9 @@ function _getMistralMediumGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -638,7 +662,9 @@ function _getMistralSmallGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -675,7 +701,9 @@ function _getGeminiProGlobalAgent({
     maxStepsPerRun: 0,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -742,7 +770,9 @@ function _getManagedDataSourceAgent(
       maxStepsPerRun: 0,
       visualizationEnabled: false,
       templateId: null,
+      // TODO(2024-11-04 flav) `groupId` clean-up.
       groupIds: [],
+      requestedGroupIds: [],
     };
   }
 
@@ -769,7 +799,9 @@ function _getManagedDataSourceAgent(
       maxStepsPerRun: 0,
       visualizationEnabled: false,
       templateId: null,
+      // TODO(2024-11-04 flav) `groupId` clean-up.
       groupIds: [],
+      requestedGroupIds: [],
     };
   }
 
@@ -808,7 +840,9 @@ function _getManagedDataSourceAgent(
     maxStepsPerRun: 1,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 
@@ -983,7 +1017,9 @@ function _getDustGlobalAgent(
       maxStepsPerRun: 0,
       visualizationEnabled: false,
       templateId: null,
+      // TODO(2024-11-04 flav) `groupId` clean-up.
       groupIds: [],
+      requestedGroupIds: [],
     };
   }
 
@@ -1010,7 +1046,9 @@ function _getDustGlobalAgent(
       maxStepsPerRun: 0,
       visualizationEnabled: false,
       templateId: null,
+      // TODO(2024-11-04 flav) `groupId` clean-up.
       groupIds: [],
+      requestedGroupIds: [],
     };
   }
 
@@ -1115,7 +1153,9 @@ function _getDustGlobalAgent(
     maxStepsPerRun: 3,
     visualizationEnabled: false,
     templateId: null,
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   };
 }
 

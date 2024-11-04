@@ -115,7 +115,9 @@ export async function createConversation(
     workspaceId: owner.id,
     title: title,
     visibility: visibility,
+    // TODO(2024-11-04 flav) `group-id` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   });
 
   return {
@@ -127,6 +129,10 @@ export async function createConversation(
     visibility: conversation.visibility,
     content: [],
     groupIds: getConversationGroupIdsFromModel(owner, conversation),
+    requestedGroupIds: getConversationRequestedGroupIdsFromModel(
+      owner,
+      conversation
+    ),
   };
 }
 
@@ -265,7 +271,12 @@ export async function getUserConversations(
         owner,
         title: p.conversation.title,
         visibility: p.conversation.visibility,
+        // TODO(2024-11-04 flav) `group-id` clean-up.
         groupIds: getConversationGroupIdsFromModel(owner, p.conversation),
+        requestedGroupIds: getConversationRequestedGroupIdsFromModel(
+          owner,
+          p.conversation
+        ),
       };
 
       return [...acc, conversation];
@@ -392,7 +403,12 @@ export async function getConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content,
+    // TODO(2024-11-04 flav) `group-id` clean-up.
     groupIds: getConversationGroupIdsFromModel(owner, conversation),
+    requestedGroupIds: getConversationRequestedGroupIdsFromModel(
+      owner,
+      conversation
+    ),
   });
 }
 
@@ -429,7 +445,12 @@ export async function getConversationWithoutContent(
     owner,
     title: conversation.title,
     visibility: conversation.visibility,
+    // TODO(2024-11-04 flav) `group-id` clean-up.
     groupIds: getConversationGroupIdsFromModel(owner, conversation),
+    requestedGroupIds: getConversationRequestedGroupIdsFromModel(
+      owner,
+      conversation
+    ),
   });
 }
 
@@ -2023,6 +2044,7 @@ async function updateConversationGroups({
   );
 }
 
+// TODO(2024-11-04 flav) `group-id` clean-up.
 function getConversationGroupIdsFromModel(
   owner: WorkspaceType,
   conversation: Conversation
@@ -2032,6 +2054,20 @@ function getConversationGroupIdsFromModel(
       id: g,
       workspaceId: owner.id,
     })
+  );
+}
+
+function getConversationRequestedGroupIdsFromModel(
+  owner: WorkspaceType,
+  conversation: Conversation
+): string[][] {
+  return conversation.requestedGroupIds.map((groups) =>
+    groups.map((g) =>
+      GroupResource.modelIdToSId({
+        id: g,
+        workspaceId: owner.id,
+      })
+    )
   );
 }
 

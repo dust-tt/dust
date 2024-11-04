@@ -186,7 +186,9 @@ export type ConversationWithoutContentType = {
   sId: string;
   title: string | null;
   visibility: ConversationVisibility;
+  // TODO(2024-11-04 flav) `group-id` clean-up.
   groupIds: string[];
+  requestedGroupIds: string[][];
 };
 
 /**

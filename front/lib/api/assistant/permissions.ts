@@ -56,10 +56,10 @@ export function getDataSourceViewIdsFromActions(
   );
 }
 
-export async function getAgentConfigurationGroupIdsFromActions(
+export async function getAgentConfigurationGroupIdsFromActionsLegacy(
   auth: Authenticator,
   actions: RawAgentActionConfigurationType[]
-): Promise<number[]> {
+): Promise<ModelId[]> {
   const dsViews = await DataSourceViewResource.fetchByIds(
     auth,
     getDataSourceViewIdsFromActions(actions)
@@ -81,4 +81,59 @@ export async function getAgentConfigurationGroupIdsFromActions(
   );
 
   return uniq([...dataSourceViewGroupIds, ...dustAppGroupIds].flat());
+}
+
+export async function getAgentConfigurationGroupIdsFromActions(
+  auth: Authenticator,
+  actions: RawAgentActionConfigurationType[]
+): Promise<ModelId[][]> {
+  const dsViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    getDataSourceViewIdsFromActions(actions)
+  );
+  const dustApps = await AppResource.fetchByIds(
+    auth,
+    actions
+      .filter((action) => isDustAppRunConfiguration(action))
+      .map((action) => (action as DustAppRunConfigurationType).appId)
+  );
+
+  // Map spaceId to its group requirements.
+  const spacePermissions = new Map<string, Set<number>>();
+
+  // Collect DataSourceView permissions by space.
+  for (const view of dsViews) {
+    const { sId: spaceId } = view.space;
+    if (!spacePermissions.has(spaceId)) {
+      spacePermissions.set(spaceId, new Set());
+    }
+    const groups = view
+      .requestedPermissions()
+      .flatMap((rp) => rp.groups.map((g) => g.id))
+      // Sort to ensure consistent ordering.
+      .sort();
+
+    groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
+  }
+
+  // Collect DustApp permissions by space.
+  for (const app of dustApps) {
+    const { sId: spaceId } = app.space;
+    if (!spacePermissions.has(spaceId)) {
+      spacePermissions.set(spaceId, new Set());
+    }
+
+    const groups = app
+      .requestedPermissions()
+      .flatMap((rp) => rp.groups.map((g) => g.id))
+      // Sort to ensure consistent ordering.
+      .sort();
+
+    groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
+  }
+
+  // Convert Map to array of arrays, filtering out empty sets.
+  return Array.from(spacePermissions.values())
+    .map((set) => Array.from(set))
+    .filter((arr) => arr.length > 0);
 }
