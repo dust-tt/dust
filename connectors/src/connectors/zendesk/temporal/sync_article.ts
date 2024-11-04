@@ -53,7 +53,7 @@ export async function syncArticle({
         categoryId: category.categoryId,
         permission: "read",
         name: article.name,
-        url: article.url,
+        url: article.html_url,
         connectorId,
       },
     });
@@ -100,7 +100,7 @@ export async function syncArticle({
       dataSourceConfig,
       documentId,
       documentContent,
-      documentUrl: article.url,
+      documentUrl: article.html_url,
       timestampMs: updatedAt.getTime(),
       tags: [
         `title:${article.title}`,
