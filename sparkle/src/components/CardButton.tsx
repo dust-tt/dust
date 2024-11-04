@@ -6,7 +6,7 @@ import {
   SparkleContext,
   SparkleContextLinkType,
 } from "@sparkle/context";
-import { classNames } from "@sparkle/lib/utils";
+import { cn } from "@sparkle/lib/utils";
 
 interface CardButtonProps {
   children: ReactNode;
@@ -24,19 +24,15 @@ interface CardButtonProps {
 }
 
 const variantClasses = {
-  primary: "s-bg-structure-50 s-border s-border-structure-200",
-  secondary: "s-bg-structure-0 s-border s-border-structure-100",
-  tertiary: "s-border-structure-100/0 s-border s-border-structure-0",
+  primary:
+    "s-text-primary-dark s-bg-primary-50 s-border-muted-background s-border",
+  secondary:
+    "s-border s-text-primary-dark s-bg-background s-border-border-dark",
+  tertiary: "s-border s-border-border-dark/0",
 };
 
-const hoverVariantClasses = {
-  primary:
-    "hover:s-bg-white hover:s-border-structure-100 active:s-bg-structure-100 active:s-border-structure-200 s-cursor-pointer",
-  secondary:
-    "hover:s-bg-structure-50 hover:s-border-structure-200 active:s-bg-structure-100 active:s-border-structure-300 s-cursor-pointer",
-  tertiary:
-    "hover:s-bg-structure-50 hover:s-border-structure-100 active:s-bg-structure-100 active:s-border-structure-200 s-cursor-pointer",
-};
+const hoverVariantClasses =
+  "hover:s-bg-primary-100 hover:s-border-primary-100 active:s-bg-primary-300 disabled:s-text-primary-muted disabled:s-border-structure-100 s-cursor-pointer";
 
 const sizeClasses = {
   sm: "s-p-3 s-rounded-xl",
@@ -62,9 +58,9 @@ export function CardButton({
 
   const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
 
-  const commonClasses = classNames(
+  const commonClasses = cn(
     "s-flex s-group s-transition s-duration-200 s-overflow-hidden",
-    onClick ? hoverVariantClasses[variant] : "",
+    onClick && hoverVariantClasses,
     variantClasses[variant],
     sizeClasses[size],
     className
