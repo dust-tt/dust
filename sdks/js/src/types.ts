@@ -78,6 +78,7 @@ const UserMessageOriginSchema = z.union([
     "extension",
   ]),
   z.null(),
+  z.undefined(),
 ]);
 
 const RankSchema = z.object({
@@ -1532,11 +1533,11 @@ export type PatchDataSourceViewRequestType = z.infer<
 
 export const DataSourceSearchQuerySchema = z.object({
   query: z.string(),
-  top_k: z.number(),
-  full_text: z.boolean(),
-  target_document_tokens: z.number().optional(),
-  timestamp_gt: z.number().optional(),
-  timestamp_lt: z.number().optional(),
+  top_k: z.coerce.number(),
+  full_text: z.coerce.boolean(),
+  target_document_tokens: z.coerce.number().optional(),
+  timestamp_gt: z.coerce.number().optional(),
+  timestamp_lt: z.coerce.number().optional(),
   tags_in: z.array(z.string()).optional(),
   tags_not: z.array(z.string()).optional(),
   parents_in: z.array(z.string()).optional(),
