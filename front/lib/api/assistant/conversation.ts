@@ -47,6 +47,7 @@ import {
   Ok,
   rateLimiter,
 } from "@dust-tt/types";
+import { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -115,7 +116,9 @@ export async function createConversation(
     workspaceId: owner.id,
     title: title,
     visibility: visibility,
+    // TODO(2024-11-04 flav) `group-id` clean-up.
     groupIds: [],
+    requestedGroupIds: [],
   });
 
   return {
@@ -127,6 +130,10 @@ export async function createConversation(
     visibility: conversation.visibility,
     content: [],
     groupIds: getConversationGroupIdsFromModel(owner, conversation),
+    requestedGroupIds: getConversationRequestedGroupIdsFromModel(
+      owner,
+      conversation
+    ),
   };
 }
 
@@ -265,7 +272,12 @@ export async function getUserConversations(
         owner,
         title: p.conversation.title,
         visibility: p.conversation.visibility,
+        // TODO(2024-11-04 flav) `group-id` clean-up.
         groupIds: getConversationGroupIdsFromModel(owner, p.conversation),
+        requestedGroupIds: getConversationRequestedGroupIdsFromModel(
+          owner,
+          p.conversation
+        ),
       };
 
       return [...acc, conversation];
@@ -392,7 +404,12 @@ export async function getConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content,
+    // TODO(2024-11-04 flav) `group-id` clean-up.
     groupIds: getConversationGroupIdsFromModel(owner, conversation),
+    requestedGroupIds: getConversationRequestedGroupIdsFromModel(
+      owner,
+      conversation
+    ),
   });
 }
 
@@ -429,7 +446,12 @@ export async function getConversationWithoutContent(
     owner,
     title: conversation.title,
     visibility: conversation.visibility,
+    // TODO(2024-11-04 flav) `group-id` clean-up.
     groupIds: getConversationGroupIdsFromModel(owner, conversation),
+    requestedGroupIds: getConversationRequestedGroupIdsFromModel(
+      owner,
+      conversation
+    ),
   });
 }
 
@@ -891,11 +913,18 @@ export async function* postUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
+      // TODO(2024-11-04 flav) `group-id` clean-up.
       await updateConversationGroups({
         mentionedAgents: nonNullResults.map(({ m }) => m.configuration),
         conversation,
         t,
       });
+
+      await updateConversationRequestedGroupIds(
+        nonNullResults.map(({ m }) => m.configuration),
+        conversation,
+        t
+      );
 
       return {
         userMessage,
@@ -1368,6 +1397,7 @@ export async function* editUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
+      // TODO(2024-11-04 flav) `group-id` clean-up.
       // updateConversationGroups is purely additive, this will not remove any
       // group from the conversation (see function description)
       await updateConversationGroups({
@@ -1375,6 +1405,12 @@ export async function* editUserMessage(
         conversation,
         t,
       });
+
+      await updateConversationRequestedGroupIds(
+        nonNullResults.map(({ m }) => m.configuration),
+        conversation,
+        t
+      );
 
       return {
         userMessage,
@@ -1580,11 +1616,18 @@ export async function* retryAgentMessage(
         }
       );
 
+      // TODO(2024-11-04 flav) `group-id` clean-up.
       await updateConversationGroups({
         mentionedAgents: [message.configuration],
         conversation,
         t,
       });
+
+      await updateConversationRequestedGroupIds(
+        [message.configuration],
+        conversation,
+        t
+      );
 
       const agentMessage: AgentMessageWithRankType = {
         id: m.id,
@@ -1995,7 +2038,7 @@ async function updateConversationGroups({
 
   const currentGroupIds = new Set(conversation.groupIds);
 
-  // no need to update if  newGroupIds is a subset of currentGroupIds
+  // No need to update if newGroupIds is a subset of currentGroupIds.
   if (newGroupIds.every((g) => currentGroupIds.has(g))) {
     return;
   }
@@ -2023,6 +2066,79 @@ async function updateConversationGroups({
   );
 }
 
+/**
+ * Update the conversation requestedGroupIds based on the mentioned agents.
+ * This function is purely additive - requirements are never removed.
+ *
+ * Each agent's requestedGroupIds represents a set of requirements that must be
+ * satisfied. When an agent is mentioned in a conversation, its requirements are
+ * added to the conversation's requirements.
+ *
+ * Within each requirement (sub-array), groups are combined with OR logic.
+ * Different requirements (different sub-arrays) are combined with AND logic.
+ */
+export async function updateConversationRequestedGroupIds(
+  mentionedAgents: LightAgentConfigurationType[],
+  conversation: ConversationType,
+  t: Transaction
+): Promise<void> {
+  const newRequirements = mentionedAgents.flatMap(
+    (agent) => agent.requestedGroupIds
+  );
+  const currentRequirements = conversation.requestedGroupIds;
+
+  // Check if each new requirement already exists in current requirements.
+  const areAllRequirementsPresent = newRequirements.every((newReq) =>
+    currentRequirements.some((currentReq) =>
+      isEqual(sortBy(newReq), sortBy(currentReq))
+    )
+  );
+
+  // Early return if all new requirements are already present.
+  if (areAllRequirementsPresent) {
+    return;
+  }
+
+  // Get missing requirements.
+  const requirementsToAdd = newRequirements.filter(
+    (newReq) =>
+      !currentRequirements.some((currentReq) =>
+        isEqual(sortBy(newReq), sortBy(currentReq))
+      )
+  );
+
+  // Convert all sIds to modelIds.
+  const sIdToModelId = new Map<string, number>();
+  const getModelId = (sId: string) => {
+    if (!sIdToModelId.has(sId)) {
+      const id = getResourceIdFromSId(sId);
+      if (id === null) {
+        throw new Error("Unexpected: invalid group id");
+      }
+      sIdToModelId.set(sId, id);
+    }
+    return sIdToModelId.get(sId)!;
+  };
+
+  const allRequirements = [
+    ...currentRequirements.map((req) => sortBy(req.map(getModelId))),
+    ...requirementsToAdd.map((req) => sortBy(req.map(getModelId))),
+  ];
+
+  await Conversation.update(
+    {
+      requestedGroupIds: allRequirements,
+    },
+    {
+      where: {
+        id: conversation.id,
+      },
+      transaction: t,
+    }
+  );
+}
+
+// TODO(2024-11-04 flav) `group-id` clean-up.
 function getConversationGroupIdsFromModel(
   owner: WorkspaceType,
   conversation: Conversation
@@ -2032,6 +2148,20 @@ function getConversationGroupIdsFromModel(
       id: g,
       workspaceId: owner.id,
     })
+  );
+}
+
+function getConversationRequestedGroupIdsFromModel(
+  owner: WorkspaceType,
+  conversation: Conversation
+): string[][] {
+  return conversation.requestedGroupIds.map((groups) =>
+    groups.map((g) =>
+      GroupResource.modelIdToSId({
+        id: g,
+        workspaceId: owner.id,
+      })
+    )
   );
 }
 

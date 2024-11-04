@@ -4,6 +4,7 @@ import { isEqual } from "lodash";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import {
   getAgentConfigurationGroupIdsFromActions,
+  getAgentConfigurationGroupIdsFromActionsLegacy,
   listAgentConfigurationsForGroups,
 } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
@@ -86,7 +87,13 @@ export async function updateSpacePermissions({
       continue;
     }
 
-    const groupIds = await getAgentConfigurationGroupIdsFromActions(
+    // TODO(2024-11-04 flav) `groupId` clean-up.
+    const groupIds = await getAgentConfigurationGroupIdsFromActionsLegacy(
+      auth,
+      ac.actions
+    );
+
+    const requestedGroupIds = await getAgentConfigurationGroupIdsFromActions(
       auth,
       ac.actions
     );
@@ -102,6 +109,7 @@ export async function updateSpacePermissions({
     await AgentConfiguration.update(
       {
         groupIds,
+        requestedGroupIds,
       },
       {
         where: {

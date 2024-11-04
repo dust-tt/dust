@@ -32,7 +32,9 @@ export class Conversation extends Model<
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
 
+  // TODO(2024-11-04 flav) `groupId` clean-up.
   declare groupIds: number[];
+  declare requestedGroupIds: number[][];
 
   declare workspaceId: ForeignKey<Workspace["id"]>;
 }
@@ -67,8 +69,14 @@ Conversation.init(
       allowNull: false,
       defaultValue: "unlisted",
     },
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     groupIds: {
       type: DataTypes.ARRAY(DataTypes.INTEGER),
+      allowNull: false,
+      defaultValue: [],
+    },
+    requestedGroupIds: {
+      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.INTEGER)),
       allowNull: false,
       defaultValue: [],
     },

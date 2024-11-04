@@ -181,7 +181,17 @@ export type LightAgentConfigurationType = {
 
   // group restrictions: if empty, no restrictions, otherwise only users who belong to all the
   // groups can see the agent
+  // TODO(2024-11-04 flav) `groupIds` clean up.
   groupIds: string[];
+
+  // Group restrictions for accessing the agent/conversation.
+  // The array of arrays represents permission requirements:
+  // - If empty, no restrictions apply
+  // - Each sub-array represents an OR condition (user must belong to AT LEAST ONE group)
+  // - Sub-arrays are combined with AND logic (user must satisfy ALL sub-arrays)
+  //
+  // Example: [[1,2], [3,4]] means (1 OR 2) AND (3 OR 4)
+  requestedGroupIds: string[][];
 };
 
 export type AgentConfigurationType = LightAgentConfigurationType & {
