@@ -18,6 +18,7 @@ import {
 import MessageGroup from "@extension/components/conversation/MessageGroup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
 import { useEventSource } from "@extension/hooks/useEventSource";
+import { getUpdatedMessagesFromEvent } from "@extension/lib/conversation";
 import type { StoredUser } from "@extension/lib/storage";
 import { classNames } from "@extension/lib/utils";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -51,9 +52,9 @@ export function ConversationViewer({
       (message) =>
         isUserMessageType(message) &&
         message.visibility !== "deleted" &&
-        message.user?.sId === user.userId
+        message.user?.sId === user.sId
     );
-  }, [messages, user.userId]);
+  }, [messages, user.sId]);
 
   const agentMentions = useMemo(() => {
     if (!lastUserMessage || !isUserMessageType(lastUserMessage)) {
@@ -106,16 +107,19 @@ export function ConversationViewer({
       const event = eventPayload.data;
 
       if (!eventIds.current.includes(eventPayload.eventId)) {
-        console.log("Received event", event);
         eventIds.current.push(eventPayload.eventId);
         switch (event.type) {
           case "user_message_new":
           case "agent_message_new":
+            void mutateConversation(async (currentMessagePages) => {
+              return getUpdatedMessagesFromEvent(currentMessagePages, event);
+            });
+            break;
+
           case "agent_generation_cancelled":
-          case "conversation_title": {
+          case "conversation_title":
             void mutateConversation();
             break;
-          }
           default:
             ((t: never) => {
               console.error("Unknown event type", t);

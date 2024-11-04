@@ -39,6 +39,7 @@ import {
   isWebsearchActionType,
   removeNulls,
 } from "@dust-tt/types";
+import { AgentMessageActions } from "@extension/components/conversation/AgentMessageActions";
 import type { MarkdownCitation } from "@extension/components/conversation/MarkdownCitation";
 import {
   CitationsContext,
@@ -469,12 +470,11 @@ export function AgentMessage({
 
     return (
       <div className="flex flex-col gap-y-4">
-        {/* TODO(Ext): Tools inspection */}
-        {/* <AgentMessageActions
+        <AgentMessageActions
           agentMessage={agentMessage}
           size={size}
           owner={owner}
-        /> */}
+        />
 
         {agentMessage.chainOfThought?.length ? (
           <ContentMessage
