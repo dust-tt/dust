@@ -7,6 +7,8 @@ import {
   PlusIcon,
   RobotIcon,
   RocketIcon,
+  ScrollArea,
+  ScrollBar,
   Searchbar,
   StarIcon,
   Tabs,
@@ -192,25 +194,29 @@ export function AssistantBrowser({
       </div>
 
       {/* Assistant tabs */}
-      <div className="flex flex-row space-x-4 px-4">
-        <Tabs className="w-full" value={viewTab} onValueChange={setSelectedTab}>
-          <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
-            {visibleTabs.map((tab) => (
-              <TabsTrigger
-                key={tab.id}
-                value={tab.id}
-                label={tab.label}
-                icon={tab.icon}
-                className={
-                  assistantSearch !== ""
-                    ? "border-element-700 text-element-700"
-                    : ""
-                }
-              />
-            ))}
-          </TabsList>
-        </Tabs>
+      <div className="w-full px-4">
+        <ScrollArea aria-orientation="horizontal">
+          <Tabs value={viewTab} onValueChange={setSelectedTab}>
+            <TabsList>
+              {visibleTabs.map((tab) => (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  label={tab.label}
+                  icon={tab.icon}
+                  className={
+                    assistantSearch !== ""
+                      ? "border-element-700 text-element-700"
+                      : ""
+                  }
+                />
+              ))}
+            </TabsList>
+          </Tabs>
+          <ScrollBar orientation="horizontal" className="hidden" />
+        </ScrollArea>
       </div>
+
       {!viewTab && (
         <div className="text-center">
           No assistants found. Try adjusting your search criteria.
