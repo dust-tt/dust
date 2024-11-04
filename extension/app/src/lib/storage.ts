@@ -1,7 +1,4 @@
-import type {
-  LightWorkspaceType,
-  UserTypeWithWorkspaces,
-} from "@dust-tt/types";
+import type { UserTypeWithWorkspaces } from "@dust-tt/types";
 import type { Auth0AuthorizeResponse } from "@extension/lib/messages";
 
 export type StoredTokens = {
@@ -10,14 +7,8 @@ export type StoredTokens = {
   expiresAt: number;
 };
 
-export type StoredUser = {
-  userId: string;
-  email: string;
-  username: string;
-  firstName: string;
-  fullName: string;
+export type StoredUser = UserTypeWithWorkspaces & {
   selectedWorkspace: string | null;
-  workspaces: LightWorkspaceType[];
 };
 
 /**
@@ -67,14 +58,9 @@ export const saveUser = async (
   user: UserTypeWithWorkspaces
 ): Promise<StoredUser> => {
   const storedUser: StoredUser = {
-    userId: user.sId,
-    email: user.email,
-    username: user.username,
-    firstName: user.firstName,
-    fullName: user.fullName,
+    ...user,
     selectedWorkspace:
       user.workspaces.length === 1 ? user.workspaces[0].sId : null,
-    workspaces: user.workspaces,
   };
   await chrome.storage.local.set({ user: storedUser });
   return storedUser;

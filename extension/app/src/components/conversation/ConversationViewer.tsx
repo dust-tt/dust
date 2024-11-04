@@ -45,9 +45,9 @@ export function ConversationViewer({
       (message) =>
         isUserMessageType(message) &&
         message.visibility !== "deleted" &&
-        message.user?.sId === user.userId
+        message.user?.sId === user.sId
     );
-  }, [messages, user.userId]);
+  }, [messages, user.sId]);
 
   const agentMentions = useMemo(() => {
     if (!lastUserMessage || !isUserMessageType(lastUserMessage)) {

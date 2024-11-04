@@ -6,10 +6,45 @@ import type {
   PublicPostConversationsRequestBody,
   Result,
   SubmitMessageError,
+  UserMessageType,
   UserMessageWithRankType,
+  UserType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { getAccessToken, getStoredUser } from "@extension/lib/storage";
+
+export function createPlaceholderUserMessage({
+  input,
+  mentions,
+  user,
+}: {
+  input: string;
+  mentions: MentionType[];
+  user: UserType;
+}): UserMessageType {
+  const createdAt = new Date().getTime();
+  const { email, fullName, image, username } = user;
+
+  return {
+    id: -1,
+    content: input,
+    created: createdAt,
+    mentions,
+    user,
+    visibility: "visible",
+    type: "user_message",
+    sId: `placeholder-${createdAt.toString()}`,
+    version: 0,
+    context: {
+      email,
+      fullName,
+      profilePictureUrl: image,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+      username,
+      origin: "web",
+    },
+  };
+}
 
 export async function postConversation({
   owner,
