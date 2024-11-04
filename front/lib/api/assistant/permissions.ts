@@ -22,6 +22,13 @@ export async function listAgentConfigurationsForGroups(
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       status: "active",
+      // This checks for PARTIAL matches in group requirements, not exact matches.
+      // Op.contains will match if ANY array in `requestedGroupIds` contains ALL elements of
+      // [groups.map(g => g.id)]
+      // Example: if groups=[1,2]
+      //  - requestedGroupIds=[[1,2,3]] -> MATCH (contains all required elements plus more)
+      //  - requestedGroupIds=[[1,2]] -> MATCH (exact match)
+      //  - requestedGroupIds=[[1]] -> NO MATCH (missing element)
       requestedGroupIds: {
         [Op.contains]: [groups.map((g) => g.id)],
       },

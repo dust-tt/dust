@@ -2088,19 +2088,19 @@ export async function updateConversationRequestedGroupIds(
   const currentRequirements = conversation.requestedGroupIds;
 
   // Check if each new requirement already exists in current requirements.
-  const hasNewRequirements = newRequirements.every((newReq) =>
+  const areAllRequirementsPresent = newRequirements.every((newReq) =>
     currentRequirements.some((currentReq) =>
       isEqual(sortBy(newReq), sortBy(currentReq))
     )
   );
 
   // Early return if all new requirements are already present.
-  if (hasNewRequirements) {
+  if (areAllRequirementsPresent) {
     return;
   }
 
   // Get missing requirements.
-  const missingRequirements = newRequirements.filter(
+  const requirementsToAdd = newRequirements.filter(
     (newReq) =>
       !currentRequirements.some((currentReq) =>
         isEqual(sortBy(newReq), sortBy(currentReq))
@@ -2122,7 +2122,7 @@ export async function updateConversationRequestedGroupIds(
 
   const allRequirements = [
     ...currentRequirements.map((req) => sortBy(req.map(getModelId))),
-    ...missingRequirements.map((req) => sortBy(req.map(getModelId))),
+    ...requirementsToAdd.map((req) => sortBy(req.map(getModelId))),
   ];
 
   await Conversation.update(
