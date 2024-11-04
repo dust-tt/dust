@@ -35,7 +35,9 @@ export function ConversationViewer({
     workspaceId: owner.sId,
   });
 
-  const messages = (conversation?.content || []).flat();
+  const messages = (conversation?.content || []).map(
+    (messages) => messages[messages.length - 1]
+  );
 
   const lastUserMessage = useMemo(() => {
     return messages.findLast(
@@ -106,15 +108,15 @@ export function ConversationViewer({
  * together.
  *
  * Example:
- * Input [[content_fragment, content_fragment], [user_message], [agent_message, agent_message]]
- * Output: [[user_message with content_fragment[]], [agent_message, agent_message]]
+ * Input [content_fragment, content_fragment, user_message, agent_message, agent_message, user_message, agent_message]
+ * Output: [[user_message with content_fragment[]], [agent_message, agent_message], [user_message, agent_message ]]
  * This structure enables layout customization for consecutive messages of the same type
  * and displays content_fragments within user_messages.
  */
 const groupMessagesByType = (
   messages: (ContentFragmentType | UserMessageType | AgentMessageType)[]
-): MessageWithContentFragmentsType[][][] => {
-  const groupedMessages: MessageWithContentFragmentsType[][][] = [];
+): MessageWithContentFragmentsType[][] => {
+  const groupedMessages: MessageWithContentFragmentsType[][] = [];
   let tempContentFragments: ContentFragmentType[] = [];
 
   messages.forEach((message) => {
@@ -131,17 +133,16 @@ const groupMessagesByType = (
         tempContentFragments = []; // Reset the collected content fragments.
 
         // Start a new group for user messages.
-        groupedMessages.push([[messageWithContentFragments]]);
+        groupedMessages.push([messageWithContentFragments]);
       } else {
         messageWithContentFragments = message;
 
         const lastGroup = groupedMessages[groupedMessages.length - 1];
 
         if (!lastGroup) {
-          groupedMessages.push([[messageWithContentFragments]]);
+          groupedMessages.push([messageWithContentFragments]);
         } else {
-          const [lastMessageGroup] = lastGroup;
-          lastMessageGroup.push(messageWithContentFragments); // Add agent messages to the last group.
+          lastGroup.push(messageWithContentFragments); // Add agent messages to the last group.
         }
       }
     }
