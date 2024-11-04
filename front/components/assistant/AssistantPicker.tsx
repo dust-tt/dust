@@ -1,8 +1,14 @@
 import {
-  Button,
+  Avatar,
+  Button, EyeIcon,
   IconButton,
   Item,
   MoreIcon,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem, NewDropdownMenuSearchbar,
+  NewDropdownMenuSeparator,
+  NewDropdownMenuTrigger,
   PlusIcon,
   PopoverContent,
   PopoverRoot,
@@ -82,8 +88,8 @@ export function AssistantPicker({
   };
 
   return (
-    <PopoverRoot>
-      <PopoverTrigger asChild>
+    <NewDropdownMenu>
+      <NewDropdownMenuTrigger asChild>
         {pickerButton ? (
           pickerButton
         ) : (
@@ -95,9 +101,9 @@ export function AssistantPicker({
             tooltip="Pick an assistant"
           />
         )}
-      </PopoverTrigger>
-      <PopoverContent className="mr-2 p-2">
-        <Searchbar
+      </NewDropdownMenuTrigger>
+      <NewDropdownMenuContent className="min-w-[300px]">
+        <NewDropdownMenuSearchbar
           ref={searchbarRef}
           placeholder="Search"
           name="input"
@@ -112,33 +118,29 @@ export function AssistantPicker({
             }
           }}
         />
-        <ScrollArea className="mt-2 h-[300px]">
+        <NewDropdownMenuSeparator className="mt-2"/>
+        <ScrollArea className="mt-1 h-[300px]">
           {searchedAssistants.map((c) => (
-            <div
-              key={`assistant-picker-container-${c.sId}`}
-              className="flex flex-row items-center justify-between px-2"
-            >
-              <Item.Avatar
-                key={`assistant-picker-${c.sId}`}
-                label={c.name}
-                visual={c.pictureUrl}
-                hasAction={false}
-                onClick={() => {
-                  onItemClick(c);
-                  setSearchText("");
-                }}
-                className="truncate"
-              />
-              {showMoreDetailsButtons && (
-                <ShowAssistantDetailsButton assistant={c} />
+            <NewDropdownMenuItem
+              key={`assistant-picker-${c.sId}`}
+              icon={() => (
+                <Avatar
+                  size="xs"
+                  visual={c.pictureUrl}
+                />
               )}
-            </div>
+              label={c.name}
+              onClick={() => {
+                onItemClick(c);
+                setSearchText("");
+              }}
+            />
           ))}
         </ScrollArea>
         {showFooterButtons && (
           <>
-            <Separator />
-            <div className="mt-2 flex justify-end">
+            <NewDropdownMenuSeparator />
+            <div className="py-1 flex justify-end">
               <Link
                 href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
               >
@@ -153,7 +155,9 @@ export function AssistantPicker({
             </div>
           </>
         )}
-      </PopoverContent>
-    </PopoverRoot>
+      </NewDropdownMenuContent>
+    </NewDropdownMenu>
+
+
   );
 }
