@@ -3,6 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import { Icon } from "@sparkle/components/Icon";
+import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import Spinner, { SpinnerProps } from "@sparkle/components/Spinner";
 import {
   TooltipContent,
@@ -103,7 +104,9 @@ const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
 );
 MetaButton.displayName = "MetaButton";
 
-export interface ButtonProps extends MetaButtonProps {
+export interface ButtonProps
+  extends MetaButtonProps,
+    Omit<LinkWrapperProps, "children" | "className"> {
   label?: string;
   icon?: React.ComponentType;
   isSelect?: boolean;
@@ -123,6 +126,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       isSelect = false,
       isPulsing = false,
       size,
+      href,
+      target,
+      rel,
+      replace,
+      shallow,
       "aria-label": ariaLabel,
       ...props
     },
@@ -152,23 +160,31 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     );
 
     const buttonElement = (
-      <MetaButton
-        ref={ref}
-        size={buttonSize}
-        variant={variant}
-        disabled={isLoading || props.disabled}
-        className={isPulsing ? "s-animate-pulse" : ""}
-        aria-label={ariaLabel || tooltip || label}
-        style={
-          {
-            "--pulse-color": "#93C5FD",
-            "--duration": "1.5s",
-          } as React.CSSProperties
-        }
-        {...props}
+      <LinkWrapper
+        href={href}
+        target={target}
+        rel={rel}
+        replace={replace}
+        shallow={shallow}
       >
-        {content}
-      </MetaButton>
+        <MetaButton
+          ref={ref}
+          size={buttonSize}
+          variant={variant}
+          disabled={isLoading || props.disabled}
+          className={isPulsing ? "s-animate-pulse" : ""}
+          aria-label={ariaLabel || tooltip || label}
+          style={
+            {
+              "--pulse-color": "#93C5FD",
+              "--duration": "1.5s",
+            } as React.CSSProperties
+          }
+          {...props}
+        >
+          {content}
+        </MetaButton>
+      </LinkWrapper>
     );
 
     return tooltip ? (

@@ -80,44 +80,44 @@ const NavigationListItem = React.forwardRef<
       }
     };
 
-    const content = (
-      <div className={className} ref={ref} {...props}>
-        <div
-          className={listStyles({
-            layout: "item",
-            state: selected ? "selected" : isPressed ? "active" : "unselected",
-          })}
-          onMouseLeave={() => {
-            setIsPressed(false);
-          }}
-          onMouseDown={handleMouseDown}
-          onMouseUp={() => setIsPressed(false)}
-        >
-          {icon && <Icon visual={icon} size="sm" />}
-          {label && (
-            <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap">
-              {label}
-            </span>
-          )}
-          {selected && moreMenu && (
-            <div className="-s-mr-2 s-flex s-h-4 s-items-center">
-              {moreMenu}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-
     return (
-      <LinkWrapper
-        href={href}
-        target={target}
-        rel={rel}
-        replace={replace}
-        shallow={shallow}
-      >
-        {content}
-      </LinkWrapper>
+      <div className={className} ref={ref} {...props}>
+        <LinkWrapper
+          href={href}
+          target={target}
+          rel={rel}
+          replace={replace}
+          shallow={shallow}
+        >
+          <div
+            className={listStyles({
+              layout: "item",
+              state: selected
+                ? "selected"
+                : isPressed
+                  ? "active"
+                  : "unselected",
+            })}
+            onMouseLeave={() => {
+              setIsPressed(false);
+            }}
+            onMouseDown={handleMouseDown}
+            onMouseUp={() => setIsPressed(false)}
+          >
+            {icon && <Icon visual={icon} size="sm" />}
+            {label && (
+              <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap">
+                {label}
+              </span>
+            )}
+            {selected && moreMenu && (
+              <div className="-s-mr-2 s-flex s-h-4 s-items-center">
+                {moreMenu}
+              </div>
+            )}
+          </div>
+        </LinkWrapper>
+      </div>
     );
   }
 );

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 
 import {
   Button,
+  LockIcon,
   MoreIcon,
   NavigationList,
   NavigationListItem,
@@ -76,11 +77,13 @@ export const NewNavigationListDemo = () => {
                 return (
                   <NavigationListItem
                     key={index}
+                    href={index % 2 === 0 ? "title" : undefined}
                     selected={itemIndex === selectedIndex}
                     onClick={() => setSelectedIndex(itemIndex)}
                     label={title}
                     className="s-w-full"
                     moreMenu={getMoreMenu(title)}
+                    icon={LockIcon}
                   />
                 );
               })}

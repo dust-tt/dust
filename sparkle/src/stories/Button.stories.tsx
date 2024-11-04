@@ -51,6 +51,12 @@ const ButtonExamplesBySize = ({
       <Button size={size} variant="highlight" label="Button" />
       <Button size={size} variant="warning" label="Button" />
       <Button size={size} variant="ghost" label="Button" />
+      <Button
+        size={size}
+        variant="primary"
+        label="Button with href"
+        href="hello"
+      />
     </div>
     <div className="s-flex s-items-center s-gap-4">
       <Button size={size} label="Button" isLoading />
