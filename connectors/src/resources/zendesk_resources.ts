@@ -480,7 +480,11 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
   toContentNode({ connectorId }: { connectorId: number }): ContentNode {
     return {
       provider: "zendesk",
-      internalId: getCategoryInternalId(connectorId, this.categoryId),
+      internalId: getCategoryInternalId(
+        connectorId,
+        this.brandId,
+        this.categoryId
+      ),
       parentInternalId: getHelpCenterInternalId(connectorId, this.brandId),
       type: "folder",
       title: this.name,
@@ -703,7 +707,11 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     return {
       provider: "zendesk",
       internalId: getArticleInternalId(connectorId, this.articleId),
-      parentInternalId: getCategoryInternalId(connectorId, this.categoryId),
+      parentInternalId: getCategoryInternalId(
+        connectorId,
+        this.brandId,
+        this.categoryId
+      ),
       type: "file",
       title: this.name,
       sourceUrl: this.url,
@@ -712,6 +720,15 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
       dustDocumentId: null,
       lastUpdatedAt: this.updatedAt.getTime(),
     };
+  }
+
+  getParentInternalIds(connectorId: number): string[] {
+    return [
+      getArticleInternalId(connectorId, this.articleId),
+      getCategoryInternalId(connectorId, this.brandId, this.categoryId),
+      getHelpCenterInternalId(connectorId, this.brandId),
+      getBrandInternalId(connectorId, this.brandId),
+    ];
   }
 
   static async fetchByArticleId({

@@ -296,7 +296,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           if (permission === "none") {
             const revokedCategory = await revokeSyncZendeskCategory({
               connectorId,
-              categoryId: objectId,
+              categoryId: objectId.categoryId,
             });
             if (revokedCategory) {
               toBeSignaledCategoryIds.add(revokedCategory.categoryId);
@@ -306,7 +306,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
             const newCategory = await allowSyncZendeskCategory({
               connectorId,
               connectionId,
-              categoryId: objectId,
+              categoryId: objectId.categoryId,
+              brandId: objectId.brandId,
             });
             if (newCategory) {
               toBeSignaledCategoryIds.add(newCategory.categoryId);
@@ -375,7 +376,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           return;
         }
         case "category": {
-          categoryIds.push(objectId);
+          categoryIds.push(objectId.categoryId);
           return;
         }
         case "article":
@@ -452,7 +453,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       case "category": {
         const category = await ZendeskCategoryResource.fetchByCategoryId({
           connectorId,
-          categoryId: objectId,
+          categoryId: objectId.categoryId,
         });
         if (category) {
           return new Ok([
@@ -477,7 +478,11 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         if (article) {
           return new Ok([
             internalId,
-            getCategoryInternalId(connectorId, article.categoryId),
+            getCategoryInternalId(
+              connectorId,
+              article.brandId,
+              article.categoryId
+            ),
             getHelpCenterInternalId(connectorId, article.brandId),
             getBrandInternalId(connectorId, article.brandId),
           ]);

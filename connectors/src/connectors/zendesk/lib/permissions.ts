@@ -200,7 +200,11 @@ export async function retrieveChildrenNodes({
             );
             return {
               provider: connector.type,
-              internalId: getCategoryInternalId(connectorId, category.id),
+              internalId: getCategoryInternalId(
+                connectorId,
+                objectId,
+                category.id
+              ),
               parentInternalId: parentInternalId,
               type: "folder",
               title: category.name,
@@ -221,7 +225,7 @@ export async function retrieveChildrenNodes({
           const articlesInDb =
             await ZendeskArticleResource.fetchByCategoryIdReadOnly({
               connectorId,
-              categoryId: objectId,
+              categoryId: objectId.categoryId,
             });
           nodes = articlesInDb.map((article) =>
             article.toContentNode({ connectorId })
