@@ -1,8 +1,7 @@
 import type {
-  AgentActionConfigurationType,
   DustAppRunConfigurationType,
   ModelId,
-  PostOrPatchAgentConfigurationRequestBody,
+  RawAgentActionConfigurationType,
 } from "@dust-tt/types";
 import { isDustAppRunConfiguration, removeNulls } from "@dust-tt/types";
 import { uniq } from "lodash";
@@ -31,7 +30,7 @@ export async function listAgentConfigurationsForGroups(
 }
 
 export function getDataSourceViewIdsFromActions(
-  actions: AgentActionConfigurationType[]
+  actions: RawAgentActionConfigurationType[]
 ): string[] {
   const relevantActions = actions.filter(
     (action) =>
@@ -59,7 +58,7 @@ export function getDataSourceViewIdsFromActions(
 
 export async function getAgentConfigurationGroupIdsFromActions(
   auth: Authenticator,
-  actions: AgentActionConfigurationType[]
+  actions: RawAgentActionConfigurationType[]
 ): Promise<number[]> {
   const dsViews = await DataSourceViewResource.fetchByIds(
     auth,
