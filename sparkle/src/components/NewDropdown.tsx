@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { Icon } from "@sparkle/components/Icon";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
-import { Searchbar } from "@sparkle/components/Searchbar";
+import { Searchbar, SearchbarProps } from "@sparkle/components/Searchbar";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -340,15 +340,9 @@ const NewDropdownMenuShortcut = ({
 };
 NewDropdownMenuShortcut.displayName = "NewDropdownMenuShortcut";
 
-interface NewDropdownMenuSearchbarProps {
-  placeholder: string;
-  value: string | null;
-  onChange?: (value: string) => void;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  name: string;
+interface NewDropdownMenuSearchbarProps
+  extends Omit<SearchbarProps, "className"> {
   className?: string;
-  disabled?: boolean;
-  size?: React.ComponentProps<typeof Searchbar>["size"];
 }
 
 const NewDropdownMenuSearchbar = React.forwardRef<
