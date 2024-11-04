@@ -7,11 +7,9 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/permissions_queue/config";
+import type { UpdateSpacePermissionsSignal } from "@app/temporal/permissions_queue/signals";
+import { updateSpacePermissionsSignal } from "@app/temporal/permissions_queue/signals";
 import { updateSpacePermissionsWorkflow } from "@app/temporal/permissions_queue/workflows";
-import {
-  updateSpacePermissionsSignal,
-  UpdateSpacePermissionsSignal,
-} from "@app/temporal/permissions_queue/signals";
 
 const DEBOUNCE_MS = 10 * 1000; // 10 seconds.
 
