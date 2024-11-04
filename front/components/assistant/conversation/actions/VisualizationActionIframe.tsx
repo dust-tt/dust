@@ -47,9 +47,7 @@ const getExtensionFromBlob = (blob: Blob): string => {
   const mimeToExt: Record<string, string> = {
     "image/png": "png",
     "image/jpeg": "jpg",
-    "text/plain": "txt",
     "text/csv": "csv",
-    "application/json": "json",
   };
 
   return mimeToExt[blob.type] || "txt"; // Default to 'txt' if mime type is unknown.
