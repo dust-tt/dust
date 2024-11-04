@@ -206,7 +206,7 @@ export function VisualizationWrapper({
                     papaparse: papaparseAll,
                     "@dust/react-hooks": {
                       useFile: (fileId: string) => useFile(fileId, fetchFile),
-                      downloadFile: memoizedDownloadFile,
+                      triggerUserFileDownload: memoizedDownloadFile,
                     },
                   },
                 }),
