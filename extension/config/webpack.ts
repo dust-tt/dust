@@ -43,7 +43,7 @@ export const getConfig = async ({
         new TerserPlugin({
           extractComments: false,
           terserOptions: {
-            format: {
+            output: {
               ascii_only: true,
             },
           },
@@ -141,6 +141,10 @@ export const getConfig = async ({
             to: path.resolve(buildDirPath, "images"),
           },
         ],
+      }),
+      new webpack.BannerPlugin({
+        banner: "\ufeff", // UTF-8 BOM
+        raw: true,
       }),
       ...(shouldBuild === "analyze" ? [new BundleAnalyzerPlugin()] : []),
       packageDirPath
