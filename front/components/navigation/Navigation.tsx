@@ -32,7 +32,7 @@ export function Navigation({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "b" && (e.metaKey || e.ctrlKey)) {
+      if (e?.key?.toLowerCase() === "b" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setNavigationBarOpen(!isNavigationBarOpen);
       }
