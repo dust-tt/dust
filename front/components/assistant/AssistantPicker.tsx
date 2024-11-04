@@ -1,11 +1,10 @@
 import {
   Avatar,
   Button,
-  IconButton,
-  MoreIcon,
   NewDropdownMenu,
   NewDropdownMenuContent,
-  NewDropdownMenuItem, NewDropdownMenuSearchbar,
+  NewDropdownMenuItem,
+  NewDropdownMenuSearchbar,
   NewDropdownMenuSeparator,
   NewDropdownMenuTrigger,
   PlusIcon,
@@ -16,44 +15,15 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { useRouter } from "next/router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { filterAndSortAgents } from "@app/lib/utils";
-import { setQueryParam } from "@app/lib/utils/router";
-
-const ShowAssistantDetailsButton = ({
-  assistant,
-}: {
-  assistant: LightAgentConfigurationType;
-}) => {
-  const router = useRouter();
-
-  const showAssistantDetails = useCallback(
-    (agentConfiguration: LightAgentConfigurationType) => {
-      setQueryParam(router, "assistantDetails", agentConfiguration.sId);
-    },
-    [router]
-  );
-  return (
-    <IconButton
-      icon={MoreIcon}
-      onClick={() => {
-        close();
-        showAssistantDetails(assistant);
-      }}
-      variant="ghost"
-      size="sm"
-    />
-  );
-};
 
 export function AssistantPicker({
   owner,
   assistants,
   onItemClick,
   pickerButton,
-  showMoreDetailsButtons = true,
   showFooterButtons = true,
   size = "md",
 }: {
@@ -111,17 +81,12 @@ export function AssistantPicker({
             }
           }}
         />
-        <NewDropdownMenuSeparator className="mt-2"/>
+        <NewDropdownMenuSeparator className="mt-2" />
         <ScrollArea className="mt-1 h-[300px]">
           {searchedAssistants.map((c) => (
             <NewDropdownMenuItem
               key={`assistant-picker-${c.sId}`}
-              icon={() => (
-                <Avatar
-                  size="xs"
-                  visual={c.pictureUrl}
-                />
-              )}
+              icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
               label={c.name}
               onClick={() => {
                 onItemClick(c);
@@ -134,20 +99,18 @@ export function AssistantPicker({
           <>
             <NewDropdownMenuSeparator />
             <div className="flex justify-end">
-                <Button
-                  label="Create"
-                  size="xs"
-                  variant="primary"
-                  icon={PlusIcon}
-                  className="mr-2"
-                  href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-                />
+              <Button
+                label="Create"
+                size="xs"
+                variant="primary"
+                icon={PlusIcon}
+                className="mr-2"
+                href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+              />
             </div>
           </>
         )}
       </NewDropdownMenuContent>
     </NewDropdownMenu>
-
-
   );
 }
