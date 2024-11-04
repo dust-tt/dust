@@ -23,6 +23,7 @@ import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useUser } from "@app/lib/swr/user";
+import { classNames } from "@app/lib/utils";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -121,9 +122,13 @@ export const NavigationSidebar = React.forwardRef<
               <TabsList>
                 {navs.map((tab) => (
                   <TabsTrigger
+                    className={classNames(
+                      tab.sizing === "expand" ? "grow" : "shrink",
+                      "px-1"
+                    )}
                     key={tab.id}
                     value={tab.id}
-                    label={tab.label}
+                    label={tab.hideLabel ? undefined : tab.label}
                     icon={tab.icon}
                     onClick={() => {
                       if (tab.href) {
