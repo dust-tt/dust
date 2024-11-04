@@ -21,7 +21,6 @@ import {
 } from "@connectors/connectors/zendesk/lib/help_center_permissions";
 import {
   getBrandInternalId,
-  getCategoryInternalId,
   getHelpCenterInternalId,
   getIdFromInternalId,
   getTicketsInternalId,
@@ -483,16 +482,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           articleId: objectId,
         });
         if (article) {
-          return new Ok([
-            internalId,
-            getCategoryInternalId(
-              connectorId,
-              article.brandId,
-              article.categoryId
-            ),
-            getHelpCenterInternalId(connectorId, article.brandId),
-            getBrandInternalId(connectorId, article.brandId),
-          ]);
+          return new Ok(article.getParentInternalIds(connectorId));
         } else {
           logger.error(
             { connectorId, articleId: objectId },

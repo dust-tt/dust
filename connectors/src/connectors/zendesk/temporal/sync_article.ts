@@ -1,12 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 import TurndownService from "turndown";
 
-import {
-  getArticleInternalId,
-  getBrandInternalId,
-  getCategoryInternalId,
-  getHelpCenterInternalId,
-} from "@connectors/connectors/zendesk/lib/id_conversions";
+import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import type { ZendeskFetchedArticle } from "@connectors/connectors/zendesk/lib/node-zendesk-types";
 import {
   renderDocumentTitleAndContent,
@@ -107,12 +102,7 @@ export async function syncArticle({
         `createdAt:${createdAt.getTime()}`,
         `updatedAt:${updatedAt.getTime()}`,
       ],
-      parents: [
-        documentId,
-        getCategoryInternalId(connectorId, articleInDb.categoryId),
-        getHelpCenterInternalId(connectorId, articleInDb.brandId),
-        getBrandInternalId(connectorId, articleInDb.brandId),
-      ],
+      parents: articleInDb.getParentInternalIds(connectorId),
       loggerArgs: { ...loggerArgs, articleId: article.id },
       upsertContext: { sync_type: "batch" },
       async: true,
