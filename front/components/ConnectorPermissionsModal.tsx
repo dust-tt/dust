@@ -5,6 +5,7 @@ import {
   CloudArrowLeftRightIcon,
   Dialog,
   Icon,
+  Input,
   LockIcon,
   Modal,
   Page,
@@ -24,6 +25,7 @@ import type {
 import {
   CONNECTOR_TYPE_TO_MISMATCH_ERROR,
   isOAuthProvider,
+  isValidZendeskSubdomain,
   MANAGED_DS_DELETABLE,
 } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
@@ -111,7 +113,7 @@ interface DataSourceEditionModalProps {
   dataSource: DataSourceType;
   isOpen: boolean;
   onClose: () => void;
-  onEditPermissionsClick: () => void;
+  onEditPermissionsClick: (extraConfig: Record<string, string>) => void;
   owner: LightWorkspaceType;
 }
 
@@ -119,6 +121,7 @@ export async function handleUpdatePermissions(
   connector: ConnectorType,
   dataSource: DataSourceType,
   owner: LightWorkspaceType,
+  extraConfig: Record<string, string>,
   sendNotification: (notification: NotificationType) => void
 ) {
   const provider = connector.type;
@@ -126,7 +129,7 @@ export async function handleUpdatePermissions(
   const connectionIdRes = await setupConnection({
     owner,
     provider,
-    extraConfig: {},
+    extraConfig,
   });
   if (connectionIdRes.isErr()) {
     sendNotification({
@@ -149,7 +152,12 @@ export async function handleUpdatePermissions(
       title: "Failed to update the permissions of the Data Source",
       description: updateRes.error,
     });
-    return;
+  } else {
+    sendNotification({
+      type: "success",
+      title: "Successfully updated connection",
+      description: "The connection was successfully updated.",
+    });
   }
 }
 
@@ -216,10 +224,28 @@ function DataSourceEditionModal({
   onEditPermissionsClick,
   owner,
 }: DataSourceEditionModalProps) {
+  const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { user } = useUser();
 
   const { connectorProvider, editedByUser } = dataSource;
+
+  const isExtraConfigValid = useCallback(
+    (extraConfig: Record<string, string>) => {
+      if (connectorProvider === "zendesk") {
+        return isValidZendeskSubdomain(extraConfig.zendesk_subdomain);
+      } else {
+        return true;
+      }
+    },
+    [connectorProvider]
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      setExtraConfig({});
+    }
+  }, [isOpen]);
 
   if (!connectorProvider || !user) {
     return null;
@@ -290,8 +316,9 @@ function DataSourceEditionModal({
             </div>
           )}
         </div>
+
         {!isDataSourceOwner && (
-          <div className="item flex flex-col gap-2 border-t pb-4 pt-4">
+          <div className="item flex flex-col gap-2 border-t pt-4">
             <Page.SectionHeader title="Editing permissions" />
             <div className="mb-4 w-full rounded-lg border-pink-200 bg-pink-50 p-3">
               <div className="flex items-center gap-2 font-medium text-pink-900">
@@ -321,36 +348,43 @@ function DataSourceEditionModal({
                 </div>
               )}
             </div>
-            <div className="flex items-center justify-center">
-              <Button
-                label="Edit Permissions"
-                icon={LockIcon}
-                variant="warning"
-                onClick={() => {
-                  setShowConfirmDialog(true);
-                }}
-              />
-            </div>
           </div>
         )}
-        {isDataSourceOwner && (
-          <div className="flex items-center justify-center">
-            <Button
-              label="Edit Permissions"
-              icon={LockIcon}
-              variant="warning"
-              onClick={() => {
-                setShowConfirmDialog(true);
+
+        {connectorProvider === "zendesk" && (
+          <div className="pb-4">
+            <Input
+              label="Zendesk account subdomain"
+              message="The first part of your Zendesk account URL."
+              messageStatus="info"
+              name="subdomain"
+              value={extraConfig.zendesk_subdomain ?? ""}
+              placeholder="my-subdomain"
+              onChange={(e) => {
+                setExtraConfig({ zendesk_subdomain: e.target.value });
               }}
             />
           </div>
         )}
+
+        <div className="flex items-center justify-center">
+          <Button
+            label="Edit Permissions"
+            icon={LockIcon}
+            variant="warning"
+            disabled={!isExtraConfigValid(extraConfig)}
+            onClick={() => {
+              setShowConfirmDialog(true);
+            }}
+          />
+        </div>
+
         <Dialog
           title="Are you sure?"
           isOpen={showConfirmDialog}
           onCancel={() => setShowConfirmDialog(false)}
           onValidate={() => {
-            void onEditPermissionsClick();
+            void onEditPermissionsClick(extraConfig);
             setShowConfirmDialog(false);
           }}
           validateVariant="warning"
@@ -765,13 +799,15 @@ export function ConnectorPermissionsModal({
         onClose={() => closeModal(false)}
         dataSource={dataSource}
         owner={owner}
-        onEditPermissionsClick={() => {
-          void handleUpdatePermissions(
+        onEditPermissionsClick={async (extraConfig: Record<string, string>) => {
+          await handleUpdatePermissions(
             connector,
             dataSource,
             owner,
+            extraConfig,
             sendNotification
           );
+          closeModal(false);
         }}
       />
       <DataSourceDeletionModal
