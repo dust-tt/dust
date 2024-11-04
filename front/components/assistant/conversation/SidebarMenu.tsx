@@ -24,7 +24,6 @@ import type { ConversationType } from "@dust-tt/types";
 import type { WorkspaceType } from "@dust-tt/types";
 import { isBuilder, isOnlyUser } from "@dust-tt/types";
 import moment from "moment";
-import Link from "next/link";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useState } from "react";
@@ -229,7 +228,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               </div>
             ) : (
               <div className={classNames("flex justify-end gap-2 pt-2")}>
-                <Link
+                <Button
+                  label="New"
+                  icon={ChatBubbleBottomCenterPlusIcon}
+                  className="shrink"
+                  tooltip="Create a new conversation"
                   href={`/w/${owner.sId}/assistant/new`}
                   onClick={() => {
                     setSidebarOpen(false);
@@ -243,14 +246,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                       triggerInputAnimation();
                     }
                   }}
-                >
-                  <Button
-                    label="New"
-                    icon={ChatBubbleBottomCenterPlusIcon}
-                    className="flex-none shrink"
-                    tooltip="Create a new conversation"
-                  />
-                </Link>
+                />
                 <NewDropdownMenu>
                   <NewDropdownMenuTrigger asChild>
                     <Button size="sm" icon={MoreIcon} variant="outline" />
