@@ -1,5 +1,4 @@
 import {
-  ArrowRightIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
   FolderIcon,
@@ -31,45 +30,16 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 const userContent: Record<
   RoleType,
   {
-    topPicks: {
-      title: string;
-      href: string;
-      icon: React.ComponentType;
-    }[];
     helpIceBreakers: string[];
   }
 > = {
   user: {
-    topPicks: [
-      {
-        title: "How to talk to assistants?",
-        href: "https://docs.dust.tt/docs/prompting-101-how-to-talk-to-your-assistants",
-        icon: ArrowRightIcon,
-      },
-    ],
     helpIceBreakers: [
       "What are assistants?",
       "What are the limitations of assistants?",
     ],
   },
   builder: {
-    topPicks: [
-      {
-        title: "How to create assistants?",
-        href: "https://docs.dust.tt/docs/prompting-101-how-to-talk-to-your-assistants",
-        icon: ArrowRightIcon,
-      },
-      {
-        title: "What can I use Dust for?",
-        href: "https://docs.dust.tt/docs/use-cases",
-        icon: ArrowRightIcon,
-      },
-      {
-        title: "What is a Dust App?",
-        href: "https://docs.dust.tt/reference/developer-platform-overview",
-        icon: ArrowRightIcon,
-      },
-    ],
     helpIceBreakers: [
       "How to upload a file to a folder in Dust?",
       "What are good use-cases for Customer support?",
@@ -77,23 +47,6 @@ const userContent: Record<
     ],
   },
   admin: {
-    topPicks: [
-      {
-        title: "How to create assistants?",
-        href: "https://docs.dust.tt/docs/prompting-101-how-to-talk-to-your-assistants",
-        icon: ArrowRightIcon,
-      },
-      {
-        title: "How to add new connections?",
-        href: "https://docs.dust.tt/docs/google-drive-connection",
-        icon: ArrowRightIcon,
-      },
-      {
-        title: "How to manage users?",
-        href: "https://docs.dust.tt/docs/manage-users",
-        icon: ArrowRightIcon,
-      },
-    ],
     helpIceBreakers: [
       "How to invite a new user?",
       "How to use assistants in Slack workflows?",
@@ -101,7 +54,6 @@ const userContent: Record<
     ],
   },
   none: {
-    topPicks: [],
     helpIceBreakers: [],
   },
 };
@@ -211,15 +163,13 @@ export function HelpDrawer({
               icon: FolderIcon,
             },
             {
-              title: "Community Support",
-              href: "https://community.dust.tt",
+              title: "Join the Slack community",
+              href: "https://join.slack.com/t/dustcommunity/shared_invite/zt-2tu2obwzo-ZyT1dUR6~qwSncVpIy7yTA",
               description: "Stuck? Ask your questions to the community",
               icon: UserGroupIcon,
             },
           ]}
         />
-        <Page.SectionHeader title="Top picks for you" />
-        <LinksList linksList={userContent[owner.role].topPicks} />
 
         <div className="flex flex-col gap-4 [&>*]:pl-px">
           <Page.SectionHeader title="Ask questions to @help" />
