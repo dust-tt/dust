@@ -2077,7 +2077,7 @@ async function updateConversationGroups({
  * Within each requirement (sub-array), groups are combined with OR logic.
  * Different requirements (different sub-arrays) are combined with AND logic.
  */
-async function updateConversationRequestedGroupIds(
+export async function updateConversationRequestedGroupIds(
   mentionedAgents: LightAgentConfigurationType[],
   conversation: ConversationType,
   t: Transaction
