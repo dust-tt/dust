@@ -1,9 +1,13 @@
 import type {
+  AgentGenerationCancelledEvent,
   AgentMention,
+  AgentMessageNewEvent,
   AgentMessageType,
   ContentFragmentType,
+  ConversationTitleEvent,
   LightWorkspaceType,
   MessageWithContentFragmentsType,
+  UserMessageNewEvent,
   UserMessageType,
 } from "@dust-tt/types";
 import {
@@ -13,9 +17,10 @@ import {
 } from "@dust-tt/types";
 import MessageGroup from "@extension/components/conversation/MessageGroup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
+import { useEventSource } from "@extension/hooks/useEventSource";
 import type { StoredUser } from "@extension/lib/storage";
 import { classNames } from "@extension/lib/utils";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 interface ConversationViewerProps {
   conversationId: string;
@@ -30,10 +35,11 @@ export function ConversationViewer({
   owner,
   user,
 }: ConversationViewerProps) {
-  const { conversation } = usePublicConversation({
-    conversationId,
-    workspaceId: owner.sId,
-  });
+  const { conversation, isConversationLoading, mutateConversation } =
+    usePublicConversation({
+      conversationId,
+      workspaceId: owner.sId,
+    });
 
   // We only keep the last version of each message.
   const messages = (conversation?.content || []).map(
@@ -66,6 +72,70 @@ export function ConversationViewer({
       onStickyMentionsChange(agentMentions);
     }
   }, [agentMentions, onStickyMentionsChange]);
+
+  // Hooks related to message streaming.
+
+  const buildEventSourceURL = useCallback(
+    (lastEvent: string | null) => {
+      const esURL = `${process.env.DUST_DOMAIN}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
+      let lastEventId = "";
+      if (lastEvent) {
+        const eventPayload: {
+          eventId: string;
+        } = JSON.parse(lastEvent);
+        lastEventId = eventPayload.eventId;
+      }
+      const url = esURL + "?lastEventId=" + lastEventId;
+
+      return url;
+    },
+    [conversationId, owner.sId]
+  );
+
+  const onEventCallback = useCallback(
+    (eventStr: string) => {
+      const eventPayload: {
+        eventId: string;
+        data:
+          | UserMessageNewEvent
+          | AgentMessageNewEvent
+          | AgentGenerationCancelledEvent
+          | ConversationTitleEvent;
+      } = JSON.parse(eventStr);
+
+      const event = eventPayload.data;
+
+      if (!eventIds.current.includes(eventPayload.eventId)) {
+        console.log("Received event", event);
+        eventIds.current.push(eventPayload.eventId);
+        switch (event.type) {
+          case "user_message_new":
+          case "agent_message_new":
+          case "agent_generation_cancelled":
+          case "conversation_title": {
+            void mutateConversation();
+            break;
+          }
+          default:
+            ((t: never) => {
+              console.error("Unknown event type", t);
+            })(event);
+        }
+      }
+    },
+    [mutateConversation]
+  );
+
+  useEventSource(
+    buildEventSourceURL,
+    onEventCallback,
+    `conversation-${conversationId}`,
+    {
+      // We only start consuming the stream when the conversation has been loaded and we have a first page of message.
+      isReadyToConsumeStream: !isConversationLoading && messages.length !== 0,
+    }
+  );
+  const eventIds = useRef<string[]>([]);
 
   const typedGroupedMessages = useMemo(
     () => (messages ? groupMessagesByType(messages) : []),
