@@ -67,6 +67,13 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
     return configuration && new this(this.model, configuration.get());
   }
 
+  static async deleteByConnectorId(
+    connectorId: number,
+    transaction: Transaction
+  ): Promise<void> {
+    await this.model.destroy({ where: { connectorId }, transaction });
+  }
+
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -240,6 +247,13 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       },
     });
     return brands.map((brand) => new this(this.model, brand.get()));
+  }
+
+  static async deleteByConnectorId(
+    connectorId: number,
+    transaction: Transaction
+  ) {
+    await ZendeskBrand.destroy({ where: { connectorId }, transaction });
   }
 
   toContentNode({ connectorId }: { connectorId: number }): ContentNode {
@@ -435,6 +449,13 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     await ZendeskCategory.destroy({ where: { connectorId, brandId } });
   }
 
+  static async deleteByConnectorId(
+    connectorId: number,
+    transaction: Transaction
+  ) {
+    await ZendeskCategory.destroy({ where: { connectorId }, transaction });
+  }
+
   static async revokePermissionsForBrand({
     connectorId,
     brandId,
@@ -594,6 +615,13 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     brandId: number;
   }): Promise<void> {
     await ZendeskTicket.destroy({ where: { connectorId, brandId } });
+  }
+
+  static async deleteByConnectorId(
+    connectorId: number,
+    transaction: Transaction
+  ) {
+    await ZendeskTicket.destroy({ where: { connectorId }, transaction });
   }
 
   static async revokePermissionsForBrand({
@@ -760,6 +788,13 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     brandId: number;
   }) {
     await ZendeskArticle.destroy({ where: { connectorId, brandId } });
+  }
+
+  static async deleteByConnectorId(
+    connectorId: number,
+    transaction: Transaction
+  ) {
+    await ZendeskArticle.destroy({ where: { connectorId }, transaction });
   }
 
   static async revokePermissionsForBrand({
