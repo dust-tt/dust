@@ -22,6 +22,19 @@ export type AgentActionConfigurationType =
   | WebsearchConfigurationType
   | BrowseConfigurationType;
 
+type UnsavedConfiguration<T> = Omit<T, "id" | "sId">;
+
+// We need to apply Omit to each member of the union separately rather than the whole union
+// because Omit<A | B, "k"> is different from Omit<A, "k"> | Omit<B, "k">.
+// The first form loses the discriminated union properties needed for type narrowing.
+export type UnsavedAgentActionConfigurationType =
+  | UnsavedConfiguration<TablesQueryConfigurationType>
+  | UnsavedConfiguration<RetrievalConfigurationType>
+  | UnsavedConfiguration<DustAppRunConfigurationType>
+  | UnsavedConfiguration<ProcessConfigurationType>
+  | UnsavedConfiguration<WebsearchConfigurationType>
+  | UnsavedConfiguration<BrowseConfigurationType>;
+
 export type AgentAction = AgentActionConfigurationType["type"];
 
 // Each AgentActionConfigurationType is capable of generating this type at runtime to specify which

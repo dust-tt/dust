@@ -82,7 +82,7 @@ export default function WorkspaceAssistants({
     useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useHashParam(
     "tabScope",
-    SCOPE_INFO["workspace"].shortLabel
+    "workspace"
   );
 
   const includes: ("authors" | "usage")[] = (() => {

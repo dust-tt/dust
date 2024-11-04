@@ -39,6 +39,7 @@ import {
   isWebsearchActionType,
   removeNulls,
 } from "@dust-tt/types";
+import { AgentMessageActions } from "@extension/components/conversation/AgentMessageActions";
 import type { MarkdownCitation } from "@extension/components/conversation/MarkdownCitation";
 import {
   CitationsContext,
@@ -53,7 +54,23 @@ import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction
 import { useEventSource } from "@extension/hooks/useEventSource";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Components } from "react-markdown";
+import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
+import { visit } from "unist-util-visit";
+
+export function visualizationDirective() {
+  return (tree: any) => {
+    visit(tree, ["containerDirective"], (node) => {
+      if (node.name === "visualization") {
+        const data = node.data || (node.data = {});
+        data.hName = "visualization";
+        data.hProperties = {
+          position: node.position,
+        };
+      }
+    });
+  };
+}
 
 export function makeDocumentCitation(
   document: RetrievalDocumentType
@@ -365,6 +382,18 @@ export function AgentMessage({
 
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
+      visualization: (props: ReactMarkdownProps) => (
+        <div className="w-full flex justify-center">
+          <Button
+            label="Please check the visualization here"
+            onClick={() => {
+              window.open(
+                `${process.env.DUST_DOMAIN}/w/${owner.sId}/assistant/${conversationId}`
+              );
+            }}
+          />
+        </div>
+      ),
       sup: CiteBlock,
       mention: MentionBlock,
     }),
@@ -372,7 +401,7 @@ export function AgentMessage({
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [mentionDirective, getCiteDirective()],
+    () => [mentionDirective, getCiteDirective(), visualizationDirective],
     []
   );
 
@@ -392,8 +421,7 @@ export function AgentMessage({
         return (
           <div className="flex flex-row items-center gap-2">
             <div className="text-base font-medium">
-              {/* TODO(Ext) Any CTA here ? */}
-              {agentConfiguration.name}
+              {/* TODO(Ext) Any CTA here ? */}@{agentConfiguration.name}
             </div>
           </div>
         );
@@ -442,12 +470,11 @@ export function AgentMessage({
 
     return (
       <div className="flex flex-col gap-y-4">
-        {/* TODO(Ext): Tools inspection */}
-        {/* <AgentMessageActions
+        <AgentMessageActions
           agentMessage={agentMessage}
           size={size}
           owner={owner}
-        /> */}
+        />
 
         {agentMessage.chainOfThought?.length ? (
           <ContentMessage

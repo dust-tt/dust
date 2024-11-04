@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { Icon } from "@sparkle/components/Icon";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
+import { Searchbar, SearchbarProps } from "@sparkle/components/Searchbar";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -339,6 +340,49 @@ const NewDropdownMenuShortcut = ({
 };
 NewDropdownMenuShortcut.displayName = "NewDropdownMenuShortcut";
 
+interface NewDropdownMenuSearchbarProps extends SearchbarProps {}
+
+const NewDropdownMenuSearchbar = React.forwardRef<
+  HTMLInputElement,
+  NewDropdownMenuSearchbarProps
+>(
+  (
+    {
+      placeholder,
+      value,
+      onChange,
+      onKeyDown,
+      name,
+      className,
+      size = "xs",
+      disabled = false,
+    },
+    ref
+  ) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      e.stopPropagation();
+      onKeyDown?.(e);
+    };
+
+    return (
+      <div className={cn("s-px-1 s-py-1", className)}>
+        <Searchbar
+          ref={ref}
+          placeholder={placeholder}
+          name={name}
+          value={value}
+          onChange={onChange}
+          onKeyDown={handleKeyDown}
+          size={size}
+          disabled={disabled}
+        />
+      </div>
+    );
+  }
+);
+
+NewDropdownMenuSearchbar.displayName = "NewDropdownMenuSearchbar";
+
 export {
   NewDropdownMenu,
   NewDropdownMenuCheckboxItem,
@@ -349,6 +393,7 @@ export {
   NewDropdownMenuPortal,
   NewDropdownMenuRadioGroup,
   NewDropdownMenuRadioItem,
+  NewDropdownMenuSearchbar,
   NewDropdownMenuSeparator,
   NewDropdownMenuShortcut,
   NewDropdownMenuSub,

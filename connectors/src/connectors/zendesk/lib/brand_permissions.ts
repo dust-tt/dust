@@ -2,7 +2,7 @@ import type { ModelId } from "@dust-tt/types";
 
 import { allowSyncZendeskHelpCenter } from "@connectors/connectors/zendesk/lib/help_center_permissions";
 import { allowSyncZendeskTickets } from "@connectors/connectors/zendesk/lib/ticket_permissions";
-import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
+import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
@@ -11,12 +11,10 @@ import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
  * Mark a brand as permission "read" and all children (help center and tickets) if specified.
  */
 export async function allowSyncZendeskBrand({
-  subdomain,
   connectorId,
   connectionId,
   brandId,
 }: {
-  subdomain: string;
   connectorId: ModelId;
   connectionId: string;
   brandId: number;
@@ -32,8 +30,12 @@ export async function allowSyncZendeskBrand({
     await brand.update({ ticketsPermission: "read" });
   }
 
-  const token = await getZendeskAccessToken(connectionId);
-  const zendeskApiClient = createZendeskClient({ token, subdomain });
+  const { accessToken, subdomain } =
+    await getZendeskSubdomainAndAccessToken(connectionId);
+  const zendeskApiClient = createZendeskClient({
+    token: accessToken,
+    subdomain,
+  });
 
   if (!brand) {
     const {
@@ -59,13 +61,11 @@ export async function allowSyncZendeskBrand({
   }
 
   await allowSyncZendeskHelpCenter({
-    subdomain,
     connectorId,
     connectionId,
     brandId,
   });
   await allowSyncZendeskTickets({
-    subdomain,
     connectorId,
     connectionId,
     brandId,

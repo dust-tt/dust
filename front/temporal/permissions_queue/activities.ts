@@ -87,6 +87,7 @@ export async function updateSpacePermissions({
       continue;
     }
 
+    // TODO(2024-11-04 flav) `groupId` clean-up.
     const groupIds = await getAgentConfigurationGroupIdsFromActionsLegacy(
       auth,
       ac.actions

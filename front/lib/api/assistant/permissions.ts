@@ -1,7 +1,7 @@
 import type {
   DustAppRunConfigurationType,
   ModelId,
-  RawAgentActionConfigurationType,
+  UnsavedAgentActionConfigurationType,
 } from "@dust-tt/types";
 import { isDustAppRunConfiguration, removeNulls } from "@dust-tt/types";
 import { uniq } from "lodash";
@@ -30,7 +30,7 @@ export async function listAgentConfigurationsForGroups(
 }
 
 export function getDataSourceViewIdsFromActions(
-  actions: RawAgentActionConfigurationType[]
+  actions: UnsavedAgentActionConfigurationType[]
 ): string[] {
   const relevantActions = actions.filter(
     (action) =>
@@ -56,10 +56,11 @@ export function getDataSourceViewIdsFromActions(
   );
 }
 
+// TODO(2024-11-04 flav) `groupId` clean-up.
 export async function getAgentConfigurationGroupIdsFromActionsLegacy(
   auth: Authenticator,
-  actions: RawAgentActionConfigurationType[]
-): Promise<ModelId[]> {
+  actions: UnsavedAgentActionConfigurationType[]
+): Promise<number[]> {
   const dsViews = await DataSourceViewResource.fetchByIds(
     auth,
     getDataSourceViewIdsFromActions(actions)
@@ -71,6 +72,7 @@ export async function getAgentConfigurationGroupIdsFromActionsLegacy(
       .map((action) => (action as DustAppRunConfigurationType).appId)
   );
 
+  // TODO(2024-10-25 flav) Refactor to store a list of ResourcePermission.
   const dataSourceViewGroupIds: ModelId[] = dsViews.flatMap((view) =>
     view.requestedPermissions().flatMap((rp) => rp.groups.map((g) => g.id))
   );
@@ -84,7 +86,7 @@ export async function getAgentConfigurationGroupIdsFromActionsLegacy(
 
 export async function getAgentConfigurationGroupIdsFromActions(
   auth: Authenticator,
-  actions: RawAgentActionConfigurationType[]
+  actions: UnsavedAgentActionConfigurationType[]
 ): Promise<ModelId[][]> {
   const dsViews = await DataSourceViewResource.fetchByIds(
     auth,

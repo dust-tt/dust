@@ -13,7 +13,7 @@ import {
   getIdFromInternalId,
   getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
-import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
+import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
@@ -106,8 +106,13 @@ export async function retrieveChildrenNodes({
   const isReadPermissionsOnly = filterPermission === "read";
   let nodes: ContentNode[] = [];
 
-  const token = await getZendeskAccessToken(connector.connectionId);
-  const zendeskApiClient = createZendeskClient({ token });
+  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
+  );
+  const zendeskApiClient = createZendeskClient({
+    token: accessToken,
+    subdomain,
+  });
 
   // At the root level, we show one node for each brand.
   if (!parentInternalId) {

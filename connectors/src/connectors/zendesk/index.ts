@@ -34,7 +34,7 @@ import {
   allowSyncZendeskTickets,
   revokeSyncZendeskTickets,
 } from "@connectors/connectors/zendesk/lib/ticket_permissions";
-import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
+import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   launchZendeskSyncWorkflow,
   stopZendeskSyncWorkflow,
@@ -46,7 +46,6 @@ import {
   ZendeskArticleResource,
   ZendeskBrandResource,
   ZendeskCategoryResource,
-  ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -59,7 +58,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
   }): Promise<Result<string, ConnectorManagerError>> {
-    await getZendeskAccessToken(connectionId);
+    const { subdomain } = await getZendeskSubdomainAndAccessToken(connectionId);
 
     const connector = await ConnectorResource.makeNew(
       "zendesk",
@@ -69,7 +68,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceId: dataSourceConfig.dataSourceId,
       },
-      { subdomain: "d3v-dust", conversationsSlidingWindow: 90 }
+      { subdomain, conversationsSlidingWindow: 90 }
     );
 
     const workflowStartResult = await launchZendeskSyncWorkflow(connector);
@@ -95,11 +94,29 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     connectionId: string;
   }): Promise<Result<string, ConnectorsAPIError>> {
     logger.info({ connectionId }, "Updating Zendesk connector");
+
+    // Make sure to verify that the the new OAuth connection metadata.zendesk_subdomain matches the
+    // existing ZendeskConfiguration.subdomain (to prevent subdoamin switch as part of re-auth).
+
     throw new Error("Method not implemented.");
   }
 
   async clean(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    const { connectorId } = this;
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
+      return new Err(new Error("Connector not found"));
+    }
+
+    const result = await connector.delete();
+    if (result.isErr()) {
+      logger.error(
+        { connectorId, error: result.error },
+        "[Zendesk] Error while cleaning up the connector."
+      );
+    }
+    return result;
   }
 
   async stop(): Promise<Result<undefined, Error>> {
@@ -198,17 +215,6 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
 
     const connectionId = connector.connectionId;
-    const zendeskConfiguration =
-      await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
-    if (!zendeskConfiguration) {
-      logger.error(
-        { connectorId },
-        "[Zendesk] ZendeskConfiguration not found. Cannot set permissions."
-      );
-      return new Err(new Error("ZendeskConfiguration not found"));
-    }
-    const subdomain = zendeskConfiguration.subdomain;
-
     const toBeSignaledBrandIds = new Set<number>();
     const toBeSignaledTicketsIds = new Set<number>();
     const toBeSignaledHelpCenterIds = new Set<number>();
@@ -235,7 +241,6 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           }
           if (permission === "read") {
             await allowSyncZendeskBrand({
-              subdomain,
               connectorId,
               connectionId,
               brandId: objectId,
@@ -258,7 +263,6 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
               connectorId,
               connectionId,
               brandId: objectId,
-              subdomain,
             });
             if (newBrand) {
               toBeSignaledHelpCenterIds.add(newBrand.brandId);
@@ -281,7 +285,6 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
               connectorId,
               connectionId,
               brandId: objectId,
-              subdomain,
             });
             if (newBrand) {
               toBeSignaledTicketsIds.add(newBrand.brandId);
@@ -301,7 +304,6 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           }
           if (permission === "read") {
             const newCategory = await allowSyncZendeskCategory({
-              subdomain,
               connectorId,
               connectionId,
               categoryId: objectId,

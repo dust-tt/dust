@@ -77,9 +77,10 @@ async function handler(
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
       });
+      res.flushHeaders();
 
       for await (const event of getConversationEvents(conversation.sId, null)) {
-        res.write(JSON.stringify(event));
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
         // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
         res.flush();
       }

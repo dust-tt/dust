@@ -150,3 +150,29 @@ export function AssistantInputBar({
     </div>
   );
 }
+
+export function FixedAssistantInputBar({
+  owner,
+  onSubmit,
+  stickyMentions,
+  additionalAgentConfiguration,
+  disableAutoFocus = false,
+}: {
+  owner: LightWorkspaceType;
+  onSubmit: (input: string, mentions: MentionType[]) => void;
+  stickyMentions?: AgentMention[];
+  additionalAgentConfiguration?: LightAgentConfigurationType;
+  disableAutoFocus?: boolean;
+}) {
+  return (
+    <div className="sticky bottom-0 z-20 flex max-h-screen w-full max-w-4xl sm:pb-8">
+      <AssistantInputBar
+        owner={owner}
+        onSubmit={onSubmit}
+        stickyMentions={stickyMentions}
+        additionalAgentConfiguration={additionalAgentConfiguration}
+        disableAutoFocus={disableAutoFocus}
+      />
+    </div>
+  );
+}

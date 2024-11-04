@@ -7,7 +7,7 @@ import { LAST_MESSAGE_GROUP_ID } from "@app/components/assistant/conversation/Me
  * A custom hook to observe when the last message group element becomes visible or not.
  */
 export function useLastMessageGroupObserver(
-  messages: MessageWithContentFragmentsType[][][]
+  messages: MessageWithContentFragmentsType[][]
 ) {
   useEffect(() => {
     const observer = new IntersectionObserver(

@@ -17,7 +17,7 @@ const iconClasses = {
   md: "s-pr-4",
 };
 
-type SearchbarProps = {
+export type SearchbarProps = {
   placeholder: string;
   value: string | null;
   onChange?: (value: string) => void;

@@ -1,6 +1,5 @@
 import type {
   ConversationMessageReactions,
-  FetchConversationMessagesResponse,
   LightWorkspaceType,
   MessageWithContentFragmentsType,
 } from "@dust-tt/types";
@@ -9,7 +8,7 @@ import type { StoredUser } from "@extension/lib/storage";
 import React, { useEffect, useRef } from "react";
 
 interface MessageGroupProps {
-  messages: MessageWithContentFragmentsType[][];
+  messages: MessageWithContentFragmentsType[];
   isLastMessageGroup: boolean;
   conversationId: string;
   hideReactions: boolean;
@@ -17,7 +16,6 @@ interface MessageGroupProps {
   owner: LightWorkspaceType;
   reactions: ConversationMessageReactions;
   user: StoredUser;
-  latestPage?: FetchConversationMessagesResponse;
 }
 
 // arbitrary offset to scroll the last MessageGroup to
@@ -35,7 +33,6 @@ export default function MessageGroup({
   owner,
   reactions,
   user,
-  latestPage,
 }: MessageGroupProps) {
   const lastMessageGroupRef = useRef<HTMLDivElement>(null);
 
@@ -57,23 +54,21 @@ export default function MessageGroup({
       ref={isLastMessageGroup ? lastMessageGroupRef : undefined}
       style={{ minHeight }}
     >
-      {messages.map((group) => {
-        return group.map((message) => {
-          return (
-            <MessageItem
-              key={`message-${message.sId}`}
-              conversationId={conversationId}
-              hideReactions={hideReactions}
-              isInModal={isInModal}
-              message={message}
-              owner={owner}
-              reactions={reactions}
-              user={user}
-              isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
-            />
-          );
-        });
-      })}
+      {messages.map((message) => (
+        <MessageItem
+          key={`message-${message.sId}`}
+          conversationId={conversationId}
+          hideReactions={hideReactions}
+          isInModal={isInModal}
+          message={message}
+          owner={owner}
+          reactions={reactions}
+          user={user}
+          isLastMessage={
+            isLastMessageGroup && messages.at(-1)?.sId === message.sId
+          }
+        />
+      ))}
     </div>
   );
 }
