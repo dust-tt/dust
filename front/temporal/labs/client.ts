@@ -21,7 +21,13 @@ export async function launchRetrieveTranscriptsWorkflow(
       args: [transcriptsConfiguration.id],
       taskQueue: QUEUE_NAME,
       workflowId: workflowId,
-      cronSchedule: "*/15 * * * *",
+      cronSchedule: "*/5 * * * *",
+      memo: {
+        configurationId: transcriptsConfiguration.id,
+        IsProcessingTranscripts: transcriptsConfiguration.isActive,
+        IsStoringTranscripts:
+          transcriptsConfiguration.dataSourceViewId !== null,
+      },
     });
     logger.info(
       {
