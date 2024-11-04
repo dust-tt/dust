@@ -5,6 +5,7 @@ import {
   FolderIcon,
   GlobeAltIcon,
   Item,
+  NavigationListLabel,
   PlusIcon,
   Tree,
 } from "@dust-tt/sparkle";
@@ -113,8 +114,8 @@ export default function SpaceSideBarMenu({
 
             return (
               <Fragment key={`space-section-${index}`}>
-                <div className="flex items-center justify-between px-2 pr-1">
-                  <Item.SectionHeader
+                <div className="flex items-center justify-between px-2 pr-0">
+                  <NavigationListLabel
                     label={sectionDetails.label}
                     variant="secondary"
                   />
@@ -124,7 +125,7 @@ export default function SpaceSideBarMenu({
                       <Button
                         className="mt-4"
                         size="xs"
-                        variant="outline"
+                        variant="ghost"
                         label="New"
                         icon={PlusIcon}
                         onClick={() =>

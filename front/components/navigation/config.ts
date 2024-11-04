@@ -108,7 +108,7 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
     label: "Chat",
     href: `/w/${owner.sId}/assistant/new`,
     icon: ChatBubbleLeftRightIcon,
-    sizing: "expand",
+    sizing: "hug",
     isCurrent: (currentRoute) =>
       [
         "/w/[wId]/assistant/new",
@@ -124,13 +124,13 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
     href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
       currentRoute.startsWith("/w/[wId]/spaces/"),
-    sizing: "expand",
+    sizing: "hug",
   });
 
   if (isAdmin(owner)) {
     nav.push({
       id: "settings",
-      label: "Admin",
+      label: "",
       hideLabel: true,
       icon: Cog6ToothIcon,
       href: `/w/${owner.sId}/members`,
@@ -170,8 +170,8 @@ export const subNavigationAdmin = ({
   if (isAdmin(owner)) {
     nav.push({
       id: "workspace",
-      label: null,
-      variant: "secondary",
+      label: "Workspace Settings",
+      variant: "primary",
       menus: [
         {
           id: "members",
@@ -206,7 +206,7 @@ export const subNavigationAdmin = ({
     nav.push({
       id: "developers",
       label: "Developers",
-      variant: "secondary",
+      variant: "primary",
       menus: [
         {
           id: "providers",

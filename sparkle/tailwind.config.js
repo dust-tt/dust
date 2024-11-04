@@ -35,7 +35,6 @@ const safeColorlist = safeColorsArray.flatMap((color) => [
   `s-text-${color}-900`,
   `s-text-${color}-950`,
 ]);
-
 module.exports = {
   theme: {
     fontFamily: {

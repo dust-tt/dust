@@ -138,7 +138,7 @@ export function AssistantBrowser({
       {/* Search bar */}
       <div
         id="search-container"
-        className="flex w-full flex-row items-center justify-center gap-4 px-4 align-middle"
+        className="flex w-full flex-row items-center justify-center gap-2 px-4 align-middle"
       >
         <Searchbar
           name="search"
