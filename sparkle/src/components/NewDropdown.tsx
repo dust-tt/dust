@@ -340,10 +340,7 @@ const NewDropdownMenuShortcut = ({
 };
 NewDropdownMenuShortcut.displayName = "NewDropdownMenuShortcut";
 
-interface NewDropdownMenuSearchbarProps
-  extends Omit<SearchbarProps, "className"> {
-  className?: string;
-}
+interface NewDropdownMenuSearchbarProps extends SearchbarProps {}
 
 const NewDropdownMenuSearchbar = React.forwardRef<
   HTMLInputElement,
