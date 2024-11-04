@@ -1,7 +1,3 @@
-/* eslint jsdoc/no-missing-syntax: 0 */ //
-// Disabling jsdoc rule, as we're not yet documentating dust apps endpoints under vaults.
-// We still document the legacy endpoint, which does the same thing.
-// Note: for now, an API key only has access to the global vault.
 import type { GetAppsResponseType } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
