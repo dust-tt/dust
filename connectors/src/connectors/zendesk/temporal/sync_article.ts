@@ -49,7 +49,7 @@ export async function syncArticle({
         updatedAt: updatedAtDate,
         articleId: article.id,
         brandId: category.brandId,
-        categoryId: category.id,
+        categoryId: category.categoryId,
         permission: "read",
         name: article.name,
         url: article.url,
