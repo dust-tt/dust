@@ -94,6 +94,10 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     connectionId: string;
   }): Promise<Result<string, ConnectorsAPIError>> {
     logger.info({ connectionId }, "Updating Zendesk connector");
+
+    // Make sure to verify that the the new OAuth connection metadata.zendesk_subdomain matches the
+    // existing ZendeskConfiguration.subdomain (to prevent subdoamin switch as part of re-auth).
+
     throw new Error("Method not implemented.");
   }
 
