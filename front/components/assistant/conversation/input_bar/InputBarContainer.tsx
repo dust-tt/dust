@@ -161,9 +161,6 @@ const InputBarContainer = ({
               showFooterButtons={actions.includes(
                 "assistants-list-with-actions"
               )}
-              showMoreDetailsButtons={actions.includes(
-                "assistants-list-with-actions"
-              )}
             />
           )}
           {actions.includes("fullscreen") && (
