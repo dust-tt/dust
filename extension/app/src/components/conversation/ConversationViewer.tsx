@@ -89,39 +89,39 @@ export function ConversationViewer({
     [conversationId, owner.sId]
   );
 
-  const onEventCallback = useCallback((eventStr: string) => {
-    const eventPayload: {
-      eventId: string;
-      data:
-        | UserMessageNewEvent
-        | AgentMessageNewEvent
-        | AgentGenerationCancelledEvent
-        | ConversationTitleEvent;
-    } = JSON.parse(eventStr);
+  const onEventCallback = useCallback(
+    (eventStr: string) => {
+      const eventPayload: {
+        eventId: string;
+        data:
+          | UserMessageNewEvent
+          | AgentMessageNewEvent
+          | AgentGenerationCancelledEvent
+          | ConversationTitleEvent;
+      } = JSON.parse(eventStr);
 
-    const event = eventPayload.data;
+      const event = eventPayload.data;
 
-    if (!eventIds.current.includes(eventPayload.eventId)) {
-      console.log("Received event", event);
-      eventIds.current.push(eventPayload.eventId);
-      switch (event.type) {
-        case "user_message_new":
-        case "agent_message_new":
-        case "agent_generation_cancelled":
-        case "conversation_title": {
-          void mutateConversation();
-          break;
+      if (!eventIds.current.includes(eventPayload.eventId)) {
+        console.log("Received event", event);
+        eventIds.current.push(eventPayload.eventId);
+        switch (event.type) {
+          case "user_message_new":
+          case "agent_message_new":
+          case "agent_generation_cancelled":
+          case "conversation_title": {
+            void mutateConversation();
+            break;
+          }
+          default:
+            ((t: never) => {
+              console.error("Unknown event type", t);
+            })(event);
         }
-        default:
-          ((t: never) => {
-            console.error("Unknown event type", t);
-          })(event);
       }
-    }
-  },
-  [
-    mutateConversation,
-  ]);
+    },
+    [mutateConversation]
+  );
 
   useEventSource(
     buildEventSourceURL,
@@ -129,8 +129,7 @@ export function ConversationViewer({
     `conversation-${conversationId}`,
     {
       // We only start consuming the stream when the conversation has been loaded and we have a first page of message.
-      isReadyToConsumeStream: !isConversationLoading &&
-      messages.length !== 0,,
+      isReadyToConsumeStream: !isConversationLoading && messages.length !== 0,
     }
   );
   const eventIds = useRef<string[]>([]);
