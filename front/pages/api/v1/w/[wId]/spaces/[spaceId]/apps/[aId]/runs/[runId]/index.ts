@@ -1,3 +1,4 @@
+import type { RunAppResponseType } from "@dust-tt/client";
 import type { RunType, WithAPIErrorResponse } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -14,10 +15,6 @@ export const config = {
   api: {
     responseLimit: "8mb",
   },
-};
-
-export type GetRunResponseBody = {
-  run: RunType;
 };
 
 /**
@@ -73,7 +70,7 @@ export type GetRunResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetRunResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<RunAppResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();

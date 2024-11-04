@@ -1,8 +1,6 @@
-import type { ContentFragmentType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-import type * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
+import type { PostContentFragmentResponseType } from "@dust-tt/client";
+import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/client";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -14,14 +12,6 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
-
-export type PostContentFragmentsResponseBody = {
-  contentFragment: ContentFragmentType;
-};
-
-export type PostContentFragmentRequestBody = t.TypeOf<
-  typeof PublicPostContentFragmentRequestBodySchema
->;
 
 /**
  * @swagger
@@ -69,7 +59,7 @@ export type PostContentFragmentRequestBody = t.TypeOf<
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostContentFragmentsResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<PostContentFragmentResponseType>>,
   auth: Authenticator
 ): Promise<void> {
   const { cId } = req.query;
@@ -93,24 +83,19 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const bodyValidation = PublicPostContentFragmentRequestBodySchema.decode(
-        req.body
-      );
+      const r = PublicPostContentFragmentRequestBodySchema.safeParse(req.body);
 
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+      if (r.error) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${r.error.message}`,
           },
         });
       }
 
-      const { right: contentFragmentBody } = bodyValidation;
-      const { content, contentType } = contentFragmentBody;
+      const { content, contentType } = r.data;
 
       if (content.length === 0 || content.length > 128 * 1024) {
         return apiError(req, res, {
@@ -132,10 +117,10 @@ async function handler(
         auth,
         conversation,
         {
-          ...contentFragmentBody,
+          ...r.data,
           contentType: normalizedContentType,
         },
-        contentFragmentBody.context
+        r.data.context
       );
       if (contentFragmentRes.isErr()) {
         return apiError(req, res, {

@@ -1,3 +1,4 @@
+import type { ConversationEventType } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -79,8 +80,12 @@ async function handler(
       });
       res.flushHeaders();
 
-      for await (const event of getConversationEvents(conversation.sId, null)) {
+      const eventStream: AsyncGenerator<ConversationEventType> =
+        getConversationEvents(conversation.sId, null);
+
+      for await (const event of eventStream) {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
+
         // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
         res.flush();
       }
