@@ -76,7 +76,7 @@ Conversation.init(
       defaultValue: [],
     },
     requestedGroupIds: {
-      type: DataTypes.ARRAY(DataTypes.INTEGER),
+      type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.INTEGER)),
       allowNull: false,
       defaultValue: [],
     },
