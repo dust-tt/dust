@@ -26,7 +26,7 @@ const sendIncidentEmailToAdmins = async (
     },
     subject: `[Dust] Incident 2024/10/31`,
     body: `<p>On October the 31st, due to a misconfiguration on our end, from 12:44 to 13:20 our API keys to OpenAI, Anthropic, Gemini and Mistral became unavailable to our systems triggering a fallback to your own API keys for assistants interactions within your workspace.</p>
-      <p>We estimated the tokens cost of the execution of these assistants to ${cost_in_cents / 100} USD. We are applying a discount of ${reimbursement_in_cents / 100} EUR to your account to compensate for it.</p>
+      <p>While it was great that we were able to serve your conversations on your own keys to avoid disruption, this is also not what you expect as a user. We estimated the tokens cost of the execution of these assistants to ${cost_in_cents / 100} USD. We are applying a discount of ${reimbursement_in_cents / 100} EUR to your account to compensate for it.</p>
       <p>Please reply to this email if you have any questions.</p>`,
   };
 
