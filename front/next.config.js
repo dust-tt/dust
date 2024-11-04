@@ -55,6 +55,20 @@ module.exports = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      // Legacy endpoint rewrite to maintain compatibility for users still hitting `/vaults/`
+      // endpoints on the public API.
+      {
+        source: "/api/v1/w/:wId/vaults/:vId/:path*",
+        destination: "/api/v1/w/:wId/spaces/:vId/:path*",
+      },
+      {
+        source: "/api/v1/w/:wId/vaults",
+        destination: "/api/v1/w/:wId/spaces",
+      },
+    ];
+  },
   webpack: (config) => {
     // For `types` package import (which includes some dependence to server code).
     // Otherwise client-side code will throw an error when importing the packaged file.

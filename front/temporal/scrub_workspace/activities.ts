@@ -90,7 +90,7 @@ export async function scrubWorkspaceData({
   await deleteAllConversations(auth);
   await archiveAssistants(auth);
   await deleteDatasources(auth);
-  await deleteVaults(auth);
+  await deleteSpaces(auth);
   await cleanupCustomerio(auth);
 }
 
@@ -152,14 +152,14 @@ async function archiveAssistants(auth: Authenticator) {
 }
 
 async function deleteDatasources(auth: Authenticator) {
-  const globalAndSystemVaults =
+  const globalAndSystemSpaces =
     await SpaceResource.listWorkspaceDefaultSpaces(auth);
 
-  // Retrieve and delete all data sources associated with the system and global vaults.
-  // Others will be deleted when deleting the vaults.
+  // Retrieve and delete all data sources associated with the system and global spaces.
+  // Others will be deleted when deleting the spaces.
   const dataSources = await DataSourceResource.listBySpaces(
     auth,
-    globalAndSystemVaults
+    globalAndSystemSpaces
   );
 
   for (const ds of dataSources) {
@@ -171,18 +171,18 @@ async function deleteDatasources(auth: Authenticator) {
   }
 }
 
-// Remove all user-created vaults and their associated groups,
-// preserving only the system and global vaults.
-async function deleteVaults(auth: Authenticator) {
-  const vaults = await SpaceResource.listWorkspaceSpaces(auth);
+// Remove all user-created spaces and their associated groups,
+// preserving only the system and global spaces.
+async function deleteSpaces(auth: Authenticator) {
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth);
 
-  // Filter out system and global vaults.
-  const filteredVaults = vaults.filter(
-    (vault) => !vault.isGlobal() && !vault.isSystem()
+  // Filter out system and global spaces.
+  const filteredSpaces = spaces.filter(
+    (space) => !space.isGlobal() && !space.isSystem()
   );
 
-  for (const vault of filteredVaults) {
-    await softDeleteSpaceAndLaunchScrubWorkflow(auth, vault);
+  for (const space of filteredSpaces) {
+    await softDeleteSpaceAndLaunchScrubWorkflow(auth, space);
   }
 }
 

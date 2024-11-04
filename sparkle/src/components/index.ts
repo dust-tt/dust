@@ -12,7 +12,7 @@ export {
   CheckBoxWithTextAndDescription,
 } from "./Checkbox";
 export { Chip } from "./Chip";
-export { Citation } from "./Citation";
+export * from "./Citation";
 export { default as CollapseButton } from "./CollapseButton";
 export { Collapsible } from "./Collapsible";
 export { ColorPicker } from "./ColorPicker";
@@ -27,7 +27,6 @@ export { ConversationMessageContent } from "./ConversationMessageContent";
 export { ConversationMessageHeader } from "./ConversationMessageHeader";
 export { DataTable } from "./DataTable";
 export { Dialog } from "./Dialog";
-export { DropdownMenu } from "./DropdownMenu";
 export { default as DropzoneOverlay } from "./DropzoneOverlay";
 export { ElementDialog } from "./ElementDialog";
 export { ElementModal } from "./ElementModal";
@@ -44,13 +43,14 @@ export { Item } from "./Item";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
-export { Markdown } from "./Markdown";
+export * from "./markdown";
 export { Modal } from "./Modal";
 export {
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
 } from "./NavigationList";
+export type { NewDropdownMenuItemProps } from "./NewDropdown";
 export {
   NewDropdownMenu,
   NewDropdownMenuCheckboxItem,

@@ -11,7 +11,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { KeyResource } from "@app/lib/resources/key_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { launchScrubVaultWorkflow } from "@app/poke/temporal/client";
+import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -90,7 +90,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       throw res.error;
     }
 
-    await launchScrubVaultWorkflow(auth, space);
+    await launchScrubSpaceWorkflow(auth, space);
   });
 
   return new Ok(undefined);
@@ -105,9 +105,9 @@ export async function hardDeleteSpace(
 ): Promise<Result<void, Error>> {
   assert(auth.isAdmin(), "Only admins can delete spaces.");
 
-  const isDeletableVault =
+  const isDeletableSpace =
     space.isDeleted() || space.isGlobal() || space.isSystem();
-  assert(isDeletableVault, "Vault is not soft deleted.");
+  assert(isDeletableSpace, "Space is not soft deleted.");
 
   const dataSourceViews = await DataSourceViewResource.listBySpace(
     auth,

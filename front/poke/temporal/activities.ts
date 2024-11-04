@@ -122,28 +122,28 @@ export async function scrubDataSourceActivity({
   await hardDeleteDataSource(auth, dataSource);
 }
 
-export async function scrubVaultActivity({
-  vaultId,
+export async function scrubSpaceActivity({
+  spaceId,
   workspaceId,
 }: {
-  vaultId: string;
+  spaceId: string;
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const vault = await SpaceResource.fetchById(auth, vaultId, {
+  const space = await SpaceResource.fetchById(auth, spaceId, {
     includeDeleted: true,
   });
 
-  if (!vault) {
-    throw new Error("Vault not found.");
+  if (!space) {
+    throw new Error("Space not found.");
   }
 
-  const isDeletableVault =
-    vault.isDeleted() || vault.isGlobal() || vault.isSystem();
-  assert(isDeletableVault, "Vault is not soft deleted.");
+  const isDeletableSpace =
+    space.isDeleted() || space.isGlobal() || space.isSystem();
+  assert(isDeletableSpace, "Space is not soft deleted.");
 
-  // Delete all the data sources of the vaults.
-  const dataSources = await DataSourceResource.listBySpace(auth, vault, {
+  // Delete all the data sources of the spaces.
+  const dataSources = await DataSourceResource.listBySpace(auth, space, {
     includeDeleted: true,
   });
   for (const ds of dataSources) {
@@ -153,9 +153,9 @@ export async function scrubVaultActivity({
     });
   }
 
-  hardDeleteLogger.info({ vault: vault.sId }, "Deleting vault");
+  hardDeleteLogger.info({ space: space.sId }, "Deleting space");
 
-  await hardDeleteSpace(auth, vault);
+  await hardDeleteSpace(auth, space);
 }
 
 export async function isWorkflowDeletableActivity({
@@ -563,17 +563,17 @@ export async function deleteMembersActivity({
   });
 }
 
-export async function deleteVaultsActivity({
+export async function deleteSpacesActivity({
   workspaceId,
 }: {
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const vaults = await SpaceResource.listWorkspaceSpaces(auth);
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth);
 
-  for (const vault of vaults) {
-    await scrubVaultActivity({
-      vaultId: vault.sId,
+  for (const space of spaces) {
+    await scrubSpaceActivity({
+      spaceId: space.sId,
       workspaceId,
     });
   }

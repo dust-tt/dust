@@ -126,6 +126,7 @@ export async function handleUpdatePermissions(
   const connectionIdRes = await setupConnection({
     owner,
     provider,
+    extraConfig: {},
   });
   if (connectionIdRes.isErr()) {
     sendNotification({

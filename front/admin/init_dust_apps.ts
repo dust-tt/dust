@@ -36,7 +36,7 @@ async function main() {
   });
 
   const group = await GroupResource.makeNew({
-    name: `Group for vault Public Dust Apps`,
+    name: `Group for space Public Dust Apps`,
     workspaceId: w.id,
     kind: "regular",
   });

@@ -7,6 +7,7 @@ use crate::oauth::{
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
+use regex::Regex;
 use serde_json::json;
 use std::env;
 
@@ -14,6 +15,8 @@ lazy_static! {
     static ref OAUTH_ZENDESK_CLIENT_ID: String = env::var("OAUTH_ZENDESK_CLIENT_ID").unwrap();
     static ref OAUTH_ZENDESK_CLIENT_SECRET: String =
         env::var("OAUTH_ZENDESK_CLIENT_SECRET").unwrap();
+    static ref ZENDESK_SUBDOMAIN_RE: Regex =
+        Regex::new(r"^[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?$").unwrap();
 }
 
 pub struct ZendeskConnectionProvider {}
@@ -32,7 +35,7 @@ impl Provider for ZendeskConnectionProvider {
 
     async fn finalize(
         &self,
-        _connection: &Connection,
+        connection: &Connection,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -45,8 +48,20 @@ impl Provider for ZendeskConnectionProvider {
             "scope": "read"
         });
 
+        let subdomain = match connection.metadata()["zendesk_subdomain"].as_str() {
+            Some(d) => {
+                if !ZENDESK_SUBDOMAIN_RE.is_match(d) {
+                    Err(anyhow!("Zendesk subdomain format invalid"))?
+                }
+                d
+            }
+            None => Err(anyhow!("Zendesk subdomain is missing"))?,
+        };
+
+        let url = format!("https://{}.zendesk.com/oauth/tokens", subdomain);
+
         let req = reqwest::Client::new()
-            .post("https://d3v-dust.zendesk.com/oauth/tokens")
+            .post(url)
             .header("Content-Type", "application/json")
             .json(&body);
 

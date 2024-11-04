@@ -11,7 +11,7 @@ import logger from "@app/logger/logger";
 import {
   deleteWorkspaceWorkflow,
   scrubDataSourceWorkflow,
-  scrubVaultWorkflow,
+  scrubSpaceWorkflow,
 } from "./workflows";
 
 export async function launchScrubDataSourceWorkflow(
@@ -47,22 +47,22 @@ export async function launchScrubDataSourceWorkflow(
   }
 }
 
-export async function launchScrubVaultWorkflow(
+export async function launchScrubSpaceWorkflow(
   auth: Authenticator,
-  vault: SpaceResource
+  space: SpaceResource
 ) {
   const client = await getTemporalClient();
   const owner = auth.getNonNullableWorkspace();
 
-  await client.workflow.start(scrubVaultWorkflow, {
+  await client.workflow.start(scrubSpaceWorkflow, {
     args: [
       {
-        vaultId: vault.sId,
+        spaceId: space.sId,
         workspaceId: owner.sId,
       },
     ],
     taskQueue: "poke-queue",
-    workflowId: `poke-${owner.sId}-scrub-vault-${vault.sId}`,
+    workflowId: `poke-${owner.sId}-scrub-space-${space.sId}`,
   });
 }
 

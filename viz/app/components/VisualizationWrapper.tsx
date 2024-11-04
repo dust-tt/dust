@@ -251,7 +251,7 @@ export function VisualizationWrapper({
     <div className="relative group/viz">
       <button
         onClick={handleDownload}
-        className="absolute top-2 right-2 bg-white p-2 rounded shadow hover:bg-gray-100 transition opacity-0 group-hover/viz:opacity-100"
+        className="absolute top-2 right-2 bg-white p-2 rounded shadow hover:bg-gray-100 transition opacity-0 group-hover/viz:opacity-100 z-50"
       >
         <Download size={20} />
       </button>

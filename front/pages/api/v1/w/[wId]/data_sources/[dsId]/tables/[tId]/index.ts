@@ -1,4 +1,4 @@
-import handler from "@app/pages/api/v1/w/[wId]/vaults/[vId]/data_sources/[dsId]/tables/[tId]/index";
+import handler from "@app/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/[tId]/index";
 
 /**
  * @ignoreswagger

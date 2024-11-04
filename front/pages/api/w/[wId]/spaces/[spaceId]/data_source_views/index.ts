@@ -200,7 +200,7 @@ async function handler(
           },
         });
       }
-      const existing = await DataSourceViewResource.listForDataSourcesInVault(
+      const existing = await DataSourceViewResource.listForDataSourcesInSpace(
         auth,
         [dataSource],
         space
@@ -215,7 +215,7 @@ async function handler(
         });
       }
       const dataSourceView =
-        await DataSourceViewResource.createViewInVaultFromDataSource(
+        await DataSourceViewResource.createViewInSpaceFromDataSource(
           auth,
           space,
           dataSource,

@@ -5,9 +5,7 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-import { Err } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
+import { assertNever, Err, Ok } from "@dust-tt/types";
 
 import type { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
@@ -37,13 +35,18 @@ import {
   revokeSyncZendeskTickets,
 } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
+import {
+  launchZendeskSyncWorkflow,
+  stopZendeskSyncWorkflow,
+} from "@connectors/connectors/zendesk/temporal/client";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
 import {
   ZendeskArticleResource,
   ZendeskBrandResource,
   ZendeskCategoryResource,
+  ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -69,6 +72,20 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       { subdomain: "d3v-dust", conversationsSlidingWindow: 90 }
     );
 
+    const workflowStartResult = await launchZendeskSyncWorkflow(connector);
+
+    if (workflowStartResult.isErr()) {
+      await connector.delete();
+      logger.error(
+        {
+          workspaceId: dataSourceConfig.workspaceId,
+          error: workflowStartResult.error,
+        },
+        "[Zendesk] Error launching the sync workflow."
+      );
+      throw workflowStartResult.error;
+    }
+
     return new Ok(connector.id.toString());
   }
 
@@ -86,15 +103,50 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    return stopZendeskSyncWorkflow(this.connectorId);
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    const { connectorId } = this;
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
+      return new Err(new Error("Connector not found"));
+    }
+
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    const result = await launchZendeskSyncWorkflow(connector);
+    if (result.isErr()) {
+      logger.error(
+        {
+          workspaceId: dataSourceConfig.workspaceId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          error: result.error,
+        },
+        "[Zendesk] Error resuming the sync workflow."
+      );
+      return result;
+    }
+    return new Ok(undefined);
   }
 
   async sync(): Promise<Result<string, Error>> {
-    throw new Error("Method not implemented.");
+    const { connectorId } = this;
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
+      return new Err(new Error("Connector not found"));
+    }
+
+    const brandIds = await ZendeskBrandResource.fetchAllBrandIds({
+      connectorId,
+    });
+    const result = await launchZendeskSyncWorkflow(connector, {
+      brandIds,
+      forceResync: true,
+    });
+
+    return result.isErr() ? result : new Ok(connector.id.toString());
   }
 
   async retrievePermissions({
@@ -105,7 +157,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>> {
-    const connectorId = this.connectorId;
+    const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
@@ -137,7 +189,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }: {
     permissions: Record<string, ConnectorPermission>;
   }): Promise<Result<void, Error>> {
-    const connectorId = this.connectorId;
+    const { connectorId } = this;
 
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
@@ -146,9 +198,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
 
     const connectionId = connector.connectionId;
-    const zendeskConfiguration = await ZendeskConfigurationResource.fetchById(
-      this.connectorId
-    );
+    const zendeskConfiguration =
+      await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
     if (!zendeskConfiguration) {
       logger.error(
         { connectorId },
@@ -276,7 +327,19 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       }
     }
 
-    /// Launch a sync workflow here
+    if (
+      toBeSignaledBrandIds.size > 0 ||
+      toBeSignaledTicketsIds.size > 0 ||
+      toBeSignaledHelpCenterIds.size > 0 ||
+      toBeSignaledCategoryIds.size > 0
+    ) {
+      return launchZendeskSyncWorkflow(connector, {
+        brandIds: [...toBeSignaledBrandIds],
+        ticketsBrandIds: [...toBeSignaledTicketsIds],
+        helpCenterBrandIds: [...toBeSignaledHelpCenterIds],
+        categoryIds: [...toBeSignaledCategoryIds],
+      });
+    }
 
     return new Ok(undefined);
   }
@@ -327,7 +390,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       }
     });
 
-    const connectorId = this.connectorId;
+    const { connectorId } = this;
 
     const allBrandIds = [
       ...new Set([...brandIds, ...brandTicketsIds, ...brandHelpCenterIds]),
@@ -371,7 +434,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    const connectorId = this.connectorId;
+    const { connectorId } = this;
 
     const { type, objectId } = getIdFromInternalId(connectorId, internalId);
     switch (type) {
@@ -469,11 +532,29 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }
 
   async pause(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    const { connectorId } = this;
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
+      return new Err(new Error("Connector not found"));
+    }
+    await connector.markAsPaused();
+    return this.stop();
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    const { connectorId } = this;
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
+      return new Err(new Error("Connector not found"));
+    }
+    await connector.markAsUnpaused();
+
+    const brandIds = await ZendeskBrandResource.fetchAllBrandIds({
+      connectorId,
+    });
+    return launchZendeskSyncWorkflow(connector, { brandIds });
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

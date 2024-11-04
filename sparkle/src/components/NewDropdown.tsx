@@ -2,7 +2,8 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
-import { Icon, LinkWrapper, LinkWrapperProps } from "@sparkle/components";
+import { Icon } from "@sparkle/components/Icon";
+import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -22,7 +23,7 @@ export const menuStyleClasses = {
     {
       variants: {
         variant: {
-          default: "focus:s-text-primary-950 focus:s-bg-primary-100",
+          default: "focus:s-text-primary-950 focus:s-bg-primary-150",
           warning:
             "s-text-warning-500 hover:s-bg-warning-50 active:s-bg-warning-100",
         },
@@ -170,7 +171,7 @@ const NewDropdownMenuContent = React.forwardRef<
 ));
 NewDropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
-type NewDropdownMenuItemProps = MutuallyExclusiveProps<
+export type NewDropdownMenuItemProps = MutuallyExclusiveProps<
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
     inset?: boolean;
     variant?: ItemVariantType;

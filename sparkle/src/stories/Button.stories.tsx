@@ -13,13 +13,12 @@ export default meta;
 const IconButtonExamples = () => (
   <>
     <h3>Icon buttons</h3>
-    <div className="s-flex s-items-center s-gap-4 s-bg-emerald-200">
+    <div className="s-flex s-items-center s-gap-4 s-bg-muted">
       <Button size="xs" icon={PlusIcon} label="hello" isPulsing />
       <Button size="xs" variant="outline" label="hello" icon={PlusIcon} />
       <Button size="xs" variant="highlight" label="hello" icon={PlusIcon} />
       <Button size="xs" variant="warning" label="hello" icon={PlusIcon} />
       <Button size="xs" variant="ghost" label="hello" icon={PlusIcon} />
-      <Button size="xs" variant="white" label="hello" icon={PlusIcon} />
     </div>
     <div className="s-flex s-items-center s-gap-4">
       <Button size="sm" icon={PlusIcon} isPulsing />
@@ -52,6 +51,12 @@ const ButtonExamplesBySize = ({
       <Button size={size} variant="highlight" label="Button" />
       <Button size={size} variant="warning" label="Button" />
       <Button size={size} variant="ghost" label="Button" />
+      <Button
+        size={size}
+        variant="primary"
+        label="Button with href"
+        href="hello"
+      />
     </div>
     <div className="s-flex s-items-center s-gap-4">
       <Button size={size} label="Button" isLoading />

@@ -1,10 +1,9 @@
 import type { DataSourceViewType, WithAPIErrorResponse } from "@dust-tt/types";
-import { assertNever, PatchDataSourceViewSchema } from "@dust-tt/types";
+import { PatchDataSourceViewSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { handlePatchDataSourceView } from "@app/lib/api/data_source_view";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -13,6 +12,68 @@ import { apiError } from "@app/logger/withlogging";
 export type PatchDataSourceViewResponseBody = {
   dataSourceView: DataSourceViewType;
 };
+
+export async function handlePatchDataSourceView(
+  req: NextApiRequest,
+  res: NextApiResponse<WithAPIErrorResponse<PatchDataSourceViewResponseBody>>,
+  auth: Authenticator,
+  dataSourceView: DataSourceViewResource
+) {
+  if (!dataSourceView.canWrite(auth)) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        message:
+          "Only users that are `admins` or `builder` can administrate spaces.",
+        type: "workspace_auth_error",
+      },
+    });
+  }
+
+  const patchBodyValidation = PatchDataSourceViewSchema.decode(req.body);
+
+  if (isLeft(patchBodyValidation)) {
+    const pathError = reporter.formatValidationErrors(patchBodyValidation.left);
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        message: `invalid request body: ${pathError}`,
+        type: "invalid_request_error",
+      },
+    });
+  }
+
+  const { right: patchBody } = patchBodyValidation;
+
+  let updateResultRes;
+  if ("parentsIn" in patchBody) {
+    const { parentsIn } = patchBody;
+    updateResultRes = await dataSourceView.setParents(parentsIn);
+  } else {
+    const { parentsToAdd, parentsToRemove } = patchBody;
+    updateResultRes = await dataSourceView.updateParents(
+      parentsToAdd ?? [],
+      parentsToRemove ?? []
+    );
+  }
+
+  if (updateResultRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        message: "The data source view cannot be updated.",
+        type: "internal_server_error",
+      },
+    });
+  }
+
+  if (auth.user()) {
+    await dataSourceView.setEditedBy(auth);
+  }
+  return res.status(200).json({
+    dataSourceView: dataSourceView.toJSON(),
+  });
+}
 
 export type GetDataSourceViewResponseBody = {
   dataSourceView: DataSourceViewType;
@@ -57,54 +118,7 @@ async function handler(
     }
 
     case "PATCH": {
-      const patchBodyValidation = PatchDataSourceViewSchema.decode(req.body);
-
-      if (isLeft(patchBodyValidation)) {
-        const pathError = reporter.formatValidationErrors(
-          patchBodyValidation.left
-        );
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            message: `invalid request body: ${pathError}`,
-            type: "invalid_request_error",
-          },
-        });
-      }
-
-      const { right: patchBody } = patchBodyValidation;
-
-      const r = await handlePatchDataSourceView(
-        auth,
-        patchBody,
-        dataSourceView
-      );
-      if (r.isErr()) {
-        switch (r.error.code) {
-          case "unauthorized":
-            return apiError(req, res, {
-              status_code: 401,
-              api_error: {
-                type: "workspace_auth_error",
-                message: r.error.message,
-              },
-            });
-          case "internal_error":
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: r.error.message,
-              },
-            });
-          default:
-            assertNever(r.error.code);
-        }
-      }
-
-      return res.status(200).json({
-        dataSourceView: r.value.toJSON(),
-      });
+      return handlePatchDataSourceView(req, res, auth, dataSourceView);
     }
 
     case "DELETE": {

@@ -1,19 +1,27 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import * as React from "react";
 
-import { Button, LinkWrapper, LinkWrapperProps } from "@sparkle/components";
+import { Button } from "@sparkle/components/Button";
+import { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { cn } from "@sparkle/lib/utils";
 
 const Tabs = TabsPrimitive.Root;
 
+type TabsListProps = React.ComponentPropsWithoutRef<
+  typeof TabsPrimitive.List
+> & {
+  isFullSize?: boolean;
+};
+
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, ...props }, ref) => (
+  TabsListProps
+>(({ className, isFullSize = true, ...props }, ref) => (
   <TabsPrimitive.List
     ref={ref}
     className={cn(
       "s-inline-flex s-h-10 s-items-center s-gap-2 s-border-b s-border-separator",
+      isFullSize && "s-w-full",
       className
     )}
     {...props}
@@ -44,7 +52,7 @@ const TabsTrigger = React.forwardRef<
     },
     ref
   ) => {
-    const content = (
+    return (
       <TabsPrimitive.Trigger
         ref={ref}
         className={cn(
@@ -52,31 +60,21 @@ const TabsTrigger = React.forwardRef<
           className
         )}
         disabled={disabled}
-        asChild
         {...props}
       >
-        <div>
-          <Button
-            variant="ghost"
-            size="sm"
-            label={label}
-            icon={icon}
-            disabled={disabled}
-          />
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          label={label}
+          icon={icon}
+          disabled={disabled}
+          href={href}
+          target={target}
+          rel={rel}
+          replace={replace}
+          shallow={shallow}
+        />
       </TabsPrimitive.Trigger>
-    );
-
-    return (
-      <LinkWrapper
-        href={href}
-        target={target}
-        rel={rel}
-        replace={replace}
-        shallow={shallow}
-      >
-        {content}
-      </LinkWrapper>
     );
   }
 );

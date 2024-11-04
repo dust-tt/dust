@@ -260,7 +260,7 @@ export const PLAN_FIELDS = {
   maxVaults: {
     type: "number",
     width: "small",
-    title: "# Vaults",
+    title: "# Spaces",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxVaults),
   },
   trialPeriodDays: {
