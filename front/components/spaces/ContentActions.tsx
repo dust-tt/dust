@@ -15,7 +15,12 @@ import type {
 } from "@dust-tt/types";
 import { capitalize } from "lodash";
 import type { ComponentProps, RefObject } from "react";
-import React, { useEffect, useImperativeHandle, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useState,
+} from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentOrTableUploadOrEditModal } from "@app/components/data_source/DocumentOrTableUploadOrEditModal";
@@ -98,16 +103,19 @@ export const ContentActions = React.forwardRef<
       }
     }, [currentAction, setCurrentDocumentId]);
 
-    const onClose = (save: boolean) => {
-      const action = currentAction.action;
+    const onClose = useCallback(
+      (save: boolean) => {
+        const action = currentAction.action;
 
-      // Clear the action
-      setCurrentAction({ contentNode: currentAction.contentNode });
+        // Clear the action
+        setCurrentAction({ contentNode: currentAction.contentNode });
 
-      if (save) {
-        onSave(action);
-      }
-    };
+        if (save) {
+          onSave(action);
+        }
+      },
+      [currentAction, onSave]
+    );
 
     return (
       <>

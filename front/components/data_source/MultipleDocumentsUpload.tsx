@@ -6,7 +6,8 @@ import type {
   PostDataSourceWithNameDocumentRequestBody,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import { useEffect, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { DocumentLimitPopup } from "@app/components/data_source/DocumentLimitPopup";
 import { handleFileUploadToText } from "@app/lib/client/handle_file_upload";
@@ -32,69 +33,161 @@ export const MultipleDocumentsUpload = ({
 }: MultipleDocumentsUploadProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLimitPopupOpen, setIsLimitPopupOpen] = useState(false);
-  const [clicked, setClicked] = useState(false);
-  useEffect(() => {
-    if (isOpen && !clicked) {
-      fileInputRef.current?.click();
-      setClicked(true);
-    }
-  }, [isOpen, onClose, clicked]);
+  const [wasOpened, setWasOpened] = useState(isOpen);
 
   const [isBulkFilesUploading, setIsBulkFilesUploading] = useState<null | {
     total: number;
     completed: number;
   }>(null);
 
+  const close = useCallback(
+    (save: boolean) => {
+      // Clear the values of the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      onClose(save);
+    },
+    [onClose]
+  );
+
   const sendNotification = useSendNotification();
 
-  const handleUpsert = async (text: string, documentId: string) => {
-    const body: PostDataSourceWithNameDocumentRequestBody = {
-      name: documentId,
-      timestamp: null,
-      parents: null,
-      section: {
-        prefix: null,
-        content: text,
-        sections: [],
-      },
-      text: null,
-      source_url: undefined,
-      tags: [],
-      light_document_output: true,
-      upsert_context: null,
-      async: false,
-    };
+  const handleUpsert = useCallback(
+    async (text: string, documentId: string) => {
+      const body: PostDataSourceWithNameDocumentRequestBody = {
+        name: documentId,
+        timestamp: null,
+        parents: null,
+        section: {
+          prefix: null,
+          content: text,
+          sections: [],
+        },
+        text: null,
+        source_url: undefined,
+        tags: [],
+        light_document_output: true,
+        upsert_context: null,
+        async: false,
+      };
 
-    try {
-      const res = await fetch(
-        `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${
-          dataSourceView.dataSource.sId
-        }/documents`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(body),
-        }
-      );
+      try {
+        const res = await fetch(
+          `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${
+            dataSourceView.dataSource.sId
+          }/documents`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          }
+        );
 
-      if (!res.ok) {
-        let errMsg = "";
-        try {
-          const data = await res.json();
-          errMsg = data.error.message;
-        } catch (e) {
-          errMsg = "An error occurred while uploading your document.";
+        if (!res.ok) {
+          let errMsg = "";
+          try {
+            const data = await res.json();
+            errMsg = data.error.message;
+          } catch (e) {
+            errMsg = "An error occurred while uploading your document.";
+          }
+          return new Err(errMsg);
         }
-        return new Err(errMsg);
+      } catch (e) {
+        return new Err("An error occurred while uploading your document.");
       }
-    } catch (e) {
-      return new Err("An error occurred while uploading your document.");
-    }
 
-    return new Ok(null);
-  };
+      return new Ok(null);
+    },
+    [dataSourceView.dataSource.sId, dataSourceView.spaceId, owner.sId]
+  );
+
+  const handleFileChange = useCallback(
+    async (
+      e: ChangeEvent<HTMLInputElement> & { target: { files: File[] } }
+    ) => {
+      if (e.target.files && e.target.files.length > 0) {
+        if (
+          plan.limits.dataSources.documents.count != -1 &&
+          e.target.files.length + totalNodesCount >
+            plan.limits.dataSources.documents.count
+        ) {
+          setIsLimitPopupOpen(true);
+          return;
+        }
+        const files = e.target.files;
+        let i = 0;
+        for (const file of files) {
+          setIsBulkFilesUploading({
+            total: files.length,
+            completed: i++,
+          });
+          try {
+            const uploadRes = await handleFileUploadToText(file);
+            if (uploadRes.isErr()) {
+              sendNotification({
+                type: "error",
+                title: `Error uploading document ${file.name}`,
+                description: uploadRes.error.message,
+              });
+            } else {
+              const upsertRes = await handleUpsert(
+                uploadRes.value.content,
+                file.name
+              );
+              if (upsertRes.isErr()) {
+                sendNotification({
+                  type: "error",
+                  title: `Error uploading document ${file.name}`,
+                  description: upsertRes.error,
+                });
+              }
+            }
+          } catch (e) {
+            sendNotification({
+              type: "error",
+              title: "Error uploading document",
+              description: `An error occurred while uploading your documents.`,
+            });
+          }
+        }
+        setIsBulkFilesUploading(null);
+        close(true);
+      } else {
+        close(false);
+      }
+    },
+    [
+      handleUpsert,
+      close,
+      plan.limits.dataSources.documents.count,
+      sendNotification,
+      totalNodesCount,
+    ]
+  );
+
+  const handleFileInputBlur = useCallback(() => {
+    close(false);
+  }, [close]);
+
+  useEffect(() => {
+    const ref = fileInputRef.current;
+    ref?.addEventListener("cancel", handleFileInputBlur);
+    return () => {
+      ref?.removeEventListener("cancel", handleFileInputBlur);
+    };
+  }, [handleFileInputBlur]);
+
+  useEffect(() => {
+    if (isOpen && !wasOpened) {
+      const ref = fileInputRef.current;
+      ref?.click();
+    }
+    setWasOpened(isOpen);
+  }, [handleFileInputBlur, isOpen, wasOpened]);
 
   return (
     <>
@@ -130,56 +223,8 @@ export const MultipleDocumentsUpload = ({
         accept={UPLOAD_ACCEPT.join(",")}
         ref={fileInputRef}
         multiple={true}
-        onChange={async (e) => {
-          if (e.target.files && e.target.files.length > 0) {
-            if (
-              plan.limits.dataSources.documents.count != -1 &&
-              e.target.files.length + totalNodesCount >
-                plan.limits.dataSources.documents.count
-            ) {
-              setIsLimitPopupOpen(true);
-              return;
-            }
-            const files = e.target.files;
-            let i = 0;
-            for (const file of files) {
-              setIsBulkFilesUploading({
-                total: files.length,
-                completed: i++,
-              });
-              try {
-                const uploadRes = await handleFileUploadToText(file);
-                if (uploadRes.isErr()) {
-                  sendNotification({
-                    type: "error",
-                    title: `Error uploading document ${file.name}`,
-                    description: uploadRes.error.message,
-                  });
-                } else {
-                  const upsertRes = await handleUpsert(
-                    uploadRes.value.content,
-                    file.name
-                  );
-                  if (upsertRes.isErr()) {
-                    sendNotification({
-                      type: "error",
-                      title: `Error uploading document ${file.name}`,
-                      description: upsertRes.error,
-                    });
-                  }
-                }
-              } catch (e) {
-                sendNotification({
-                  type: "error",
-                  title: "Error uploading document",
-                  description: `An error occurred while uploading your documents.`,
-                });
-              }
-            }
-            setIsBulkFilesUploading(null);
-            onClose(true);
-          }
-        }}
+        onChange={handleFileChange}
+        onBlur={handleFileInputBlur}
       />
     </>
   );
