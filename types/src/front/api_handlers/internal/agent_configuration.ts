@@ -203,6 +203,6 @@ export type PostOrPatchAgentConfigurationRequestBody = t.TypeOf<
   typeof PostOrPatchAgentConfigurationRequestBodySchema
 >;
 
-export type ActionAgentConfigurationType = t.TypeOf<
+export type AgentActionConfigurationType = t.TypeOf<
   typeof ActionConfigurationSchema
 >;

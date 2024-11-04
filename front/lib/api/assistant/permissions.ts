@@ -1,5 +1,5 @@
 import type {
-  ActionAgentConfigurationType,
+  AgentActionConfigurationType,
   DustAppRunConfigurationType,
   ModelId,
   PostOrPatchAgentConfigurationRequestBody,
@@ -31,7 +31,7 @@ export async function listAgentConfigurationsForGroups(
 }
 
 export function getDataSourceViewIdsFromActions(
-  actions: ActionAgentConfigurationType[]
+  actions: AgentActionConfigurationType[]
 ): string[] {
   const relevantActions = actions.filter(
     (action) =>
@@ -59,7 +59,7 @@ export function getDataSourceViewIdsFromActions(
 
 export async function getAgentConfigurationGroupIdsFromActions(
   auth: Authenticator,
-  actions: ActionAgentConfigurationType[]
+  actions: AgentActionConfigurationType[]
 ): Promise<number[]> {
   const dsViews = await DataSourceViewResource.fetchByIds(
     auth,
