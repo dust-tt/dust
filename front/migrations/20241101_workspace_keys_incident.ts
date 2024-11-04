@@ -11,12 +11,12 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const MIN_AMOUNT_FOR_REIMBURSEMENT = 1;
-const CURRENCY = "eur";
 
 const sendIncidentEmailToAdmins = async (
   workspaceId: number,
   cost_in_cents: number,
   reimbursement_in_cents: number,
+  currency: string,
   logger: Logger
 ) => {
   const message = {
@@ -26,7 +26,7 @@ const sendIncidentEmailToAdmins = async (
     },
     subject: `[Dust] Incident 2024/10/31`,
     body: `<p>On October the 31st, due to a misconfiguration on our end, from 12:44 to 13:20 our API keys to OpenAI, Anthropic, Gemini and Mistral became unavailable to our systems triggering a fallback to your own API keys for assistants interactions within your workspace.</p>
-      <p>While it was great that we were able to serve your conversations on your own keys to avoid disruption, this is also not what you expect as a user. We estimated the tokens cost of the execution of these assistants to ${cost_in_cents / 100} USD. We are applying a discount of ${reimbursement_in_cents / 100} EUR to your account to compensate for it.</p>
+      <p>While it was great that we were able to serve your conversations on your own keys to avoid disruption, this is also not what you expect as a user. We estimated the tokens cost of the execution of these assistants to ${cost_in_cents / 100} ${currency.toUpperCase()}. We are applying a discount of ${reimbursement_in_cents / 100} ${currency.toUpperCase()} to your account to compensate for it.</p>
       <p>Please reply to this email if you have any questions.</p>`,
   };
 
@@ -174,7 +174,7 @@ makeScript(
             const coupon = await stripe.coupons.create({
               duration: "once",
               amount_off: finalAmount, // amount in cents
-              currency: CURRENCY, // here we apply the discount in euros considering a rate of 1:1 with usd
+              currency: subscription.currency, // must match the subscription currency
               name: "One-time discount",
             });
 
@@ -188,6 +188,7 @@ makeScript(
               record["workspaceId"],
               record["total_tokens_cost_in_dollars"] * 100,
               amount,
+              subscription.currency,
               logger
             );
           } else {
