@@ -80,10 +80,7 @@ export default function WorkspaceAssistants({
   const [orderBy, setOrderBy] = useState<SearchOrderType>("name");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
-  const [selectedTab, setSelectedTab] = useHashParam(
-    "tabScope",
-    "workspace"
-  );
+  const [selectedTab, setSelectedTab] = useHashParam("tabScope", "workspace");
 
   const includes: ("authors" | "usage")[] = (() => {
     switch (tabScope) {
