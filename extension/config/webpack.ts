@@ -39,7 +39,16 @@ export const getConfig = async ({
     node: false,
     optimization: {
       minimize: !isDevelopment,
-      minimizer: [new TerserPlugin({ extractComments: false })],
+      minimizer: [
+        new TerserPlugin({
+          extractComments: false,
+          terserOptions: {
+            format: {
+              ascii_only: true,
+            },
+          },
+        }),
+      ],
       concatenateModules: shouldBuild !== "analyze",
     },
     performance: false,
