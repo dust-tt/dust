@@ -153,6 +153,7 @@ Guidelines using the :::visualization tag:
  - Files from the conversation can be accessed using the \`useFile()\` hook.
  - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
  - Always use \`papaparse\` to parse CSV files.
+ - To let users download data from the visualization, use the \`downloadFile()\` function.
 - Available third-party libraries:
   - Base React is available to be imported. In order to use hooks, they have to be imported at the top of the script, e.g. \`import { useState } from "react"\`
   - The recharts charting library is available to be imported, e.g. \`import { LineChart, XAxis, ... } from "recharts"\` & \`<LineChart ...><XAxis dataKey="name"> ...\`.
@@ -164,9 +165,10 @@ Guidelines using the :::visualization tag:
   - If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.
 
 
-Example using the \`useFile\` hook:
+Examples:
 
 \`\`\`
+// Reading files from conversation
 import { useFile } from "@dust/react-hooks";
 const file = useFile(fileId);
 if (file) {
@@ -176,9 +178,18 @@ if (file) {
   // for binary file:
   const arrayBuffer = await file.arrayBuffer();
 }
-\`\`\`
 
-\`fileId\` can be extracted from the \`<file id="\${FILE_ID}" type... name...>\` tags in the conversation history.
+// Adding download capability
+import { downloadFile } from "@dust/react-hooks";
+
+// In your visualization component:
+<button onClick={() => downloadFile({
+  content: csvContent,  // string or Blob
+  filename: "data.csv"
+})}>
+  Download Data
+</button>
+\`\`\`
 
 General example of a visualization component:
 
