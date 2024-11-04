@@ -218,6 +218,17 @@ export async function checkZendeskTicketsPermissionsActivity({
 }
 
 /**
+ * Retrieves the IDs of every brand stored in db.
+ */
+export async function getAllZendeskBrandsIdsActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<number[]> {
+  return ZendeskBrandResource.fetchAllBrandIds({ connectorId });
+}
+
+/**
  * Retrieves the categories for a given Brand.
  */
 export async function getZendeskCategoriesActivity({

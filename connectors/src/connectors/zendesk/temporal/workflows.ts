@@ -30,6 +30,7 @@ const {
   checkZendeskTicketsPermissionsActivity,
   saveZendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
+  getAllZendeskBrandsIdsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -103,7 +104,8 @@ export async function zendeskSyncWorkflow({
     brandTicketsIds.size === 0 &&
     categoryIds.size === 0
   ) {
-    // TODO: refresh the data we don't receive updates about through the webhooks here
+    const allBrandIds = await getAllZendeskBrandsIdsActivity({ connectorId });
+    allBrandIds.forEach((brandId) => brandIds.add(brandId));
   }
 
   const {
