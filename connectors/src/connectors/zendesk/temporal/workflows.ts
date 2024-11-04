@@ -13,6 +13,7 @@ import type {
   ZendeskUpdateSignal,
 } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
+import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 
 const {
   getZendeskCategoriesActivity,
@@ -314,18 +315,18 @@ export async function zendeskCategorySyncWorkflow({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  const isCategoryAllowed = await syncZendeskCategoryActivity({
+  const category = await syncZendeskCategoryActivity({
     connectorId,
     categoryId,
     currentSyncDateMs,
     brandId,
   });
-  if (!isCategoryAllowed) {
+  if (!category) {
     return; // nothing to sync
   }
   await syncZendeskArticlesActivity({
     connectorId,
-    categoryId,
+    category,
     currentSyncDateMs,
     forceResync,
   });
@@ -349,24 +350,24 @@ async function runZendeskBrandHelpCenterSyncActivities({
     connectorId,
     brandId,
   });
-  const categoriesToSync = new Set<number>();
+  const categoriesToSync = new Set<ZendeskCategoryResource>();
   for (const categoryId of categoryIds) {
-    const wasCategoryUpdated = await syncZendeskCategoryActivity({
+    const category = await syncZendeskCategoryActivity({
       connectorId,
       categoryId,
       currentSyncDateMs,
       brandId,
     });
-    if (wasCategoryUpdated) {
-      categoriesToSync.add(categoryId);
+    if (category) {
+      categoriesToSync.add(category);
     }
   }
 
   /// grouping the articles by category for a lower granularity
-  for (const categoryId of categoriesToSync) {
+  for (const category of categoriesToSync) {
     await syncZendeskArticlesActivity({
       connectorId,
-      categoryId,
+      category,
       currentSyncDateMs,
       forceResync,
     });

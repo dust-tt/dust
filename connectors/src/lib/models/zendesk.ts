@@ -166,6 +166,7 @@ export class ZendeskCategory extends Model<
   declare permission: "read" | "none";
 
   declare name: string;
+  declare description: string | null;
   declare url: string;
 
   declare lastUpsertedTs?: Date;
@@ -201,6 +202,10 @@ ZendeskCategory.init(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    description: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     url: {
       type: DataTypes.STRING,
@@ -250,7 +255,7 @@ export class ZendeskArticle extends Model<
   declare name: string;
   declare url: string;
 
-  declare lastUpsertedTs: Date;
+  declare lastUpsertedTs: Date | null;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
