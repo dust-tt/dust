@@ -76,9 +76,9 @@ export function useVisualizationAPI(
     [sendCrossDocumentMessage]
   );
 
-  const sendScreenshotBlob = useCallback(
-    async (blob: Blob) => {
-      await sendCrossDocumentMessage("sendScreenshotBlob", { blob });
+  const downloadFile = useCallback(
+    async (blob: Blob, filename?: string) => {
+      await sendCrossDocumentMessage("downloadFileRequest", { blob, filename });
     },
     [sendCrossDocumentMessage]
   );
@@ -88,7 +88,7 @@ export function useVisualizationAPI(
     fetchCode,
     fetchFile,
     sendHeightToParent,
-    sendScreenshotBlob,
+    downloadFile,
   };
 }
 
@@ -115,6 +115,24 @@ const useFile = (
 
   return file;
 };
+
+function useDownloadFileCallback(
+  downloadFile: (blob: Blob, filename?: string) => Promise<void>
+) {
+  return useCallback(
+    async ({
+      content,
+      filename,
+    }: {
+      content: string | Blob;
+      filename?: string;
+    }) => {
+      const blob = typeof content === "string" ? new Blob([content]) : content;
+      await downloadFile(blob, filename);
+    },
+    [downloadFile]
+  );
+}
 
 interface RunnerParams {
   code: string;
@@ -146,7 +164,7 @@ export function VisualizationWrapperWithErrorBoundary({
         });
       }}
     >
-      <VisualizationWrapper api={api} />
+      <VisualizationWrapper api={api} identifier={identifier} />
     </ErrorBoundary>
   );
 }
@@ -155,20 +173,18 @@ export function VisualizationWrapperWithErrorBoundary({
 // It gets the generated code via message passing to the host window.
 export function VisualizationWrapper({
   api,
+  identifier,
 }: {
   api: ReturnType<typeof useVisualizationAPI>;
+  identifier: string;
 }) {
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
 
-  const {
-    fetchCode,
-    fetchFile,
-    error,
-    sendHeightToParent,
-    sendScreenshotBlob,
-  } = api;
+  const { fetchCode, fetchFile, error, sendHeightToParent, downloadFile } = api;
+
+  const memoizedDownloadFile = useDownloadFileCallback(downloadFile);
 
   useEffect(() => {
     const loadCode = async () => {
@@ -190,6 +206,7 @@ export function VisualizationWrapper({
                     papaparse: papaparseAll,
                     "@dust/react-hooks": {
                       useFile: (fileId: string) => useFile(fileId, fetchFile),
+                      triggerUserFileDownload: memoizedDownloadFile,
                     },
                   },
                 }),
@@ -216,7 +233,7 @@ export function VisualizationWrapper({
     onResize: sendHeightToParent,
   });
 
-  const handleDownload = useCallback(async () => {
+  const handleScreenshotDownload = useCallback(async () => {
     if (ref.current) {
       try {
         const blob = await toBlob(ref.current, {
@@ -224,13 +241,13 @@ export function VisualizationWrapper({
           skipFonts: true,
         });
         if (blob) {
-          await sendScreenshotBlob(blob);
+          await downloadFile(blob, `visualization-${identifier}.png`);
         }
       } catch (err) {
         console.error("Failed to convert to Blob", err);
       }
     }
-  }, [ref, sendScreenshotBlob]);
+  }, [ref, downloadFile]);
 
   useEffect(() => {
     if (error) {
@@ -250,7 +267,7 @@ export function VisualizationWrapper({
   return (
     <div className="relative group/viz">
       <button
-        onClick={handleDownload}
+        onClick={handleScreenshotDownload}
         className="absolute top-2 right-2 bg-white p-2 rounded shadow hover:bg-gray-100 transition opacity-0 group-hover/viz:opacity-100 z-50"
       >
         <Download size={20} />

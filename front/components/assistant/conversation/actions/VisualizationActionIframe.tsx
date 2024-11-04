@@ -43,6 +43,16 @@ const sendResponseToIframe = <T extends VisualizationRPCCommand>(
   );
 };
 
+const getExtensionFromBlob = (blob: Blob): string => {
+  const mimeToExt: Record<string, string> = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "text/csv": "csv",
+  };
+
+  return mimeToExt[blob.type] || "txt"; // Default to 'txt' if mime type is unknown.
+};
+
 // Custom hook to encapsulate the logic for handling visualization messages.
 function useVisualizationDataHandler({
   visualization,
@@ -77,12 +87,19 @@ function useVisualizationDataHandler({
     [workspaceId]
   );
 
-  const downloadScreenshotFromBlob = useCallback(
-    (blob: Blob) => {
+  const downloadFileFromBlob = useCallback(
+    (blob: Blob, filename?: string) => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `visualization-${visualization.identifier}.png`;
+
+      if (filename) {
+        link.download = filename;
+      } else {
+        const ext = getExtensionFromBlob(blob);
+        link.download = `visualization-${visualization.identifier}.${ext}`;
+      }
+
       link.click();
       URL.revokeObjectURL(url);
     },
@@ -126,8 +143,8 @@ function useVisualizationDataHandler({
           setErrorMessage(data.params.errorMessage);
           break;
 
-        case "sendScreenshotBlob":
-          downloadScreenshotFromBlob(data.params.blob);
+        case "downloadFileRequest":
+          downloadFileFromBlob(data.params.blob, data.params.filename);
           break;
 
         default:
@@ -139,7 +156,7 @@ function useVisualizationDataHandler({
     return () => window.removeEventListener("message", listener);
   }, [
     code,
-    downloadScreenshotFromBlob,
+    downloadFileFromBlob,
     getFileBlob,
     setContentHeight,
     setErrorMessage,

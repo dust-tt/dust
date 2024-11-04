@@ -16,8 +16,9 @@ interface SetContentHeightParams {
   height: number;
 }
 
-interface SendScreenshotBlobParams {
+interface DownloadFileRequestParams {
   blob: Blob;
+  filename?: string;
 }
 
 interface setErrorMessageParams {
@@ -30,7 +31,7 @@ export type VisualizationRPCRequestMap = {
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
   setErrorMessage: setErrorMessageParams;
-  sendScreenshotBlob: SendScreenshotBlobParams;
+  downloadFileRequest: DownloadFileRequestParams;
 };
 
 // Derive the command type from the keys of the request map
@@ -56,7 +57,7 @@ export const validCommands: VisualizationRPCCommand[] = [
 export interface CommandResultMap {
   getCodeToExecute: { code: string };
   getFile: { fileBlob: Blob | null };
-  sendScreenshotBlob: { blob: Blob };
+  downloadFileRequest: { blob: Blob; filename?: string };
   setContentHeight: void;
   setErrorMessage: void;
 }
@@ -147,11 +148,11 @@ export function isSetErrorMessageRequest(
   );
 }
 
-export function isSendScreenshotBlobRequest(
+export function isDownloadFileRequest(
   value: unknown
 ): value is VisualizationRPCRequest & {
-  command: "sendScreenshotBlob";
-  params: SendScreenshotBlobParams;
+  command: "downloadFileRequest";
+  params: DownloadFileRequestParams;
 } {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -160,12 +161,12 @@ export function isSendScreenshotBlobRequest(
   const v = value as Partial<VisualizationRPCRequest>;
 
   return (
-    v.command === "sendScreenshotBlob" &&
+    v.command === "downloadFileRequest" &&
     typeof v.identifier === "string" &&
     typeof v.messageUniqueId === "string" &&
     typeof v.params === "object" &&
     v.params !== null &&
-    (v.params as SendScreenshotBlobParams).blob instanceof Blob
+    (v.params as DownloadFileRequestParams).blob instanceof Blob
   );
 }
 
@@ -179,7 +180,7 @@ export function isVisualizationRPCRequest(
   return (
     isGetCodeToExecuteRequest(value) ||
     isGetFileRequest(value) ||
-    isSendScreenshotBlobRequest(value) ||
+    isDownloadFileRequest(value) ||
     isSetContentHeightRequest(value) ||
     isSetErrorMessageRequest(value)
   );
