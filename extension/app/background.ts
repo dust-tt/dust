@@ -7,6 +7,8 @@ import type {
   Auth0AuthorizeResponse,
   AuthBackgroundResponse,
   AuthBackroundMessage,
+  GetActiveTabBackgroundMessage,
+  GetActiveTabBackgroundResponse,
 } from "./src/lib/messages";
 import { generatePKCE } from "./src/lib/utils";
 
@@ -25,10 +27,13 @@ chrome.runtime.onInstalled.addListener(() => {
  */
 chrome.runtime.onMessage.addListener(
   (
-    message: AuthBackroundMessage,
+    message: AuthBackroundMessage | GetActiveTabBackgroundMessage,
     sender,
     sendResponse: (
-      response: Auth0AuthorizeResponse | AuthBackgroundResponse
+      response:
+        | Auth0AuthorizeResponse
+        | AuthBackgroundResponse
+        | GetActiveTabBackgroundResponse
     ) => void
   ) => {
     switch (message.type) {
@@ -52,12 +57,38 @@ chrome.runtime.onMessage.addListener(
       case "SIGN_CONNECT":
         return true;
 
+      case "GET_ACTIVE_TAB":
+        chrome.tabs.query(
+          { active: true, currentWindow: true },
+          async (tabs) => {
+            const tab = tabs[0];
+            if (!tab?.id) {
+              log("No active tab found.");
+              sendResponse({ url: "", content: "" });
+              return;
+            }
+
+            try {
+              const [result] = await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => document.documentElement.innerText,
+              });
+              sendResponse({
+                url: tab.url || "",
+                content: result.result ?? "no content.",
+              });
+            } catch (error) {
+              log("Error getting active tab content:", error);
+              sendResponse({ url: tab.url || "", content: "" });
+            }
+          }
+        );
+        return true;
       default:
-        log(`Unknown message type: ${message.type}.`);
+        log(`Unknown message: ${message}.`);
     }
   }
 );
-
 /**
  * Authenticate the user using Auth0.
  */
