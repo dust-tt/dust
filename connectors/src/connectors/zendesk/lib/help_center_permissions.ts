@@ -1,6 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 
-import { getZendeskAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
+import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
@@ -13,12 +13,10 @@ import {
 } from "@connectors/resources/zendesk_resources";
 
 export async function allowSyncZendeskHelpCenter({
-  subdomain,
   connectorId,
   connectionId,
   brandId,
 }: {
-  subdomain: string;
   connectorId: ModelId;
   connectionId: string;
   brandId: number;
@@ -32,8 +30,12 @@ export async function allowSyncZendeskHelpCenter({
     await brand.update({ helpCenterPermission: "read" });
   }
 
-  const token = await getZendeskAccessToken(connectionId);
-  const zendeskApiClient = createZendeskClient({ token, subdomain });
+  const { accessToken, subdomain } =
+    await getZendeskSubdomainAndAccessToken(connectionId);
+  const zendeskApiClient = createZendeskClient({
+    token: accessToken,
+    subdomain,
+  });
 
   if (!brand) {
     const {
@@ -66,7 +68,6 @@ export async function allowSyncZendeskHelpCenter({
     const categories = await zendeskApiClient.helpcenter.categories.list();
     categories.forEach((category) =>
       allowSyncZendeskCategory({
-        subdomain,
         connectionId,
         connectorId,
         categoryId: category.id,
@@ -120,12 +121,10 @@ export async function revokeSyncZendeskHelpCenter({
 }
 
 export async function allowSyncZendeskCategory({
-  subdomain,
   connectorId,
   connectionId,
   categoryId,
 }: {
-  subdomain: string;
   connectorId: ModelId;
   connectionId: string;
   categoryId: number;
@@ -138,8 +137,12 @@ export async function allowSyncZendeskCategory({
     await category.update({ permission: "read" });
   }
 
-  const token = await getZendeskAccessToken(connectionId);
-  const zendeskApiClient = createZendeskClient({ token, subdomain });
+  const { accessToken, subdomain } =
+    await getZendeskSubdomainAndAccessToken(connectionId);
+  const zendeskApiClient = createZendeskClient({
+    token: accessToken,
+    subdomain,
+  });
 
   if (!category) {
     const { result: fetchedCategory } =
