@@ -10,7 +10,7 @@ import type {
 import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
 import { ReachedLimitPopup } from "@extension/components/conversation/ReachedLimitPopup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
-import { AssistantInputBar } from "@extension/components/input_bar/InputBar";
+import { FixedAssistantInputBar } from "@extension/components/input_bar/InputBar";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import { postConversation, postMessage } from "@extension/lib/conversation";
@@ -162,13 +162,14 @@ export function ConversationContainer({
           onStickyMentionsChange={onStickyMentionsChange}
         />
       )}
-      <AssistantInputBar
+      <FixedAssistantInputBar
         owner={owner}
         onSubmit={
           activeConversationId ? handlePostMessage : handlePostConversation
         }
         stickyMentions={stickyMentions}
       />
+
       <ReachedLimitPopup
         isOpened={planLimitReached}
         onClose={() => setPlanLimitReached(false)}

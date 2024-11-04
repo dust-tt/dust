@@ -53,7 +53,23 @@ import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction
 import { useEventSource } from "@extension/hooks/useEventSource";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Components } from "react-markdown";
+import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
+import { visit } from "unist-util-visit";
+
+export function visualizationDirective() {
+  return (tree: any) => {
+    visit(tree, ["containerDirective"], (node) => {
+      if (node.name === "visualization") {
+        const data = node.data || (node.data = {});
+        data.hName = "visualization";
+        data.hProperties = {
+          position: node.position,
+        };
+      }
+    });
+  };
+}
 
 export function makeDocumentCitation(
   document: RetrievalDocumentType
@@ -365,6 +381,18 @@ export function AgentMessage({
 
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
+      visualization: (props: ReactMarkdownProps) => (
+        <div className="w-full flex justify-center">
+          <Button
+            label="Please check the visualization here"
+            onClick={() => {
+              window.open(
+                `${process.env.DUST_DOMAIN}/w/${owner.sId}/assistant/${conversationId}`
+              );
+            }}
+          />
+        </div>
+      ),
       sup: CiteBlock,
       mention: MentionBlock,
     }),
@@ -372,7 +400,7 @@ export function AgentMessage({
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [mentionDirective, getCiteDirective()],
+    () => [mentionDirective, getCiteDirective(), visualizationDirective],
     []
   );
 

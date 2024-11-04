@@ -10,7 +10,7 @@ import React, { useEffect, useRef } from "react";
 import MessageItem from "@app/components/assistant/conversation/MessageItem";
 
 interface MessageGroupProps {
-  messages: MessageWithContentFragmentsType[][];
+  messages: MessageWithContentFragmentsType[];
   isLastMessageGroup: boolean;
   conversationId: string;
   hideReactions: boolean;
@@ -62,28 +62,22 @@ export default function MessageGroup({
       ref={isLastMessageGroup ? lastMessageGroupRef : undefined}
       style={{ minHeight }}
     >
-      {messages.map((group) => {
-        return group.map((message) => {
-          return (
-            <MessageItem
-              key={`message-${message.sId}`}
-              conversationId={conversationId}
-              hideReactions={hideReactions}
-              isInModal={isInModal}
-              message={message}
-              owner={owner}
-              reactions={reactions}
-              ref={
-                message.sId === prevFirstMessageId
-                  ? prevFirstMessageRef
-                  : undefined
-              }
-              user={user}
-              isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
-            />
-          );
-        });
-      })}
+      {messages.map((message) => (
+        <MessageItem
+          key={`message-${message.sId}`}
+          conversationId={conversationId}
+          hideReactions={hideReactions}
+          isInModal={isInModal}
+          message={message}
+          owner={owner}
+          reactions={reactions}
+          ref={
+            message.sId === prevFirstMessageId ? prevFirstMessageRef : undefined
+          }
+          user={user}
+          isLastMessage={latestPage?.messages.at(-1)?.sId === message.sId}
+        />
+      ))}
     </div>
   );
 }
