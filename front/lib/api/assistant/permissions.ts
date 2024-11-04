@@ -71,7 +71,6 @@ export async function getAgentConfigurationGroupIdsFromActionsLegacy(
       .map((action) => (action as DustAppRunConfigurationType).appId)
   );
 
-  // TODO(2024-10-25 flav) Refactor to store a list of ResourcePermission.
   const dataSourceViewGroupIds: ModelId[] = dsViews.flatMap((view) =>
     view.requestedPermissions().flatMap((rp) => rp.groups.map((g) => g.id))
   );
@@ -108,10 +107,10 @@ export async function getAgentConfigurationGroupIdsFromActions(
       spacePermissions.set(spaceId, new Set());
     }
     const groups = view
-      .requestedPermissions()
+      .requestedPermissions({ returnNewFormat: true })
       .flatMap((rp) => rp.groups.map((g) => g.id))
       // Sort to ensure consistent ordering.
-      .sort();
+      .sort((a, b) => a - b);
 
     groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
   }
@@ -124,10 +123,10 @@ export async function getAgentConfigurationGroupIdsFromActions(
     }
 
     const groups = app
-      .requestedPermissions()
+      .requestedPermissions({ returnNewFormat: true })
       .flatMap((rp) => rp.groups.map((g) => g.id))
       // Sort to ensure consistent ordering.
-      .sort();
+      .sort((a, b) => a - b);
 
     groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
   }
