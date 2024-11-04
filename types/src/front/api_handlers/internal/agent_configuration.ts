@@ -202,3 +202,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
 export type PostOrPatchAgentConfigurationRequestBody = t.TypeOf<
   typeof PostOrPatchAgentConfigurationRequestBodySchema
 >;
+
+export type ActionAgentConfigurationType = t.TypeOf<
+  typeof ActionConfigurationSchema
+>;

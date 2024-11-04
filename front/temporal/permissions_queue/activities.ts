@@ -66,7 +66,7 @@ export async function updateSpacePermissions({
     "[PermissionsQueue] Agent configurations found for regular groups."
   );
 
-  // Update the permissions of the agent configurations.
+  // Update the permissions of all the agent configurations.
   for (const acId of agentConfigurationIds) {
     const [ac] = await getAgentConfigurations({
       auth,
@@ -74,7 +74,7 @@ export async function updateSpacePermissions({
         agentIds: [acId],
       },
       variant: "full",
-      dangerouslySkipPermissionCheck: true,
+      dangerouslySkipPermissionFiltering: true,
     });
     if (!ac) {
       logger.warn(

@@ -496,7 +496,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   variant,
   limit,
   sort,
-  dangerouslySkipPermissionCheck,
+  dangerouslySkipPermissionFiltering,
 }: {
   auth: Authenticator;
   agentsGetView: AgentsGetViewType;
@@ -504,7 +504,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   variant: V;
   limit?: number;
   sort?: SortStrategyType;
-  dangerouslySkipPermissionCheck?: boolean;
+  dangerouslySkipPermissionFiltering?: boolean;
 }): Promise<
   V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
 > {
@@ -566,7 +566,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
 
   // Filter out agents that the user does not have access to
   // user should be in all groups that are in the agent's groupIds
-  const allowedAgentConfigurations = dangerouslySkipPermissionCheck
+  const allowedAgentConfigurations = dangerouslySkipPermissionFiltering
     ? allAgentConfigurations
     : allAgentConfigurations
         .flat()
