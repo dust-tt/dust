@@ -178,9 +178,9 @@ if (file) {
   // for binary file:
   const arrayBuffer = await file.arrayBuffer();
 }
+\`\`\`
 
 \`fileId\` can be extracted from the \`<file id="\${FILE_ID}" type... name...>\` tags in the conversation history.
-\`\`\`
 
 Example using the \`triggerUserFileDownload\` hook:
 
