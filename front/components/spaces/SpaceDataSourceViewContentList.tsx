@@ -325,6 +325,21 @@ export const SpaceDataSourceViewContentList = ({
     await mutateContentNodes();
   }, [mutateContentNodes]);
 
+  const onSaveAction = useCallback(
+    async (action?: ContentActionKey) => {
+      await mutateContentNodes();
+      if (
+        action === "DocumentUploadOrEdit" ||
+        action === "MultipleDocumentsUpload"
+      ) {
+        handleViewTypeChange("documents");
+      } else if (action === "TableUploadOrEdit") {
+        handleViewTypeChange("tables");
+      }
+    },
+    [handleViewTypeChange, mutateContentNodes]
+  );
+
   const emptySpaceContent =
     isManaged(dataSourceView.dataSource) && space.kind !== "system" ? (
       isAdmin ? (
@@ -488,17 +503,7 @@ export const SpaceDataSourceViewContentList = ({
         totalNodesCount={totalNodesCount}
         owner={owner}
         plan={plan}
-        onSave={async (action?: ContentActionKey) => {
-          await mutateContentNodes();
-          if (
-            action === "DocumentUploadOrEdit" ||
-            action === "MultipleDocumentsUpload"
-          ) {
-            handleViewTypeChange("documents");
-          } else if (action === "TableUploadOrEdit") {
-            handleViewTypeChange("tables");
-          }
-        }}
+        onSave={onSaveAction}
       />
     </>
   );
