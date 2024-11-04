@@ -720,6 +720,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     return this.kind === "global";
   }
 
+  isRegular(): boolean {
+    return this.kind === "regular";
+  }
+
   // JSON Serialization
 
   toJSON(): GroupType {

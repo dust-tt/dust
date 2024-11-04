@@ -2,12 +2,12 @@ import _ from "lodash";
 import { Sequelize } from "sequelize";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getDataSourceViewIdsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { Logger } from "@app/logger/logger";
-import { getDataSourceViewIdsFromActions } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {

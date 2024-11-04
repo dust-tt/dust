@@ -487,6 +487,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   variant,
   limit,
   sort,
+  dangerouslySkipPermissionFiltering,
 }: {
   auth: Authenticator;
   agentsGetView: AgentsGetViewType;
@@ -494,6 +495,7 @@ export async function getAgentConfigurations<V extends "light" | "full">({
   variant: V;
   limit?: number;
   sort?: SortStrategyType;
+  dangerouslySkipPermissionFiltering?: boolean;
 }): Promise<
   V extends "light" ? LightAgentConfigurationType[] : AgentConfigurationType[]
 > {
@@ -555,13 +557,15 @@ export async function getAgentConfigurations<V extends "light" | "full">({
 
   // Filter out agents that the user does not have access to
   // user should be in all groups that are in the agent's groupIds
-  const allowedAgentConfigurations = allAgentConfigurations
-    .flat()
-    .filter((a) =>
-      auth.canRead(
-        Authenticator.createResourcePermissionsFromGroupIds(a.groupIds)
-      )
-    );
+  const allowedAgentConfigurations = dangerouslySkipPermissionFiltering
+    ? allAgentConfigurations
+    : allAgentConfigurations
+        .flat()
+        .filter((a) =>
+          auth.canRead(
+            Authenticator.createResourcePermissionsFromGroupIds(a.groupIds)
+          )
+        );
 
   return applySortAndLimit(allowedAgentConfigurations.flat());
 }

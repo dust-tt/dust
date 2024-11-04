@@ -148,6 +148,11 @@ const multiActionsCommonFields = {
   description: t.union([t.string, t.null]),
 };
 
+const requiredMultiActionsCommonFields = t.type({
+  name: t.string,
+  description: t.union([t.string, t.null]),
+});
+
 const ActionConfigurationSchema = t.intersection([
   t.union([
     RetrievalActionConfigurationSchema,
@@ -157,7 +162,7 @@ const ActionConfigurationSchema = t.intersection([
     WebsearchActionConfigurationSchema,
     BrowseActionConfigurationSchema,
   ]),
-  t.partial(multiActionsCommonFields),
+  requiredMultiActionsCommonFields,
 ]);
 
 const ModelConfigurationSchema = t.intersection([
@@ -166,6 +171,7 @@ const ModelConfigurationSchema = t.intersection([
     providerId: ModelProviderIdCodec,
     temperature: t.number,
   }),
+  // TODO(2024-11-04 flav) Clean up this legacy type.
   t.partial(multiActionsCommonFields),
 ]);
 const IsSupportedModelSchema = new t.Type<SupportedModel>(
