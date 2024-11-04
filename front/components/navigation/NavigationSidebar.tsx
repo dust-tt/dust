@@ -123,7 +123,7 @@ export const NavigationSidebar = React.forwardRef<
                 {navs.map((tab) => (
                   <TabsTrigger
                     className={classNames(
-                      tab.sizing === "expand" ? "grow" : "shrink",
+                      tab.sizing === "hug" ? "grow" : "shrink",
                       "px-1"
                     )}
                     key={tab.id}
