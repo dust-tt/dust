@@ -93,7 +93,7 @@ export function makeColumnsForDataSources(
           <IconButton
             icon={TrashIcon}
             size="xs"
-            variant="ghost"
+            variant="outline"
             onClick={async () => {
               await deleteDataSource(owner, dataSource.sId, onDeleted);
             }}
