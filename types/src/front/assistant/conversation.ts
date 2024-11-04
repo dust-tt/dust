@@ -76,7 +76,7 @@ export type UserMessageContext = {
   fullName: string | null;
   email: string | null;
   profilePictureUrl: string | null;
-  origin: UserMessageOrigin | null;
+  origin?: UserMessageOrigin | null;
 };
 
 export type UserMessageType = {

@@ -675,6 +675,7 @@ const LightAgentConfigurationSchema = z.object({
   visualizationEnabled: z.boolean(),
   templateId: z.string().nullable(),
   groupIds: z.array(z.string()),
+  requestedGroupIds: z.array(z.array(z.string())),
 });
 
 const ContentFragmentContextSchema = z.object({
@@ -791,6 +792,7 @@ const ConversationWithoutContentSchema = z.object({
   title: z.string().nullable(),
   visibility: ConversationVisibilitySchema,
   groupIds: z.array(z.string()),
+  requestedGroupIds: z.array(z.array(z.string())),
 });
 
 export const ConversationSchema = ConversationWithoutContentSchema.extend({
@@ -1588,7 +1590,8 @@ export const PostDataSourceDocumentRequestSchema = z.object({
     }) // For the fields to be not optional, see https://stackoverflow.com/questions/71477015/specify-a-zod-schema-with-a-non-optional-but-possibly-undefined-field
     .transform((o) => ({
       sync_type: o.sync_type,
-    })),
+    }))
+    .optional(),
   text: z.string().nullable().optional(),
   section: FrontDataSourceDocumentSectionSchema.nullable().optional(),
   light_document_output: z.boolean().optional(),
