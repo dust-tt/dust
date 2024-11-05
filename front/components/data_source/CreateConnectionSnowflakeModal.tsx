@@ -217,7 +217,7 @@ export function CreateConnectionSnowflakeModal({
             <div className="flex justify-center pt-2">
               <div className="flex gap-2">
                 <Button
-                  variant="primary"
+                  variant="highlight"
                   size="md"
                   icon={CloudArrowLeftRightIcon}
                   onClick={() => {
