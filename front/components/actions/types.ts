@@ -3,8 +3,8 @@ import { ACTION_RUNNING_LABELS } from "@dust-tt/types";
 
 import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
-import { RequestUserDataActionDetails } from "@app/components/actions/jit/RequestUserDataActionDetails";
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
+import { RequestUserDataActionDetails } from "@app/components/actions/request_user_data/RequestUserDataActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
 import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
