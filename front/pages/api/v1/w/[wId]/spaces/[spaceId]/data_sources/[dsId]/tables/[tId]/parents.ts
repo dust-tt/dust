@@ -77,7 +77,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      const r = await PostTableParentsRequestSchema.safeParse(req.query);
+      const r = await PostTableParentsRequestSchema.safeParse(req.body);
 
       if (r.error) {
         return apiError(req, res, {
