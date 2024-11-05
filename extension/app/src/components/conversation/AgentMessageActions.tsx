@@ -1,5 +1,5 @@
 import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
-import { Chip, Spinner } from "@dust-tt/sparkle";
+import { Button, Chip, EyeIcon, Spinner } from "@dust-tt/sparkle";
 import type {
   AgentActionType,
   AgentMessageType,
@@ -80,15 +80,13 @@ function ActionDetails({
       </Chip>
     </div>
   ) : (
-    // TODO(Ext) Tools inspection
-    false
-    // <Button
-    //   size={size === "normal" ? "sm" : "xs"}
-    //   label="Tools inspection"
-    //   icon={EyeIcon}
-    //   variant="ghost"
-    //   onClick={onClick}
-    // />
+    <Button
+      size="sm"
+      label="Tools inspection"
+      icon={EyeIcon}
+      variant="ghost"
+      onClick={() => console.log("Inspecting tools")}
+    />
   );
 }
 

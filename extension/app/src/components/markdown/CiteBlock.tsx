@@ -1,8 +1,7 @@
+import type { MarkdownCitation } from "@extension/components/markdown/MarkdownCitation";
 import React, { useEffect } from "react";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import { visit } from "unist-util-visit";
-
-import type { MarkdownCitation } from "./MarkdownCitation";
 
 export type CitationsContextType = {
   references: {

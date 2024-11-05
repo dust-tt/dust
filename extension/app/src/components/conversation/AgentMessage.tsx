@@ -40,12 +40,12 @@ import {
   removeNulls,
 } from "@dust-tt/types";
 import { AgentMessageActions } from "@extension/components/conversation/AgentMessageActions";
-import type { MarkdownCitation } from "@extension/components/conversation/MarkdownCitation";
 import {
   CitationsContext,
   CiteBlock,
   getCiteDirective,
 } from "@extension/components/markdown/CiteBlock";
+import type { MarkdownCitation } from "@extension/components/markdown/MarkdownCitation";
 import {
   MentionBlock,
   mentionDirective,
