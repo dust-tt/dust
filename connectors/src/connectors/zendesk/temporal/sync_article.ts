@@ -56,7 +56,7 @@ export async function syncArticle({
     await articleInDb.update({
       createdAt: createdAtDate,
       updatedAt: updatedAtDate,
-      categoryId: category.id, // an article can be moved from one category to another, which does not apply to brands
+      categoryId: category.categoryId, // an article can be moved from one category to another, which does not apply to brands
       name: article.name,
       url: article.url,
     });
