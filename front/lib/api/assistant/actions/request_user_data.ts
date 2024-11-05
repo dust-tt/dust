@@ -13,7 +13,7 @@ import type {
 import { BaseAction, Ok } from "@dust-tt/types";
 import { commandOptions } from "redis";
 
-import { DEFAULT_request_user_data_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
+import { DEFAULT_REQUEST_USER_DATA_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { getRedisClient } from "@app/lib/api/redis";
@@ -56,7 +56,7 @@ export class RequestUserDataAction extends BaseAction {
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName ?? DEFAULT_request_user_data_ACTION_NAME,
+      name: this.functionCallName ?? DEFAULT_REQUEST_USER_DATA_ACTION_NAME,
       arguments: "{}",
     };
   }
@@ -71,7 +71,7 @@ export class RequestUserDataAction extends BaseAction {
 
     return {
       role: "function" as const,
-      name: this.functionCallName ?? DEFAULT_request_user_data_ACTION_NAME,
+      name: this.functionCallName ?? DEFAULT_REQUEST_USER_DATA_ACTION_NAME,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };
@@ -124,7 +124,7 @@ export class RequestUserDataConfigurationServerRunner extends BaseActionConfigur
     const owner = auth.workspace();
     if (!owner) {
       throw new Error(
-        "Unexpected unauthenticated call to `run` for jit action"
+        "Unexpected unauthenticated call to `run` for request_user_data action"
       );
     }
 
@@ -139,7 +139,7 @@ export class RequestUserDataConfigurationServerRunner extends BaseActionConfigur
 
     const requestedData = rawInputs.requested_data as string[];
 
-    const jitAction = new RequestUserDataAction({
+    const requestUserDataAction = new RequestUserDataAction({
       id: action.id,
       agentMessageId: agentMessage.agentMessageId,
       outputs: null,
@@ -155,7 +155,7 @@ export class RequestUserDataConfigurationServerRunner extends BaseActionConfigur
       created: Date.now(),
       configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,
-      action: jitAction,
+      action: requestUserDataAction,
     };
 
     try {
@@ -171,14 +171,14 @@ export class RequestUserDataConfigurationServerRunner extends BaseActionConfigur
           m.messages.flatMap((m) => JSON.parse(m.message.payload).outputs)
         );
 
-        jitAction.outputs = outputs;
+        requestUserDataAction.outputs = outputs;
 
         yield {
           type: "request_user_data_success",
           created: Date.now(),
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
-          action: jitAction,
+          action: requestUserDataAction,
         };
       }
     } catch (error) {
