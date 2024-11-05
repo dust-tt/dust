@@ -813,24 +813,25 @@ export class DustAPI {
     // body is already consumed by response.json() if used otherwise).
     const text = await res.value.response.text();
 
-    try {
-      const json = schema.parse(JSON.parse(text)) as z.infer<T>;
-      return new Ok(json);
-    } catch (e) {
-      try {
-        // Expected error format
-        const err: APIError = APIErrorSchema.parse(JSON.parse(text));
-        return new Err(err);
-      } catch (e) {
-        // Unexpected error format
+    const r = schema.safeParse(JSON.parse(text));
+    if (r.success) {
+      return new Ok(r.data as z.infer<T>);
+    } else {
+      // We couldn't parse the response directly, maybe it's an error
+      const rErr = APIErrorSchema.safeParse(JSON.parse(text));
+      if (rErr.success) {
+        // Successfully parsed an error
+        return new Err(rErr.data);
+      } else {
+        // Unexpected response format (neither an error nor a valid response)
         const err: APIError = {
           type: "unexpected_response_format",
-          message: `Unexpected response format from DustAPI calling ${res.value.response.url} : ${e}`,
+          message: `Unexpected response format from DustAPI calling ${res.value.response.url} : ${r.error.message}`,
         };
         this._logger.error(
           {
             dustError: err,
-            parseError: e,
+            parseError: r.error.message,
             rawText: text,
             status: res.value.response.status,
             url: res.value.response.url,
