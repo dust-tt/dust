@@ -2,7 +2,6 @@ import {
   Button,
   CloudArrowDownIcon,
   HistoryIcon,
-  Page,
   Tooltip,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -14,7 +13,7 @@ import type {
 import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
 import { ReachedLimitPopup } from "@extension/components/conversation/ReachedLimitPopup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
-import { FixedAssistantInputBar } from "@extension/components/input_bar/InputBar";
+import { AssistantInputBar } from "@extension/components/input_bar/InputBar";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import {
@@ -185,9 +184,16 @@ export function ConversationContainer({
 
   return (
     <>
-      <div className="flex items-center justify-between pb-2">
-        <Page.SectionHeader title={`Hi ${user.firstName},`} />
-        <div className="space-x-1">
+      {activeConversationId && (
+        <ConversationViewer
+          conversationId={activeConversationId}
+          owner={owner}
+          user={user}
+          onStickyMentionsChange={onStickyMentionsChange}
+        />
+      )}
+      <div className="sticky bottom-0 z-20 flex flex-col max-h-screen w-full max-w-4xl sm:pb-8">
+        <div className="flex justify-end space-x-1 pb-2">
           {!activeConversationId && (
             <Tooltip
               label={
@@ -201,35 +207,29 @@ export function ConversationContainer({
                   variant="outline"
                   onClick={handleIncludeCurrentTab}
                   disabled={tabContentToInclude !== null}
-                  size="xs"
                 />
               }
             />
           )}
-          <Button
-            icon={HistoryIcon}
-            variant="outline"
-            onClick={() => navigate("/conversations")}
-            size="xs"
+          <Tooltip
+            label="View all conversations"
+            trigger={
+              <Button
+                icon={HistoryIcon}
+                variant="outline"
+                onClick={() => navigate("/conversations")}
+              />
+            }
           />
         </div>
-      </div>
-      {activeConversationId && (
-        <ConversationViewer
-          conversationId={activeConversationId}
+        <AssistantInputBar
           owner={owner}
-          user={user}
-          onStickyMentionsChange={onStickyMentionsChange}
+          onSubmit={
+            activeConversationId ? handlePostMessage : handlePostConversation
+          }
+          stickyMentions={stickyMentions}
         />
-      )}
-      <FixedAssistantInputBar
-        owner={owner}
-        onSubmit={
-          activeConversationId ? handlePostMessage : handlePostConversation
-        }
-        stickyMentions={stickyMentions}
-      />
-
+      </div>
       <ReachedLimitPopup
         isOpened={planLimitReached}
         onClose={() => setPlanLimitReached(false)}
