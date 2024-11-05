@@ -1,3 +1,4 @@
+import { logout } from "@extension/lib/auth";
 import { getAccessToken } from "@extension/lib/storage";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
@@ -106,17 +107,32 @@ export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(
 }
 
 const resHandler = async (res: Response) => {
-  if (res.status >= 300) {
-    const errorText = await res.text();
-    console.error(
-      "Error returned by the front API: ",
-      res.status,
-      res.headers,
-      errorText
-    );
-    throw new Error(errorText);
+  if (res.status < 300) {
+    return res.json();
   }
-  return res.json();
+
+  let errorText;
+
+  try {
+    const resJson = await res.json();
+    errorText = resJson.error?.message;
+
+    if (errorText.includes("User not found")) {
+      errorText = "User not found, logging out.";
+      await logout();
+    }
+  } catch (e) {
+    console.error("Error parsing response: ", e);
+    errorText = await res.text();
+  }
+
+  console.error(
+    "Error returned by the front API: ",
+    res.status,
+    res.headers,
+    errorText
+  );
+  throw new Error(errorText);
 };
 
 export const fetcher = async (...args: Parameters<typeof fetch>) => {
