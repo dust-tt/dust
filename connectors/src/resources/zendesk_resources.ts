@@ -215,8 +215,10 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     const brands = await ZendeskBrand.findAll({
       where: {
         connectorId,
-        helpCenterPermission: "read",
-        ticketsPermission: "read",
+        [Op.or]: [
+          { helpCenterPermission: "read" },
+          { ticketsPermission: "read" },
+        ],
       },
     });
     return brands.map((brand) => new this(this.model, brand.get()));

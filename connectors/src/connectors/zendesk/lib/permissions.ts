@@ -66,7 +66,9 @@ export async function retrieveSelectedNodes({
   });
 
   const helpCenterNodes: ContentNode[] = brands
-    .filter((brand) => brand.hasHelpCenter)
+    .filter(
+      (brand) => brand.hasHelpCenter && brand.helpCenterPermission === "read"
+    )
     .map((brand) => brand.getHelpCenterContentNode({ connectorId }));
 
   const categories = await ZendeskCategoryResource.fetchAllReadOnly({
@@ -75,9 +77,9 @@ export async function retrieveSelectedNodes({
   const categoriesNodes: ContentNode[] = categories.map((category) =>
     category.toContentNode({ connectorId })
   );
-  const ticketNodes: ContentNode[] = brands.map((brand) =>
-    brand.getTicketsContentNode({ connectorId })
-  );
+  const ticketNodes: ContentNode[] = brands
+    .filter((brand) => brand.ticketsPermission === "read")
+    .map((brand) => brand.getTicketsContentNode({ connectorId }));
 
   return [
     ...brandNodes,
