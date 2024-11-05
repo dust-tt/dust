@@ -52,17 +52,11 @@ export async function retrieveSelectedNodes({
     )
     .map((brand) => brand.getHelpCenterContentNode({ connectorId }));
 
-  const categories = await ZendeskCategoryResource.fetchAllReadOnly({
-    connectorId,
-  });
-  const categoriesNodes: ContentNode[] = categories.map((category) =>
-    category.toContentNode({ connectorId })
-  );
   const ticketNodes: ContentNode[] = brands
     .filter((brand) => brand.ticketsPermission === "read")
     .map((brand) => brand.getTicketsContentNode({ connectorId }));
 
-  return [...helpCenterNodes, ...categoriesNodes, ...ticketNodes];
+  return [...helpCenterNodes, ...ticketNodes];
 }
 
 export async function retrieveChildrenNodes({
