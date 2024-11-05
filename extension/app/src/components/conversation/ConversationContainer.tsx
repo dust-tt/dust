@@ -23,6 +23,7 @@ import {
   postMessage,
   updateConversationWithOptimisticData,
 } from "@extension/lib/conversation";
+import { getRandomGreetingForName } from "@extension/lib/greetings";
 import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import type { StoredUser } from "@extension/lib/storage";
 import { useCallback, useContext, useEffect, useState } from "react";
@@ -183,6 +184,11 @@ export function ConversationContainer({
     [setStickyMentions]
   );
 
+  const [greeting, setGreeting] = useState<string>("");
+  useEffect(() => {
+    setGreeting(getRandomGreetingForName(user.firstName));
+  }, [user]);
+
   return (
     <>
       {activeConversationId && (
@@ -194,10 +200,13 @@ export function ConversationContainer({
         />
       )}
       <div className="sticky bottom-0 z-20 flex flex-col max-h-screen w-full max-w-4xl pb-4">
-        <div className="flex justify-between items-end space-x-1 pb-2">
-          <Page.SectionHeader title={`Hi ${user.firstName},`} />
-          <div>
-            {!activeConversationId && (
+        {!activeConversationId ? (
+          <div className="flex justify-between items-end pb-2">
+            <div>
+              <Page.Header title={greeting} />
+              <Page.SectionHeader title="Start a conversation" />
+            </div>
+            <div className="flex space-x-1">
               <Tooltip
                 label={
                   tabContentToInclude
@@ -213,19 +222,14 @@ export function ConversationContainer({
                   />
                 }
               />
-            )}
-            <Tooltip
-              label="View all conversations"
-              trigger={
-                <Button
-                  icon={HistoryIcon}
-                  variant="outline"
-                  onClick={() => navigate("/conversations")}
-                />
-              }
-            />
+              <ConversationHistory />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex justify-end items-end pb-2">
+            <ConversationHistory />
+          </div>
+        )}
         <AssistantInputBar
           owner={owner}
           onSubmit={
@@ -242,3 +246,19 @@ export function ConversationContainer({
     </>
   );
 }
+
+const ConversationHistory = () => {
+  const navigate = useNavigate();
+  return (
+    <Tooltip
+      label="View all conversations"
+      trigger={
+        <Button
+          icon={HistoryIcon}
+          variant="outline"
+          onClick={() => navigate("/conversations")}
+        />
+      }
+    />
+  );
+};
