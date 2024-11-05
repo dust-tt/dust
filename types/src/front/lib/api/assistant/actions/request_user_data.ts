@@ -9,6 +9,17 @@ export type RequestUserDataParamsEvent = {
   action: RequestUserDataActionType;
 };
 
+export type RequestUserDataErrorEvent = {
+  type: "request_user_data_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
 export type RequestUserDataSuccessEvent = {
   type: "request_user_data_success";
   created: number;

@@ -3,6 +3,7 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
+  RequestUserDataErrorEvent,
   RequestUserDataParamsEvent,
   RequestUserDataSuccessEvent,
   Result,
@@ -12,6 +13,7 @@ import type {
   RequestUserDataActionOutputType,
   RequestUserDataConfigurationType,
 } from "@dust-tt/types/dist/front/assistant/actions/jit";
+import { commandOptions } from "redis";
 
 import { DEFAULT_request_user_data_ACTION_NAME } from "@app/lib/api/assistant/actions/names";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
@@ -34,7 +36,7 @@ interface RequestUserDataActionBlob {
 
 export class RequestUserDataAction extends BaseAction {
   readonly agentMessageId: ModelId;
-  readonly outputs: RequestUserDataActionOutputType[] | null;
+  public outputs: RequestUserDataActionOutputType[] | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
@@ -54,7 +56,6 @@ export class RequestUserDataAction extends BaseAction {
   }
 
   renderForFunctionCall(): FunctionCallType {
-    console.log("--------------- renderForFunctionCall");
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
       name: this.functionCallName ?? DEFAULT_request_user_data_ACTION_NAME,
@@ -63,7 +64,6 @@ export class RequestUserDataAction extends BaseAction {
   }
 
   renderForMultiActionsModel(): FunctionMessageTypeModel {
-    console.log("--------------- renderForMultiActionsModel");
     let content = "BROWSE OUTPUT:\n";
     if (this.outputs === null) {
       content += "The request data failed.\n";
@@ -86,7 +86,6 @@ export class RequestUserDataConfigurationServerRunner extends BaseActionConfigur
     auth: Authenticator,
     { name, description }: { name: string; description: string | null }
   ): Promise<Result<AgentActionSpecification, Error>> {
-    console.log("--------------- buildSpecification");
     const owner = auth.workspace();
     if (!owner) {
       throw new Error("Unexpected unauthenticated call to `runRetrieval`");
@@ -119,8 +118,11 @@ export class RequestUserDataConfigurationServerRunner extends BaseActionConfigur
       functionCallId,
       rawInputs,
     }: BaseActionRunParams
-  ): AsyncGenerator<RequestUserDataParamsEvent | RequestUserDataSuccessEvent> {
-    console.log("--------------- run");
+  ): AsyncGenerator<
+    | RequestUserDataParamsEvent
+    | RequestUserDataSuccessEvent
+    | RequestUserDataErrorEvent
+  > {
     const owner = auth.workspace();
     if (!owner) {
       throw new Error(
@@ -158,23 +160,41 @@ export class RequestUserDataConfigurationServerRunner extends BaseActionConfigur
       action: jitAction,
     };
 
-    const redis = await getRedisClient({ origin: "request_user_data" });
-    const message = redis.xRead(
-      {
-        key: `request_data_action_${action.id}`,
-        id: "*",
-      },
-      { COUNT: 1, BLOCK: 60 * 1000 }
-    );
+    try {
+      const redis = await getRedisClient({ origin: "request_user_data" });
+      const message = await redis.xRead(
+        commandOptions({ isolated: true }), // Use isolated connection
+        { key: `request_data_action_${action.id}`, id: "0-0" }, // Start from beginning
+        { COUNT: 32, BLOCK: 10 * 1000 } // Block for 60 seconds
+      );
 
-    console.log("===========================================", message);
+      if (message && message.length > 0) {
+        const outputs = message.flatMap((m) =>
+          m.messages.flatMap((m) => JSON.parse(m.message.payload).outputs)
+        );
 
-    yield {
-      type: "request_user_data_success",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      action: jitAction,
-    };
+        jitAction.outputs = outputs;
+
+        yield {
+          type: "request_user_data_success",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          action: jitAction,
+        };
+      }
+    } catch (error) {
+      console.error("Error while requesting data from user", error);
+      yield {
+        type: "request_user_data_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "request_user_data_error",
+          message: "Error while requesting data from user",
+        },
+      };
+    }
   }
 }

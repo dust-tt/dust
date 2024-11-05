@@ -351,7 +351,6 @@ export async function retryAgentMessageWithPubSub(
               case "agent_generation_cancelled":
               case "agent_message_success": {
                 const pubsubChannel = getMessageChannelId(event.messageId);
-                console.log("==============", pubsubChannel, event);
                 await redis.xAdd(pubsubChannel, "*", {
                   payload: JSON.stringify(event),
                 });

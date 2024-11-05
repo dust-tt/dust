@@ -31,12 +31,12 @@ async function handler(
       },
     });
   }
-
   switch (req.method) {
     case "POST":
       const redis = await getRedisClient({ origin: "request_user_data" });
-      const message = JSON.parse(req.body);
-      await redis.xAdd(`request_data_action_${actionId}`, "*", message);
+      await redis.xAdd(`request_data_action_${actionId}`, "*", {
+        payload: JSON.stringify(req.body),
+      });
       res.status(200).end();
       return;
 

@@ -13,6 +13,7 @@ import {
   AgentProcessAction,
   AgentProcessConfiguration,
 } from "@app/lib/models/assistant/actions/process";
+import { AgentRequestUserDataAction } from "@app/lib/models/assistant/actions/request_user_data";
 import {
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
@@ -154,6 +155,7 @@ async function main() {
   await AgentWebsearchAction.sync({ alter: true });
   await AgentBrowseAction.sync({ alter: true });
   await AgentVisualizationAction.sync({ alter: true });
+  await AgentRequestUserDataAction.sync({ alter: true });
   await AgentMessageContent.sync({ alter: true });
 
   await RetrievalDocument.sync({ alter: true });
