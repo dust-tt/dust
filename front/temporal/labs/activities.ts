@@ -21,7 +21,7 @@ import { default as apiConfig } from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import mainLogger from "@app/logger/logger";
@@ -271,14 +271,37 @@ export async function processTranscriptActivity(
   // If storing transcripts is active
   if (transcriptsConfiguration.dataSourceViewId) {
     localLogger.info(
-      {},
+      {
+        datasourceViewId: transcriptsConfiguration.dataSourceViewId,
+      },
       "[processTranscriptActivity] Storing transcript to Datasource."
     );
 
-    const dataSource = await DataSourceResource.fetchByModelIdWithAuth(
+    const [datasourceView] = await DataSourceViewResource.fetchByModelIds(
       auth,
-      transcriptsConfiguration.dataSourceViewId
+      [transcriptsConfiguration.dataSourceViewId]
     );
+
+    if (!datasourceView) {
+      localLogger.error(
+        {},
+        "[processTranscriptActivity] No datasource view found. Stopping."
+      );
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      return;
+    }
+
+    const dataSource = datasourceView.dataSource;
+
+    if (!dataSource) {
+      localLogger.error(
+        {},
+        "[processTranscriptActivity] No datasource found. Stopping."
+      );
+      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+      return;
+    }
+
     const credentials = dustManagedCredentials();
 
     const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), localLogger);
