@@ -25,6 +25,7 @@ import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
+  isRequestUserDataConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
@@ -280,7 +281,8 @@ function renderOtherAction(
     return null;
   } else if (
     !isRetrievalConfiguration(action) &&
-    !isTablesQueryConfiguration(action)
+    !isTablesQueryConfiguration(action) &&
+    !isRequestUserDataConfiguration(action)
   ) {
     return assertNever(action);
   }

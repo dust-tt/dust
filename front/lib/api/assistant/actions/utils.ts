@@ -182,6 +182,7 @@ export function getCitationsCount({
     case "dust_app_run_configuration":
     case "process_configuration":
     case "browse_configuration":
+    case "request_user_data_configuration":
       return 0;
     default:
       assertNever(action);

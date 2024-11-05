@@ -5,6 +5,7 @@ import { TablesQueryConfigurationType } from "../../front/assistant/actions/tabl
 import { ModelIdType, ModelProviderIdType } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
 import { BrowseConfigurationType } from "./actions/browse";
+import { RequestUserDataConfigurationType } from "./actions/request_user_data";
 import { WebsearchConfigurationType } from "./actions/websearch";
 
 /**
@@ -20,7 +21,8 @@ export type AgentActionConfigurationType =
   | DustAppRunConfigurationType
   | ProcessConfigurationType
   | WebsearchConfigurationType
-  | BrowseConfigurationType;
+  | BrowseConfigurationType
+  | RequestUserDataConfigurationType;
 
 type UnsavedConfiguration<T> = Omit<T, "id" | "sId">;
 

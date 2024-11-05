@@ -197,6 +197,7 @@ makeScript({}, async ({ execute }) => {
             return AgentProcessConfiguration;
           case "websearch_configuration":
             return AgentWebsearchConfiguration;
+          case "request_user_data_configuration":
           case "dust_app_run_configuration":
             throw new Error("Unreachable");
           default:

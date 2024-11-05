@@ -21,6 +21,10 @@ import {
   TemplateAgentConfigurationType,
 } from "../agent";
 import { BrowseActionType, BrowseConfigurationType } from "./browse";
+import {
+  RequestUserDataActionType,
+  RequestUserDataConfigurationType,
+} from "./request_user_data";
 import { WebsearchActionType, WebsearchConfigurationType } from "./websearch";
 
 export function isTablesQueryConfiguration(
@@ -129,6 +133,23 @@ export function isBrowseActionType(
   arg: AgentActionType
 ): arg is BrowseActionType {
   return arg.type === "browse_action";
+}
+
+export function isRequestUserDataConfiguration(
+  arg: unknown
+): arg is RequestUserDataConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "request_user_data_configuration"
+  );
+}
+
+export function isRequestUserDataActionType(
+  arg: AgentActionType
+): arg is RequestUserDataActionType {
+  return arg.type === "request_user_data_action";
 }
 
 export function throwIfInvalidAgentConfiguration(

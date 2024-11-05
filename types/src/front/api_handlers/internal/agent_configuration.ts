@@ -99,6 +99,10 @@ const BrowseActionConfigurationSchema = t.type({
   type: t.literal("browse_configuration"),
 });
 
+const RequestUserDataActionConfigurationSchema = t.type({
+  type: t.literal("request_user_data_configuration"),
+});
+
 const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
   dataSources: t.array(
@@ -161,6 +165,7 @@ const ActionConfigurationSchema = t.intersection([
     ProcessActionConfigurationSchema,
     WebsearchActionConfigurationSchema,
     BrowseActionConfigurationSchema,
+    RequestUserDataActionConfigurationSchema,
   ]),
   requiredMultiActionsCommonFields,
 ]);

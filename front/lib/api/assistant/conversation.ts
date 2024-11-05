@@ -92,6 +92,17 @@ import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
+const jitActions = [
+  {
+    id: -1,
+    sId: "jit",
+    type: "request_user_data_configuration" as const,
+    name: "brower_context",
+    description: "This will return contextual information about the browser",
+    available_data: ["page_content", "page_title", "available_tabs"],
+  },
+];
+
 /**
  * Conversation Creation, update and deletion
  */
@@ -971,7 +982,6 @@ export async function* postUserMessage(
       message: agentMessage,
     };
   }
-
   const eventStreamGenerators = agentMessages.map((agentMessage, i) => {
     // We stitch the conversation to add the user message and only that agent message
     // so that it can be used to prompt the agent.
@@ -983,7 +993,8 @@ export async function* postUserMessage(
         content: [...conversation.content, [userMessage], [agentMessage]],
       },
       userMessage,
-      agentMessage
+      agentMessage,
+      jitActions
     );
 
     return streamRunAgentEvents(
@@ -1486,7 +1497,8 @@ export async function* editUserMessage(
         content: [...conversation.content, [userMessage], [agentMessage]],
       },
       userMessage,
-      agentMessage
+      agentMessage,
+      jitActions
     );
 
     return streamRunAgentEvents(
@@ -1735,7 +1747,8 @@ export async function* retryAgentMessage(
       content: newContent,
     },
     userMessage,
-    agentMessage
+    agentMessage,
+    jitActions
   );
 
   yield* streamRunAgentEvents(auth, eventStream, agentMessage, agentMessageRow);
@@ -1850,7 +1863,6 @@ async function* streamRunAgentEvents(
     };
     return;
   }
-
   for await (const event of eventStream) {
     switch (event.type) {
       case "agent_error":
@@ -1908,6 +1920,7 @@ async function* streamRunAgentEvents(
       case "process_params":
       case "websearch_params":
       case "browse_params":
+      case "request_user_data_params":
       case "generation_tokens":
         yield event;
         break;

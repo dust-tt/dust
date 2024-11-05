@@ -190,6 +190,7 @@ async function handleUserMessageEvents(
             case "process_params":
             case "websearch_params":
             case "browse_params":
+            case "request_user_data_params":
             case "agent_error":
             case "agent_action_success":
             case "generation_tokens":
@@ -343,12 +344,14 @@ export async function retryAgentMessageWithPubSub(
               case "process_params":
               case "websearch_params":
               case "browse_params":
+              case "request_user_data_params":
               case "agent_error":
               case "agent_action_success":
               case "generation_tokens":
               case "agent_generation_cancelled":
               case "agent_message_success": {
                 const pubsubChannel = getMessageChannelId(event.messageId);
+                console.log("==============", pubsubChannel, event);
                 await redis.xAdd(pubsubChannel, "*", {
                   payload: JSON.stringify(event),
                 });

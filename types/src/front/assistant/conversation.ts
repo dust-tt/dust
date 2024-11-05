@@ -7,6 +7,7 @@ import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
 import { ContentFragmentType } from "../content_fragment";
 import { BrowseActionType } from "./actions/browse";
+import { RequestUserDataActionType } from "./actions/request_user_data";
 import { WebsearchActionType } from "./actions/websearch";
 
 /**
@@ -107,7 +108,8 @@ export type AgentActionType =
   | TablesQueryActionType
   | ProcessActionType
   | WebsearchActionType
-  | BrowseActionType;
+  | BrowseActionType
+  | RequestUserDataActionType;
 
 export type AgentMessageStatus =
   | "created"
@@ -122,6 +124,7 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
   browse_action: "Browsing page",
+  request_user_data_action: "Running RequestUserData action",
 };
 
 /**

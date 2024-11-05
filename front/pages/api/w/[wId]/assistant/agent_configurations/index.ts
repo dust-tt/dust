@@ -435,6 +435,8 @@ export async function createOrUpgradeAgentConfiguration({
         return res;
       }
       actionConfigs.push(res.value);
+    } else if (action.type === "request_user_data_configuration") {
+      //
     } else {
       assertNever(action);
     }

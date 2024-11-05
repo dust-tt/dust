@@ -102,6 +102,37 @@ interface AgentMessageProps {
   size: ConversationMessageSizeType;
 }
 
+async function handleRequestUserDataParams(
+  owner: LightWorkspaceType,
+  conversationId: string,
+  actionId: string,
+  requestedData: string[]
+) {
+  console.log(
+    "======handle request params=============================== ",
+    requestedData
+  );
+  const url = `${process.env.DUST_DOMAIN}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/actions/${actionId}/requested_data`;
+
+  const responses: Record<string, string> = {
+    page_content: "Lots of content",
+    page_title: "Bazinga",
+    available_tabs: "tab1, tab2, tab3",
+  };
+
+  const outputs = requestedData.map((key) => {
+    return { name: key, value: responses[key] };
+  });
+
+  await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ responses }),
+  });
+}
+
 /**
  *
  * @param isInModal is the conversation happening in a side modal, i.e. when
@@ -205,6 +236,17 @@ export function AgentMessage({
       case "process_params":
       case "websearch_params":
       case "browse_params":
+        setStreamedAgentMessage((m) => {
+          return updateMessageWithAction(m, event.action);
+        });
+        break;
+      case "request_user_data_params":
+        void handleRequestUserDataParams(
+          owner,
+          conversationId,
+          `${event.action.id}`,
+          event.action.params.requested_data
+        );
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });

@@ -73,7 +73,6 @@ export async function renderConversationForModelMultiActions({
 
     if (isAgentMessageType(m)) {
       const actions = removeNulls(m.actions);
-
       // This array is 2D, because we can have multiple calls per agent message (parallel calls).
 
       const steps = [] as Array<{

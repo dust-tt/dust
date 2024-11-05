@@ -24,6 +24,7 @@ import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
+  isRequestUserDataConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
@@ -61,7 +62,8 @@ export async function* runAgent(
   configuration: LightAgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
-  agentMessage: AgentMessageType
+  agentMessage: AgentMessageType,
+  jitActions: AgentActionConfigurationType[] = []
 ): AsyncGenerator<
   | AgentErrorEvent
   | AgentActionSpecificEvent
@@ -88,7 +90,10 @@ export async function* runAgent(
 
   const stream = runMultiActionsAgentLoop(
     auth,
-    fullConfiguration,
+    {
+      ...fullConfiguration,
+      actions: [...fullConfiguration.actions, ...jitActions],
+    },
     conversation,
     userMessage,
     agentMessage
@@ -226,7 +231,6 @@ async function* runMultiActionsAgentLoop(
               stepActionIndex: j,
             });
           }
-
           break;
 
         case "agent_message_content":
@@ -755,7 +759,6 @@ export async function* runMultiActionsAgent(
       processedContent: contentParser.getContent() ?? "",
     } satisfies AgentContentEvent;
   }
-
   yield {
     type: "agent_actions",
     runId: await dustRunId,
@@ -1114,6 +1117,41 @@ async function* runAction(
           };
           return;
         case "browse_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.actions.push(event.action);
+          break;
+
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (isRequestUserDataConfiguration(actionConfiguration)) {
+    const eventStream = getRunnerForActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "request_user_data_params":
+          yield event;
+          break;
+        case "request_user_data_success":
           yield {
             type: "agent_action_success",
             created: event.created,

@@ -22,6 +22,7 @@ import {
 } from "../../../assistant/agent";
 import { BrowseParamsEvent } from "./actions/browse";
 import { ProcessParamsEvent } from "./actions/process";
+import { RequestUserDataParamsEvent } from "./actions/request_user_data";
 import { WebsearchParamsEvent } from "./actions/websearch";
 
 // Event sent when an agent error occured before we have a agent message in the database.
@@ -67,7 +68,8 @@ export type AgentActionSpecificEvent =
   | TablesQueryOutputEvent
   | ProcessParamsEvent
   | WebsearchParamsEvent
-  | BrowseParamsEvent;
+  | BrowseParamsEvent
+  | RequestUserDataParamsEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {

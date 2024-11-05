@@ -3,6 +3,7 @@ import type {
   BrowseConfigurationType,
   DustAppRunConfigurationType,
   ProcessConfigurationType,
+  RequestUserDataConfigurationType,
   RetrievalConfigurationType,
   TablesQueryConfigurationType,
   WebsearchConfigurationType,
@@ -11,6 +12,7 @@ import type {
 import { BrowseConfigurationServerRunner } from "@app/lib/api/assistant/actions/browse";
 import { DustAppRunConfigurationServerRunner } from "@app/lib/api/assistant/actions/dust_app_run";
 import { ProcessConfigurationServerRunner } from "@app/lib/api/assistant/actions/process";
+import { RequestUserDataConfigurationServerRunner } from "@app/lib/api/assistant/actions/request_user_data";
 import { RetrievalConfigurationServerRunner } from "@app/lib/api/assistant/actions/retrieval";
 import { TablesQueryConfigurationServerRunner } from "@app/lib/api/assistant/actions/tables_query";
 import type {
@@ -27,6 +29,7 @@ interface ActionToConfigTypeMap {
   tables_query_configuration: TablesQueryConfigurationType;
   websearch_configuration: WebsearchConfigurationType;
   browse_configuration: BrowseConfigurationType;
+  request_user_data_configuration: RequestUserDataConfigurationType;
 }
 
 interface ActionTypeToClassMap {
@@ -36,6 +39,7 @@ interface ActionTypeToClassMap {
   tables_query_configuration: TablesQueryConfigurationServerRunner;
   websearch_configuration: WebsearchConfigurationServerRunner;
   browse_configuration: BrowseConfigurationServerRunner;
+  request_user_data_configuration: RequestUserDataConfigurationServerRunner;
 }
 
 // Ensure all AgentAction keys are present in ActionToConfigTypeMap.
@@ -78,6 +82,7 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
   websearch_configuration: WebsearchConfigurationServerRunner,
   browse_configuration: BrowseConfigurationServerRunner,
   retrieval_configuration: RetrievalConfigurationServerRunner,
+  request_user_data_configuration: RequestUserDataConfigurationServerRunner,
 } as const;
 
 export function getRunnerForActionConfiguration<K extends keyof CombinedMap>(

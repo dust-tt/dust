@@ -14,6 +14,7 @@ import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
+  isRequestUserDataConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
@@ -105,6 +106,8 @@ async function initializeBuilderAction(
     return getDefaultWebsearchActionConfiguration();
   } else if (isBrowseConfiguration(action)) {
     return null; // Ignore browse actions
+  } else if (isRequestUserDataConfiguration(action)) {
+    return null;
   } else {
     assertNever(action);
   }
