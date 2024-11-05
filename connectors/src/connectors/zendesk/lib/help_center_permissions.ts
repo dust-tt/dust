@@ -71,6 +71,7 @@ export async function allowSyncZendeskHelpCenter({
         connectionId,
         connectorId,
         categoryId: category.id,
+        brandId,
       })
     );
   } catch (e) {
@@ -123,10 +124,12 @@ export async function revokeSyncZendeskHelpCenter({
 export async function allowSyncZendeskCategory({
   connectorId,
   connectionId,
+  brandId,
   categoryId,
 }: {
   connectorId: ModelId;
   connectionId: string;
+  brandId: number;
   categoryId: number;
 }): Promise<ZendeskCategoryResource | null> {
   let category = await ZendeskCategoryResource.fetchByCategoryId({
@@ -145,17 +148,18 @@ export async function allowSyncZendeskCategory({
   });
 
   if (!category) {
+    await changeZendeskClientSubdomain({ client: zendeskApiClient, brandId });
     const { result: fetchedCategory } =
       await zendeskApiClient.helpcenter.categories.show(categoryId);
     if (fetchedCategory) {
       category = await ZendeskCategoryResource.makeNew({
         blob: {
-          connectorId: connectorId,
-          brandId: fetchedCategory.id,
-          name: fetchedCategory.name || "Brand",
-          categoryId: fetchedCategory.id,
+          connectorId,
+          brandId,
+          name: fetchedCategory.name || "Category",
+          categoryId,
           permission: "read",
-          url: fetchedCategory.url,
+          url: fetchedCategory.html_url,
         },
       });
     } else {

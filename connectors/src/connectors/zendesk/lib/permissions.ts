@@ -46,45 +46,17 @@ export async function retrieveSelectedNodes({
   }
 
   const brands = await ZendeskBrandResource.fetchAllReadOnly({ connectorId });
-  const brandNodes: ContentNode[] = brands.map((brand) => {
-    return {
-      provider: connector.type,
-      internalId: getBrandInternalId(connectorId, brand.brandId),
-      parentInternalId: null,
-      type: "folder",
-      title: brand.name,
-      sourceUrl: brand.url,
-      expandable: true,
-      permission:
-        brand.helpCenterPermission === "read" &&
-        brand.ticketsPermission === "read"
-          ? "read"
-          : "none",
-      dustDocumentId: null,
-      lastUpdatedAt: brand.updatedAt.getTime() ?? null,
-    };
-  });
-
   const helpCenterNodes: ContentNode[] = brands
-    .filter((brand) => brand.hasHelpCenter)
+    .filter(
+      (brand) => brand.hasHelpCenter && brand.helpCenterPermission === "read"
+    )
     .map((brand) => brand.getHelpCenterContentNode({ connectorId }));
 
-  const categories = await ZendeskCategoryResource.fetchAllReadOnly({
-    connectorId,
-  });
-  const categoriesNodes: ContentNode[] = categories.map((category) =>
-    category.toContentNode({ connectorId })
-  );
-  const ticketNodes: ContentNode[] = brands.map((brand) =>
-    brand.getTicketsContentNode({ connectorId })
-  );
+  const ticketNodes: ContentNode[] = brands
+    .filter((brand) => brand.ticketsPermission === "read")
+    .map((brand) => brand.getTicketsContentNode({ connectorId }));
 
-  return [
-    ...brandNodes,
-    ...helpCenterNodes,
-    ...categoriesNodes,
-    ...ticketNodes,
-  ];
+  return [...helpCenterNodes, ...ticketNodes];
 }
 
 export async function retrieveChildrenNodes({
@@ -228,7 +200,11 @@ export async function retrieveChildrenNodes({
             );
             return {
               provider: connector.type,
-              internalId: getCategoryInternalId(connectorId, category.id),
+              internalId: getCategoryInternalId(
+                connectorId,
+                objectId,
+                category.id
+              ),
               parentInternalId: parentInternalId,
               type: "folder",
               title: category.name,
@@ -249,7 +225,7 @@ export async function retrieveChildrenNodes({
           const articlesInDb =
             await ZendeskArticleResource.fetchByCategoryIdReadOnly({
               connectorId,
-              categoryId: objectId,
+              categoryId: objectId.categoryId,
             });
           nodes = articlesInDb.map((article) =>
             article.toContentNode({ connectorId })

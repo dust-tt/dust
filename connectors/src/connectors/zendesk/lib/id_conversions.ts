@@ -21,9 +21,10 @@ export function getHelpCenterInternalId(
 
 export function getCategoryInternalId(
   connectorId: ModelId,
+  brandId: number,
   categoryId: number
 ): string {
-  return `zendesk-category-${connectorId}-${categoryId}`;
+  return `zendesk-category-${connectorId}-${brandId}-${categoryId}`;
 }
 
 export function getArticleInternalId(
@@ -60,14 +61,21 @@ export type InternalIdType =
   | "brand"
   | "help-center"
   | "tickets"
-  | "category"
   | "article"
   | "ticket";
 
 export function getIdFromInternalId(
   connectorId: ModelId,
   internalId: string
-): { type: InternalIdType; objectId: number } {
+):
+  | { type: InternalIdType; objectId: number }
+  | {
+      type: "category";
+      objectId: {
+        categoryId: number;
+        brandId: number;
+      };
+    } {
   let objectId = getBrandIdFromInternalId(connectorId, internalId);
   if (objectId) {
     return { type: "brand", objectId };
@@ -80,9 +88,12 @@ export function getIdFromInternalId(
   if (objectId) {
     return { type: "tickets", objectId };
   }
-  objectId = getCategoryIdFromInternalId(connectorId, internalId);
-  if (objectId) {
-    return { type: "category", objectId };
+  const { categoryId, brandId } = getCategoryIdFromInternalId(
+    connectorId,
+    internalId
+  );
+  if (categoryId && brandId) {
+    return { type: "category", objectId: { categoryId, brandId } };
   }
   objectId = getArticleIdFromInternalId(connectorId, internalId);
   if (objectId) {
@@ -119,8 +130,16 @@ function getBrandIdFromHelpCenterId(
 function getCategoryIdFromInternalId(
   connectorId: ModelId,
   internalId: string
-): number | null {
-  return _getIdFromInternal(internalId, `zendesk-category-${connectorId}-`);
+): { categoryId: number | null; brandId: number | null } {
+  const prefix = `zendesk-category-${connectorId}-`;
+  if (!internalId.startsWith(prefix)) {
+    return { categoryId: null, brandId: null };
+  }
+  const [firstId, secondId] = internalId.replace(prefix, "").split("-");
+  if (firstId === undefined || secondId === undefined) {
+    return { categoryId: null, brandId: null };
+  }
+  return { brandId: parseInt(firstId), categoryId: parseInt(secondId) };
 }
 
 function getArticleIdFromInternalId(

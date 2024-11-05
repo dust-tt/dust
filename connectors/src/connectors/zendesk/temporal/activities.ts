@@ -254,10 +254,12 @@ export async function getZendeskCategoriesActivity({
 export async function syncZendeskCategoryActivity({
   connectorId,
   categoryId,
+  brandId,
   currentSyncDateMs,
 }: {
   connectorId: ModelId;
   categoryId: number;
+  brandId: number;
   currentSyncDateMs: number;
 }): Promise<boolean> {
   const connector = await _getZendeskConnectorOrRaise(connectorId);
@@ -281,6 +283,7 @@ export async function syncZendeskCategoryActivity({
     token: accessToken,
     subdomain,
   });
+  await changeZendeskClientSubdomain({ client: zendeskApiClient, brandId });
 
   // if the category is not on Zendesk anymore, we delete it
   const { result: fetchedCategory } =
