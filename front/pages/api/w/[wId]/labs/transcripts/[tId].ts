@@ -136,7 +136,7 @@ async function handler(
 
       const updatedTranscriptsConfiguration =
         await LabsTranscriptsConfigurationResource.fetchByModelId(
-          transcriptsConfigurationId
+          transcriptsConfiguration.id
         );
 
       if (!updatedTranscriptsConfiguration) {
