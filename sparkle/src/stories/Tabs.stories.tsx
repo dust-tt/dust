@@ -9,7 +9,6 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  Tooltip,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -26,9 +25,10 @@ export function TabExample() {
           <TabsTrigger value="account" label="Hello" icon={CommandIcon} />
           <TabsTrigger value="password" label="World" icon={LightbulbIcon} />
           <div className="s-grow" />
-          <Tooltip
-            trigger={<TabsTrigger value="settings" icon={Cog6ToothIcon} />}
-            label="Admin"
+          <TabsTrigger
+            value="settings"
+            icon={Cog6ToothIcon}
+            tooltip="Settings"
           />
         </TabsList>
         <TabsContent value="account">Hello</TabsContent>

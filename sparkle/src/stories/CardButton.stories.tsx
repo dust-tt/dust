@@ -4,10 +4,10 @@ import React, { ComponentType } from "react";
 import {
   BookOpenStrokeIcon,
   BracesStrokeIcon,
+  Button,
   CardButton,
   CommandLineStrokeIcon,
   Icon,
-  IconButton,
   MagnifyingGlassStrokeIcon,
   PlanetStrokeIcon,
   ScanStrokeIcon,
@@ -28,6 +28,31 @@ export const SimpleExample = () => (
       <CardButton>hello</CardButton>
       <CardButton variant="secondary">hello</CardButton>
       <CardButton variant="tertiary">hello</CardButton>
+    </div>
+    <div className="s-flex s-gap-2">
+      <CardButton
+        onClick={() => {
+          alert(`You clicked`);
+        }}
+      >
+        hello
+      </CardButton>
+      <CardButton
+        onClick={() => {
+          alert(`You clicked`);
+        }}
+        variant="secondary"
+      >
+        hello
+      </CardButton>
+      <CardButton
+        onClick={() => {
+          alert(`You clicked`);
+        }}
+        variant="tertiary"
+      >
+        hello
+      </CardButton>
     </div>
   </div>
 );
@@ -90,8 +115,9 @@ export const ActionCard: React.FC = () => (
           <div className="s-flex s-w-full s-gap-1 s-font-medium s-text-element-900">
             <Icon visual={card.icon} size="sm" className="s-text-element-900" />
             <div className="s-w-full">{card.title}</div>
-            <IconButton
+            <Button
               icon={XMarkIcon}
+              className="-s-mr-2 -s-mt-2"
               variant="ghost"
               size="sm"
               onClick={(e) => {

@@ -60,6 +60,7 @@ module.exports = {
         lg: "0 10px 20px rgba(15, 23, 42, 0.12)",
         xl: "0 20px 25px rgba(15, 23, 42, 0.12)",
         "2xl": "0 25px 50px rgba(15, 23, 42, 0.12)",
+        "inner-border": "inset 0px -2px 0px 0px #1E293B",
       },
       zIndex: {
         60: "60",

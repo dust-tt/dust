@@ -1,3 +1,4 @@
+import { cva, VariantProps } from "class-variance-authority";
 import React, { ReactNode } from "react";
 import type { UrlObject } from "url";
 
@@ -6,16 +7,34 @@ import {
   SparkleContext,
   SparkleContextLinkType,
 } from "@sparkle/context";
-import { classNames } from "@sparkle/lib/utils";
 
-interface CardButtonProps {
+const CARD_BUTTON_VARIANTS = ["primary", "secondary", "tertiary"] as const;
+
+type CardButtonVariantType = (typeof CARD_BUTTON_VARIANTS)[number];
+
+const CARD_BUTTON_SIZES = ["sm", "md", "lg"] as const;
+
+type CardButtonSizeType = (typeof CARD_BUTTON_SIZES)[number];
+
+const variantClasses: Record<CardButtonVariantType, string> = {
+  primary:
+    "s-bg-structure-50 s-border s-border-structure-200 hover:s-bg-white hover:s-border-structure-100 active:s-bg-structure-100 active:s-border-structure-200 s-cursor-pointer",
+  secondary:
+    "s-bg-structure-0 s-border s-border-structure-100 hover:s-bg-structure-50 hover:s-border-structure-200 active:s-bg-structure-100 active:s-border-structure-300 s-cursor-pointer",
+  tertiary:
+    "s-border-structure-100/0 s-border s-border-structure-0 hover:s-bg-structure-50 hover:s-border-structure-100 active:s-bg-structure-100 active:s-border-structure-200 s-cursor-pointer",
+};
+
+const sizeVariants: Record<CardButtonSizeType, string> = {
+  sm: "s-p-3 s-rounded-xl",
+  md: "s-p-4 s-rounded-2xl",
+  lg: "s-p-5 s-rounded-3xl",
+};
+
+interface CardButtonProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof cardButtonVariants> {
   children: ReactNode;
-  variant?: "primary" | "secondary" | "tertiary";
-  size?: "sm" | "md" | "lg";
-  className?: string;
-  onClick?: () => void;
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
   href?: string | UrlObject;
   target?: string;
   rel?: string;
@@ -23,32 +42,25 @@ interface CardButtonProps {
   shallow?: boolean;
 }
 
-const variantClasses = {
-  primary: "s-bg-structure-50 s-border s-border-structure-200",
-  secondary: "s-bg-structure-0 s-border s-border-structure-100",
-  tertiary: "s-border-structure-100/0 s-border s-border-structure-0",
-};
-
-const hoverVariantClasses = {
-  primary:
-    "hover:s-bg-white hover:s-border-structure-100 active:s-bg-structure-100 active:s-border-structure-200 s-cursor-pointer",
-  secondary:
-    "hover:s-bg-structure-50 hover:s-border-structure-200 active:s-bg-structure-100 active:s-border-structure-300 s-cursor-pointer",
-  tertiary:
-    "hover:s-bg-structure-50 hover:s-border-structure-100 active:s-bg-structure-100 active:s-border-structure-200 s-cursor-pointer",
-};
-
-const sizeClasses = {
-  sm: "s-p-3 s-rounded-xl",
-  md: "s-p-4 s-rounded-2xl",
-  lg: "s-p-5 s-rounded-3xl",
-};
+const cardButtonVariants = cva(
+  "s-flex s-group s-transition s-duration-200 s-overflow-hidden",
+  {
+    variants: {
+      variant: variantClasses,
+      size: sizeVariants,
+    },
+    defaultVariants: {
+      variant: "primary",
+      size: "md",
+    },
+  }
+);
 
 export function CardButton({
   children,
-  variant = "primary",
-  size = "md",
-  className = "",
+  variant,
+  size,
+  className,
   onClick,
   onMouseEnter,
   onMouseLeave,
@@ -59,21 +71,13 @@ export function CardButton({
   shallow,
 }: CardButtonProps) {
   const { components } = React.useContext(SparkleContext);
-
   const Link: SparkleContextLinkType = href ? components.link : noHrefLink;
 
-  const commonClasses = classNames(
-    "s-flex s-group s-transition s-duration-200 s-overflow-hidden",
-    onClick ? hoverVariantClasses[variant] : "",
-    variantClasses[variant],
-    sizeClasses[size],
-    className
-  );
   if (href) {
     return (
       <Link
         href={href}
-        className={commonClasses}
+        className={cardButtonVariants({ variant, size, className })}
         replace={replace}
         shallow={shallow}
         target={target}
@@ -82,16 +86,16 @@ export function CardButton({
         {children}
       </Link>
     );
-  } else {
-    return (
-      <div
-        className={commonClasses}
-        onClick={onClick}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-      >
-        {children}
-      </div>
-    );
   }
+
+  return (
+    <div
+      className={cardButtonVariants({ variant, size, className })}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      {children}
+    </div>
+  );
 }
