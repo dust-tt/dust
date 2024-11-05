@@ -14,6 +14,7 @@ import type {
   UserType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import { getAccessToken, getStoredUser } from "@extension/lib/storage";
 
 export function createPlaceholderUserMessage({
@@ -264,4 +265,39 @@ export async function postMessage({
   }
 
   return new Ok(await mRes.json());
+}
+
+export async function handleRequestUserDataParams(
+  owner: LightWorkspaceType,
+  conversationId: string,
+  actionId: string,
+  requestedData: string[]
+) {
+  const token = await getAccessToken();
+  const url = `${process.env.DUST_DOMAIN}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/actions/${actionId}/requested_data`;
+
+  if (!token) {
+    throw new Error("No access token found");
+  }
+
+  const res = await sendGetActiveTabMessage();
+
+  const responses: Record<string, string> = {
+    page_content: res.content,
+    page_url: res.url,
+  };
+
+  const outputs = requestedData.map((key) => {
+    return { name: key, value: responses[key] };
+  });
+
+  const body = JSON.stringify({ outputs });
+  await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body,
+  });
 }

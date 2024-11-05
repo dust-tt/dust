@@ -11,6 +11,18 @@ import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 
+// TODO Move this to request body
+const jitActions = [
+  {
+    id: -1,
+    sId: "jit",
+    type: "request_user_data_configuration" as const,
+    name: "brower_context",
+    description: "This will return contextual information about the browser",
+    available_data: ["page_content", "page_url"],
+  },
+];
+
 /**
  * @swagger
  * /api/v1/w/{wId}/assistant/conversations/{cId}/messages:
@@ -114,6 +126,7 @@ async function handler(
             ...context,
             origin: context.origin ?? "api",
           },
+          jitActions,
         },
         { resolveAfterFullGeneration: blocking === true }
       );

@@ -1,4 +1,5 @@
 import type {
+  AgentActionConfigurationType,
   AgentDisabledErrorEvent,
   AgentMessageType,
   ConversationType,
@@ -45,11 +46,13 @@ export async function postUserMessageWithPubSub(
     content,
     mentions,
     context,
+    jitActions,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
+    jitActions?: AgentActionConfigurationType[];
   },
   { resolveAfterFullGeneration }: { resolveAfterFullGeneration: boolean }
 ): Promise<
@@ -66,6 +69,7 @@ export async function postUserMessageWithPubSub(
     content,
     mentions,
     context,
+    jitActions,
   });
   return handleUserMessageEvents(
     conversation,

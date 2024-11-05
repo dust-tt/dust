@@ -1,0 +1,15 @@
+/**
+ * @ignoreswagger
+ * This endpoint is not to be included in the public API docs.
+ */
+import * as t from "io-ts";
+
+import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
+import { editMessageHandler } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/edit";
+
+export const PostEditRequestBodySchema = t.type({
+  content: t.string,
+  mentions: t.array(t.type({ configurationId: t.string })),
+});
+
+export default withPublicAPIAuthentication(editMessageHandler);

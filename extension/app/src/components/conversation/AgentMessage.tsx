@@ -52,6 +52,7 @@ import {
 } from "@extension/components/markdown/MentionBlock";
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import { useEventSource } from "@extension/hooks/useEventSource";
+import { handleRequestUserDataParams } from "@extension/lib/conversation";
 import { getAccessToken } from "@extension/lib/storage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Components } from "react-markdown";
@@ -101,40 +102,6 @@ interface AgentMessageProps {
   messageEmoji?: ConversationMessageEmojiSelectorProps;
   owner: LightWorkspaceType;
   size: ConversationMessageSizeType;
-}
-
-async function handleRequestUserDataParams(
-  owner: LightWorkspaceType,
-  conversationId: string,
-  actionId: string,
-  requestedData: string[]
-) {
-  const token = await getAccessToken();
-  const url = `${process.env.DUST_DOMAIN}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/actions/${actionId}/requested_data`;
-
-  if (!token) {
-    throw new Error("No access token found");
-  }
-
-  const responses: Record<string, string> = {
-    page_content: "Lots of content",
-    page_title: "Bazinga",
-    available_tabs: "tab1, tab2, tab3",
-  };
-
-  const outputs = requestedData.map((key) => {
-    return { name: key, value: responses[key] };
-  });
-
-  const body = JSON.stringify({ outputs });
-  await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body,
-  });
 }
 
 /**

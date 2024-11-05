@@ -1,4 +1,5 @@
 import type {
+  AgentActionConfigurationType,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentDisabledErrorEvent,
@@ -91,17 +92,6 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
-
-const jitActions = [
-  {
-    id: -1,
-    sId: "jit",
-    type: "request_user_data_configuration" as const,
-    name: "brower_context",
-    description: "This will return contextual information about the browser",
-    available_data: ["page_content", "page_title", "available_tabs"],
-  },
-];
 
 /**
  * Conversation Creation, update and deletion
@@ -685,11 +675,13 @@ export async function* postUserMessage(
     content,
     mentions,
     context,
+    jitActions,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
+    jitActions?: AgentActionConfigurationType[];
   }
 ): AsyncGenerator<
   | UserMessageErrorEvent
@@ -1497,8 +1489,8 @@ export async function* editUserMessage(
         content: [...conversation.content, [userMessage], [agentMessage]],
       },
       userMessage,
-      agentMessage,
-      jitActions
+      agentMessage
+      // jitActions TODO(thomas) reuse jitAction from previous message
     );
 
     return streamRunAgentEvents(
@@ -1747,8 +1739,8 @@ export async function* retryAgentMessage(
       content: newContent,
     },
     userMessage,
-    agentMessage,
-    jitActions
+    agentMessage
+    // jitActions TODO(thomas) reuse jitAction from previous message
   );
 
   yield* streamRunAgentEvents(auth, eventStream, agentMessage, agentMessageRow);
