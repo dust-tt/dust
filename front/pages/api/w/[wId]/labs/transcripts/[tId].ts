@@ -134,20 +134,39 @@ async function handler(
         );
       }
 
+      const updatedTranscriptsConfiguration =
+        await LabsTranscriptsConfigurationResource.fetchByModelId(
+          transcriptsConfiguration.id
+        );
+
+      if (!updatedTranscriptsConfiguration) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "transcripts_configuration_not_found",
+            message: "The transcript configuration was not found.",
+          },
+        });
+      }
+
       const shouldStartWorkflow =
-        !!transcriptsConfiguration.isActive ||
-        !!transcriptsConfiguration.dataSourceViewId;
+        !!updatedTranscriptsConfiguration.isActive ||
+        !!updatedTranscriptsConfiguration.dataSourceViewId;
 
       if (shouldStartWorkflow) {
         logger.info(
           {
-            configurationId: transcriptsConfiguration.id,
+            configurationId: updatedTranscriptsConfiguration.id,
           },
           "Starting transcript retrieval workflow."
         );
-        await launchRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+        await launchRetrieveTranscriptsWorkflow(
+          updatedTranscriptsConfiguration
+        );
       }
-      return res.status(200).json({ configuration: transcriptsConfiguration });
+      return res
+        .status(200)
+        .json({ configuration: updatedTranscriptsConfiguration });
 
     case "DELETE":
       await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
