@@ -192,7 +192,7 @@ export function ConversationContainer({
           onStickyMentionsChange={onStickyMentionsChange}
         />
       )}
-      <div className="sticky bottom-0 z-20 flex flex-col max-h-screen w-full max-w-4xl sm:pb-8">
+      <div className="sticky bottom-0 z-20 flex flex-col max-h-screen w-full max-w-4xl pb-4">
         <div className="flex justify-end space-x-1 pb-2">
           {!activeConversationId && (
             <Tooltip
