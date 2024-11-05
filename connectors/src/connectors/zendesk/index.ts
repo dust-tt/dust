@@ -174,11 +174,6 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>> {
     const { connectorId } = this;
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      logger.error({ connectorId }, "[Zendesk] Connector not found.");
-      return new Err(new Error("Connector not found"));
-    }
 
     if (filterPermission === "read" && parentInternalId === null) {
       // We want all selected nodes despite the hierarchy
