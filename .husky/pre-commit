@@ -16,6 +16,8 @@ then
 else
   if command -v ggshield 2>&1 >/dev/null;  then
     ggshield secret scan pre-commit "$@"
+  else
+    echo "ggshield is not installed. Please install ggshield to enable secret check"
   fi
 fi
 
