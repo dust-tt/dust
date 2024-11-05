@@ -53,10 +53,10 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   return (
     <div className="flex h-screen flex-col gap-2 p-4">
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2 pb-16">
+        <div className="flex items-center gap-2 pb-6">
           <LogoHorizontalColorLogo className="h-4 w-16" />
           <a href="https://dust.tt" target="_blank">
-            <ExternalLinkIcon color="#64748B" />
+            <Button icon={ExternalLinkIcon} variant="ghost" />
           </a>
         </div>
         <Button
@@ -64,7 +64,6 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
           variant="outline"
           label="Sign out"
           onClick={handleLogout}
-          size="xs"
         />
       </div>
       <>

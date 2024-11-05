@@ -1,4 +1,4 @@
-import { BarHeader, ExternalLinkIcon, IconButton } from "@dust-tt/sparkle";
+import { BarHeader, Button, ExternalLinkIcon } from "@dust-tt/sparkle";
 import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
 import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
@@ -26,12 +26,12 @@ export const ConversationPage = ({
       <BarHeader
         title={conversation?.title || "Conversation"}
         rightActions={
-          <div>
+          <div className="flex flex-row items-right">
             <a
               href={`${process.env.DUST_DOMAIN}/w/${workspace.sId}/assistant/${conversationId}`}
               target="_blank"
             >
-              <IconButton icon={ExternalLinkIcon} />
+              <Button icon={ExternalLinkIcon} variant="ghost" />
             </a>
             <BarHeader.ButtonBar
               variant="close"

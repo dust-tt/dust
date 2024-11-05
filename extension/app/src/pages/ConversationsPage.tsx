@@ -1,8 +1,8 @@
 import type { ConversationWithoutContentPublicType } from "@dust-tt/client";
 import {
   BarHeader,
+  Button,
   ExternalLinkIcon,
-  IconButton,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
@@ -73,12 +73,12 @@ export const ConversationsPage = ({
       <BarHeader
         title="Conversations"
         rightActions={
-          <div>
+          <div className="flex flex-row items-right">
             <a
               href={`${process.env.DUST_DOMAIN}/w/${workspace.sId}`}
               target="_blank"
             >
-              <IconButton icon={ExternalLinkIcon} />
+              <Button icon={ExternalLinkIcon} variant="ghost" />
             </a>
             <BarHeader.ButtonBar
               variant="close"
@@ -87,7 +87,7 @@ export const ConversationsPage = ({
           </div>
         }
       />
-      <div className="h-full w-full pt-4">
+      <div className="h-full w-full">
         {conversationsByDate &&
           Object.keys(conversationsByDate).map((dateLabel) => (
             <RenderConversations
