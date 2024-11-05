@@ -642,6 +642,7 @@ const AgentModelConfigurationSchema = z.object({
     "claude-3-opus-20240229",
     "claude-3-5-sonnet-20240620",
     "claude-3-5-sonnet-20241022",
+    "claude-3-5-haiku-20241022",
     "claude-3-haiku-20240307",
     "claude-2.1",
     "claude-instant-1.2",
