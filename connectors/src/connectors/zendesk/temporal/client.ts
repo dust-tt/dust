@@ -4,7 +4,10 @@ import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/zendesk/temporal/config";
-import type { ZendeskUpdateSignal } from "@connectors/connectors/zendesk/temporal/signals";
+import type {
+  ZendeskCategoryUpdateSignal,
+  ZendeskUpdateSignal,
+} from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskSyncWorkflow } from "@connectors/connectors/zendesk/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
@@ -29,7 +32,7 @@ export async function launchZendeskSyncWorkflow(
     brandIds?: number[];
     ticketsBrandIds?: number[];
     helpCenterBrandIds?: number[];
-    categoryIds?: number[];
+    categoryIds?: { brandId: number; categoryId: number }[];
     forceResync?: boolean;
   } = {}
 ): Promise<Result<undefined, Error>> {
@@ -39,7 +42,7 @@ export async function launchZendeskSyncWorkflow(
 
   const client = await getTemporalClient();
 
-  const signals: ZendeskUpdateSignal[] = [
+  const signals: (ZendeskUpdateSignal | ZendeskCategoryUpdateSignal)[] = [
     ...brandIds.map(
       (brandId): ZendeskUpdateSignal => ({
         type: "brand",
@@ -62,9 +65,10 @@ export async function launchZendeskSyncWorkflow(
       })
     ),
     ...categoryIds.map(
-      (categoryId): ZendeskUpdateSignal => ({
+      ({ brandId, categoryId }): ZendeskCategoryUpdateSignal => ({
         type: "category",
-        zendeskId: categoryId,
+        categoryId,
+        brandId,
         forceResync,
       })
     ),

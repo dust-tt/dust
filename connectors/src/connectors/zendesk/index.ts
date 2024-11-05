@@ -219,6 +219,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const toBeSignaledTicketsIds = new Set<number>();
     const toBeSignaledHelpCenterIds = new Set<number>();
     const toBeSignaledCategoryIds = new Set<number>();
+    const categoryBrandIds: Record<number, number> = {};
 
     for (const [id, permission] of Object.entries(permissions)) {
       if (permission !== "none" && permission !== "read") {
@@ -300,6 +301,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
             });
             if (revokedCategory) {
               toBeSignaledCategoryIds.add(revokedCategory.categoryId);
+              categoryBrandIds[revokedCategory.categoryId] =
+                revokedCategory.brandId;
             }
           }
           if (permission === "read") {
@@ -311,6 +314,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
             });
             if (newCategory) {
               toBeSignaledCategoryIds.add(newCategory.categoryId);
+              categoryBrandIds[newCategory.categoryId] = newCategory.brandId;
             }
           }
           break;
@@ -340,7 +344,10 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         brandIds: [...toBeSignaledBrandIds],
         ticketsBrandIds: [...toBeSignaledTicketsIds],
         helpCenterBrandIds: [...toBeSignaledHelpCenterIds],
-        categoryIds: [...toBeSignaledCategoryIds],
+        categoryIds: [...toBeSignaledCategoryIds].map((categoryId) => ({
+          categoryId,
+          brandId: categoryBrandIds[categoryId] as number,
+        })),
       });
     }
 
