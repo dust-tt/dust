@@ -2,6 +2,7 @@ import {
   Button,
   CloudArrowDownIcon,
   HistoryIcon,
+  Page,
   Tooltip,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -193,34 +194,37 @@ export function ConversationContainer({
         />
       )}
       <div className="sticky bottom-0 z-20 flex flex-col max-h-screen w-full max-w-4xl pb-4">
-        <div className="flex justify-end space-x-1 pb-2">
-          {!activeConversationId && (
+        <div className="flex justify-between items-end space-x-1 pb-2">
+          <Page.SectionHeader title={`Hi ${user.firstName},`} />
+          <div>
+            {!activeConversationId && (
+              <Tooltip
+                label={
+                  tabContentToInclude
+                    ? `Page included: ${tabContentToInclude.url}`
+                    : "Include content from the current tab"
+                }
+                trigger={
+                  <Button
+                    icon={CloudArrowDownIcon}
+                    variant="outline"
+                    onClick={handleIncludeCurrentTab}
+                    disabled={tabContentToInclude !== null}
+                  />
+                }
+              />
+            )}
             <Tooltip
-              label={
-                tabContentToInclude
-                  ? `Page included: ${tabContentToInclude.url}`
-                  : "Include content from the current tab"
-              }
+              label="View all conversations"
               trigger={
                 <Button
-                  icon={CloudArrowDownIcon}
+                  icon={HistoryIcon}
                   variant="outline"
-                  onClick={handleIncludeCurrentTab}
-                  disabled={tabContentToInclude !== null}
+                  onClick={() => navigate("/conversations")}
                 />
               }
             />
-          )}
-          <Tooltip
-            label="View all conversations"
-            trigger={
-              <Button
-                icon={HistoryIcon}
-                variant="outline"
-                onClick={() => navigate("/conversations")}
-              />
-            }
-          />
+          </div>
         </div>
         <AssistantInputBar
           owner={owner}
