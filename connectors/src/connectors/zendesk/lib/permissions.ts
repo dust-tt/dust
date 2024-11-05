@@ -46,25 +46,6 @@ export async function retrieveSelectedNodes({
   }
 
   const brands = await ZendeskBrandResource.fetchAllReadOnly({ connectorId });
-  const brandNodes: ContentNode[] = brands.map((brand) => {
-    return {
-      provider: connector.type,
-      internalId: getBrandInternalId(connectorId, brand.brandId),
-      parentInternalId: null,
-      type: "folder",
-      title: brand.name,
-      sourceUrl: brand.url,
-      expandable: true,
-      permission:
-        brand.helpCenterPermission === "read" &&
-        brand.ticketsPermission === "read"
-          ? "read"
-          : "none",
-      dustDocumentId: null,
-      lastUpdatedAt: brand.updatedAt.getTime() ?? null,
-    };
-  });
-
   const helpCenterNodes: ContentNode[] = brands
     .filter(
       (brand) => brand.hasHelpCenter && brand.helpCenterPermission === "read"
@@ -81,12 +62,7 @@ export async function retrieveSelectedNodes({
     .filter((brand) => brand.ticketsPermission === "read")
     .map((brand) => brand.getTicketsContentNode({ connectorId }));
 
-  return [
-    ...brandNodes,
-    ...helpCenterNodes,
-    ...categoriesNodes,
-    ...ticketNodes,
-  ];
+  return [...helpCenterNodes, ...categoriesNodes, ...ticketNodes];
 }
 
 export async function retrieveChildrenNodes({
