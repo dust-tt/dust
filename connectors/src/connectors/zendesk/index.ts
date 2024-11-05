@@ -21,9 +21,7 @@ import {
 } from "@connectors/connectors/zendesk/lib/help_center_permissions";
 import {
   getBrandInternalId,
-  getHelpCenterInternalId,
   getIdFromInternalId,
-  getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
   retrieveChildrenNodes,
@@ -464,27 +462,25 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       case "tickets": {
         return new Ok([internalId, getBrandInternalId(connectorId, objectId)]);
       }
-      /// Categories have two parents: the Help Center and the brand.
       case "category": {
         const category = await ZendeskCategoryResource.fetchByCategoryId({
           connectorId,
           categoryId: objectId.categoryId,
         });
         if (category) {
-          return new Ok([
-            internalId,
-            getHelpCenterInternalId(connectorId, category.brandId),
-            getBrandInternalId(connectorId, category.brandId),
-          ]);
+          return new Ok(category.getParentInternalIds(connectorId));
         } else {
           logger.error(
-            { connectorId, categoryId: objectId },
+            {
+              connectorId,
+              categoryId: objectId.categoryId,
+              brandId: objectId.brandId,
+            },
             "[Zendesk] Category not found"
           );
           return new Err(new Error("Category not found"));
         }
       }
-      /// Articles have three parents: the category, the Help Center and the brand.
       case "article": {
         const article = await ZendeskArticleResource.fetchByArticleId({
           connectorId,
@@ -506,11 +502,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           ticketId: objectId,
         });
         if (ticket) {
-          return new Ok([
-            internalId,
-            getTicketsInternalId(connectorId, ticket.brandId),
-            getBrandInternalId(connectorId, ticket.brandId),
-          ]);
+          return new Ok(ticket.getParentInternalIds(connectorId));
         } else {
           logger.error(
             { connectorId, ticketId: objectId },

@@ -499,6 +499,15 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
       lastUpdatedAt: this.updatedAt.getTime(),
     };
   }
+
+  getParentInternalIds(connectorId: number): string[] {
+    /// Categories have two parents: the Help Center and the Brand.
+    return [
+      getCategoryInternalId(connectorId, this.brandId, this.categoryId),
+      getHelpCenterInternalId(connectorId, this.brandId),
+      getBrandInternalId(connectorId, this.brandId),
+    ];
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -572,6 +581,15 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       dustDocumentId: null,
       lastUpdatedAt: this.updatedAt.getTime(),
     };
+  }
+
+  getParentInternalIds(connectorId: number): string[] {
+    /// Tickets have two parents: the Tickets and the Brand.
+    return [
+      getTicketInternalId(connectorId, this.ticketId),
+      getTicketsInternalId(connectorId, this.brandId),
+      getBrandInternalId(connectorId, this.brandId),
+    ];
   }
 
   static async fetchByTicketId({
@@ -736,6 +754,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
   }
 
   getParentInternalIds(connectorId: number): string[] {
+    /// Articles have three parents: the Category, the Help Center and the Brand.
     return [
       getArticleInternalId(connectorId, this.articleId),
       getCategoryInternalId(connectorId, this.brandId, this.categoryId),
