@@ -22,6 +22,7 @@ export async function syncArticle({
   currentSyncDateMs,
   dataSourceConfig,
   loggerArgs,
+  forceResync,
 }: {
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
@@ -37,6 +38,14 @@ export async function syncArticle({
   });
   const createdAtDate = new Date(article.created_at);
   const updatedAtDate = new Date(article.updated_at);
+
+  const articleUpdatedAtDate = new Date(article.updated_at);
+
+  const shouldPerformUpsertion =
+    forceResync ||
+    !articleInDb ||
+    !articleInDb.lastUpsertedTs ||
+    articleInDb.lastUpsertedTs < articleUpdatedAtDate; // upserting if the article was updated after the last upsert
 
   if (!articleInDb) {
     articleInDb = await ZendeskArticleResource.makeNew({
@@ -60,6 +69,31 @@ export async function syncArticle({
       name: article.name,
       url: article.url,
     });
+  }
+
+  if (!shouldPerformUpsertion) {
+    logger.info(
+      {
+        ...loggerArgs,
+        connectorId,
+        articleId: article.id,
+        articleUpdatedAt: articleUpdatedAtDate,
+        dataSourceLastUpsertedAt: articleInDb?.lastUpsertedTs ?? null,
+      },
+      "[Zendesk] Article already up to date. Skipping sync."
+    );
+    return;
+  } else {
+    logger.info(
+      {
+        ...loggerArgs,
+        connectorId,
+        articleId: article.id,
+        articleUpdatedAt: articleUpdatedAtDate,
+        dataSourceLastUpsertedAt: articleInDb?.lastUpsertedTs ?? null,
+      },
+      "[Zendesk] Article to sync."
+    );
   }
 
   const categoryContent =
