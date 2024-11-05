@@ -176,7 +176,9 @@ export async function zendeskSyncWorkflow({
       const forceResync = relatedSignal?.forceResync || false;
       const brandId = categoryBrands[categoryId];
       if (!brandId) {
-        continue; // this is mostly for typing since we add to categoryBrands whenever we add to categoryIds
+        throw new Error(
+          "Unreachable: a category ID was pushed without a brand."
+        );
       }
 
       await executeChild(zendeskCategorySyncWorkflow, {
