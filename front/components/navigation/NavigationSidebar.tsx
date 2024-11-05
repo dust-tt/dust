@@ -23,7 +23,6 @@ import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useUser } from "@app/lib/swr/user";
-import { classNames } from "@app/lib/utils";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -119,16 +118,13 @@ export const NavigationSidebar = React.forwardRef<
         {nav.length > 1 && (
           <div className="pt-2">
             <Tabs value={currentTab?.id}>
-              <TabsList>
+              <TabsList className="px-2">
                 {navs.map((tab) => (
                   <TabsTrigger
-                    className={classNames(
-                      tab.sizing === "hug" ? "grow" : "shrink",
-                      "px-1"
-                    )}
                     key={tab.id}
                     value={tab.id}
                     label={tab.hideLabel ? undefined : tab.label}
+                    tooltip={tab.hideLabel ? tab.label : undefined}
                     icon={tab.icon}
                     onClick={() => {
                       if (tab.href) {
@@ -142,17 +138,16 @@ export const NavigationSidebar = React.forwardRef<
           </div>
         )}
         {subNavigation && (
-          <div className="pt-3">
+          <>
             {subNavigation && (
-              <div className="pt-3">
+              <>
                 {subNavigation.map((nav) => (
-                  <div key={nav.id} className="grow py-1 pl-4 pr-3">
+                  <div key={nav.id} className="px-2">
                     <NavigationList>
                       {nav.label && (
                         <NavigationListLabel
                           label={nav.label}
                           variant={nav.variant}
-                          className="!pt-4"
                         />
                       )}
                       {nav.menus.map((menu) => (
@@ -188,9 +183,9 @@ export const NavigationSidebar = React.forwardRef<
                     </NavigationList>
                   </div>
                 ))}
-              </div>
+              </>
             )}
-          </div>
+          </>
         )}
       </div>
       <div className="flex grow flex-col">{children}</div>

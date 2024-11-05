@@ -114,7 +114,7 @@ export default function SpaceSideBarMenu({
 
             return (
               <Fragment key={`space-section-${index}`}>
-                <div className="flex items-center justify-between px-2 pr-0">
+                <div className="flex items-center justify-between">
                   <NavigationListLabel
                     label={sectionDetails.label}
                     variant="secondary"

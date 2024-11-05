@@ -207,7 +207,12 @@ export default function CreateAssistant({
               <Link
                 href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}`}
               >
-                <Button icon={DocumentIcon} label="New Assistant" size="md" />
+                <Button
+                  icon={DocumentIcon}
+                  label="New Assistant"
+                  size="md"
+                  variant="highlight"
+                />
               </Link>
             </div>
             <Page.Separator />

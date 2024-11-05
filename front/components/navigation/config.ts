@@ -130,7 +130,7 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
   if (isAdmin(owner)) {
     nav.push({
       id: "settings",
-      label: "",
+      label: "Admin",
       hideLabel: true,
       icon: Cog6ToothIcon,
       href: `/w/${owner.sId}/members`,

@@ -151,7 +151,7 @@ export const SpaceCategoriesList = ({
         className={classNames(
           "flex gap-2",
           rows.length === 0
-            ? "h-36 w-full items-center justify-center rounded-xl bg-structure-100"
+            ? "h-36 w-full items-center justify-center rounded-xl bg-muted-background"
             : ""
         )}
       >
