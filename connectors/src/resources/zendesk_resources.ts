@@ -475,7 +475,13 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     }
   }
 
-  toContentNode({ connectorId }: { connectorId: number }): ContentNode {
+  toContentNode({
+    connectorId,
+    expandable = false,
+  }: {
+    connectorId: number;
+    expandable?: boolean;
+  }): ContentNode {
     return {
       provider: "zendesk",
       internalId: getCategoryInternalId(
@@ -487,7 +493,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
       type: "folder",
       title: this.name,
       sourceUrl: this.url,
-      expandable: false,
+      expandable: expandable,
       permission: this.permission,
       dustDocumentId: null,
       lastUpdatedAt: this.updatedAt.getTime(),
