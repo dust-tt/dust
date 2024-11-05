@@ -1,8 +1,13 @@
 import {
+  Avatar,
   Button,
   ExternalLinkIcon,
   LogoHorizontalColorLogo,
   LogoutIcon,
+  NewDropdownMenu,
+  NewDropdownMenuContent,
+  NewDropdownMenuItem,
+  NewDropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
@@ -59,12 +64,31 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
             <Button icon={ExternalLinkIcon} variant="ghost" />
           </a>
         </div>
-        <Button
-          icon={LogoutIcon}
-          variant="outline"
-          label="Sign out"
-          onClick={handleLogout}
-        />
+        <NewDropdownMenu>
+          <NewDropdownMenuTrigger>
+            <>
+              <span className="sr-only">Open user menu</span>
+              <Avatar
+                size="md"
+                visual={
+                  user.image
+                    ? user.image
+                    : "https://gravatar.com/avatar/anonymous?d=mp"
+                }
+                onClick={() => {
+                  "clickable";
+                }}
+              />
+            </>
+          </NewDropdownMenuTrigger>
+          <NewDropdownMenuContent>
+            <NewDropdownMenuItem
+              icon={LogoutIcon}
+              label="Sign out"
+              onClick={handleLogout}
+            />
+          </NewDropdownMenuContent>
+        </NewDropdownMenu>
       </div>
       <>
         {typeof children === "function"
