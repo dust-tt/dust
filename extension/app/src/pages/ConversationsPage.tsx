@@ -74,12 +74,12 @@ export const ConversationsPage = ({
         title="Conversations"
         rightActions={
           <div className="flex flex-row items-right">
-            <a
+            <Button
+              icon={ExternalLinkIcon}
+              variant="ghost"
               href={`${process.env.DUST_DOMAIN}/w/${workspace.sId}`}
               target="_blank"
-            >
-              <Button icon={ExternalLinkIcon} variant="ghost" />
-            </a>
+            />
             <BarHeader.ButtonBar
               variant="close"
               onClose={() => navigate("/")}

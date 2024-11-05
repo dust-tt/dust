@@ -60,9 +60,12 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2 pb-6">
           <LogoHorizontalColorLogo className="h-4 w-16" />
-          <a href="https://dust.tt" target="_blank">
-            <Button icon={ExternalLinkIcon} variant="ghost" />
-          </a>
+          <Button
+            icon={ExternalLinkIcon}
+            variant="ghost"
+            href="https://dust.tt"
+            target="_blank"
+          />
         </div>
         <NewDropdownMenu>
           <NewDropdownMenuTrigger>
