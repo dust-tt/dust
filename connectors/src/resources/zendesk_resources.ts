@@ -563,7 +563,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     return {
       provider: "zendesk",
       internalId: getTicketInternalId(connectorId, this.ticketId),
-      parentInternalId: getBrandInternalId(connectorId, this.brandId),
+      parentInternalId: getTicketsInternalId(connectorId, this.brandId),
       type: "file",
       title: this.name,
       sourceUrl: this.url,
@@ -585,6 +585,19 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       where: { connectorId, ticketId },
     });
     return ticket && new this(this.model, ticket.get());
+  }
+
+  static async fetchByTicketIds({
+    connectorId,
+    ticketIds,
+  }: {
+    connectorId: number;
+    ticketIds: number[];
+  }): Promise<ZendeskTicketResource[]> {
+    const tickets = await ZendeskTicket.findAll({
+      where: { connectorId, ticketId: { [Op.in]: ticketIds } },
+    });
+    return tickets.map((ticket) => new this(this.model, ticket.get()));
   }
 
   static async fetchByBrandIdReadOnly({
@@ -742,6 +755,19 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
       where: { connectorId, articleId },
     });
     return article && new this(this.model, article.get());
+  }
+
+  static async fetchByArticleIds({
+    connectorId,
+    articleIds,
+  }: {
+    connectorId: number;
+    articleIds: number[];
+  }): Promise<ZendeskArticleResource[]> {
+    const articles = await ZendeskArticle.findAll({
+      where: { connectorId, articleId: { [Op.in]: articleIds } },
+    });
+    return articles.map((article) => new this(this.model, article.get()));
   }
 
   static async fetchByCategoryId({

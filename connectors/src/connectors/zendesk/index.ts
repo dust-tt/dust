@@ -358,6 +358,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const brandHelpCenterIds: number[] = [];
     const brandTicketsIds: number[] = [];
     const categoryIds: number[] = [];
+    const articleIds: number[] = [];
+    const ticketIds: number[] = [];
     internalIds.forEach((internalId) => {
       const { type, objectId } = getIdFromInternalId(
         this.connectorId,
@@ -380,13 +382,13 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           categoryIds.push(objectId.categoryId);
           return;
         }
-        case "article":
+        case "article": {
+          articleIds.push(objectId);
+          return;
+        }
         case "ticket": {
-          logger.error(
-            { connectorId, objectId },
-            "[Zendesk] Cannot retrieve single articles or tickets"
-          );
-          throw new Error("Cannot retrieve single articles or tickets");
+          ticketIds.push(objectId);
+          return;
         }
         default: {
           assertNever(type);
@@ -406,10 +408,10 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const brands = allBrands.filter((brand) =>
       brandIds.includes(brand.brandId)
     );
-    const helpCenters = allBrands.filter((brand) =>
+    const brandHelpCenters = allBrands.filter((brand) =>
       brandHelpCenterIds.includes(brand.brandId)
     );
-    const tickets = allBrands.filter((brand) =>
+    const brandTickets = allBrands.filter((brand) =>
       brandTicketsIds.includes(brand.brandId)
     );
 
@@ -417,14 +419,26 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       connectorId,
       categoryIds,
     });
+    const articles = await ZendeskArticleResource.fetchByArticleIds({
+      connectorId,
+      articleIds,
+    });
+    const tickets = await ZendeskTicketResource.fetchByTicketIds({
+      connectorId,
+      ticketIds,
+    });
 
     return new Ok([
       ...brands.map((brand) => brand.toContentNode({ connectorId })),
-      ...helpCenters.map((brand) =>
+      ...brandHelpCenters.map((brand) =>
         brand.getHelpCenterContentNode({ connectorId })
       ),
-      ...tickets.map((brand) => brand.getTicketsContentNode({ connectorId })),
+      ...brandTickets.map((brand) =>
+        brand.getTicketsContentNode({ connectorId })
+      ),
       ...categories.map((category) => category.toContentNode({ connectorId })),
+      ...articles.map((article) => article.toContentNode({ connectorId })),
+      ...tickets.map((ticket) => ticket.toContentNode({ connectorId })),
     ]);
   }
 
