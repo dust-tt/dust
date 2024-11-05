@@ -337,7 +337,9 @@ export async function syncZendeskArticlesActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(connector.connectionId);
+  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
+  );
   const zendeskApiClient = createZendeskClient({
     token: accessToken,
     subdomain: subdomain,
