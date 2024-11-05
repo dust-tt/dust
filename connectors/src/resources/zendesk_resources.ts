@@ -233,7 +233,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       where: { connectorId },
       attributes: ["brandId"],
     });
-    return brands.map((brand) => brand.brandId);
+    return brands.map((brand) => brand.get().brandId);
   }
 
   static async fetchAllWithHelpCenter({
@@ -409,8 +409,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
       where: { connectorId, brandId },
     });
     return categories.map(
-      (category) =>
-        category && new ZendeskCategoryResource(ZendeskCategory, category)
+      (category) => category && new this(this.model, category.get())
     );
   }
 
@@ -425,8 +424,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
       where: { connectorId, brandId, permission: "read" },
     });
     return categories.map(
-      (category) =>
-        category && new ZendeskCategoryResource(ZendeskCategory, category)
+      (category) => category && new this(this.model, category.get())
     );
   }
 
@@ -593,9 +591,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     const tickets = await ZendeskTicket.findAll({
       where: { connectorId, brandId, permission: "read" },
     });
-    return tickets.map(
-      (ticket) => new ZendeskTicketResource(ZendeskTicket, ticket)
-    );
+    return tickets.map((ticket) => new this(this.model, ticket.get()));
   }
 
   static async fetchByBrandId({
@@ -608,9 +604,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     const tickets = await ZendeskTicket.findAll({
       where: { connectorId, brandId },
     });
-    return tickets.map(
-      (ticket) => new ZendeskTicketResource(ZendeskTicket, ticket)
-    );
+    return tickets.map((ticket) => new this(this.model, ticket.get()));
   }
 
   static async deleteByBrandId({
@@ -754,9 +748,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     const articles = await ZendeskArticle.findAll({
       where: { connectorId, categoryId },
     });
-    return articles.map(
-      (article) => new ZendeskArticleResource(ZendeskArticle, article)
-    );
+    return articles.map((article) => new this(this.model, article.get()));
   }
 
   static async fetchByCategoryIdReadOnly({
@@ -769,9 +761,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     const articles = await ZendeskArticle.findAll({
       where: { connectorId, categoryId, permission: "read" },
     });
-    return articles.map(
-      (article) => new ZendeskArticleResource(ZendeskArticle, article)
-    );
+    return articles.map((article) => new this(this.model, article.get()));
   }
 
   static async fetchByBrandId({
@@ -784,9 +774,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     const articles = await ZendeskArticle.findAll({
       where: { connectorId, brandId },
     });
-    return articles.map(
-      (article) => new ZendeskArticleResource(ZendeskArticle, article)
-    );
+    return articles.map((article) => new this(this.model, article.get()));
   }
 
   static async deleteByCategoryId({
