@@ -393,7 +393,7 @@ export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic's Claude 3.5 Haiku model, cost effective and high throughput (200k context).",
   shortDescription: "Anthropic's cost-effective model.",
   isLegacy: false,
-  supportsVision: true,
+  supportsVision: false,
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
