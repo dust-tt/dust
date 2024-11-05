@@ -250,7 +250,7 @@ async function handler(
       return res.status(200).json({ rows: rowsList, offset, limit, total });
 
     case "POST":
-      const r = await UpsertTableRowsRequestSchema.safeParse(req.query);
+      const r = await UpsertTableRowsRequestSchema.safeParse(req.body);
 
       if (r.error) {
         return apiError(req, res, {
