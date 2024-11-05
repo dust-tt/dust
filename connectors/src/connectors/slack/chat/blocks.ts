@@ -12,7 +12,7 @@ import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
  * We adopt a conservative approach by setting a lower threshold
  * to accommodate ellipses and ensure buffer space.
  */
-export const MAX_SLACK_MESSAGE_LENGTH = 2950;
+export const MAX_SLACK_MESSAGE_LENGTH = 2500;
 
 export const DUST_URL = "https://dust.tt/home";
 export const SLACK_HELP_URL = "https://docs.dust.tt/docs/slack";
