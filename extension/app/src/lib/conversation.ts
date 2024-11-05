@@ -106,7 +106,7 @@ export async function postConversation({
   owner,
   messageData,
   visibility = "unlisted",
-  title,
+  tabContent,
 }: {
   owner: LightWorkspaceType;
   messageData: {
@@ -114,7 +114,11 @@ export async function postConversation({
     mentions: MentionType[];
   };
   visibility?: ConversationVisibility;
-  title?: string;
+  tabContent: {
+    title: string;
+    content: string;
+    url: string;
+  } | null;
 }): Promise<Result<ConversationType, SubmitMessageError>> {
   const { input, mentions } = messageData;
   const token = await getAccessToken();
@@ -130,7 +134,7 @@ export async function postConversation({
   }
 
   const body: PublicPostConversationsRequestBody = {
-    title: title ?? null,
+    title: null,
     visibility,
     message: {
       content: input,
@@ -144,7 +148,20 @@ export async function postConversation({
       },
       mentions,
     },
-    contentFragment: undefined,
+    contentFragment: tabContent
+      ? {
+          title: tabContent.title,
+          content: tabContent.content,
+          url: tabContent.url,
+          contentType: "text/plain",
+          context: {
+            username: user.username,
+            email: user.email,
+            fullName: user.fullName,
+            profilePictureUrl: null,
+          },
+        }
+      : undefined,
     blocking: false, // We want streaming.
   };
 
@@ -178,7 +195,6 @@ export async function postConversation({
   return new Ok(conversationData.conversation);
 }
 
-// Not called yet so not tested
 export async function postMessage({
   owner,
   conversationId,

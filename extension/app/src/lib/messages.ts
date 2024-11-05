@@ -15,6 +15,15 @@ export type AuthBackroundMessage = {
   refreshToken?: string;
 };
 
+export type GetActiveTabBackgroundMessage = {
+  type: "GET_ACTIVE_TAB";
+};
+
+export type GetActiveTabBackgroundResponse = {
+  url: string;
+  content: string;
+};
+
 /**
  * Messages to the background script to authenticate, refresh tokens, and logout.
  */
@@ -104,3 +113,26 @@ export const sentLogoutMessage = (): Promise<AuthBackgroundResponse> => {
     );
   });
 };
+
+/**
+ * Message to the background script to get the active tab content.
+ */
+
+export const sendGetActiveTabMessage =
+  (): Promise<GetActiveTabBackgroundResponse> => {
+    return new Promise((resolve, reject) => {
+      const message: GetActiveTabBackgroundMessage = { type: "GET_ACTIVE_TAB" };
+      chrome.runtime.sendMessage(
+        message,
+        (response: GetActiveTabBackgroundResponse | undefined) => {
+          if (chrome.runtime.lastError) {
+            return reject(chrome.runtime.lastError);
+          }
+          if (!response) {
+            return reject(new Error("No response received."));
+          }
+          return resolve(response);
+        }
+      );
+    });
+  };
