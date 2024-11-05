@@ -127,14 +127,30 @@ export default function LabsTranscriptsIndex({
         : newValue;
 
     const keys = Object.keys(newSelectionConfigurations);
+
+    if (keys.length === 0) {
+      return;
+    }
+
     const lastKey = keys[keys.length - 1];
+
+    // If there's no change in the selection, return early
+    if (
+      lastKey &&
+      JSON.stringify(selectionConfigurations[lastKey]) ===
+        JSON.stringify(newSelectionConfigurations[lastKey])
+    ) {
+      return;
+    }
 
     setSelectionConfigurations(
       lastKey ? { [lastKey]: newSelectionConfigurations[lastKey] } : {}
     );
-    const datasourceView = newSelectionConfigurations[lastKey].dataSourceView;
 
-    await handleSetDataSource(transcriptsConfiguration.id, datasourceView);
+    if (lastKey) {
+      const datasourceView = newSelectionConfigurations[lastKey].dataSourceView;
+      await handleSetDataSource(transcriptsConfiguration.id, datasourceView);
+    }
   };
 
   const [transcriptsConfigurationState, setTranscriptsConfigurationState] =
