@@ -17,6 +17,9 @@ export type RequestUserDataActionOutputType = {
 };
 
 export interface RequestUserDataActionType extends BaseAction {
+  id: ModelId;
+  agentMessageId: ModelId;
+
   outputs: RequestUserDataActionOutputType[] | null;
   functionCallId: string | null;
   functionCallName: string | null;

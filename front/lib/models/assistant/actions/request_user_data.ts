@@ -1,4 +1,4 @@
-import type { RequestUserDataActionOutputType } from "@dust-tt/types/dist/front/assistant/actions/jit";
+import type { RequestUserDataActionOutputType } from "@dust-tt/types";
 import type {
   CreationOptional,
   ForeignKey,

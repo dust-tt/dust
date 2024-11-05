@@ -17,6 +17,15 @@ import { Err, Ok } from "@dust-tt/types";
 import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import { getAccessToken, getStoredUser } from "@extension/lib/storage";
 
+const jitActions = [
+  {
+    type: "request_user_data_configuration" as const,
+    name: "browser_context",
+    description: "This will return contextual information about the browser",
+    available_data: ["page_content", "page_url"],
+  },
+];
+
 export function createPlaceholderUserMessage({
   input,
   mentions,
@@ -163,6 +172,7 @@ export async function postConversation({
           },
         }
       : undefined,
+    jitActions,
     blocking: false, // We want streaming.
   };
 
@@ -241,6 +251,7 @@ export async function postMessage({
           origin: "extension",
         },
         mentions,
+        jitActions,
       }),
     }
   );

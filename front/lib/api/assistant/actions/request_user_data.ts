@@ -3,16 +3,14 @@ import type {
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
+  RequestUserDataActionOutputType,
+  RequestUserDataConfigurationType,
   RequestUserDataErrorEvent,
   RequestUserDataParamsEvent,
   RequestUserDataSuccessEvent,
   Result,
 } from "@dust-tt/types";
 import { BaseAction, Ok } from "@dust-tt/types";
-import type {
-  RequestUserDataActionOutputType,
-  RequestUserDataConfigurationType,
-} from "@dust-tt/types/dist/front/assistant/actions/jit";
 import { commandOptions } from "redis";
 
 import { DEFAULT_request_user_data_ACTION_NAME } from "@app/lib/api/assistant/actions/names";

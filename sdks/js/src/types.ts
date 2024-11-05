@@ -371,6 +371,7 @@ const BaseActionTypeSchema = FlexibleEnumSchema([
   "websearch_action",
   "browse_action",
   "visualization_action",
+  "request_user_data_action",
 ]);
 
 const BaseActionSchema = z.object({
@@ -380,6 +381,22 @@ const BaseActionSchema = z.object({
   renderForMultiActionsModel: z
     .function()
     .returns(FunctionMessageTypeModelSchema),
+});
+
+const RequestUserDataActionOutputSchema = z.object({
+  name: z.string(),
+  value: z.string(),
+});
+
+const RequestUserDataActionTypeSchema = BaseActionSchema.extend({
+  output: z.array(RequestUserDataActionOutputSchema).nullable(),
+  functionCallId: z.string().nullable(),
+  functionCallName: z.string().nullable(),
+  params: z.object({
+    requested_data: z.array(z.string()),
+  }),
+  step: z.number(),
+  type: z.literal("browse_action"),
 });
 
 const BrowseActionOutputSchema = z.object({
@@ -756,6 +773,7 @@ const AgentActionTypeSchema = z.union([
   ProcessActionTypeSchema,
   WebsearchActionTypeSchema,
   BrowseActionTypeSchema,
+  RequestUserDataActionTypeSchema,
 ]);
 
 const AgentMessageStatusSchema = FlexibleEnumSchema([
@@ -1388,6 +1406,13 @@ export type PatchDataSourceViewsReponseType = z.infer<
   typeof PatchDataSourceViewsResponseSchema
 >;
 
+export const RequestUserDataConfiguration = z.object({
+  type: z.literal("request_user_data_configuration"),
+  name: z.string(),
+  description: z.string(),
+  available_data: z.array(z.string()),
+});
+
 export const PublicPostMessagesRequestBodySchema = z.intersection(
   z.object({
     content: z.string(),
@@ -1397,6 +1422,7 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
       })
     ),
     context: UserMessageContextSchema,
+    jitActions: z.union([z.array(RequestUserDataConfiguration), z.undefined()]),
   }),
   z
     .object({
@@ -1457,6 +1483,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
       }),
       z.undefined(),
     ]),
+    jitActions: z.union([z.array(RequestUserDataConfiguration), z.undefined()]),
   }),
   z
     .object({

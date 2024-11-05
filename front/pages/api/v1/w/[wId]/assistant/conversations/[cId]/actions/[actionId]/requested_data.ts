@@ -1,10 +1,17 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { getRedisClient } from "@app/lib/api/redis";
 import { withPublicAPIAuthentication } from "@app/lib/api/wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+
+/**
+ * @ignoreswagger
+ * Internal API key only endpoint. Undocumented.
+ */
 
 async function handler(
   req: NextApiRequest,
@@ -22,11 +29,17 @@ async function handler(
     });
   }
 
+  const conversationRes = await getConversationWithoutContent(auth, cId);
+
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
+  }
+
   if (typeof actionId !== "string") {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "message_not_found",
+        type: "conversation_not_found",
         message: "Action not found.",
       },
     });

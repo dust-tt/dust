@@ -1,27 +1,23 @@
 import type {
-  AgentActionConfigurationType,
+  AgentActionSpecificEvent,
+  AgentActionSuccessEvent,
   AgentDisabledErrorEvent,
+  AgentErrorEvent,
+  AgentGenerationCancelledEvent,
+  AgentMessageNewEvent,
+  AgentMessageSuccessEvent,
   AgentMessageType,
+  ConversationTitleEvent,
   ConversationType,
   GenerationTokensEvent,
   MentionType,
   PubSubError,
+  Result,
+  UnsavedAgentActionConfigurationType,
   UserMessageContext,
-  UserMessageType,
-} from "@dust-tt/types";
-import type { Result } from "@dust-tt/types";
-import type {
-  AgentActionSpecificEvent,
-  AgentActionSuccessEvent,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageSuccessEvent,
-} from "@dust-tt/types";
-import type {
-  AgentMessageNewEvent,
-  ConversationTitleEvent,
   UserMessageErrorEvent,
   UserMessageNewEvent,
+  UserMessageType,
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import type { RedisClientType } from "redis";
@@ -52,7 +48,7 @@ export async function postUserMessageWithPubSub(
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
-    jitActions?: AgentActionConfigurationType[];
+    jitActions?: UnsavedAgentActionConfigurationType[];
   },
   { resolveAfterFullGeneration }: { resolveAfterFullGeneration: boolean }
 ): Promise<

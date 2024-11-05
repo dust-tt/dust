@@ -35,7 +35,8 @@ export type UnsavedAgentActionConfigurationType =
   | UnsavedConfiguration<DustAppRunConfigurationType>
   | UnsavedConfiguration<ProcessConfigurationType>
   | UnsavedConfiguration<WebsearchConfigurationType>
-  | UnsavedConfiguration<BrowseConfigurationType>;
+  | UnsavedConfiguration<BrowseConfigurationType>
+  | UnsavedConfiguration<RequestUserDataConfigurationType>;
 
 export type AgentAction = AgentActionConfigurationType["type"];
 

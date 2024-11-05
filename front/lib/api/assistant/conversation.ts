@@ -1,5 +1,4 @@
 import type {
-  AgentActionConfigurationType,
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentDisabledErrorEvent,
@@ -23,6 +22,7 @@ import type {
   PlanType,
   Result,
   SupportedContentFragmentType,
+  UnsavedAgentActionConfigurationType,
   UserMessageContext,
   UserMessageErrorEvent,
   UserMessageNewEvent,
@@ -34,19 +34,17 @@ import type {
 import {
   assertNever,
   ConversationError,
-  getSmallWhitelistedModel,
-  isProviderWhitelisted,
-  md5,
-  removeNulls,
-} from "@dust-tt/types";
-import {
   Err,
+  getSmallWhitelistedModel,
   getTimeframeSecondsFromLiteral,
   isAgentMention,
   isAgentMessageType,
+  isProviderWhitelisted,
   isUserMessageType,
+  md5,
   Ok,
   rateLimiter,
+  removeNulls,
 } from "@dust-tt/types";
 import { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
@@ -681,7 +679,7 @@ export async function* postUserMessage(
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
-    jitActions?: AgentActionConfigurationType[];
+    jitActions?: UnsavedAgentActionConfigurationType[];
   }
 ): AsyncGenerator<
   | UserMessageErrorEvent

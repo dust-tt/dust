@@ -16,6 +16,7 @@ import type {
   GenerationSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
+  UnsavedAgentActionConfigurationType,
   UserMessageType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -63,7 +64,7 @@ export async function* runAgent(
   conversation: ConversationType,
   userMessage: UserMessageType,
   agentMessage: AgentMessageType,
-  jitActions: AgentActionConfigurationType[] = []
+  jitActions: UnsavedAgentActionConfigurationType[] = []
 ): AsyncGenerator<
   | AgentErrorEvent
   | AgentActionSpecificEvent
@@ -92,7 +93,10 @@ export async function* runAgent(
     auth,
     {
       ...fullConfiguration,
-      actions: [...fullConfiguration.actions, ...jitActions],
+      actions: [
+        ...fullConfiguration.actions,
+        ...jitActions.map((a, i) => ({ id: -i, sId: `jit-{i}`, ...a })),
+      ],
     },
     conversation,
     userMessage,
@@ -1151,6 +1155,18 @@ async function* runAction(
         case "request_user_data_params":
           yield event;
           break;
+        case "request_user_data_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
         case "request_user_data_success":
           yield {
             type: "agent_action_success",
@@ -1164,7 +1180,6 @@ async function* runAction(
           // the agentMessage object, updating this object will update the conversation as well.
           agentMessage.actions.push(event.action);
           break;
-
         default:
           assertNever(event);
       }
