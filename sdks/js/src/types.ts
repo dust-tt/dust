@@ -584,7 +584,14 @@ const WorkspaceSchema = LightWorkspaceSchema.extend({
   ssoEnforced: z.boolean().optional(),
 });
 
-const UserProviderSchema = FlexibleEnumSchema(["github", "google"]).nullable();
+const UserProviderSchema = FlexibleEnumSchema([
+  "auth0",
+  "github",
+  "google",
+  "okta",
+  "samlp",
+  "waad",
+]).nullable();
 
 const UserSchema = z.object({
   sId: z.string(),
