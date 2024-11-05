@@ -389,14 +389,14 @@ const RequestUserDataActionOutputSchema = z.object({
 });
 
 const RequestUserDataActionTypeSchema = BaseActionSchema.extend({
-  output: z.array(RequestUserDataActionOutputSchema).nullable(),
+  outputs: z.array(RequestUserDataActionOutputSchema).nullable(),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),
   params: z.object({
     requested_data: z.array(z.string()),
   }),
   step: z.number(),
-  type: z.literal("browse_action"),
+  type: z.literal("request_user_data_action"),
 });
 
 const BrowseActionOutputSchema = z.object({
@@ -775,6 +775,7 @@ const AgentActionTypeSchema = z.union([
   BrowseActionTypeSchema,
   RequestUserDataActionTypeSchema,
 ]);
+export type AgentActionType = z.infer<typeof AgentActionTypeSchema>;
 
 const AgentMessageStatusSchema = FlexibleEnumSchema([
   "created",
@@ -850,6 +851,14 @@ const BrowseParamsEventSchema = z.object({
   configurationId: z.string(),
   messageId: z.string(),
   action: BrowseActionTypeSchema,
+});
+
+const RequestUserDataParamsEventSchema = z.object({
+  type: z.literal("request_user_data_params"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: RequestUserDataActionTypeSchema,
 });
 
 const DustAppRunParamsEventSchema = z.object({
@@ -940,6 +949,7 @@ const AgentActionSpecificEventSchema = z.union([
   ProcessParamsEventSchema,
   WebsearchParamsEventSchema,
   BrowseParamsEventSchema,
+  RequestUserDataParamsEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema

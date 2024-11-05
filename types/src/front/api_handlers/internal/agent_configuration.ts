@@ -101,6 +101,7 @@ const BrowseActionConfigurationSchema = t.type({
 
 const RequestUserDataActionConfigurationSchema = t.type({
   type: t.literal("request_user_data_configuration"),
+  available_data: t.array(t.string),
 });
 
 const ProcessActionConfigurationSchema = t.type({
