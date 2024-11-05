@@ -3,21 +3,20 @@ import React, { useEffect, useState } from "react";
 
 import {
   Avatar,
+  Button,
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-  NewButton,
-  NewButtonBar,
+  NavigationList,
+  NavigationListItem,
+  NavigationListLabel,
   NewDropdownMenu,
   NewDropdownMenuContent,
   NewDropdownMenuItem,
   NewDropdownMenuLabel,
   NewDropdownMenuSeparator,
   NewDropdownMenuTrigger,
-  NewNavigationList,
-  NewNavigationListItem,
-  NewNavigationListLabel,
   NewSearchInput,
   ResizableHandle,
   ResizablePanel,
@@ -228,16 +227,16 @@ export const ChatTab = () => {
 
   return (
     <ScrollArea className="s-border-box s-h-full s-w-full">
-      <NewButtonBar className="s-my-2 s-w-full s-justify-end s-px-2">
+      <div className="s-my-2 s-flex s-w-full s-justify-end s-gap-2 s-px-2">
         <NewSearchInput name="input" value="" />
-        <NewButton
+        <Button
           icon={ChatBubbleBottomCenterTextIcon}
           label="New"
           tooltip="New conversation"
         />
         <NewDropdownMenu>
           <NewDropdownMenuTrigger>
-            <NewButton
+            <Button
               variant="outline"
               tooltip="Manage conversation history, assistants..."
               icon={MoreIcon}
@@ -253,17 +252,17 @@ export const ChatTab = () => {
             <NewDropdownMenuItem icon={TrashIcon} label="Remove all" />
           </NewDropdownMenuContent>
         </NewDropdownMenu>
-      </NewButtonBar>
-      <NewNavigationList className="s-w-full s-px-2">
+      </div>
+      <NavigationList className="s-w-full s-px-2">
         {conversationTitles.map((section, sectionIndex) => (
           <React.Fragment key={sectionIndex}>
-            <NewNavigationListLabel label={section.label} />
+            <NavigationListLabel label={section.label} />
             {section.items.map((title, index) => {
               const itemIndex = allItems.indexOf(title);
               return (
                 <ContextMenu>
                   <ContextMenuTrigger>
-                    <NewNavigationListItem
+                    <NavigationListItem
                       key={index}
                       selected={itemIndex === selectedIndex}
                       onClick={() => setSelectedIndex(itemIndex)}
@@ -279,7 +278,7 @@ export const ChatTab = () => {
             })}
           </React.Fragment>
         ))}
-      </NewNavigationList>
+      </NavigationList>
     </ScrollArea>
   );
 };
@@ -325,7 +324,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       <Separator orientation="vertical" />
       <NewDropdownMenu>
         <NewDropdownMenuTrigger>
-          <NewButton
+          <Button
             variant={"ghost"}
             size="sm"
             label="Help"
@@ -342,7 +341,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       </NewDropdownMenu>
       <div className="s-grow" />
       {isFixed ? (
-        <NewButton
+        <Button
           variant={"ghost"}
           size="sm"
           icon={ChevronDoubleLeftIcon}
@@ -350,7 +349,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           onClick={onHideNavigation}
         />
       ) : (
-        <NewButton
+        <Button
           variant={"ghost"}
           size="sm"
           icon={ChevronDoubleRightIcon}
@@ -519,7 +518,7 @@ export const KnowledgeNav: React.FC<NavTabProps> = ({ className = "" }) => {
           </Tree>
         </Tree.Item>
       </Tree>
-      <NewNavigationListLabel variant="secondary" label="Workspace" />
+      <NavigationListLabel variant="secondary" label="Workspace" />
       <Tree variant="navigator">
         <Tree.Item
           label="Drive"
@@ -577,7 +576,7 @@ export const KnowledgeNav: React.FC<NavTabProps> = ({ className = "" }) => {
           </Tree>
         </Tree.Item>
       </Tree>
-      <NewNavigationListLabel variant="secondary" label="Vaults" />
+      <NavigationListLabel variant="secondary" label="Vaults" />
       <Tree variant="navigator">
         <Tree.Item
           label="Finance"
@@ -709,15 +708,15 @@ export const KnowledgeNav: React.FC<NavTabProps> = ({ className = "" }) => {
 
 export const SettingTab = () => {
   return (
-    <NewNavigationList className="s-w-full s-px-2">
-      <NewNavigationListLabel label="Workspace" />
-      <NewNavigationListItem label="Members" icon={UserIcon} selected />
-      <NewNavigationListItem label="Workspace" icon={CompanyIcon} />
-      <NewNavigationListItem label="Subscription" icon={ShapesIcon} />
-      <NewNavigationListLabel label="Developers" />
-      <NewNavigationListItem label="Providers" icon={PuzzleIcon} />
-      <NewNavigationListItem label="API Keys" icon={LockIcon} />
-      <NewNavigationListItem label="Secrets" icon={BracesIcon} />
-    </NewNavigationList>
+    <NavigationList className="s-w-full s-px-2">
+      <NavigationListLabel label="Workspace" />
+      <NavigationListItem label="Members" icon={UserIcon} selected />
+      <NavigationListItem label="Workspace" icon={CompanyIcon} />
+      <NavigationListItem label="Subscription" icon={ShapesIcon} />
+      <NavigationListLabel label="Developers" />
+      <NavigationListItem label="Providers" icon={PuzzleIcon} />
+      <NavigationListItem label="API Keys" icon={LockIcon} />
+      <NavigationListItem label="Secrets" icon={BracesIcon} />
+    </NavigationList>
   );
 };
