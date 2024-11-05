@@ -46,7 +46,14 @@ export type WorkspaceType = LightWorkspaceType & {
   ssoEnforced?: boolean;
 };
 
-export type UserProviderType = "github" | "google" | null;
+export type UserProviderType =
+  | "auth0"
+  | "github"
+  | "google"
+  | "okta"
+  | "samlp"
+  | "waad"
+  | null;
 
 export type UserType = {
   sId: string;

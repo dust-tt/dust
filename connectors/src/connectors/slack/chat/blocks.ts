@@ -212,7 +212,7 @@ export function makeErrorBlock(
         type: "section",
         text: {
           type: "plain_text",
-          text: errorMessage,
+          text: truncate(errorMessage, MAX_SLACK_MESSAGE_LENGTH),
         },
       },
       makeDividerBlock(),
