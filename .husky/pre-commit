@@ -10,6 +10,17 @@ if [ "$current_branch" = "main" ]; then
     fi
 fi
 
+if [ -z "$ENABLE_GGSHIELD_ON_COMMIT" ]
+then
+  echo "You can enable secret check by setting ENABLE_GGSHIELD_ON_COMMIT and installing ggshield"
+else
+  if command -v ggshield 2>&1 >/dev/null;  then
+    ggshield secret scan pre-commit "$@"
+  else
+    echo "ggshield is not installed. Please install ggshield to enable secret check"
+  fi
+fi
+
 # If env var DUST_LINT_ON_COMMIT = 1, run the linter
 if [ -z "$DUST_LINT_ON_COMMIT" ]; then
     echo "Please set DUST_LINT_ON_COMMIT if you want to locally run the lint, type check etc.. before committing."
