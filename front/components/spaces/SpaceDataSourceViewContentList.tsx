@@ -373,7 +373,7 @@ export const SpaceDataSourceViewContentList = ({
         className={classNames(
           "flex gap-2",
           isEmpty
-            ? "h-36 w-full items-center justify-center rounded-xl bg-structure-100"
+            ? "h-36 w-full items-center justify-center rounded-xl bg-muted-background"
             : ""
         )}
       >

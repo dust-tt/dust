@@ -396,7 +396,7 @@ export default function ActionsScreen({
           {configurableActions.length === 0 && (
             <div
               className={
-                "flex h-full items-center justify-center rounded-lg border border-structure-100 bg-structure-50"
+                "flex h-36 w-full items-center justify-center rounded-xl bg-muted-background"
               }
             >
               <AddAction

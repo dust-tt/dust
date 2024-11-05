@@ -262,30 +262,28 @@ export default function WorkspaceAssistants({
             </div>
           </div>
           <div className="flex flex-col gap-4 pt-3">
-            <div className="flex flex-row gap-2">
-              <Tabs value={activeTab}>
-                <TabsList>
-                  {tabs.map((tab) => (
-                    <TabsTrigger
-                      key={tab.label}
-                      value={tab.scope}
-                      label={tab.label}
-                      icon={tab.icon}
-                      disabled={!!assistantSearch}
-                      className={assistantSearch ? disabledTablineClass : ""}
-                      onClick={() => setSelectedTab(tab.scope)}
-                    />
-                  ))}
-                </TabsList>
-              </Tabs>
-              <div className="flex grow items-end justify-end">
-                <SearchOrderDropdown
-                  orderBy={orderBy}
-                  setOrderBy={setOrderBy}
-                  disabled={activeTab === "global"}
-                />
-              </div>
-            </div>
+            <Tabs value={activeTab}>
+              <TabsList>
+                {tabs.map((tab) => (
+                  <TabsTrigger
+                    key={tab.label}
+                    value={tab.scope}
+                    label={tab.label}
+                    icon={tab.icon}
+                    disabled={!!assistantSearch}
+                    className={assistantSearch ? disabledTablineClass : ""}
+                    onClick={() => setSelectedTab(tab.scope)}
+                  />
+                ))}
+                <div className="flex h-full w-full items-center justify-end">
+                  <SearchOrderDropdown
+                    orderBy={orderBy}
+                    setOrderBy={setOrderBy}
+                    disabled={activeTab === "global"}
+                  />
+                </div>
+              </TabsList>
+            </Tabs>
             <Page.P>
               {assistantSearch
                 ? "Searching across all assistants"

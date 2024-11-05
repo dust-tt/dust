@@ -398,7 +398,7 @@ export default function AssistantBuilder({
                   }}
                   value={viewTab}
                 >
-                  <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">
+                  <TabsList>
                     {Object.values(BUILDER_SCREENS_INFOS).map((tab) => (
                       <TabsTrigger
                         key={tab.label}
@@ -407,7 +407,7 @@ export default function AssistantBuilder({
                         icon={tab.icon}
                       />
                     ))}
-                    <div className="-mt-2 flex hidden h-full w-full justify-end sm:flex">
+                    <div className="flex w-full items-center justify-end">
                       <SharingButton
                         agentConfigurationId={agentConfigurationId}
                         initialScope={
@@ -434,29 +434,6 @@ export default function AssistantBuilder({
                     </div>
                   </TabsList>
                 </Tabs>
-                <div className="flex flex-row gap-2 self-end pt-0.5 sm:hidden">
-                  <SharingButton
-                    agentConfigurationId={agentConfigurationId}
-                    initialScope={initialBuilderState?.scope ?? defaultScope}
-                    isAdmin={isAdmin}
-                    newScope={builderState.scope}
-                    owner={owner}
-                    showSlackIntegration={showSlackIntegration}
-                    slackChannelSelected={selectedSlackChannels || []}
-                    slackDataSource={slackDataSource}
-                    setNewScope={(
-                      scope: Exclude<AgentConfigurationScope, "global">
-                    ) => {
-                      setEdited(scope !== initialBuilderState?.scope);
-                      setBuilderState((state) => ({ ...state, scope }));
-                    }}
-                    baseUrl={baseUrl}
-                    setNewLinkedSlackChannels={(channels) => {
-                      setSelectedSlackChannels(channels);
-                      setEdited(true);
-                    }}
-                  />
-                </div>
               </div>
               {(() => {
                 switch (screen) {
