@@ -4,6 +4,8 @@ import "./src/css/global.css";
 import "@dust-tt/sparkle/dist/sparkle.css";
 // Local tailwind components override sparkle styles
 import "./src/css/components.css";
+// Local custom styles
+import "./src/css/custom.css";
 
 import { AuthProvider } from "@extension/components/auth/AuthProvider";
 import { routes } from "@extension/pages/routes";
