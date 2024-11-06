@@ -331,19 +331,6 @@ const RunTypeSchema = z.object({
     .optional(),
 });
 
-const FunctionCallSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  arguments: z.string(),
-});
-
-const FunctionMessageTypeModelSchema = z.object({
-  role: z.literal("function"),
-  name: z.string(),
-  function_call_id: z.string(),
-  content: z.string(),
-});
-
 const TokensClassificationSchema = FlexibleEnumSchema([
   "tokens",
   "chain_of_thought",
@@ -376,10 +363,6 @@ const BaseActionTypeSchema = FlexibleEnumSchema([
 const BaseActionSchema = z.object({
   id: ModelIdSchema,
   type: BaseActionTypeSchema,
-  renderForFunctionCall: z.function().returns(FunctionCallSchema),
-  renderForMultiActionsModel: z
-    .function()
-    .returns(FunctionMessageTypeModelSchema),
 });
 
 const BrowseActionOutputSchema = z.object({
@@ -489,7 +472,6 @@ const RetrievalDocumentTypeSchema = z.object({
 });
 
 const RetrievalActionTypeSchema = BaseActionSchema.extend({
-  id: ModelIdSchema,
   agentMessageId: ModelIdSchema,
   params: z.object({
     relativeTimeFrame: TimeFrameSchema.nullable(),
@@ -523,7 +505,6 @@ const ProcessActionOutputsSchema = z.object({
 });
 
 const ProcessActionTypeSchema = BaseActionSchema.extend({
-  id: ModelIdSchema,
   agentMessageId: ModelIdSchema,
   params: z.object({
     relativeTimeFrame: TimeFrameSchema.nullable(),
@@ -537,7 +518,6 @@ const ProcessActionTypeSchema = BaseActionSchema.extend({
 });
 
 const TablesQueryActionTypeSchema = BaseActionSchema.extend({
-  id: ModelIdSchema,
   params: DustAppParametersSchema,
   output: z.record(z.union([z.string(), z.number(), z.boolean()])).nullable(),
   resultsFileId: z.string().nullable(),
