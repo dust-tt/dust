@@ -103,6 +103,8 @@ export default function DataSourcePicker({
     setFilteredDataSourceViews(newDataSources.slice(0, 30));
   }, [spaceDataSourceViews, searchFilter]);
 
+  const [open, setOpen] = useState(false);
+
   return (
     <div className="flex items-center">
       <div className="flex items-center">
@@ -117,7 +119,7 @@ export default function DataSourcePicker({
             "No DataSource"
           )
         ) : (
-          <PopoverRoot>
+          <PopoverRoot open={open} onOpenChange={setOpen}>
             <PopoverTrigger>
               {selectedDataSourceView ? (
                 <div
@@ -169,12 +171,12 @@ export default function DataSourcePicker({
                           },
                         ]);
                         setSearchFilter("");
+                        setOpen(false);
                       }}
                     >
                       <div className="my-1">
                         <div className="text-sm">{dsv.dataSource.name}</div>
                       </div>
-                      <Separator />
                     </div>
                   ))}
                   {filteredDataSourceViews.length === 0 && (
