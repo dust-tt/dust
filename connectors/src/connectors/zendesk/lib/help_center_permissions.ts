@@ -160,6 +160,7 @@ export async function allowSyncZendeskCategory({
           categoryId,
           permission: "read",
           url: fetchedCategory.html_url,
+          description: fetchedCategory.description,
         },
       });
     } else {

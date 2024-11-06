@@ -13,6 +13,7 @@ import type {
   ZendeskUpdateSignal,
 } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
+import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 
 const {
   getZendeskCategoriesActivity,
@@ -29,6 +30,7 @@ const {
   checkZendeskTicketsPermissionsActivity,
   saveZendeskConnectorStartSync,
   saveZendeskConnectorSuccessSync,
+  getAllZendeskBrandsIdsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
@@ -102,7 +104,8 @@ export async function zendeskSyncWorkflow({
     brandTicketsIds.size === 0 &&
     categoryIds.size === 0
   ) {
-    // TODO: refresh the data we don't receive updates about through the webhooks here
+    const allBrandIds = await getAllZendeskBrandsIdsActivity({ connectorId });
+    allBrandIds.forEach((brandId) => brandIds.add(brandId));
   }
 
   const {
@@ -314,18 +317,18 @@ export async function zendeskCategorySyncWorkflow({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  const isCategoryAllowed = await syncZendeskCategoryActivity({
+  const category = await syncZendeskCategoryActivity({
     connectorId,
     categoryId,
     currentSyncDateMs,
     brandId,
   });
-  if (!isCategoryAllowed) {
+  if (!category) {
     return; // nothing to sync
   }
   await syncZendeskArticlesActivity({
     connectorId,
-    categoryId,
+    category,
     currentSyncDateMs,
     forceResync,
   });
@@ -349,24 +352,24 @@ async function runZendeskBrandHelpCenterSyncActivities({
     connectorId,
     brandId,
   });
-  const categoriesToSync = new Set<number>();
+  const categoriesToSync = new Set<ZendeskCategoryResource>();
   for (const categoryId of categoryIds) {
-    const wasCategoryUpdated = await syncZendeskCategoryActivity({
+    const category = await syncZendeskCategoryActivity({
       connectorId,
       categoryId,
       currentSyncDateMs,
       brandId,
     });
-    if (wasCategoryUpdated) {
-      categoriesToSync.add(categoryId);
+    if (category) {
+      categoriesToSync.add(category);
     }
   }
 
   /// grouping the articles by category for a lower granularity
-  for (const categoryId of categoriesToSync) {
+  for (const category of categoriesToSync) {
     await syncZendeskArticlesActivity({
       connectorId,
-      categoryId,
+      category,
       currentSyncDateMs,
       forceResync,
     });
