@@ -337,7 +337,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
           return new Err(new Error(`Invalid repoId: ${parentInternalId}`));
         }
 
-        const [latestDiscussion, latestIssue, repo, codeRepo] =
+        const [latestDiscussion, latestIssue, repoRes, codeRepo] =
           await Promise.all([
             (async () => {
               return GithubDiscussion.findOne({
@@ -369,6 +369,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               });
             })(),
           ]);
+
+        if (repoRes.isErr()) {
+          return repoRes;
+        }
+
+        const repo = repoRes.value;
 
         const nodes: ContentNode[] = [];
 
@@ -486,8 +492,12 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     await concurrentExecutor(
       uniqueRepoIdsArray,
       async (repoId) => {
-        const repoData = await getRepo(connectionId, repoId);
-        uniqueRepos[repoId] = repoData;
+        const repoRes = await getRepo(connectionId, repoId);
+        if (repoRes.isErr()) {
+          return repoRes;
+        }
+
+        uniqueRepos[repoId] = repoRes.value;
       },
       { concurrency: 8 }
     );
