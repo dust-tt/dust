@@ -22,7 +22,7 @@ const TabsList = React.forwardRef<
     <TabsPrimitive.List
       ref={ref}
       className={cn(
-        "s-inline-flex s-h-12 s-gap-2 s-border-b s-border-separator",
+        "s-inline-flex s-h-11 s-gap-2 s-border-b s-border-separator",
         isFullSize && "s-w-full",
         className
       )}
@@ -62,26 +62,29 @@ const TabsTrigger = React.forwardRef<
       <TabsPrimitive.Trigger
         ref={ref}
         className={cn(
-          "s-h-12",
+          "s-h-11",
           "disabled:s-pointer-events-none data-[state=active]:s-shadow-inner-border",
           className
         )}
         disabled={disabled}
+        asChild
         {...props}
       >
-        <Button
-          variant="ghost"
-          size="sm"
-          label={label}
-          tooltip={tooltip}
-          icon={icon}
-          disabled={disabled}
-          href={href}
-          target={target}
-          rel={rel}
-          replace={replace}
-          shallow={shallow}
-        />
+        <div>
+          <Button
+            variant="ghost"
+            size="sm"
+            label={label}
+            tooltip={tooltip}
+            icon={icon}
+            disabled={disabled}
+            href={href}
+            target={target}
+            rel={rel}
+            replace={replace}
+            shallow={shallow}
+          />
+        </div>
       </TabsPrimitive.Trigger>
     );
   }
