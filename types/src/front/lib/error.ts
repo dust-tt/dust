@@ -15,6 +15,7 @@ export type APIErrorType =
   | "invalid_request_error"
   | "invalid_rows_request_error"
   | "user_not_found"
+  | "content_too_large"
   | "data_source_error"
   | "data_source_not_found"
   | "data_source_view_not_found"
