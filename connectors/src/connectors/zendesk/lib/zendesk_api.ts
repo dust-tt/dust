@@ -8,6 +8,8 @@ import type { ZendeskFetchedArticle } from "@connectors/connectors/zendesk/lib/n
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
+const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
+
 export function createZendeskClient({
   accessToken,
   subdomain,
@@ -62,7 +64,11 @@ export async function getZendeskBrandSubdomain(
  */
 async function handleZendeskRateLimit(response: Response): Promise<boolean> {
   if (response.status === 429) {
-    const retryAfter = Number(response.headers.get("Retry-After")) || 60;
+    const retryAfter = Math.min(
+      Number(response.headers.get("Retry-After")) ||
+        ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS,
+      ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS
+    );
     await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
     return true;
   }
