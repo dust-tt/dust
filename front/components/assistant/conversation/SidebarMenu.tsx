@@ -233,7 +233,6 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   icon={ChatBubbleBottomCenterPlusIcon}
                   className="shrink"
                   tooltip="Create a new conversation"
-                  href={`/w/${owner.sId}/assistant/new`}
                   onClick={() => {
                     setSidebarOpen(false);
                     const { cId } = router.query;

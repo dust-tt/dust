@@ -1,5 +1,6 @@
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import { getTemporalWorkerConnection } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
@@ -7,7 +8,6 @@ import logger from "@app/logger/logger";
 import * as activities from "@app/temporal/permissions_queue/activities";
 
 import { QUEUE_NAME } from "./config";
-import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 export async function runPermissionsWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
