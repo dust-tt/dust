@@ -494,7 +494,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       async (repoId) => {
         const repoRes = await getRepo(connectionId, repoId);
         if (repoRes.isErr()) {
-          return repoRes;
+          throw repoRes.error;
         }
 
         uniqueRepos[repoId] = repoRes.value;
