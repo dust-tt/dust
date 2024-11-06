@@ -327,18 +327,18 @@ export async function zendeskCategorySyncWorkflow({
   }
 
   let cursor = null; // cursor involved in the pagination of the API
-  for (;;) {
-    const { hasMore, afterCursor } = await syncZendeskArticleBatchActivity({
+  let hasMore = true;
+
+  while (hasMore) {
+    const result = await syncZendeskArticleBatchActivity({
       connectorId,
       categoryId,
       currentSyncDateMs,
       forceResync,
       cursor,
     });
-    if (!hasMore) {
-      break;
-    }
-    cursor = afterCursor;
+    hasMore = result.hasMore || false;
+    cursor = result.afterCursor;
   }
 }
 
@@ -374,19 +374,19 @@ async function runZendeskBrandHelpCenterSyncActivities({
   }
 
   for (const categoryId of categoryIdsToSync) {
+    let hasMore = true;
     let cursor = null; // cursor involved in the pagination of the API
-    for (;;) {
-      const { hasMore, afterCursor } = await syncZendeskArticleBatchActivity({
+
+    while (hasMore) {
+      const result = await syncZendeskArticleBatchActivity({
         connectorId,
         categoryId,
         currentSyncDateMs,
         forceResync,
         cursor,
       });
-      if (!hasMore) {
-        break;
-      }
-      cursor = afterCursor;
+      hasMore = result.hasMore || false;
+      cursor = result.afterCursor;
     }
   }
 }
