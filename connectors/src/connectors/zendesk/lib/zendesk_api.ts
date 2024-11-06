@@ -9,6 +9,7 @@ import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
+const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
 
 export function createZendeskClient({
@@ -117,8 +118,20 @@ export async function fetchZendeskArticlesInCategory({
     );
 
   let rawResponse = await runFetch();
+
+  let retryCount = 0;
   while (await handleZendeskRateLimit(rawResponse)) {
     rawResponse = await runFetch();
+    retryCount++;
+    if (retryCount >= ZENDESK_RATE_LIMIT_MAX_RETRIES) {
+      logger.info(
+        { response: rawResponse },
+        `[Zendesk] Rate limit hit more than ${ZENDESK_RATE_LIMIT_MAX_RETRIES}, aborting.`
+      );
+      throw new Error(
+        `Zendesk rate limit hit more than ${ZENDESK_RATE_LIMIT_MAX_RETRIES} times, aborting.`
+      );
+    }
   }
 
   const text = await rawResponse.text();
