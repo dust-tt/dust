@@ -386,6 +386,7 @@ const BrowseActionTypeSchema = BaseActionSchema.extend({
   step: z.number(),
   type: z.literal("browse_action"),
 });
+type BrowseActionPublicType = z.infer<typeof BrowseActionTypeSchema>;
 
 const DustAppParametersSchema = z.record(
   z.union([z.string(), z.number(), z.boolean()])
@@ -413,6 +414,7 @@ const DustAppRunActionTypeSchema = BaseActionSchema.extend({
   ...o,
   output: o.output,
 }));
+type DustAppRunActionPublicType = z.infer<typeof DustAppRunActionTypeSchema>;
 
 const DataSourceViewKindSchema = FlexibleEnumSchema(["default", "custom"]);
 
@@ -484,6 +486,7 @@ const RetrievalActionTypeSchema = BaseActionSchema.extend({
   step: z.number(),
   type: z.literal("retrieval_action"),
 });
+type RetrievalActionPublicType = z.infer<typeof RetrievalActionTypeSchema>;
 
 const ProcessSchemaAllowedTypesSchema = z.enum(["string", "number", "boolean"]);
 
@@ -516,6 +519,7 @@ const ProcessActionTypeSchema = BaseActionSchema.extend({
   step: z.number(),
   type: z.literal("process_action"),
 });
+type ProcessActionPublicType = z.infer<typeof ProcessActionTypeSchema>;
 
 const TablesQueryActionTypeSchema = BaseActionSchema.extend({
   params: DustAppParametersSchema,
@@ -528,6 +532,7 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
   step: z.number(),
   type: z.literal("tables_query_action"),
 });
+type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema([
   "usage_data_api",
@@ -619,6 +624,7 @@ const WebsearchActionTypeSchema = BaseActionSchema.extend({
   step: z.number(),
   type: z.literal("websearch_action"),
 });
+type WebsearchActionPublicType = z.infer<typeof WebsearchActionTypeSchema>;
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema([
   "active",
@@ -1825,3 +1831,41 @@ export const GetWorkspaceUsageRequestSchema = z.union([
 export type GetWorkspaceUsageRequestType = z.infer<
   typeof GetWorkspaceUsageRequestSchema
 >;
+
+// Typeguards.
+
+export function isRetrievalActionType(
+  action: AgentActionPublicType
+): action is RetrievalActionPublicType {
+  return action.type === "retrieval_action";
+}
+
+export function isWebsearchActionType(
+  action: AgentActionPublicType
+): action is WebsearchActionPublicType {
+  return action.type === "retrieval_action";
+}
+
+export function isTablesQueryActionType(
+  action: AgentActionPublicType
+): action is TablesQueryActionPublicType {
+  return action.type === "tables_query_action";
+}
+
+export function isDustAppRunActionType(
+  action: AgentActionPublicType
+): action is DustAppRunActionPublicType {
+  return action.type === "dust_app_run_action";
+}
+
+export function isProcessActionType(
+  action: AgentActionPublicType
+): action is ProcessActionPublicType {
+  return action.type === "process_action";
+}
+
+export function BrowseActionPublicType(
+  action: AgentActionPublicType
+): action is BrowseActionPublicType {
+  return action.type === "browse_action";
+}
