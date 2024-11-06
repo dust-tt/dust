@@ -112,8 +112,25 @@ export {
   NavigationListItem,
   NavigationListLabel,
 } from "./NavigationList";
+export {
+  NewDropdownMenu,
+  NewDropdownMenuCheckboxItem,
+  NewDropdownMenuContent,
+  NewDropdownMenuGroup,
+  NewDropdownMenuItem,
+  NewDropdownMenuLabel,
+  NewDropdownMenuPortal,
+  NewDropdownMenuRadioGroup,
+  NewDropdownMenuRadioItem,
+  NewDropdownMenuSearchbar,
+  NewDropdownMenuSeparator,
+  NewDropdownMenuShortcut,
+  NewDropdownMenuSub,
+  NewDropdownMenuSubContent,
+  NewDropdownMenuSubTrigger,
+  NewDropdownMenuTrigger,
+} from "./NewDropdown";
 export { NewInput } from "./NewInput";
-export { NewSearchInput } from "./NewSearchInput";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { Page } from "./Page";
