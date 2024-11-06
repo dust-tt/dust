@@ -1,3 +1,4 @@
+import Bold from "@tiptap/extension-bold";
 import { MentionPluginKey } from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
 import type { Editor, JSONContent } from "@tiptap/react";
@@ -156,6 +157,14 @@ export interface CustomEditorProps {
   disableAutoFocus: boolean;
 }
 
+const CustomBold = Bold.extend({
+  addKeyboardShortcuts() {
+    return {
+      "Mod-b": () => false,
+    };
+  },
+});
+
 const useCustomEditor = ({
   onEnterKeyDown,
   resetEditorContainerSize,
@@ -171,7 +180,10 @@ const useCustomEditor = ({
         heading: false,
         // Disable the paragraph extension to handle Enter key press manually.
         paragraph: false,
+        // Disable the default Bold extension from StarterKit
+        bold: false,
       }),
+      CustomBold,
       ParagraphExtension,
       MentionStorage,
       MentionWithPaste.configure({
