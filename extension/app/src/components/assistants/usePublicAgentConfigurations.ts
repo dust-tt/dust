@@ -1,9 +1,7 @@
-import type { DustAPI } from "@dust-tt/client";
 import type {
   AgentsGetViewType,
   LightAgentConfigurationType,
 } from "@dust-tt/types";
-import { useDustAPI } from "@extension/lib/dust_api";
 import { fetcher, useSWRWithDefaults } from "@extension/lib/swr";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -23,8 +21,6 @@ export function usePublicAgentConfigurations({
   sort?: "alphabetical" | "priority";
   disabled?: boolean;
 }) {
-  const dustAPI = useDustAPI();
-
   const agentConfigurationsFetcher: Fetcher<{
     agentConfigurations: LightAgentConfigurationType[];
   }> = fetcher;
