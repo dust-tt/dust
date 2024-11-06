@@ -157,7 +157,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
 
         // If connector was previously paused, unpause it.
         if (connector.isPaused()) {
-          await connector.markAsUnpaused();
+          await this.unpause();
         }
       } else {
         logger.info(

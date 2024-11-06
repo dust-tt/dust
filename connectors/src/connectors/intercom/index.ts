@@ -165,7 +165,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
 
       // If connector was previously paused, unpause it.
       if (connector.isPaused()) {
-        await connector.markAsUnpaused();
+        await this.unpause();
       }
 
       await IntercomWorkspace.update(

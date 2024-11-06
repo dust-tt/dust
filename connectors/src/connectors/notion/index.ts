@@ -170,7 +170,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
       // If connector was previously paused, unpause it.
       if (c.isPaused()) {
-        await c.markAsUnpaused();
+        await this.unpause();
       }
 
       const dataSourceConfig = dataSourceConfigFromConnector(c);

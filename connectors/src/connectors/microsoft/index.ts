@@ -158,7 +158,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
       // If connector was previously paused, unpause it.
       if (connector.isPaused()) {
-        await connector.markAsUnpaused();
+        await this.unpause();
       }
     }
 

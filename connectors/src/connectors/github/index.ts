@@ -98,7 +98,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
       // If connector was previously paused, unpause it.
       if (c.isPaused()) {
-        await c.markAsUnpaused();
+        await this.unpause();
       }
 
       await launchGithubFullSyncWorkflow({
