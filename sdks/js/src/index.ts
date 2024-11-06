@@ -4,8 +4,8 @@ import type {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
+  AgentMessagePublicType,
   AgentMessageSuccessEvent,
-  AgentMessageType,
   APIError,
   ConversationPublicType,
   DataSourceViewType,
@@ -530,7 +530,7 @@ export class DustAPI {
     message,
   }: {
     conversation: ConversationPublicType;
-    message: AgentMessageType;
+    message: AgentMessagePublicType;
   }) {
     const res = await this.request({
       method: "GET",

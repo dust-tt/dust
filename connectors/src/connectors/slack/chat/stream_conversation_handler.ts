@@ -1,8 +1,10 @@
-import type { DustAPI } from "@dust-tt/client";
 import type {
-  AgentActionType,
-  AgentMessageType,
-  ConversationType,
+  AgentActionPublicType,
+  AgentMessagePublicType,
+  ConversationPublicType,
+  DustAPI,
+} from "@dust-tt/client";
+import type {
   LightAgentConfigurationType,
   Result,
   UserMessageType,
@@ -27,7 +29,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 interface StreamConversationToSlackParams {
   assistantName: string;
   connector: ConnectorResource;
-  conversation: ConversationType;
+  conversation: ConversationPublicType;
   mainMessage: ChatPostMessageResponse;
   slack: {
     slackChannelId: string;
@@ -137,7 +139,7 @@ export async function streamConversationToSlack(
   if (agentMessages.length === 0) {
     return new Err(new Error("Failed to retrieve agent message"));
   }
-  const agentMessage = agentMessages[0] as AgentMessageType;
+  const agentMessage = agentMessages[0] as AgentMessagePublicType;
 
   const streamRes = await dustAPI.streamAgentMessageEvents({
     conversation,
@@ -149,7 +151,7 @@ export async function streamConversationToSlack(
   }
 
   let answer = "";
-  const actions: AgentActionType[] = [];
+  const actions: AgentActionPublicType[] = [];
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "retrieval_params":

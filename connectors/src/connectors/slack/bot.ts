@@ -1,9 +1,11 @@
-import type { PublicPostContentFragmentRequestBody } from "@dust-tt/client";
+import type {
+  ConversationPublicType,
+  PublicPostContentFragmentRequestBody,
+} from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import type {
   AgentMessageSuccessEvent,
   APIError,
-  ConversationType,
   LightAgentConfigurationType,
   ModelId,
   Result,
@@ -588,7 +590,7 @@ async function answerMessage(
     return buildSlackMessageError(buildContentFragmentRes);
   }
 
-  let conversation: ConversationType | undefined = undefined;
+  let conversation: ConversationPublicType | undefined = undefined;
   let userMessage: UserMessageType | undefined = undefined;
 
   if (lastSlackChatBotMessage?.conversationId) {
