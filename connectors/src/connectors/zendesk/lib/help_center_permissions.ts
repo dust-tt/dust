@@ -169,6 +169,8 @@ export async function allowSyncZendeskCategory({
     }
   }
 
+  await allowSyncZendeskHelpCenter({ connectorId, connectionId, brandId });
+
   return category;
 }
 
