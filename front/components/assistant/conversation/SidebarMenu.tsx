@@ -229,6 +229,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
             ) : (
               <div className={classNames("flex justify-end gap-2 pt-2")}>
                 <Button
+                  href={`/w/${owner.sId}/assistant/new`}
                   label="New"
                   icon={ChatBubbleBottomCenterPlusIcon}
                   className="shrink"
