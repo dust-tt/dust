@@ -7,7 +7,6 @@ import {
   NewDropdownMenuItem,
   NewDropdownMenuTrigger,
   SliderToggle,
-  Tooltip,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
@@ -196,21 +195,17 @@ export function ProviderManagementModal({
         <div className="text-sm font-semibold">Embedding Provider:</div>
         <NewDropdownMenu>
           <NewDropdownMenuTrigger disabled>
-            <Tooltip
-              label="Please contact us if you are willing to change this setting."
-              trigger={
-                <Button
-                  isSelect
-                  label={
-                    embeddingProvider
-                      ? prettyfiedProviderNames[embeddingProvider]
-                      : prettyfiedProviderNames["openai"]
-                  }
-                  variant="outline"
-                  size="sm"
-                  disabled
-                />
+            <Button
+              disabled
+              tooltip="Please contact us if you are willing to change this setting."
+              isSelect
+              label={
+                embeddingProvider
+                  ? prettyfiedProviderNames[embeddingProvider]
+                  : prettyfiedProviderNames["openai"]
               }
+              variant="outline"
+              size="sm"
             />
           </NewDropdownMenuTrigger>
           <NewDropdownMenuContent>
