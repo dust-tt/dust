@@ -49,6 +49,29 @@ export const getAccessToken = async (): Promise<string | null> => {
   return result.accessToken ?? null;
 };
 
+type ConversationContext = {
+  includeCurrentPage: boolean;
+};
+
+export const getConversationContext = async (
+  conversationId: string
+): Promise<ConversationContext> => {
+  const result = await chrome.storage.local.get(["conversationContext"]);
+  return result.conversationContext
+    ? result.conversationContext[conversationId]
+    : { includeCurrentPage: false };
+};
+
+export const setConversationContext = async (
+  conversationId: string,
+  context: ConversationContext
+): Promise<void> => {
+  const result = await chrome.storage.local.get(["conversationContext"]);
+  const v = result.conversationContext ?? {};
+  v[conversationId] = context;
+  await chrome.storage.local.set({ conversationContext: v });
+};
+
 /**
  * User.
  * We store the basic user information with list of workspaces and currently selected workspace in Chrome storage.

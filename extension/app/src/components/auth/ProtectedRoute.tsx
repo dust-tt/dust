@@ -24,6 +24,7 @@ type ProtectedRouteProps = {
 export type ProtectedRouteChildrenProps = {
   user: StoredUser;
   workspace: LightWorkspaceType;
+  handleLogout: () => void;
 };
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
@@ -57,47 +58,9 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   return (
     <div className="flex h-screen flex-col gap-2 p-4">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2 pb-6">
-          <LogoHorizontalColorLogo className="h-4 w-16" />
-          <Button
-            icon={ExternalLinkIcon}
-            variant="ghost"
-            href="https://dust.tt"
-            target="_blank"
-          />
-        </div>
-        <NewDropdownMenu>
-          <NewDropdownMenuTrigger>
-            <>
-              <span className="sr-only">Open user menu</span>
-              <Avatar
-                size="md"
-                visual={
-                  user.image
-                    ? user.image
-                    : "https://gravatar.com/avatar/anonymous?d=mp"
-                }
-                onClick={() => {
-                  "clickable";
-                }}
-              />
-            </>
-          </NewDropdownMenuTrigger>
-          <NewDropdownMenuContent>
-            <NewDropdownMenuItem
-              icon={LogoutIcon}
-              label="Sign out"
-              onClick={handleLogout}
-            />
-          </NewDropdownMenuContent>
-        </NewDropdownMenu>
-      </div>
-      <>
-        {typeof children === "function"
-          ? children({ user, workspace })
-          : children}
-      </>
+      {typeof children === "function"
+        ? children({ user, workspace, handleLogout })
+        : children}
     </div>
   );
 };

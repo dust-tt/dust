@@ -74,6 +74,7 @@ chrome.runtime.onMessage.addListener(
                 func: () => document.documentElement.innerText,
               });
               sendResponse({
+                title: tab.title || "",
                 url: tab.url || "",
                 content: result.result ?? "no content.",
               });
