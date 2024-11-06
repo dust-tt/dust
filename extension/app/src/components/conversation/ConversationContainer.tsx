@@ -207,20 +207,16 @@ export function ConversationContainer({
               <Page.SectionHeader title="Start a conversation" />
             </div>
             <div className="flex space-x-1">
-              <Tooltip
-                label={
+              <Button
+                tooltip={
                   tabContentToInclude
                     ? `Page included: ${tabContentToInclude.url}`
                     : "Include content from the current tab"
                 }
-                trigger={
-                  <Button
-                    icon={CloudArrowDownIcon}
-                    variant="outline"
-                    onClick={handleIncludeCurrentTab}
-                    disabled={tabContentToInclude !== null}
-                  />
-                }
+                icon={CloudArrowDownIcon}
+                variant="outline"
+                onClick={handleIncludeCurrentTab}
+                disabled={tabContentToInclude !== null}
               />
               <ConversationHistory />
             </div>
@@ -250,15 +246,11 @@ export function ConversationContainer({
 const ConversationHistory = () => {
   const navigate = useNavigate();
   return (
-    <Tooltip
-      label="View all conversations"
-      trigger={
-        <Button
-          icon={HistoryIcon}
-          variant="outline"
-          onClick={() => navigate("/conversations")}
-        />
-      }
+    <Button
+      tooltip="View all conversations"
+      icon={HistoryIcon}
+      variant="outline"
+      onClick={() => navigate("/conversations")}
     />
   );
 };
