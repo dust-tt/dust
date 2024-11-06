@@ -8,6 +8,8 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
+  fetchZendeskArticlesInCategory,
+  getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { syncArticle } from "@connectors/connectors/zendesk/temporal/sync_article";
 import { syncTicket } from "@connectors/connectors/zendesk/temporal/sync_ticket";
@@ -23,6 +25,8 @@ import {
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
+const ZENDESK_ARTICLE_BATCH_SIZE = 100;
 
 async function _getZendeskConnectorOrRaise(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -317,20 +321,22 @@ export async function syncZendeskCategoryActivity({
 }
 
 /**
- * This activity is responsible for syncing all the articles in a Category.
+ * This activity is responsible for syncing the next batch of articles to process.
  * It does not sync the Category, only the Articles.
  */
-export async function syncZendeskArticlesActivity({
+export async function syncZendeskArticleBatchActivity({
   connectorId,
   category,
   currentSyncDateMs,
   forceResync,
+  cursor,
 }: {
   connectorId: ModelId;
   category: ZendeskCategoryResource;
   currentSyncDateMs: number;
   forceResync: boolean;
-}) {
+  cursor?: string | null;
+}): Promise<{ hasMore: boolean; afterCursor: string | null }> {
   const connector = await _getZendeskConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
@@ -345,12 +351,23 @@ export async function syncZendeskArticlesActivity({
   );
   const zendeskApiClient = createZendeskClient({
     token: accessToken,
-    subdomain: subdomain,
+    subdomain,
+  });
+  const brandSubdomain = await getZendeskBrandSubdomain(zendeskApiClient, {
+    brandId: category.brandId,
+    connectorId,
   });
 
-  const articles = await zendeskApiClient.helpcenter.articles.listByCategory(
-    category.categoryId
-  );
+  const {
+    articles,
+    meta: { after_cursor, hasMore },
+  } = await fetchZendeskArticlesInCategory({
+    subdomain: brandSubdomain,
+    accessToken,
+    categoryId: category.categoryId,
+    pageSize: ZENDESK_ARTICLE_BATCH_SIZE,
+    cursor,
+  });
 
   await concurrentExecutor(
     articles,
@@ -366,6 +383,7 @@ export async function syncZendeskArticlesActivity({
       }),
     { concurrency: 10 }
   );
+  return { hasMore, afterCursor: after_cursor };
 }
 
 /**

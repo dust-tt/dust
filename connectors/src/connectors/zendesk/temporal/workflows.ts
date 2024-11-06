@@ -19,7 +19,7 @@ const {
   getZendeskCategoriesActivity,
   syncZendeskBrandActivity,
   syncZendeskCategoryActivity,
-  syncZendeskArticlesActivity,
+  syncZendeskArticleBatchActivity,
   syncZendeskTicketsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
@@ -326,12 +326,21 @@ export async function zendeskCategorySyncWorkflow({
   if (!category) {
     return; // nothing to sync
   }
-  await syncZendeskArticlesActivity({
-    connectorId,
-    category,
-    currentSyncDateMs,
-    forceResync,
-  });
+
+  let cursor = null; // cursor involved in the pagination of the API
+  for (;;) {
+    const { hasMore, afterCursor } = await syncZendeskArticleBatchActivity({
+      connectorId,
+      category,
+      currentSyncDateMs,
+      forceResync,
+      cursor,
+    });
+    if (!hasMore) {
+      break;
+    }
+    cursor = afterCursor;
+  }
 }
 
 /**
@@ -367,12 +376,20 @@ async function runZendeskBrandHelpCenterSyncActivities({
 
   /// grouping the articles by category for a lower granularity
   for (const category of categoriesToSync) {
-    await syncZendeskArticlesActivity({
-      connectorId,
-      category,
-      currentSyncDateMs,
-      forceResync,
-    });
+    let cursor = null; // cursor involved in the pagination of the API
+    for (;;) {
+      const { hasMore, afterCursor } = await syncZendeskArticleBatchActivity({
+        connectorId,
+        category,
+        currentSyncDateMs,
+        forceResync,
+        cursor,
+      });
+      if (!hasMore) {
+        break;
+      }
+      cursor = afterCursor;
+    }
   }
 }
 
