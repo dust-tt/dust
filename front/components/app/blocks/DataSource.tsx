@@ -227,7 +227,7 @@ export default function DataSource({
               <input
                 type="text"
                 className={classNames(
-                  "block w-8 flex-1 rounded-md px-1 py-1 text-sm font-normal",
+                  "block w-12 flex-1 rounded-md px-1 py-1 text-sm font-normal",
                   readOnly
                     ? "border-white ring-0 focus:border-white focus:ring-0"
                     : "border-white focus:border-gray-300 focus:ring-0"
