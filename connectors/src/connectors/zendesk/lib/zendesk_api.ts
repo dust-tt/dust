@@ -6,6 +6,7 @@ import { createClient } from "node-zendesk";
 
 import type { ZendeskFetchedArticle } from "@connectors/connectors/zendesk/lib/node-zendesk-types";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
@@ -68,6 +69,10 @@ async function handleZendeskRateLimit(response: Response): Promise<boolean> {
       Number(response.headers.get("Retry-After")) ||
         ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS,
       ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS
+    );
+    logger.info(
+      { response, retryAfter },
+      "[Zendesk] Rate limit hit, waiting before retrying."
     );
     await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
     return true;
