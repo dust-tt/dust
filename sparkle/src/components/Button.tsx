@@ -159,7 +159,38 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </>
     );
 
-    const buttonElement = (
+    const innerButton = (
+      <MetaButton
+        ref={ref}
+        size={buttonSize}
+        variant={variant}
+        disabled={isLoading || props.disabled}
+        className={isPulsing ? "s-animate-pulse" : ""}
+        aria-label={ariaLabel || tooltip || label}
+        style={
+          {
+            "--pulse-color": "#93C5FD",
+            "--duration": "1.5s",
+          } as React.CSSProperties
+        }
+        {...props}
+      >
+        {content}
+      </MetaButton>
+    );
+
+    const wrappedContent = tooltip ? (
+      <TooltipProvider>
+        <TooltipRoot>
+          <TooltipTrigger asChild>{innerButton}</TooltipTrigger>
+          <TooltipContent>{tooltip}</TooltipContent>
+        </TooltipRoot>
+      </TooltipProvider>
+    ) : (
+      innerButton
+    );
+
+    return href ? (
       <LinkWrapper
         href={href}
         target={target}
@@ -167,37 +198,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         replace={replace}
         shallow={shallow}
       >
-        <MetaButton
-          ref={ref}
-          size={buttonSize}
-          variant={variant}
-          disabled={isLoading || props.disabled}
-          className={isPulsing ? "s-animate-pulse" : ""}
-          aria-label={ariaLabel || tooltip || label}
-          style={
-            {
-              "--pulse-color": "#93C5FD",
-              "--duration": "1.5s",
-            } as React.CSSProperties
-          }
-          {...props}
-        >
-          {content}
-        </MetaButton>
+        {wrappedContent}
       </LinkWrapper>
-    );
-
-    return tooltip ? (
-      <TooltipProvider>
-        <TooltipRoot>
-          <TooltipTrigger asChild ref={ref}>
-            {buttonElement}
-          </TooltipTrigger>
-          <TooltipContent>{tooltip}</TooltipContent>
-        </TooltipRoot>
-      </TooltipProvider>
     ) : (
-      buttonElement
+      wrappedContent
     );
   }
 );

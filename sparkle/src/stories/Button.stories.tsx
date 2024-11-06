@@ -95,3 +95,25 @@ export const DisabledButtonExample = () => (
     <Button icon={RobotIcon} variant="outline" isSelect disabled={true} />
   </div>
 );
+
+export const TooltipButtonExample = () => (
+  <div className="s-flex s-items-center s-gap-4">
+    <Button
+      tooltip="This is a tooltip message"
+      icon={RobotIcon}
+      variant="outline"
+    />
+    <Button
+      href="hello"
+      tooltip="This is a tooltip message"
+      icon={RobotIcon}
+      variant="primary"
+    />
+    <Button
+      tooltip="This shouldn't be visible"
+      icon={RobotIcon}
+      variant="outline"
+      disabled
+    />
+  </div>
+);
