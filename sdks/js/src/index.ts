@@ -809,6 +809,14 @@ export class DustAPI {
       return res;
     }
 
+    if (res.value.response.status === 413) {
+      return new Err({
+        type: "content_too_large",
+        title: "Your message is too long to be sent.",
+        message: "Please try again with a shorter message.",
+      });
+    }
+
     // We get the text and attempt to parse so that we can log the raw text in case of error (the
     // body is already consumed by response.json() if used otherwise).
     const text = await res.value.response.text();

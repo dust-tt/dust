@@ -1037,6 +1037,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema([
   "connector_update_unauthorized",
   "conversation_access_restricted",
   "conversation_not_found",
+  "content_too_large",
   "data_source_auth_error",
   "data_source_document_not_found",
   "data_source_error",
@@ -1399,6 +1400,19 @@ export type PostMessagesResponseBody = {
   message: UserMessageType;
   agentMessages?: AgentMessagePublicType[];
 };
+
+export const PublicPostEditMessagesRequestBodySchema = z.object({
+  content: z.string(),
+  mentions: z.array(
+    z.object({
+      configurationId: z.string(),
+    })
+  ),
+});
+
+export type PublicPostEditMessagesRequestBody = z.infer<
+  typeof PublicPostEditMessagesRequestBodySchema
+>;
 
 export const PublicPostContentFragmentRequestBodySchema = z.object({
   title: z.string(),

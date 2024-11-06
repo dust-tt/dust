@@ -83,7 +83,11 @@ function makeQueryDescription(action: ProcessActionType) {
         : `${relativeTimeFrame.unit}`)
     : "all time";
 
-  return `Extracted from ${action.outputs?.total_documents} documents over ${timeFrameAsString}.`;
+  if (action.outputs?.total_documents) {
+    return `Extracted from ${action.outputs?.total_documents} documents over ${timeFrameAsString}.`;
+  } else {
+    return `Extracted from documents over ${timeFrameAsString}.`;
+  }
 }
 
 function ProcessActionOutputDetails({ action }: { action: ProcessActionType }) {
