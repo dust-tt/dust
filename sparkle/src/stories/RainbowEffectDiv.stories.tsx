@@ -1,7 +1,7 @@
-import React, { Children } from "react";
-
-import { RainbowEffectDiv, Separator } from "../index_with_tw_base";
 import { Meta } from "@storybook/react";
+import React from "react";
+
+import { RainbowEffectDiv } from "../index_with_tw_base";
 
 const meta = {
   title: "Primitives/RainbowEffect",
@@ -11,28 +11,16 @@ const meta = {
 export default meta;
 
 const DivExample = () => (
-  <div className="s-flex s-flex-col s-gap-6">
-    <RainbowEffectDiv
-      backgroundColor="white"
-      borderColor="black"
-      className="s-h-16 s-p-2"
-    >
-      Text in a div
-    </RainbowEffectDiv>
-    <Separator />
-    <RainbowEffectDiv
-      backgroundColor="white"
-      borderColor="black"
-      className="s-p-2"
-    >
+  <RainbowEffectDiv backgroundColor="white" borderColor="black">
+    <div className="s-flex s-flex-col s-gap-3 s-rounded-2xl s-border s-border-border-dark s-bg-white/90 s-p-4 s-backdrop-blur-2xl">
       <div>Text in a div too</div>
       <div className="flex">
         <div>but</div>
         <div>many</div>
         <div>children</div>
       </div>
-    </RainbowEffectDiv>
-  </div>
+    </div>
+  </RainbowEffectDiv>
 );
 
 export const RainbowEffectExamples = () => (
