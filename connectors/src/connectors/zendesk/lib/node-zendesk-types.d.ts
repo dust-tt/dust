@@ -27,6 +27,23 @@ interface Response {
   statusText: string;
 }
 
+interface ZendeskFetchedSection {
+  category_id?: number;
+  created_at?: string;
+  description?: string;
+  html_url?: string;
+  id?: number;
+  locale: string;
+  name: string;
+  outdated?: boolean;
+  parent_section_id?: number;
+  position?: number;
+  source_locale?: string;
+  theme_template?: string;
+  updated_at?: string;
+  url?: string;
+}
+
 interface ZendeskFetchedCategory {
   id: number;
   url: string;
@@ -190,6 +207,11 @@ declare module "node-zendesk" {
         show: (
           categoryId: number
         ) => Promise<{ response: Response; result: ZendeskFetchedCategory }>;
+      };
+      sections: {
+        show: (
+          sectionId: number
+        ) => Promise<{ response: Response; result: ZendeskFetchedSection }>;
       };
       articles: {
         list: () => Promise<ZendeskFetchedArticle[]>;

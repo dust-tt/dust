@@ -347,6 +347,7 @@ export async function syncZendeskArticleBatchActivity({
     brandId: category.brandId,
     connectorId,
   });
+  zendeskApiClient.config.subdomain = brandSubdomain;
 
   const {
     articles,
@@ -363,6 +364,7 @@ export async function syncZendeskArticleBatchActivity({
     articles,
     (article) =>
       syncArticle({
+        zendeskApiClient,
         connectorId,
         category,
         article,

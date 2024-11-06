@@ -1,4 +1,5 @@
 import type { ModelId } from "@dust-tt/types";
+import type { Client } from "node-zendesk";
 import TurndownService from "turndown";
 
 import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
@@ -19,6 +20,7 @@ const turndownService = new TurndownService();
  * Syncs an article from Zendesk to the postgres db and to the data sources.
  */
 export async function syncArticle({
+  zendeskApiClient,
   connectorId,
   article,
   category,
@@ -27,6 +29,7 @@ export async function syncArticle({
   loggerArgs,
   forceResync,
 }: {
+  zendeskApiClient: Client;
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   article: ZendeskFetchedArticle;
@@ -86,16 +89,23 @@ export async function syncArticle({
     return;
   }
 
-  const categoryContent =
-    category.name + category.description ? ` - ${category.description}` : "";
-
   const articleContentInMarkdown =
     typeof article.body === "string"
       ? turndownService.turndown(article.body)
       : "";
+  const { result: section } = await zendeskApiClient.helpcenter.sections.show(
+    article.section_id
+  );
 
+  const labels = article.label_names
+    ? `LABELS: ${article.label_names.join()}`
+    : "";
   // append the collection description at the beginning of the article
-  const markdown = `CATEGORY: ${categoryContent}\n\n${articleContentInMarkdown}`;
+  const markdown = `
+CATEGORY: ${category.name} ${category?.description ? ` - ${category.description}` : ""}
+SECTION: ${section.name} ${section?.description ? ` - ${section.description}` : ""}
+VOTE_SUM: ${article.vote_sum}${labels}\n
+${articleContentInMarkdown}`; // extra newline to separate the content from the metadata
 
   if (articleContentInMarkdown) {
     const createdAt = new Date(article.created_at);
