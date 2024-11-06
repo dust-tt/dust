@@ -104,6 +104,12 @@ export const TooltipButtonExample = () => (
       variant="outline"
     />
     <Button
+      href="hello"
+      tooltip="This is a tooltip message"
+      icon={RobotIcon}
+      variant="primary"
+    />
+    <Button
       tooltip="This shouldn't be visible"
       icon={RobotIcon}
       variant="outline"

@@ -1,5 +1,4 @@
 import { Slot } from "@radix-ui/react-slot";
-import { TooltipPortal } from "@radix-ui/react-tooltip";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
@@ -160,7 +159,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </>
     );
 
-    const buttonElement = (
+    const innerButton = (
       <MetaButton
         ref={ref}
         size={buttonSize}
@@ -180,7 +179,18 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       </MetaButton>
     );
 
-    const wrappedButton = href ? (
+    const wrappedContent = tooltip ? (
+      <TooltipProvider>
+        <TooltipRoot>
+          <TooltipTrigger asChild>{innerButton}</TooltipTrigger>
+          <TooltipContent>{tooltip}</TooltipContent>
+        </TooltipRoot>
+      </TooltipProvider>
+    ) : (
+      innerButton
+    );
+
+    return href ? (
       <LinkWrapper
         href={href}
         target={target}
@@ -188,25 +198,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         replace={replace}
         shallow={shallow}
       >
-        {buttonElement}
+        {wrappedContent}
       </LinkWrapper>
     ) : (
-      buttonElement
-    );
-
-    if (!tooltip) {
-      return wrappedButton;
-    }
-
-    return (
-      <TooltipProvider>
-        <TooltipRoot>
-          <TooltipTrigger asChild>{wrappedButton}</TooltipTrigger>
-          <TooltipPortal>
-            <TooltipContent>{tooltip}</TooltipContent>
-          </TooltipPortal>
-        </TooltipRoot>
-      </TooltipProvider>
+      wrappedContent
     );
   }
 );
