@@ -47,9 +47,7 @@ export function RainbowEffectDiv({
   return (
     <div className={cn(outerClassName, "s-relative")}>
       <div className={rainbowClassBlur} />
-      <div className="duration-[2000ms] s-relative" {...props}>
-        {children}
-      </div>
+      <div {...props}>{children}</div>
     </div>
   );
 }
