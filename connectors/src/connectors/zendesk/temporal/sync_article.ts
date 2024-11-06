@@ -72,29 +72,21 @@ export async function syncArticle({
     await articleInDb.update(updatableFields);
   }
 
+  logger.info(
+    {
+      ...loggerArgs,
+      connectorId,
+      articleId: article.id,
+      articleUpdatedAt: articleUpdatedAtDate,
+      dataSourceLastUpsertedAt: articleInDb?.lastUpsertedTs ?? null,
+    },
+    shouldPerformUpsertion
+      ? "[Zendesk] Article to sync."
+      : "[Zendesk] Article already up to date. Skipping sync."
+  );
+
   if (!shouldPerformUpsertion) {
-    logger.info(
-      {
-        ...loggerArgs,
-        connectorId,
-        articleId: article.id,
-        articleUpdatedAt: articleUpdatedAtDate,
-        dataSourceLastUpsertedAt: articleInDb?.lastUpsertedTs ?? null,
-      },
-      "[Zendesk] Article already up to date. Skipping sync."
-    );
     return;
-  } else {
-    logger.info(
-      {
-        ...loggerArgs,
-        connectorId,
-        articleId: article.id,
-        articleUpdatedAt: articleUpdatedAtDate,
-        dataSourceLastUpsertedAt: articleInDb?.lastUpsertedTs ?? null,
-      },
-      "[Zendesk] Article to sync."
-    );
   }
 
   const categoryContent =
