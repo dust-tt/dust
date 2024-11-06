@@ -5,7 +5,6 @@ import {
   PopoverTrigger,
   ScrollArea,
   Searchbar,
-  Separator,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
