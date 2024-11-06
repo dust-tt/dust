@@ -67,7 +67,7 @@ export async function syncArticle({
       updatedAt: updatedAtDate,
       categoryId: category.categoryId, // an article can be moved from one category to another, which does not apply to brands
       name: article.name,
-      url: article.url,
+      url: article.html_url,
     });
   }
 
