@@ -39,19 +39,16 @@ export async function syncArticle({
     connectorId,
     articleId: article.id,
   });
-  const createdAtDate = new Date(article.created_at);
   const updatedAtDate = new Date(article.updated_at);
-
-  const articleUpdatedAtDate = new Date(article.updated_at);
 
   const shouldPerformUpsertion =
     forceResync ||
     !articleInDb ||
     !articleInDb.lastUpsertedTs ||
-    articleInDb.lastUpsertedTs < articleUpdatedAtDate; // upserting if the article was updated after the last upsert
+    articleInDb.lastUpsertedTs < updatedAtDate; // upserting if the article was updated after the last upsert
 
   const updatableFields = {
-    createdAt: createdAtDate,
+    createdAt: new Date(article.created_at),
     updatedAt: updatedAtDate,
     categoryId: category.categoryId, // an article can be moved from one category to another, which does not apply to brands
     name: article.name,
@@ -77,7 +74,7 @@ export async function syncArticle({
       ...loggerArgs,
       connectorId,
       articleId: article.id,
-      articleUpdatedAt: articleUpdatedAtDate,
+      articleUpdatedAt: updatedAtDate,
       dataSourceLastUpsertedAt: articleInDb?.lastUpsertedTs ?? null,
     },
     shouldPerformUpsertion
