@@ -14,7 +14,6 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  Tooltip,
   useHashParam,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
@@ -23,7 +22,6 @@ import type {
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import Link from "next/link";
 import React, { useMemo, useState } from "react";
 
 import { AssistantDropdownMenu } from "@app/components/assistant/AssistantDropdownMenu";
@@ -149,44 +147,23 @@ export function AssistantBrowser({
         />
         <div className="hidden sm:block">
           <div className="flex gap-2">
-            <Tooltip
-              label="Create your own assistant"
-              tooltipTriggerAsChild
-              trigger={
-                <Link
-                  href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
-                >
-                  <Button
-                    variant="primary"
-                    icon={PlusIcon}
-                    label="Create"
-                    size="sm"
-                  />
-                  <div className="sm:hidden">
-                    <Button
-                      variant="primary"
-                      icon={PlusIcon}
-                      size="sm"
-                      className="sm:hidden"
-                    />
-                  </div>
-                </Link>
-              }
+            <Button
+              tooltip="Create your own assistant"
+              href={`/w/${owner.sId}/builder/assistants/create?flow=personal_assistants`}
+              variant="primary"
+              icon={PlusIcon}
+              label="Create"
+              size="sm"
             />
+
             {isBuilder && (
-              <Tooltip
-                label="Manage assistants"
-                tooltipTriggerAsChild
-                trigger={
-                  <Link href={`/w/${owner.sId}/builder/assistants/`}>
-                    <Button
-                      variant="primary"
-                      icon={RobotIcon}
-                      label="Manage"
-                      size="sm"
-                    />
-                  </Link>
-                }
+              <Button
+                tooltip="Manage assistants"
+                href={`/w/${owner.sId}/builder/assistants/`}
+                variant="primary"
+                icon={RobotIcon}
+                label="Manage"
+                size="sm"
               />
             )}
           </div>
