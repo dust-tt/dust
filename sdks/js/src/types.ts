@@ -737,6 +737,7 @@ const AgentActionTypeSchema = z.union([
   WebsearchActionTypeSchema,
   BrowseActionTypeSchema,
 ]);
+export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
 const AgentMessageStatusSchema = FlexibleEnumSchema([
   "created",
@@ -772,7 +773,7 @@ const AgentMessageTypeSchema = z.object({
     })
     .nullable(),
 });
-export type AgentMessageType = z.infer<typeof AgentMessageTypeSchema>;
+export type AgentMessagePublicType = z.infer<typeof AgentMessageTypeSchema>;
 
 const ConversationVisibilitySchema = FlexibleEnumSchema([
   "unlisted",
@@ -1390,7 +1391,7 @@ export type PublicPostMessagesRequestBody = z.infer<
 
 export type PostMessagesResponseBody = {
   message: UserMessageType;
-  agentMessages?: AgentMessageType[];
+  agentMessages?: AgentMessagePublicType[];
 };
 
 export const PublicPostContentFragmentRequestBodySchema = z.object({

@@ -1,4 +1,4 @@
-import type { AgentActionType } from "@dust-tt/types";
+import type { AgentActionPublicType } from "@dust-tt/client";
 import {
   getTitleFromRetrievedDocument,
   isRetrievalActionType,
@@ -15,7 +15,7 @@ export type SlackMessageFootnotes = SlackMessageFootnote[];
 
 export function annotateCitations(
   content: string,
-  actions: AgentActionType[]
+  actions: AgentActionPublicType[]
 ): { formattedContent: string; footnotes: SlackMessageFootnotes } {
   const references: {
     [key: string]: {
