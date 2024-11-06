@@ -1,20 +1,21 @@
-import type { PublicPostConversationsRequestBody } from "@dust-tt/client";
+import type {
+  ConversationPublicType,
+  DustAPI,
+  UserMessageType,
+} from "@dust-tt/client";
 import type {
   AgentMessageNewEvent,
   AgentMessageType,
   ConversationType,
   ConversationVisibility,
-  LightWorkspaceType,
   MentionType,
   Result,
   SubmitMessageError,
   UserMessageNewEvent,
-  UserMessageType,
-  UserMessageWithRankType,
   UserType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import { getAccessToken, getStoredUser } from "@extension/lib/storage";
+import { getStoredUser } from "@extension/lib/storage";
 
 export function createPlaceholderUserMessage({
   input,
@@ -103,12 +104,12 @@ export function updateConversationWithOptimisticData(
 }
 
 export async function postConversation({
-  owner,
+  dustAPI,
   messageData,
   visibility = "unlisted",
   tabContent,
 }: {
-  owner: LightWorkspaceType;
+  dustAPI: DustAPI;
   messageData: {
     input: string;
     mentions: MentionType[];
@@ -119,9 +120,8 @@ export async function postConversation({
     content: string;
     url: string;
   } | null;
-}): Promise<Result<ConversationType, SubmitMessageError>> {
+}): Promise<Result<ConversationPublicType, SubmitMessageError>> {
   const { input, mentions } = messageData;
-  const token = await getAccessToken();
   const user = await getStoredUser();
 
   if (!user) {
@@ -133,7 +133,8 @@ export async function postConversation({
     });
   }
 
-  const body: PublicPostConversationsRequestBody = {
+  // Create new conversation and post the initial message at the same time.
+  const cRes = await dustAPI.createConversation({
     title: null,
     visibility,
     message: {
@@ -163,52 +164,37 @@ export async function postConversation({
         }
       : undefined,
     blocking: false, // We want streaming.
-  };
+  });
 
-  // Create new conversation and post the initial message at the same time.
-  const cRes = await fetch(
-    `${process.env.DUST_DOMAIN}/api/v1/w/${owner.sId}/assistant/conversations`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    }
-  );
-
-  if (!cRes.ok) {
-    const data = await cRes.json();
+  if (!cRes.isOk()) {
     return new Err({
       type:
-        data.error.type === "plan_message_limit_exceeded"
+        cRes.error.type === "plan_message_limit_exceeded"
           ? "plan_limit_reached_error"
           : "message_send_error",
       title: "Your message could not be sent.",
-      message: data.error.message || "Please try again or contact us.",
+      message: cRes.error.message || "Please try again or contact us.",
     });
   }
 
-  const conversationData = await cRes.json();
+  const conversationData = await cRes.value;
 
   return new Ok(conversationData.conversation);
 }
 
 export async function postMessage({
-  owner,
+  dustAPI,
   conversationId,
   messageData,
 }: {
-  owner: LightWorkspaceType;
+  dustAPI: DustAPI;
   conversationId: string;
   messageData: {
     input: string;
     mentions: MentionType[];
   };
-}): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
+}): Promise<Result<{ message: UserMessageType }, SubmitMessageError>> {
   const { input, mentions } = messageData;
-  const token = await getAccessToken();
   const user = await getStoredUser();
 
   if (!user) {
@@ -220,50 +206,41 @@ export async function postMessage({
     });
   }
 
-  // Create a new user message.
-  const mRes = await fetch(
-    `${process.env.DUST_DOMAIN}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/messages`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+  const mRes = await dustAPI.postUserMessage({
+    conversationId,
+    message: {
+      content: input,
+      context: {
+        username: user.username,
+        email: user.email,
+        fullName: user.fullName,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        profilePictureUrl: null, // todo daph
+        origin: "extension",
       },
-      body: JSON.stringify({
-        content: input,
-        context: {
-          username: user.username,
-          email: user.email,
-          fullName: user.fullName,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-          profilePictureUrl: null, // todo daph
-          origin: "extension",
-        },
-        mentions,
-      }),
-    }
-  );
+      mentions,
+    },
+  });
 
-  if (!mRes.ok) {
-    if (mRes.status === 413) {
+  if (!mRes.isOk()) {
+    if (mRes.error.type === "content_too_large") {
       return new Err({
         type: "content_too_large",
-        title: "Your message is too long to be sent.",
-        message: "Please try again with a shorter message.",
+        title: "Your message could not be sent.",
+        message: mRes.error.message || "Please try again or contact us.",
       });
     }
-    const data = await mRes.json();
     return new Err({
       type:
-        data.error.type === "plan_message_limit_exceeded"
+        mRes.error.type === "plan_message_limit_exceeded"
           ? "plan_limit_reached_error"
           : "message_send_error",
       title: "Your message could not be sent.",
-      message: data.error.message || "Please try again or contact us.",
+      message: mRes.error.message || "Please try again or contact us.",
     });
   }
 
-  return new Ok(await mRes.json());
+  return new Ok({ message: mRes.value });
 }
 
 export async function retryMessage({

@@ -5,6 +5,7 @@ import type {
 } from "@dust-tt/sparkle";
 import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, UserMessageType } from "@dust-tt/types";
+import { AgentSuggestion } from "@extension/components/conversation/AgentSuggestion";
 import {
   CiteBlock,
   getCiteDirective,
@@ -29,9 +30,11 @@ interface UserMessageProps {
 
 export function UserMessage({
   citations,
+  conversationId,
   isLastMessage,
   message,
   messageEmoji,
+  owner,
   size,
 }: UserMessageProps) {
   const additionalMarkdownComponents: Components = useMemo(
@@ -67,6 +70,13 @@ export function UserMessage({
             additionalMarkdownPlugins={additionalMarkdownPlugins}
           />
         </div>
+        {message.mentions.length === 0 && isLastMessage && (
+          <AgentSuggestion
+            conversationId={conversationId}
+            owner={owner}
+            userMessage={message}
+          />
+        )}
       </div>
     </ConversationMessage>
   );
