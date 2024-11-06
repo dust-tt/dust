@@ -82,6 +82,9 @@ async function handleZendeskRateLimit(response: Response): Promise<boolean> {
   return false;
 }
 
+/**
+ * Fetches a batch of articles in a category from the Zendesk API.
+ */
 export async function fetchZendeskArticlesInCategory({
   subdomain,
   accessToken,

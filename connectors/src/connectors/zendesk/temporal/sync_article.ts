@@ -15,6 +15,9 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const turndownService = new TurndownService();
 
+/**
+ * Syncs an article from Zendesk to the postgres db and to the data sources.
+ */
 export async function syncArticle({
   connectorId,
   article,
