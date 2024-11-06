@@ -8,7 +8,6 @@ import type {
   AgentMessageType,
   ConversationType,
   ConversationVisibility,
-  LightWorkspaceType,
   MentionType,
   Result,
   SubmitMessageError,
@@ -16,7 +15,7 @@ import type {
   UserType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import { getAccessToken, getStoredUser } from "@extension/lib/storage";
+import { getStoredUser } from "@extension/lib/storage";
 
 export function createPlaceholderUserMessage({
   input,
