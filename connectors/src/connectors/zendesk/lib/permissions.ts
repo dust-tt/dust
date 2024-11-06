@@ -185,7 +185,7 @@ export async function retrieveChildrenNodes({
           });
         if (isReadPermissionsOnly) {
           nodes = categoriesInDatabase.map((category) =>
-            category.toContentNode({ connectorId })
+            category.toContentNode({ connectorId, expandable: true })
           );
         } else {
           await changeZendeskClientSubdomain({

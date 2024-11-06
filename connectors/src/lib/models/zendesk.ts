@@ -102,7 +102,7 @@ ZendeskBrand.init(
       defaultValue: DataTypes.NOW,
     },
     brandId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     name: {
@@ -166,6 +166,7 @@ export class ZendeskCategory extends Model<
   declare permission: "read" | "none";
 
   declare name: string;
+  declare description: string | null;
   declare url: string;
 
   declare lastUpsertedTs?: Date;
@@ -191,16 +192,20 @@ ZendeskCategory.init(
       defaultValue: DataTypes.NOW,
     },
     categoryId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     brandId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     name: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    description: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     url: {
       type: DataTypes.STRING,
@@ -250,7 +255,7 @@ export class ZendeskArticle extends Model<
   declare name: string;
   declare url: string;
 
-  declare lastUpsertedTs: Date;
+  declare lastUpsertedTs: Date | null;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
@@ -273,15 +278,15 @@ ZendeskArticle.init(
       defaultValue: DataTypes.NOW,
     },
     articleId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     brandId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     categoryId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     name: {
@@ -373,23 +378,23 @@ ZendeskTicket.init(
       defaultValue: DataTypes.NOW,
     },
     ticketId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     brandId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     groupId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     assigneeId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     organizationId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     name: {
