@@ -8,7 +8,6 @@ import {
   NewDropdownMenuItem,
   NewDropdownMenuTrigger,
   PencilSquareIcon,
-  Separator,
   StarIcon,
   StarStrokeIcon,
   TrashIcon,
@@ -74,7 +73,7 @@ export function AssistantDetailsButtonBar({
         />
         <NewDropdownMenu>
           <NewDropdownMenuTrigger asChild>
-            <Button icon={MoreIcon} size="sm" variant="outline" />
+            <Button icon={MoreIcon} size="sm" variant="ghost" />
           </NewDropdownMenuTrigger>
           <NewDropdownMenuContent>
             <NewDropdownMenuItem
@@ -104,6 +103,7 @@ export function AssistantDetailsButtonBar({
                     onClick={() => {
                       setShowDeletionModal(true);
                     }}
+                    variant="warning"
                   />
                 )}
               </>
@@ -125,7 +125,7 @@ export function AssistantDetailsButtonBar({
           icon={agentConfiguration.userFavorite ? StarIcon : StarStrokeIcon}
           size="sm"
           className="group-hover:hidden"
-          variant="ghost"
+          variant="outline"
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />
 
@@ -133,12 +133,10 @@ export function AssistantDetailsButtonBar({
           icon={agentConfiguration.userFavorite ? StarStrokeIcon : StarIcon}
           size="sm"
           className="hidden group-hover:block"
-          variant="ghost"
+          variant="outline"
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />
       </div>
-
-      <Separator orientation="vertical" className="h-6" />
 
       <Link
         href={`/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`}
@@ -146,10 +144,9 @@ export function AssistantDetailsButtonBar({
         <Button
           icon={ChatBubbleBottomCenterTextIcon}
           size="sm"
-          variant="ghost"
+          variant="outline"
         />
       </Link>
-      <Separator orientation="vertical" className="h-6" />
 
       {agentConfiguration.scope !== "global" && (
         <Link
@@ -164,7 +161,7 @@ export function AssistantDetailsButtonBar({
           <Button
             size="sm"
             disabled={!canEditAssistant}
-            variant="ghost"
+            variant="outline"
             icon={PencilSquareIcon}
           />
         </Link>
