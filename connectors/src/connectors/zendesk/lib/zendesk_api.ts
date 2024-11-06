@@ -24,13 +24,7 @@ export function createZendeskClient({
  */
 export async function changeZendeskClientSubdomain(
   client: Client,
-  {
-    connectorId = null,
-    brandId,
-  }: {
-    connectorId?: ModelId | null;
-    brandId: number;
-  }
+  { connectorId, brandId }: { connectorId: ModelId; brandId: number }
 ) {
   client.config.subdomain = await getZendeskBrandSubdomain(client, {
     connectorId,
@@ -44,23 +38,16 @@ export async function changeZendeskClientSubdomain(
  */
 export async function getZendeskBrandSubdomain(
   client: Client,
-  {
-    connectorId = null,
-    brandId,
-  }: {
-    connectorId?: ModelId | null;
-    brandId: number;
-  }
+  { connectorId, brandId }: { connectorId: ModelId; brandId: number }
 ): Promise<string> {
-  if (connectorId) {
-    const brandInDb = await ZendeskBrandResource.fetchByBrandId({
-      connectorId,
-      brandId,
-    });
-    if (brandInDb) {
-      return brandInDb.subdomain;
-    }
+  const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+  if (brandInDb) {
+    return brandInDb.subdomain;
   }
+
   const {
     result: { brand },
   } = await client.brand.show(brandId);
