@@ -13,7 +13,6 @@ import type {
   ZendeskUpdateSignal,
 } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
-import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 
 const {
   getZendeskCategoriesActivity,
@@ -317,13 +316,13 @@ export async function zendeskCategorySyncWorkflow({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  const category = await syncZendeskCategoryActivity({
+  const wasCategoryUpdated = await syncZendeskCategoryActivity({
     connectorId,
     categoryId,
     currentSyncDateMs,
     brandId,
   });
-  if (!category) {
+  if (!wasCategoryUpdated) {
     return; // nothing to sync
   }
 
@@ -331,7 +330,7 @@ export async function zendeskCategorySyncWorkflow({
   for (;;) {
     const { hasMore, afterCursor } = await syncZendeskArticleBatchActivity({
       connectorId,
-      category,
+      categoryId,
       currentSyncDateMs,
       forceResync,
       cursor,
@@ -361,26 +360,25 @@ async function runZendeskBrandHelpCenterSyncActivities({
     connectorId,
     brandId,
   });
-  const categoriesToSync = new Set<ZendeskCategoryResource>();
+  const categoryIdsToSync = new Set<number>();
   for (const categoryId of categoryIds) {
-    const category = await syncZendeskCategoryActivity({
+    const wasCategoryUpdated = await syncZendeskCategoryActivity({
       connectorId,
       categoryId,
       currentSyncDateMs,
       brandId,
     });
-    if (category) {
-      categoriesToSync.add(category);
+    if (wasCategoryUpdated) {
+      categoryIdsToSync.add(categoryId);
     }
   }
 
-  /// grouping the articles by category for a lower granularity
-  for (const category of categoriesToSync) {
+  for (const categoryId of categoryIdsToSync) {
     let cursor = null; // cursor involved in the pagination of the API
     for (;;) {
       const { hasMore, afterCursor } = await syncZendeskArticleBatchActivity({
         connectorId,
-        category,
+        categoryId,
         currentSyncDateMs,
         forceResync,
         cursor,

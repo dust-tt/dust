@@ -276,7 +276,7 @@ export async function syncZendeskCategoryActivity({
   categoryId: number;
   brandId: number;
   currentSyncDateMs: number;
-}): Promise<ZendeskCategoryResource | null> {
+}): Promise<boolean> {
   const connector = await _getZendeskConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const categoryInDb = await _getZendeskCategoryOrRaise({
@@ -288,7 +288,7 @@ export async function syncZendeskCategoryActivity({
   if (categoryInDb.permission === "none") {
     await deleteCategoryChildren({ connectorId, dataSourceConfig, categoryId });
     await categoryInDb.delete();
-    return null;
+    return false;
   }
 
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
@@ -309,7 +309,7 @@ export async function syncZendeskCategoryActivity({
   if (!fetchedCategory) {
     await deleteCategoryChildren({ connectorId, categoryId, dataSourceConfig });
     await categoryInDb.delete();
-    return null;
+    return false;
   }
 
   // otherwise, we update the category name and lastUpsertedTs
@@ -317,7 +317,7 @@ export async function syncZendeskCategoryActivity({
     name: fetchedCategory.name || "Category",
     lastUpsertedTs: new Date(currentSyncDateMs),
   });
-  return categoryInDb;
+  return true;
 }
 
 /**
@@ -326,13 +326,13 @@ export async function syncZendeskCategoryActivity({
  */
 export async function syncZendeskArticleBatchActivity({
   connectorId,
-  category,
+  categoryId,
   currentSyncDateMs,
   forceResync,
   cursor,
 }: {
   connectorId: ModelId;
-  category: ZendeskCategoryResource;
+  categoryId: number;
   currentSyncDateMs: number;
   forceResync: boolean;
   cursor?: string | null;
@@ -345,6 +345,10 @@ export async function syncZendeskArticleBatchActivity({
     provider: "zendesk",
     dataSourceId: dataSourceConfig.dataSourceId,
   };
+  const category = await _getZendeskCategoryOrRaise({
+    connectorId,
+    categoryId,
+  });
 
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
