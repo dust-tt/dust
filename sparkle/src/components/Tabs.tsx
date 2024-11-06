@@ -63,7 +63,7 @@ const TabsTrigger = React.forwardRef<
         ref={ref}
         className={cn(
           "s-h-12",
-          "data-[state=active]:s-shadow-inner-border disabled:s-pointer-events-none",
+          "disabled:s-pointer-events-none data-[state=active]:s-shadow-inner-border",
           className
         )}
         disabled={disabled}
