@@ -106,7 +106,7 @@ async function handler(
               },
               body: JSON.stringify({
                 prompt: "\n\nHuman: 👋\n\nAssistant:",
-                model: "claude-instant-1.2",
+                model: "claude-3-5-haiku-20241022",
                 max_tokens_to_sample: 1,
                 stop_sequences: [],
               }),
