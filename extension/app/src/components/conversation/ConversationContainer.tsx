@@ -3,7 +3,6 @@ import {
   CloudArrowDownIcon,
   HistoryIcon,
   Page,
-  Tooltip,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
