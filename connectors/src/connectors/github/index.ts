@@ -494,6 +494,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       async (repoId) => {
         const repoRes = await getRepo(connectionId, repoId);
         if (repoRes.isErr()) {
+          // We need to throw the error to stop the execution of the concurrentExecutor.
           throw repoRes.error;
         }
 
