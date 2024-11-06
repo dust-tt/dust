@@ -188,8 +188,8 @@ export async function retrieveChildrenNodes({
             category.toContentNode({ connectorId, expandable: true })
           );
         } else {
-          await changeZendeskClientSubdomain({
-            client: zendeskApiClient,
+          await changeZendeskClientSubdomain(zendeskApiClient, {
+            connectorId,
             brandId: objectId,
           });
           const categories =

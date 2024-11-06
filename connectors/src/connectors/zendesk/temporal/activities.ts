@@ -246,7 +246,7 @@ export async function getZendeskCategoriesActivity({
     token: accessToken,
     subdomain,
   });
-  await changeZendeskClientSubdomain({ client, brandId });
+  await changeZendeskClientSubdomain(client, { connectorId, brandId });
   const categories = await client.helpcenter.categories.list();
 
   return categories.map((category) => category.id);
@@ -294,7 +294,10 @@ export async function syncZendeskCategoryActivity({
     token: accessToken,
     subdomain,
   });
-  await changeZendeskClientSubdomain({ client: zendeskApiClient, brandId });
+  await changeZendeskClientSubdomain(zendeskApiClient, {
+    connectorId,
+    brandId,
+  });
 
   // if the category is not on Zendesk anymore, we delete it
   const { result: fetchedCategory } =
@@ -395,7 +398,10 @@ export async function syncZendeskTicketsActivity({
     token: accessToken,
     subdomain,
   });
-  await changeZendeskClientSubdomain({ client: zendeskApiClient, brandId });
+  await changeZendeskClientSubdomain(zendeskApiClient, {
+    connectorId,
+    brandId,
+  });
   const tickets = await zendeskApiClient.tickets.list();
 
   await concurrentExecutor(

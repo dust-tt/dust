@@ -12,11 +12,11 @@ import {
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
 
+export async function allowSyncZendeskHelpCenter({
+  connectorId,
 /**
  * Marks a help center as permission "read", optionally alongside all its children (categories and articles).
  */
-export async function allowSyncZendeskHelpCenter({
-  connectorId,
   connectionId,
   brandId,
   withChildren = true,
@@ -70,7 +70,10 @@ export async function allowSyncZendeskHelpCenter({
 
   // updating permissions for all the children categories
   if (withChildren) {
-    await changeZendeskClientSubdomain({ client: zendeskApiClient, brandId });
+    await changeZendeskClientSubdomain(zendeskApiClient, {
+      connectorId,
+      brandId,
+    });
     try {
       const categories = await zendeskApiClient.helpcenter.categories.list();
       categories.forEach((category) =>
@@ -165,7 +168,10 @@ export async function allowSyncZendeskCategory({
   });
 
   if (!category) {
-    await changeZendeskClientSubdomain({ client: zendeskApiClient, brandId });
+    await changeZendeskClientSubdomain(zendeskApiClient, {
+      connectorId,
+      brandId,
+    });
     const { result: fetchedCategory } =
       await zendeskApiClient.helpcenter.categories.show(categoryId);
     if (fetchedCategory) {
