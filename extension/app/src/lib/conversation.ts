@@ -195,7 +195,6 @@ export async function postMessage({
   };
 }): Promise<Result<{ message: UserMessageType }, SubmitMessageError>> {
   const { input, mentions } = messageData;
-  // const token = await getAccessToken();
   const user = await getStoredUser();
 
   if (!user) {

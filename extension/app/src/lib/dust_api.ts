@@ -8,10 +8,14 @@ export const useDustAPI = () => {
     throw new Error("Not authenticated");
   }
 
+  if (!process.env.DUST_DOMAIN || !process.env.NODE_ENV) {
+    throw new Error("Dust domain or node env not set");
+  }
+
   return new DustAPI(
     {
-      url: process.env.DUST_DOMAIN ?? "https://dust.tt",
-      nodeEnv: process.env.NODE_ENV ?? "production",
+      url: process.env.DUST_DOMAIN,
+      nodeEnv: process.env.NODE_ENV,
     },
     {
       apiKey: token,
