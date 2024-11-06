@@ -166,6 +166,11 @@ export async function getMessageUsageData(
         TO_CHAR(am."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
         COALESCE(ac."sId", am."agentConfigurationId") AS "assistant_id",
         COALESCE(ac."name", am."agentConfigurationId") AS "assistant_name",
+        CASE
+          WHEN ac."scope" = 'published' THEN 'shared'
+          WHEN ac."scope" = 'private' THEN 'private'
+          ELSE 'company'
+        END AS "assistant_settings",
         w."id" AS "workspace_id",
         w."name" AS "workspace_name",
         c."id" AS "conversation_id",
