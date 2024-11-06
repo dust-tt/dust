@@ -174,6 +174,10 @@ module.exports = {
             "background-position": "calc(200%) 0",
           },
         },
+        rainbow: {
+          "0%": { "background-position": "0%" },
+          "100%": { "background-position": "200%" },
+        },
       },
       animation: {
         "shiny-text": "shiny-text 2s infinite",
@@ -185,8 +189,14 @@ module.exports = {
         "breathing-scale": "breathing-scale 3s infinite ease-in-out",
         "cursor-blink": "cursor-blink 0.9s infinite;",
         "move-square": "move-square 3s ease-out infinite",
+        rainbow: "rainbow var(--speed, 2s) infinite linear",
       },
       colors: {
+        "color-1": "hsl(var(--color-1))",
+        "color-2": "hsl(var(--color-2))",
+        "color-3": "hsl(var(--color-3))",
+        "color-4": "hsl(var(--color-4))",
+        "color-5": "hsl(var(--color-5))",
         brand: {
           DEFAULT: colors.emerald[500],
           dark: colors.emerald[500],
