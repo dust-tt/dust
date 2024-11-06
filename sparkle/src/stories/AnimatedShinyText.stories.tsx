@@ -1,7 +1,9 @@
-import { AnimatedShinyText } from "../index_with_tw_base";
-import { cn } from "@sparkle/lib";
-import { Meta, StoryObj } from "@storybook/react";
+import { Meta } from "@storybook/react";
 import React from "react";
+
+import { cn } from "@sparkle/lib";
+
+import { AnimatedShinyText } from "../index_with_tw_base";
 
 const meta = {
   title: "Primitives/AnimatedShinyText",
@@ -9,7 +11,6 @@ const meta = {
 } satisfies Meta<typeof AnimatedShinyText>;
 
 export default meta;
-type Story = StoryObj<typeof meta>;
 
 export function AnimatedShinyTextDemo() {
   return (

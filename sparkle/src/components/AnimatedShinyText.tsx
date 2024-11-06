@@ -1,7 +1,7 @@
-import { CSSProperties, FC, ReactNode } from "react";
+import { CSSProperties, ReactNode } from "react";
+import React from "react";
 
 import { cn } from "@sparkle/lib/utils";
-import React from "react";
 
 interface AnimatedShinyTextProps {
   children: ReactNode;
