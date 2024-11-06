@@ -195,7 +195,7 @@ export function ProviderManagementModal({
       <div className="flex flex-row items-center gap-4 px-4 pt-4">
         <div className="text-sm font-semibold">Embedding Provider:</div>
         <NewDropdownMenu>
-          <NewDropdownMenuTrigger>
+          <NewDropdownMenuTrigger disabled>
             <Tooltip
               label="Please contact us if you are willing to change this setting."
               trigger={
@@ -208,6 +208,7 @@ export function ProviderManagementModal({
                   }
                   variant="outline"
                   size="sm"
+                  disabled
                 />
               }
             />
