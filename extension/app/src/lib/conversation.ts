@@ -265,3 +265,50 @@ export async function postMessage({
 
   return new Ok(await mRes.json());
 }
+
+export async function retryMessage({
+  owner,
+  conversationId,
+  messageId,
+}: {
+  owner: LightWorkspaceType;
+  conversationId: string;
+  messageId: string;
+}): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
+  const token = await getAccessToken();
+  const user = await getStoredUser();
+
+  if (!user) {
+    // This should never happen.
+    return new Err({
+      type: "user_not_found",
+      title: "User not found.",
+      message: "Please log in again.",
+    });
+  }
+
+  const mRes = await fetch(
+    `${process.env.DUST_DOMAIN}/api/v1/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/retry`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!mRes.ok) {
+    const data = await mRes.json();
+    return new Err({
+      type:
+        data.error.type === "plan_message_limit_exceeded"
+          ? "plan_limit_reached_error"
+          : "message_send_error",
+      title: "Your message could not be sent.",
+      message: data.error.message || "Please try again or contact us.",
+    });
+  }
+
+  return new Ok(await mRes.json());
+}
