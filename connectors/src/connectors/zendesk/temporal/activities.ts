@@ -126,13 +126,9 @@ export async function syncZendeskBrandActivity({
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
-  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
-    connector.connectionId
+  const zendeskApiClient = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connector.connectionId)
   );
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
 
   // if the brand is not on Zendesk anymore, we delete it
   const {
@@ -243,13 +239,9 @@ export async function getZendeskCategoriesActivity({
   brandId: number;
 }): Promise<number[]> {
   const connector = await _getZendeskConnectorOrRaise(connectorId);
-  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
-    connector.connectionId
+  const client = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connector.connectionId)
   );
-  const client = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
   await changeZendeskClientSubdomain(client, { connectorId, brandId });
   const categories = await client.helpcenter.categories.list();
 
@@ -291,13 +283,9 @@ export async function syncZendeskCategoryActivity({
     return false;
   }
 
-  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
-    connector.connectionId
+  const zendeskApiClient = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connector.connectionId)
   );
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
   await changeZendeskClientSubdomain(zendeskApiClient, {
     connectorId,
     brandId,
@@ -353,10 +341,7 @@ export async function syncZendeskArticleBatchActivity({
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
+  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
   const brandSubdomain = await getZendeskBrandSubdomain(zendeskApiClient, {
     brandId: category.brandId,
     connectorId,
@@ -413,13 +398,9 @@ export async function syncZendeskTicketsActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
-    connector.connectionId
+  const zendeskApiClient = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connector.connectionId)
   );
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
   await changeZendeskClientSubdomain(zendeskApiClient, {
     connectorId,
     brandId,

@@ -35,12 +35,9 @@ export async function allowSyncZendeskHelpCenter({
     await brand.update({ helpCenterPermission: "read" });
   }
 
-  const { accessToken, subdomain } =
-    await getZendeskSubdomainAndAccessToken(connectionId);
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
+  const zendeskApiClient = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connectionId)
+  );
 
   if (!brand) {
     const {
@@ -160,12 +157,9 @@ export async function allowSyncZendeskCategory({
     await category.update({ permission: "read" });
   }
 
-  const { accessToken, subdomain } =
-    await getZendeskSubdomainAndAccessToken(connectionId);
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
+  const zendeskApiClient = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connectionId)
+  );
 
   if (!category) {
     await changeZendeskClientSubdomain(zendeskApiClient, {

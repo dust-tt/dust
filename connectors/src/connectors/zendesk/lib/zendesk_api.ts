@@ -9,13 +9,13 @@ import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 export function createZendeskClient({
-  token,
+  accessToken,
   subdomain,
 }: {
-  token: string;
+  accessToken: string;
   subdomain: string;
 }) {
-  return createClient({ oauth: true, token, subdomain });
+  return createClient({ oauth: true, token: accessToken, subdomain });
 }
 
 /**

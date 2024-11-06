@@ -78,13 +78,9 @@ export async function retrieveChildrenNodes({
   const isReadPermissionsOnly = filterPermission === "read";
   let nodes: ContentNode[] = [];
 
-  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
-    connector.connectionId
+  const zendeskApiClient = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connector.connectionId)
   );
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
 
   // At the root level, we show one node for each brand.
   if (!parentInternalId) {
