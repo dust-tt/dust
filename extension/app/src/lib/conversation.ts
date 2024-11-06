@@ -224,6 +224,13 @@ export async function postMessage({
   });
 
   if (!mRes.isOk()) {
+    if (mRes.error.type === "content_too_large") {
+      return new Err({
+        type: "content_too_large",
+        title: "Your message could not be sent.",
+        message: mRes.error.message || "Please try again or contact us.",
+      });
+    }
     return new Err({
       type:
         mRes.error.type === "plan_message_limit_exceeded"
