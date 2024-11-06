@@ -93,9 +93,13 @@ export async function syncArticle({
     typeof article.body === "string"
       ? turndownService.turndown(article.body)
       : "";
+
+  // fetching the section to get the section description
   const { result: section } = await zendeskApiClient.helpcenter.sections.show(
     article.section_id
   );
+  // fetching the user to get the user's name and email
+  const { result: user } = await zendeskApiClient.users.show(article.author_id);
 
   const labels = article.label_names
     ? `LABELS: ${article.label_names.join()}`
@@ -103,6 +107,7 @@ export async function syncArticle({
   // append the collection description at the beginning of the article
   const markdown = `
 CATEGORY: ${category.name} ${category?.description ? ` - ${category.description}` : ""}
+USER: ${user.name} ${user?.email ? ` - ${user.email}` : ""}
 SECTION: ${section.name} ${section?.description ? ` - ${section.description}` : ""}
 VOTE_SUM: ${article.vote_sum}${labels}\n
 ${articleContentInMarkdown}`; // extra newline to separate the content from the metadata
