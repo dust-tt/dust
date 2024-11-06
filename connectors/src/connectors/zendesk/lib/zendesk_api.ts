@@ -98,7 +98,7 @@ export async function fetchZendeskArticlesInCategory({
   cursor?: string | null;
 }): Promise<{
   articles: ZendeskFetchedArticle[];
-  meta: { hasMore: boolean; after_cursor: string };
+  meta: { has_more: boolean; after_cursor: string };
 }> {
   assert(
     pageSize <= 100,
@@ -148,7 +148,7 @@ export async function fetchZendeskArticlesInCategory({
         throw new ExternalOAuthTokenError();
       }
       if (error.code === "not_found") {
-        return { articles: [], meta: { hasMore: false, after_cursor: "" } };
+        return { articles: [], meta: { has_more: false, after_cursor: "" } };
       }
     }
   }

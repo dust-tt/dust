@@ -349,7 +349,7 @@ export async function syncZendeskArticleBatchActivity({
 
   const {
     articles,
-    meta: { after_cursor, hasMore },
+    meta: { after_cursor, has_more },
   } = await fetchZendeskArticlesInCategory({
     subdomain: brandSubdomain,
     accessToken,
@@ -372,7 +372,7 @@ export async function syncZendeskArticleBatchActivity({
       }),
     { concurrency: 10 }
   );
-  return { hasMore, afterCursor: after_cursor };
+  return { hasMore: has_more, afterCursor: after_cursor };
 }
 
 /**
