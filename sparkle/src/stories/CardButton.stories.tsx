@@ -121,7 +121,7 @@ export const ActionCardDemo: React.FC = () => (
           alert(`You clicked on ${card.title}`);
         }}
       >
-        <div className="s-flex s-w-full s-flex-col s-gap-0 s-text-sm">
+        <div className="s-flex s-w-full s-flex-col s-text-sm">
           <div className="s-flex s-w-full s-gap-1 s-font-medium s-text-element-900">
             <Icon visual={card.icon} size="sm" className="s-text-element-900" />
             <div className="s-w-full">{card.title}</div>
