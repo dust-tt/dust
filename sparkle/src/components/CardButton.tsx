@@ -1,4 +1,4 @@
-import { cva, VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import React, { ReactNode } from "react";
 
 import {
@@ -42,16 +42,35 @@ const cardButtonVariants = cva(
   }
 );
 
-interface CardButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof cardButtonVariants> {
-  children: ReactNode;
-  href?: string;
+interface CommonProps {
+  variant?: CardButtonVariantType;
+  size?: CardButtonSizeType;
+  className?: string;
+}
+
+interface LinkProps extends CommonProps {
+  children?: ReactNode;
+  href: string;
   target?: string;
   rel?: string;
   replace?: boolean;
   shallow?: boolean;
+  onClick?: never;
+  onMouseEnter?: never;
+  onMouseLeave?: never;
 }
+
+interface ButtonProps
+  extends CommonProps,
+    React.ButtonHTMLAttributes<HTMLDivElement> {
+  href?: never;
+  target?: never;
+  rel?: never;
+  replace?: never;
+  shallow?: never;
+}
+
+type CardButtonProps = LinkProps | ButtonProps;
 
 export function CardButton({
   children,
@@ -92,7 +111,7 @@ export function CardButton({
   }
 
   return (
-    <button
+    <div
       className={cardButtonClassNames}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
@@ -100,6 +119,6 @@ export function CardButton({
       {...props}
     >
       {children}
-    </button>
+    </div>
   );
 }
