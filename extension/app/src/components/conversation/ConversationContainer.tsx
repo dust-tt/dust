@@ -22,6 +22,7 @@ import {
   postMessage,
   updateConversationWithOptimisticData,
 } from "@extension/lib/conversation";
+import { useDustAPI } from "@extension/lib/dust_api";
 import { getRandomGreetingForName } from "@extension/lib/greetings";
 import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import type { StoredUser } from "@extension/lib/storage";
@@ -51,6 +52,7 @@ export function ConversationContainer({
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
+  const dustAPI = useDustAPI();
 
   const { animate, setAnimate } = useContext(InputBarContext);
   const sendNotification = useSendNotification();
@@ -96,7 +98,7 @@ export function ConversationContainer({
       await mutateConversation(
         async (currentConversation) => {
           const result = await postMessage({
-            owner,
+            dustAPI,
             conversationId: activeConversationId,
             messageData,
           });
@@ -151,7 +153,7 @@ export function ConversationContainer({
     useCallback(
       async (input: string, mentions: MentionType[]) => {
         const conversationRes = await postConversation({
-          owner,
+          dustAPI,
           messageData: {
             input,
             mentions,
