@@ -1,3 +1,4 @@
+export { AnimatedShinyText } from "./AnimatedShinyText";
 export { AssistantPreview } from "./AssistantPreview";
 export { Avatar } from "./Avatar";
 export { Banner } from "./Banner";
