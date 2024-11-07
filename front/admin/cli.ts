@@ -14,6 +14,7 @@ import {
 } from "@app/lib/api/assistant/generation";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
+import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -285,25 +286,13 @@ const dataSource = async (command: string, args: parseArgs.ParsedArgs) => {
         );
       }
 
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const getRes = await coreAPI.getDataSourceDocument({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
+      const gcRes = await garbageCollectGoogleDriveDocument(dataSource, {
         documentId: args.documentId,
       });
-      if (getRes.isErr()) {
-        throw new Error(
-          `Error while getting the document: ` + getRes.error.message
-        );
+      if (gcRes.isErr()) {
+        throw new Error(`Error deleting document: ${gcRes.error.message}`);
       }
-      const delRes = await coreAPI.deleteDataSourceDocument({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        documentId: args.documentId,
-      });
-      if (delRes.isErr()) {
-        throw new Error(`Error deleting document: ${delRes.error.message}`);
-      }
+
       console.log(`Data Source document deleted: ${args.documentId}`);
 
       return;
