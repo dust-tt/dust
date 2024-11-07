@@ -502,9 +502,6 @@ const ProcessActionOutputsSchema = z.object({
   total_documents: z.number(),
   total_chunks: z.number(),
   total_tokens: z.number(),
-  skip_documents: z.number(),
-  skip_chunks: z.number(),
-  skip_tokens: z.number(),
 });
 
 const ProcessActionTypeSchema = BaseActionSchema.extend({
