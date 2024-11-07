@@ -2,7 +2,11 @@ import type { ModelId } from "@dust-tt/types";
 import TurndownService from "turndown";
 
 import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
-import type { ZendeskFetchedTicket } from "@connectors/connectors/zendesk/lib/node-zendesk-types";
+import type {
+  ZendeskFetchedTicket,
+  ZendeskFetchedTicketComment,
+  ZendeskFetchedUser,
+} from "@connectors/connectors/zendesk/lib/node-zendesk-types";
 import {
   renderDocumentTitleAndContent,
   renderMarkdownSection,
@@ -13,17 +17,6 @@ import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const turndownService = new TurndownService();
-
-interface ZendeskTicketComment {
-  author_id: number;
-  body: string;
-  created_at: string;
-}
-
-interface ZendeskUser {
-  name: string;
-  email: string;
-}
 
 export async function syncTicket({
   connectorId,
@@ -43,8 +36,8 @@ export async function syncTicket({
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;
   forceResync: boolean;
-  comments: ZendeskTicketComment[];
-  users: Map<number, ZendeskUser>;
+  comments: ZendeskFetchedTicketComment[];
+  users: ZendeskFetchedUser[];
 }) {
   let ticketInDb = await ZendeskTicketResource.fetchByTicketId({
     connectorId,
@@ -61,6 +54,8 @@ export async function syncTicket({
     ticketInDb.lastUpsertedTs < updatedAtDate;
 
   const commonTicketData = {
+    subject: ticket.subject,
+    url: ticket.url,
     createdAt: createdAtDate,
     updatedAt: updatedAtDate,
     assigneeId: ticket.assignee_id,

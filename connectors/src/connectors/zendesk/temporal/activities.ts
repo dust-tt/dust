@@ -409,8 +409,17 @@ export async function syncZendeskTicketsActivity({
 
   await concurrentExecutor(
     tickets,
-    (ticket) =>
-      syncTicket({
+    async (ticket) => {
+      const commentsRes = await zendeskApiClient.tickets.getComments(ticket.id);
+      const comments = commentsRes.result;
+
+      console.log("====== COMMENTS FOR TICKET ID: ", ticket.id);
+
+      console.log(comments);
+
+      const users = await zendeskApiClient.users.list();
+
+      return syncTicket({
         connectorId,
         brandId,
         ticket,
@@ -418,7 +427,10 @@ export async function syncZendeskTicketsActivity({
         currentSyncDateMs,
         loggerArgs,
         forceResync,
-      }),
+        comments,
+        users,
+      });
+    },
     { concurrency: 10 }
   );
 }

@@ -341,6 +341,9 @@ export class ZendeskTicket extends Model<
   declare groupId: number;
   declare organizationId: number;
 
+  declare subject: string;
+  declare url: string;
+
   declare lastUpsertedTs: Date;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -362,6 +365,14 @@ ZendeskTicket.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    url: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    subject: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     ticketId: {
       type: DataTypes.BIGINT,
