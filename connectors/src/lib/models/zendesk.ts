@@ -444,7 +444,7 @@ ZendeskTicket.init(
     },
     permission: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     lastUpsertedTs: {
       type: DataTypes.DATE,
