@@ -838,34 +838,53 @@ export class DustAPI {
     // body is already consumed by response.json() if used otherwise).
     const text = await res.value.response.text();
 
-    const r = schema.safeParse(JSON.parse(text));
-    if (r.success) {
-      return new Ok(r.data as z.infer<T>);
-    } else {
-      // We couldn't parse the response directly, maybe it's an error
-      const rErr = APIErrorSchema.safeParse(JSON.parse(text));
-      if (rErr.success) {
-        // Successfully parsed an error
-        return new Err(rErr.data);
+    try {
+      const r = schema.safeParse(JSON.parse(text));
+      if (r.success) {
+        return new Ok(r.data as z.infer<T>);
       } else {
-        // Unexpected response format (neither an error nor a valid response)
-        const err: APIError = {
-          type: "unexpected_response_format",
-          message: `Unexpected response format from DustAPI calling ${res.value.response.url} : ${r.error.message}`,
-        };
-        this._logger.error(
-          {
-            dustError: err,
-            parseError: r.error.message,
-            rawText: text,
-            status: res.value.response.status,
-            url: res.value.response.url,
-            duration: res.value.duration,
-          },
-          "DustAPI error"
-        );
-        return new Err(err);
+        // We couldn't parse the response directly, maybe it's an error
+        const rErr = APIErrorSchema.safeParse(JSON.parse(text));
+        if (rErr.success) {
+          // Successfully parsed an error
+          return new Err(rErr.data);
+        } else {
+          // Unexpected response format (neither an error nor a valid response)
+          const err: APIError = {
+            type: "unexpected_response_format",
+            message: `Unexpected response format from DustAPI calling ${res.value.response.url} : ${r.error.message}`,
+          };
+          this._logger.error(
+            {
+              dustError: err,
+              parseError: r.error.message,
+              rawText: text,
+              status: res.value.response.status,
+              url: res.value.response.url,
+              duration: res.value.duration,
+            },
+            "DustAPI error"
+          );
+          return new Err(err);
+        }
       }
+    } catch (e) {
+      const err: APIError = {
+        type: "unexpected_response_format",
+        message: `Fail to parse response from DustAPI calling ${res.value.response.url} : ${e}`,
+      };
+      this._logger.error(
+        {
+          dustError: err,
+          error: e,
+          rawText: text,
+          status: res.value.response.status,
+          url: res.value.response.url,
+          duration: res.value.duration,
+        },
+        "DustAPI error"
+      );
+      return new Err(err);
     }
   }
 }
