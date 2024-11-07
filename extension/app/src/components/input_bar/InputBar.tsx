@@ -44,7 +44,7 @@ export function AssistantInputBar({
   additionalAgentConfiguration,
   disableAutoFocus = false,
   isTabIncluded,
-  includeTab,
+  toggleIncludeTab,
 }: {
   owner: LightWorkspaceType;
   onSubmit: (input: string, mentions: MentionType[]) => void;
@@ -52,7 +52,7 @@ export function AssistantInputBar({
   additionalAgentConfiguration?: LightAgentConfigurationType;
   disableAutoFocus?: boolean;
   isTabIncluded: boolean;
-  includeTab: () => void;
+  toggleIncludeTab: () => void;
 }) {
   const { agentConfigurations: baseAgentConfigurations } =
     usePublicAgentConfigurations();
@@ -144,7 +144,7 @@ export function AssistantInputBar({
                 onEnterKeyDown={handleSubmit}
                 stickyMentions={stickyMentions}
                 isTabIncluded={isTabIncluded}
-                includeTab={includeTab}
+                toggleIncludeTab={toggleIncludeTab}
               />
             </div>
           </div>

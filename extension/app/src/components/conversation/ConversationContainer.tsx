@@ -261,7 +261,7 @@ export function ConversationContainer({
           }
           stickyMentions={stickyMentions}
           isTabIncluded={!!includeContent}
-          includeTab={() => setIncludeContent((v) => !v)}
+          toggleIncludeTab={() => setIncludeContent((v) => !v)}
         />
       </div>
       <ReachedLimitPopup

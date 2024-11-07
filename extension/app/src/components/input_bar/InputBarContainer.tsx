@@ -28,7 +28,7 @@ export interface InputBarContainerProps {
   stickyMentions?: AgentMention[];
   disableAutoFocus: boolean;
   isTabIncluded: boolean;
-  includeTab: () => void;
+  toggleIncludeTab: () => void;
 }
 
 export const InputBarContainer = ({
@@ -40,7 +40,7 @@ export const InputBarContainer = ({
   stickyMentions,
   disableAutoFocus,
   isTabIncluded,
-  includeTab,
+  toggleIncludeTab,
 }: InputBarContainerProps) => {
   const suggestions = usePublicAssistantSuggestions(agentConfigurations);
 
@@ -111,7 +111,7 @@ export const InputBarContainer = ({
             variant="outline"
             size="xs"
             isPulsing={isPulsingActive}
-            onClick={includeTab}
+            onClick={toggleIncludeTab}
           />
           <AssistantPicker
             owner={owner}
