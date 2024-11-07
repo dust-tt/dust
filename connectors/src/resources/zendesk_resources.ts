@@ -867,4 +867,17 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
       { where: { connectorId, brandId } }
     );
   }
+
+  static async revokePermissionsForCategory({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }) {
+    await ZendeskArticle.update(
+      { permission: "none" },
+      { where: { connectorId, categoryId } }
+    );
+  }
 }
