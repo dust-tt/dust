@@ -168,22 +168,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>> {
-    const { connectorId } = this;
-
-    if (filterPermission === "read" && parentInternalId === null) {
-      /// we only show brands at the root level
-      const brands = await ZendeskBrandResource.fetchAllReadOnly({
-        connectorId,
-      });
-      const brandNodes: ContentNode[] = brands.map((brand) =>
-        brand.toContentNode(connectorId)
-      );
-      return new Ok(brandNodes);
-    }
-
     try {
       const nodes = await retrieveChildrenNodes({
-        connectorId,
+        connectorId: this.connectorId,
         parentInternalId,
         filterPermission,
         viewType: "documents",
