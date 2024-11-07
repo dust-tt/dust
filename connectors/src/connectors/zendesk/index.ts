@@ -182,14 +182,14 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
 
     try {
-      return new Ok(
-        await retrieveChildrenNodes({
-          connectorId,
-          parentInternalId,
-          filterPermission,
-          viewType: "documents",
-        })
-      );
+      const nodes = await retrieveChildrenNodes({
+        connectorId,
+        parentInternalId,
+        filterPermission,
+        viewType: "documents",
+      });
+      nodes.sort((a, b) => a.title.localeCompare(b.title));
+      return new Ok(nodes);
     } catch (e) {
       return new Err(e as Error);
     }

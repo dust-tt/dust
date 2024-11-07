@@ -44,7 +44,6 @@ export async function retrieveChildrenNodes({
   }
 
   const isReadPermissionsOnly = filterPermission === "read";
-  let nodes: ContentNode[] = [];
 
   const zendeskApiClient = createZendeskClient(
     await getZendeskSubdomainAndAccessToken(connector.connectionId)
@@ -56,10 +55,10 @@ export async function retrieveChildrenNodes({
       const brandsInDatabase = await ZendeskBrandResource.fetchAllReadOnly({
         connectorId,
       });
-      nodes = brandsInDatabase.map((brand) => brand.toContentNode(connectorId));
+      return brandsInDatabase.map((brand) => brand.toContentNode(connectorId));
     } else {
       const { result: brands } = await zendeskApiClient.brand.list();
-      nodes = brands.map((brand) => ({
+      return brands.map((brand) => ({
         provider: connector.type,
         internalId: getBrandInternalId(connectorId, brand.id),
         parentInternalId: null,
@@ -80,6 +79,7 @@ export async function retrieveChildrenNodes({
     switch (type) {
       // If the parent is a Brand, we return a node for its tickets and one for its help center.
       case "brand": {
+        const nodes = [];
         const brandInDb = await ZendeskBrandResource.fetchByBrandId({
           connectorId,
           brandId: objectId,
@@ -132,7 +132,7 @@ export async function retrieveChildrenNodes({
             nodes.push(helpCenterNode);
           }
         }
-        break;
+        return nodes;
       }
       // If the parent is a brand's tickets, we retrieve the list of tickets for the brand.
       case "tickets": {
@@ -142,11 +142,9 @@ export async function retrieveChildrenNodes({
               connectorId,
               brandId: objectId,
             });
-          nodes = ticketsInDb.map((ticket) =>
-            ticket.toContentNode(connectorId)
-          );
+          return ticketsInDb.map((ticket) => ticket.toContentNode(connectorId));
         }
-        break;
+        return [];
       }
       // If the parent is a brand's help center, we retrieve the list of Categories for this brand.
       case "help-center": {
@@ -158,17 +156,19 @@ export async function retrieveChildrenNodes({
             brandId: objectId,
           });
         if (isReadPermissionsOnly) {
-          nodes = categoriesInDatabase.map((category) =>
+          return categoriesInDatabase.map((category) =>
             category.toContentNode(connectorId, { expandable: true })
           );
         } else {
+          // fetching the categories
           await changeZendeskClientSubdomain(zendeskApiClient, {
             connectorId,
             brandId: objectId,
           });
           const categories =
             await zendeskApiClient.helpcenter.categories.list();
-          nodes = categories.map((category) => {
+
+          return categories.map((category) => {
             const matchingDbEntry = categoriesInDatabase.find(
               (c) => c.categoryId === category.id
             );
@@ -191,7 +191,6 @@ export async function retrieveChildrenNodes({
             };
           });
         }
-        break;
       }
       // If the parent is a category, we retrieve the list of articles for this category.
       case "category": {
@@ -201,11 +200,11 @@ export async function retrieveChildrenNodes({
               connectorId,
               categoryId: objectId.categoryId,
             });
-          nodes = articlesInDb.map((article) =>
+          return articlesInDb.map((article) =>
             article.toContentNode(connectorId)
           );
         }
-        break;
+        return [];
       }
       // Single tickets and articles have no children.
       case "ticket":
@@ -215,7 +214,4 @@ export async function retrieveChildrenNodes({
         assertNever(type);
     }
   }
-
-  nodes.sort((a, b) => a.title.localeCompare(b.title));
-  return nodes;
 }
