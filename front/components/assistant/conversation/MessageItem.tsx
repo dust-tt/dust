@@ -117,6 +117,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                   <Citation
                     key={contentFragment.sId}
                     title={contentFragment.title}
+                    sizing="fluid"
                     size="xs"
                     type={citationType}
                     href={contentFragment.sourceUrl || undefined}
