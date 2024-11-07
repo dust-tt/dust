@@ -10,7 +10,6 @@ import type {
   LightWorkspaceType,
   MentionType,
 } from "@dust-tt/types";
-import { isContentFragmentMessageTypeModel } from "@dust-tt/types";
 import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
 import { ReachedLimitPopup } from "@extension/components/conversation/ReachedLimitPopup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
