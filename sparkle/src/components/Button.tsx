@@ -105,7 +105,7 @@ const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
 MetaButton.displayName = "MetaButton";
 
 export interface ButtonProps
-  extends MetaButtonProps,
+  extends Omit<MetaButtonProps, "children">,
     Omit<LinkWrapperProps, "children" | "className"> {
   label?: string;
   icon?: React.ComponentType;

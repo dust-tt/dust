@@ -34,21 +34,6 @@ export type CitationType =
   | "slack"
   | "snowflake";
 
-interface CitationProps {
-  avatarSrc?: string;
-  description?: string;
-  href?: string;
-  imgSrc?: string;
-  index?: ReactNode;
-  isBlinking?: boolean;
-  isLoading?: boolean;
-  onClose?: () => void;
-  size?: "xs" | "sm";
-  sizing?: "fixed" | "fluid";
-  title: string;
-  type?: CitationType;
-}
-
 const typeIcons = {
   confluence: ConfluenceLogo,
   document: DocumentTextStrokeIcon,
@@ -67,6 +52,21 @@ const typeSizing = {
   fixed: { xs: "s-w-48", sm: "s-w-64" },
   fluid: "s-w-full",
 };
+
+interface CitationProps {
+  avatarSrc?: string;
+  description?: string;
+  href?: string;
+  imgSrc?: string;
+  index?: ReactNode;
+  isBlinking?: boolean;
+  isLoading?: boolean;
+  onClose?: () => void;
+  size?: "xs" | "sm";
+  sizing?: "fixed" | "fluid";
+  title: string;
+  type?: CitationType;
+}
 
 export function Citation({
   avatarSrc,
@@ -151,6 +151,10 @@ export function Citation({
     </>
   );
 
+  const props = href
+    ? { href, target: "_blank", rel: "noopener noreferrer" }
+    : {};
+
   const cardButton = (
     <CardButton
       variant="secondary"
@@ -162,7 +166,7 @@ export function Citation({
         isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
         type === "image" ? "s-min-h-20" : ""
       )}
-      {...(href && { href, target: "_blank", rel: "noopener noreferrer" })}
+      {...props}
     >
       {isLoading && (
         <div className="s-absolute s-inset-0 s-flex s-items-center s-justify-center">
