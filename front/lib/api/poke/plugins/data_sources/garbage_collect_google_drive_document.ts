@@ -36,7 +36,7 @@ export async function garbageCollectGoogleDriveDocument(
   return new Ok(undefined);
 }
 
-export const connectorOperations = createPlugin(
+export const garbageCollectGoogleDriveDocumentPlugin = createPlugin(
   {
     id: "garbage-collect-google-drive-document",
     name: "GC Google Drive Document",

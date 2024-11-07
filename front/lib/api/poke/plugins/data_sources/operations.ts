@@ -31,7 +31,7 @@ const doOperation = (op: OperationType, connectorId: string) => {
   }
 };
 
-export const connectorOperations = createPlugin(
+export const connectorOperationsPlugin = createPlugin(
   {
     id: "maintenance-operation",
     name: "Maintenance operation",
