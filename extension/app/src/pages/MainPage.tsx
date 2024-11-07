@@ -1,13 +1,13 @@
 import {
   Avatar,
   Button,
-  ExternalLinkIcon,
-  LogoHorizontalColorLogo,
-  LogoutIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  ExternalLinkIcon,
+  LogoHorizontalColorLogo,
+  LogoutIcon,
 } from "@dust-tt/sparkle";
 import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
 import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
