@@ -348,7 +348,12 @@ const closeSession = async (session: Session): Promise<void> => {
 };
 
 const startSession = async (url: string): Promise<Session> => {
-  const browser = await chromium.connectOverCDP(process.env.CDP_URL || "");
+  let browser: Browser | null = null;
+  if (process.env.CDP_URL) {
+    browser = await chromium.connectOverCDP(process.env.CDP_URL || "");
+  } else {
+    browser = await chromium.launch();
+  }
   const context = await browser.newContext();
   const page: Page = await context.newPage();
   await page.goto(url);
@@ -363,7 +368,7 @@ const useInput = async (
 ): Promise<void> => {
   try {
     console.log(">> INPUT", selector, value, enter);
-    await session.page.type(selector, value, { timeout: 5000 });
+    await session.page.type(selector, value, { timeout: 10000 });
     if (enter) {
       await session.page.press(selector, "Enter");
     }
