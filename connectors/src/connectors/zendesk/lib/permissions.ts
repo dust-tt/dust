@@ -56,9 +56,7 @@ export async function retrieveChildrenNodes({
       const brandsInDatabase = await ZendeskBrandResource.fetchAllReadOnly({
         connectorId,
       });
-      nodes = brandsInDatabase.map((brand) =>
-        brand.toContentNode({ connectorId })
-      );
+      nodes = brandsInDatabase.map((brand) => brand.toContentNode(connectorId));
     } else {
       const { result: brands } = await zendeskApiClient.brand.list();
       nodes = brands.map((brand) => ({
@@ -88,13 +86,13 @@ export async function retrieveChildrenNodes({
             brandId: objectId,
           });
           if (brandInDb?.ticketsPermission === "read") {
-            nodes.push(brandInDb.getTicketsContentNode({ connectorId }));
+            nodes.push(brandInDb.getTicketsContentNode(connectorId));
           }
           if (
             brandInDb?.hasHelpCenter &&
             brandInDb?.helpCenterPermission === "read"
           ) {
-            nodes.push(brandInDb.getHelpCenterContentNode({ connectorId }));
+            nodes.push(brandInDb.getHelpCenterContentNode(connectorId));
           }
           // if we don't have data for the brand in db, we should not show anything
         } else {

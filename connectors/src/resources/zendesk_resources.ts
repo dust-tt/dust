@@ -270,7 +270,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     await ZendeskBrand.destroy({ where: { connectorId }, transaction });
   }
 
-  toContentNode({ connectorId }: { connectorId: number }): ContentNode {
+  toContentNode(connectorId: number): ContentNode {
     return {
       provider: "zendesk",
       internalId: getBrandInternalId(connectorId, this.brandId),
@@ -289,11 +289,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     };
   }
 
-  getHelpCenterContentNode({
-    connectorId,
-  }: {
-    connectorId: number;
-  }): ContentNode {
+  getHelpCenterContentNode(connectorId: number): ContentNode {
     return {
       provider: "zendesk",
       internalId: getHelpCenterInternalId(connectorId, this.brandId),
@@ -308,7 +304,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     };
   }
 
-  getTicketsContentNode({ connectorId }: { connectorId: number }): ContentNode {
+  getTicketsContentNode(connectorId: number): ContentNode {
     return {
       provider: "zendesk",
       internalId: getTicketsInternalId(connectorId, this.brandId),

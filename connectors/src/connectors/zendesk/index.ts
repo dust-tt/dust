@@ -176,7 +176,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         connectorId,
       });
       const brandNodes: ContentNode[] = brands.map((brand) =>
-        brand.toContentNode({ connectorId })
+        brand.toContentNode(connectorId)
       );
       return new Ok(brandNodes);
     }
@@ -429,13 +429,11 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     });
 
     return new Ok([
-      ...brands.map((brand) => brand.toContentNode({ connectorId })),
+      ...brands.map((brand) => brand.toContentNode(connectorId)),
       ...brandHelpCenters.map((brand) =>
-        brand.getHelpCenterContentNode({ connectorId })
+        brand.getHelpCenterContentNode(connectorId)
       ),
-      ...brandTickets.map((brand) =>
-        brand.getTicketsContentNode({ connectorId })
-      ),
+      ...brandTickets.map((brand) => brand.getTicketsContentNode(connectorId)),
       ...categories.map((category) => category.toContentNode({ connectorId })),
       ...articles.map((article) => article.toContentNode({ connectorId })),
       ...tickets.map((ticket) => ticket.toContentNode({ connectorId })),
