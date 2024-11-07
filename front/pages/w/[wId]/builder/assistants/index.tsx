@@ -392,7 +392,7 @@ function AgentViewForScope({
           label="Manage"
           size="sm"
           disabled={!isBuilder(owner)}
-          onClick={(e) => {
+          onClick={(e: Event) => {
             e.stopPropagation();
             void router.push(`/w/${owner.sId}/builder/assistants/dust`);
           }}
