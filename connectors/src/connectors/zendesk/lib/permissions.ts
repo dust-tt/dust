@@ -93,20 +93,18 @@ export async function retrieveChildrenNodes({
       );
     } else {
       const { result: brands } = await zendeskApiClient.brand.list();
-      nodes = brands
-        .filter((brand) => brand.has_help_center)
-        .map((brand) => ({
-          provider: connector.type,
-          internalId: getBrandInternalId(connectorId, brand.id),
-          parentInternalId: null,
-          type: "folder",
-          title: brand.name || "Brand",
-          sourceUrl: brand.brand_url,
-          expandable: true,
-          permission: "none",
-          dustDocumentId: null,
-          lastUpdatedAt: null,
-        }));
+      nodes = brands.map((brand) => ({
+        provider: connector.type,
+        internalId: getBrandInternalId(connectorId, brand.id),
+        parentInternalId: null,
+        type: "folder",
+        title: brand.name || "Brand",
+        sourceUrl: brand.brand_url,
+        expandable: true,
+        permission: "none",
+        dustDocumentId: null,
+        lastUpdatedAt: null,
+      }));
     }
   } else {
     const { type, objectId } = getIdFromInternalId(
