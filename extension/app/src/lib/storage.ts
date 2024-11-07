@@ -56,10 +56,10 @@ type ConversationContext = {
 export const getConversationContext = async (
   conversationId: string
 ): Promise<ConversationContext> => {
-  const result = await chrome.storage.local.get(["conversationContext"]);
-  return result.conversationContext
-    ? result.conversationContext[conversationId]
-    : { includeCurrentPage: false };
+  const { conversationContext = {} } = await chrome.storage.local.get([
+    "conversationContext",
+  ]);
+  return conversationContext[conversationId] ?? { includeCurrentPage: false };
 };
 
 export const setConversationContext = async (

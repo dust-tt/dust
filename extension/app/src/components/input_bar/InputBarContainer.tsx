@@ -99,7 +99,7 @@ export const InputBarContainer = ({
       />
 
       <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-2 pr-2 sm:flex-col sm:border-0">
-        <div className="flex py-2">
+        <div className="flex py-2 space-x-1">
           <Button
             icon={isTabIncluded ? CheckCircleIcon : StopSignIcon}
             label={isTabIncluded ? "Tab sharing ON" : "Tab sharing OFF"}

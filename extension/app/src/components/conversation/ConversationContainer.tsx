@@ -1,9 +1,4 @@
-import {
-  Button,
-  HistoryIcon,
-  Page,
-  useSendNotification,
-} from "@dust-tt/sparkle";
+import { Page, useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentMention,
   LightWorkspaceType,
@@ -239,19 +234,10 @@ export function ConversationContainer({
         />
       )}
       <div className="sticky bottom-0 z-20 flex flex-col max-h-screen w-full max-w-4xl pb-4">
-        {!activeConversationId ? (
-          <div className="flex justify-between items-end pb-2">
-            <div>
-              <Page.Header title={greeting} />
-              <Page.SectionHeader title="Start a conversation" />
-            </div>
-            <div className="flex space-x-1">
-              <ConversationHistoryButton />
-            </div>
-          </div>
-        ) : (
-          <div className="flex justify-end items-end pb-2 gap-1">
-            <ConversationHistoryButton />
+        {!activeConversationId && (
+          <div className="pb-2">
+            <Page.Header title={greeting} />
+            <Page.SectionHeader title="Start a conversation" />
           </div>
         )}
         <AssistantInputBar
@@ -272,15 +258,3 @@ export function ConversationContainer({
     </>
   );
 }
-
-const ConversationHistoryButton = () => {
-  const navigate = useNavigate();
-  return (
-    <Button
-      tooltip="View all conversations"
-      icon={HistoryIcon}
-      variant="outline"
-      onClick={() => navigate("/conversations")}
-    />
-  );
-};
