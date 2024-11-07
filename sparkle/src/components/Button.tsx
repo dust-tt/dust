@@ -77,7 +77,7 @@ const spinnerVariantsMapIsLoading: Record<ButtonVariantType, SpinnerVariant> = {
   ghost: "slate400",
 };
 
-interface MetaButtonProps
+export interface MetaButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
