@@ -483,13 +483,10 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     }
   }
 
-  toContentNode({
-    connectorId,
-    expandable = false,
-  }: {
-    connectorId: number;
-    expandable?: boolean;
-  }): ContentNode {
+  toContentNode(
+    connectorId: number,
+    { expandable = false }: { expandable?: boolean } = {}
+  ): ContentNode {
     return {
       provider: "zendesk",
       internalId: getCategoryInternalId(
@@ -576,7 +573,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     };
   }
 
-  toContentNode({ connectorId }: { connectorId: number }): ContentNode {
+  toContentNode(connectorId: number): ContentNode {
     return {
       provider: "zendesk",
       internalId: getTicketInternalId(connectorId, this.ticketId),
@@ -742,7 +739,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     };
   }
 
-  toContentNode({ connectorId }: { connectorId: number }): ContentNode {
+  toContentNode(connectorId: number): ContentNode {
     return {
       provider: "zendesk",
       internalId: getArticleInternalId(connectorId, this.articleId),

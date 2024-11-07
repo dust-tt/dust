@@ -139,7 +139,7 @@ export async function retrieveChildrenNodes({
               brandId: objectId,
             });
           nodes = ticketsInDb.map((ticket) =>
-            ticket.toContentNode({ connectorId })
+            ticket.toContentNode(connectorId)
           );
         }
         break;
@@ -153,7 +153,7 @@ export async function retrieveChildrenNodes({
           });
         if (isReadPermissionsOnly) {
           nodes = categoriesInDatabase.map((category) =>
-            category.toContentNode({ connectorId, expandable: true })
+            category.toContentNode(connectorId, { expandable: true })
           );
         } else {
           await changeZendeskClientSubdomain(zendeskApiClient, {
@@ -196,7 +196,7 @@ export async function retrieveChildrenNodes({
               categoryId: objectId.categoryId,
             });
           nodes = articlesInDb.map((article) =>
-            article.toContentNode({ connectorId })
+            article.toContentNode(connectorId)
           );
         }
         break;
