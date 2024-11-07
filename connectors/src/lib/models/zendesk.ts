@@ -383,15 +383,14 @@ ZendeskTicket.init(
     },
     brandId: {
       type: DataTypes.BIGINT,
-      allowNull: false,
     },
     groupId: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
     },
     assigneeId: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
     },
     organizationId: {
       type: DataTypes.BIGINT,
@@ -399,11 +398,11 @@ ZendeskTicket.init(
     },
     name: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     satisfactionScore: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true, // Changed to true as it could be "unoffered"
     },
     satisfactionComment: {
       type: DataTypes.STRING,
@@ -411,15 +410,15 @@ ZendeskTicket.init(
     },
     subject: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     description: {
-      type: DataTypes.STRING,
-      allowNull: false,
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     requesterMail: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     status: {
       type: DataTypes.STRING,
@@ -428,6 +427,7 @@ ZendeskTicket.init(
     tags: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: false,
+      defaultValue: [],
     },
     url: {
       type: DataTypes.STRING,
@@ -435,7 +435,7 @@ ZendeskTicket.init(
     },
     type: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     customFields: {
       type: DataTypes.ARRAY(DataTypes.STRING),
@@ -444,7 +444,7 @@ ZendeskTicket.init(
     },
     permission: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     lastUpsertedTs: {
       type: DataTypes.DATE,
@@ -465,6 +465,7 @@ ZendeskTicket.init(
     ],
   }
 );
+
 ConnectorModel.hasMany(ZendeskTicket, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",

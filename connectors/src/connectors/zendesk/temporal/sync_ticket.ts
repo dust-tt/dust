@@ -14,13 +14,13 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const turndownService = new TurndownService();
 
-interface TicketComment {
+interface ZendeskTicketComment {
   author_id: number;
   body: string;
   created_at: string;
 }
 
-interface User {
+interface ZendeskUser {
   name: string;
   email: string;
 }
@@ -43,8 +43,8 @@ export async function syncTicket({
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;
   forceResync: boolean;
-  comments: TicketComment[];
-  users: Map<number, User>;
+  comments: ZendeskTicketComment[];
+  users: Map<number, ZendeskUser>;
 }) {
   let ticketInDb = await ZendeskTicketResource.fetchByTicketId({
     connectorId,
