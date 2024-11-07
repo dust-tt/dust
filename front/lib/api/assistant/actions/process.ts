@@ -193,7 +193,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
     }
 
     const objective =
-      typeof rawInputs.objective === "string" ? rawInputs.objective : null;
+      typeof rawInputs.objective === "string" ? rawInputs.objective : "n/a";
 
     const { model } = agentConfiguration;
 
@@ -237,7 +237,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       }),
     };
 
-    let prompt = await constructPromptMultiActions(auth, {
+    const prompt = await constructPromptMultiActions(auth, {
       conversation,
       userMessage,
       agentConfiguration,
@@ -246,10 +246,6 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       model: supportedModel,
       hasAvailableActions: false,
     });
-
-    if (objective) {
-      prompt += `\nUSER_OBJECTIVE:\n${objective}`;
-    }
 
     const dataSourceViews = await DataSourceViewResource.fetchByIds(
       auth,
@@ -343,6 +339,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
           schema: renderSchemaPropertiesAsJSONSchema(
             actionConfiguration.schema
           ),
+          objective,
         },
       ],
       {
