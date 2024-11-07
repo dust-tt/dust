@@ -80,11 +80,11 @@ export async function retrieveChildrenNodes({
     switch (type) {
       // If the parent is a Brand, we return a node for its tickets and one for its help center.
       case "brand": {
+        const brandInDb = await ZendeskBrandResource.fetchByBrandId({
+          connectorId,
+          brandId: objectId,
+        });
         if (isReadPermissionsOnly) {
-          const brandInDb = await ZendeskBrandResource.fetchByBrandId({
-            connectorId,
-            brandId: objectId,
-          });
           if (brandInDb?.ticketsPermission === "read") {
             nodes.push(brandInDb.getTicketsContentNode(connectorId));
           }
@@ -104,7 +104,8 @@ export async function retrieveChildrenNodes({
             title: "Tickets",
             sourceUrl: null,
             expandable: false,
-            permission: "none",
+            permission:
+              brandInDb?.ticketsPermission === "read" ? "read" : "none",
             dustDocumentId: null,
             lastUpdatedAt: null,
           };
@@ -121,7 +122,8 @@ export async function retrieveChildrenNodes({
               title: "Help Center",
               sourceUrl: null,
               expandable: true,
-              permission: "none",
+              permission:
+                brandInDb?.helpCenterPermission === "read" ? "read" : "none",
               dustDocumentId: null,
               lastUpdatedAt: null,
             };
