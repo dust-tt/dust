@@ -1,8 +1,12 @@
 import {
   ArrowUpIcon,
   Button,
-  CheckCircleIcon,
-  StopSignIcon,
+  Checkbox,
+  MetaButton,
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
@@ -43,16 +47,6 @@ export const InputBarContainer = ({
   toggleIncludeTab,
 }: InputBarContainerProps) => {
   const suggestions = usePublicAssistantSuggestions(agentConfigurations);
-
-  // Pulsing animation for the include tab button
-  const [isPulsingActive, setIsPulsingActive] = React.useState(true);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsPulsingActive(false);
-    }, 1200);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   const { editor, editorService } = useCustomEditor({
     suggestions,
@@ -100,19 +94,25 @@ export const InputBarContainer = ({
 
       <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-2 pr-2 sm:flex-col sm:border-0">
         <div className="flex py-2 space-x-1">
-          <Button
-            icon={isTabIncluded ? CheckCircleIcon : StopSignIcon}
-            label={isTabIncluded ? "Tab sharing ON" : "Tab sharing OFF"}
-            tooltip={
-              isTabIncluded
-                ? "Each message in this conversation includes the content of the current tab as attachment."
-                : "If enabled, each message in this conversation will include the content of the current tab as attachment."
-            }
-            variant="outline"
-            size="xs"
-            isPulsing={isPulsingActive}
-            onClick={toggleIncludeTab}
-          />
+          <TooltipProvider>
+            <TooltipRoot>
+              <TooltipTrigger asChild>
+                <MetaButton
+                  size="xs"
+                  variant="outline"
+                  onClick={toggleIncludeTab}
+                >
+                  <Checkbox checked={isTabIncluded} size="xs" /> Tab sharing
+                </MetaButton>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isTabIncluded
+                  ? "Each message in this conversation includes the content of the current tab as attachment."
+                  : "If enabled, each message in this conversation will include the content of the current tab as attachment."}
+              </TooltipContent>
+            </TooltipRoot>
+          </TooltipProvider>
+
           <AssistantPicker
             owner={owner}
             size="xs"
