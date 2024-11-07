@@ -114,46 +114,53 @@ export async function retrieveChildrenNodes({
     switch (type) {
       // If the parent is a Brand, we return a node for its tickets and one for its help center.
       case "brand": {
-        const ticketsNode: ContentNode = {
-          provider: connector.type,
-          internalId: getTicketsInternalId(connectorId, objectId),
-          parentInternalId: parentInternalId,
-          type: "folder",
-          title: "Tickets",
-          sourceUrl: null,
-          expandable: false,
-          permission: "none",
-          dustDocumentId: null,
-          lastUpdatedAt: null,
-        };
-        nodes.push(ticketsNode);
-
-        let hasHelpCenter = false;
         if (isReadPermissionsOnly) {
-          const brandInDatabase = await ZendeskBrandResource.fetchByBrandId({
+          const brandInDb = await ZendeskBrandResource.fetchByBrandId({
             connectorId,
             brandId: objectId,
           });
-          hasHelpCenter =
-            brandInDatabase !== null && brandInDatabase.hasHelpCenter;
+          if (brandInDb?.ticketsPermission === "read") {
+            nodes.push(brandInDb.getTicketsContentNode({ connectorId }));
+          }
+          if (
+            brandInDb?.hasHelpCenter &&
+            brandInDb?.helpCenterPermission === "read"
+          ) {
+            nodes.push(brandInDb.getHelpCenterContentNode({ connectorId }));
+          }
+          // if we don't have data for the brand in db, we should not show anything
         } else {
-          const fetchedBrand = await zendeskApiClient.brand.show(objectId);
-          hasHelpCenter = fetchedBrand.result.brand.has_help_center;
-        }
-        if (hasHelpCenter) {
-          const helpCenterNode: ContentNode = {
+          const ticketsNode: ContentNode = {
             provider: connector.type,
-            internalId: getHelpCenterInternalId(connectorId, objectId),
+            internalId: getTicketsInternalId(connectorId, objectId),
             parentInternalId: parentInternalId,
             type: "folder",
-            title: "Help Center",
+            title: "Tickets",
             sourceUrl: null,
-            expandable: true,
+            expandable: false,
             permission: "none",
             dustDocumentId: null,
             lastUpdatedAt: null,
           };
-          nodes.push(helpCenterNode);
+          nodes.push(ticketsNode);
+
+          /// fetching the brand to check if it has a help center
+          const fetchedBrand = await zendeskApiClient.brand.show(objectId);
+          if (fetchedBrand.result.brand.has_help_center) {
+            const helpCenterNode: ContentNode = {
+              provider: connector.type,
+              internalId: getHelpCenterInternalId(connectorId, objectId),
+              parentInternalId: parentInternalId,
+              type: "folder",
+              title: "Help Center",
+              sourceUrl: null,
+              expandable: true,
+              permission: "none",
+              dustDocumentId: null,
+              lastUpdatedAt: null,
+            };
+            nodes.push(helpCenterNode);
+          }
         }
         break;
       }
