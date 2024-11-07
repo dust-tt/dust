@@ -8,6 +8,9 @@ import {
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 
+/**
+ * Marks the node "Tickets" of a Brand as permission "read".
+ */
 export async function allowSyncZendeskTickets({
   connectorId,
   connectionId,
@@ -55,7 +58,7 @@ export async function allowSyncZendeskTickets({
 }
 
 /**
- * Mark a help center as permission "none" and all children (collections and articles).
+ * Mark the node "Tickets" and all the children tickets for a Brand as permission "none".
  */
 export async function revokeSyncZendeskTickets({
   connectorId,
