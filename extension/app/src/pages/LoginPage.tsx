@@ -1,10 +1,10 @@
 import {
   Button,
-  LoginIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  LoginIcon,
 } from "@dust-tt/sparkle";
 import { useAuth } from "@extension/components/auth/AuthProvider";
 import { useEffect } from "react";
