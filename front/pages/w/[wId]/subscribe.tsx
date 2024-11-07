@@ -197,7 +197,7 @@ export default function Subscribe({
                   onClick={() => {
                     void handleSubscribePlan(billingPeriod);
                   }}
-                ></Button>
+                />
               </Page.Vertical>
               <Page.Horizontal sizing="grow">
                 <ProPlansTable
