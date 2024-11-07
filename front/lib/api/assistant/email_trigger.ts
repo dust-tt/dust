@@ -225,7 +225,6 @@ export async function splitThreadContent(content: string) {
   ];
 
   let firstSeparatorIndex = -1;
-  let firstSeparatorMatch = null;
 
   for (const separator of separators) {
     const match = content.match(separator);
@@ -235,11 +234,10 @@ export async function splitThreadContent(content: string) {
       (firstSeparatorIndex === -1 || match.index < firstSeparatorIndex)
     ) {
       firstSeparatorIndex = match.index;
-      firstSeparatorMatch = match;
     }
   }
   const conversationIdRegex =
-    /Open in Dust <https?:\/\/[^\/]+\/w\/[^\/]+\/assistant\/([^>]+)>/;
+    /Open in Dust <https?:\/\/[^/]+\/w\/[^/]+\/assistant\/([^>]+)>/;
   const conversationIdMatch = content.match(conversationIdRegex);
   const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
 
