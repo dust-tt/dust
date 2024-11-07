@@ -3,15 +3,15 @@ import React, { useEffect, useState } from "react";
 
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   LockIcon,
   MoreIcon,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
   PencilSquareIcon,
   ScrollArea,
   ScrollBar,
@@ -45,24 +45,24 @@ export const NewNavigationListDemo = () => {
   const allItems = conversationTitles.flatMap((section) => section.items);
 
   const getMoreMenu = (title: string) => (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button variant="ghost" icon={MoreIcon} size="xs" />
-      </NewDropdownMenuTrigger>
-      <NewDropdownMenuContent>
-        <NewDropdownMenuItem
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem
           label={`Rename ${title}`}
           icon={PencilSquareIcon}
           onClick={(e) => e.stopPropagation()}
         />
-        <NewDropdownMenuItem
+        <DropdownMenuItem
           label="Delete"
           icon={TrashIcon}
           variant="warning"
           onClick={(e) => e.stopPropagation()}
         />
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 
   return (

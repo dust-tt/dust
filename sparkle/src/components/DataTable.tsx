@@ -15,15 +15,15 @@ import {
 import React, { ReactNode, useEffect, useState } from "react";
 
 import { Avatar } from "@sparkle/components/Avatar";
-import { IconButton } from "@sparkle/components/IconButton";
 import {
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuGroup,
-  NewDropdownMenuItem,
-  NewDropdownMenuItemProps,
-  NewDropdownMenuTrigger,
-} from "@sparkle/components/NewDropdown";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuItemProps,
+  DropdownMenuTrigger,
+} from "@sparkle/components/Dropdown";
+import { IconButton } from "@sparkle/components/IconButton";
 import { Pagination } from "@sparkle/components/Pagination";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { useCopyToClipboard } from "@sparkle/hooks";
@@ -50,7 +50,7 @@ declare module "@tanstack/react-table" {
 
 interface TBaseData {
   onClick?: () => void;
-  moreMenuItems?: NewDropdownMenuItemProps[];
+  moreMenuItems?: DropdownMenuItemProps[];
 }
 
 interface ColumnBreakpoint {
@@ -332,7 +332,7 @@ DataTable.Body = function Body({
 interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   children: ReactNode;
   onClick?: () => void;
-  moreMenuItems?: NewDropdownMenuItemProps[];
+  moreMenuItems?: DropdownMenuItemProps[];
   widthClassName: string;
 }
 
@@ -358,24 +358,24 @@ DataTable.Row = function Row({
       {children}
       <td className="s-flex s-w-8 s-cursor-pointer s-items-center s-pl-1 s-text-element-600">
         {moreMenuItems && moreMenuItems.length > 0 && (
-          <NewDropdownMenu>
-            <NewDropdownMenuTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <IconButton
                 icon={MoreIcon}
                 size="sm"
                 variant="outline"
                 className="s-m-1"
               />
-            </NewDropdownMenuTrigger>
+            </DropdownMenuTrigger>
 
-            <NewDropdownMenuContent align="end">
-              <NewDropdownMenuGroup>
+            <DropdownMenuContent align="end">
+              <DropdownMenuGroup>
                 {moreMenuItems?.map((item, index) => (
-                  <NewDropdownMenuItem key={index} {...item} />
+                  <DropdownMenuItem key={index} {...item} />
                 ))}
-              </NewDropdownMenuGroup>
-            </NewDropdownMenuContent>
-          </NewDropdownMenu>
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </td>
     </tr>
