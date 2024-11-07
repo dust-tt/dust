@@ -47,7 +47,7 @@ function renderUserType(user: User): UserType {
 }
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = isDevelopment()
-  ? "dev.dust.help"
+  ? "run.dust.help"
   : "run.dust.help";
 
 export type InboundEmail = {
@@ -218,28 +218,38 @@ export async function emailAssistantMatcher({
   });
 }
 
-export async function splitThreadContent(
-  threadContent: string
-): Promise<{ userMessage: string; restOfThread: string }> {
-  const lines = threadContent.split("\n");
-  let userMessage = "";
-  let restOfThread = "";
-  let foundUserMessage = false;
-  for (const line of lines) {
-    if (foundUserMessage) {
-      restOfThread += line + "\n";
-    } else {
-      if (line.startsWith("On ") && line.includes(" wrote:")) {
-        foundUserMessage = true;
-      } else if (line.startsWith("---------- Forwarded message ---------")) {
-        foundUserMessage = true;
-      } else {
-        userMessage += line + "\n";
-      }
+export async function splitThreadContent(content: string) {
+  const separators = [
+    /\n\s*On\s+[A-Za-z]{3},\s+[A-Za-z]{3}\s+\d{1,2},\s+\d{4}\s+at\s+\d{1,2}:\d{2}\s+[AP]M/,
+    /\n\s*[-]+\s*Forwarded message\s*[-]+/,
+  ];
+
+  let firstSeparatorIndex = -1;
+  let firstSeparatorMatch = null;
+
+  for (const separator of separators) {
+    const match = content.match(separator);
+    if (
+      match &&
+      match.index &&
+      (firstSeparatorIndex === -1 || match.index < firstSeparatorIndex)
+    ) {
+      firstSeparatorIndex = match.index;
+      firstSeparatorMatch = match;
     }
   }
+  const conversationIdRegex =
+    /Open in Dust <https?:\/\/[^\/]+\/w\/[^\/]+\/assistant\/([^>]+)>/;
+  const conversationIdMatch = content.match(conversationIdRegex);
+  const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
 
-  return { userMessage: userMessage.trim(), restOfThread: restOfThread.trim() };
+  const newMessage =
+    firstSeparatorIndex > -1
+      ? content.slice(0, firstSeparatorIndex).trim()
+      : content.trim();
+  const thread =
+    firstSeparatorIndex > -1 ? content.slice(firstSeparatorIndex).trim() : "";
+  return { userMessage: newMessage, restOfThread: thread, conversationId };
 }
 
 export async function triggerFromEmail({
@@ -273,12 +283,25 @@ export async function triggerFromEmail({
     });
   }
 
-  let conversation = await createConversation(auth, {
-    title: `Email: ${email.subject}`,
-    visibility: "unlisted",
-  });
+  const { userMessage, restOfThread, conversationId } =
+    await splitThreadContent(email.text);
 
-  const { userMessage, restOfThread } = await splitThreadContent(email.text);
+  let conversation;
+  if (conversationId) {
+    const conversationRes = await getConversation(auth, conversationId);
+    if (conversationRes.isErr()) {
+      return new Err({
+        type: "unexpected_error",
+        message: "Failed to find conversation with given id.",
+      });
+    }
+    conversation = conversationRes.value;
+  } else {
+    conversation = await createConversation(auth, {
+      title: `Email: ${email.subject}`,
+      visibility: "unlisted",
+    });
+  }
 
   // console.log("USER_MESSAGE", userMessage);
   // console.log("REST_OF_THREAD", restOfThread, restOfThread.length);
