@@ -1,13 +1,13 @@
 import {
   Avatar,
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   ExternalLinkIcon,
   LogoHorizontalColorLogo,
   LogoutIcon,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
 import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
@@ -29,8 +29,8 @@ export const MainPage = ({
             target="_blank"
           />
         </div>
-        <NewDropdownMenu>
-          <NewDropdownMenuTrigger>
+        <DropdownMenu>
+          <DropdownMenuTrigger>
             <>
               <span className="sr-only">Open user menu</span>
               <Avatar
@@ -45,15 +45,15 @@ export const MainPage = ({
                 }}
               />
             </>
-          </NewDropdownMenuTrigger>
-          <NewDropdownMenuContent>
-            <NewDropdownMenuItem
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem
               icon={LogoutIcon}
               label="Sign out"
               onClick={handleLogout}
             />
-          </NewDropdownMenuContent>
-        </NewDropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <div className="h-full w-full pt-28">
         <ConversationContainer
