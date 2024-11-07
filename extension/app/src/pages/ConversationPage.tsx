@@ -1,6 +1,7 @@
 import { BarHeader, Button, ExternalLinkIcon } from "@dust-tt/sparkle";
 import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
 import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
+import { ConversationsListButton } from "@extension/components/conversation/ConversationsListButton";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -26,6 +27,7 @@ export const ConversationPage = ({
         title={conversation?.title || "Conversation"}
         rightActions={
           <div className="flex flex-row items-right">
+            <ConversationsListButton />
             <Button
               icon={ExternalLinkIcon}
               variant="ghost"
