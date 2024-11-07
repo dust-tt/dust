@@ -2,7 +2,6 @@ import type { ConversationPublicType } from "@dust-tt/client";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { useSWRWithDefaults } from "@extension/lib/swr";
 import type { KeyedMutator } from "swr";
-import useSWR from "swr";
 
 export function usePublicConversation({
   conversationId,
