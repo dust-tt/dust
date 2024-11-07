@@ -20,6 +20,7 @@ export type GetActiveTabBackgroundMessage = {
 };
 
 export type GetActiveTabBackgroundResponse = {
+  title: string;
   url: string;
   content: string;
 };

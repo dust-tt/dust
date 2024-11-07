@@ -40,7 +40,7 @@ export const ConversationPage = ({
           </div>
         }
       />
-      <div className="h-full w-full pt-4">
+      <div className="h-full w-full pt-4 mt-12">
         <ConversationContainer
           owner={workspace}
           conversationId={conversationId}

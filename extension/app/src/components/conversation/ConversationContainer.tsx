@@ -26,6 +26,10 @@ import { useDustAPI } from "@extension/lib/dust_api";
 import { getRandomGreetingForName } from "@extension/lib/greetings";
 import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import type { StoredUser } from "@extension/lib/storage";
+import {
+  getConversationContext,
+  setConversationContext,
+} from "@extension/lib/storage";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -44,11 +48,27 @@ export function ConversationContainer({
   const [activeConversationId, setActiveConversationId] =
     useState(conversationId);
 
-  const [tabContentToInclude, setTabContentToInclude] = useState<{
-    title: string;
-    content: string;
-    url: string;
-  } | null>(null);
+  const [includeContent, setIncludeContent] = useState<boolean | undefined>();
+
+  useEffect(() => {
+    if (includeContent === undefined) {
+      return;
+    }
+
+    void setConversationContext(activeConversationId ?? "new", {
+      includeCurrentPage: includeContent,
+    });
+  }, [includeContent]);
+
+  useEffect(() => {
+    const doAsync = async () => {
+      const context = await getConversationContext(
+        activeConversationId ?? "new"
+      );
+      setIncludeContent(context.includeCurrentPage);
+    };
+    void doAsync();
+  }, [conversationId]);
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
@@ -57,7 +77,7 @@ export function ConversationContainer({
   const { animate, setAnimate } = useContext(InputBarContext);
   const sendNotification = useSendNotification();
 
-  const { mutateConversation } = usePublicConversation({
+  const { conversation, mutateConversation } = usePublicConversation({
     conversationId,
     workspaceId: owner.sId,
   });
@@ -76,17 +96,17 @@ export function ConversationContainer({
     }
   }, [activeConversationId, navigate]);
 
-  const handleIncludeCurrentTab = async () => {
+  const getIncludeCurrentTab = async () => {
     const backgroundRes = await sendGetActiveTabMessage();
     if (!backgroundRes.content || !backgroundRes.url) {
       console.error("Failed to get content from the current tab.");
-      return;
+      return null;
     }
-    setTabContentToInclude({
-      title: `Content from ${backgroundRes.url}`,
+    return {
+      title: backgroundRes.title,
       content: backgroundRes.content,
       url: backgroundRes.url,
-    });
+    };
   };
 
   const handlePostMessage = async (input: string, mentions: MentionType[]) => {
@@ -97,10 +117,26 @@ export function ConversationContainer({
     try {
       await mutateConversation(
         async (currentConversation) => {
+          const tabContent = includeContent
+            ? await getIncludeCurrentTab()
+            : null;
+          // Check if the content is already uploaded - compare the title and the size of the content.
+          const alreadyUploaded =
+            tabContent &&
+            conversation?.content
+              .map((m) => m[m.length - 1])
+              .some(
+                (m) =>
+                  m.type === "content_fragment" &&
+                  m.title === tabContent.title &&
+                  m.textBytes === new Blob([tabContent.content]).size
+              );
+
           const result = await postMessage({
             dustAPI,
             conversationId: activeConversationId,
             messageData,
+            tabContent: alreadyUploaded ? null : tabContent,
           });
 
           if (result.isOk()) {
@@ -152,13 +188,14 @@ export function ConversationContainer({
   const { submit: handlePostConversation } = useSubmitFunction(
     useCallback(
       async (input: string, mentions: MentionType[]) => {
+        const tabContent = includeContent ? await getIncludeCurrentTab() : null;
         const conversationRes = await postConversation({
           dustAPI,
           messageData: {
             input,
             mentions,
           },
-          tabContent: tabContentToInclude,
+          tabContent,
         });
         if (conversationRes.isErr()) {
           if (conversationRes.error.type === "plan_limit_reached_error") {
@@ -171,10 +208,13 @@ export function ConversationContainer({
             });
           }
         } else {
+          await setConversationContext(conversationRes.value.sId, {
+            includeCurrentPage: !!includeContent,
+          });
           setActiveConversationId(conversationRes.value.sId);
         }
       },
-      [owner, sendNotification, setActiveConversationId, tabContentToInclude]
+      [owner, sendNotification, setActiveConversationId, includeContent]
     )
   );
 
@@ -209,21 +249,23 @@ export function ConversationContainer({
             </div>
             <div className="flex space-x-1">
               <Button
-                tooltip={
-                  tabContentToInclude
-                    ? `Page included: ${tabContentToInclude.url}`
-                    : "Include content from the current tab"
-                }
+                label={includeContent ? `Page included` : "Include page"}
                 icon={CloudArrowDownIcon}
-                variant="outline"
-                onClick={handleIncludeCurrentTab}
-                disabled={tabContentToInclude !== null}
+                variant={includeContent ? "highlight" : "outline"}
+                onClick={() => setIncludeContent((v) => !v)}
               />
               <ConversationHistory />
             </div>
           </div>
         ) : (
-          <div className="flex justify-end items-end pb-2">
+          <div className="flex justify-end items-end pb-2 gap-1">
+            <Button
+              label={includeContent ? `Page included` : "Include page"}
+              icon={CloudArrowDownIcon}
+              variant={includeContent ? "highlight" : "outline"}
+              onClick={() => setIncludeContent((v) => !v)}
+            />
+
             <ConversationHistory />
           </div>
         )}

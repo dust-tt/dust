@@ -87,7 +87,7 @@ export const ConversationsPage = ({
           </div>
         }
       />
-      <div className="h-full w-full">
+      <div className="h-full w-full mt-12">
         {conversationsByDate &&
           Object.keys(conversationsByDate).map((dateLabel) => (
             <RenderConversations

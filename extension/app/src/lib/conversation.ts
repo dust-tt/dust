@@ -146,7 +146,7 @@ export async function postConversation({
         email: user.email,
         fullName: user.fullName,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-        profilePictureUrl: null,
+        profilePictureUrl: user.image,
         origin: "extension",
       },
       mentions,
@@ -161,7 +161,7 @@ export async function postConversation({
             username: user.username,
             email: user.email,
             fullName: user.fullName,
-            profilePictureUrl: null,
+            profilePictureUrl: user.image,
           },
         }
       : undefined,
@@ -188,6 +188,7 @@ export async function postMessage({
   dustAPI,
   conversationId,
   messageData,
+  tabContent,
 }: {
   dustAPI: DustAPI;
   conversationId: string;
@@ -195,6 +196,11 @@ export async function postMessage({
     input: string;
     mentions: MentionType[];
   };
+  tabContent: {
+    title: string;
+    content: string;
+    url: string;
+  } | null;
 }): Promise<Result<{ message: UserMessageType }, SubmitMessageError>> {
   const { input, mentions } = messageData;
   const user = await getStoredUser();
@@ -208,6 +214,24 @@ export async function postMessage({
     });
   }
 
+  if (tabContent) {
+    await dustAPI.postContentFragment({
+      conversationId,
+      contentFragment: {
+        title: tabContent.title,
+        content: tabContent.content,
+        url: tabContent.url,
+        contentType: "text/plain",
+        context: {
+          username: user.username,
+          email: user.email,
+          fullName: user.fullName,
+          profilePictureUrl: user.image,
+        },
+      },
+    });
+  }
+
   const mRes = await dustAPI.postUserMessage({
     conversationId,
     message: {
@@ -217,7 +241,7 @@ export async function postMessage({
         email: user.email,
         fullName: user.fullName,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-        profilePictureUrl: null, // todo daph
+        profilePictureUrl: user.image,
         origin: "extension",
       },
       mentions,

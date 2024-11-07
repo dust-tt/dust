@@ -13,8 +13,12 @@ export const routes = [
     path: "*",
     element: (
       <ProtectedRoute>
-        {({ user, workspace }) => (
-          <MainPage user={user} workspace={workspace} />
+        {({ user, workspace, handleLogout }) => (
+          <MainPage
+            user={user}
+            workspace={workspace}
+            handleLogout={handleLogout}
+          />
         )}
       </ProtectedRoute>
     ),
@@ -23,8 +27,12 @@ export const routes = [
     path: "/conversations/:conversationId",
     element: (
       <ProtectedRoute>
-        {({ user, workspace }) => (
-          <ConversationPage user={user} workspace={workspace} />
+        {({ user, workspace, handleLogout }) => (
+          <ConversationPage
+            user={user}
+            workspace={workspace}
+            handleLogout={handleLogout}
+          />
         )}
       </ProtectedRoute>
     ),
@@ -33,8 +41,12 @@ export const routes = [
     path: "/conversations",
     element: (
       <ProtectedRoute>
-        {({ user, workspace }) => (
-          <ConversationsPage user={user} workspace={workspace} />
+        {({ user, workspace, handleLogout }) => (
+          <ConversationsPage
+            user={user}
+            workspace={workspace}
+            handleLogout={handleLogout}
+          />
         )}
       </ProtectedRoute>
     ),
