@@ -66,11 +66,19 @@ export async function getZendeskBrandSubdomain(
  */
 async function handleZendeskRateLimit(response: Response): Promise<boolean> {
   if (response.status === 429) {
-    const retryAfter = Math.min(
-      Number(response.headers.get("Retry-After")) ||
-        ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS,
-      ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS
+    const retryAfter = Math.max(
+      Number(response.headers.get("Retry-After")) || 1,
+      1
     );
+    if (retryAfter > ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS) {
+      logger.info(
+        { retryAfter },
+        `[Zendesk] Attempting to wait more than ${ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
+      );
+      throw new Error(
+        `Zendesk retry after larger than ${ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS} s, aborting.`
+      );
+    }
     logger.info(
       { response, retryAfter },
       "[Zendesk] Rate limit hit, waiting before retrying."
