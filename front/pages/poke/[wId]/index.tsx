@@ -32,6 +32,7 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
+import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import {
   getWorkspaceCreationDate,
@@ -54,6 +55,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   registry: typeof DustProdActionRegistry;
   workspaceVerifiedDomain: WorkspaceDomain | null;
   worspaceCreationDay: string;
+  baseUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const activeSubscription = auth.subscription();
@@ -103,6 +105,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       registry: DustProdActionRegistry,
       workspaceVerifiedDomain,
       worspaceCreationDay: format(worspaceCreationDate, "yyyy-MM-dd"),
+      baseUrl: config.getClientFacingUrl(),
     },
   };
 });
@@ -116,6 +119,7 @@ const WorkspacePage = ({
   registry,
   workspaceVerifiedDomain,
   worspaceCreationDay,
+  baseUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
 
@@ -155,6 +159,7 @@ const WorkspacePage = ({
         }}
         owner={owner}
         registry={registry}
+        baseUrl={baseUrl}
       />
       <DeleteWorkspaceModal
         show={showDeleteWorkspaceModal}
@@ -271,11 +276,13 @@ function DustAppLogsModal({
   onClose,
   owner,
   registry,
+  baseUrl,
 }: {
   show: boolean;
   onClose: () => void;
   owner: WorkspaceType;
   registry: typeof DustProdActionRegistry;
+  baseUrl: string;
 }) {
   return (
     <Modal
@@ -292,7 +299,7 @@ function DustAppLogsModal({
               app: { appId, workspaceId: appWorkspaceid, appSpaceId },
             },
           ]) => {
-            const url = `https://dust.tt/w/${appWorkspaceid}/spaces/${appSpaceId}/apps/${appId}/runs?wIdTarget=${owner.sId}`;
+            const url = `${baseUrl}/w/${appWorkspaceid}/spaces/${appSpaceId}/apps/${appId}/runs?wIdTarget=${owner.sId}`;
 
             return (
               <div key={appId}>
