@@ -410,8 +410,9 @@ export async function syncZendeskTicketsActivity({
   await concurrentExecutor(
     tickets,
     async (ticket) => {
-      const commentsRes = await zendeskApiClient.tickets.getComments(ticket.id);
-      const comments = commentsRes.result;
+      const comments = await zendeskApiClient.tickets.getComments(ticket.id);
+      console.log("RESPONSE FOR TICKET ID: ", ticket.id);
+      console.log(comments);
 
       console.log("====== COMMENTS FOR TICKET ID: ", ticket.id);
 

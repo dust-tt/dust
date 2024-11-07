@@ -209,10 +209,7 @@ declare module "node-zendesk" {
       show: (
         ticketId: number
       ) => Promise<{ response: Response; result: ZendeskFetchedTicket }>;
-      getComments: (ticketId: number) => Promise<{
-        response: Response;
-        result: ZendeskFetchedTicketComment[];
-      }>;
+      getComments: (ticketId: number) => Promise<ZendeskFetchedTicketComment[]>;
     };
     users: {
       list: () => Promise<ZendeskFetchedUser[]>;
