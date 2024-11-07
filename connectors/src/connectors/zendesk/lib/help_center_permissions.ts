@@ -12,11 +12,11 @@ import {
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
 
-export async function allowSyncZendeskHelpCenter({
-  connectorId,
 /**
  * Marks a help center as permission "read", optionally alongside all its children (categories and articles).
  */
+export async function allowSyncZendeskHelpCenter({
+  connectorId,
   connectionId,
   brandId,
   withChildren = true,
@@ -157,11 +157,10 @@ export async function allowSyncZendeskCategory({
     await category.update({ permission: "read" });
   }
 
-  const zendeskApiClient = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connectionId)
-  );
-
   if (!category) {
+    const zendeskApiClient = createZendeskClient(
+      await getZendeskSubdomainAndAccessToken(connectionId)
+    );
     await changeZendeskClientSubdomain(zendeskApiClient, {
       connectorId,
       brandId,

@@ -25,11 +25,10 @@ export async function allowSyncZendeskTickets({
     await brand.update({ ticketsPermission: "read" });
   }
 
-  const zendeskApiClient = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connectionId)
-  );
-
   if (!brand) {
+    const zendeskApiClient = createZendeskClient(
+      await getZendeskSubdomainAndAccessToken(connectionId)
+    );
     const {
       result: { brand: fetchedBrand },
     } = await zendeskApiClient.brand.show(brandId);
