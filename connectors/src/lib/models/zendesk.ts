@@ -341,20 +341,6 @@ export class ZendeskTicket extends Model<
   declare groupId: number;
   declare organizationId: number;
 
-  declare name: string;
-  declare description: string;
-  declare subject: string;
-  declare requesterMail: string;
-  declare url: string;
-
-  declare satisfactionScore: string;
-  declare satisfactionComment: string;
-
-  declare status: "new" | "open" | "pending" | "hold" | "solved" | "closed";
-  declare tags: string[];
-  declare type: "problem" | "incident" | "question" | "task";
-  declare customFields: string[];
-
   declare lastUpsertedTs: Date;
 
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -395,52 +381,6 @@ ZendeskTicket.init(
     organizationId: {
       type: DataTypes.BIGINT,
       allowNull: true,
-    },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    satisfactionScore: {
-      type: DataTypes.STRING,
-      allowNull: true, // Changed to true as it could be "unoffered"
-    },
-    satisfactionComment: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    subject: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    description: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    requesterMail: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    status: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    tags: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: false,
-      defaultValue: [],
-    },
-    url: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    type: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    customFields: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: false,
-      defaultValue: [],
     },
     permission: {
       type: DataTypes.STRING,
