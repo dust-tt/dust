@@ -23,10 +23,7 @@ import {
   getBrandInternalId,
   getIdFromInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
-import {
-  retrieveChildrenNodes,
-  retrieveSelectedNodes,
-} from "@connectors/connectors/zendesk/lib/permissions";
+import { retrieveChildrenNodes } from "@connectors/connectors/zendesk/lib/permissions";
 import {
   allowSyncZendeskTickets,
   revokeSyncZendeskTickets,
@@ -174,9 +171,14 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const { connectorId } = this;
 
     if (filterPermission === "read" && parentInternalId === null) {
-      // We want all selected nodes despite the hierarchy
-      const selectedNodes = await retrieveSelectedNodes({ connectorId });
-      return new Ok(selectedNodes);
+      /// we only show brands at the root level
+      const brands = await ZendeskBrandResource.fetchAllReadOnly({
+        connectorId,
+      });
+      const brandNodes: ContentNode[] = brands.map((brand) =>
+        brand.toContentNode({ connectorId })
+      );
+      return new Ok(brandNodes);
     }
 
     try {

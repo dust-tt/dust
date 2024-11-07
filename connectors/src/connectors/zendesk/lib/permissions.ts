@@ -27,38 +27,6 @@ import {
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 
-/**
- * Retrieve all selected nodes by the admin when setting permissions.
- * For Zendesk, the admin can set:
- * - all the tickets/whole help center
- * - brands, categories within a help center
- * - brands' tickets
- */
-export async function retrieveSelectedNodes({
-  connectorId,
-}: {
-  connectorId: ModelId;
-}): Promise<ContentNode[]> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    logger.error({ connectorId }, "[Zendesk] Connector not found.");
-    throw new Error("Connector not found");
-  }
-
-  const brands = await ZendeskBrandResource.fetchAllReadOnly({ connectorId });
-  const helpCenterNodes: ContentNode[] = brands
-    .filter(
-      (brand) => brand.hasHelpCenter && brand.helpCenterPermission === "read"
-    )
-    .map((brand) => brand.getHelpCenterContentNode({ connectorId }));
-
-  const ticketNodes: ContentNode[] = brands
-    .filter((brand) => brand.ticketsPermission === "read")
-    .map((brand) => brand.getTicketsContentNode({ connectorId }));
-
-  return [...helpCenterNodes, ...ticketNodes];
-}
-
 export async function retrieveChildrenNodes({
   connectorId,
   parentInternalId,
