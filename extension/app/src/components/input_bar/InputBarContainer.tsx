@@ -1,4 +1,9 @@
-import { ArrowUpIcon, Button } from "@dust-tt/sparkle";
+import {
+  ArrowUpIcon,
+  Button,
+  CheckCircleIcon,
+  StopSignIcon,
+} from "@dust-tt/sparkle";
 import type {
   AgentMention,
   LightAgentConfigurationType,
@@ -22,6 +27,8 @@ export interface InputBarContainerProps {
   selectedAssistant: AgentMention | null;
   stickyMentions?: AgentMention[];
   disableAutoFocus: boolean;
+  isTabIncluded: boolean;
+  toggleIncludeTab: () => void;
 }
 
 export const InputBarContainer = ({
@@ -32,8 +39,20 @@ export const InputBarContainer = ({
   selectedAssistant,
   stickyMentions,
   disableAutoFocus,
+  isTabIncluded,
+  toggleIncludeTab,
 }: InputBarContainerProps) => {
   const suggestions = usePublicAssistantSuggestions(agentConfigurations);
+
+  // Pulsing animation for the include tab button
+  const [isPulsingActive, setIsPulsingActive] = React.useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsPulsingActive(false);
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const { editor, editorService } = useCustomEditor({
     suggestions,
@@ -81,6 +100,19 @@ export const InputBarContainer = ({
 
       <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-2 pr-2 sm:flex-col sm:border-0">
         <div className="flex py-2">
+          <Button
+            icon={isTabIncluded ? CheckCircleIcon : StopSignIcon}
+            label={isTabIncluded ? "Tab sharing ON" : "Tab sharing OFF"}
+            tooltip={
+              isTabIncluded
+                ? "Each message in this conversation includes the content of the current tab as attachment."
+                : "If enabled, each message in this conversation will include the content of the current tab as attachment."
+            }
+            variant="outline"
+            size="xs"
+            isPulsing={isPulsingActive}
+            onClick={toggleIncludeTab}
+          />
           <AssistantPicker
             owner={owner}
             size="xs"

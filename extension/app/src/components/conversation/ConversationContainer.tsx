@@ -1,6 +1,5 @@
 import {
   Button,
-  CloudArrowDownIcon,
   HistoryIcon,
   Page,
   useSendNotification,
@@ -247,25 +246,12 @@ export function ConversationContainer({
               <Page.SectionHeader title="Start a conversation" />
             </div>
             <div className="flex space-x-1">
-              <Button
-                label={includeContent ? `Page included` : "Include page"}
-                icon={CloudArrowDownIcon}
-                variant={includeContent ? "highlight" : "outline"}
-                onClick={() => setIncludeContent((v) => !v)}
-              />
-              <ConversationHistory />
+              <ConversationHistoryButton />
             </div>
           </div>
         ) : (
           <div className="flex justify-end items-end pb-2 gap-1">
-            <Button
-              label={includeContent ? `Page included` : "Include page"}
-              icon={CloudArrowDownIcon}
-              variant={includeContent ? "highlight" : "outline"}
-              onClick={() => setIncludeContent((v) => !v)}
-            />
-
-            <ConversationHistory />
+            <ConversationHistoryButton />
           </div>
         )}
         <AssistantInputBar
@@ -274,6 +260,8 @@ export function ConversationContainer({
             activeConversationId ? handlePostMessage : handlePostConversation
           }
           stickyMentions={stickyMentions}
+          isTabIncluded={!!includeContent}
+          toggleIncludeTab={() => setIncludeContent((v) => !v)}
         />
       </div>
       <ReachedLimitPopup
@@ -285,7 +273,7 @@ export function ConversationContainer({
   );
 }
 
-const ConversationHistory = () => {
+const ConversationHistoryButton = () => {
   const navigate = useNavigate();
   return (
     <Button
