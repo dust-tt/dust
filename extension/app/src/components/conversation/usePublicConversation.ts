@@ -22,7 +22,7 @@ export function usePublicConversation({
     if (!key) {
       return null;
     }
-    const res = await dustAPI.getConversation(key[1]);
+    const res = await dustAPI.getConversation(key[2]);
     if (res.isOk()) {
       return res.value;
     }
@@ -31,10 +31,7 @@ export function usePublicConversation({
 
   const { data, error, mutate } = useSWRWithDefaults(
     conversationId
-      ? [
-          `/api/v1/w/${dustAPI.workspaceId}/assistant/conversations/`,
-          { conversationId },
-        ]
+      ? ["getConversation", dustAPI.workspaceId(), { conversationId }]
       : null,
     conversationFetcher
   );

@@ -15,7 +15,7 @@ export function usePublicAgentConfigurations() {
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
-      `/api/v1/w/${dustAPI.workspaceId}/assistant/agent_configurations`,
+      ["getAgentConfigurations", dustAPI.workspaceId()],
       agentConfigurationsFetcher
     );
 

@@ -13,7 +13,7 @@ export function useConversations() {
   };
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/v1/w/${dustAPI.workspaceId}/assistant/conversations`,
+    ["getConversations", dustAPI.workspaceId()],
     conversationsFetcher
   );
 
