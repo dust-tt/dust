@@ -24,7 +24,7 @@ export const ConversationsPage = ({
   workspace,
 }: ProtectedRouteChildrenProps) => {
   const navigate = useNavigate();
-  const conversations = useConversations({ workspaceId: workspace.sId });
+  const conversations = useConversations();
 
   const groupConversationsByDate = (
     conversations: ConversationWithoutContentPublicType[]

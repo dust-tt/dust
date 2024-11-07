@@ -1,9 +1,9 @@
 import type {
   ConversationMessageReactions,
   LightWorkspaceType,
-  MessageWithContentFragmentsType,
 } from "@dust-tt/types";
 import MessageItem from "@extension/components/conversation/MessageItem";
+import type { MessageWithContentFragmentsType } from "@extension/lib/conversation";
 import type { StoredUser } from "@extension/lib/storage";
 import React, { useEffect, useRef } from "react";
 

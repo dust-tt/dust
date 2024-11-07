@@ -27,11 +27,7 @@ export function AgentSuggestion({
   owner,
   userMessage,
 }: AgentSuggestionProps) {
-  const { agentConfigurations } = usePublicAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "list",
-    includes: ["authors", "usage"],
-  });
+  const { agentConfigurations } = usePublicAgentConfigurations();
   const sendNotification = useSendNotification();
 
   const [isLoading, setIsLoading] = useState(false);

@@ -13,7 +13,6 @@ export const ConversationPage = ({
 
   const { conversation } = usePublicConversation({
     conversationId: conversationId ?? null,
-    workspaceId: workspace.sId,
   });
 
   if (!conversationId) {

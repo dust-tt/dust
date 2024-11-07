@@ -51,10 +51,7 @@ export function AssistantInputBar({
   disableAutoFocus?: boolean;
 }) {
   const { agentConfigurations: baseAgentConfigurations } =
-    usePublicAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "list",
-    });
+    usePublicAgentConfigurations();
 
   const agentConfigurations = useMemo(() => {
     if (

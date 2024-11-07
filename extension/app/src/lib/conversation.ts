@@ -1,12 +1,12 @@
 import type {
+  AgentMessagePublicType,
   ConversationPublicType,
   DustAPI,
   UserMessageType,
 } from "@dust-tt/client";
 import type {
   AgentMessageNewEvent,
-  AgentMessageType,
-  ConversationType,
+  ContentFragmentType,
   ConversationVisibility,
   LightWorkspaceType,
   MentionType,
@@ -18,6 +18,12 @@ import type {
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { getAccessToken, getStoredUser } from "@extension/lib/storage";
+
+export type MessageWithContentFragmentsType =
+  | AgentMessagePublicType
+  | (UserMessageType & {
+      contenFragments?: ContentFragmentType[];
+    });
 
 export function createPlaceholderUserMessage({
   input,
@@ -54,7 +60,7 @@ export function createPlaceholderUserMessage({
 
 // Function to update the message pages with the new message from the event.
 export function getUpdatedMessagesFromEvent(
-  currentConversation: { conversation: ConversationType } | undefined,
+  currentConversation: { conversation: ConversationPublicType } | undefined,
   event: AgentMessageNewEvent | UserMessageNewEvent
 ) {
   if (!currentConversation || !currentConversation.conversation) {
@@ -78,9 +84,9 @@ export function getUpdatedMessagesFromEvent(
 }
 
 export function updateConversationWithOptimisticData(
-  currentConversation: { conversation: ConversationType } | undefined,
-  messageOrPlaceholder: UserMessageType | AgentMessageType
-): { conversation: ConversationType } {
+  currentConversation: { conversation: ConversationPublicType } | undefined,
+  messageOrPlaceholder: UserMessageType | AgentMessagePublicType
+): { conversation: ConversationPublicType } {
   console.log("messageOrPlaceholder", messageOrPlaceholder);
   if (
     !currentConversation?.conversation ||
@@ -89,7 +95,7 @@ export function updateConversationWithOptimisticData(
     throw new Error("Conversation not found");
   }
 
-  const conversation: ConversationType = {
+  const conversation: ConversationPublicType = {
     ...currentConversation.conversation,
     content: [...currentConversation.conversation.content],
   };

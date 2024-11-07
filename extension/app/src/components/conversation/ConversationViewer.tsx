@@ -1,23 +1,21 @@
 import type {
+  AgentMessagePublicType,
+  ContentFragmentType,
+  UserMessageType,
+} from "@dust-tt/client";
+import type {
   AgentGenerationCancelledEvent,
   AgentMention,
   AgentMessageNewEvent,
-  AgentMessageType,
-  ContentFragmentType,
   ConversationTitleEvent,
   LightWorkspaceType,
-  MessageWithContentFragmentsType,
   UserMessageNewEvent,
-  UserMessageType,
 } from "@dust-tt/types";
-import {
-  isAgentMention,
-  isContentFragmentType,
-  isUserMessageType,
-} from "@dust-tt/types";
+import { isAgentMention } from "@dust-tt/types";
 import MessageGroup from "@extension/components/conversation/MessageGroup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
 import { useEventSource } from "@extension/hooks/useEventSource";
+import type { MessageWithContentFragmentsType } from "@extension/lib/conversation";
 import { getUpdatedMessagesFromEvent } from "@extension/lib/conversation";
 import type { StoredUser } from "@extension/lib/storage";
 import { classNames } from "@extension/lib/utils";
@@ -39,7 +37,6 @@ export function ConversationViewer({
   const { conversation, isConversationLoading, mutateConversation } =
     usePublicConversation({
       conversationId,
-      workspaceId: owner.sId,
     });
 
   // We only keep the last version of each message.
@@ -50,14 +47,14 @@ export function ConversationViewer({
   const lastUserMessage = useMemo(() => {
     return messages.findLast(
       (message) =>
-        isUserMessageType(message) &&
+        message.type === "user_message" &&
         message.visibility !== "deleted" &&
         message.user?.sId === user.sId
     );
   }, [messages, user.sId]);
 
   const agentMentions = useMemo(() => {
-    if (!lastUserMessage || !isUserMessageType(lastUserMessage)) {
+    if (!lastUserMessage || lastUserMessage.type !== "user_message") {
       return [];
     }
     return lastUserMessage.mentions.filter(isAgentMention);
@@ -190,17 +187,17 @@ export function ConversationViewer({
  * and displays content_fragments within user_messages.
  */
 const groupMessagesByType = (
-  messages: (ContentFragmentType | UserMessageType | AgentMessageType)[]
+  messages: (ContentFragmentType | UserMessageType | AgentMessagePublicType)[]
 ): MessageWithContentFragmentsType[][] => {
   const groupedMessages: MessageWithContentFragmentsType[][] = [];
   let tempContentFragments: ContentFragmentType[] = [];
 
   messages.forEach((message) => {
-    if (isContentFragmentType(message)) {
+    if (message.type === "content_fragment") {
       tempContentFragments.push(message); // Collect content fragments.
     } else {
       let messageWithContentFragments: MessageWithContentFragmentsType;
-      if (isUserMessageType(message)) {
+      if (message.type === "user_message") {
         // Attach collected content fragments to the user message.
         messageWithContentFragments = {
           ...message,
