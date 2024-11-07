@@ -1,13 +1,13 @@
 import {
   Avatar,
   BookOpenIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
   LightbulbIcon,
   LogoutIcon,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuLabel,
-  NewDropdownMenuTrigger,
   StarIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
@@ -57,8 +57,8 @@ export function UserMenu({
   );
 
   return (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger>
+    <DropdownMenu>
+      <DropdownMenuTrigger>
         <>
           <span className="sr-only">Open user menu</span>
           <Avatar
@@ -73,14 +73,14 @@ export function UserMenu({
             }}
           />
         </>
-      </NewDropdownMenuTrigger>
+      </DropdownMenuTrigger>
 
-      <NewDropdownMenuContent>
+      <DropdownMenuContent>
         {hasBetaAccess && (
           <>
-            <NewDropdownMenuLabel label="Beta" />
+            <DropdownMenuLabel label="Beta" />
             {featureFlags.includes("labs_transcripts") && (
-              <NewDropdownMenuItem
+              <DropdownMenuItem
                 label="Meeting transcripts"
                 icon={BookOpenIcon}
                 href={`/w/${owner.sId}/assistant/labs/transcripts`}
@@ -91,23 +91,23 @@ export function UserMenu({
 
         {canForceUserRole(owner) && (
           <>
-            <NewDropdownMenuLabel label="Dev Tools" />
+            <DropdownMenuLabel label="Dev Tools" />
             {!isOnlyAdmin(owner) && (
-              <NewDropdownMenuItem
+              <DropdownMenuItem
                 label="Become Admin"
                 onClick={() => forceRoleUpdate("admin")}
                 icon={StarIcon}
               />
             )}
             {!isOnlyBuilder(owner) && (
-              <NewDropdownMenuItem
+              <DropdownMenuItem
                 label="Become Builder"
                 onClick={() => forceRoleUpdate("builder")}
                 icon={LightbulbIcon}
               />
             )}
             {!isOnlyUser(owner) && (
-              <NewDropdownMenuItem
+              <DropdownMenuItem
                 label="Become User"
                 onClick={() => forceRoleUpdate("user")}
                 icon={UserIcon}
@@ -116,13 +116,13 @@ export function UserMenu({
           </>
         )}
 
-        <NewDropdownMenuLabel label="Account" />
-        <NewDropdownMenuItem
+        <DropdownMenuLabel label="Account" />
+        <DropdownMenuItem
           href="/api/auth/logout"
           icon={LogoutIcon}
           label="Sign&nbsp;out"
         />
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

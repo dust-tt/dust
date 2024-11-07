@@ -1,11 +1,11 @@
 import {
   Button,
   ContentMessage,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuLabel,
-  NewDropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
   Page,
   Popover,
   Spinner,
@@ -317,7 +317,7 @@ function ModelList({ modelConfigs, onClick }: ModelListProps) {
   return (
     <>
       {modelConfigs.map((modelConfig) => (
-        <NewDropdownMenuItem
+        <DropdownMenuItem
           key={modelConfig.modelId}
           icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
           description={modelConfig.shortDescription}
@@ -388,8 +388,8 @@ function AdvancedSettings({
             <div className="w-full grow text-sm font-bold text-element-800">
               Model selection
             </div>
-            <NewDropdownMenu>
-              <NewDropdownMenuTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button
                   isSelect
                   label={
@@ -399,9 +399,9 @@ function AdvancedSettings({
                   variant="outline"
                   size="sm"
                 />
-              </NewDropdownMenuTrigger>
-              <NewDropdownMenuContent>
-                <NewDropdownMenuLabel label="Best performing models" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel label="Best performing models" />
                 <ModelList
                   modelConfigs={bestPerformingModelConfig}
                   onClick={(modelSettings) => {
@@ -411,7 +411,7 @@ function AdvancedSettings({
                     });
                   }}
                 />
-                <NewDropdownMenuLabel label="Other models" />
+                <DropdownMenuLabel label="Other models" />
                 <ModelList
                   modelConfigs={otherModelsConfig}
                   onClick={(modelSettings) => {
@@ -421,15 +421,15 @@ function AdvancedSettings({
                     });
                   }}
                 />
-              </NewDropdownMenuContent>
-            </NewDropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <div className="flex flex-col items-end gap-2">
             <div className="w-full grow text-sm font-bold text-element-800">
               Creativity level
             </div>
-            <NewDropdownMenu>
-              <NewDropdownMenuTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button
                   isSelect
                   label={
@@ -440,10 +440,10 @@ function AdvancedSettings({
                   variant="outline"
                   size="sm"
                 />
-              </NewDropdownMenuTrigger>
-              <NewDropdownMenuContent>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
                 {CREATIVITY_LEVELS.map(({ label, value }) => (
-                  <NewDropdownMenuItem
+                  <DropdownMenuItem
                     key={label}
                     label={label}
                     onClick={() => {
@@ -454,8 +454,8 @@ function AdvancedSettings({
                     }}
                   />
                 ))}
-              </NewDropdownMenuContent>
-            </NewDropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       }

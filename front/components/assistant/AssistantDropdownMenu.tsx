@@ -2,15 +2,15 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   ClipboardIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   EyeIcon,
   Icon,
   MoreIcon,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuLabel,
-  NewDropdownMenuSeparator,
-  NewDropdownMenuTrigger,
   PencilSquareIcon,
   StarIcon,
   StarStrokeIcon,
@@ -123,13 +123,11 @@ export function AssistantDropdownMenu({
         isPrivateAssistant={agentConfiguration.scope === "private"}
       />
 
-      <NewDropdownMenu>
-        <NewDropdownMenuTrigger asChild>
-          {dropdownButton}
-        </NewDropdownMenuTrigger>
-        <NewDropdownMenuContent>
-          <NewDropdownMenuLabel>{agentConfiguration.name}</NewDropdownMenuLabel>
-          <NewDropdownMenuItem
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>{dropdownButton}</DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuLabel>{agentConfiguration.name}</DropdownMenuLabel>
+          <DropdownMenuItem
             label="Start new conversation"
             icon={ChatBubbleBottomCenterTextIcon}
             onClick={() =>
@@ -139,7 +137,7 @@ export function AssistantDropdownMenu({
             }
           />
           {isMoreInfoVisible ? (
-            <NewDropdownMenuItem
+            <DropdownMenuItem
               label="More info"
               icon={EyeIcon}
               onClick={(e) => {
@@ -152,7 +150,7 @@ export function AssistantDropdownMenu({
               }}
             />
           ) : (
-            <NewDropdownMenuItem
+            <DropdownMenuItem
               label="Copy assistant ID"
               icon={ClipboardIcon}
               onClick={async (e) => {
@@ -162,7 +160,7 @@ export function AssistantDropdownMenu({
             />
           )}
           {showAddRemoveToFavorite && (
-            <NewDropdownMenuItem
+            <DropdownMenuItem
               label={isFavorite ? "Remove from favorites" : "Add to favorites"}
               icon={isFavorite ? StarStrokeIcon : StarIcon}
               disabled={isUpdatingFavorites}
@@ -174,10 +172,10 @@ export function AssistantDropdownMenu({
           )}
           {!isGlobalAgent && (
             <>
-              <NewDropdownMenuSeparator />
-              <NewDropdownMenuLabel>Edition</NewDropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Edition</DropdownMenuLabel>
               {(isBuilder(owner) || !isAgentWorkspace) && (
-                <NewDropdownMenuItem
+                <DropdownMenuItem
                   label="Edit"
                   icon={PencilSquareIcon}
                   onClick={async (e) => {
@@ -188,7 +186,7 @@ export function AssistantDropdownMenu({
                   }}
                 />
               )}
-              <NewDropdownMenuItem
+              <DropdownMenuItem
                 label="Duplicate (New)"
                 icon={ClipboardIcon}
                 onClick={async (e) => {
@@ -199,7 +197,7 @@ export function AssistantDropdownMenu({
                 }}
               />
               {allowDeletion && (
-                <NewDropdownMenuItem
+                <DropdownMenuItem
                   label="Delete"
                   icon={TrashIcon}
                   variant="warning"
@@ -208,8 +206,8 @@ export function AssistantDropdownMenu({
               )}
             </>
           )}
-        </NewDropdownMenuContent>
-      </NewDropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   );
 }

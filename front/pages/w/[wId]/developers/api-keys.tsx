@@ -3,13 +3,13 @@ import {
   Button,
   ClipboardIcon,
   Dialog,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   IconButton,
   Input,
   Modal,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
   Page,
   PlusIcon,
   ScrollArea,
@@ -188,15 +188,15 @@ export function APIKeys({
           <span className="mr-1 flex flex-initial text-sm font-medium leading-8 text-gray-700">
             Assign permissions to space:{" "}
           </span>
-          <NewDropdownMenu>
-            <NewDropdownMenuTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
                 label={prettifyGroupName(newApiKeyGroup)}
                 size="sm"
                 variant="outline"
               />
-            </NewDropdownMenuTrigger>
-            <NewDropdownMenuContent>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
               <ScrollArea className="h-[300px]">
                 {groups
                   .sort((a, b) => {
@@ -214,15 +214,15 @@ export function APIKeys({
                       .localeCompare(prettifyGroupName(b).toLowerCase());
                   })
                   .map((group: GroupType) => (
-                    <NewDropdownMenuItem
+                    <DropdownMenuItem
                       key={group.id}
                       label={prettifyGroupName(group)}
                       onClick={() => setNewApiKeyGroup(group)}
                     />
                   ))}
               </ScrollArea>
-            </NewDropdownMenuContent>
-          </NewDropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </Dialog>
       <Page.Horizontal align="stretch">

@@ -5,13 +5,13 @@ import {
   Chip,
   CompanyIcon,
   Dialog,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   DustIcon,
   IconButton,
   LockIcon,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
   Page,
   PopoverContent,
   PopoverRoot,
@@ -380,8 +380,8 @@ export function SharingDropdown({
           }
         />
       )}
-      <NewDropdownMenu>
-        <NewDropdownMenuTrigger disabled={!allowedToChange} asChild>
+      <DropdownMenu>
+        <DropdownMenuTrigger disabled={!allowedToChange} asChild>
           <div className="group flex cursor-pointer items-center gap-2">
             <SharingChip scope={newScope} />
             {allowedToChange && (
@@ -393,8 +393,8 @@ export function SharingDropdown({
               />
             )}
           </div>
-        </NewDropdownMenuTrigger>
-        <NewDropdownMenuContent>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
           {Object.entries(SCOPE_INFO)
             .filter(
               // can't change to those scopes
@@ -403,7 +403,7 @@ export function SharingDropdown({
                 (isBuilder(owner) || entryScope !== "workspace")
             )
             .map(([entryScope, entryData]) => (
-              <NewDropdownMenuItem
+              <DropdownMenuItem
                 key={entryData.label}
                 label={entryData.label}
                 icon={entryData.icon}
@@ -429,8 +429,8 @@ export function SharingDropdown({
                 }}
               />
             ))}
-        </NewDropdownMenuContent>
-      </NewDropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

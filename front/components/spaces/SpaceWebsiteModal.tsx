@@ -1,15 +1,15 @@
 import {
   Button,
   ContentMessage,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
   ExclamationCircleStrokeIcon,
   Input,
   Label,
   Modal,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuRadioGroup,
-  NewDropdownMenuRadioItem,
-  NewDropdownMenuTrigger,
   Page,
   RadioGroup,
   RadioGroupChoice,
@@ -464,19 +464,19 @@ export default function SpaceWebsiteModal({
                       title="Refresh schedule"
                       description="How often would you like to check for updates?"
                     />
-                    <NewDropdownMenu>
-                      <NewDropdownMenuTrigger asChild>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
                         <Button
                           variant="outline"
                           label={frequencyDisplayText[selectedCrawlFrequency]}
                           isSelect
                         />
-                      </NewDropdownMenuTrigger>
-                      <NewDropdownMenuContent>
-                        <NewDropdownMenuRadioGroup>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuRadioGroup>
                           {CrawlingFrequencies.map((frequency) => {
                             return (
-                              <NewDropdownMenuRadioItem
+                              <DropdownMenuRadioItem
                                 key={frequency}
                                 value={frequency}
                                 label={frequencyDisplayText[frequency]}
@@ -486,28 +486,28 @@ export default function SpaceWebsiteModal({
                               />
                             );
                           })}
-                        </NewDropdownMenuRadioGroup>
-                      </NewDropdownMenuContent>
-                    </NewDropdownMenu>
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </Page.Layout>
                   <Page.Layout direction="vertical" sizing="grow">
                     <Page.SectionHeader
                       title="Depth of Search"
                       description="How far from the initial page would you like to go?"
                     />
-                    <NewDropdownMenu>
-                      <NewDropdownMenuTrigger asChild>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
                         <Button
                           variant="outline"
                           label={depthDisplayText[maxDepth]}
                           isSelect
                         />
-                      </NewDropdownMenuTrigger>
-                      <NewDropdownMenuContent>
-                        <NewDropdownMenuRadioGroup>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuRadioGroup>
                           {DepthOptions.map((depthOption) => {
                             return (
-                              <NewDropdownMenuRadioItem
+                              <DropdownMenuRadioItem
                                 key={depthOption}
                                 value={depthOption.toString()}
                                 label={depthDisplayText[depthOption]}
@@ -517,9 +517,9 @@ export default function SpaceWebsiteModal({
                               />
                             );
                           })}
-                        </NewDropdownMenuRadioGroup>
-                      </NewDropdownMenuContent>
-                    </NewDropdownMenu>
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </Page.Layout>
                   <Page.Layout direction="vertical" sizing="grow">
                     <Page.SectionHeader

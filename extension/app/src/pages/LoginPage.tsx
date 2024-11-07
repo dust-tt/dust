@@ -1,10 +1,10 @@
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   LoginIcon,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import { useAuth } from "@extension/components/auth/AuthProvider";
 import { useEffect } from "react";
@@ -40,22 +40,22 @@ export const LoginPage = () => {
           />
         )}
         {isAuthenticated && !isUserSetup && user?.workspaces.length && (
-          <NewDropdownMenu>
-            <NewDropdownMenuTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button label="Select workspace" variant="ghost" />
-            </NewDropdownMenuTrigger>
-            <NewDropdownMenuContent>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
               {user.workspaces.map((w) => {
                 return (
-                  <NewDropdownMenuItem
+                  <DropdownMenuItem
                     key={w.sId}
                     onClick={() => handleSelectWorkspace(w.sId)}
                     label={w.name}
                   />
                 );
               })}
-            </NewDropdownMenuContent>
-          </NewDropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
     </div>

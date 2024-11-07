@@ -5,12 +5,12 @@ import {
   Cog6ToothIcon,
   CommandLineIcon,
   DataTable,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   FolderIcon,
   GlobeAltIcon,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
   PlusIcon,
   RobotIcon,
   Searchbar,
@@ -173,33 +173,33 @@ export const SpaceCategoriesList = ({
                 variant="outline"
               />
             )}
-            <NewDropdownMenu>
-              <NewDropdownMenuTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button label="Add data" icon={PlusIcon} />
-              </NewDropdownMenuTrigger>
-              <NewDropdownMenuContent>
-                <NewDropdownMenuItem
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
                   href={`/w/${owner.sId}/spaces/${space.sId}/categories/managed`}
                   icon={CloudArrowLeftRightIcon}
                   label="Connected Data"
                 />
-                <NewDropdownMenuItem
+                <DropdownMenuItem
                   href={`/w/${owner.sId}/spaces/${space.sId}/categories/folder`}
                   icon={ArrowUpOnSquareIcon}
                   label="Upload Data"
                 />
-                <NewDropdownMenuItem
+                <DropdownMenuItem
                   href={`/w/${owner.sId}/spaces/${space.sId}/categories/website`}
                   icon={GlobeAltIcon}
                   label="Scrape a website"
                 />
-                <NewDropdownMenuItem
+                <DropdownMenuItem
                   href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps`}
                   icon={CommandLineIcon}
                   label="Create a Dust App"
                 />
-              </NewDropdownMenuContent>
-            </NewDropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
       </div>

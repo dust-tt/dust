@@ -1,14 +1,14 @@
 import {
   Button,
   ChatBubbleBottomCenterTextIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   LightbulbIcon,
   MagicIcon,
   Markdown,
   MoreIcon,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
   Page,
   Spinner,
   Tabs,
@@ -312,12 +312,12 @@ const TemplateDropDownMenu = ({
   const confirm = useContext(ConfirmContext);
 
   return (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button icon={MoreIcon} size="sm" variant="ghost" />
-      </NewDropdownMenuTrigger>
-      <NewDropdownMenuContent>
-        <NewDropdownMenuItem
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
+        <DropdownMenuItem
           label="Close the template"
           onClick={async () => {
             const confirmed = await confirm({
@@ -334,7 +334,7 @@ const TemplateDropDownMenu = ({
           icon={XMarkIcon}
         />
         {screen === "instructions" && (
-          <NewDropdownMenuItem
+          <DropdownMenuItem
             label="Reset instructions"
             description="Set instructions back to template's default"
             onClick={async () => {
@@ -352,7 +352,7 @@ const TemplateDropDownMenu = ({
           />
         )}
         {screen === "actions" && (
-          <NewDropdownMenuItem
+          <DropdownMenuItem
             label="Reset tools"
             description="Remove all tools"
             onClick={async () => {
@@ -369,7 +369,7 @@ const TemplateDropDownMenu = ({
             icon={MagicIcon}
           />
         )}
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };

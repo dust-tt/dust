@@ -1,9 +1,9 @@
 import {
   Button,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 
 export const SearchOrder = ["name", "usage", "edited_at"] as const;
@@ -27,8 +27,8 @@ export function SearchOrderDropdown({
   disabled,
 }: SearchOrderDropdownProps) {
   return (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
           isSelect
           label={`Order by: ${prettyfiedSearchOrder[orderBy]}`}
@@ -36,16 +36,16 @@ export function SearchOrderDropdown({
           size="sm"
           disabled={disabled}
         />
-      </NewDropdownMenuTrigger>
-      <NewDropdownMenuContent>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
         {SearchOrder.map((order) => (
-          <NewDropdownMenuItem
+          <DropdownMenuItem
             key={order}
             label={prettyfiedSearchOrder[order]}
             onClick={() => setOrderBy(order)}
           />
         ))}
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -1,9 +1,9 @@
 import {
   Button,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import type { TimeframeUnit } from "@dust-tt/types";
 
@@ -22,18 +22,18 @@ export function TimeUnitDropdown<T extends AssistantBuilderBaseConfiguration>({
   onEdit,
 }: TimeUnitDropdownProps<T>) {
   return (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
           isSelect
           label={TIME_FRAME_UNIT_TO_LABEL[actionConfiguration.timeFrame.unit]}
           variant="outline"
           size="sm"
         />
-      </NewDropdownMenuTrigger>
-      <NewDropdownMenuContent>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent>
         {Object.entries(TIME_FRAME_UNIT_TO_LABEL).map(([key, value]) => (
-          <NewDropdownMenuItem
+          <DropdownMenuItem
             key={key}
             label={value}
             onClick={() => {
@@ -48,7 +48,7 @@ export function TimeUnitDropdown<T extends AssistantBuilderBaseConfiguration>({
             }}
           />
         ))}
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
