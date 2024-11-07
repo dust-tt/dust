@@ -13,9 +13,7 @@ export function usePublicConversation({
   conversationError: Error;
   mutateConversation:
     | (() => Promise<any>)
-    | KeyedMutator<{
-        conversation: ConversationPublicType;
-      }>;
+    | KeyedMutator<ConversationPublicType>;
 } {
   const dustAPI = useDustAPI();
   const conversationFetcher = async (key: any[]) => {

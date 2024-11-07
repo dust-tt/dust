@@ -60,16 +60,16 @@ export function createPlaceholderUserMessage({
 
 // Function to update the message pages with the new message from the event.
 export function getUpdatedMessagesFromEvent(
-  currentConversation: { conversation: ConversationPublicType } | undefined,
+  currentConversation: ConversationPublicType | undefined,
   event: AgentMessageNewEvent | UserMessageNewEvent
 ) {
-  if (!currentConversation || !currentConversation.conversation) {
+  if (!currentConversation || !currentConversation) {
     return undefined;
   }
 
   // Check if the message already exists in the cache.
-  const isMessageAlreadyInCache = currentConversation.conversation.content.some(
-    (messages) => messages.some((message) => message.sId === event.message.sId)
+  const isMessageAlreadyInCache = currentConversation.content.some((messages) =>
+    messages.some((message) => message.sId === event.message.sId)
   );
 
   // If the message is already in the cache, ignore the event.
@@ -84,20 +84,16 @@ export function getUpdatedMessagesFromEvent(
 }
 
 export function updateConversationWithOptimisticData(
-  currentConversation: { conversation: ConversationPublicType } | undefined,
+  currentConversation: ConversationPublicType | undefined,
   messageOrPlaceholder: UserMessageType | AgentMessagePublicType
-): { conversation: ConversationPublicType } {
-  console.log("messageOrPlaceholder", messageOrPlaceholder);
-  if (
-    !currentConversation?.conversation ||
-    currentConversation.conversation.content.length === 0
-  ) {
+): ConversationPublicType {
+  if (!currentConversation || currentConversation.content.length === 0) {
     throw new Error("Conversation not found");
   }
 
   const conversation: ConversationPublicType = {
-    ...currentConversation.conversation,
-    content: [...currentConversation.conversation.content],
+    ...currentConversation,
+    content: [...currentConversation.content],
   };
 
   // To please typescript
@@ -108,7 +104,7 @@ export function updateConversationWithOptimisticData(
 
   conversation.content.push(message);
 
-  return { conversation };
+  return conversation;
 }
 
 export async function postConversation({
