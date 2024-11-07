@@ -12,6 +12,9 @@ import {
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
 
+/**
+ * Marks a help center as permission "read", optionally alongside all its children (categories and articles).
+ */
 export async function allowSyncZendeskHelpCenter({
   connectorId,
   connectionId,
@@ -128,6 +131,9 @@ export async function revokeSyncZendeskHelpCenter({
   return brand;
 }
 
+/**
+ * Marks a category with "read" permissions, alongside all its children articles.
+ */
 export async function allowSyncZendeskCategory({
   connectorId,
   connectionId,
