@@ -790,6 +790,7 @@ const ConversationVisibilitySchema = FlexibleEnumSchema([
 ]);
 
 const ConversationWithoutContentSchema = z.object({
+  id: ModelIdSchema,
   created: z.number(),
   owner: WorkspaceSchema,
   sId: z.string(),
