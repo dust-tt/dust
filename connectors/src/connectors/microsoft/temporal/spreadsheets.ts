@@ -133,6 +133,7 @@ async function processSheet({
       documentId: spreadsheetInternalId,
       worksheetId: worksheet.id,
       name: worksheet.name,
+      connectorId: connector.id,
     },
   };
 
