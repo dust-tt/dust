@@ -395,7 +395,7 @@ ZendeskTicket.init(
     },
     organizationId: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
     },
     name: {
       type: DataTypes.STRING,
