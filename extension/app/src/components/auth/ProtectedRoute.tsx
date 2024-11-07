@@ -1,15 +1,4 @@
-import {
-  Avatar,
-  Button,
-  ExternalLinkIcon,
-  LogoHorizontalColorLogo,
-  LogoutIcon,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { useAuth } from "@extension/components/auth/AuthProvider";
 import type { StoredUser } from "@extension/lib/storage";
