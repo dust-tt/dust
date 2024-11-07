@@ -12,12 +12,10 @@ export async function allowSyncZendeskTickets({
   connectorId,
   connectionId,
   brandId,
-  withChildren = false,
 }: {
   connectorId: ModelId;
   connectionId: string;
   brandId: number;
-  withChildren?: boolean;
 }): Promise<ZendeskBrandResource | null> {
   let brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
@@ -55,10 +53,6 @@ export async function allowSyncZendeskTickets({
       logger.error({ brandId }, "[Zendesk] Brand could not be fetched.");
       return null;
     }
-  }
-
-  if (withChildren) {
-    throw new Error("withChildren not implemented yet.");
   }
 
   return brand;

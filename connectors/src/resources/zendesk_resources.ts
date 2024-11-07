@@ -268,7 +268,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       sourceUrl: this.url,
       expandable: true,
       permission:
-        this.helpCenterPermission === "read" &&
+        this.helpCenterPermission === "read" ||
         this.ticketsPermission === "read"
           ? "read"
           : "none",
@@ -865,6 +865,19 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     await ZendeskArticle.update(
       { permission: "none" },
       { where: { connectorId, brandId } }
+    );
+  }
+
+  static async revokePermissionsForCategory({
+    connectorId,
+    categoryId,
+  }: {
+    connectorId: number;
+    categoryId: number;
+  }) {
+    await ZendeskArticle.update(
+      { permission: "none" },
+      { where: { connectorId, categoryId } }
     );
   }
 }
