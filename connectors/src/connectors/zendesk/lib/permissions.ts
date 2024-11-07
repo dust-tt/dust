@@ -100,9 +100,10 @@ async function getBrandChildren(
     ) {
       nodes.push(brandInDb.getHelpCenterContentNode(connectorId));
     }
-    // if we don't have data for the brand in db, we should not show anything
   } else {
-    const ticketsNode: ContentNode = {
+    const ticketsNode: ContentNode = brandInDb?.getTicketsContentNode(
+      connectorId
+    ) ?? {
       provider: "zendesk",
       internalId: getTicketsInternalId(connectorId, brandId),
       parentInternalId: parentInternalId,
@@ -110,7 +111,7 @@ async function getBrandChildren(
       title: "Tickets",
       sourceUrl: null,
       expandable: false,
-      permission: brandInDb?.ticketsPermission === "read" ? "read" : "none",
+      permission: "none",
       dustDocumentId: null,
       lastUpdatedAt: null,
     };
@@ -119,8 +120,11 @@ async function getBrandChildren(
     const hasHelpCenter =
       brandInDb?.hasHelpCenter ||
       (await zendeskApiClient.brand.show(brandId)).result.brand.has_help_center;
+
     if (hasHelpCenter) {
-      const helpCenterNode: ContentNode = {
+      const helpCenterNode: ContentNode = brandInDb?.getHelpCenterContentNode(
+        connectorId
+      ) ?? {
         provider: "zendesk",
         internalId: getHelpCenterInternalId(connectorId, brandId),
         parentInternalId: parentInternalId,
@@ -128,8 +132,7 @@ async function getBrandChildren(
         title: "Help Center",
         sourceUrl: null,
         expandable: true,
-        permission:
-          brandInDb?.helpCenterPermission === "read" ? "read" : "none",
+        permission: "none",
         dustDocumentId: null,
         lastUpdatedAt: null,
       };
@@ -175,23 +178,23 @@ async function getHelpCenterChildren(
     });
     const categories = await zendeskApiClient.helpcenter.categories.list();
 
-    return categories.map((category) => {
-      const matchingDbEntry = categoriesInDatabase.find(
-        (c) => c.categoryId === category.id
-      );
-      return {
-        provider: "zendesk",
-        internalId: getCategoryInternalId(connectorId, brandId, category.id),
-        parentInternalId: parentInternalId,
-        type: "folder",
-        title: category.name,
-        sourceUrl: category.html_url,
-        expandable: false,
-        permission: matchingDbEntry?.permission === "read" ? "read" : "none",
-        dustDocumentId: null,
-        lastUpdatedAt: matchingDbEntry?.updatedAt.getTime() ?? null,
-      };
-    });
+    return categories.map(
+      (category) =>
+        categoriesInDatabase
+          .find((c) => c.categoryId === category.id)
+          ?.toContentNode(connectorId) ?? {
+          provider: "zendesk",
+          internalId: getCategoryInternalId(connectorId, brandId, category.id),
+          parentInternalId: parentInternalId,
+          type: "folder",
+          title: category.name,
+          sourceUrl: category.html_url,
+          expandable: false,
+          permission: "none",
+          dustDocumentId: null,
+          lastUpdatedAt: null,
+        }
+    );
   }
 }
 
