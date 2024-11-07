@@ -45,12 +45,12 @@ export const menuStyleClasses = {
   shortcut: "s-ml-auto s-text-xs s-tracking-widest s-text-primary-400",
 };
 
-const NewDropdownMenu = DropdownMenuPrimitive.Root;
-const NewDropdownMenuGroup = DropdownMenuPrimitive.Group;
-const NewDropdownMenuPortal = DropdownMenuPrimitive.Portal;
-const NewDropdownMenuSub = DropdownMenuPrimitive.Sub;
-const NewDropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
-const NewDropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+const DropdownMenu = DropdownMenuPrimitive.Root;
+const DropdownMenuGroup = DropdownMenuPrimitive.Group;
+const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
+const DropdownMenuSub = DropdownMenuPrimitive.Sub;
+const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
+const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
 interface LabelAndIconProps {
   label: string;
@@ -111,7 +111,7 @@ const ItemWithLabelIconAndDescription = <
   );
 };
 
-const NewDropdownMenuSubTrigger = React.forwardRef<
+const DropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
   MutuallyExclusiveProps<
     React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger>,
@@ -141,10 +141,10 @@ const NewDropdownMenuSubTrigger = React.forwardRef<
     {children}
   </DropdownMenuPrimitive.SubTrigger>
 ));
-NewDropdownMenuSubTrigger.displayName =
+DropdownMenuSubTrigger.displayName =
   DropdownMenuPrimitive.SubTrigger.displayName;
 
-const NewDropdownMenuSubContent = React.forwardRef<
+const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
 >(({ className, ...props }, ref) => (
@@ -154,10 +154,10 @@ const NewDropdownMenuSubContent = React.forwardRef<
     {...props}
   />
 ));
-NewDropdownMenuSubContent.displayName =
+DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName;
 
-const NewDropdownMenuContent = React.forwardRef<
+const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
 >(({ className, sideOffset = 4, ...props }, ref) => (
@@ -170,9 +170,9 @@ const NewDropdownMenuContent = React.forwardRef<
     />
   </DropdownMenuPrimitive.Portal>
 ));
-NewDropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
+DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
-export type NewDropdownMenuItemProps = MutuallyExclusiveProps<
+export type DropdownMenuItemProps = MutuallyExclusiveProps<
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
     inset?: boolean;
     variant?: ItemVariantType;
@@ -180,9 +180,9 @@ export type NewDropdownMenuItemProps = MutuallyExclusiveProps<
   LabelAndIconProps & { description?: string }
 >;
 
-const NewDropdownMenuItem = React.forwardRef<
+const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
-  NewDropdownMenuItemProps
+  DropdownMenuItemProps
 >(
   (
     {
@@ -233,9 +233,9 @@ const NewDropdownMenuItem = React.forwardRef<
     );
   }
 );
-NewDropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
+DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
 
-const NewDropdownMenuCheckboxItem = React.forwardRef<
+const DropdownMenuCheckboxItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
 >(({ className, children, checked, ...props }, ref) => (
@@ -257,10 +257,10 @@ const NewDropdownMenuCheckboxItem = React.forwardRef<
     {children}
   </DropdownMenuPrimitive.CheckboxItem>
 ));
-NewDropdownMenuCheckboxItem.displayName =
+DropdownMenuCheckboxItem.displayName =
   DropdownMenuPrimitive.CheckboxItem.displayName;
 
-const NewDropdownMenuRadioItem = React.forwardRef<
+const DropdownMenuRadioItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
   MutuallyExclusiveProps<
     React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>,
@@ -290,10 +290,9 @@ const NewDropdownMenuRadioItem = React.forwardRef<
     </ItemWithLabelIconAndDescription>
   </DropdownMenuPrimitive.RadioItem>
 ));
-NewDropdownMenuRadioItem.displayName =
-  DropdownMenuPrimitive.RadioItem.displayName;
+DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
-const NewDropdownMenuLabel = React.forwardRef<
+const DropdownMenuLabel = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Label>,
   MutuallyExclusiveProps<
     React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
@@ -315,9 +314,9 @@ const NewDropdownMenuLabel = React.forwardRef<
     {children}
   </DropdownMenuPrimitive.Label>
 ));
-NewDropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
+DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
 
-const NewDropdownMenuSeparator = React.forwardRef<
+const DropdownMenuSeparator = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
 >(({ className, ...props }, ref) => (
@@ -327,10 +326,9 @@ const NewDropdownMenuSeparator = React.forwardRef<
     {...props}
   />
 ));
-NewDropdownMenuSeparator.displayName =
-  DropdownMenuPrimitive.Separator.displayName;
+DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
 
-const NewDropdownMenuShortcut = ({
+const DropdownMenuShortcut = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLSpanElement>) => {
@@ -338,13 +336,13 @@ const NewDropdownMenuShortcut = ({
     <span className={cn(menuStyleClasses.shortcut, className)} {...props} />
   );
 };
-NewDropdownMenuShortcut.displayName = "NewDropdownMenuShortcut";
+DropdownMenuShortcut.displayName = "DropdownMenuShortcut";
 
-interface NewDropdownMenuSearchbarProps extends SearchbarProps {}
+interface DropdownMenuSearchbarProps extends SearchbarProps {}
 
-const NewDropdownMenuSearchbar = React.forwardRef<
+const DropdownMenuSearchbar = React.forwardRef<
   HTMLInputElement,
-  NewDropdownMenuSearchbarProps
+  DropdownMenuSearchbarProps
 >(
   (
     {
@@ -381,23 +379,23 @@ const NewDropdownMenuSearchbar = React.forwardRef<
   }
 );
 
-NewDropdownMenuSearchbar.displayName = "NewDropdownMenuSearchbar";
+DropdownMenuSearchbar.displayName = "DropdownMenuSearchbar";
 
 export {
-  NewDropdownMenu,
-  NewDropdownMenuCheckboxItem,
-  NewDropdownMenuContent,
-  NewDropdownMenuGroup,
-  NewDropdownMenuItem,
-  NewDropdownMenuLabel,
-  NewDropdownMenuPortal,
-  NewDropdownMenuRadioGroup,
-  NewDropdownMenuRadioItem,
-  NewDropdownMenuSearchbar,
-  NewDropdownMenuSeparator,
-  NewDropdownMenuShortcut,
-  NewDropdownMenuSub,
-  NewDropdownMenuSubContent,
-  NewDropdownMenuSubTrigger,
-  NewDropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
 };

@@ -10,8 +10,8 @@ import { Input } from "@sparkle/components/Input";
 
 import {
   DataTable,
+  DropdownMenuItemProps,
   FolderIcon,
-  NewDropdownMenuItemProps,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -32,7 +32,7 @@ type Data = {
   avatarTooltipLabel?: string;
   icon?: React.ComponentType<{ className?: string }>;
   onClick?: () => void;
-  moreMenuItems?: NewDropdownMenuItemProps[];
+  moreMenuItems?: DropdownMenuItemProps[];
   roundedAvatar?: boolean;
 };
 

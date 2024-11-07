@@ -2,14 +2,14 @@ import type { ComponentType } from "react";
 import React from "react";
 
 import { Button } from "@sparkle/components/Button";
-import { Icon } from "@sparkle/components/Icon";
 import {
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuGroup,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
-} from "@sparkle/components/NewDropdown";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@sparkle/components/Dropdown";
+import { Icon } from "@sparkle/components/Icon";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { SparkleContext, SparkleContextLinkType } from "@sparkle/context";
 import { ChevronRightIcon } from "@sparkle/icons";
@@ -63,24 +63,24 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
           >
             <Icon visual={item.icon} className="s-text-brand" />
             {item.label === ELLIPSIS_STRING ? (
-              <NewDropdownMenu>
-                <NewDropdownMenuTrigger asChild>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button variant="ghost" label={ELLIPSIS_STRING} />
-                </NewDropdownMenuTrigger>
+                </DropdownMenuTrigger>
 
-                <NewDropdownMenuContent align="start">
-                  <NewDropdownMenuGroup>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuGroup>
                     {itemsHidden.map((item, index) => (
-                      <NewDropdownMenuItem
+                      <DropdownMenuItem
                         key={`breadcrumbs-hidden-${index}`}
                         href={item.href}
                         icon={item.icon}
                         label={item.label}
                       />
                     ))}
-                  </NewDropdownMenuGroup>
-                </NewDropdownMenuContent>
-              </NewDropdownMenu>
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <div>
                 <Link
