@@ -179,7 +179,8 @@ export async function retrieveChildrenNodes({
               sourceUrl: category.html_url,
 
               expandable: false,
-              permission: matchingDbEntry ? "read" : "none",
+              permission:
+                matchingDbEntry?.permission === "read" ? "read" : "none",
               dustDocumentId: null,
               lastUpdatedAt: matchingDbEntry?.updatedAt.getTime() ?? null,
             };
