@@ -23,7 +23,10 @@ import {
   getBrandInternalId,
   getIdFromInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
-import { retrieveChildrenNodes } from "@connectors/connectors/zendesk/lib/permissions";
+import {
+  retrieveAllSelectedNodes,
+  retrieveChildrenNodes,
+} from "@connectors/connectors/zendesk/lib/permissions";
 import {
   allowSyncZendeskTickets,
   revokeSyncZendeskTickets,
@@ -168,6 +171,11 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     filterPermission: ConnectorPermission | null;
     viewType: ContentNodesViewType;
   }): Promise<Result<ContentNode[], Error>> {
+    if (filterPermission === "read" && parentInternalId === null) {
+      // retrieving all the selected nodes despite the hierarchy
+      return new Ok(await retrieveAllSelectedNodes(this.connectorId));
+    }
+
     try {
       const nodes = await retrieveChildrenNodes({
         connectorId: this.connectorId,

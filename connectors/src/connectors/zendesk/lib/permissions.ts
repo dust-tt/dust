@@ -29,6 +29,26 @@ import {
 } from "@connectors/resources/zendesk_resources";
 
 /**
+ * Retrieve all nodes selected by the admin when setting permissions.
+ */
+export async function retrieveAllSelectedNodes(
+  connectorId: ModelId
+): Promise<ContentNode[]> {
+  const brands = await ZendeskBrandResource.fetchAllReadOnly({ connectorId });
+  const helpCenterNodes: ContentNode[] = brands
+    .filter(
+      (brand) => brand.hasHelpCenter && brand.helpCenterPermission === "read"
+    )
+    .map((brand) => brand.getHelpCenterContentNode(connectorId));
+
+  const ticketNodes: ContentNode[] = brands
+    .filter((brand) => brand.ticketsPermission === "read")
+    .map((brand) => brand.getTicketsContentNode(connectorId));
+
+  return [...helpCenterNodes, ...ticketNodes];
+}
+
+/**
  * Retrieves the Brand content nodes, which populate the root level.
  */
 async function getRootLevelContentNodes(
