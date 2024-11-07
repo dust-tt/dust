@@ -66,16 +66,6 @@ export async function syncTicket({
     assigneeId: ticket.assignee_id,
     groupId: ticket.group_id,
     organizationId: ticket.organization_id,
-    description: ticket.description,
-    subject: ticket.subject,
-    requesterMail: ticket?.requester?.email || "",
-    url: ticket.url,
-    satisfactionScore: ticket.satisfaction_rating?.score || "unknown",
-    satisfactionComment: ticket.satisfaction_rating?.comment || "",
-    status: ticket.status,
-    tags: ticket.tags,
-    type: ticket.type,
-    customFields: ticket.custom_fields.map((field) => field.value),
     lastUpsertedTs: new Date(currentSyncDateMs),
   };
 
@@ -87,7 +77,6 @@ export async function syncTicket({
         brandId,
         permission: "read",
         connectorId,
-        name: "Ticket",
       },
     });
   } else {
