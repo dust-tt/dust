@@ -16,10 +16,12 @@ export async function allowSyncZendeskHelpCenter({
   connectorId,
   connectionId,
   brandId,
+  withChildren = true,
 }: {
   connectorId: ModelId;
   connectionId: string;
   brandId: number;
+  withChildren?: boolean;
 }): Promise<ZendeskBrandResource | null> {
   let brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
@@ -61,6 +63,11 @@ export async function allowSyncZendeskHelpCenter({
       );
       return null;
     }
+  }
+
+  /// if we don't want to sync the children, we are done and can return here.
+  if (!withChildren) {
+    return brand;
   }
 
   await changeZendeskClientSubdomain({ client: zendeskApiClient, brandId });
@@ -169,7 +176,12 @@ export async function allowSyncZendeskCategory({
     }
   }
 
-  await allowSyncZendeskHelpCenter({ connectorId, connectionId, brandId });
+  await allowSyncZendeskHelpCenter({
+    connectorId,
+    connectionId,
+    brandId,
+    withChildren: false,
+  });
 
   return category;
 }
