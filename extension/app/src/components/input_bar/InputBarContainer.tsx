@@ -33,7 +33,7 @@ export const InputBarContainer = ({
   stickyMentions,
   disableAutoFocus,
 }: InputBarContainerProps) => {
-  const suggestions = usePublicAssistantSuggestions(agentConfigurations, owner);
+  const suggestions = usePublicAssistantSuggestions(agentConfigurations);
 
   const { editor, editorService } = useCustomEditor({
     suggestions,

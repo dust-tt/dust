@@ -79,7 +79,6 @@ export function ConversationContainer({
 
   const { conversation, mutateConversation } = usePublicConversation({
     conversationId,
-    workspaceId: owner.sId,
   });
 
   useEffect(() => {

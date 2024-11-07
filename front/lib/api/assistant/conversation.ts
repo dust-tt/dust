@@ -266,7 +266,7 @@ export async function getUserConversations(
       }
 
       const conversation = {
-        id: p.conversationId,
+        id: p.conversation.id,
         created: p.conversation.createdAt.getTime(),
         sId: p.conversation.sId,
         owner,
@@ -284,7 +284,6 @@ export async function getUserConversations(
     },
     []
   );
-
   return conversations;
 }
 

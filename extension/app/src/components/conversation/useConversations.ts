@@ -1,18 +1,24 @@
-import type { GetConversationsResponseType } from "@dust-tt/client";
-import { fetcher, useSWRWithDefaults } from "@extension/lib/swr";
+import { useDustAPI } from "@extension/lib/dust_api";
+import { useSWRWithDefaults } from "@extension/lib/swr";
 import { useMemo } from "react";
-import type { Fetcher } from "swr";
 
-export function useConversations({ workspaceId }: { workspaceId: string }) {
-  const conversationFetcher: Fetcher<GetConversationsResponseType> = fetcher;
+export function useConversations() {
+  const dustAPI = useDustAPI();
+  const conversationsFetcher = async () => {
+    const res = await dustAPI.getConversations();
+    if (res.isOk()) {
+      return res.value;
+    }
+    throw new Error(res.error.message);
+  };
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/v1/w/${workspaceId}/assistant/conversations`,
-    conversationFetcher
+    ["getConversations", dustAPI.workspaceId()],
+    conversationsFetcher
   );
 
   return {
-    conversations: useMemo(() => (data ? data.conversations : []), [data]),
+    conversations: useMemo(() => data ?? [], [data]),
     isConversationsLoading: !error && !data,
     isConversationsError: error,
     mutateConversations: mutate,

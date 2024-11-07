@@ -702,6 +702,7 @@ const ContentFragmentSchema = z.object({
   contentType: SupportedContentFragmentTypeSchema,
   context: ContentFragmentContextSchema,
 });
+export type ContentFragmentType = z.infer<typeof ContentFragmentSchema>;
 
 const AgentMentionSchema = z.object({
   configurationId: z.string(),
@@ -1477,7 +1478,7 @@ export type PostConversationsResponseType = z.infer<
   typeof PostConversationsResponseSchema
 >;
 
-const GetConversationsResponseSchema = z.object({
+export const GetConversationsResponseSchema = z.object({
   conversations: ConversationWithoutContentSchema.array(),
 });
 export type GetConversationsResponseType = z.infer<

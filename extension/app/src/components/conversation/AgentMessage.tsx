@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import type { AgentMessagePublicType } from "@dust-tt/client";
+import { isRetrievalActionType, isWebsearchActionType } from "@dust-tt/client";
 import type {
   ConversationMessageEmojiSelectorProps,
   ConversationMessageSizeType,
@@ -25,7 +27,6 @@ import type {
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
-  AgentMessageType,
   GenerationTokensEvent,
   LightWorkspaceType,
   RetrievalActionType,
@@ -37,8 +38,6 @@ import {
   assertNever,
   getProviderFromRetrievedDocument,
   getTitleFromRetrievedDocument,
-  isRetrievalActionType,
-  isWebsearchActionType,
   removeNulls,
 } from "@dust-tt/types";
 import { AgentMessageActions } from "@extension/components/conversation/AgentMessageActions";
@@ -99,7 +98,7 @@ export function makeWebsearchResultsCitation(
 interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
-  message: AgentMessageType;
+  message: AgentMessagePublicType;
   messageEmoji?: ConversationMessageEmojiSelectorProps;
   owner: LightWorkspaceType;
   size: ConversationMessageSizeType;
@@ -122,7 +121,7 @@ export function AgentMessage({
   const sendNotification = useSendNotification();
 
   const [streamedAgentMessage, setStreamedAgentMessage] =
-    useState<AgentMessageType>(message);
+    useState<AgentMessagePublicType>(message);
 
   const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
     useState<boolean>(false);
@@ -186,9 +185,9 @@ export function AgentMessage({
     } = JSON.parse(eventStr);
 
     const updateMessageWithAction = (
-      m: AgentMessageType,
+      m: AgentMessagePublicType,
       action: AgentActionType
-    ): AgentMessageType => {
+    ): AgentMessagePublicType => {
       return {
         ...m,
         actions: m.actions
@@ -279,7 +278,7 @@ export function AgentMessage({
     { isReadyToConsumeStream: shouldStream }
   );
 
-  const agentMessageToRender = ((): AgentMessageType => {
+  const agentMessageToRender = ((): AgentMessagePublicType => {
     switch (message.status) {
       case "succeeded":
       case "failed":
@@ -491,7 +490,7 @@ export function AgentMessage({
     streaming,
     lastTokenClassification,
   }: {
-    agentMessage: AgentMessageType;
+    agentMessage: AgentMessagePublicType;
     references: { [key: string]: MarkdownCitation };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
@@ -567,7 +566,7 @@ export function AgentMessage({
     );
   }
 
-  async function retryHandler(agentMessage: AgentMessageType) {
+  async function retryHandler(agentMessage: AgentMessagePublicType) {
     setIsRetryHandlerProcessing(true);
     const res = await retryMessage({
       owner,

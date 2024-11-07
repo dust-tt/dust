@@ -34,6 +34,7 @@ import {
   GetActiveMemberEmailsInWorkspaceResponseSchema,
   GetAgentConfigurationsResponseSchema,
   GetConversationResponseSchema,
+  GetConversationsResponseSchema,
   GetDataSourcesResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
@@ -645,6 +646,22 @@ export class DustAPI {
     };
 
     return new Ok({ eventStream: streamEvents() });
+  }
+
+  async getConversations() {
+    const res = await this.request({
+      method: "GET",
+      path: `assistant/conversations`,
+    });
+
+    const r = await this._resultFromResponse(
+      GetConversationsResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.conversations);
   }
 
   async getConversation({ conversationId }: { conversationId: string }) {
