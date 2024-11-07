@@ -85,8 +85,9 @@ export async function retrieveChildrenNodes({
   // At the root level, we show one node for each brand.
   if (!parentInternalId) {
     if (isReadPermissionsOnly) {
-      const brandsInDatabase =
-        await ZendeskBrandResource.fetchAllWithHelpCenter({ connectorId });
+      const brandsInDatabase = await ZendeskBrandResource.fetchAllReadOnly({
+        connectorId,
+      });
       nodes = brandsInDatabase.map((brand) =>
         brand.toContentNode({ connectorId })
       );
