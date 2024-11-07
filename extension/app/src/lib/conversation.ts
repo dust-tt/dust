@@ -17,6 +17,7 @@ import type {
   UserType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import { getAccessToken, getStoredUser } from "@extension/lib/storage";
 
 export type MessageWithContentFragmentsType =
@@ -121,7 +122,7 @@ export async function postConversation({
   visibility?: ConversationVisibility;
   tabContent: {
     title: string;
-    content: string;
+    content?: string;
     url: string;
   } | null;
 }): Promise<Result<ConversationPublicType, SubmitMessageError>> {
@@ -153,20 +154,21 @@ export async function postConversation({
       },
       mentions,
     },
-    contentFragment: tabContent
-      ? {
-          title: tabContent.title,
-          content: tabContent.content,
-          url: tabContent.url,
-          contentType: "text/plain",
-          context: {
-            username: user.username,
-            email: user.email,
-            fullName: user.fullName,
-            profilePictureUrl: user.image,
-          },
-        }
-      : undefined,
+    contentFragment:
+      tabContent && tabContent.content
+        ? {
+            title: tabContent.title,
+            content: tabContent.content,
+            url: tabContent.url,
+            contentType: "text/plain",
+            context: {
+              username: user.username,
+              email: user.email,
+              fullName: user.fullName,
+              profilePictureUrl: user.image,
+            },
+          }
+        : undefined,
     blocking: false, // We want streaming.
   });
 
@@ -200,7 +202,7 @@ export async function postMessage({
   };
   tabContent: {
     title: string;
-    content: string;
+    content?: string;
     url: string;
   } | null;
 }): Promise<Result<{ message: UserMessageType }, SubmitMessageError>> {
@@ -216,7 +218,7 @@ export async function postMessage({
     });
   }
 
-  if (tabContent) {
+  if (tabContent && tabContent.content) {
     await dustAPI.postContentFragment({
       conversationId,
       contentFragment: {
@@ -317,3 +319,23 @@ export async function retryMessage({
 
   return new Ok(await mRes.json());
 }
+
+export const getIncludeCurrentTab = async (
+  includeContent: boolean = true,
+  includeScreenshot: boolean = false
+) => {
+  const backgroundRes = await sendGetActiveTabMessage(
+    includeContent,
+    includeScreenshot
+  );
+  if (
+    (includeContent && !backgroundRes.content) ||
+    (includeScreenshot && !backgroundRes.screenshot) ||
+    !backgroundRes.url ||
+    !backgroundRes.title
+  ) {
+    console.error("Failed to get content from the current tab.");
+    return new Err(new Error("Failed to get content from the current tab."));
+  }
+  return new Ok(backgroundRes);
+};

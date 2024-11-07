@@ -3,6 +3,7 @@ import type {
   AgentMention,
   LightWorkspaceType,
   MentionType,
+  UploadedContentFragment,
 } from "@dust-tt/types";
 import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
 import { ReachedLimitPopup } from "@extension/components/conversation/ReachedLimitPopup";
@@ -12,13 +13,13 @@ import { InputBarContext } from "@extension/components/input_bar/InputBarContext
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import {
   createPlaceholderUserMessage,
+  getIncludeCurrentTab,
   postConversation,
   postMessage,
   updateConversationWithOptimisticData,
 } from "@extension/lib/conversation";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { getRandomGreetingForName } from "@extension/lib/greetings";
-import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import type { StoredUser } from "@extension/lib/storage";
 import {
   getConversationContext,
@@ -89,20 +90,11 @@ export function ConversationContainer({
     }
   }, [activeConversationId, navigate]);
 
-  const getIncludeCurrentTab = async () => {
-    const backgroundRes = await sendGetActiveTabMessage();
-    if (!backgroundRes.content || !backgroundRes.url) {
-      console.error("Failed to get content from the current tab.");
-      return null;
-    }
-    return {
-      title: backgroundRes.title,
-      content: backgroundRes.content,
-      url: backgroundRes.url,
-    };
-  };
-
-  const handlePostMessage = async (input: string, mentions: MentionType[]) => {
+  const handlePostMessage = async (
+    input: string,
+    mentions: MentionType[],
+    contentFragments: UploadedContentFragment[]
+  ) => {
     if (!activeConversationId) {
       return null;
     }
@@ -110,12 +102,24 @@ export function ConversationContainer({
     try {
       await mutateConversation(
         async (currentConversation) => {
-          const tabContent = includeContent
+          const tabContentRes = includeContent
             ? await getIncludeCurrentTab()
             : null;
+
+          if (tabContentRes && tabContentRes.isErr()) {
+            sendNotification({
+              title: "Cannot get tab content",
+              description: tabContentRes.error.message,
+              type: "error",
+            });
+          }
+          const tabContent =
+            tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
+
           // Check if the content is already uploaded - compare the title and the size of the content.
           const alreadyUploaded =
             tabContent &&
+            tabContent.content &&
             conversation?.content
               .map((m) => m[m.length - 1])
               .some(
@@ -125,6 +129,7 @@ export function ConversationContainer({
                   m.textBytes === new Blob([tabContent.content]).size
               );
 
+          console.log("todo: fragments", contentFragments);
           const result = await postMessage({
             dustAPI,
             conversationId: activeConversationId,
@@ -180,8 +185,26 @@ export function ConversationContainer({
 
   const { submit: handlePostConversation } = useSubmitFunction(
     useCallback(
-      async (input: string, mentions: MentionType[]) => {
-        const tabContent = includeContent ? await getIncludeCurrentTab() : null;
+      async (
+        input: string,
+        mentions: MentionType[],
+        contentFragments: UploadedContentFragment[]
+      ) => {
+        const tabContentRes = includeContent
+          ? await getIncludeCurrentTab()
+          : null;
+
+        if (tabContentRes && tabContentRes.isErr()) {
+          sendNotification({
+            title: "Cannot get tab content",
+            description: tabContentRes.error.message,
+            type: "error",
+          });
+        }
+        const tabContent =
+          tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
+
+        console.log("todo: fragments", contentFragments);
         const conversationRes = await postConversation({
           dustAPI,
           messageData: {

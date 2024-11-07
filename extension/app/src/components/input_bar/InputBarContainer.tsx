@@ -10,11 +10,13 @@ import type {
   LightWorkspaceType,
 } from "@dust-tt/types";
 import { AssistantPicker } from "@extension/components/assistants/AssistantPicker";
+import { AttachFragment } from "@extension/components/conversation/AttachFragment";
 import type { CustomEditorProps } from "@extension/components/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@extension/components/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@extension/components/input_bar/editor/useHandleMentions";
 import { usePublicAssistantSuggestions } from "@extension/components/input_bar/editor/usePublicAssistantSuggestions";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
+import type { FileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { classNames } from "@extension/lib/utils";
 import { EditorContent } from "@tiptap/react";
 import React, { useContext, useEffect } from "react";
@@ -29,6 +31,7 @@ export interface InputBarContainerProps {
   disableAutoFocus: boolean;
   isTabIncluded: boolean;
   toggleIncludeTab: () => void;
+  fileUploaderService: FileUploaderService;
 }
 
 export const InputBarContainer = ({
@@ -41,6 +44,7 @@ export const InputBarContainer = ({
   disableAutoFocus,
   isTabIncluded,
   toggleIncludeTab,
+  fileUploaderService,
 }: InputBarContainerProps) => {
   const suggestions = usePublicAssistantSuggestions(agentConfigurations);
 
@@ -120,6 +124,10 @@ export const InputBarContainer = ({
               editorService.insertMention({ id: c.sId, label: c.name });
             }}
             assistants={allAssistants}
+          />
+          <AttachFragment
+            fileUploaderService={fileUploaderService}
+            editorService={editorService}
           />
         </div>
         <Button

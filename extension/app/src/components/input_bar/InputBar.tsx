@@ -2,13 +2,17 @@ import type {
   AgentMention,
   LightWorkspaceType,
   MentionType,
+  UploadedContentFragment,
 } from "@dust-tt/types";
 import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { compareAgentsForSort } from "@dust-tt/types";
 import { usePublicAgentConfigurations } from "@extension/components/assistants/usePublicAgentConfigurations";
+import { useFileDrop } from "@extension/components/conversation/FileUploaderContext";
+import { InputBarCitations } from "@extension/components/input_bar/InputBarCitations";
 import type { InputBarContainerProps } from "@extension/components/input_bar/InputBarContainer";
 import { InputBarContainer } from "@extension/components/input_bar/InputBarContainer";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
+import { useFileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { classNames } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -47,7 +51,11 @@ export function AssistantInputBar({
   toggleIncludeTab,
 }: {
   owner: LightWorkspaceType;
-  onSubmit: (input: string, mentions: MentionType[]) => void;
+  onSubmit: (
+    input: string,
+    mentions: MentionType[],
+    contentFragments: UploadedContentFragment[]
+  ) => void;
   stickyMentions?: AgentMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
   disableAutoFocus?: boolean;
@@ -56,6 +64,23 @@ export function AssistantInputBar({
 }) {
   const { agentConfigurations: baseAgentConfigurations } =
     usePublicAgentConfigurations();
+
+  const fileUploaderService = useFileUploaderService({
+    owner,
+    useCase: "conversation",
+  });
+
+  const { droppedFiles, setDroppedFiles } = useFileDrop();
+
+  useEffect(() => {
+    if (droppedFiles.length > 0) {
+      // Handle the dropped files.
+      void fileUploaderService.handleFilesUpload(droppedFiles);
+
+      // Clear the dropped files after handling them.
+      setDroppedFiles([]);
+    }
+  }, [droppedFiles, setDroppedFiles, fileUploaderService]);
 
   const agentConfigurations = useMemo(() => {
     if (
@@ -117,7 +142,16 @@ export function AssistantInputBar({
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
 
-    onSubmit(text, mentions);
+    onSubmit(
+      text,
+      mentions,
+      fileUploaderService.getFileBlobs().map((cf) => {
+        return {
+          title: cf.filename,
+          fileId: "cf.fileId",
+        };
+      })
+    );
     resetEditorText();
   };
 
@@ -135,6 +169,8 @@ export function AssistantInputBar({
             )}
           >
             <div className="relative flex w-full flex-1 flex-col">
+              <InputBarCitations fileUploaderService={fileUploaderService} />
+
               <InputBarContainer
                 disableAutoFocus={disableAutoFocus}
                 allAssistants={activeAgents}
@@ -145,6 +181,7 @@ export function AssistantInputBar({
                 stickyMentions={stickyMentions}
                 isTabIncluded={isTabIncluded}
                 toggleIncludeTab={toggleIncludeTab}
+                fileUploaderService={fileUploaderService}
               />
             </div>
           </div>

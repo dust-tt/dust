@@ -2,6 +2,7 @@ import { BarHeader, Button, ExternalLinkIcon } from "@dust-tt/sparkle";
 import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
 import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
 import { ConversationsListButton } from "@extension/components/conversation/ConversationsListButton";
+import { FileDropProvider } from "@extension/components/conversation/FileUploaderContext";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -42,11 +43,13 @@ export const ConversationPage = ({
         }
       />
       <div className="h-full w-full pt-4 mt-12">
-        <ConversationContainer
-          owner={workspace}
-          conversationId={conversationId}
-          user={user}
-        />
+        <FileDropProvider>
+          <ConversationContainer
+            owner={workspace}
+            conversationId={conversationId}
+            user={user}
+          />
+        </FileDropProvider>
       </div>
     </>
   );
