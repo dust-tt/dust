@@ -111,9 +111,11 @@ export async function retrieveChildrenNodes({
           };
           nodes.push(ticketsNode);
 
-          /// fetching the brand to check if it has a help center
-          const fetchedBrand = await zendeskApiClient.brand.show(objectId);
-          if (fetchedBrand.result.brand.has_help_center) {
+          const hasHelpCenter =
+            brandInDb?.hasHelpCenter ||
+            (await zendeskApiClient.brand.show(objectId)).result.brand
+              .has_help_center;
+          if (hasHelpCenter) {
             const helpCenterNode: ContentNode = {
               provider: connector.type,
               internalId: getHelpCenterInternalId(connectorId, objectId),
