@@ -29,6 +29,25 @@ export { ConversationMessageContent } from "./ConversationMessageContent";
 export { ConversationMessageHeader } from "./ConversationMessageHeader";
 export { DataTable } from "./DataTable";
 export { Dialog } from "./Dialog";
+export type { DropdownMenuItemProps } from "./Dropdown";
+export {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "./Dropdown";
 export { default as DropzoneOverlay } from "./DropzoneOverlay";
 export { ElementDialog } from "./ElementDialog";
 export { ElementModal } from "./ElementModal";
@@ -53,25 +72,6 @@ export {
   NavigationListItem,
   NavigationListLabel,
 } from "./NavigationList";
-export type { NewDropdownMenuItemProps } from "./NewDropdown";
-export {
-  NewDropdownMenu,
-  NewDropdownMenuCheckboxItem,
-  NewDropdownMenuContent,
-  NewDropdownMenuGroup,
-  NewDropdownMenuItem,
-  NewDropdownMenuLabel,
-  NewDropdownMenuPortal,
-  NewDropdownMenuRadioGroup,
-  NewDropdownMenuRadioItem,
-  NewDropdownMenuSearchbar,
-  NewDropdownMenuSeparator,
-  NewDropdownMenuShortcut,
-  NewDropdownMenuSub,
-  NewDropdownMenuSubContent,
-  NewDropdownMenuSubTrigger,
-  NewDropdownMenuTrigger,
-} from "./NewDropdown";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { Page } from "./Page";
