@@ -64,6 +64,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                     key={contentFragment.sId}
                     title={contentFragment.title}
                     size="xs"
+                    sizing="fluid"
                     type={citationType}
                     href={contentFragment.sourceUrl || undefined}
                     imgSrc={contentFragment.sourceUrl || undefined}
