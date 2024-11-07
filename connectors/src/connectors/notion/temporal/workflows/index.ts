@@ -13,6 +13,8 @@ import {
   INTERVAL_BETWEEN_SYNCS_MS,
   MAX_CONCURRENT_CHILD_WORKFLOWS,
   MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES,
+  MAX_SEARCH_PAGE_GARBAGE_COLLECTION_INDEX,
+  MAX_SEARCH_PAGE_INDEX,
   PROCESS_ALL_DISCOVERED_RESOURCES,
   SYNC_PERIOD_DURATION_MS,
 } from "@connectors/connectors/notion/temporal/config";
@@ -42,10 +44,14 @@ const {
   startToCloseTimeout: "10 minute",
 });
 
-const { saveSuccessSync, saveStartSync, isFullSyncPendingOrOngoing } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "1 minute",
-  });
+const {
+  saveSuccessSync,
+  saveStartSync,
+  isFullSyncPendingOrOngoing,
+  logMaxSearchPageIndexReached,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "1 minute",
+});
 
 export const getLastSyncPeriodTsQuery = defineQuery<number | null, []>(
   "getLastSyncPeriodTs"
@@ -83,7 +89,19 @@ export async function notionSyncWorkflow({
 
   const runTimestamp = Date.now();
 
-  let cursors: (string | null)[] = [null, null];
+  const cursors: Record<
+    "pages" | "databases",
+    { previous: string | null; last: string | null }
+  > = {
+    pages: {
+      previous: null,
+      last: null,
+    },
+    databases: {
+      previous: null,
+      last: null,
+    },
+  };
   let pageIndex = 0;
   const childWorkflowQueue = new PQueue({
     concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
@@ -91,50 +109,70 @@ export async function notionSyncWorkflow({
 
   const promises: Promise<void>[] = [];
 
-  // we go through each result page of the notion search API
-  do {
-    // We only want to fetch pages that were updated since the last sync unless it's a garbage
-    // collection run or a force resync.
-    const skipUpToDatePages = !forceResync;
+  // We only want to fetch pages that were updated since the last sync unless it's a a force resync.
+  const skipUpToDatePages = !forceResync;
 
-    const { pageIds, databaseIds, nextCursor } =
-      await getPagesAndDatabasesToSync({
-        connectorId,
-        // If we're doing a garbage collection run, we want to fetch all pages otherwise, we only
-        // want to fetch pages that were updated since the last sync.
-        lastSyncedAt: lastSyncedPeriodTs,
-        // Only pass non-null cursors.
-        cursors: cursors.filter((c) => c !== null) as string[],
-        excludeUpToDatePages: skipUpToDatePages,
-        loggerArgs: {
+  async function runSearch(cursorType: "pages" | "databases") {
+    do {
+      const { pageIds, databaseIds, nextCursor } =
+        await getPagesAndDatabasesToSync({
+          connectorId,
+          // If we're doing a garbage collection run, we want to fetch all pages otherwise, we only
+          // want to fetch pages that were updated since the last sync.
+          lastSyncedAt: lastSyncedPeriodTs,
+          // Only pass non-null cursors.
+          cursors: cursors[cursorType],
+          excludeUpToDatePages: skipUpToDatePages,
+          loggerArgs: {
+            pageIndex,
+            runType: isInitialSync ? "initialSync" : "incrementalSync",
+          },
+          filter: cursorType === "pages" ? "page" : "database",
+        });
+
+      // Update the cursors object to keep both the previous and last cursors.
+      const newPreviousCursor = cursors[cursorType].last;
+      const newLastCursor = nextCursor;
+      cursors[cursorType] = {
+        previous: newPreviousCursor,
+        last: newLastCursor,
+      };
+
+      pageIndex += 1;
+
+      // this function triggers child workflows to process batches of pages and databases.
+      // the worflow that processes databases will itself trigger child workflows to process
+      // batches of child pages.
+      promises.push(
+        performUpserts({
+          connectorId,
+          pageIds,
+          databaseIds,
+          isGarbageCollectionRun: false,
+          runTimestamp,
           pageIndex,
-          runType: isInitialSync ? "initialSync" : "incrementalSync",
-        },
-      });
+          isBatchSync: isInitialSync,
+          queue: childWorkflowQueue,
+          topLevelWorkflowId,
+          forceResync,
+        })
+      );
 
-    // Update the cursors array to keep only the last 2 cursors.
-    cursors = [cursors[1] ?? null, nextCursor];
+      // There are too many search result pages, we're likely in an infinite loop (notion bug).
+      if (pageIndex > MAX_SEARCH_PAGE_INDEX) {
+        // Run activity to log that we had to stop early because we hit the max page index.
+        await logMaxSearchPageIndexReached({
+          connectorId,
+          searchPageIndex: pageIndex,
+          maxSearchPageIndex: MAX_SEARCH_PAGE_INDEX,
+        });
+        break;
+      }
+    } while (cursors[cursorType].last);
+  }
 
-    pageIndex += 1;
-
-    // this function triggers child workflows to process batches of pages and databases.
-    // the worflow that processes databases will itself trigger child workflows to process
-    // batches of child pages.
-    promises.push(
-      performUpserts({
-        connectorId,
-        pageIds,
-        databaseIds,
-        isGarbageCollectionRun: false,
-        runTimestamp,
-        pageIndex,
-        isBatchSync: isInitialSync,
-        queue: childWorkflowQueue,
-        topLevelWorkflowId,
-        forceResync,
-      })
-    );
-  } while (cursors[1]);
+  // we go through each result page of the notion search API, both for pages and databases
+  await Promise.all([runSearch("pages"), runSearch("databases")]);
 
   // wait for all child workflows to finish
   await Promise.all(promises);
@@ -188,12 +226,18 @@ export async function notionSyncWorkflow({
 // This is the garbage collector workflow that continuously runs for each notion connector.
 export async function notionGarbageCollectionWorkflow({
   connectorId,
-  cursors = [null, null],
-  pageIndex = 0,
+  cursors = {
+    pages: { previous: null, last: null },
+    databases: { previous: null, last: null },
+  },
+  pageIndexes = { pages: 0, databases: 0 },
 }: {
   connectorId: ModelId;
-  cursors?: (string | null)[];
-  pageIndex?: number;
+  cursors?: Record<
+    "pages" | "databases",
+    { previous: string | null; last: string | null }
+  >;
+  pageIndexes?: { pages: number; databases: number };
 }) {
   const topLevelWorkflowId = workflowInfo().workflowId;
 
@@ -222,56 +266,100 @@ export async function notionGarbageCollectionWorkflow({
 
   const promises: Promise<void>[] = [];
 
-  // we go through each result page of the notion search API
-  do {
-    // It's a garbage collection, we want to fetch all pages.
-    const { pageIds, databaseIds, nextCursor } =
-      await getPagesAndDatabasesToSync({
-        connectorId,
-        lastSyncedAt: null,
-        // Only pass non-null cursors.
-        cursors: cursors.filter((c) => c !== null) as string[],
-        excludeUpToDatePages: false,
-        loggerArgs: {
-          pageIndex,
-          runType: "garbageCollection",
-        },
-      });
-
-    // Update the cursors array to keep only the last 2 cursors.
-    cursors = [cursors[1] ?? null, nextCursor];
-
-    pageIndex += 1;
-
-    // this function triggers child workflows to process batches of pages and databases.
-    // the worflow that processes databases will itself trigger child workflows to process
-    // batches of child pages.
-    promises.push(
-      performUpserts({
-        connectorId,
-        pageIds,
-        databaseIds,
-        isGarbageCollectionRun: true,
-        runTimestamp,
+  async function runSearch(
+    cursorType: "pages" | "databases"
+  ): Promise<{ isComplete: boolean; pageIndex: number }> {
+    let pageIndex = pageIndexes[cursorType];
+    const { last: lastCursor } = cursors[cursorType];
+    if (pageIndex > 0 && !lastCursor) {
+      // We are already done
+      return {
+        isComplete: true,
         pageIndex,
-        isBatchSync: false,
-        queue: childWorkflowQueue,
-        topLevelWorkflowId,
-        forceResync: false,
-      })
-    );
-
-    if (pageIndex % 512 === 0) {
-      await Promise.all(promises);
-
-      await continueAsNew<typeof notionGarbageCollectionWorkflow>({
-        connectorId,
-        cursors,
-        pageIndex,
-      });
-      return;
+      };
     }
-  } while (cursors[1]);
+    // we go through each result page of the notion search API
+    do {
+      // It's a garbage collection, we want to fetch all pages.
+      const { pageIds, databaseIds, nextCursor } =
+        await getPagesAndDatabasesToSync({
+          connectorId,
+          lastSyncedAt: null,
+          // Only pass non-null cursors.
+          cursors: cursors[cursorType],
+          excludeUpToDatePages: false,
+          loggerArgs: {
+            pageIndex,
+            runType: "garbageCollection",
+          },
+          filter: cursorType === "pages" ? "page" : "database",
+        });
+
+      // Update the cursors object to keep both the previous and last cursors.
+      const newPreviousCursor = cursors[cursorType].last;
+      const newLastCursor = nextCursor;
+      cursors[cursorType] = {
+        previous: newPreviousCursor,
+        last: newLastCursor,
+      };
+
+      pageIndex += 1;
+
+      // this function triggers child workflows to process batches of pages and databases.
+      // the worflow that processes databases will itself trigger child workflows to process
+      // batches of child pages.
+      promises.push(
+        performUpserts({
+          connectorId,
+          pageIds,
+          databaseIds,
+          isGarbageCollectionRun: true,
+          runTimestamp,
+          pageIndex,
+          isBatchSync: false,
+          queue: childWorkflowQueue,
+          topLevelWorkflowId,
+          forceResync: false,
+        })
+      );
+
+      if (pageIndex % 512 === 0) {
+        return { isComplete: false, pageIndex };
+      }
+      // There are too many search result pages, we're likely in an infinite loop (notion bug).
+      if (pageIndex > MAX_SEARCH_PAGE_GARBAGE_COLLECTION_INDEX) {
+        // Run activity to log that we had to stop early because we hit the max page index.
+        await logMaxSearchPageIndexReached({
+          connectorId,
+          searchPageIndex: pageIndex,
+          maxSearchPageIndex: MAX_SEARCH_PAGE_GARBAGE_COLLECTION_INDEX,
+        });
+        break;
+      }
+    } while (cursors[cursorType].last);
+
+    return { isComplete: true, pageIndex };
+  }
+
+  const [pagesResult, databasesResult] = await Promise.all([
+    runSearch("pages"),
+    runSearch("databases"),
+  ]);
+
+  const isComplete = pagesResult.isComplete && databasesResult.isComplete;
+
+  if (!isComplete) {
+    await Promise.all(promises);
+    await continueAsNew<typeof notionGarbageCollectionWorkflow>({
+      connectorId,
+      cursors,
+      pageIndexes: {
+        pages: pagesResult.pageIndex,
+        databases: databasesResult.pageIndex,
+      },
+    });
+    return;
+  }
 
   // wait for all child workflows to finish
   await Promise.all(promises);

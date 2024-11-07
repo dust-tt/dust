@@ -130,20 +130,33 @@ async function refreshLastPageCursor(
  * page of results will be returned.
  * @param loggerArgs arguments to pass to the logger
  * @param retry options for retrying the request
+ * @param filter (pages | databases) to filter the results (only return pages or databases)
  * @returns a promise that resolves to an array of page IDs, an array of database IDs and the next
  * cursor
  */
-export async function getPagesAndDatabasesEditedSince(
-  notionAccessToken: string,
-  sinceTs: number | null,
-  cursors: string[],
-  loggerArgs: Record<string, string | number> = {},
-  skippedDatabaseIds: Set<string> = new Set(),
-  retry: { retries: number; backoffFactor: number } = {
+export async function getPagesAndDatabasesEditedSince({
+  notionAccessToken,
+  sinceTs,
+  cursors,
+  loggerArgs = {},
+  skippedDatabaseIds = new Set(),
+  retry = {
     retries: 5,
     backoffFactor: 2,
-  }
-): Promise<{
+  },
+  filter,
+}: {
+  notionAccessToken: string;
+  sinceTs: number | null;
+  cursors: {
+    previous: string | null;
+    last: string | null;
+  };
+  loggerArgs: Record<string, string | number>;
+  skippedDatabaseIds: Set<string>;
+  retry?: { retries: number; backoffFactor: number };
+  filter?: "page" | "database";
+}): Promise<{
   pages: { id: string; lastEditedTs: number }[];
   dbs: { id: string; lastEditedTs: number }[];
   nextCursor: string | null;
@@ -168,8 +181,7 @@ export async function getPagesAndDatabasesEditedSince(
   let tries = 0;
   const pageSize = 90;
 
-  const [previousCursor] = cursors;
-  let [, lastCursor = null] = cursors;
+  let lastCursor = cursors.last;
   while (tries < retry.retries) {
     const tryLogger = localLogger.child({
       tries,
@@ -187,6 +199,7 @@ export async function getPagesAndDatabasesEditedSince(
             : undefined,
           start_cursor: lastCursor || undefined,
           page_size: pageSize,
+          filter: filter ? { property: "object", value: filter } : undefined,
         });
       });
     } catch (e) {
@@ -205,11 +218,11 @@ export async function getPagesAndDatabasesEditedSince(
         UnknownHTTPResponseError.isUnknownHTTPResponseError(e) &&
         e.status === 504
       ) {
-        if (previousCursor) {
+        if (cursors.previous) {
           lastCursor = await refreshLastPageCursor(notionClient, {
             loggerArgs,
             originalPageSize: pageSize,
-            previousCursor,
+            previousCursor: cursors.previous,
             sinceTs,
           });
         }
