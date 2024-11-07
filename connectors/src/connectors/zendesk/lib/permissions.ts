@@ -150,6 +150,8 @@ export async function retrieveChildrenNodes({
       }
       // If the parent is a brand's help center, we retrieve the list of Categories for this brand.
       case "help-center": {
+        /// it's ok to fetch read-only data here, if !isReadPermissionsOnly, we are only using the categories in db to
+        // check if they have read permissions
         const categoriesInDatabase =
           await ZendeskCategoryResource.fetchByBrandIdReadOnly({
             connectorId,
@@ -181,7 +183,6 @@ export async function retrieveChildrenNodes({
               type: "folder",
               title: category.name,
               sourceUrl: category.html_url,
-
               expandable: false,
               permission:
                 matchingDbEntry?.permission === "read" ? "read" : "none",
