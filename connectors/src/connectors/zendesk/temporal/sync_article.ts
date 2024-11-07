@@ -101,7 +101,7 @@ export async function syncArticle({
   // fetching the user to get the user's name and email
   const { result: user } = await zendeskApiClient.users.show(article.author_id);
 
-  const labels = article.label_names
+  const labels = article.label_names.length
     ? `LABELS: ${article.label_names.join()}`
     : "";
   // append the collection description at the beginning of the article
