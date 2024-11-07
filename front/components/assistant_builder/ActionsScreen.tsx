@@ -5,18 +5,18 @@ import {
   Checkbox,
   Chip,
   ContentMessage,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   Icon,
   IconButton,
   Input,
   Modal,
   MoreIcon,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuGroup,
-  NewDropdownMenuItem,
-  NewDropdownMenuLabel,
-  NewDropdownMenuSeparator,
-  NewDropdownMenuTrigger,
   Page,
   PlusIcon,
   Popover,
@@ -1010,14 +1010,14 @@ interface AddActionProps {
 
 function AddAction({ onAddAction }: AddActionProps) {
   return (
-    <NewDropdownMenu>
-      <NewDropdownMenuTrigger asChild>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button variant="primary" label="Add a tool" icon={PlusIcon} />
-      </NewDropdownMenuTrigger>
+      </DropdownMenuTrigger>
 
-      <NewDropdownMenuContent>
-        <NewDropdownMenuGroup>
-          <NewDropdownMenuLabel label="Data Sources" />
+      <DropdownMenuContent>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel label="Data Sources" />
           {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
             const spec = ACTION_SPECIFICATIONS[key];
             const defaultAction = getDefaultActionConfiguration(key);
@@ -1026,7 +1026,7 @@ function AddAction({ onAddAction }: AddActionProps) {
             }
 
             return (
-              <NewDropdownMenuItem
+              <DropdownMenuItem
                 key={key}
                 onClick={() => onAddAction(defaultAction)}
                 icon={spec.dropDownIcon}
@@ -1035,10 +1035,10 @@ function AddAction({ onAddAction }: AddActionProps) {
               />
             );
           })}
-        </NewDropdownMenuGroup>
-        <NewDropdownMenuSeparator />
-        <NewDropdownMenuGroup>
-          <NewDropdownMenuLabel label="Advanced Actions" />
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuLabel label="Advanced Actions" />
           {ADVANCED_ACTION_CATEGORIES.map((key) => {
             const spec = ACTION_SPECIFICATIONS[key];
             const defaultAction = getDefaultActionConfiguration(key);
@@ -1047,7 +1047,7 @@ function AddAction({ onAddAction }: AddActionProps) {
             }
 
             return (
-              <NewDropdownMenuItem
+              <DropdownMenuItem
                 key={key}
                 onClick={() => onAddAction(defaultAction)}
                 icon={spec.dropDownIcon}
@@ -1056,9 +1056,9 @@ function AddAction({ onAddAction }: AddActionProps) {
               />
             );
           })}
-        </NewDropdownMenuGroup>
-      </NewDropdownMenuContent>
-    </NewDropdownMenu>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

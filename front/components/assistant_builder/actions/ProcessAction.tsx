@@ -1,12 +1,12 @@
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Hoverable,
   IconButton,
   Input,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
   PlusIcon,
   SparklesIcon,
   Spinner,
@@ -208,18 +208,18 @@ function PropertiesFields({
                 </div>
 
                 <div className="col-span-2">
-                  <NewDropdownMenu>
-                    <NewDropdownMenuTrigger asChild>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                       <Button
                         isSelect
                         label={prop["type"]}
                         variant="ghost"
                         size="sm"
                       />
-                    </NewDropdownMenuTrigger>
-                    <NewDropdownMenuContent>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
                       {["string", "number", "boolean"].map((value, i) => (
-                        <NewDropdownMenuItem
+                        <DropdownMenuItem
                           key={`${value}-${i}`}
                           label={value}
                           onClick={() => {
@@ -230,8 +230,8 @@ function PropertiesFields({
                           }}
                         />
                       ))}
-                    </NewDropdownMenuContent>
-                  </NewDropdownMenu>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
 
                 <div className="col-span-1 flex flex-row items-end pb-2">

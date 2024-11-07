@@ -1,10 +1,10 @@
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Modal,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -207,18 +207,18 @@ const WorkspacePage = ({
               </div>
             </div>
             <div>
-              <NewDropdownMenu>
-                <NewDropdownMenuTrigger asChild>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
                     isSelect
                     label={`Segmentation: ${owner.segmentation ?? "none"}`}
                     variant="outline"
                     size="sm"
                   />
-                </NewDropdownMenuTrigger>
-                <NewDropdownMenuContent>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
                   {[null, "interesting"].map((segment) => (
-                    <NewDropdownMenuItem
+                    <DropdownMenuItem
                       label={segment ?? "none"}
                       key={segment ?? "all"}
                       onClick={() => {
@@ -228,8 +228,8 @@ const WorkspacePage = ({
                       }}
                     />
                   ))}
-                </NewDropdownMenuContent>
-              </NewDropdownMenu>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 

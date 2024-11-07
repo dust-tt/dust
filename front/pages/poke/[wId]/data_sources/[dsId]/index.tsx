@@ -2,13 +2,13 @@ import {
   Button,
   ContextItem,
   DocumentTextIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
   EyeIcon,
   Input,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuRadioGroup,
-  NewDropdownMenuRadioItem,
-  NewDropdownMenuTrigger,
   Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
@@ -892,29 +892,29 @@ function SlackWhitelistBot({
           />
         </div>
         <div>
-          <NewDropdownMenu>
-            <NewDropdownMenuTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
                 label={selectedGroupName ?? "Select a group"}
               />
-            </NewDropdownMenuTrigger>
-            <NewDropdownMenuContent>
-              <NewDropdownMenuRadioGroup
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuRadioGroup
                 value={selectedGroup ?? undefined}
                 onValueChange={setSelectedGroup}
               >
                 {groups.map((group) => (
-                  <NewDropdownMenuRadioItem
+                  <DropdownMenuRadioItem
                     value={group.sId}
                     key={group.sId}
                     label={group.name}
                     className="p-1"
                   />
                 ))}
-              </NewDropdownMenuRadioGroup>
-            </NewDropdownMenuContent>
-          </NewDropdownMenu>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <Button
           variant="outline"

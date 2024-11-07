@@ -1,10 +1,10 @@
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Modal,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
   PlusIcon,
   TextArea,
 } from "@dust-tt/sparkle";
@@ -79,8 +79,8 @@ export function RequestDataSourceModal({
                 <label className="block text-sm font-medium text-element-800">
                   <p>Where are the requested Data hosted?</p>
                 </label>
-                <NewDropdownMenu>
-                  <NewDropdownMenuTrigger asChild>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     {selectedDataSource && isManaged(selectedDataSource) ? (
                       <Button
                         variant="outline"
@@ -97,12 +97,12 @@ export function RequestDataSourceModal({
                         isSelect
                       />
                     )}
-                  </NewDropdownMenuTrigger>
-                  <NewDropdownMenuContent>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
                     {dataSources.map(
                       (dataSource) =>
                         dataSource.connectorProvider && (
-                          <NewDropdownMenuItem
+                          <DropdownMenuItem
                             key={dataSource.sId}
                             label={getDisplayNameForDataSource(dataSource)}
                             onClick={() => setSelectedDataSource(dataSource)}
@@ -112,8 +112,8 @@ export function RequestDataSourceModal({
                           />
                         )
                     )}
-                  </NewDropdownMenuContent>
-                </NewDropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             )}
           </div>

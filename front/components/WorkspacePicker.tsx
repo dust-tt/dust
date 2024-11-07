@@ -1,9 +1,9 @@
 import {
   Button,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import type {
   LightWorkspaceType,
@@ -24,27 +24,27 @@ export default function WorkspacePicker({
   return (
     <div className="flex flex-row items-center gap-2">
       <p className="text-sm text-slate-500">Workspace:</p>
-      <NewDropdownMenu>
-        <NewDropdownMenuTrigger asChild>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <Button
             label={workspace ? workspace.name : "Select workspace"}
             variant="ghost"
             isSelect
           />
-        </NewDropdownMenuTrigger>
+        </DropdownMenuTrigger>
 
-        <NewDropdownMenuContent>
+        <DropdownMenuContent>
           {user.workspaces.map((w) => {
             return (
-              <NewDropdownMenuItem
+              <DropdownMenuItem
                 key={w.sId}
                 onClick={() => void onWorkspaceUpdate(w)}
                 label={w.name}
               />
             );
           })}
-        </NewDropdownMenuContent>
-      </NewDropdownMenu>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

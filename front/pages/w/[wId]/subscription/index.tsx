@@ -3,11 +3,11 @@ import {
   CardIcon,
   Chip,
   Dialog,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   MoreIcon,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
   Page,
   ShapesIcon,
   Spinner,
@@ -330,17 +330,17 @@ export default function Subscription({
                   <Chip size="sm" color={chipColor} label={planLabel} />
                   {!subscription.trialing &&
                     subscription.stripeSubscriptionId && (
-                      <NewDropdownMenu>
-                        <NewDropdownMenuTrigger asChild>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
                           <Button icon={MoreIcon} variant="ghost" />
-                        </NewDropdownMenuTrigger>
-                        <NewDropdownMenuContent>
-                          <NewDropdownMenuItem
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem
                             label="Manage my subscription"
                             onClick={handleGoToStripePortal}
                           />
-                        </NewDropdownMenuContent>
-                      </NewDropdownMenu>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                 </Page.Horizontal>
               </>

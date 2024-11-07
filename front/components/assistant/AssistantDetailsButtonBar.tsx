@@ -2,11 +2,11 @@ import {
   Button,
   ChatBubbleBottomCenterTextIcon,
   ClipboardIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   MoreIcon,
-  NewDropdownMenu,
-  NewDropdownMenuContent,
-  NewDropdownMenuItem,
-  NewDropdownMenuTrigger,
   PencilSquareIcon,
   StarIcon,
   StarStrokeIcon,
@@ -71,12 +71,12 @@ export function AssistantDetailsButtonBar({
           }}
           isPrivateAssistant={agentConfiguration.scope === "private"}
         />
-        <NewDropdownMenu>
-          <NewDropdownMenuTrigger asChild>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <Button icon={MoreIcon} size="sm" variant="ghost" />
-          </NewDropdownMenuTrigger>
-          <NewDropdownMenuContent>
-            <NewDropdownMenuItem
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem
               label="Copy assistant ID"
               onClick={async (e) => {
                 e.stopPropagation();
@@ -86,7 +86,7 @@ export function AssistantDetailsButtonBar({
             />
             {agentConfiguration.scope !== "global" && (
               <>
-                <NewDropdownMenuItem
+                <DropdownMenuItem
                   label="Duplicate (New)"
                   icon={ClipboardIcon}
                   onClick={async (e) => {
@@ -97,7 +97,7 @@ export function AssistantDetailsButtonBar({
                   }}
                 />
                 {allowDeletion && (
-                  <NewDropdownMenuItem
+                  <DropdownMenuItem
                     label="Delete"
                     icon={TrashIcon}
                     onClick={() => {
@@ -108,8 +108,8 @@ export function AssistantDetailsButtonBar({
                 )}
               </>
             )}
-          </NewDropdownMenuContent>
-        </NewDropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </>
     );
   }
