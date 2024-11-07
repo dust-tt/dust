@@ -51,25 +51,30 @@ export async function retrieveChildrenNodes({
 
   // At the root level, we show one node for each brand.
   if (!parentInternalId) {
+    const brandsInDatabase = await ZendeskBrandResource.fetchAllReadOnly({
+      connectorId,
+    });
     if (isReadPermissionsOnly) {
-      const brandsInDatabase = await ZendeskBrandResource.fetchAllReadOnly({
-        connectorId,
-      });
       return brandsInDatabase.map((brand) => brand.toContentNode(connectorId));
     } else {
       const { result: brands } = await zendeskApiClient.brand.list();
-      return brands.map((brand) => ({
-        provider: connector.type,
-        internalId: getBrandInternalId(connectorId, brand.id),
-        parentInternalId: null,
-        type: "folder",
-        title: brand.name || "Brand",
-        sourceUrl: brand.brand_url,
-        expandable: true,
-        permission: "none",
-        dustDocumentId: null,
-        lastUpdatedAt: null,
-      }));
+      return brands.map(
+        (brand) =>
+          brandsInDatabase
+            .find((b) => b.brandId === brand.id)
+            ?.toContentNode(connectorId) ?? {
+            provider: connector.type,
+            internalId: getBrandInternalId(connectorId, brand.id),
+            parentInternalId: null,
+            type: "folder",
+            title: brand.name || "Brand",
+            sourceUrl: brand.brand_url,
+            expandable: true,
+            permission: "none",
+            dustDocumentId: null,
+            lastUpdatedAt: null,
+          }
+      );
     }
   } else {
     const { type, objectId } = getIdFromInternalId(
