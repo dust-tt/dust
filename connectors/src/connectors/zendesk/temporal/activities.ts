@@ -410,7 +410,7 @@ export async function syncZendeskTicketsActivity({
   const tickets = await zendeskApiClient.tickets.list();
   const users = await zendeskApiClient.users.list();
 
-  const rest = await concurrentExecutor(
+  const res = await concurrentExecutor(
     tickets,
     async (ticket) => {
       const comments = await zendeskApiClient.tickets.getComments(ticket.id);
@@ -431,8 +431,8 @@ export async function syncZendeskTicketsActivity({
   );
 
   logger.info(
-    { ...loggerArgs, ticketsSynced: rest.filter((r) => r).length },
-    `[Zendesk] Processing ${rest.length} tickets.`
+    { ...loggerArgs, ticketsSynced: res.filter((r) => r).length },
+    `[Zendesk] Processing ${res.length} tickets.`
   );
 }
 

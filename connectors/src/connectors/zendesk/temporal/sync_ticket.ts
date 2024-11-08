@@ -90,7 +90,9 @@ export async function syncTicket({
       "[Zendesk] Ticket already up to date. Skipping sync."
     );
     return;
-  } else {
+  }
+
+  if (comments.length > 0) {
     logger.info(
       {
         ...loggerArgs,
@@ -99,11 +101,9 @@ export async function syncTicket({
         ticketUpdatedAt: updatedAtDate,
         dataSourceLastUpsertedAt: ticketInDb?.lastUpsertedTs ?? null,
       },
-      "[Zendesk] Ticket to sync."
+      "[Zendesk] Upserting ticket."
     );
-  }
 
-  if (ticket.description || comments.length > 0) {
     const metadata = [
       `Ticket ID: ${ticket.id}`,
       `Subject: ${ticket.subject}`,
@@ -142,9 +142,6 @@ export async function syncTicket({
     const ticketContent = `
 ${metadata}
 
-Initial Description:
-${ticket.description || "No initial description"}
-
 Conversation:
 ${comments
   .map((comment) => {
@@ -159,14 +156,6 @@ ${comment.body}`;
 `.trim();
 
     const ticketContentInMarkdown = turndownService.turndown(ticketContent);
-
-    logger.info(
-      {
-        ...loggerArgs,
-        ticketContentInMarkdown,
-      },
-      "[Zendesk] TICKET CONTENT IN MARKDOWN"
-    );
 
     const renderedMarkdown = await renderMarkdownSection(
       dataSourceConfig,
