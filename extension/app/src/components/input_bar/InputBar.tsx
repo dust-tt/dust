@@ -147,8 +147,14 @@ export function AssistantInputBar({
       title: cf.filename,
       fileId: cf.fileId,
     }));
+
+    resetEditorText();
+
     if (isTabIncluded) {
-      const files = await fileUploaderService.uploadContentTab(conversation);
+      const files = await fileUploaderService.uploadContentTab(
+        conversation,
+        false
+      );
       if (files) {
         newFiles.push(
           ...files.map((cf) => ({
@@ -159,7 +165,6 @@ export function AssistantInputBar({
       }
     }
     onSubmit(text, mentions, newFiles);
-    resetEditorText();
     fileUploaderService.resetUpload();
   };
 

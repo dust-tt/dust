@@ -59,7 +59,7 @@ export function useFileUploaderService({
   const sendNotification = useSendNotification();
   const dustAPI = useDustAPI();
 
-  const handleFilesUpload = async (files: File[]) => {
+  const handleFilesUpload = async (files: File[], updateBlobs?: boolean) => {
     setIsProcessingFiles(true);
 
     const { totalTextualSize, totalImageSize } = [
@@ -96,10 +96,10 @@ export function useFileUploaderService({
     }
 
     const previewResults = processSelectedFiles(files);
-    const newFileBlobs = processResults(previewResults);
+    const newFileBlobs = processResults(previewResults, updateBlobs);
 
     const uploadResults = await uploadFiles(newFileBlobs);
-    const finalFileBlobs = processResults(uploadResults);
+    const finalFileBlobs = processResults(uploadResults, updateBlobs);
 
     setIsProcessingFiles(false);
 
@@ -219,7 +219,10 @@ export function useFileUploaderService({
     return Promise.all(uploadPromises); // Run all uploads in parallel.
   };
 
-  const processResults = (results: Result<FileBlob, FileBlobUploadError>[]) => {
+  const processResults = (
+    results: Result<FileBlob, FileBlobUploadError>[],
+    updateBlobs: boolean = true
+  ) => {
     const successfulBlobs: FileBlob[] = [];
     const erroredBlobs: FileBlobUploadError[] = [];
 
@@ -236,20 +239,24 @@ export function useFileUploaderService({
       }
     });
 
-    if (erroredBlobs.length > 0) {
-      setFileBlobs((prevFiles) =>
-        prevFiles.filter((f) => !erroredBlobs.some((e) => e.file.name === f.id))
-      );
-    }
+    if (updateBlobs) {
+      if (erroredBlobs.length > 0) {
+        setFileBlobs((prevFiles) =>
+          prevFiles.filter(
+            (f) => !erroredBlobs.some((e) => e.file.name === f.id)
+          )
+        );
+      }
 
-    if (successfulBlobs.length > 0) {
-      setFileBlobs((prevFiles) => {
-        const fileBlobMap = new Map(prevFiles.map((blob) => [blob.id, blob]));
-        successfulBlobs.forEach((blob) => {
-          fileBlobMap.set(blob.id, blob);
+      if (successfulBlobs.length > 0) {
+        setFileBlobs((prevFiles) => {
+          const fileBlobMap = new Map(prevFiles.map((blob) => [blob.id, blob]));
+          successfulBlobs.forEach((blob) => {
+            fileBlobMap.set(blob.id, blob);
+          });
+          return Array.from(fileBlobMap.values());
         });
-        return Array.from(fileBlobMap.values());
-      });
+      }
     }
 
     return successfulBlobs;
@@ -282,7 +289,10 @@ export function useFileUploaderService({
     setFileBlobs([]);
   };
 
-  const uploadContentTab = async (conversation?: ConversationPublicType) => {
+  const uploadContentTab = async (
+    conversation?: ConversationPublicType,
+    updateBlobs?: boolean
+  ) => {
     const tabContentRes = await getIncludeCurrentTab();
 
     if (tabContentRes && tabContentRes.isErr()) {
@@ -322,7 +332,7 @@ export function useFileUploaderService({
         type: "text/plain",
       });
 
-      return await handleFilesUpload([file]);
+      return await handleFilesUpload([file], updateBlobs);
     }
   };
 
