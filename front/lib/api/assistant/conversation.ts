@@ -2170,12 +2170,12 @@ export function canAccessConversation(
 ): boolean {
   const owner = auth.getNonNullableWorkspace();
 
-  const groupIds =
+  const requestedGroupIds =
     conversation instanceof Conversation
-      ? getConversationGroupIdsFromModel(owner, conversation)
-      : conversation.groupIds;
+      ? getConversationRequestedGroupIdsFromModel(owner, conversation)
+      : conversation.requestedGroupIds;
 
   return auth.canRead(
-    Authenticator.createResourcePermissionsFromGroupIds(groupIds)
+    Authenticator.createResourcePermissionsFromGroupIds(requestedGroupIds)
   );
 }
