@@ -7,14 +7,13 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
-import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
 import type {
   ZendeskCategoryUpdateSignal,
   ZendeskUpdateSignal,
 } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
-
+const ZENDESK_BATCH_SIZE = 100;
 const {
   getZendeskCategoriesActivity,
   syncZendeskBrandActivity,

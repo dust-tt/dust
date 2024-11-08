@@ -12,7 +12,6 @@ import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
-export const ZENDESK_BATCH_SIZE = 100;
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
 
@@ -220,12 +219,6 @@ export async function fetchZendeskTicketsInBrand({
   }
 
   const text = await rawResponse.text();
-
-  logger.info(
-    { response: rawResponse, text },
-    "[Zendesk] Fetched tickets from Zendesk."
-  );
-
   const response = JSON.parse(text);
 
   if (!rawResponse.ok) {
