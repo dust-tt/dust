@@ -360,14 +360,18 @@ export async function syncZendeskArticleBatchActivity({
     cursor,
   });
 
+  const sections = await zendeskApiClient.helpcenter.sections.list();
+  const users = await zendeskApiClient.users.list();
+
   await concurrentExecutor(
     articles,
     (article) =>
       syncArticle({
-        zendeskApiClient,
         connectorId,
         category,
         article,
+        section: sections.find((section) => section.id === article.section_id),
+        user: users.find((user) => user.id === article.author_id),
         dataSourceConfig,
         currentSyncDateMs,
         loggerArgs,

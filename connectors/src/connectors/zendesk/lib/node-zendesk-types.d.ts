@@ -208,6 +208,7 @@ declare module "node-zendesk" {
         ) => Promise<{ response: Response; result: ZendeskFetchedCategory }>;
       };
       sections: {
+        list: () => Promise<ZendeskFetchedSection[]>;
         show: (
           sectionId: number
         ) => Promise<{ response: Response; result: ZendeskFetchedSection }>;

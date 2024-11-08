@@ -1,9 +1,12 @@
 import type { ModelId } from "@dust-tt/types";
-import type { Client } from "node-zendesk";
 import TurndownService from "turndown";
 
 import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
-import type { ZendeskFetchedArticle } from "@connectors/connectors/zendesk/lib/node-zendesk-types";
+import type {
+  ZendeskFetchedArticle,
+  ZendeskFetchedSection,
+  ZendeskFetchedUser,
+} from "@connectors/connectors/zendesk/lib/node-zendesk-types";
 import {
   renderDocumentTitleAndContent,
   renderMarkdownSection,
@@ -20,20 +23,22 @@ const turndownService = new TurndownService();
  * Syncs an article from Zendesk to the postgres db and to the data sources.
  */
 export async function syncArticle({
-  zendeskApiClient,
   connectorId,
   article,
   category,
+  section,
+  user,
   currentSyncDateMs,
   dataSourceConfig,
   loggerArgs,
   forceResync,
 }: {
-  zendeskApiClient: Client;
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   article: ZendeskFetchedArticle;
+  section: ZendeskFetchedSection | undefined;
   category: ZendeskCategoryResource;
+  user: ZendeskFetchedUser | undefined;
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;
   forceResync: boolean;
@@ -94,23 +99,18 @@ export async function syncArticle({
       ? turndownService.turndown(article.body)
       : "";
 
-  // fetching the section to get the section description
-  const { result: section } = await zendeskApiClient.helpcenter.sections.show(
-    article.section_id
-  );
-  // fetching the user to get the user's name and email
-  const { result: user } = await zendeskApiClient.users.show(article.author_id);
+  const header = [
+    `CATEGORY: ${category.name} ${category?.description ? ` - ${category.description}` : ""}`,
+    section &&
+      `SECTION: ${section.name} ${section?.description ? ` - ${section.description}` : ""}`,
+    user && `USER: ${user.name} ${user?.email ? ` - ${user.email}` : ""}`,
+    `VOTE_SUM: ${article.vote_sum}`,
+    article.label_names.length ? `LABELS: ${article.label_names.join()}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 
-  const labels = article.label_names.length
-    ? `LABELS: ${article.label_names.join()}`
-    : "";
-  // append the collection description at the beginning of the article
-  const markdown = `
-CATEGORY: ${category.name} ${category?.description ? ` - ${category.description}` : ""}
-USER: ${user.name} ${user?.email ? ` - ${user.email}` : ""}
-SECTION: ${section.name} ${section?.description ? ` - ${section.description}` : ""}
-VOTE_SUM: ${article.vote_sum}${labels}\n
-${articleContentInMarkdown}`; // extra newline to separate the content from the metadata
+  const markdown = `${header}\n\n${articleContentInMarkdown}`;
 
   if (articleContentInMarkdown) {
     const createdAt = new Date(article.created_at);
