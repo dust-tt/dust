@@ -144,6 +144,7 @@ async function handler(
       // WARNING: DO NOT UNGATE. Todo before ungating:
       // - ! check security, including but not limited to SPF dkim approach thorough review
       // - review from https://github.com/dust-tt/dust/pull/5365 for code refactoring and cleanup
+      // - also, need to ungate the workspace check in email_trigger/userAndWorkspacesFromEmail
       if (!email.envelope.from.endsWith("@dust.tt")) {
         return apiError(req, res, {
           status_code: 401,

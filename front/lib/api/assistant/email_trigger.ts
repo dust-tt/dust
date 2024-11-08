@@ -20,16 +20,14 @@ import {
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { sendEmail } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  Conversation,
-  ConversationParticipant,
-} from "@app/lib/models/assistant/conversation";
 import { User } from "@app/lib/models/user";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+
+const { PRODUCTION_DUST_WORKSPACE_ID } = process.env;
 
 function renderUserType(user: User): UserType {
   return {
@@ -141,7 +139,8 @@ export async function userAndWorkspacesFromEmail({
     });
   }
 
-  // get latest conversation participation from user
+  /* get latest conversation participation from user
+    uncomment when ungating
   const latestParticipation = await ConversationParticipant.findOne({
     where: {
       userId: user.id,
@@ -152,13 +151,15 @@ export async function userAndWorkspacesFromEmail({
       },
     ],
     order: [["createdAt", "DESC"]],
-  });
+  });*/
 
-  // TODO: implement good default logic
+  // TODO: when ungating, implement good default logic to pick workspace
   // a. most members?
-  // b. most recent activity?
+  // b. latest participation as above using the above (latestParticipation?.conversation?.workspaceId)
+  // c. most frequent-recent activity? (return 10 results with participants and pick the workspace with most convos)
+  // (will work fine since most users likely use only one workspace with a given email)
   const workspace = workspaces.find(
-    (w) => w.id === latestParticipation?.conversation?.workspaceId
+    (w) => w.sId === PRODUCTION_DUST_WORKSPACE_ID // Gating to dust workspace
   );
   if (!workspace) {
     return new Err({
@@ -171,8 +172,9 @@ export async function userAndWorkspacesFromEmail({
     workspace,
   });
 
+  // TODO: when ungating, replace [workspace] with workspaces here
   return new Ok({
-    workspaces: workspaces.map((workspace) =>
+    workspaces: [workspace].map((workspace) =>
       renderLightWorkspaceType({ workspace })
     ),
     user: renderUserType(user),
