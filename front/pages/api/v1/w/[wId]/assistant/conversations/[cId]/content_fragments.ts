@@ -112,8 +112,6 @@ async function handler(
           url: req.url,
         });
         r.data.contentType = normalizedContentType;
-      } else {
-        r.data.fileId;
       }
       const { context, ...contentFragment } = r.data;
       const contentFragmentRes = await postNewContentFragment(
