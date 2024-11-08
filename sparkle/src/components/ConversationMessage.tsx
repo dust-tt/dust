@@ -57,7 +57,7 @@ export function ConversationMessage({
   return (
     <div
       className={cn(
-        "s-mt-2 s-flex s-w-full s-flex-col s-justify-stretch s-gap-4 s-rounded-2xl",
+        "s-mt-2 s-flex s-w-full s-flex-col s-justify-stretch s-gap-4 s-rounded-3xl",
         messageTypeClasses[type],
         messageSizeClasses[size]
       )}
