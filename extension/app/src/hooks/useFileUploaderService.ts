@@ -13,7 +13,6 @@ import {
 import { useSendNotification } from "@dust-tt/sparkle";
 import { getIncludeCurrentTab } from "@extension/lib/conversation";
 import { useDustAPI } from "@extension/lib/dust_api";
-import { getMimeTypeFromFile } from "@extension/lib/file";
 import { useState } from "react";
 
 interface FileBlob {
@@ -130,7 +129,7 @@ export function useFileUploaderService({
           return acc; // Ignore if file already exists.
         }
 
-        const contentType = getMimeTypeFromFile(file);
+        const contentType = file.type;
         if (!isSupportedFileContentType(contentType)) {
           acc.push(
             new Err(
