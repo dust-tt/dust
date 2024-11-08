@@ -130,6 +130,21 @@ interface ZendeskFetchedTicket {
   };
 }
 
+interface ZendeskFetchedTicketComment {
+  id: number;
+  body: string;
+  html_body: string;
+  plain_body: string;
+  public: boolean;
+  author_id: number;
+  created_at: string;
+  attachments: {
+    id: number;
+    file_name: string;
+    content_url: string;
+  }[];
+}
+
 interface ZendeskFetchedUser {
   active?: boolean;
   alias?: string;
@@ -170,21 +185,6 @@ interface ZendeskFetchedUser {
   url?: string;
   user_fields?: object;
   verified?: boolean;
-}
-
-interface ZendeskFetchedTicketComment {
-  id: number;
-  body: string;
-  html_body: string;
-  plain_body: string;
-  public: boolean;
-  author_id: number;
-  created_at: string;
-  attachments: {
-    id: number;
-    file_name: string;
-    content_url: string;
-  }[];
 }
 
 declare module "node-zendesk" {
