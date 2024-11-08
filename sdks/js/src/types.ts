@@ -1888,10 +1888,10 @@ export const FileTypeSchema = z.object({
   fileName: z.string(),
   fileSize: z.number(),
   id: z.string(),
-  status: z.enum(["created", "failed", "ready"]),
+  status: FlexibleEnumSchema(["created", "failed", "ready"]),
   uploadUrl: z.string().optional(),
   publicUrl: z.string().optional(),
-  useCase: z.enum(["conversation", "avatar", "tool_output"]),
+  useCase: FlexibleEnumSchema(["conversation", "avatar", "tool_output"]),
 });
 export type FileType = z.infer<typeof FileTypeSchema>;
 
