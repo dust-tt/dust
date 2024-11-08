@@ -1,13 +1,15 @@
 import type { ModelId } from "@dust-tt/types";
 
-import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { syncBrandWithPermissions } from "@connectors/connectors/zendesk/lib/utils";
 import logger from "@connectors/logger/logger";
 import {
   ZendeskBrandResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 
+/**
+ * Marks the node "Tickets" of a Brand as permission "read".
+ */
 export async function allowSyncZendeskTickets({
   connectorId,
   connectionId,
@@ -16,50 +18,20 @@ export async function allowSyncZendeskTickets({
   connectorId: ModelId;
   connectionId: string;
   brandId: number;
-}): Promise<ZendeskBrandResource | null> {
-  let brand = await ZendeskBrandResource.fetchByBrandId({
+}): Promise<boolean> {
+  return syncBrandWithPermissions({
     connectorId,
+    connectionId,
     brandId,
+    permissions: {
+      ticketsPermission: "read",
+      helpCenterPermission: "none",
+    },
   });
-  if (brand?.ticketsPermission === "none") {
-    await brand.update({ ticketsPermission: "read" });
-  }
-
-  const { accessToken, subdomain } =
-    await getZendeskSubdomainAndAccessToken(connectionId);
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
-
-  if (!brand) {
-    const {
-      result: { brand: fetchedBrand },
-    } = await zendeskApiClient.brand.show(brandId);
-    if (fetchedBrand) {
-      brand = await ZendeskBrandResource.makeNew({
-        blob: {
-          subdomain: fetchedBrand.subdomain,
-          connectorId: connectorId,
-          brandId: fetchedBrand.id,
-          name: fetchedBrand.name || "Brand",
-          helpCenterPermission: "none",
-          ticketsPermission: "read",
-          hasHelpCenter: fetchedBrand.has_help_center,
-          url: fetchedBrand.url,
-        },
-      });
-    } else {
-      logger.error({ brandId }, "[Zendesk] Brand could not be fetched.");
-      return null;
-    }
-  }
-
-  return brand;
 }
 
 /**
- * Mark a help center as permission "none" and all children (collections and articles).
+ * Mark the node "Tickets" and all the children tickets for a Brand as permission "none".
  */
 export async function revokeSyncZendeskTickets({
   connectorId,

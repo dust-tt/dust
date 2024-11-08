@@ -8,6 +8,8 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
+  fetchZendeskArticlesInCategory,
+  getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { syncArticle } from "@connectors/connectors/zendesk/temporal/sync_article";
 import { syncTicket } from "@connectors/connectors/zendesk/temporal/sync_ticket";
@@ -23,6 +25,8 @@ import {
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
+const ZENDESK_ARTICLE_BATCH_SIZE = 100;
 
 async function _getZendeskConnectorOrRaise(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -122,13 +126,9 @@ export async function syncZendeskBrandActivity({
     return { helpCenterAllowed: false, ticketsAllowed: false };
   }
 
-  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
-    connector.connectionId
+  const zendeskApiClient = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connector.connectionId)
   );
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
 
   // if the brand is not on Zendesk anymore, we delete it
   const {
@@ -239,14 +239,10 @@ export async function getZendeskCategoriesActivity({
   brandId: number;
 }): Promise<number[]> {
   const connector = await _getZendeskConnectorOrRaise(connectorId);
-  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
-    connector.connectionId
+  const client = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connector.connectionId)
   );
-  const client = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
-  await changeZendeskClientSubdomain({ client, brandId });
+  await changeZendeskClientSubdomain(client, { connectorId, brandId });
   const categories = await client.helpcenter.categories.list();
 
   return categories.map((category) => category.id);
@@ -272,7 +268,7 @@ export async function syncZendeskCategoryActivity({
   categoryId: number;
   brandId: number;
   currentSyncDateMs: number;
-}): Promise<ZendeskCategoryResource | null> {
+}): Promise<boolean> {
   const connector = await _getZendeskConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const categoryInDb = await _getZendeskCategoryOrRaise({
@@ -284,17 +280,16 @@ export async function syncZendeskCategoryActivity({
   if (categoryInDb.permission === "none") {
     await deleteCategoryChildren({ connectorId, dataSourceConfig, categoryId });
     await categoryInDb.delete();
-    return null;
+    return false;
   }
 
-  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
-    connector.connectionId
+  const zendeskApiClient = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connector.connectionId)
   );
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
+  await changeZendeskClientSubdomain(zendeskApiClient, {
+    connectorId,
+    brandId,
   });
-  await changeZendeskClientSubdomain({ client: zendeskApiClient, brandId });
 
   // if the category is not on Zendesk anymore, we delete it
   const { result: fetchedCategory } =
@@ -302,7 +297,7 @@ export async function syncZendeskCategoryActivity({
   if (!fetchedCategory) {
     await deleteCategoryChildren({ connectorId, categoryId, dataSourceConfig });
     await categoryInDb.delete();
-    return null;
+    return false;
   }
 
   // otherwise, we update the category name and lastUpsertedTs
@@ -310,24 +305,26 @@ export async function syncZendeskCategoryActivity({
     name: fetchedCategory.name || "Category",
     lastUpsertedTs: new Date(currentSyncDateMs),
   });
-  return categoryInDb;
+  return true;
 }
 
 /**
- * This activity is responsible for syncing all the articles in a Category.
+ * This activity is responsible for syncing the next batch of articles to process.
  * It does not sync the Category, only the Articles.
  */
-export async function syncZendeskArticlesActivity({
+export async function syncZendeskArticleBatchActivity({
   connectorId,
-  category,
+  categoryId,
   currentSyncDateMs,
   forceResync,
+  cursor,
 }: {
   connectorId: ModelId;
-  category: ZendeskCategoryResource;
+  categoryId: number;
   currentSyncDateMs: number;
   forceResync: boolean;
-}) {
+  cursor?: string | null;
+}): Promise<{ hasMore: boolean; afterCursor: string | null }> {
   const connector = await _getZendeskConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
@@ -336,18 +333,30 @@ export async function syncZendeskArticlesActivity({
     provider: "zendesk",
     dataSourceId: dataSourceConfig.dataSourceId,
   };
+  const category = await _getZendeskCategoryOrRaise({
+    connectorId,
+    categoryId,
+  });
 
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain: subdomain,
+  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
+  const brandSubdomain = await getZendeskBrandSubdomain(zendeskApiClient, {
+    brandId: category.brandId,
+    connectorId,
   });
 
-  const articles = await zendeskApiClient.helpcenter.articles.listByCategory(
-    category.categoryId
-  );
+  const {
+    articles,
+    meta: { after_cursor, has_more },
+  } = await fetchZendeskArticlesInCategory({
+    subdomain: brandSubdomain,
+    accessToken,
+    categoryId: category.categoryId,
+    pageSize: ZENDESK_ARTICLE_BATCH_SIZE,
+    cursor,
+  });
 
   await concurrentExecutor(
     articles,
@@ -363,6 +372,7 @@ export async function syncZendeskArticlesActivity({
       }),
     { concurrency: 10 }
   );
+  return { hasMore: has_more, afterCursor: after_cursor };
 }
 
 /**
@@ -388,14 +398,13 @@ export async function syncZendeskTicketsActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
-    connector.connectionId
+  const zendeskApiClient = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connector.connectionId)
   );
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
+  await changeZendeskClientSubdomain(zendeskApiClient, {
+    connectorId,
+    brandId,
   });
-  await changeZendeskClientSubdomain({ client: zendeskApiClient, brandId });
   const tickets = await zendeskApiClient.tickets.list();
 
   await concurrentExecutor(

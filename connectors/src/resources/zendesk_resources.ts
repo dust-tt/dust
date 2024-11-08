@@ -164,6 +164,18 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return new this(this.model, brand.get());
   }
 
+  async grantHelpCenterPermissions(): Promise<void> {
+    if (this.helpCenterPermission === "none") {
+      await this.update({ helpCenterPermission: "read" });
+    }
+  }
+
+  async grantTicketsPermissions(): Promise<void> {
+    if (this.ticketsPermission === "none") {
+      await this.update({ ticketsPermission: "read" });
+    }
+  }
+
   async revokeAllPermissions(): Promise<void> {
     await this.revokeHelpCenterPermissions();
     await this.revokeTicketsPermissions();

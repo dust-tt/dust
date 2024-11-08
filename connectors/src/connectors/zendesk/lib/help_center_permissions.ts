@@ -1,5 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 
+import { syncBrandWithPermissions } from "@connectors/connectors/zendesk/lib/utils";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
@@ -25,52 +26,31 @@ export async function allowSyncZendeskHelpCenter({
   connectionId: string;
   brandId: number;
   withChildren?: boolean;
-}): Promise<ZendeskBrandResource | null> {
-  let brand = await ZendeskBrandResource.fetchByBrandId({
+}): Promise<boolean> {
+  const zendeskApiClient = createZendeskClient(
+    await getZendeskSubdomainAndAccessToken(connectionId)
+  );
+
+  const syncSuccess = await syncBrandWithPermissions({
+    zendeskApiClient,
+    connectionId,
     connectorId,
     brandId,
+    permissions: {
+      ticketsPermission: "none",
+      helpCenterPermission: "read",
+    },
   });
-
-  if (brand?.helpCenterPermission === "none") {
-    await brand.update({ helpCenterPermission: "read" });
-  }
-
-  const { accessToken, subdomain } =
-    await getZendeskSubdomainAndAccessToken(connectionId);
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
-
-  if (!brand) {
-    const {
-      result: { brand: fetchedBrand },
-    } = await zendeskApiClient.brand.show(brandId);
-    if (fetchedBrand) {
-      brand = await ZendeskBrandResource.makeNew({
-        blob: {
-          subdomain: fetchedBrand.subdomain,
-          connectorId: connectorId,
-          brandId: fetchedBrand.id,
-          name: fetchedBrand.name || "Brand",
-          helpCenterPermission: "read",
-          ticketsPermission: "none",
-          hasHelpCenter: fetchedBrand.has_help_center,
-          url: fetchedBrand.url,
-        },
-      });
-    } else {
-      logger.error(
-        { connectorId, brandId },
-        "[Zendesk] Brand could not be fetched."
-      );
-      return null;
-    }
+  if (!syncSuccess) {
+    return false; // stopping early if the brand sync failed
   }
 
   // updating permissions for all the children categories
   if (withChildren) {
-    await changeZendeskClientSubdomain({ client: zendeskApiClient, brandId });
+    await changeZendeskClientSubdomain(zendeskApiClient, {
+      connectorId,
+      brandId,
+    });
     try {
       const categories = await zendeskApiClient.helpcenter.categories.list();
       categories.forEach((category) =>
@@ -86,11 +66,11 @@ export async function allowSyncZendeskHelpCenter({
         { connectorId, brandId },
         "[Zendesk] Categories could not be fetched."
       );
-      return null;
+      return false;
     }
   }
 
-  return brand;
+  return true;
 }
 
 /**
@@ -157,15 +137,14 @@ export async function allowSyncZendeskCategory({
     await category.update({ permission: "read" });
   }
 
-  const { accessToken, subdomain } =
-    await getZendeskSubdomainAndAccessToken(connectionId);
-  const zendeskApiClient = createZendeskClient({
-    token: accessToken,
-    subdomain,
-  });
-
   if (!category) {
-    await changeZendeskClientSubdomain({ client: zendeskApiClient, brandId });
+    const zendeskApiClient = createZendeskClient(
+      await getZendeskSubdomainAndAccessToken(connectionId)
+    );
+    await changeZendeskClientSubdomain(zendeskApiClient, {
+      connectorId,
+      brandId,
+    });
     const { result: fetchedCategory } =
       await zendeskApiClient.helpcenter.categories.show(categoryId);
     if (fetchedCategory) {
