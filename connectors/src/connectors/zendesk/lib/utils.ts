@@ -32,14 +32,14 @@ export async function syncBrandWithPermissions({
     brandId,
   });
 
-  if (permissions.helpCenterPermission === "read") {
-    await brand?.grantHelpCenterPermissions();
-  }
-  if (permissions.ticketsPermission === "read") {
-    await brand?.grantTicketsPermissions();
-  }
-
   if (brand) {
+    if (permissions.helpCenterPermission === "read") {
+      await brand.grantHelpCenterPermissions();
+    }
+    if (permissions.ticketsPermission === "read") {
+      await brand.grantTicketsPermissions();
+    }
+
     return true;
   }
 
