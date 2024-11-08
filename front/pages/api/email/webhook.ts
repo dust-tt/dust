@@ -140,7 +140,10 @@ async function handler(
 
       const email = emailRes.value;
 
-      // temporary gating: only dust.tt emails are allowed to trigger the assistant
+      // Gating: only dust.tt emails are allowed to trigger the assistant
+      // WARNING: DO NOT UNGATE. Todo before ungating:
+      // - ! check security, including but not limited to SPF dkim approach thorough review
+      // - review from https://github.com/dust-tt/dust/pull/5365 for code refactoring and cleanup
       if (!email.envelope.from.endsWith("@dust.tt")) {
         return apiError(req, res, {
           status_code: 401,
