@@ -160,7 +160,7 @@ export function Citation({
       variant="secondary"
       size="sm"
       className={classNames(
-        "s-relative s-flex s-w-48 s-flex-none s-flex-col s-gap-1",
+        "s-relative s-flex s-h-full s-w-48 s-flex-none s-flex-col s-gap-1",
         sizing === "fluid" ? typeSizing[sizing] : typeSizing[sizing][size],
         size === "sm" ? "sm:s-w-64" : "",
         isBlinking ? "s-animate-[bgblink_500ms_3]" : "",
