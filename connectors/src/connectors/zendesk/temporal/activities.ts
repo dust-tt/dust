@@ -370,8 +370,9 @@ export async function syncZendeskArticleBatchActivity({
         connectorId,
         category,
         article,
-        section: sections.find((section) => section.id === article.section_id),
-        user: users.find((user) => user.id === article.author_id),
+        section:
+          sections.find((section) => section.id === article.section_id) || null,
+        user: users.find((user) => user.id === article.author_id) || null,
         dataSourceConfig,
         currentSyncDateMs,
         loggerArgs,

@@ -36,9 +36,9 @@ export async function syncArticle({
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   article: ZendeskFetchedArticle;
-  section: ZendeskFetchedSection | undefined;
+  section: ZendeskFetchedSection | null;
   category: ZendeskCategoryResource;
-  user: ZendeskFetchedUser | undefined;
+  user: ZendeskFetchedUser | null;
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;
   forceResync: boolean;
