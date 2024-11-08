@@ -1,4 +1,10 @@
-import { ContentMessage, Modal, Page, SlackLogo } from "@dust-tt/sparkle";
+import {
+  ContentMessage,
+  InformationCircleIcon,
+  Modal,
+  Page,
+  SlackLogo,
+} from "@dust-tt/sparkle";
 import type {
   BaseContentNode,
   DataSourceType,
@@ -183,6 +189,7 @@ export function SlackAssistantDefaultManager({
                   size="md"
                   variant="pink"
                   title="Admin Access Required"
+                  icon={InformationCircleIcon}
                 >
                   <p>
                     Only administrators can enable default assistants for

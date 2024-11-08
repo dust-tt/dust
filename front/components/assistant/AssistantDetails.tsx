@@ -1,4 +1,10 @@
-import { Avatar, ContentMessage, ElementModal, Page } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  ContentMessage,
+  ElementModal,
+  InformationCircleIcon,
+  Page,
+} from "@dust-tt/sparkle";
 import type { AgentConfigurationScope, WorkspaceType } from "@dust-tt/types";
 import { useCallback, useState } from "react";
 
@@ -87,6 +93,7 @@ export function AssistantDetails({
         <ContentMessage
           variant="amber"
           title="This assistant has been deleted."
+          icon={InformationCircleIcon}
           size="md"
         >
           It is no longer active and cannot be used.

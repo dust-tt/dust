@@ -1,5 +1,5 @@
 import type { ConversationMessageSizeType } from "@dust-tt/sparkle";
-import { Button, Chip, EyeIcon, Spinner } from "@dust-tt/sparkle";
+import { Button, Chip, CommandLineIcon, Spinner } from "@dust-tt/sparkle";
 import type {
   AgentActionType,
   AgentMessageType,
@@ -85,7 +85,7 @@ function ActionDetails({
 
   return label ? (
     <div key={label} className="animate-fadeIn duration-1000 fade-out">
-      <Chip size="sm" color="purple">
+      <Chip size="sm" color="slate" isBusy>
         <div
           className={classNames(
             "flex flex-row items-center gap-x-2",
@@ -93,7 +93,7 @@ function ActionDetails({
           )}
           onClick={hasActions ? onClick : undefined}
         >
-          <Spinner variant="purple900" size="xs" />
+          <Spinner variant="dark" size="xs" />
           {label}
         </div>
       </Chip>
@@ -102,8 +102,8 @@ function ActionDetails({
     <Button
       size={size === "normal" ? "sm" : "xs"}
       label="Tools inspection"
-      icon={EyeIcon}
-      variant="ghost"
+      icon={CommandLineIcon}
+      variant="outline"
       onClick={onClick}
     />
   );

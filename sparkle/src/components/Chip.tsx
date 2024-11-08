@@ -11,10 +11,10 @@ type ChipProps = {
     | "amber"
     | "slate"
     | "purple"
+    | "red"
     | "warning"
     | "sky"
     | "pink"
-    | "action"
     | "red";
   label?: string;
   children?: ReactNode;
@@ -28,7 +28,7 @@ const sizeClasses = {
   sm: "s-rounded-xl s-h-9 s-text-sm s-font-semibold s-px-3 s-gap-2.5",
 };
 
-const baseClasses = "s-inline-flex s-box-border s-border s-items-center";
+const baseClasses = "s-inline-flex s-box-border s-items-center";
 
 export function Chip({
   size = "xs",

@@ -1,4 +1,4 @@
-import { ContentMessage } from "@dust-tt/sparkle";
+import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, SpaceType } from "@dust-tt/types";
 import { assertNever, slugify } from "@dust-tt/types";
 import { useContext, useState } from "react";
@@ -94,6 +94,7 @@ export function ActionDustAppRun({
       {noDustApp ? (
         <ContentMessage
           title="You don't have any Dust Application available"
+          icon={InformationCircleIcon}
           variant="warning"
         >
           <div className="flex flex-col gap-y-3">

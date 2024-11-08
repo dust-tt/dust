@@ -1,4 +1,9 @@
-import { ContentMessage, Modal, TextArea } from "@dust-tt/sparkle";
+import {
+  ContentMessage,
+  InformationCircleIcon,
+  Modal,
+  TextArea,
+} from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ActiveRoleType,
@@ -244,7 +249,12 @@ function ProPlanBillingNotice({
   perSeatPricing: SubscriptionPerSeatPricing;
 }) {
   return (
-    <ContentMessage size="md" variant="amber" title="Note">
+    <ContentMessage
+      size="md"
+      variant="amber"
+      title="Note"
+      icon={InformationCircleIcon}
+    >
       <p>
         New users will be charged a{" "}
         <span className="font-semibold">
