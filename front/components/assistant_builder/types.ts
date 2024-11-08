@@ -38,10 +38,6 @@ export const ACTION_MODES = [
 
 // Retrieval configuration
 
-export interface AssistantBuilderBaseConfiguration {
-  timeFrame: AssistantBuilderTimeFrame;
-}
-
 export type AssistantBuilderTimeFrame = {
   value: number;
   unit: TimeframeUnit;
@@ -51,10 +47,13 @@ export type AssistantBuilderTagsFilter = {
   in: string[];
 };
 
-export type AssistantBuilderRetrievalConfiguration =
-  AssistantBuilderBaseConfiguration & {
-    dataSourceConfigurations: DataSourceViewSelectionConfigurations;
-  };
+export type AssistantBuilderRetrievalConfiguration = {
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
+};
+
+export type AssistantBuilderRetrievalExhaustiveConfiguration = {
+  timeFrame?: AssistantBuilderTimeFrame;
+} & AssistantBuilderRetrievalConfiguration;
 
 // DustAppRun configuration
 
@@ -69,12 +68,13 @@ export type AssistantBuilderTableConfiguration =
 
 // Process configuration
 
-export type AssistantBuilderProcessConfiguration =
-  AssistantBuilderBaseConfiguration & {
-    dataSourceConfigurations: DataSourceViewSelectionConfigurations;
-    tagsFilter: AssistantBuilderTagsFilter | null;
-    schema: ProcessSchemaPropertyType[];
-  };
+export type AssistantBuilderProcessConfiguration = {
+  timeFrame: AssistantBuilderTimeFrame;
+} & {
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
+  tagsFilter: AssistantBuilderTagsFilter | null;
+  schema: ProcessSchemaPropertyType[];
+};
 
 // Websearch configuration
 export type AssistantBuilderWebNavigationConfiguration = Record<string, never>; // no relevant params identified yet
@@ -85,8 +85,12 @@ export type AssistantBuilderVisualizationConfiguration = Record<string, never>; 
 
 export type AssistantBuilderActionConfiguration = (
   | {
-      type: "RETRIEVAL_SEARCH" | "RETRIEVAL_EXHAUSTIVE";
+      type: "RETRIEVAL_SEARCH";
       configuration: AssistantBuilderRetrievalConfiguration;
+    }
+  | {
+      type: "RETRIEVAL_EXHAUSTIVE";
+      configuration: AssistantBuilderRetrievalExhaustiveConfiguration;
     }
   | {
       type: "DUST_APP_RUN";
@@ -221,11 +225,7 @@ export function getDefaultRetrievalExhaustiveActionConfiguration() {
     type: "RETRIEVAL_EXHAUSTIVE",
     configuration: {
       dataSourceConfigurations: {},
-      timeFrame: {
-        value: 1,
-        unit: "month",
-      },
-    } as AssistantBuilderRetrievalConfiguration,
+    } as AssistantBuilderRetrievalExhaustiveConfiguration,
     name: DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
     description: "",
   } satisfies AssistantBuilderActionConfiguration;

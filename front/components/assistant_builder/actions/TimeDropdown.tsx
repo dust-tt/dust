@@ -8,27 +8,29 @@ import {
 import type { TimeframeUnit } from "@dust-tt/types";
 
 import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
-import type { AssistantBuilderBaseConfiguration } from "@app/components/assistant_builder/types";
+import type { AssistantBuilderTimeFrame } from "@app/components/assistant_builder/types";
 
-interface TimeUnitDropdownProps<T extends AssistantBuilderBaseConfiguration> {
-  actionConfiguration: T;
+interface TimeUnitDropdownProps<
+  T extends { timeFrame?: AssistantBuilderTimeFrame },
+> {
+  timeFrame: AssistantBuilderTimeFrame;
+  disabled?: boolean;
   onEdit: () => void;
   updateAction: (setNewAction: (previousAction: T) => T) => void;
 }
 
-export function TimeUnitDropdown<T extends AssistantBuilderBaseConfiguration>({
-  actionConfiguration,
-  updateAction,
-  onEdit,
-}: TimeUnitDropdownProps<T>) {
+export function TimeUnitDropdown<
+  T extends { timeFrame?: AssistantBuilderTimeFrame },
+>({ timeFrame, updateAction, onEdit, disabled }: TimeUnitDropdownProps<T>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           isSelect
-          label={TIME_FRAME_UNIT_TO_LABEL[actionConfiguration.timeFrame.unit]}
+          label={TIME_FRAME_UNIT_TO_LABEL[timeFrame.unit]}
           variant="outline"
           size="sm"
+          disabled={disabled}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
@@ -41,7 +43,7 @@ export function TimeUnitDropdown<T extends AssistantBuilderBaseConfiguration>({
               updateAction((previousAction) => ({
                 ...previousAction,
                 timeFrame: {
-                  value: previousAction.timeFrame.value,
+                  value: timeFrame.value,
                   unit: key as TimeframeUnit,
                 },
               }));

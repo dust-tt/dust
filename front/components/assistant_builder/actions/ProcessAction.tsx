@@ -567,7 +567,7 @@ export function ActionProcess({
           }}
         />
         <TimeUnitDropdown
-          actionConfiguration={actionConfiguration}
+          timeFrame={actionConfiguration.timeFrame}
           updateAction={updateAction}
           onEdit={() => setEdited(true)}
         />
