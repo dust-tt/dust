@@ -153,26 +153,27 @@ async function fetchWithRetries({
 /**
  * Fetches a batch of the recently updated articles from the Zendesk API using the incremental API endpoint.
  */
-async function fetchRecentlyUpdatedArticles({
+export async function fetchRecentlyUpdatedArticles({
   subdomain,
   accessToken,
   startTime = null,
   cursor = null,
-}: {
-  subdomain: string;
-  accessToken: string;
-  categoryId: number;
-  startTime?: number | null;
-  cursor?: string | null;
-}): Promise<{
+}: // pass either a cursor or a start time, but not both
+| {
+      subdomain: string;
+      accessToken: string;
+      startTime: number | null;
+      cursor?: null;
+    }
+  | {
+      subdomain: string;
+      accessToken: string;
+      startTime?: null;
+      cursor: string | null;
+    }): Promise<{
   articles: ZendeskFetchedArticle[];
   meta: { end_of_stream: boolean; after_cursor: string };
 }> {
-  assert(
-    !(startTime && cursor) && (startTime || cursor),
-    "Please provide either a startTime or a cursor but not both."
-  );
-
   const response = await fetchWithRetries({
     url:
       `https://${subdomain}.zendesk.com/api/v2/incremental/articles/cursor.json` +
