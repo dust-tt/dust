@@ -406,13 +406,14 @@ export async function syncZendeskTicketsActivity({
     connectorId,
     brandId,
   });
+
   const tickets = await zendeskApiClient.tickets.list();
+  const users = await zendeskApiClient.users.list();
 
   const rest = await concurrentExecutor(
     tickets,
     async (ticket) => {
       const comments = await zendeskApiClient.tickets.getComments(ticket.id);
-      const users = await zendeskApiClient.users.list();
 
       return syncTicket({
         connectorId,
