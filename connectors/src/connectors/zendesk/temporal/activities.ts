@@ -17,6 +17,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskArticleResource,
@@ -407,7 +408,7 @@ export async function syncZendeskTicketsActivity({
   });
   const tickets = await zendeskApiClient.tickets.list();
 
-  await concurrentExecutor(
+  const rest = await concurrentExecutor(
     tickets,
     async (ticket) => {
       const comments = await zendeskApiClient.tickets.getComments(ticket.id);
@@ -426,6 +427,11 @@ export async function syncZendeskTicketsActivity({
       });
     },
     { concurrency: 10 }
+  );
+
+  logger.info(
+    { ...loggerArgs, ticketsSynced: rest.filter((r) => r).length },
+    `[Zendesk] Processing ${rest.length} tickets.`
   );
 }
 

@@ -110,10 +110,12 @@ export async function syncTicket({
       `Created At: ${createdAtDate.toISOString()}`,
       `Updated At: ${updatedAtDate.toISOString()}`,
       `Status: ${ticket.status}`,
-      `Priority: ${ticket.priority || "N/A"}`,
-      `Type: ${ticket.type || "N/A"}`,
-      `Channel: ${ticket.via.channel}`,
-      `Requester: ${ticket.requester.name} (${ticket.requester.email})`,
+      ticket.priority ? `Priority: ${ticket.priority}` : null,
+      ticket.type ? `Type: ${ticket.type}` : null,
+      ticket.via ? `Channel: ${ticket.via.channel}` : null,
+      ticket.requester
+        ? `Requester: ${ticket.requester.name} (${ticket.requester.email})`
+        : null,
       ticket.assignee_id ? `Assignee ID: ${ticket.assignee_id}` : "Unassigned",
       `Organization ID: ${ticket.organization_id || "N/A"}`,
       `Group ID: ${ticket.group_id || "N/A"}`,
@@ -157,6 +159,14 @@ ${comment.body}`;
 `.trim();
 
     const ticketContentInMarkdown = turndownService.turndown(ticketContent);
+
+    logger.info(
+      {
+        ...loggerArgs,
+        ticketContentInMarkdown,
+      },
+      "[Zendesk] TICKET CONTENT IN MARKDOWN"
+    );
 
     const renderedMarkdown = await renderMarkdownSection(
       dataSourceConfig,

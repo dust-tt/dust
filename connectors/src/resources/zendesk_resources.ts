@@ -570,7 +570,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
 
-      subect: this.subject,
+      subject: this.subject,
       url: this.url,
 
       ticketId: this.ticketId,
