@@ -12,6 +12,7 @@ import {
 import type { ProtectedRouteChildrenProps } from "@extension/components/auth/ProtectedRoute";
 import { ConversationContainer } from "@extension/components/conversation/ConversationContainer";
 import { ConversationsListButton } from "@extension/components/conversation/ConversationsListButton";
+import { FileDropProvider } from "@extension/components/conversation/FileUploaderContext";
 import { Link } from "react-router-dom";
 
 export const MainPage = ({
@@ -63,11 +64,13 @@ export const MainPage = ({
         </div>
       </div>
       <div className="h-full w-full pt-28">
-        <ConversationContainer
-          owner={workspace}
-          conversationId={null}
-          user={user}
-        />
+        <FileDropProvider>
+          <ConversationContainer
+            owner={workspace}
+            conversationId={null}
+            user={user}
+          />
+        </FileDropProvider>
       </div>
     </>
   );

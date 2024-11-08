@@ -176,7 +176,7 @@
  *         userFavorite:
  *           type: boolean
  *           description: Status of the user favorite for this configuration
- *           example: "all_users"
+ *           example: true
  *         model:
  *           type: object
  *           properties:
@@ -345,6 +345,10 @@
  *           type: string
  *           description: The content type of the content fragment
  *           example: "text/plain"
+ *         fileId:
+ *           type: string
+ *           description: The id of the previously uploaded file
+ *           example: fil_123456
  *         context:
  *           $ref: '#/components/schemas/Context'
  *     Space:

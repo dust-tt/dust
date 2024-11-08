@@ -50,9 +50,11 @@ import { apiError } from "@app/logger/withlogging";
  *             properties:
  *               message:
  *                 $ref: '#/components/schemas/Message'
- *               contentFragment:
- *                 $ref: '#/components/schemas/ContentFragment'
- *                 description: The text content of an attached file (optional)
+ *               contentFragments:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/ContentFragment'
+ *                 description: The list of content fragments to attach to this conversation (optional)
  *               blocking:
  *                 type: boolean
  *                 description: Whether to wait for the agent to generate the initial message (if blocking = false, you will need to use streaming events to get the messages)
@@ -107,7 +109,14 @@ async function handler(
         });
       }
 
-      const { title, visibility, message, contentFragment, blocking } = r.data;
+      const {
+        title,
+        visibility,
+        message,
+        contentFragment,
+        contentFragments,
+        blocking,
+      } = r.data;
 
       if (message) {
         if (isEmptyString(message.context.username)) {
@@ -122,19 +131,26 @@ async function handler(
         }
       }
 
+      const resolvedFragments = contentFragments ?? [];
       if (contentFragment) {
-        if (
-          contentFragment.content.length === 0 ||
-          contentFragment.content.length > 128 * 1024
-        ) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "The content must be a non-empty string of less than 128kb.",
-            },
-          });
+        resolvedFragments.push(contentFragment);
+      }
+
+      for (const fragment of resolvedFragments) {
+        if (fragment.content) {
+          if (
+            fragment.content.length === 0 ||
+            fragment.content.length > 128 * 1024
+          ) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "The content must be a non-empty string of less than 128kb.",
+              },
+            });
+          }
         }
       }
 
@@ -146,27 +162,20 @@ async function handler(
       let newContentFragment: ContentFragmentType | null = null;
       let newMessage: UserMessageType | null = null;
 
-      if (contentFragment) {
-        const contentType = normalizeContentFragmentType({
-          contentType: contentFragment.contentType,
-          url: req.url,
+      for (const resolvedFragment of resolvedFragments) {
+        if (resolvedFragment.content) {
+          resolvedFragment.contentType = normalizeContentFragmentType({
+            contentType: resolvedFragment.contentType,
+            url: req.url,
+          });
+        }
+        const { context, ...cf } = resolvedFragment;
+        const cfRes = await postNewContentFragment(auth, conversation, cf, {
+          username: context?.username || null,
+          fullName: context?.fullName || null,
+          email: context?.email || null,
+          profilePictureUrl: context?.profilePictureUrl || null,
         });
-
-        const cfRes = await postNewContentFragment(
-          auth,
-          conversation,
-          {
-            ...contentFragment,
-            contentType,
-          },
-          {
-            username: contentFragment.context?.username || null,
-            fullName: contentFragment.context?.fullName || null,
-            email: contentFragment.context?.email || null,
-            profilePictureUrl:
-              contentFragment.context?.profilePictureUrl || null,
-          }
-        );
         if (cfRes.isErr()) {
           return apiError(req, res, {
             status_code: 400,

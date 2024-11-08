@@ -68,28 +68,83 @@ export type ConnectorsAPIErrorType = z.infer<
   typeof ConnectorsAPIErrorTypeSchema
 >;
 
+// Supported content types for plain text.
+const supportedPlainText = {
+  "application/msword": [".doc", ".docx"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+    ".doc",
+    ".docx",
+  ],
+  "application/pdf": [".pdf"],
+  "text/comma-separated-values": [".csv"],
+  "text/csv": [".csv"],
+  "text/markdown": [".md", ".markdown"],
+  "text/plain": [".txt"],
+  "text/tab-separated-values": [".tsv"],
+  "text/tsv": [".tsv"],
+} as const;
+
+// Supported content types for images.
+const supportedImage = {
+  "image/jpeg": [".jpg", ".jpeg"],
+  "image/png": [".png"],
+} as const;
+
+const supportedLegacy = {
+  "dust-application/slack": [],
+} as const;
+
+export type PlainTextContentType = keyof typeof supportedPlainText;
+export type ImageContentType = keyof typeof supportedImage;
+export type LegacyContentType = keyof typeof supportedLegacy;
+
+export const supportedPlainTextContentTypes = Object.keys(
+  supportedPlainText
+) as PlainTextContentType[];
+export const supportedImageContentTypes = Object.keys(
+  supportedImage
+) as ImageContentType[];
+export const supportedLegacyContentTypes = Object.keys(
+  supportedImage
+) as ImageContentType[];
+
+export type SupportedFileContentType =
+  | PlainTextContentType
+  | ImageContentType
+  | LegacyContentType;
+const supportedUploadableContentType = [
+  ...supportedPlainTextContentTypes,
+  ...supportedImageContentTypes,
+  ...supportedLegacyContentTypes,
+] as SupportedFileContentType[];
+
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema([
-  ...([
-    // Text content types.
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/pdf",
-    "text/comma-separated-values",
-    "text/csv",
-    "text/markdown",
-    "text/plain",
-    "text/tab-separated-values",
-    "text/tsv",
-
-    // Image content types.
-
-    "image/jpeg",
-    "image/png",
-
-    // Legacy
-    "dust-application/slack",
-  ] as const),
+  ...(Object.keys(supportedPlainText) as [keyof typeof supportedPlainText]),
+  ...(Object.keys(supportedImage) as [keyof typeof supportedImage]),
+  ...(Object.keys(supportedLegacy) as [keyof typeof supportedLegacy]),
 ]);
+
+export function isSupportedFileContentType(
+  contentType: string
+): contentType is SupportedFileContentType {
+  return supportedUploadableContentType.includes(
+    contentType as SupportedFileContentType
+  );
+}
+
+export function isSupportedPlainTextContentType(
+  contentType: string
+): contentType is PlainTextContentType {
+  return supportedPlainTextContentTypes.includes(
+    contentType as PlainTextContentType
+  );
+}
+
+export function isSupportedImageContentType(
+  contentType: string
+): contentType is ImageContentType {
+  return supportedImageContentTypes.includes(contentType as ImageContentType);
+}
 
 const UserMessageOriginSchema = FlexibleEnumSchema([
   "slack",
@@ -561,6 +616,8 @@ const LightWorkspaceSchema = z.object({
   whiteListedProviders: ModelProviderIdSchema.array().nullable(),
   defaultEmbeddingProvider: EmbeddingProviderIdSchema.nullable(),
 });
+
+export type LightWorkspaceType = z.infer<typeof LightWorkspaceSchema>;
 
 const WorkspaceSchema = LightWorkspaceSchema.extend({
   ssoEnforced: z.boolean().optional(),
@@ -1412,13 +1469,37 @@ export type PublicPostEditMessagesRequestBody = z.infer<
   typeof PublicPostEditMessagesRequestBodySchema
 >;
 
-export const PublicPostContentFragmentRequestBodySchema = z.object({
+export const PublicContentFragmentWithContentSchema = z.object({
   title: z.string(),
-  content: z.string(),
   url: z.string().nullable(),
+  content: z.string(),
   contentType: SupportedContentFragmentTypeSchema,
+  fileId: z.undefined().nullable(),
   context: ContentFragmentContextSchema.nullable(),
 });
+
+export type PublicContentFragmentWithContent = z.infer<
+  typeof PublicContentFragmentWithContentSchema
+>;
+
+export const PublicContentFragmentWithFileIdSchema = z.object({
+  title: z.string(),
+  url: z.string().nullable(),
+  content: z.undefined().nullable(),
+  contentType: z.undefined().nullable(),
+  fileId: z.string(),
+  context: ContentFragmentContextSchema.nullable(),
+});
+
+export type PublicContentFragmentWithFileId = z.infer<
+  typeof PublicContentFragmentWithFileIdSchema
+>;
+
+export const PublicPostContentFragmentRequestBodySchema = z.union([
+  PublicContentFragmentWithContentSchema,
+  PublicContentFragmentWithFileIdSchema,
+]);
+
 export type PublicPostContentFragmentRequestBody = z.infer<
   typeof PublicPostContentFragmentRequestBodySchema
 >;
@@ -1447,13 +1528,17 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
       z.undefined(),
     ]),
     contentFragment: z.union([
-      z.object({
-        title: z.string(),
-        content: z.string(),
-        url: z.string().nullable(),
-        contentType: SupportedContentFragmentTypeSchema,
-        context: ContentFragmentContextSchema.nullable(),
-      }),
+      PublicContentFragmentWithContentSchema,
+      PublicContentFragmentWithFileIdSchema,
+      z.undefined(),
+    ]),
+    contentFragments: z.union([
+      z
+        .union([
+          PublicContentFragmentWithContentSchema,
+          PublicContentFragmentWithFileIdSchema,
+        ])
+        .array(),
       z.undefined(),
     ]),
   }),
@@ -1842,6 +1927,53 @@ export const GetWorkspaceUsageRequestSchema = z.union([
 
 export type GetWorkspaceUsageRequestType = z.infer<
   typeof GetWorkspaceUsageRequestSchema
+>;
+
+export const FileUploadUrlRequestSchema = z.object({
+  contentType: z.string(),
+  fileName: z.string(),
+  fileSize: z.number(),
+  useCase: z.union([z.literal("conversation"), z.literal("avatar")]),
+});
+export type FileUploadUrlRequestType = z.infer<
+  typeof FileUploadUrlRequestSchema
+>;
+
+const FileTypeStatusSchema = FlexibleEnumSchema(["created", "failed", "ready"]);
+const FileTypeUseCaseSchema = FlexibleEnumSchema([
+  "conversation",
+  "avatar",
+  "tool_output",
+]);
+
+export const FileTypeSchema = z.object({
+  contentType: z.string(),
+  downloadUrl: z.string().optional(),
+  fileName: z.string(),
+  fileSize: z.number(),
+  id: z.string(),
+  status: FileTypeStatusSchema,
+  uploadUrl: z.string().optional(),
+  publicUrl: z.string().optional(),
+  useCase: FileTypeUseCaseSchema,
+});
+export type FileType = z.infer<typeof FileTypeSchema>;
+
+export const FileTypeWithUploadUrlSchema = FileTypeSchema.extend({
+  uploadUrl: z.string(),
+});
+
+export const FileUploadRequestResponseSchema = z.object({
+  file: FileTypeWithUploadUrlSchema,
+});
+export type FileUploadRequestResponseType = z.infer<
+  typeof FileUploadRequestResponseSchema
+>;
+export const FileUploadedRequestResponseSchema = z.object({
+  file: FileTypeSchema,
+});
+export type FileUploadedRequestResponseType = z.infer<
+  typeof FileUploadedRequestResponseSchema
 >;
 
 export const MeResponseSchema = z.object({

@@ -69,14 +69,23 @@ chrome.runtime.onMessage.addListener(
             }
 
             try {
-              const [result] = await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
-                func: () => document.documentElement.innerText,
-              });
+              const capture = message.includeScreenshot
+                ? await chrome.tabs.captureVisibleTab()
+                : undefined;
+
+              const [result] = message.includeContent
+                ? await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: () => document.documentElement.innerText,
+                  })
+                : [undefined];
               sendResponse({
                 title: tab.title || "",
                 url: tab.url || "",
-                content: result.result ?? "no content.",
+                content: message.includeContent
+                  ? (result?.result ?? "no content.")
+                  : undefined,
+                screenshot: capture,
               });
             } catch (error) {
               log("Error getting active tab content:", error);

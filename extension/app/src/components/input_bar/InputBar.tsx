@@ -1,14 +1,19 @@
+import type { ConversationPublicType } from "@dust-tt/client";
 import type {
   AgentMention,
+  LightAgentConfigurationType,
   LightWorkspaceType,
   MentionType,
+  UploadedContentFragment,
 } from "@dust-tt/types";
-import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { compareAgentsForSort } from "@dust-tt/types";
 import { usePublicAgentConfigurations } from "@extension/components/assistants/usePublicAgentConfigurations";
+import { useFileDrop } from "@extension/components/conversation/FileUploaderContext";
+import { InputBarCitations } from "@extension/components/input_bar/InputBarCitations";
 import type { InputBarContainerProps } from "@extension/components/input_bar/InputBarContainer";
 import { InputBarContainer } from "@extension/components/input_bar/InputBarContainer";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
+import { useFileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { classNames } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -43,19 +48,41 @@ export function AssistantInputBar({
   stickyMentions,
   additionalAgentConfiguration,
   disableAutoFocus = false,
+  conversation,
   isTabIncluded,
   toggleIncludeTab,
 }: {
   owner: LightWorkspaceType;
-  onSubmit: (input: string, mentions: MentionType[]) => void;
+  onSubmit: (
+    input: string,
+    mentions: MentionType[],
+    contentFragments: UploadedContentFragment[]
+  ) => void;
   stickyMentions?: AgentMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
   disableAutoFocus?: boolean;
+  conversation?: ConversationPublicType;
   isTabIncluded: boolean;
   toggleIncludeTab: () => void;
 }) {
   const { agentConfigurations: baseAgentConfigurations } =
     usePublicAgentConfigurations();
+
+  const fileUploaderService = useFileUploaderService({
+    owner,
+  });
+
+  const { droppedFiles, setDroppedFiles } = useFileDrop();
+
+  useEffect(() => {
+    if (droppedFiles.length > 0) {
+      // Handle the dropped files.
+      void fileUploaderService.handleFilesUpload(droppedFiles);
+
+      // Clear the dropped files after handling them.
+      setDroppedFiles([]);
+    }
+  }, [droppedFiles, setDroppedFiles, fileUploaderService]);
 
   const agentConfigurations = useMemo(() => {
     if (
@@ -103,7 +130,7 @@ export function AssistantInputBar({
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
 
-  const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = (
+  const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = async (
     isEmpty,
     textAndMentions,
     resetEditorText
@@ -116,9 +143,29 @@ export function AssistantInputBar({
     const mentions: MentionType[] = [
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
+    const newFiles = fileUploaderService.getFileBlobs().map((cf) => ({
+      title: cf.filename,
+      fileId: cf.fileId,
+    }));
 
-    onSubmit(text, mentions);
     resetEditorText();
+
+    if (isTabIncluded) {
+      const files = await fileUploaderService.uploadContentTab(
+        conversation,
+        false
+      );
+      if (files) {
+        newFiles.push(
+          ...files.map((cf) => ({
+            title: cf.filename,
+            fileId: cf.fileId || "",
+          }))
+        );
+      }
+    }
+    onSubmit(text, mentions, newFiles);
+    fileUploaderService.resetUpload();
   };
 
   return (
@@ -135,6 +182,8 @@ export function AssistantInputBar({
             )}
           >
             <div className="relative flex w-full flex-1 flex-col">
+              <InputBarCitations fileUploaderService={fileUploaderService} />
+
               <InputBarContainer
                 disableAutoFocus={disableAutoFocus}
                 allAssistants={activeAgents}
@@ -145,6 +194,7 @@ export function AssistantInputBar({
                 stickyMentions={stickyMentions}
                 isTabIncluded={isTabIncluded}
                 toggleIncludeTab={toggleIncludeTab}
+                fileUploaderService={fileUploaderService}
               />
             </div>
           </div>

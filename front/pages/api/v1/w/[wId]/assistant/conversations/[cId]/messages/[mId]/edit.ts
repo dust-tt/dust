@@ -21,7 +21,70 @@ export const PostEditRequestBodySchema = t.type({
  * @swagger
  * /api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/edit:
  *   post:
- *     summary: Edit a message
+ *     summary: Edit an existing message in a conversation
+ *     parameters:
+ *       - name: wId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Workspace ID
+ *       - name: cId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Conversation ID
+ *       - name: mId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Message ID to edit
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *               - mentions
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 description: New content for the message
+ *               mentions:
+ *                 type: array
+ *                 description: List of agent mentions in the message
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - configurationId
+ *                   properties:
+ *                     configurationId:
+ *                       type: string
+ *                       description: ID of the mentioned agent configuration
+ *     responses:
+ *       200:
+ *         description: Message successfully edited
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: object
+ *                   description: The edited user message
+ *                 agentMessages:
+ *                   type: array
+ *                   description: Optional array of agent messages generated in response
+ *       400:
+ *         description: Invalid request (message not found or not a user message)
+ *       405:
+ *         description: Method not supported
  */
 
 async function handler(

@@ -83,7 +83,7 @@ export async function getContentFragmentBlob(
     }
 
     // Give priority to the URL if it is provided.
-    const sourceUrl = url ?? file.getPublicUrl(auth);
+    const sourceUrl = url ?? file.getPrivateUrl(auth);
     return new Ok({
       contentType: file.contentType,
       fileId: file.id,

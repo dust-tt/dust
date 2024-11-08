@@ -181,10 +181,16 @@ export class FileResource extends BaseResource<FileModel> {
 
   // Cloud storage logic.
 
-  getPublicUrl(auth: Authenticator): string {
+  getPrivateUrl(auth: Authenticator): string {
     const owner = auth.getNonNullableWorkspace();
 
     return `${config.getClientFacingUrl()}/api/w/${owner.sId}/files/${this.sId}`;
+  }
+
+  getPublicUrl(auth: Authenticator): string {
+    const owner = auth.getNonNullableWorkspace();
+
+    return `${config.getClientFacingUrl()}/api/v1/w/${owner.sId}/files/${this.sId}`;
   }
 
   getCloudStoragePath(auth: Authenticator, version: FileVersion): string {
@@ -291,7 +297,7 @@ export class FileResource extends BaseResource<FileModel> {
     };
 
     if (this.isReady) {
-      blob.downloadUrl = this.getPublicUrl(auth);
+      blob.downloadUrl = this.getPrivateUrl(auth);
     }
 
     if (this.useCase === "avatar") {
@@ -303,6 +309,37 @@ export class FileResource extends BaseResource<FileModel> {
 
   toJSONWithUploadUrl(auth: Authenticator): FileTypeWithUploadUrl {
     const blob = this.toJSON(auth);
+
+    return {
+      ...blob,
+      uploadUrl: this.getPrivateUrl(auth),
+    };
+  }
+
+  toPublicJSON(auth: Authenticator): FileType {
+    const blob: FileType = {
+      contentType: this.contentType,
+      fileName: this.fileName,
+      fileSize: this.fileSize,
+      id: this.sId,
+      status: this.status,
+      useCase: this.useCase,
+    };
+
+    if (this.isReady) {
+      // TODO(thomas): This should be a public URL, need to solve authorization
+      blob.downloadUrl = this.getPrivateUrl(auth);
+    }
+
+    if (this.useCase === "avatar") {
+      blob.publicUrl = this.getPublicUrlForDownload(auth);
+    }
+
+    return blob;
+  }
+
+  toPublicJSONWithUploadUrl(auth: Authenticator): FileTypeWithUploadUrl {
+    const blob = this.toPublicJSON(auth);
 
     return {
       ...blob,

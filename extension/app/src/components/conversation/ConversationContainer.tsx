@@ -3,10 +3,12 @@ import type {
   AgentMention,
   LightWorkspaceType,
   MentionType,
+  UploadedContentFragment,
 } from "@dust-tt/types";
 import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
 import { ReachedLimitPopup } from "@extension/components/conversation/ReachedLimitPopup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
+import { DropzoneContainer } from "@extension/components/DropzoneContainer";
 import { AssistantInputBar } from "@extension/components/input_bar/InputBar";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
@@ -18,7 +20,6 @@ import {
 } from "@extension/lib/conversation";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { getRandomGreetingForName } from "@extension/lib/greetings";
-import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import type { StoredUser } from "@extension/lib/storage";
 import {
   getConversationContext,
@@ -89,20 +90,11 @@ export function ConversationContainer({
     }
   }, [activeConversationId, navigate]);
 
-  const getIncludeCurrentTab = async () => {
-    const backgroundRes = await sendGetActiveTabMessage();
-    if (!backgroundRes.content || !backgroundRes.url) {
-      console.error("Failed to get content from the current tab.");
-      return null;
-    }
-    return {
-      title: backgroundRes.title,
-      content: backgroundRes.content,
-      url: backgroundRes.url,
-    };
-  };
-
-  const handlePostMessage = async (input: string, mentions: MentionType[]) => {
+  const handlePostMessage = async (
+    input: string,
+    mentions: MentionType[],
+    contentFragments: UploadedContentFragment[]
+  ) => {
     if (!activeConversationId) {
       return null;
     }
@@ -110,26 +102,11 @@ export function ConversationContainer({
     try {
       await mutateConversation(
         async (currentConversation) => {
-          const tabContent = includeContent
-            ? await getIncludeCurrentTab()
-            : null;
-          // Check if the content is already uploaded - compare the title and the size of the content.
-          const alreadyUploaded =
-            tabContent &&
-            conversation?.content
-              .map((m) => m[m.length - 1])
-              .some(
-                (m) =>
-                  m.type === "content_fragment" &&
-                  m.title === tabContent.title &&
-                  m.textBytes === new Blob([tabContent.content]).size
-              );
-
           const result = await postMessage({
             dustAPI,
             conversationId: activeConversationId,
             messageData,
-            tabContent: alreadyUploaded ? null : tabContent,
+            contentFragments,
           });
 
           if (result.isOk()) {
@@ -180,15 +157,18 @@ export function ConversationContainer({
 
   const { submit: handlePostConversation } = useSubmitFunction(
     useCallback(
-      async (input: string, mentions: MentionType[]) => {
-        const tabContent = includeContent ? await getIncludeCurrentTab() : null;
+      async (
+        input: string,
+        mentions: MentionType[],
+        contentFragments: UploadedContentFragment[]
+      ) => {
         const conversationRes = await postConversation({
           dustAPI,
           messageData: {
             input,
             mentions,
           },
-          tabContent,
+          contentFragments,
         });
         if (conversationRes.isErr()) {
           if (conversationRes.error.type === "plan_limit_reached_error") {
@@ -224,7 +204,10 @@ export function ConversationContainer({
   }, [user]);
 
   return (
-    <>
+    <DropzoneContainer
+      description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
+      title="Attach files to the conversation"
+    >
       {activeConversationId && (
         <ConversationViewer
           conversationId={activeConversationId}
@@ -248,6 +231,7 @@ export function ConversationContainer({
           stickyMentions={stickyMentions}
           isTabIncluded={!!includeContent}
           toggleIncludeTab={() => setIncludeContent((v) => !v)}
+          conversation={conversation ?? undefined}
         />
       </div>
       <ReachedLimitPopup
@@ -255,6 +239,6 @@ export function ConversationContainer({
         onClose={() => setPlanLimitReached(false)}
         isTrialing={false} // TODO(Ext): Properly handle this from loading the subscription.
       />
-    </>
+    </DropzoneContainer>
   );
 }

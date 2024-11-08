@@ -95,32 +95,30 @@ async function handler(
         });
       }
 
-      const { content, contentType } = r.data;
-
-      if (content.length === 0 || content.length > 128 * 1024) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "The content must be a non-empty string of less than 128kb.",
-          },
+      if (r.data.content) {
+        const { content, contentType } = r.data;
+        if (content.length === 0 || content.length > 128 * 1024) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The content must be a non-empty string of less than 128kb.",
+            },
+          });
+        }
+        const normalizedContentType = normalizeContentFragmentType({
+          contentType,
+          url: req.url,
         });
+        r.data.contentType = normalizedContentType;
       }
-
-      const normalizedContentType = normalizeContentFragmentType({
-        contentType,
-        url: req.url,
-      });
-
+      const { context, ...contentFragment } = r.data;
       const contentFragmentRes = await postNewContentFragment(
         auth,
         conversation,
-        {
-          ...r.data,
-          contentType: normalizedContentType,
-        },
-        r.data.context
+        contentFragment,
+        context
       );
       if (contentFragmentRes.isErr()) {
         return apiError(req, res, {
@@ -131,10 +129,8 @@ async function handler(
           },
         });
       }
-
       res.status(200).json({ contentFragment: contentFragmentRes.value });
       return;
-
     default:
       return apiError(req, res, {
         status_code: 405,

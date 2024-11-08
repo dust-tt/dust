@@ -4,6 +4,7 @@ import type {
   DustAPI,
   UserMessageType,
 } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type {
   AgentMessageNewEvent,
   ContentFragmentType,
@@ -12,11 +13,12 @@ import type {
   MentionType,
   Result,
   SubmitMessageError,
+  UploadedContentFragment,
   UserMessageNewEvent,
   UserMessageWithRankType,
   UserType,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import { getAccessToken, getStoredUser } from "@extension/lib/storage";
 
 export type MessageWithContentFragmentsType =
@@ -111,7 +113,7 @@ export async function postConversation({
   dustAPI,
   messageData,
   visibility = "unlisted",
-  tabContent,
+  contentFragments,
 }: {
   dustAPI: DustAPI;
   messageData: {
@@ -119,11 +121,7 @@ export async function postConversation({
     mentions: MentionType[];
   };
   visibility?: ConversationVisibility;
-  tabContent: {
-    title: string;
-    content: string;
-    url: string;
-  } | null;
+  contentFragments: UploadedContentFragment[];
 }): Promise<Result<ConversationPublicType, SubmitMessageError>> {
   const { input, mentions } = messageData;
   const user = await getStoredUser();
@@ -153,20 +151,17 @@ export async function postConversation({
       },
       mentions,
     },
-    contentFragment: tabContent
-      ? {
-          title: tabContent.title,
-          content: tabContent.content,
-          url: tabContent.url,
-          contentType: "text/plain",
-          context: {
-            username: user.username,
-            email: user.email,
-            fullName: user.fullName,
-            profilePictureUrl: user.image,
-          },
-        }
-      : undefined,
+    contentFragments: contentFragments.map((contentFragment) => ({
+      title: contentFragment.title,
+      fileId: contentFragment.fileId,
+      url: null,
+      context: {
+        username: user.username,
+        email: user.email,
+        fullName: user.fullName,
+        profilePictureUrl: user.image,
+      },
+    })),
     blocking: false, // We want streaming.
   });
 
@@ -190,7 +185,7 @@ export async function postMessage({
   dustAPI,
   conversationId,
   messageData,
-  tabContent,
+  contentFragments,
 }: {
   dustAPI: DustAPI;
   conversationId: string;
@@ -198,11 +193,7 @@ export async function postMessage({
     input: string;
     mentions: MentionType[];
   };
-  tabContent: {
-    title: string;
-    content: string;
-    url: string;
-  } | null;
+  contentFragments: UploadedContentFragment[];
 }): Promise<Result<{ message: UserMessageType }, SubmitMessageError>> {
   const { input, mentions } = messageData;
   const user = await getStoredUser();
@@ -216,14 +207,13 @@ export async function postMessage({
     });
   }
 
-  if (tabContent) {
+  for (const contentFragment of contentFragments) {
     await dustAPI.postContentFragment({
       conversationId,
       contentFragment: {
-        title: tabContent.title,
-        content: tabContent.content,
-        url: tabContent.url,
-        contentType: "text/plain",
+        title: contentFragment.title,
+        fileId: contentFragment.fileId,
+        url: null,
         context: {
           username: user.username,
           email: user.email,
@@ -317,3 +307,23 @@ export async function retryMessage({
 
   return new Ok(await mRes.json());
 }
+
+export const getIncludeCurrentTab = async (
+  includeContent: boolean = true,
+  includeScreenshot: boolean = false
+) => {
+  const backgroundRes = await sendGetActiveTabMessage(
+    includeContent,
+    includeScreenshot
+  );
+  if (
+    (includeContent && !backgroundRes.content) ||
+    (includeScreenshot && !backgroundRes.screenshot) ||
+    !backgroundRes.url ||
+    !backgroundRes.title
+  ) {
+    console.error("Failed to get content from the current tab.");
+    return new Err(new Error("Failed to get content from the current tab."));
+  }
+  return new Ok(backgroundRes);
+};
