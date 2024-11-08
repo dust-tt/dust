@@ -617,6 +617,8 @@ const LightWorkspaceSchema = z.object({
   defaultEmbeddingProvider: EmbeddingProviderIdSchema.nullable(),
 });
 
+export type LightWorkspaceType = z.infer<typeof LightWorkspaceSchema>;
+
 const WorkspaceSchema = LightWorkspaceSchema.extend({
   ssoEnforced: z.boolean().optional(),
 });

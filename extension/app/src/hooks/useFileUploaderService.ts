@@ -1,5 +1,7 @@
 import type {
   ConversationPublicType,
+  LightWorkspaceType,
+  Result,
   SupportedFileContentType,
 } from "@dust-tt/client";
 import {
@@ -9,8 +11,6 @@ import {
   Ok,
 } from "@dust-tt/client";
 import { useSendNotification } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, Result } from "@dust-tt/types";
-import { MAX_FILE_SIZES } from "@dust-tt/types";
 import { getIncludeCurrentTab } from "@extension/lib/conversation";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { getMimeTypeFromFile } from "@extension/lib/file";
@@ -41,6 +41,11 @@ class FileBlobUploadError extends Error {
     super(msg);
   }
 }
+
+export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
+  plainText: 30 * 1024 * 1024, // 30MB.
+  image: 5 * 1024 * 1024, // 5 MB
+};
 
 const COMBINED_MAX_TEXT_FILES_SIZE = MAX_FILE_SIZES["plainText"] * 2;
 const COMBINED_MAX_IMAGE_FILES_SIZE = MAX_FILE_SIZES["image"] * 5;
