@@ -95,6 +95,45 @@ async function handleZendeskRateLimit(response: Response): Promise<boolean> {
 }
 
 /**
+ * Runs a GET request to the Zendesk API with a maximum number of retries before throwing.
+ */
+async function fetchWithRetries({
+  url,
+  accessToken,
+}: {
+  url: string;
+  accessToken: string;
+}): Promise<Response> {
+  const runFetch = async () =>
+    fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+  let rawResponse = await runFetch();
+
+  let retryCount = 0;
+  while (await handleZendeskRateLimit(rawResponse)) {
+    rawResponse = await runFetch();
+    retryCount++;
+    if (retryCount >= ZENDESK_RATE_LIMIT_MAX_RETRIES) {
+      logger.info(
+        { response: rawResponse },
+        `[Zendesk] Rate limit hit more than ${ZENDESK_RATE_LIMIT_MAX_RETRIES}, aborting.`
+      );
+      throw new Error(
+        `Zendesk rate limit hit more than ${ZENDESK_RATE_LIMIT_MAX_RETRIES} times, aborting.`
+      );
+    }
+  }
+
+  return rawResponse;
+}
+
+/**
  * Fetches a batch of articles in a category from the Zendesk API.
  */
 export async function fetchZendeskArticlesInCategory({
@@ -117,35 +156,13 @@ export async function fetchZendeskArticlesInCategory({
     pageSize <= 100,
     `pageSize must be at most 100 (current value: ${pageSize})` // https://developer.zendesk.com/api-reference/introduction/pagination
   );
-  const runFetch = async () =>
-    fetch(
+
+  const rawResponse = await fetchWithRetries({
+    url:
       `https://${subdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}/articles?page[size]=${pageSize}` +
-        (cursor ? `&page[after]=${cursor}` : ""),
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-  let rawResponse = await runFetch();
-
-  let retryCount = 0;
-  while (await handleZendeskRateLimit(rawResponse)) {
-    rawResponse = await runFetch();
-    retryCount++;
-    if (retryCount >= ZENDESK_RATE_LIMIT_MAX_RETRIES) {
-      logger.info(
-        { response: rawResponse },
-        `[Zendesk] Rate limit hit more than ${ZENDESK_RATE_LIMIT_MAX_RETRIES}, aborting.`
-      );
-      throw new Error(
-        `Zendesk rate limit hit more than ${ZENDESK_RATE_LIMIT_MAX_RETRIES} times, aborting.`
-      );
-    }
-  }
+      (cursor ? `&page[after]=${cursor}` : ""),
+    accessToken,
+  });
 
   const text = await rawResponse.text();
   const response = JSON.parse(text);
