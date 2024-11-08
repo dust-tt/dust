@@ -16,8 +16,62 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 /**
- * @ignoreswagger
- * todo: Document this endpoint.
+ * @swagger
+ * /api/v1/w/{wId}/files:
+ *   post:
+ *     summary: Create a file upload URL
+ *     parameters:
+ *       - name: wId
+ *         in: path
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - contentType
+ *               - fileName
+ *               - fileSize
+ *               - useCase
+ *             properties:
+ *               contentType:
+ *                 type: string
+ *                 description: MIME type of the file
+ *               fileName:
+ *                 type: string
+ *                 description: Name of the file
+ *               fileSize:
+ *                 type: integer
+ *                 description: Size of the file in bytes
+ *               useCase:
+ *                 type: string
+ *                 description: Intended use case for the file, use "conversation"
+ *     responses:
+ *       200:
+ *         description: File upload URL created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 file:
+ *                   type: object
+ *                   properties:
+ *                     uploadUrl:
+ *                       type: string
+ *       400:
+ *         description: Invalid request or unsupported file type
+ *       401:
+ *         description: Unauthorized
+ *       429:
+ *         description: Rate limit exceeded
  */
 async function handler(
   req: NextApiRequest,
