@@ -164,6 +164,18 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return new this(this.model, brand.get());
   }
 
+  async grantHelpCenterPermissions(): Promise<void> {
+    if (this.helpCenterPermission === "none") {
+      await this.update({ helpCenterPermission: "read" });
+    }
+  }
+
+  async grantTicketsPermissions(): Promise<void> {
+    if (this.ticketsPermission === "none") {
+      await this.update({ ticketsPermission: "read" });
+    }
+  }
+
   async revokeAllPermissions(): Promise<void> {
     await this.revokeHelpCenterPermissions();
     await this.revokeTicketsPermissions();
@@ -558,8 +570,9 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
 
-      name: this.name,
+      subject: this.subject,
       url: this.url,
+
       ticketId: this.ticketId,
       brandId: this.brandId,
       permission: this.permission,
@@ -574,7 +587,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       internalId: getTicketInternalId(connectorId, this.ticketId),
       parentInternalId: getTicketsInternalId(connectorId, this.brandId),
       type: "file",
-      title: this.name,
+      title: this.subject,
       sourceUrl: this.url,
       expandable: false,
       permission: this.permission,

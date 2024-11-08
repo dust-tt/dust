@@ -15,6 +15,9 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const turndownService = new TurndownService();
 
+/**
+ * Syncs an article from Zendesk to the postgres db and to the data sources.
+ */
 export async function syncArticle({
   connectorId,
   article,
@@ -36,64 +39,51 @@ export async function syncArticle({
     connectorId,
     articleId: article.id,
   });
-  const createdAtDate = new Date(article.created_at);
   const updatedAtDate = new Date(article.updated_at);
-
-  const articleUpdatedAtDate = new Date(article.updated_at);
 
   const shouldPerformUpsertion =
     forceResync ||
     !articleInDb ||
     !articleInDb.lastUpsertedTs ||
-    articleInDb.lastUpsertedTs < articleUpdatedAtDate; // upserting if the article was updated after the last upsert
+    articleInDb.lastUpsertedTs < updatedAtDate; // upserting if the article was updated after the last upsert
 
+  const updatableFields = {
+    createdAt: new Date(article.created_at),
+    updatedAt: updatedAtDate,
+    categoryId: category.categoryId, // an article can be moved from one category to another, which does not apply to brands
+    name: article.name,
+    url: article.html_url,
+  };
+  // we either create a new article or update the existing one
   if (!articleInDb) {
     articleInDb = await ZendeskArticleResource.makeNew({
       blob: {
-        createdAt: createdAtDate,
-        updatedAt: updatedAtDate,
+        ...updatableFields,
         articleId: article.id,
         brandId: category.brandId,
-        categoryId: category.categoryId,
         permission: "read",
-        name: article.name,
-        url: article.html_url,
         connectorId,
       },
     });
   } else {
-    await articleInDb.update({
-      createdAt: createdAtDate,
-      updatedAt: updatedAtDate,
-      categoryId: category.categoryId, // an article can be moved from one category to another, which does not apply to brands
-      name: article.name,
-      url: article.url,
-    });
+    await articleInDb.update(updatableFields);
   }
 
+  logger.info(
+    {
+      ...loggerArgs,
+      connectorId,
+      articleId: article.id,
+      articleUpdatedAt: updatedAtDate,
+      dataSourceLastUpsertedAt: articleInDb?.lastUpsertedTs ?? null,
+    },
+    shouldPerformUpsertion
+      ? "[Zendesk] Article to sync."
+      : "[Zendesk] Article already up to date. Skipping sync."
+  );
+
   if (!shouldPerformUpsertion) {
-    logger.info(
-      {
-        ...loggerArgs,
-        connectorId,
-        articleId: article.id,
-        articleUpdatedAt: articleUpdatedAtDate,
-        dataSourceLastUpsertedAt: articleInDb?.lastUpsertedTs ?? null,
-      },
-      "[Zendesk] Article already up to date. Skipping sync."
-    );
     return;
-  } else {
-    logger.info(
-      {
-        ...loggerArgs,
-        connectorId,
-        articleId: article.id,
-        articleUpdatedAt: articleUpdatedAtDate,
-        dataSourceLastUpsertedAt: articleInDb?.lastUpsertedTs ?? null,
-      },
-      "[Zendesk] Article to sync."
-    );
   }
 
   const categoryContent =

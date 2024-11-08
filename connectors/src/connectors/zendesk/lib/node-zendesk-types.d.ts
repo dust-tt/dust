@@ -113,6 +113,64 @@ interface ZendeskFetchedTicket {
   };
 }
 
+interface ZendeskFetchedTicketComment {
+  id: number;
+  body: string;
+  html_body: string;
+  plain_body: string;
+  public: boolean;
+  author_id: number;
+  created_at: string;
+  attachments: {
+    id: number;
+    file_name: string;
+    content_url: string;
+  }[];
+}
+
+interface ZendeskFetchedUser {
+  active: boolean;
+  alias: string;
+  chat_only: boolean;
+  created_at: string; // ISO 8601 date string
+  custom_role_id: number;
+  default_group_id: number;
+  details: string;
+  email: string;
+  external_id: string;
+  id: number;
+  last_login_at: string; // ISO 8601 date string
+  locale: string;
+  locale_id: number;
+  moderator: boolean;
+  name: string;
+  notes: string;
+  only_private_comments: boolean;
+  organization_id: number;
+  phone: string;
+  photo: {
+    url: string;
+    id: number;
+    file_name: string;
+    content_url: string;
+    mapped_content_url: string;
+  };
+  report_csv: boolean;
+  restricted_agent: boolean;
+  role: "end-user" | "agent" | "admin";
+  shared: boolean;
+  shared_agent: boolean;
+  signature: string;
+  suspended: boolean;
+  tags: string[];
+  ticket_restriction: "requested" | "none" | "organization";
+  time_zone: string;
+  two_factor_auth_enabled: boolean;
+  updated_at: string; // ISO 8601 date string
+  url: string;
+  verified: boolean;
+}
+
 declare module "node-zendesk" {
   interface Client {
     config: ZendeskClientOptions;
@@ -151,6 +209,13 @@ declare module "node-zendesk" {
       show: (
         ticketId: number
       ) => Promise<{ response: Response; result: ZendeskFetchedTicket }>;
+      getComments: (ticketId: number) => Promise<ZendeskFetchedTicketComment[]>;
+    };
+    users: {
+      list: () => Promise<ZendeskFetchedUser[]>;
+      show: (
+        userId: number
+      ) => Promise<{ response: Response; result: ZendeskFetchedUser }>;
     };
   }
 
