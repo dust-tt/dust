@@ -146,7 +146,7 @@ ${ticket.description || "No initial description"}
 Conversation:
 ${comments
   .map((comment) => {
-    const author = users.get(comment.author_id);
+    const author = users.find((user) => user.id === comment.author_id);
     return `
 [${new Date(comment.created_at).toISOString()}] ${
       author ? `${author.name} (${author.email})` : "Unknown User"
