@@ -68,28 +68,83 @@ export type ConnectorsAPIErrorType = z.infer<
   typeof ConnectorsAPIErrorTypeSchema
 >;
 
+// Supported content types for plain text.
+const supportedPlainText = {
+  "application/msword": [".doc", ".docx"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+    ".doc",
+    ".docx",
+  ],
+  "application/pdf": [".pdf"],
+  "text/comma-separated-values": [".csv"],
+  "text/csv": [".csv"],
+  "text/markdown": [".md", ".markdown"],
+  "text/plain": [".txt"],
+  "text/tab-separated-values": [".tsv"],
+  "text/tsv": [".tsv"],
+} as const;
+
+// Supported content types for images.
+const supportedImage = {
+  "image/jpeg": [".jpg", ".jpeg"],
+  "image/png": [".png"],
+} as const;
+
+const supportedLegacy = {
+  "dust-application/slack": [],
+} as const;
+
+export type PlainTextContentType = keyof typeof supportedPlainText;
+export type ImageContentType = keyof typeof supportedImage;
+export type LegacyContentType = keyof typeof supportedLegacy;
+
+export const supportedPlainTextContentTypes = Object.keys(
+  supportedPlainText
+) as PlainTextContentType[];
+export const supportedImageContentTypes = Object.keys(
+  supportedImage
+) as ImageContentType[];
+export const supportedLegacyContentTypes = Object.keys(
+  supportedImage
+) as ImageContentType[];
+
+export type SupportedFileContentType =
+  | PlainTextContentType
+  | ImageContentType
+  | LegacyContentType;
+const supportedUploadableContentType = [
+  ...supportedPlainTextContentTypes,
+  ...supportedImageContentTypes,
+  ...supportedLegacyContentTypes,
+] as SupportedFileContentType[];
+
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema([
-  ...([
-    // Text content types.
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/pdf",
-    "text/comma-separated-values",
-    "text/csv",
-    "text/markdown",
-    "text/plain",
-    "text/tab-separated-values",
-    "text/tsv",
-
-    // Image content types.
-
-    "image/jpeg",
-    "image/png",
-
-    // Legacy
-    "dust-application/slack",
-  ] as const),
+  ...(Object.keys(supportedPlainText) as [keyof typeof supportedPlainText]),
+  ...(Object.keys(supportedImage) as [keyof typeof supportedImage]),
+  ...(Object.keys(supportedLegacy) as [keyof typeof supportedLegacy]),
 ]);
+
+export function isSupportedFileContentType(
+  contentType: string
+): contentType is SupportedFileContentType {
+  return supportedUploadableContentType.includes(
+    contentType as SupportedFileContentType
+  );
+}
+
+export function isSupportedPlainTextContentType(
+  contentType: string
+): contentType is PlainTextContentType {
+  return supportedPlainTextContentTypes.includes(
+    contentType as PlainTextContentType
+  );
+}
+
+export function isSupportedImageContentType(
+  contentType: string
+): contentType is ImageContentType {
+  return supportedImageContentTypes.includes(contentType as ImageContentType);
+}
 
 const UserMessageOriginSchema = FlexibleEnumSchema([
   "slack",
