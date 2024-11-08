@@ -35,7 +35,7 @@ const textVariants = cva("s-absolute s-inset-0", {
 
 interface AnimatedShinyTextProps {
   children: ReactNode;
-  variant?: keyof VariantProps<typeof textVariants>["variant"];
+  variant?: VariantProps<typeof textVariants>["variant"];
   className?: string;
 }
 
