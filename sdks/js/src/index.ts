@@ -880,7 +880,7 @@ export class DustAPI {
   ) {
     const res = await this.request({
       method: "PATCH",
-      path: `data_source_views/${dataSourceView.id}`,
+      path: `data_source_views/${dataSourceView.sId}`,
       body: patchData,
     });
 
