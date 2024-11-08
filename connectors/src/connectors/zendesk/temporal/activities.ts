@@ -9,7 +9,6 @@ import {
   changeZendeskClientSubdomain,
   createZendeskClient,
   fetchZendeskArticlesInCategory,
-  getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { syncArticle } from "@connectors/connectors/zendesk/temporal/sync_article";
 import { syncTicket } from "@connectors/connectors/zendesk/temporal/sync_ticket";
@@ -343,11 +342,10 @@ export async function syncZendeskArticleBatchActivity({
     connector.connectionId
   );
   const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
-  const brandSubdomain = await getZendeskBrandSubdomain(zendeskApiClient, {
+  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
     brandId: category.brandId,
     connectorId,
   });
-  zendeskApiClient.config.subdomain = brandSubdomain;
 
   const {
     articles,
