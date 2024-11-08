@@ -1,10 +1,13 @@
 import {
   AttachmentIcon,
   Button,
+  DocumentIcon,
+  DocumentTextIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  ImageIcon,
 } from "@dust-tt/sparkle";
 import { supportedFileExtensions } from "@dust-tt/types";
 import type { EditorService } from "@extension/components/input_bar/editor/useCustomEditor";
@@ -53,19 +56,19 @@ export const AttachFragment = ({
         </DropdownMenuTrigger>
         <DropdownMenuContent className="min-w-[300px]">
           <DropdownMenuItem
-            icon={AttachmentIcon}
+            icon={DocumentIcon}
             label={"Attach file"}
             onClick={async () => {
               fileInputRef.current?.click();
             }}
           />
           <DropdownMenuItem
-            icon={AttachmentIcon}
+            icon={DocumentTextIcon}
             label={"Attach page content"}
             onClick={() => uploadContentTab(fileUploaderService)}
           />
           <DropdownMenuItem
-            icon={AttachmentIcon}
+            icon={ImageIcon}
             label={"Attach page screenshot"}
             onClick={() => uploadContentTabAsScreenshot(fileUploaderService)}
           />
