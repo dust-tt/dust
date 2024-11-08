@@ -146,45 +146,46 @@ interface ZendeskFetchedTicketComment {
 }
 
 interface ZendeskFetchedUser {
-  active?: boolean;
-  alias?: string;
-  chat_only?: boolean;
-  created_at?: string;
-  custom_role_id?: number;
-  default_group_id?: number;
-  details?: string;
-  email?: string;
-  external_id?: string;
-  iana_time_zone?: string;
-  id?: number;
-  last_login_at?: string;
-  locale?: string;
-  locale_id?: number;
-  moderator?: boolean;
+  active: boolean;
+  alias: string;
+  chat_only: boolean;
+  created_at: string; // ISO 8601 date string
+  custom_role_id: number;
+  default_group_id: number;
+  details: string;
+  email: string;
+  external_id: string;
+  id: number;
+  last_login_at: string; // ISO 8601 date string
+  locale: string;
+  locale_id: number;
+  moderator: boolean;
   name: string;
-  notes?: string;
-  only_private_comments?: boolean;
-  organization_id?: number;
-  phone?: string;
-  photo?: object;
-  remote_photo_url?: string;
-  report_csv?: boolean;
-  restricted_agent?: boolean;
-  role?: string;
-  role_type?: number;
-  shared?: boolean;
-  shared_agent?: boolean;
-  shared_phone_number?: boolean;
-  signature?: string;
-  suspended?: boolean;
-  tags?: string[];
-  ticket_restriction?: string;
-  time_zone?: string;
-  two_factor_auth_enabled?: boolean;
-  updated_at?: string;
-  url?: string;
-  user_fields?: object;
-  verified?: boolean;
+  notes: string;
+  only_private_comments: boolean;
+  organization_id: number;
+  phone: string;
+  photo: {
+    url: string;
+    id: number;
+    file_name: string;
+    content_url: string;
+    mapped_content_url: string;
+  };
+  report_csv: boolean;
+  restricted_agent: boolean;
+  role: "end-user" | "agent" | "admin";
+  shared: boolean;
+  shared_agent: boolean;
+  signature: string;
+  suspended: boolean;
+  tags: string[];
+  ticket_restriction: "requested" | "none" | "organization";
+  time_zone: string;
+  two_factor_auth_enabled: boolean;
+  updated_at: string; // ISO 8601 date string
+  url: string;
+  verified: boolean;
 }
 
 declare module "node-zendesk" {
