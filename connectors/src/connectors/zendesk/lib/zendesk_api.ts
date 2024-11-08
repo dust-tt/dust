@@ -4,7 +4,10 @@ import type { ModelId } from "@dust-tt/types";
 import type { Client } from "node-zendesk";
 import { createClient } from "node-zendesk";
 
-import type { ZendeskFetchedArticle } from "@connectors/connectors/zendesk/lib/node-zendesk-types";
+import type {
+  ZendeskFetchedArticle,
+  ZendeskFetchedTicket,
+} from "@connectors/connectors/zendesk/lib/node-zendesk-types";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
@@ -98,14 +101,14 @@ export async function fetchZendeskArticlesInCategory({
   subdomain,
   accessToken,
   categoryId,
-  pageSize = 100,
+  pageSize,
   cursor = null,
 }: {
   subdomain: string;
   accessToken: string;
   categoryId: number;
-  pageSize?: number;
-  cursor?: string | null;
+  pageSize: number;
+  cursor: string | null;
 }): Promise<{
   articles: ZendeskFetchedArticle[];
   meta: { has_more: boolean; after_cursor: string };
@@ -164,4 +167,82 @@ export async function fetchZendeskArticlesInCategory({
   }
 
   return response;
+}
+
+export async function fetchZendeskTicketsInBrand({
+  brandSubdomain,
+  accessToken,
+  pageSize,
+  cursor,
+}: {
+  brandSubdomain: string;
+  accessToken: string;
+  pageSize: number;
+  cursor: string | null;
+}): Promise<{
+  tickets: ZendeskFetchedTicket[];
+  meta: { has_more: boolean; after_cursor: string };
+}> {
+  assert(
+    pageSize <= 100,
+    `pageSize must be at most 100 (current value: ${pageSize})`
+  );
+
+  const runFetch = async () =>
+    fetch(
+      `https://${brandSubdomain}.zendesk.com/api/v2/tickets?page[size]=${pageSize}` +
+        (cursor ? `&page[after]=${cursor}` : ""),
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+  let rawResponse = await runFetch();
+
+  let retryCount = 0;
+  while (await handleZendeskRateLimit(rawResponse)) {
+    rawResponse = await runFetch();
+    retryCount++;
+    if (retryCount >= ZENDESK_RATE_LIMIT_MAX_RETRIES) {
+      logger.info(
+        { response: rawResponse },
+        `[Zendesk] Rate limit hit more than ${ZENDESK_RATE_LIMIT_MAX_RETRIES}, aborting.`
+      );
+      throw new Error(
+        `Zendesk rate limit hit more than ${ZENDESK_RATE_LIMIT_MAX_RETRIES} times, aborting.`
+      );
+    }
+  }
+
+  const text = await rawResponse.text();
+  const response = JSON.parse(text);
+
+  if (!rawResponse.ok) {
+    if (
+      response.type === "error.list" &&
+      response.errors &&
+      response.errors.length > 0
+    ) {
+      const error = response.errors[0];
+      if (error.code === "unauthorized") {
+        throw new ExternalOAuthTokenError();
+      }
+      if (error.code === "not_found") {
+        return { tickets: [], meta: { has_more: false, after_cursor: "" } };
+      }
+    }
+    throw new Error(`Zendesk API error: ${text}`);
+  }
+
+  return {
+    tickets: response.tickets || [],
+    meta: {
+      has_more: !!response.meta?.has_more,
+      after_cursor: response.meta?.after_cursor || "",
+    },
+  };
 }
