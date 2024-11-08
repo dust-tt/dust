@@ -140,7 +140,7 @@ impl DataSource {
             .collect::<Vec<_>>();
 
         // Sort them by score or timestamp and truncate to `top_k`
-        if !query.is_none() {
+        if query.is_some() {
             chunks.sort_by(|a, b| b.2.score.partial_cmp(&a.2.score).unwrap());
         } else {
             chunks.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -170,7 +170,7 @@ impl DataSource {
             .collect::<Vec<_>>();
 
         // Order documents by top chunk score or timestamp if no query.
-        if !query.is_none() {
+        if query.is_some() {
             d.sort_by(|a, b| b.chunks[0].score.partial_cmp(&a.chunks[0].score).unwrap());
         } else {
             d.sort_by(|a, b| b.timestamp.partial_cmp(&a.timestamp).unwrap());
