@@ -1412,13 +1412,37 @@ export type PublicPostEditMessagesRequestBody = z.infer<
   typeof PublicPostEditMessagesRequestBodySchema
 >;
 
-export const PublicPostContentFragmentRequestBodySchema = z.object({
+export const PublicContentFragmentWithContentSchema = z.object({
   title: z.string(),
-  content: z.string(),
   url: z.string().nullable(),
+  content: z.string(),
   contentType: SupportedContentFragmentTypeSchema,
+  fileId: z.undefined().nullable(),
   context: ContentFragmentContextSchema.nullable(),
 });
+
+export type PublicContentFragmentWithContent = z.infer<
+  typeof PublicContentFragmentWithContentSchema
+>;
+
+export const PublicContentFragmentWithFileIdSchema = z.object({
+  title: z.string(),
+  url: z.string().nullable(),
+  content: z.undefined().nullable(),
+  contentType: z.undefined().nullable(),
+  fileId: z.string(),
+  context: ContentFragmentContextSchema.nullable(),
+});
+
+export type PublicContentFragmentWithFileId = z.infer<
+  typeof PublicContentFragmentWithFileIdSchema
+>;
+
+export const PublicPostContentFragmentRequestBodySchema = z.union([
+  PublicContentFragmentWithContentSchema,
+  PublicContentFragmentWithFileIdSchema,
+]);
+
 export type PublicPostContentFragmentRequestBody = z.infer<
   typeof PublicPostContentFragmentRequestBodySchema
 >;
@@ -1447,13 +1471,17 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
       z.undefined(),
     ]),
     contentFragment: z.union([
-      z.object({
-        title: z.string(),
-        content: z.string(),
-        url: z.string().nullable(),
-        contentType: SupportedContentFragmentTypeSchema,
-        context: ContentFragmentContextSchema.nullable(),
-      }),
+      PublicContentFragmentWithContentSchema,
+      PublicContentFragmentWithFileIdSchema,
+      z.undefined(),
+    ]),
+    contentFragments: z.union([
+      z
+        .union([
+          PublicContentFragmentWithContentSchema,
+          PublicContentFragmentWithFileIdSchema,
+        ])
+        .array(),
       z.undefined(),
     ]),
   }),
@@ -1842,6 +1870,43 @@ export const GetWorkspaceUsageRequestSchema = z.union([
 
 export type GetWorkspaceUsageRequestType = z.infer<
   typeof GetWorkspaceUsageRequestSchema
+>;
+
+export const FileUploadUrlRequestSchema = z.object({
+  contentType: z.string(),
+  fileName: z.string(),
+  fileSize: z.number(),
+  useCase: z.union([z.literal("conversation"), z.literal("avatar")]),
+});
+
+export const FileTypeSchema = z.object({
+  contentType: z.string(),
+  downloadUrl: z.string().optional(),
+  fileName: z.string(),
+  fileSize: z.number(),
+  id: z.string(),
+  status: z.enum(["created", "failed", "ready"]),
+  uploadUrl: z.string().optional(),
+  publicUrl: z.string().optional(),
+  useCase: z.enum(["conversation", "avatar", "tool_output"]),
+});
+export type FileType = z.infer<typeof FileTypeSchema>;
+
+export const FileTypeWithUploadUrlSchema = FileTypeSchema.extend({
+  uploadUrl: z.string(),
+});
+
+export const FileUploadRequestResponseSchema = z.object({
+  file: FileTypeWithUploadUrlSchema,
+});
+export type FileUploadRequestResponseType = z.infer<
+  typeof FileUploadRequestResponseSchema
+>;
+export const FileUploadedRequestResponseSchema = z.object({
+  file: FileTypeSchema,
+});
+export type FileUploadedRequestResponseType = z.infer<
+  typeof FileUploadedRequestResponseSchema
 >;
 
 // Typeguards.

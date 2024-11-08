@@ -1,6 +1,6 @@
+import type { FileUploadedRequestResponseType } from "@dust-tt/client";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
-  FileUseCase,
   LightWorkspaceType,
   Result,
   SupportedFileContentType,
@@ -12,6 +12,7 @@ import {
   MAX_FILE_SIZES,
   Ok,
 } from "@dust-tt/types";
+import { useDustAPI } from "@extension/lib/dust_api";
 import { getMimeTypeFromFile } from "@extension/lib/file";
 import { useState } from "react";
 
@@ -46,14 +47,13 @@ const COMBINED_MAX_IMAGE_FILES_SIZE = MAX_FILE_SIZES["image"] * 5;
 
 export function useFileUploaderService({
   owner,
-  useCase,
 }: {
   owner: LightWorkspaceType;
-  useCase: FileUseCase;
 }) {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const sendNotification = useSendNotification();
+  const dustAPI = useDustAPI();
 
   const handleFilesUpload = async (files: File[]) => {
     setIsProcessingFiles(true);
@@ -150,92 +150,64 @@ export function useFileUploaderService({
     newFileBlobs: FileBlob[]
   ): Promise<Result<FileBlob, FileBlobUploadError>[]> => {
     const uploadPromises = newFileBlobs.map(async (fileBlob) => {
-      //   // Get upload URL from server.
-      //   let uploadResponse;
-      //   try {
-      //     uploadResponse = await fetch(`/api/w/${owner.sId}/files`, {
-      //       method: "POST",
-      //       headers: {
-      //         "Content-Type": "application/json",
-      //       },
-      //       body: JSON.stringify({
-      //         contentType: fileBlob.contentType,
-      //         fileName: fileBlob.filename,
-      //         fileSize: fileBlob.size,
-      //         useCase,
-      //       }),
-      //     });
-      //   } catch (err) {
-      //     console.error("Error uploading files:", err);
+      // Get upload URL from server.
+      const fileRes = await dustAPI.uploadFile({
+        contentType: fileBlob.contentType,
+        fileName: fileBlob.filename,
+        fileSize: fileBlob.size,
+      });
+      if (fileRes.isErr()) {
+        console.error("Error uploading files:", fileRes.error);
 
-      //     return new Err(
-      //       new FileBlobUploadError(
-      //         "failed_to_upload_file",
-      //         fileBlob.file,
-      //         err instanceof Error ? err.message : undefined
-      //       )
-      //     );
-      //   }
+        return new Err(
+          new FileBlobUploadError(
+            "failed_to_upload_file",
+            fileBlob.file,
+            fileRes.error.message
+          )
+        );
+      }
+      const file = fileRes.value;
 
-      //   if (!uploadResponse.ok) {
-      //     try {
-      //       const res = await uploadResponse.json();
+      const formData = new FormData();
+      formData.append("file", fileBlob.file);
 
-      //       return new Err(
-      //         new FileBlobUploadError(
-      //           "failed_to_upload_file",
-      //           fileBlob.file,
-      //           isAPIErrorResponse(res) ? res.error.message : undefined
-      //         )
-      //       );
-      //     } catch (err) {
-      //       console.error("Error uploading files:", err);
-      //       return new Err(
-      //         new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
-      //       );
-      //     }
-      //   }
+      // Upload file to the obtained URL.
+      let uploadResult;
+      try {
+        uploadResult = await fetch(file.uploadUrl, {
+          method: "POST",
+          body: formData,
+        });
+      } catch (err) {
+        console.error("Error uploading files:", err);
 
-      //   const { file } =
-      //     (await uploadResponse.json()) as FileUploadRequestResponseBody;
+        return new Err(
+          new FileBlobUploadError(
+            "failed_to_upload_file",
+            fileBlob.file,
+            err instanceof Error ? err.message : undefined
+          )
+        );
+      }
 
-      //   const formData = new FormData();
-      //   formData.append("file", fileBlob.file);
+      if (!uploadResult.ok) {
+        return new Err(
+          new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
+        );
+      }
 
-      //   // Upload file to the obtained URL.
-      //   let uploadResult;
-      //   try {
-      //     uploadResult = await fetch(file.uploadUrl, {
-      //       method: "POST",
-      //       body: formData,
-      //     });
-      //   } catch (err) {
-      //     console.error("Error uploading files:", err);
-
-      //     return new Err(
-      //       new FileBlobUploadError(
-      //         "failed_to_upload_file",
-      //         fileBlob.file,
-      //         err instanceof Error ? err.message : undefined
-      //       )
-      //     );
-      //   }
-
-      //   if (!uploadResult.ok) {
-      //     return new Err(
-      //       new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
-      //     );
-      //   }
-
-      //   const { file: fileUploaded } =
-      //     (await uploadResult.json()) as FileUploadedRequestResponseBody;
+      const { file: fileUploaded } =
+        (await uploadResult.json()) as FileUploadedRequestResponseType;
 
       return new Ok({
         ...fileBlob,
-        fileId: "file.id",
+        fileId: file.id,
         isUploading: false,
-        preview: undefined,
-        publicUrl: undefined,
+        preview: isSupportedImageContentType(fileBlob.contentType)
+          ? `${fileUploaded.downloadUrl}?action=view`
+          : undefined,
+        publicUrl: file.publicUrl,
       });
     });
 

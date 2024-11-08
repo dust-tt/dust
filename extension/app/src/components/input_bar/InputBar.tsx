@@ -1,3 +1,4 @@
+import type { ConversationPublicType } from "@dust-tt/client";
 import type {
   AgentMention,
   LightWorkspaceType,
@@ -13,6 +14,7 @@ import type { InputBarContainerProps } from "@extension/components/input_bar/Inp
 import { InputBarContainer } from "@extension/components/input_bar/InputBarContainer";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useFileUploaderService } from "@extension/hooks/useFileUploaderService";
+import { uploadContentTab } from "@extension/lib/conversation";
 import { classNames } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -47,6 +49,7 @@ export function AssistantInputBar({
   stickyMentions,
   additionalAgentConfiguration,
   disableAutoFocus = false,
+  conversation,
   isTabIncluded,
   toggleIncludeTab,
 }: {
@@ -59,6 +62,7 @@ export function AssistantInputBar({
   stickyMentions?: AgentMention[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
   disableAutoFocus?: boolean;
+  conversation?: ConversationPublicType;
   isTabIncluded: boolean;
   toggleIncludeTab: () => void;
 }) {
@@ -67,7 +71,6 @@ export function AssistantInputBar({
 
   const fileUploaderService = useFileUploaderService({
     owner,
-    useCase: "conversation",
   });
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
@@ -128,7 +131,7 @@ export function AssistantInputBar({
   const activeAgents = agentConfigurations.filter((a) => a.status === "active");
   activeAgents.sort(compareAgentsForSort);
 
-  const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = (
+  const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = async (
     isEmpty,
     textAndMentions,
     resetEditorText
@@ -141,18 +144,24 @@ export function AssistantInputBar({
     const mentions: MentionType[] = [
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
-
-    onSubmit(
-      text,
-      mentions,
-      fileUploaderService.getFileBlobs().map((cf) => {
-        return {
-          title: cf.filename,
-          fileId: "cf.fileId",
-        };
-      })
-    );
+    const newFiles = fileUploaderService.getFileBlobs().map((cf) => ({
+      title: cf.filename,
+      fileId: cf.fileId,
+    }));
+    if (isTabIncluded) {
+      const files = await uploadContentTab(fileUploaderService, conversation);
+      if (files) {
+        newFiles.push(
+          ...files.map((cf) => ({
+            title: cf.filename,
+            fileId: cf.fileId || "",
+          }))
+        );
+      }
+    }
+    onSubmit(text, mentions, newFiles);
     resetEditorText();
+    fileUploaderService.resetUpload();
   };
 
   return (

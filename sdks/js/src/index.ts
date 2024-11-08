@@ -31,6 +31,7 @@ import {
   APIErrorSchema,
   CreateConversationResponseSchema,
   Err,
+  FileUploadRequestResponseSchema,
   GetActiveMemberEmailsInWorkspaceResponseSchema,
   GetAgentConfigurationsResponseSchema,
   GetConversationResponseSchema,
@@ -486,6 +487,7 @@ export class DustAPI {
     visibility,
     message,
     contentFragment,
+    contentFragments,
     blocking = false,
   }: PublicPostConversationsRequestBody) {
     const res = await this.request({
@@ -496,6 +498,7 @@ export class DustAPI {
         visibility,
         message,
         contentFragment,
+        contentFragments,
         blocking,
       },
     });
@@ -692,6 +695,36 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.tokens);
+  }
+
+  async uploadFile({
+    contentType,
+    fileName,
+    fileSize,
+  }: {
+    contentType: string;
+    fileName: string;
+    fileSize: number;
+  }) {
+    const res = await this.request({
+      method: "POST",
+      path: "files",
+      body: {
+        contentType,
+        fileName,
+        fileSize,
+        useCase: "conversation",
+      },
+    });
+
+    const r = await this._resultFromResponse(
+      FileUploadRequestResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.file);
   }
 
   async getActiveMemberEmailsInWorkspace() {

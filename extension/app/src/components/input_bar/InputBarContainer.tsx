@@ -117,6 +117,10 @@ export const InputBarContainer = ({
             isPulsing={isPulsingActive}
             onClick={toggleIncludeTab}
           />
+          <AttachFragment
+            fileUploaderService={fileUploaderService}
+            editorService={editorService}
+          />
           <AssistantPicker
             owner={owner}
             size="xs"
@@ -124,10 +128,6 @@ export const InputBarContainer = ({
               editorService.insertMention({ id: c.sId, label: c.name });
             }}
             assistants={allAssistants}
-          />
-          <AttachFragment
-            fileUploaderService={fileUploaderService}
-            editorService={editorService}
           />
         </div>
         <Button

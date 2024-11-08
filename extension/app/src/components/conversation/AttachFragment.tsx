@@ -5,12 +5,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { supportedFileExtensions } from "@dust-tt/types";
 import type { EditorService } from "@extension/components/input_bar/editor/useCustomEditor";
 import type { FileUploaderService } from "@extension/hooks/useFileUploaderService";
-import { getIncludeCurrentTab } from "@extension/lib/conversation";
+import {
+  uploadContentTab,
+  uploadContentTabAsScreenshot,
+} from "@extension/lib/conversation";
 import { useRef } from "react";
 
 type AttachFragmentProps = {
@@ -22,7 +24,6 @@ export const AttachFragment = ({
   fileUploaderService,
   editorService,
 }: AttachFragmentProps) => {
-  const sendNotification = useSendNotification();
   const fileInputRef = useRef<HTMLInputElement>(null);
   return (
     <>
@@ -61,65 +62,12 @@ export const AttachFragment = ({
           <DropdownMenuItem
             icon={AttachmentIcon}
             label={"Attach page content"}
-            onClick={async () => {
-              const tabContentRes = await getIncludeCurrentTab();
-
-              if (tabContentRes && tabContentRes.isErr()) {
-                sendNotification({
-                  title: "Cannot get tab content",
-                  description: tabContentRes.error.message,
-                  type: "error",
-                });
-              }
-
-              const tabContent =
-                tabContentRes && tabContentRes.isOk()
-                  ? tabContentRes.value
-                  : null;
-
-              if (tabContent && tabContent.content) {
-                const file = new File(
-                  [tabContent.content],
-                  `${tabContent.title}.txt`,
-                  {
-                    type: "text/plain",
-                  }
-                );
-
-                await fileUploaderService.handleFilesUpload([file]);
-              }
-            }}
+            onClick={() => uploadContentTab(fileUploaderService)}
           />
           <DropdownMenuItem
             icon={AttachmentIcon}
             label={"Attach page screenshot"}
-            onClick={async () => {
-              const tabContentRes = await getIncludeCurrentTab(false, true);
-
-              if (tabContentRes && tabContentRes.isErr()) {
-                sendNotification({
-                  title: "Cannot get tab content",
-                  description: tabContentRes.error.message,
-                  type: "error",
-                });
-              }
-
-              const tabContent =
-                tabContentRes && tabContentRes.isOk()
-                  ? tabContentRes.value
-                  : null;
-
-              if (tabContent && tabContent.screenshot) {
-                console.log(tabContent.screenshot);
-                const response = await fetch(tabContent.screenshot);
-                const blob = await response.blob();
-                const file = new File([blob], `${tabContent.title}.jpg`, {
-                  type: blob.type,
-                });
-
-                await fileUploaderService.handleFilesUpload([file]);
-              }
-            }}
+            onClick={() => uploadContentTabAsScreenshot(fileUploaderService)}
           />
         </DropdownMenuContent>
       </DropdownMenu>

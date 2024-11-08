@@ -8,12 +8,12 @@ import type {
 import { ConversationViewer } from "@extension/components/conversation/ConversationViewer";
 import { ReachedLimitPopup } from "@extension/components/conversation/ReachedLimitPopup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
+import { DropzoneContainer } from "@extension/components/DropzoneContainer";
 import { AssistantInputBar } from "@extension/components/input_bar/InputBar";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useSubmitFunction } from "@extension/components/utils/useSubmitFunction";
 import {
   createPlaceholderUserMessage,
-  getIncludeCurrentTab,
   postConversation,
   postMessage,
   updateConversationWithOptimisticData,
@@ -102,39 +102,11 @@ export function ConversationContainer({
     try {
       await mutateConversation(
         async (currentConversation) => {
-          const tabContentRes = includeContent
-            ? await getIncludeCurrentTab()
-            : null;
-
-          if (tabContentRes && tabContentRes.isErr()) {
-            sendNotification({
-              title: "Cannot get tab content",
-              description: tabContentRes.error.message,
-              type: "error",
-            });
-          }
-          const tabContent =
-            tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
-
-          // Check if the content is already uploaded - compare the title and the size of the content.
-          const alreadyUploaded =
-            tabContent &&
-            tabContent.content &&
-            conversation?.content
-              .map((m) => m[m.length - 1])
-              .some(
-                (m) =>
-                  m.type === "content_fragment" &&
-                  m.title === tabContent.title &&
-                  m.textBytes === new Blob([tabContent.content]).size
-              );
-
-          console.log("todo: fragments", contentFragments);
           const result = await postMessage({
             dustAPI,
             conversationId: activeConversationId,
             messageData,
-            tabContent: alreadyUploaded ? null : tabContent,
+            contentFragments,
           });
 
           if (result.isOk()) {
@@ -190,28 +162,13 @@ export function ConversationContainer({
         mentions: MentionType[],
         contentFragments: UploadedContentFragment[]
       ) => {
-        const tabContentRes = includeContent
-          ? await getIncludeCurrentTab()
-          : null;
-
-        if (tabContentRes && tabContentRes.isErr()) {
-          sendNotification({
-            title: "Cannot get tab content",
-            description: tabContentRes.error.message,
-            type: "error",
-          });
-        }
-        const tabContent =
-          tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
-
-        console.log("todo: fragments", contentFragments);
         const conversationRes = await postConversation({
           dustAPI,
           messageData: {
             input,
             mentions,
           },
-          tabContent,
+          contentFragments,
         });
         if (conversationRes.isErr()) {
           if (conversationRes.error.type === "plan_limit_reached_error") {
@@ -247,7 +204,10 @@ export function ConversationContainer({
   }, [user]);
 
   return (
-    <>
+    <DropzoneContainer
+      description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
+      title="Attach files to the conversation"
+    >
       {activeConversationId && (
         <ConversationViewer
           conversationId={activeConversationId}
@@ -271,6 +231,7 @@ export function ConversationContainer({
           stickyMentions={stickyMentions}
           isTabIncluded={!!includeContent}
           toggleIncludeTab={() => setIncludeContent((v) => !v)}
+          conversation={conversation ?? undefined}
         />
       </div>
       <ReachedLimitPopup
@@ -278,6 +239,6 @@ export function ConversationContainer({
         onClose={() => setPlanLimitReached(false)}
         isTrialing={false} // TODO(Ext): Properly handle this from loading the subscription.
       />
-    </>
+    </DropzoneContainer>
   );
 }
