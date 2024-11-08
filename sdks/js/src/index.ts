@@ -585,22 +585,9 @@ export class DustAPI {
     }
     const agentMessage = agentMessages[0];
 
-    return this.streamAgentMessageEvents({
-      conversationId: conversation.sId,
-      agentMessageId: agentMessage.sId,
-    });
-  }
-
-  async streamAgentMessageEvents({
-    conversationId,
-    agentMessageId,
-  }: {
-    conversationId: string;
-    agentMessageId: string;
-  }) {
     const res = await this.request({
       method: "GET",
-      path: `assistant/conversations/${conversationId}/messages/${agentMessageId}/events`,
+      path: `assistant/conversations/${conversation.sId}/messages/${agentMessage.sId}/events`,
     });
 
     if (res.isErr()) {
