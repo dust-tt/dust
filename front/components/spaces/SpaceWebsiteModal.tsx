@@ -7,6 +7,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
   ExclamationCircleStrokeIcon,
+  InformationCircleIcon,
   Input,
   Label,
   Modal,
@@ -416,6 +417,7 @@ export default function SpaceWebsiteModal({
                   />
                   <ContentMessage
                     title="Ensure the website is public"
+                    icon={InformationCircleIcon}
                     variant="pink"
                   >
                     Only public websites accessible without authentication will

@@ -3,6 +3,7 @@ import {
   ContentMessage,
   Hoverable,
   Icon,
+  InformationCircleIcon,
   Modal,
   Page,
   SparklesIcon,
@@ -56,6 +57,7 @@ export const ConnectorDataUpdatedModal = ({
           <ContentMessage
             title={contentMessage}
             variant={isRemoteDbProvider ? "amber" : "warning"}
+            icon={InformationCircleIcon}
           >
             <div className="flex flex-col gap-2">
               <p>

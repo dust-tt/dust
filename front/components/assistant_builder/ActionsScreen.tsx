@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
   Icon,
   IconButton,
+  InformationCircleIcon,
   Input,
   Modal,
   MoreIcon,
@@ -330,7 +331,10 @@ export default function ActionsScreen({
           </div>
           <div className="flex flex-row gap-2">
             {isLegacyConfig && (
-              <ContentMessage title="Update Needed for Your Assistant!">
+              <ContentMessage
+                title="Update Needed for Your Assistant!"
+                icon={InformationCircleIcon}
+              >
                 <p>
                   We're enhancing assistants to make them smarter and more
                   versatile. You can now add multiple tools to an assistant,

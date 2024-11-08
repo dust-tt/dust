@@ -1,4 +1,10 @@
-import { Button, ContentMessage, Dialog, PlusIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  ContentMessage,
+  Dialog,
+  InformationCircleIcon,
+  PlusIcon,
+} from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
@@ -117,7 +123,12 @@ export function EditSpaceManagedDataSourcesViews({
               </p>
             ))}
 
-            <ContentMessage size="md" variant="warning" title="Warning">
+            <ContentMessage
+              size="md"
+              variant="warning"
+              title="Warning"
+              icon={InformationCircleIcon}
+            >
               <p>
                 Deleting these data sources will affect the assistants using
                 them. These assistants will no longer have access to this data
