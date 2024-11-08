@@ -358,6 +358,9 @@ export async function syncZendeskArticlesBatchActivity({
   return { hasMore: has_more, afterCursor: after_cursor };
 }
 
+/**
+ * This activity is responsible for syncing the next batch of tickets to process.
+ */
 export async function syncZendeskTicketsBatchActivity({
   connectorId,
   brandId,
