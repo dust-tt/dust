@@ -83,7 +83,7 @@ export interface ZendeskFetchedArticle {
   permission_group_id: number;
   content_tag_ids: number[];
   label_names: string[];
-  body: string;
+  body: string | undefined;
   user_segment_ids: number[];
 }
 

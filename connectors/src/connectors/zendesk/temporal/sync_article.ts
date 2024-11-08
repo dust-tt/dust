@@ -99,26 +99,24 @@ export async function syncArticle({
       ? turndownService.turndown(article.body)
       : "";
 
-  const header = [
-    `CATEGORY: ${category.name} ${category?.description ? ` - ${category.description}` : ""}`,
-    section &&
-      `SECTION: ${section.name} ${section?.description ? ` - ${section.description}` : ""}`,
-    user && `USER: ${user.name} ${user?.email ? ` - ${user.email}` : ""}`,
-    `VOTE_SUM: ${article.vote_sum}`,
-    article.label_names.length ? `LABELS: ${article.label_names.join()}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  const markdown = `${header}\n\n${articleContentInMarkdown}`;
-
   if (articleContentInMarkdown) {
     const createdAt = new Date(article.created_at);
     const updatedAt = new Date(article.updated_at);
 
+    const header = [
+      `CATEGORY: ${category.name} ${category?.description ? ` - ${category.description}` : ""}`,
+      section &&
+        `SECTION: ${section.name} ${section?.description ? ` - ${section.description}` : ""}`,
+      user && `USER: ${user.name} ${user?.email ? ` - ${user.email}` : ""}`,
+      `VOTE_SUM: ${article.vote_sum}`,
+      article.label_names.length ? `LABELS: ${article.label_names.join()}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
     const renderedMarkdown = await renderMarkdownSection(
       dataSourceConfig,
-      markdown
+      `${header}\n\n${articleContentInMarkdown}`
     );
     const documentContent = await renderDocumentTitleAndContent({
       dataSourceConfig,
