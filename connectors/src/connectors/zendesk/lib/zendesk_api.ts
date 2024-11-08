@@ -103,7 +103,7 @@ async function fetchWithRetries({
 }: {
   url: string;
   accessToken: string;
-}): Promise<Response> {
+}) {
   const runFetch = async () =>
     fetch(url, {
       method: "GET",
@@ -130,9 +130,61 @@ async function fetchWithRetries({
     }
   }
 
-  return rawResponse;
+  const text = await rawResponse.text();
+  const response = JSON.parse(text);
+
+  if (!rawResponse.ok) {
+    if (response.type === "error.list" && response.errors?.length) {
+      const error = response.errors[0];
+      if (error.code === "unauthorized") {
+        throw new ExternalOAuthTokenError();
+      }
+      if (error.code === "not_found") {
+        return null;
+      }
+    }
+  }
+
+  return response;
 }
 
+/**
+ * Fetches a batch of the recently updated articles from the Zendesk API using the incremental API endpoint.
+ */
+async function fetchRecentlyUpdatedArticles({
+  subdomain,
+  accessToken,
+  startTime = null,
+  cursor = null,
+}: {
+  subdomain: string;
+  accessToken: string;
+  categoryId: number;
+  startTime?: number | null;
+  cursor?: string | null;
+}): Promise<{
+  articles: ZendeskFetchedArticle[];
+  meta: { end_of_stream: boolean; after_cursor: string };
+}> {
+  assert(
+    !(startTime && cursor) && (startTime || cursor),
+    "Please provide either a startTime or a cursor but not both."
+  );
+
+  const response = await fetchWithRetries({
+    url:
+      `https://${subdomain}.zendesk.com/api/v2/incremental/articles/cursor.json` +
+      (cursor ? `?cursor=${cursor}` : "") +
+      (startTime ? `?start_time=${startTime}` : ""),
+    accessToken,
+  });
+  return (
+    response || {
+      articles: [],
+      meta: { end_of_stream: false, after_cursor: "" },
+    }
+  );
+}
 /**
  * Fetches a batch of articles in a category from the Zendesk API.
  */
@@ -157,33 +209,15 @@ export async function fetchZendeskArticlesInCategory({
     `pageSize must be at most 100 (current value: ${pageSize})` // https://developer.zendesk.com/api-reference/introduction/pagination
   );
 
-  const rawResponse = await fetchWithRetries({
+  const response = await fetchWithRetries({
     url:
       `https://${subdomain}.zendesk.com/api/v2/help_center/categories/${categoryId}/articles?page[size]=${pageSize}` +
       (cursor ? `&page[after]=${cursor}` : ""),
     accessToken,
   });
-
-  const text = await rawResponse.text();
-  const response = JSON.parse(text);
-
-  if (!rawResponse.ok) {
-    if (
-      response.type === "error.list" &&
-      response.errors &&
-      response.errors.length > 0
-    ) {
-      const error = response.errors[0];
-      if (error.code === "unauthorized") {
-        throw new ExternalOAuthTokenError();
-      }
-      if (error.code === "not_found") {
-        return { articles: [], meta: { has_more: false, after_cursor: "" } };
-      }
-    }
-  }
-
-  return response;
+  return (
+    response || { articles: [], meta: { has_more: false, after_cursor: "" } }
+  );
 }
 
 export async function fetchZendeskTicketsInBrand({
