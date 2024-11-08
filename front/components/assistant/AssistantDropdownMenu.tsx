@@ -162,7 +162,7 @@ export function AssistantDropdownMenu({
           {showAddRemoveToFavorite && (
             <DropdownMenuItem
               label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-              icon={isFavorite ? StarStrokeIcon : StarIcon}
+              icon={isFavorite ? StarIcon : StarStrokeIcon}
               disabled={isUpdatingFavorites}
               onClick={async (e) => {
                 e.stopPropagation();

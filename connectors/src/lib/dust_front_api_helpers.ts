@@ -28,8 +28,10 @@ export function withRetries<T, U>(
           },
           "Error while executing retriable function. Retrying..."
         );
-        await new Promise((resolve) => setTimeout(resolve, sleepTime));
+
         errors.push(e);
+
+        await new Promise((resolve) => setTimeout(resolve, sleepTime));
       }
     }
 

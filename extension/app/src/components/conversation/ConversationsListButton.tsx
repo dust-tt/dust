@@ -1,4 +1,4 @@
-import { Button, HistoryIcon } from "@dust-tt/sparkle";
+import { Button, ChatBubbleLeftRightIcon } from "@dust-tt/sparkle";
 import { useNavigate } from "react-router-dom";
 
 export const ConversationsListButton = ({
@@ -10,7 +10,7 @@ export const ConversationsListButton = ({
   return (
     <Button
       tooltip="View all conversations"
-      icon={HistoryIcon}
+      icon={ChatBubbleLeftRightIcon}
       variant="ghost"
       onClick={() => navigate("/conversations")}
       size={size}
