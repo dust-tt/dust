@@ -341,19 +341,8 @@ export class ZendeskTicket extends Model<
   declare groupId: number;
   declare organizationId: number;
 
-  declare name: string;
-  declare description: string;
   declare subject: string;
-  declare requesterMail: string;
   declare url: string;
-
-  declare satisfactionScore: string;
-  declare satisfactionComment: string;
-
-  declare status: "new" | "open" | "pending" | "hold" | "solved" | "closed";
-  declare tags: string[];
-  declare type: "problem" | "incident" | "question" | "task";
-  declare customFields: string[];
 
   declare lastUpsertedTs: Date;
 
@@ -377,6 +366,14 @@ ZendeskTicket.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    url: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    subject: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     ticketId: {
       type: DataTypes.BIGINT,
       allowNull: false,
@@ -387,60 +384,15 @@ ZendeskTicket.init(
     },
     groupId: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
     },
     assigneeId: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
     },
     organizationId: {
       type: DataTypes.BIGINT,
-      allowNull: false,
-    },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    satisfactionScore: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    satisfactionComment: {
-      type: DataTypes.STRING,
       allowNull: true,
-    },
-    subject: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    description: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    requesterMail: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    status: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    tags: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: false,
-    },
-    url: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    type: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    customFields: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: false,
-      defaultValue: [],
     },
     permission: {
       type: DataTypes.STRING,
@@ -465,6 +417,7 @@ ZendeskTicket.init(
     ],
   }
 );
+
 ConnectorModel.hasMany(ZendeskTicket, {
   foreignKey: { allowNull: false },
   onDelete: "RESTRICT",
