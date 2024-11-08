@@ -4,7 +4,38 @@ import type { Client } from "node-zendesk";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
-import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
+import {
+  ZendeskBrandResource,
+  ZendeskCategoryResource,
+} from "@connectors/resources/zendesk_resources";
+
+export async function _getZendeskConnectorOrRaise(connectorId: ModelId) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("[Zendesk] Connector not found.");
+  }
+  return connector;
+}
+
+export async function _getZendeskCategoryOrRaise({
+  connectorId,
+  categoryId,
+}: {
+  connectorId: ModelId;
+  categoryId: number;
+}) {
+  const category = await ZendeskCategoryResource.fetchByCategoryId({
+    connectorId,
+    categoryId,
+  });
+  if (!category) {
+    throw new Error(
+      `[Zendesk] Category not found, connectorId: ${connectorId}, categoryId: ${categoryId}`
+    );
+  }
+  return category;
+}
 
 /**
  * Syncs the permissions of a brand, fetching it and pushing it if not found in the db.

@@ -4,6 +4,10 @@ import {
   getArticleInternalId,
   getTicketInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
+import {
+  _getZendeskCategoryOrRaise,
+  _getZendeskConnectorOrRaise,
+} from "@connectors/connectors/zendesk/lib/utils";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
@@ -18,7 +22,6 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteFromDataSource } from "@connectors/lib/data_sources";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskArticleResource,
   ZendeskBrandResource,
@@ -28,33 +31,6 @@ import {
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 const ZENDESK_BATCH_SIZE = 100;
-
-async function _getZendeskConnectorOrRaise(connectorId: ModelId) {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("[Zendesk] Connector not found.");
-  }
-  return connector;
-}
-
-async function _getZendeskCategoryOrRaise({
-  connectorId,
-  categoryId,
-}: {
-  connectorId: ModelId;
-  categoryId: number;
-}) {
-  const category = await ZendeskCategoryResource.fetchByCategoryId({
-    connectorId,
-    categoryId,
-  });
-  if (!category) {
-    throw new Error(
-      `[Zendesk] Category not found, connectorId: ${connectorId}, categoryId: ${categoryId}`
-    );
-  }
-  return category;
-}
 
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
