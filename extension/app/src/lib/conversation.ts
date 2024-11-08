@@ -2,7 +2,6 @@ import type {
   AgentMessagePublicType,
   ConversationPublicType,
   DustAPI,
-  PublicPostContentFragmentRequestBody,
   UserMessageType,
 } from "@dust-tt/client";
 import type {
