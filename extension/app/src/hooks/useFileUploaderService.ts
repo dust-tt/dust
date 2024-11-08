@@ -322,7 +322,6 @@ export function useFileUploaderService({
       tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
 
     if (tabContent && tabContent.screenshot) {
-      console.log(tabContent.screenshot);
       const response = await fetch(tabContent.screenshot);
       const blob = await response.blob();
       const file = new File([blob], `${tabContent.title}.jpg`, {
