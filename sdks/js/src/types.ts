@@ -1939,16 +1939,23 @@ export type FileUploadUrlRequestType = z.infer<
   typeof FileUploadUrlRequestSchema
 >;
 
+const FileTypeStatusSchema = FlexibleEnumSchema(["created", "failed", "ready"]);
+const FileTypeUseCaseSchema = FlexibleEnumSchema([
+  "conversation",
+  "avatar",
+  "tool_output",
+]);
+
 export const FileTypeSchema = z.object({
   contentType: z.string(),
   downloadUrl: z.string().optional(),
   fileName: z.string(),
   fileSize: z.number(),
   id: z.string(),
-  status: FlexibleEnumSchema(["created", "failed", "ready"]),
+  status: FileTypeStatusSchema,
   uploadUrl: z.string().optional(),
   publicUrl: z.string().optional(),
-  useCase: FlexibleEnumSchema(["conversation", "avatar", "tool_output"]),
+  useCase: FileTypeUseCaseSchema,
 });
 export type FileType = z.infer<typeof FileTypeSchema>;
 
