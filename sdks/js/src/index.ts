@@ -1,11 +1,9 @@
 import { z } from "zod";
-import { fetch, RequestInit, Response } from "undici";
 
 import type {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
-  AgentMessagePublicType,
   AgentMessageSuccessEvent,
   APIError,
   ConversationPublicType,
@@ -39,6 +37,7 @@ import {
   GetDataSourcesResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
+  MeResponseSchema,
   Ok,
   PatchDataSourceViewsResponseSchema,
   PostContentFragmentResponseSchema,
@@ -121,6 +120,36 @@ export class DustAPI {
     return this._useLocalInDev && this._nodeEnv === "development"
       ? "http://localhost:3000"
       : this._url;
+  }
+
+  /**
+   * Fetches the current user's information from the API.
+   *
+   * This method sends a GET request to the `/api/v1/me` endpoint with the necessary
+   * authorization headers. It then processes the response to extract the user information.
+   * Note that this will only work if you are using an OAuth2 token. It will always fail with a workspace API key.
+   *
+   * @returns {Promise<Result<User, Error>>} A promise that resolves to a Result object containing
+   * either the user information or an error.
+   */
+  async me() {
+    // This method call directly _fetchWithError and _resultFromResponse as it's a little special : it doesn't live under the workspace resource.
+    const headers: RequestInit["headers"] = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this._credentials.apiKey}`,
+    };
+
+    const res = await this._fetchWithError(`${this.apiUrl()}/api/v1/me`, {
+      method: "GET",
+      headers,
+    });
+
+    const r = await this._resultFromResponse(MeResponseSchema, res);
+
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.user);
   }
 
   async request(args: RequestArgsType) {

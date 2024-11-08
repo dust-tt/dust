@@ -1844,6 +1844,12 @@ export type GetWorkspaceUsageRequestType = z.infer<
   typeof GetWorkspaceUsageRequestSchema
 >;
 
+export const MeResponseSchema = z.object({
+  user: UserSchema.and(z.object({ workspaces: LightWorkspaceSchema.array() })),
+});
+
+export type MeResponseType = z.infer<typeof MeResponseSchema>;
+
 // Typeguards.
 
 export function isRetrievalActionType(
