@@ -19,6 +19,8 @@ import type {
   DustAppRunFunctionCallEvent,
   DustAppRunRunStatusEvent,
   DustAppRunTokensEvent,
+  FileUploadedRequestResponseType,
+  FileUploadUrlRequestType,
   GenerationTokensEvent,
   LoggerInterface,
   PatchDataSourceViewRequestType,
@@ -32,6 +34,7 @@ import {
   CreateConversationResponseSchema,
   Err,
   FileUploadRequestResponseSchema,
+  FileUploadUrlRequestSchema,
   GetActiveMemberEmailsInWorkspaceResponseSchema,
   GetAgentConfigurationsResponseSchema,
   GetConversationResponseSchema,
@@ -702,12 +705,9 @@ export class DustAPI {
     fileName,
     fileSize,
     useCase,
-  }: {
-    contentType: string;
-    fileName: string;
-    fileSize: number;
-    useCase: "conversation" | "avatar";
-  }) {
+    fileObject,
+  }: FileUploadUrlRequestType & { fileObject: File }) {
+    FileUploadUrlRequestSchema;
     const res = await this.request({
       method: "POST",
       path: "files",
@@ -719,14 +719,40 @@ export class DustAPI {
       },
     });
 
-    const r = await this._resultFromResponse(
+    const fileRes = await this._resultFromResponse(
       FileUploadRequestResponseSchema,
       res
     );
-    if (r.isErr()) {
-      return r;
+
+    if (fileRes.isErr()) {
+      return fileRes;
     }
-    return new Ok(r.value.file);
+
+    const { file } = fileRes.value;
+
+    const formData = new FormData();
+    formData.append("file", fileObject);
+
+    // Upload file to the obtained URL.
+    let uploadResult;
+    try {
+      uploadResult = await fetch(file.uploadUrl, {
+        method: "POST",
+        body: formData,
+      });
+    } catch (err) {
+      return new Err(new Error(err instanceof Error ? err.message : undefined));
+    }
+
+    if (!uploadResult.ok) {
+      return new Err(
+        new Error(uploadResult.statusText || "Failed to upload file")
+      );
+    }
+    const { file: fileUploaded } =
+      (await uploadResult.json()) as FileUploadedRequestResponseType;
+
+    return new Ok(fileUploaded);
   }
 
   async getActiveMemberEmailsInWorkspace() {

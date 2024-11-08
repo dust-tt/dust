@@ -1878,6 +1878,9 @@ export const FileUploadUrlRequestSchema = z.object({
   fileSize: z.number(),
   useCase: z.union([z.literal("conversation"), z.literal("avatar")]),
 });
+export type FileUploadUrlRequestType = z.infer<
+  typeof FileUploadUrlRequestSchema
+>;
 
 export const FileTypeSchema = z.object({
   contentType: z.string(),

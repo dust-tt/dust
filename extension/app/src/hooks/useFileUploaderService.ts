@@ -1,7 +1,4 @@
-import type {
-  ConversationPublicType,
-  FileUploadedRequestResponseType,
-} from "@dust-tt/client";
+import type { ConversationPublicType } from "@dust-tt/client";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   LightWorkspaceType,
@@ -160,6 +157,7 @@ export function useFileUploaderService({
         fileName: fileBlob.filename,
         fileSize: fileBlob.size,
         useCase: "conversation",
+        fileObject: fileBlob.file,
       });
       if (fileRes.isErr()) {
         console.error("Error uploading files:", fileRes.error);
@@ -172,47 +170,16 @@ export function useFileUploaderService({
           )
         );
       }
-      const file = fileRes.value;
-
-      const formData = new FormData();
-      formData.append("file", fileBlob.file);
-
-      // Upload file to the obtained URL.
-      let uploadResult;
-      try {
-        uploadResult = await fetch(file.uploadUrl, {
-          method: "POST",
-          body: formData,
-        });
-      } catch (err) {
-        console.error("Error uploading files:", err);
-
-        return new Err(
-          new FileBlobUploadError(
-            "failed_to_upload_file",
-            fileBlob.file,
-            err instanceof Error ? err.message : undefined
-          )
-        );
-      }
-
-      if (!uploadResult.ok) {
-        return new Err(
-          new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
-        );
-      }
-
-      const { file: fileUploaded } =
-        (await uploadResult.json()) as FileUploadedRequestResponseType;
+      const fileUploaded = fileRes.value;
 
       return new Ok({
         ...fileBlob,
-        fileId: file.id,
+        fileId: fileUploaded.id,
         isUploading: false,
         preview: isSupportedImageContentType(fileBlob.contentType)
           ? `${fileUploaded.downloadUrl}?action=view`
           : undefined,
-        publicUrl: file.publicUrl,
+        publicUrl: fileUploaded.publicUrl,
       });
     });
 
