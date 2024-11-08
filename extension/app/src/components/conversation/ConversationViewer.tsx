@@ -1,16 +1,13 @@
 import type {
+  AgentGenerationCancelledEvent,
+  AgentMessageNewEvent,
   AgentMessagePublicType,
   ContentFragmentType,
+  ConversationTitleEvent,
+  HeartbeatEvent,
+  UserMessageNewEvent,
   UserMessageType,
 } from "@dust-tt/client";
-import type {
-  AgentGenerationCancelledEvent,
-  AgentMention,
-  AgentMessageNewEvent,
-  ConversationTitleEvent,
-  LightWorkspaceType,
-  UserMessageNewEvent,
-} from "@dust-tt/types";
 import { isAgentMention } from "@dust-tt/types";
 import MessageGroup from "@extension/components/conversation/MessageGroup";
 import { usePublicConversation } from "@extension/components/conversation/usePublicConversation";
@@ -98,7 +95,8 @@ export function ConversationViewer({
           | UserMessageNewEvent
           | AgentMessageNewEvent
           | AgentGenerationCancelledEvent
-          | ConversationTitleEvent;
+          | ConversationTitleEvent
+          | HeartbeatEvent;
       } = JSON.parse(eventStr);
 
       const event = eventPayload.data;
@@ -106,6 +104,8 @@ export function ConversationViewer({
       if (!eventIds.current.includes(eventPayload.eventId)) {
         eventIds.current.push(eventPayload.eventId);
         switch (event.type) {
+          case "heartbeat":
+            break;
           case "user_message_new":
           case "agent_message_new":
             void mutateConversation(async (currentMessagePages) => {
