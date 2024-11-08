@@ -9,7 +9,6 @@ import {
   changeZendeskClientSubdomain,
   createZendeskClient,
   fetchZendeskArticlesInCategory,
-  getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { syncArticle } from "@connectors/connectors/zendesk/temporal/sync_article";
 import { syncTicket } from "@connectors/connectors/zendesk/temporal/sync_ticket";
@@ -343,7 +342,7 @@ export async function syncZendeskArticleBatchActivity({
     connector.connectionId
   );
   const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
-  const brandSubdomain = await getZendeskBrandSubdomain(zendeskApiClient, {
+  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
     brandId: category.brandId,
     connectorId,
   });
@@ -359,6 +358,9 @@ export async function syncZendeskArticleBatchActivity({
     cursor,
   });
 
+  const sections = await zendeskApiClient.helpcenter.sections.list();
+  const users = await zendeskApiClient.users.list();
+
   await concurrentExecutor(
     articles,
     (article) =>
@@ -366,6 +368,9 @@ export async function syncZendeskArticleBatchActivity({
         connectorId,
         category,
         article,
+        section:
+          sections.find((section) => section.id === article.section_id) || null,
+        user: users.find((user) => user.id === article.author_id) || null,
         dataSourceConfig,
         currentSyncDateMs,
         loggerArgs,

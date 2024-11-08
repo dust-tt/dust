@@ -25,22 +25,24 @@ export function createZendeskClient({
 /**
  * Returns a Zendesk client with the subdomain set to the one in the brand.
  * Retrieves the brand from the database if it exists, fetches it from the Zendesk API otherwise.
+ * @returns The subdomain of the brand the client was scoped to.
  */
 export async function changeZendeskClientSubdomain(
   client: Client,
   { connectorId, brandId }: { connectorId: ModelId; brandId: number }
-) {
-  client.config.subdomain = await getZendeskBrandSubdomain(client, {
+): Promise<string> {
+  const brandSubdomain = await getZendeskBrandSubdomain(client, {
     connectorId,
     brandId,
   });
-  return client;
+  client.config.subdomain = brandSubdomain;
+  return brandSubdomain;
 }
 
 /**
  * Retrieves a brand's subdomain from the database if it exists, fetches it from the Zendesk API otherwise.
  */
-export async function getZendeskBrandSubdomain(
+async function getZendeskBrandSubdomain(
   client: Client,
   { connectorId, brandId }: { connectorId: ModelId; brandId: number }
 ): Promise<string> {

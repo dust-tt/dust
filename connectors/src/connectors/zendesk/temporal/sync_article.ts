@@ -2,7 +2,11 @@ import type { ModelId } from "@dust-tt/types";
 import TurndownService from "turndown";
 
 import { getArticleInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
-import type { ZendeskFetchedArticle } from "@connectors/connectors/zendesk/lib/node-zendesk-types";
+import type {
+  ZendeskFetchedArticle,
+  ZendeskFetchedSection,
+  ZendeskFetchedUser,
+} from "@connectors/connectors/zendesk/lib/node-zendesk-types";
 import {
   renderDocumentTitleAndContent,
   renderMarkdownSection,
@@ -22,6 +26,8 @@ export async function syncArticle({
   connectorId,
   article,
   category,
+  section,
+  user,
   currentSyncDateMs,
   dataSourceConfig,
   loggerArgs,
@@ -30,7 +36,9 @@ export async function syncArticle({
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   article: ZendeskFetchedArticle;
+  section: ZendeskFetchedSection | null;
   category: ZendeskCategoryResource;
+  user: ZendeskFetchedUser | null;
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;
   forceResync: boolean;
@@ -86,24 +94,29 @@ export async function syncArticle({
     return;
   }
 
-  const categoryContent =
-    category.name + category.description ? ` - ${category.description}` : "";
-
   const articleContentInMarkdown =
     typeof article.body === "string"
       ? turndownService.turndown(article.body)
       : "";
 
-  // append the collection description at the beginning of the article
-  const markdown = `CATEGORY: ${categoryContent}\n\n${articleContentInMarkdown}`;
-
   if (articleContentInMarkdown) {
     const createdAt = new Date(article.created_at);
     const updatedAt = new Date(article.updated_at);
 
+    const header = [
+      `CATEGORY: ${category.name} ${category?.description ? ` - ${category.description}` : ""}`,
+      section &&
+        `SECTION: ${section.name} ${section?.description ? ` - ${section.description}` : ""}`,
+      user && `USER: ${user.name} ${user?.email ? ` - ${user.email}` : ""}`,
+      `SUM OF VOTES: ${article.vote_sum}`,
+      article.label_names.length ? `LABELS: ${article.label_names.join()}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
     const renderedMarkdown = await renderMarkdownSection(
       dataSourceConfig,
-      markdown
+      `${header}\n\n${articleContentInMarkdown}`
     );
     const documentContent = await renderDocumentTitleAndContent({
       dataSourceConfig,

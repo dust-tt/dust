@@ -27,6 +27,23 @@ interface Response {
   statusText: string;
 }
 
+interface ZendeskFetchedSection {
+  category_id?: number;
+  created_at?: string;
+  description?: string;
+  html_url?: string;
+  id?: number;
+  locale: string;
+  name: string;
+  outdated?: boolean;
+  parent_section_id?: number;
+  position?: number;
+  source_locale?: string;
+  theme_template?: string;
+  updated_at?: string;
+  url?: string;
+}
+
 interface ZendeskFetchedCategory {
   id: number;
   url: string;
@@ -66,7 +83,7 @@ export interface ZendeskFetchedArticle {
   permission_group_id: number;
   content_tag_ids: number[];
   label_names: string[];
-  body: string;
+  body: string | null;
   user_segment_ids: number[];
 }
 
@@ -190,6 +207,12 @@ declare module "node-zendesk" {
         show: (
           categoryId: number
         ) => Promise<{ response: Response; result: ZendeskFetchedCategory }>;
+      };
+      sections: {
+        list: () => Promise<ZendeskFetchedSection[]>;
+        show: (
+          sectionId: number
+        ) => Promise<{ response: Response; result: ZendeskFetchedSection }>;
       };
       articles: {
         list: () => Promise<ZendeskFetchedArticle[]>;
