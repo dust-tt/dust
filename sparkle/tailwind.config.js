@@ -31,6 +31,7 @@ const safeColorlist = safeColorsArray.flatMap((color) => [
   `s-border-${color}-100`,
   `s-border-${color}-200`,
   `s-border-${color}-300`,
+  `s-text-${color}-500`,
   `s-text-${color}-800`,
   `s-text-${color}-900`,
   `s-text-${color}-950`,
@@ -166,16 +167,16 @@ module.exports = {
           },
         },
         "shiny-text": {
-          "0%, 90%, 100%": {
-            "background-position": "calc(-100% - 100px) 0",
+          "0%": {
+            "background-position": "calc(-200%) 0",
           },
-          "30%, 60%": {
-            "background-position": "calc(100% + 100px) 0",
+          "100%": {
+            "background-position": "calc(200%) 0",
           },
         },
       },
       animation: {
-        "shiny-text": "shiny-text 8s infinite",
+        "shiny-text": "shiny-text 2s infinite",
         pulse: "pulse var(--duration) ease-out infinite",
         "opacity-pulse": "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "background-position-spin":
