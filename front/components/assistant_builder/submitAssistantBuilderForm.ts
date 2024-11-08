@@ -3,6 +3,7 @@ import type {
   LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
   Result,
+  RetrievalTimeframe,
   WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
@@ -61,6 +62,24 @@ export async function submitAssistantBuilderForm({
   >;
 
   const map: (a: AssistantBuilderActionConfiguration) => ActionsType = (a) => {
+    let timeFrame: RetrievalTimeframe = "auto";
+
+    if (a.type === "RETRIEVAL_EXHAUSTIVE") {
+      if (a.configuration.timeFrame) {
+        timeFrame = {
+          duration: a.configuration.timeFrame.value,
+          unit: a.configuration.timeFrame.unit,
+        };
+      } else {
+        timeFrame = "none";
+      }
+    } else if (a.type === "PROCESS") {
+      timeFrame = {
+        duration: a.configuration.timeFrame.value,
+        unit: a.configuration.timeFrame.unit,
+      };
+    }
+
     switch (a.type) {
       case "RETRIEVAL_SEARCH":
       case "RETRIEVAL_EXHAUSTIVE":
@@ -70,13 +89,7 @@ export async function submitAssistantBuilderForm({
             name: a.name,
             description: a.description,
             query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
-            relativeTimeFrame:
-              a.type === "RETRIEVAL_EXHAUSTIVE"
-                ? {
-                    duration: a.configuration.timeFrame.value,
-                    unit: a.configuration.timeFrame.unit,
-                  }
-                : "auto",
+            relativeTimeFrame: timeFrame,
             topK: "auto",
             dataSources: Object.values(
               a.configuration.dataSourceConfigurations
@@ -173,10 +186,7 @@ export async function submitAssistantBuilderForm({
               },
             })),
             tagsFilter: a.configuration.tagsFilter,
-            relativeTimeFrame: {
-              duration: a.configuration.timeFrame.value,
-              unit: a.configuration.timeFrame.unit,
-            },
+            relativeTimeFrame: timeFrame,
             schema: a.configuration.schema,
           },
         ];
