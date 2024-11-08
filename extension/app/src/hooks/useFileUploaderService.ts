@@ -1,4 +1,7 @@
-import type { FileUploadedRequestResponseType } from "@dust-tt/client";
+import type {
+  ConversationPublicType,
+  FileUploadedRequestResponseType,
+} from "@dust-tt/client";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   LightWorkspaceType,
@@ -12,6 +15,7 @@ import {
   MAX_FILE_SIZES,
   Ok,
 } from "@dust-tt/types";
+import { getIncludeCurrentTab } from "@extension/lib/conversation";
 import { useDustAPI } from "@extension/lib/dust_api";
 import { getMimeTypeFromFile } from "@extension/lib/file";
 import { useState } from "react";
@@ -277,6 +281,76 @@ export function useFileUploaderService({
     setFileBlobs([]);
   };
 
+  const uploadContentTab = async (conversation?: ConversationPublicType) => {
+    const tabContentRes = await getIncludeCurrentTab();
+
+    if (tabContentRes && tabContentRes.isErr()) {
+      sendNotification({
+        title: "Cannot get tab content",
+        description: tabContentRes.error.message,
+        type: "error",
+      });
+      return;
+    }
+
+    const tabContent =
+      tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
+
+    if (!tabContent?.content) {
+      sendNotification({
+        title: "Cannot get tab content",
+        description: "No content found.",
+        type: "error",
+      });
+      return;
+    }
+
+    const title = `${tabContent.title}.txt`;
+    // Check if the content is already uploaded - compare the title and the size of the content.
+    const alreadyUploaded = conversation?.content
+      .map((m) => m[m.length - 1])
+      .some(
+        (m) =>
+          m.type === "content_fragment" &&
+          m.title === title &&
+          m.textBytes === new Blob([tabContent.content ?? ""]).size
+      );
+
+    if (tabContent && tabContent.content && !alreadyUploaded) {
+      const file = new File([tabContent.content], title, {
+        type: "text/plain",
+      });
+
+      return await handleFilesUpload([file]);
+    }
+  };
+
+  const uploadContentTabAsScreenshot = async () => {
+    const tabContentRes = await getIncludeCurrentTab(false, true);
+
+    if (tabContentRes && tabContentRes.isErr()) {
+      sendNotification({
+        title: "Cannot get tab content",
+        description: tabContentRes.error.message,
+        type: "error",
+      });
+    }
+
+    const tabContent =
+      tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
+
+    if (tabContent && tabContent.screenshot) {
+      console.log(tabContent.screenshot);
+      const response = await fetch(tabContent.screenshot);
+      const blob = await response.blob();
+      const file = new File([blob], `${tabContent.title}.jpg`, {
+        type: blob.type,
+      });
+
+      return await handleFilesUpload([file]);
+    }
+  };
+
   type FileBlobWithFileId = FileBlob & { fileId: string };
   function fileBlobHasFileId(
     fileBlob: FileBlob
@@ -294,6 +368,8 @@ export function useFileUploaderService({
     handleFileChange,
     handleFilesUpload,
     isProcessingFiles,
+    uploadContentTab,
+    uploadContentTabAsScreenshot,
     removeFile,
     resetUpload,
   };

@@ -1,11 +1,11 @@
 import type { ConversationPublicType } from "@dust-tt/client";
 import type {
   AgentMention,
+  LightAgentConfigurationType,
   LightWorkspaceType,
   MentionType,
   UploadedContentFragment,
 } from "@dust-tt/types";
-import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { compareAgentsForSort } from "@dust-tt/types";
 import { usePublicAgentConfigurations } from "@extension/components/assistants/usePublicAgentConfigurations";
 import { useFileDrop } from "@extension/components/conversation/FileUploaderContext";
@@ -14,7 +14,6 @@ import type { InputBarContainerProps } from "@extension/components/input_bar/Inp
 import { InputBarContainer } from "@extension/components/input_bar/InputBarContainer";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useFileUploaderService } from "@extension/hooks/useFileUploaderService";
-import { uploadContentTab } from "@extension/lib/conversation";
 import { classNames } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -149,7 +148,7 @@ export function AssistantInputBar({
       fileId: cf.fileId,
     }));
     if (isTabIncluded) {
-      const files = await uploadContentTab(fileUploaderService, conversation);
+      const files = await fileUploaderService.uploadContentTab(conversation);
       if (files) {
         newFiles.push(
           ...files.map((cf) => ({

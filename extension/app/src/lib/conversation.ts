@@ -18,7 +18,6 @@ import type {
   UserType,
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { FileUploaderService } from "@extension/hooks/useFileUploaderService";
 import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import { getAccessToken, getStoredUser } from "@extension/lib/storage";
 
@@ -327,79 +326,4 @@ export const getIncludeCurrentTab = async (
     return new Err(new Error("Failed to get content from the current tab."));
   }
   return new Ok(backgroundRes);
-};
-
-export const uploadContentTab = async (
-  fileUploaderService: FileUploaderService,
-  conversation?: ConversationPublicType
-) => {
-  const tabContentRes = await getIncludeCurrentTab();
-
-  if (tabContentRes && tabContentRes.isErr()) {
-    // sendNotification({
-    //   title: "Cannot get tab content",
-    //   description: tabContentRes.error.message,
-    //   type: "error",
-    // });
-    return;
-  }
-
-  const tabContent =
-    tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
-
-  if (!tabContent?.content) {
-    // sendNotification({
-    //   title: "Cannot get tab content",
-    //   description: tabContentRes.error.message,
-    //   type: "error",
-    // });
-    return;
-  }
-
-  const title = `${tabContent.title}.txt`;
-  // Check if the content is already uploaded - compare the title and the size of the content.
-  const alreadyUploaded = conversation?.content
-    .map((m) => m[m.length - 1])
-    .some(
-      (m) =>
-        m.type === "content_fragment" &&
-        m.title === title &&
-        m.textBytes === new Blob([tabContent.content ?? ""]).size
-    );
-
-  if (tabContent && tabContent.content && !alreadyUploaded) {
-    const file = new File([tabContent.content], title, {
-      type: "text/plain",
-    });
-
-    return await fileUploaderService.handleFilesUpload([file]);
-  }
-};
-
-export const uploadContentTabAsScreenshot = async (
-  fileUploaderService: FileUploaderService
-) => {
-  const tabContentRes = await getIncludeCurrentTab(false, true);
-
-  if (tabContentRes && tabContentRes.isErr()) {
-    // sendNotification({
-    //   title: "Cannot get tab content",
-    //   description: tabContentRes.error.message,
-    //   type: "error",
-    // });
-  }
-
-  const tabContent =
-    tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
-
-  if (tabContent && tabContent.screenshot) {
-    console.log(tabContent.screenshot);
-    const response = await fetch(tabContent.screenshot);
-    const blob = await response.blob();
-    const file = new File([blob], `${tabContent.title}.jpg`, {
-      type: blob.type,
-    });
-
-    return await fileUploaderService.handleFilesUpload([file]);
-  }
 };

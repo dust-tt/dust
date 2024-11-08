@@ -12,10 +12,6 @@ import {
 import { supportedFileExtensions } from "@dust-tt/types";
 import type { EditorService } from "@extension/components/input_bar/editor/useCustomEditor";
 import type { FileUploaderService } from "@extension/hooks/useFileUploaderService";
-import {
-  uploadContentTab,
-  uploadContentTabAsScreenshot,
-} from "@extension/lib/conversation";
 import { useRef } from "react";
 
 type AttachFragmentProps = {
@@ -65,12 +61,12 @@ export const AttachFragment = ({
           <DropdownMenuItem
             icon={DocumentTextIcon}
             label={"Attach page content"}
-            onClick={() => uploadContentTab(fileUploaderService)}
+            onClick={() => fileUploaderService.uploadContentTab()}
           />
           <DropdownMenuItem
             icon={ImageIcon}
             label={"Attach page screenshot"}
-            onClick={() => uploadContentTabAsScreenshot(fileUploaderService)}
+            onClick={() => fileUploaderService.uploadContentTabAsScreenshot()}
           />
         </DropdownMenuContent>
       </DropdownMenu>
