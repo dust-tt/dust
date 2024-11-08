@@ -7,6 +7,7 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
+import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import type * as activities from "@connectors/connectors/zendesk/temporal/activities";
 import type {
   ZendeskCategoryUpdateSignal,
@@ -18,8 +19,8 @@ const {
   getZendeskCategoriesActivity,
   syncZendeskBrandActivity,
   syncZendeskCategoryActivity,
-  syncZendeskArticleBatchActivity,
-  syncZendeskTicketsActivity,
+  syncZendeskArticlesBatchActivity,
+  syncZendeskTicketsActivityBatch,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -330,12 +331,13 @@ export async function zendeskCategorySyncWorkflow({
   let hasMore = true;
 
   while (hasMore) {
-    const result = await syncZendeskArticleBatchActivity({
+    const result = await syncZendeskArticlesBatchActivity({
       connectorId,
       categoryId,
       currentSyncDateMs,
       forceResync,
       cursor,
+      pageSize: ZENDESK_BATCH_SIZE,
     });
     hasMore = result.hasMore || false;
     cursor = result.afterCursor;
@@ -378,12 +380,13 @@ async function runZendeskBrandHelpCenterSyncActivities({
     let cursor = null; // cursor involved in the pagination of the API
 
     while (hasMore) {
-      const result = await syncZendeskArticleBatchActivity({
+      const result = await syncZendeskArticlesBatchActivity({
         connectorId,
         categoryId,
         currentSyncDateMs,
         forceResync,
         cursor,
+        pageSize: ZENDESK_BATCH_SIZE,
       });
       hasMore = result.hasMore || false;
       cursor = result.afterCursor;
@@ -405,11 +408,38 @@ async function runZendeskBrandTicketsSyncActivities({
   currentSyncDateMs: number;
   forceResync: boolean;
 }) {
-  // TODO(2024-10-29 aubin): see how we can batch the tickets into multiple activities
-  await syncZendeskTicketsActivity({
-    connectorId,
-    brandId,
-    currentSyncDateMs,
-    forceResync,
-  });
+  let cursor: string | null = null;
+  let hasMore = true;
+  let totalProcessed = 0;
+  let totalSuccess = 0;
+  let batchNumber = 0;
+
+  while (hasMore) {
+    batchNumber++;
+
+    const result = await syncZendeskTicketsActivityBatch({
+      connectorId,
+      brandId,
+      currentSyncDateMs,
+      forceResync,
+      pageSize: ZENDESK_BATCH_SIZE,
+      cursor,
+    });
+
+    totalProcessed += result.processedCount;
+    totalSuccess += result.successCount;
+    cursor = result.nextCursor;
+    hasMore = result.hasMore;
+
+    // Add a small delay between batches to prevent rate limiting
+    if (hasMore) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+
+  return {
+    totalProcessed,
+    totalSuccess,
+    totalBatches: batchNumber,
+  };
 }
