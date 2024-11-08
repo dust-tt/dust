@@ -31,7 +31,9 @@ export async function allowSyncZendeskHelpCenter({
     await getZendeskSubdomainAndAccessToken(connectionId)
   );
 
-  const syncSuccess = await syncBrandWithPermissions(zendeskApiClient, {
+  const syncSuccess = await syncBrandWithPermissions({
+    zendeskApiClient,
+    connectionId,
     connectorId,
     brandId,
     permissions: {

@@ -1,8 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 
 import { syncBrandWithPermissions } from "@connectors/connectors/zendesk/lib/utils";
-import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import {
   ZendeskBrandResource,
@@ -21,11 +19,9 @@ export async function allowSyncZendeskTickets({
   connectionId: string;
   brandId: number;
 }): Promise<boolean> {
-  const zendeskApiClient = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connectionId)
-  );
-  return syncBrandWithPermissions(zendeskApiClient, {
+  return syncBrandWithPermissions({
     connectorId,
+    connectionId,
     brandId,
     permissions: {
       ticketsPermission: "read",

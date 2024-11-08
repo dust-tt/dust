@@ -3,8 +3,6 @@ import type { ModelId } from "@dust-tt/types";
 import { allowSyncZendeskHelpCenter } from "@connectors/connectors/zendesk/lib/help_center_permissions";
 import { allowSyncZendeskTickets } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { syncBrandWithPermissions } from "@connectors/connectors/zendesk/lib/utils";
-import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
@@ -20,12 +18,9 @@ export async function allowSyncZendeskBrand({
   connectionId: string;
   brandId: number;
 }): Promise<boolean> {
-  const zendeskApiClient = createZendeskClient(
-    await getZendeskSubdomainAndAccessToken(connectionId)
-  );
-
-  const syncSuccess = await syncBrandWithPermissions(zendeskApiClient, {
+  const syncSuccess = await syncBrandWithPermissions({
     connectorId,
+    connectionId,
     brandId,
     permissions: {
       ticketsPermission: "none",
