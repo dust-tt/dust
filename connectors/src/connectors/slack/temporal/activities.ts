@@ -72,7 +72,7 @@ export async function getChannels(
   let nextCursor: string | undefined = undefined;
   do {
     const c: ConversationsListResponse = await client.conversations.list({
-      types: "public_channel",
+      types: "public_channel, private_channel",
       limit: 1000,
       cursor: nextCursor,
     });
