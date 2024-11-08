@@ -1,5 +1,5 @@
 import { cva, VariantProps } from "class-variance-authority";
-import { CSSProperties, ReactNode } from "react";
+import { ReactNode } from "react";
 import React from "react";
 
 import { cn } from "@sparkle/lib/utils";
@@ -47,16 +47,7 @@ export function AnimatedText({
   return (
     <span className={cn("s-relative s-inline-block", className)}>
       <span className={textVariants({ variant })}>{children}</span>
-      <span
-        style={
-          {
-            "--shiny-width": `50%`,
-          } as CSSProperties
-        }
-        className={animVariants({ variant })}
-      >
-        {children}
-      </span>
+      <span className={animVariants({ variant })}>{children}</span>
     </span>
   );
 }
