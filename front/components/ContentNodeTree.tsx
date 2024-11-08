@@ -170,6 +170,11 @@ function ContentNodeTreeChildren({
             key={n.internalId}
             type={n.expandable ? "node" : "leaf"}
             label={n.title}
+            labelClassName={
+              n.providerVisibility === "private"
+                ? "after:content-['(private)'] after:text-red-500 after:ml-1"
+                : ""
+            }
             visual={getVisualForContentNode(n)}
             className={`whitespace-nowrap tree-depth-${depth}`}
             checkbox={
