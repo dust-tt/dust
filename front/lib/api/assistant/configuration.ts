@@ -577,7 +577,9 @@ export async function getAgentConfigurations<V extends "light" | "full">({
         .flat()
         .filter((a) =>
           auth.canRead(
-            Authenticator.createResourcePermissionsFromGroupIds(a.groupIds)
+            Authenticator.createResourcePermissionsFromGroupIds(
+              a.requestedGroupIds
+            )
           )
         );
 

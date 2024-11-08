@@ -14,7 +14,7 @@ import {
 import { ChevronDownIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
-const BUTTON_VARIANTS = [
+export const BUTTON_VARIANTS = [
   "primary",
   "highlight",
   "warning",
@@ -24,7 +24,7 @@ const BUTTON_VARIANTS = [
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
-const BUTTON_SIZES = ["xs", "sm", "md"] as const;
+export const BUTTON_SIZES = ["xs", "sm", "md"] as const;
 
 type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
