@@ -108,7 +108,7 @@ export async function syncArticle({
       section &&
         `SECTION: ${section.name} ${section?.description ? ` - ${section.description}` : ""}`,
       user && `USER: ${user.name} ${user?.email ? ` - ${user.email}` : ""}`,
-      `VOTE_SUM: ${article.vote_sum}`,
+      `VOTE OF SUM: ${article.vote_sum}`,
       article.label_names.length ? `LABELS: ${article.label_names.join()}` : "",
     ]
       .filter(Boolean)
