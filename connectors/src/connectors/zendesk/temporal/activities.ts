@@ -410,13 +410,18 @@ export async function syncZendeskTicketsBatchActivity({
 
   // Fetch tickets in batches
   const { tickets, meta } = await fetchZendeskTicketsInBrand({
-    subdomain,
+    brandSubdomain: subdomain,
     accessToken,
     pageSize: ZENDESK_BATCH_SIZE,
     cursor,
   });
 
   const zendeskApiClient = createZendeskClient({ subdomain, accessToken });
+  await changeZendeskClientSubdomain(zendeskApiClient, {
+    connectorId,
+    brandId,
+  });
+
   const users = await zendeskApiClient.users.list();
 
   const res = await concurrentExecutor(

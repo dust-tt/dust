@@ -170,12 +170,12 @@ export async function fetchZendeskArticlesInCategory({
 }
 
 export async function fetchZendeskTicketsInBrand({
-  subdomain,
+  brandSubdomain,
   accessToken,
   pageSize,
   cursor,
 }: {
-  subdomain: string;
+  brandSubdomain: string;
   accessToken: string;
   pageSize: number;
   cursor: string | null;
@@ -190,7 +190,7 @@ export async function fetchZendeskTicketsInBrand({
 
   const runFetch = async () =>
     fetch(
-      `https://${subdomain}.zendesk.com/api/v2/tickets?page[size]=${pageSize}` +
+      `https://${brandSubdomain}.zendesk.com/api/v2/tickets?page[size]=${pageSize}` +
         (cursor ? `&page[after]=${cursor}` : ""),
       {
         method: "GET",
