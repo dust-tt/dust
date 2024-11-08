@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { fetch, RequestInit, Response } from "undici";
 
 import type {
   AgentActionSpecificEvent,
@@ -526,16 +527,32 @@ export class DustAPI {
     return new Ok(r.value.message);
   }
 
-  async streamAgentMessageEvents({
+  async streamAgentAnswerEvents({
     conversation,
-    message,
+    userMessageId,
   }: {
     conversation: ConversationPublicType;
-    message: AgentMessagePublicType;
+    userMessageId: string;
   }) {
+    // find the agent message with the parentMessageId equal to the user message id
+    const agentMessages = conversation.content
+      .map((versions) => {
+        const m = versions[versions.length - 1];
+        return m;
+      })
+      .filter((m) => {
+        return (
+          m && m.type === "agent_message" && m.parentMessageId === userMessageId
+        );
+      });
+    if (agentMessages.length === 0) {
+      return new Err(new Error("Failed to retrieve agent message"));
+    }
+    const agentMessage = agentMessages[0];
+
     const res = await this.request({
       method: "GET",
-      path: `assistant/conversations/${conversation.sId}/messages/${message.sId}/events`,
+      path: `assistant/conversations/${conversation.sId}/messages/${agentMessage.sId}/events`,
     });
 
     if (res.isErr()) {
