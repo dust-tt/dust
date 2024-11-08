@@ -159,6 +159,7 @@ export function useFileUploaderService({
         contentType: fileBlob.contentType,
         fileName: fileBlob.filename,
         fileSize: fileBlob.size,
+        useCase: "conversation",
       });
       if (fileRes.isErr()) {
         console.error("Error uploading files:", fileRes.error);

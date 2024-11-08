@@ -701,10 +701,12 @@ export class DustAPI {
     contentType,
     fileName,
     fileSize,
+    useCase,
   }: {
     contentType: string;
     fileName: string;
     fileSize: number;
+    useCase: "conversation" | "avatar";
   }) {
     const res = await this.request({
       method: "POST",
@@ -713,7 +715,7 @@ export class DustAPI {
         contentType,
         fileName,
         fileSize,
-        useCase: "conversation",
+        useCase,
       },
     });
 
