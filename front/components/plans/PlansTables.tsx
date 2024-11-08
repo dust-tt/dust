@@ -21,18 +21,6 @@ import {
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
 
-interface PricePlanProps {
-  size: "sm" | "xs";
-  className?: string;
-  isTabs?: boolean;
-  plan?: PlanType;
-  onClickProPlan?: () => void;
-  onClickEnterprisePlan?: () => void;
-  isProcessing?: boolean;
-  flexCSS?: string;
-  display: PriceTableDisplay;
-}
-
 export type PriceTableDisplay = "landing" | "subscribe";
 
 type PriceTableItem = {
@@ -310,10 +298,16 @@ function EnterprisePriceTable({
   );
 }
 
+interface PricePlanProps {
+  plan?: PlanType;
+  onClickProPlan?: () => void;
+  onClickEnterprisePlan?: () => void;
+  isProcessing?: boolean;
+  flexCSS?: string;
+  display: PriceTableDisplay;
+}
+
 export function PricePlans({
-  size = "sm",
-  isTabs = false,
-  className = "",
   flexCSS = "mx-4 flex flex-row w-full md:-mx-12 md:gap-4 lg:gap-6 xl:mx-0 xl:gap-8 2xl:gap-10",
   plan,
   onClickProPlan,
@@ -321,16 +315,16 @@ export function PricePlans({
   isProcessing,
   display,
 }: PricePlanProps) {
-  if (isTabs) {
-    return (
+  return (
+    <>
+      {/* Tabs view for smaller screens (hidden on lg and above) */}
       <div
         className={classNames(
-          "mx-0 sm:mx-24",
-          "w-full max-w-md px-2 sm:px-0",
-          className
+          "mx-0 sm:mx-24 lg:hidden",
+          "w-full max-w-md px-2 sm:px-0"
         )}
       >
-        <Tabs value="pro">
+        <Tabs defaultValue="pro">
           <TabsList>
             <TabsTrigger value="pro" label="Pro" />
             <TabsTrigger value="enterprise" label="Enterprise" />
@@ -339,7 +333,7 @@ export function PricePlans({
             <TabsContent value="pro">
               <ProPriceTable
                 display={display}
-                size={size}
+                size="xs"
                 plan={plan}
                 isProcessing={isProcessing}
                 onClick={onClickProPlan}
@@ -347,7 +341,7 @@ export function PricePlans({
             </TabsContent>
             <TabsContent value="enterprise">
               <EnterprisePriceTable
-                size={size}
+                size="xs"
                 isProcessing={isProcessing}
                 onClick={onClickEnterprisePlan}
               />
@@ -355,23 +349,22 @@ export function PricePlans({
           </div>
         </Tabs>
       </div>
-    );
-  } else {
-    return (
-      <div className={classNames(flexCSS, className)}>
+
+      {/* Cards view for larger screens (hidden below lg) */}
+      <div className={classNames(flexCSS, "hidden lg:flex")}>
         <ProPriceTable
-          size={size}
+          size="sm"
           plan={plan}
           isProcessing={isProcessing}
           onClick={onClickProPlan}
           display={display}
         />
         <EnterprisePriceTable
-          size={size}
+          size="sm"
           isProcessing={isProcessing}
           onClick={onClickEnterprisePlan}
         />
       </div>
-    );
-  }
+    </>
+  );
 }
