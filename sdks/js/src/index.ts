@@ -4,7 +4,6 @@ import type {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
-  AgentMessagePublicType,
   AgentMessageSuccessEvent,
   APIError,
   ConversationPublicType,
@@ -38,6 +37,7 @@ import {
   GetDataSourcesResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
+  MeResponseSchema,
   Ok,
   PatchDataSourceViewsResponseSchema,
   PostContentFragmentResponseSchema,
@@ -120,6 +120,36 @@ export class DustAPI {
     return this._useLocalInDev && this._nodeEnv === "development"
       ? "http://localhost:3000"
       : this._url;
+  }
+
+  /**
+   * Fetches the current user's information from the API.
+   *
+   * This method sends a GET request to the `/api/v1/me` endpoint with the necessary
+   * authorization headers. It then processes the response to extract the user information.
+   * Note that this will only work if you are using an OAuth2 token. It will always fail with a workspace API key.
+   *
+   * @returns {Promise<Result<User, Error>>} A promise that resolves to a Result object containing
+   * either the user information or an error.
+   */
+  async me() {
+    // This method call directly _fetchWithError and _resultFromResponse as it's a little special : it doesn't live under the workspace resource.
+    const headers: RequestInit["headers"] = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this._credentials.apiKey}`,
+    };
+
+    const res = await this._fetchWithError(`${this.apiUrl()}/api/v1/me`, {
+      method: "GET",
+      headers,
+    });
+
+    const r = await this._resultFromResponse(MeResponseSchema, res);
+
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.user);
   }
 
   async request(args: RequestArgsType) {
@@ -526,16 +556,32 @@ export class DustAPI {
     return new Ok(r.value.message);
   }
 
-  async streamAgentMessageEvents({
+  async streamAgentAnswerEvents({
     conversation,
-    message,
+    userMessageId,
   }: {
     conversation: ConversationPublicType;
-    message: AgentMessagePublicType;
+    userMessageId: string;
   }) {
+    // find the agent message with the parentMessageId equal to the user message id
+    const agentMessages = conversation.content
+      .map((versions) => {
+        const m = versions[versions.length - 1];
+        return m;
+      })
+      .filter((m) => {
+        return (
+          m && m.type === "agent_message" && m.parentMessageId === userMessageId
+        );
+      });
+    if (agentMessages.length === 0) {
+      return new Err(new Error("Failed to retrieve agent message"));
+    }
+    const agentMessage = agentMessages[0];
+
     const res = await this.request({
       method: "GET",
-      path: `assistant/conversations/${conversation.sId}/messages/${message.sId}/events`,
+      path: `assistant/conversations/${conversation.sId}/messages/${agentMessage.sId}/events`,
     });
 
     if (res.isErr()) {
