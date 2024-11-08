@@ -326,8 +326,12 @@ export function PricePlans({
       >
         <Tabs defaultValue="pro">
           <TabsList>
-            <TabsTrigger value="pro" label="Pro" />
-            <TabsTrigger value="enterprise" label="Enterprise" />
+            <TabsTrigger value="pro" label="Pro" buttonVariant="outline" />
+            <TabsTrigger
+              value="enterprise"
+              label="Enterprise"
+              buttonVariant="outline"
+            />
           </TabsList>
           <div className="mt-8">
             <TabsContent value="pro">
