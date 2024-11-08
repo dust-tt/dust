@@ -1,5 +1,4 @@
 -- Migration created on Nov 07, 2024
-ALTER TABLE "zendesk_tickets" ALTER COLUMN "brandId" DROP NOT NULL;ALTER TABLE "zendesk_tickets" ALTER COLUMN "brandId" DROP DEFAULT;
 ALTER TABLE "zendesk_tickets" ALTER COLUMN "groupId" DROP NOT NULL;ALTER TABLE "zendesk_tickets" ALTER COLUMN "groupId" DROP DEFAULT;
 ALTER TABLE "zendesk_tickets" ALTER COLUMN "assigneeId" DROP NOT NULL;ALTER TABLE "zendesk_tickets" ALTER COLUMN "assigneeId" DROP DEFAULT;
 ALTER TABLE "zendesk_tickets" ALTER COLUMN "organizationId" DROP NOT NULL;ALTER TABLE "zendesk_tickets" ALTER COLUMN "organizationId" DROP DEFAULT;

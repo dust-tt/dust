@@ -380,6 +380,7 @@ ZendeskTicket.init(
     },
     brandId: {
       type: DataTypes.BIGINT,
+      allowNull: false,
     },
     groupId: {
       type: DataTypes.BIGINT,
