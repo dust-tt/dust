@@ -40,6 +40,7 @@ const TabsTrigger = React.forwardRef<
     tooltip?: string;
     icon?: React.ComponentType;
     isLoading?: boolean;
+    buttonVariant?: React.ComponentProps<typeof Button>["variant"]
   } & Omit<LinkWrapperProps, "children" | "className">
 >(
   (
@@ -54,6 +55,7 @@ const TabsTrigger = React.forwardRef<
       replace,
       shallow,
       disabled,
+      buttonVariant = "ghost",
       ...props
     },
     ref
@@ -72,7 +74,7 @@ const TabsTrigger = React.forwardRef<
       >
         <div>
           <Button
-            variant="ghost"
+            variant={buttonVariant}
             size="sm"
             label={label}
             tooltip={tooltip}
