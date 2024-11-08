@@ -382,7 +382,7 @@ export async function syncZendeskArticlesBatchActivity({
   return { hasMore: has_more, afterCursor: after_cursor };
 }
 
-export async function syncZendeskTicketsActivityBatch({
+export async function syncZendeskTicketsBatchActivity({
   connectorId,
   brandId,
   currentSyncDateMs,

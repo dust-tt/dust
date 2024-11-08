@@ -19,7 +19,7 @@ const {
   syncZendeskBrandActivity,
   syncZendeskCategoryActivity,
   syncZendeskArticlesBatchActivity,
-  syncZendeskTicketsActivityBatch,
+  syncZendeskTicketsBatchActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -416,7 +416,7 @@ async function runZendeskBrandTicketsSyncActivities({
   while (hasMore) {
     batchNumber++;
 
-    const result = await syncZendeskTicketsActivityBatch({
+    const result = await syncZendeskTicketsBatchActivity({
       connectorId,
       brandId,
       currentSyncDateMs,
