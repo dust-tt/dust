@@ -18,8 +18,8 @@ export async function allowSyncZendeskBrand({
   connectorId: ModelId;
   connectionId: string;
   brandId: number;
-}): Promise<ZendeskBrandResource | null> {
-  let brand = await ZendeskBrandResource.fetchByBrandId({
+}): Promise<boolean> {
+  const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
@@ -39,7 +39,7 @@ export async function allowSyncZendeskBrand({
       result: { brand: fetchedBrand },
     } = await zendeskApiClient.brand.show(brandId);
     if (fetchedBrand) {
-      brand = await ZendeskBrandResource.makeNew({
+      await ZendeskBrandResource.makeNew({
         blob: {
           subdomain: fetchedBrand.subdomain,
           connectorId: connectorId,
@@ -53,7 +53,7 @@ export async function allowSyncZendeskBrand({
       });
     } else {
       logger.error({ brandId }, "[Zendesk] Brand could not be fetched.");
-      return null;
+      return false;
     }
   }
 
@@ -68,7 +68,7 @@ export async function allowSyncZendeskBrand({
     brandId,
   });
 
-  return brand;
+  return true;
 }
 
 /**

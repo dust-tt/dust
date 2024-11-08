@@ -252,13 +252,13 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
             }
           }
           if (permission === "read") {
-            const newBrand = await allowSyncZendeskHelpCenter({
+            const wasBrandUpdated = await allowSyncZendeskHelpCenter({
               connectorId,
               connectionId,
               brandId: objectId,
             });
-            if (newBrand) {
-              toBeSignaledHelpCenterIds.add(newBrand.brandId);
+            if (wasBrandUpdated) {
+              toBeSignaledHelpCenterIds.add(objectId);
             }
           }
           break;
@@ -274,13 +274,13 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
             }
           }
           if (permission === "read") {
-            const newBrand = await allowSyncZendeskTickets({
+            const wasBrandUpdated = await allowSyncZendeskTickets({
               connectorId,
               connectionId,
               brandId: objectId,
             });
-            if (newBrand) {
-              toBeSignaledTicketsIds.add(newBrand.brandId);
+            if (wasBrandUpdated) {
+              toBeSignaledTicketsIds.add(objectId);
             }
           }
           break;
