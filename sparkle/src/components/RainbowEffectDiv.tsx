@@ -11,21 +11,6 @@ interface RainbowEffectDivProps {
   children: React.ReactNode;
 }
 
-/**
- * RainbowEffectDiv is a div that has a rainbow effect below to raise attention
- * (see sparkle)
- *
- * It animates the border and relies on the background to make the rainbow
- * effect, thus `backgroundColor` and `borderColor` are required.
- *
- * Since it encompasses the children into an outer div, with a sister div to
- * hold the rainbow, there is an `outerClassName` prop to style the outer div in
- * addition to the `className` prop to style the inner div.
- *
- * Note: using this to wrap components that already have borders might lead to
- * pixel issues. The recommended way is to define the border within this div,
- * via `borderColor` and `className`
- */
 export function RainbowEffectDiv({
   children,
   disabled,
