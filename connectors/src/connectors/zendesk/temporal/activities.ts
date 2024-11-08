@@ -172,7 +172,7 @@ export async function checkZendeskHelpCenterPermissionsActivity({
 /**
  * This activity is responsible for checking the permissions for a Brand's Tickets.
  *
- * @returns true if the Help Center has read permissions enabled.
+ * @returns true if the Brand has read permissions enabled on tickets.
  */
 export async function checkZendeskTicketsPermissionsActivity({
   connectorId,
