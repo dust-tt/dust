@@ -738,6 +738,9 @@ export class DustAPI {
     try {
       uploadResult = await fetch(file.uploadUrl, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${this._credentials.apiKey}`,
+        },
         body: formData,
       });
     } catch (err) {

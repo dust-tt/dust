@@ -152,7 +152,7 @@ async function handler(
         useCase,
       });
 
-      res.status(200).json({ file: file.toJSONWithUploadUrl(auth) });
+      res.status(200).json({ file: file.toPublicJSONWithUploadUrl(auth) });
       return;
     }
 
