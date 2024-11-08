@@ -28,17 +28,11 @@ export async function syncBrandWithPermissions(
     brandId,
   });
 
-  if (
-    permissions.helpCenterPermission === "read" &&
-    brand?.helpCenterPermission === "none"
-  ) {
-    await brand.update({ helpCenterPermission: "read" });
+  if (permissions.helpCenterPermission === "read") {
+    await brand?.grantHelpCenterPermissions();
   }
-  if (
-    permissions.ticketsPermission === "read" &&
-    brand?.ticketsPermission === "none"
-  ) {
-    await brand.update({ ticketsPermission: "read" });
+  if (permissions.ticketsPermission === "read") {
+    await brand?.grantTicketsPermissions();
   }
 
   if (brand) {
