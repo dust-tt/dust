@@ -29,7 +29,7 @@ import {
   MANAGED_DS_DELETABLE,
 } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -45,6 +45,7 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 import type { ContentNodeTreeItemStatus } from "./ContentNodeTree";
 import { ContentNodeTree } from "./ContentNodeTree";
+import { ConfirmContext } from "@app/components/Confirm";
 
 const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
   "confluence",
@@ -551,6 +552,7 @@ export function ConnectorPermissionsModal({
 }: ConnectorPermissionsModalProps) {
   const { mutate } = useSWRConfig();
 
+  const confirm = useContext(ConfirmContext);
   const [selectedNodes, setSelectedNodes] = useState<
     Record<string, ContentNodeTreeItemStatus>
   >({});
@@ -629,6 +631,24 @@ export function ConnectorPermissionsModal({
   }
 
   async function save() {
+    // confirmation in case there are private nodes
+    const privateNodes = Object.values(selectedNodes).filter(
+      (node) => node.node.providerVisibility === "private"
+    );
+
+    if (privateNodes.length > 0) {
+      const confirmed = await confirm({
+        title: "Privacy heads up!",
+        message: `You are syncing private data from ${privateNodes
+          .map((node) => node.node.title)
+          .join(", ")}. Ensure the owners are aware. Is this okay?`,
+        validateVariant: "warning",
+      });
+      if (!confirmed) {
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       if (Object.keys(selectedNodes).length) {
