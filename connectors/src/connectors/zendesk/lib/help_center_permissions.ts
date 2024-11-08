@@ -1,6 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 
-import { fetchBrandAndSync } from "@connectors/connectors/zendesk/lib/utils";
+import { syncBrandWithPermissions } from "@connectors/connectors/zendesk/lib/utils";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
@@ -27,31 +27,20 @@ export async function allowSyncZendeskHelpCenter({
   brandId: number;
   withChildren?: boolean;
 }): Promise<boolean> {
-  const brand = await ZendeskBrandResource.fetchByBrandId({
-    connectorId,
-    brandId,
-  });
-
-  if (brand?.helpCenterPermission === "none") {
-    await brand.update({ helpCenterPermission: "read" });
-  }
-
   const zendeskApiClient = createZendeskClient(
     await getZendeskSubdomainAndAccessToken(connectionId)
   );
 
-  if (!brand) {
-    const syncSuccess = await fetchBrandAndSync(zendeskApiClient, {
-      connectorId,
-      brandId,
-      permissions: {
-        ticketsPermission: "none",
-        helpCenterPermission: "read",
-      },
-    });
-    if (!syncSuccess) {
-      return false; // stopping early if the brand sync failed
-    }
+  const syncSuccess = await syncBrandWithPermissions(zendeskApiClient, {
+    connectorId,
+    brandId,
+    permissions: {
+      ticketsPermission: "none",
+      helpCenterPermission: "read",
+    },
+  });
+  if (!syncSuccess) {
+    return false; // stopping early if the brand sync failed
   }
 
   // updating permissions for all the children categories

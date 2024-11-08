@@ -5,10 +5,10 @@ import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 /**
- * Fetches a brand and syncs it with the db.
+ * Syncs the permissions of a brand, fetching it and pushing it if not found in the db.
  * @returns True if the fetch succeeded, false otherwise.
  */
-export async function fetchBrandAndSync(
+export async function syncBrandWithPermissions(
   zendeskApiClient: Client,
   {
     connectorId,
@@ -23,6 +23,28 @@ export async function fetchBrandAndSync(
     };
   }
 ): Promise<boolean> {
+  const brand = await ZendeskBrandResource.fetchByBrandId({
+    connectorId,
+    brandId,
+  });
+
+  if (
+    permissions.helpCenterPermission === "read" &&
+    brand?.helpCenterPermission === "none"
+  ) {
+    await brand.update({ helpCenterPermission: "read" });
+  }
+  if (
+    permissions.ticketsPermission === "read" &&
+    brand?.ticketsPermission === "none"
+  ) {
+    await brand.update({ ticketsPermission: "read" });
+  }
+
+  if (brand) {
+    return true;
+  }
+
   const {
     result: { brand: fetchedBrand },
   } = await zendeskApiClient.brand.show(brandId);

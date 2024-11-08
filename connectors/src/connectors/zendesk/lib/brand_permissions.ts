@@ -2,7 +2,7 @@ import type { ModelId } from "@dust-tt/types";
 
 import { allowSyncZendeskHelpCenter } from "@connectors/connectors/zendesk/lib/help_center_permissions";
 import { allowSyncZendeskTickets } from "@connectors/connectors/zendesk/lib/ticket_permissions";
-import { fetchBrandAndSync } from "@connectors/connectors/zendesk/lib/utils";
+import { syncBrandWithPermissions } from "@connectors/connectors/zendesk/lib/utils";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { createZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
@@ -20,33 +20,20 @@ export async function allowSyncZendeskBrand({
   connectionId: string;
   brandId: number;
 }): Promise<boolean> {
-  const brand = await ZendeskBrandResource.fetchByBrandId({
-    connectorId,
-    brandId,
-  });
-  if (brand?.helpCenterPermission === "none") {
-    await brand.update({ helpCenterPermission: "read" });
-  }
-  if (brand?.ticketsPermission === "none") {
-    await brand.update({ ticketsPermission: "read" });
-  }
-
   const zendeskApiClient = createZendeskClient(
     await getZendeskSubdomainAndAccessToken(connectionId)
   );
 
-  if (!brand) {
-    const syncSuccess = await fetchBrandAndSync(zendeskApiClient, {
-      connectorId,
-      brandId,
-      permissions: {
-        ticketsPermission: "none",
-        helpCenterPermission: "read",
-      },
-    });
-    if (!syncSuccess) {
-      return false; // stopping early if the brand sync failed
-    }
+  const syncSuccess = await syncBrandWithPermissions(zendeskApiClient, {
+    connectorId,
+    brandId,
+    permissions: {
+      ticketsPermission: "none",
+      helpCenterPermission: "read",
+    },
+  });
+  if (!syncSuccess) {
+    return false; // stopping early if the brand sync failed
   }
 
   await allowSyncZendeskHelpCenter({
