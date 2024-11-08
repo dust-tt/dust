@@ -4,6 +4,7 @@ import type {
   DustAPI,
   UserMessageType,
 } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type {
   AgentMessageNewEvent,
   ContentFragmentType,
@@ -17,7 +18,6 @@ import type {
   UserMessageWithRankType,
   UserType,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { sendGetActiveTabMessage } from "@extension/lib/messages";
 import { getAccessToken, getStoredUser } from "@extension/lib/storage";
 

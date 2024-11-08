@@ -1,4 +1,5 @@
 import type { ConversationPublicType } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   LightWorkspaceType,
@@ -6,11 +7,9 @@ import type {
   SupportedFileContentType,
 } from "@dust-tt/types";
 import {
-  Err,
   isSupportedFileContentType,
   isSupportedImageContentType,
   MAX_FILE_SIZES,
-  Ok,
 } from "@dust-tt/types";
 import { getIncludeCurrentTab } from "@extension/lib/conversation";
 import { useDustAPI } from "@extension/lib/dust_api";
