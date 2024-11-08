@@ -1,6 +1,5 @@
 import type {
   AgentActionPublicType,
-  AgentMessagePublicType,
   ConversationPublicType,
   DustAPI,
 } from "@dust-tt/client";
@@ -124,26 +123,9 @@ export async function streamConversationToSlack(
     { adhereToRateLimit: false }
   );
 
-  const agentMessages = conversation.content
-    .map((versions) => {
-      const m = versions[versions.length - 1];
-      return m;
-    })
-    .filter((m) => {
-      return (
-        m &&
-        m.type === "agent_message" &&
-        m.parentMessageId === userMessage?.sId
-      );
-    });
-  if (agentMessages.length === 0) {
-    return new Err(new Error("Failed to retrieve agent message"));
-  }
-  const agentMessage = agentMessages[0] as AgentMessagePublicType;
-
-  const streamRes = await dustAPI.streamAgentMessageEvents({
+  const streamRes = await dustAPI.streamAgentAnswerEvents({
     conversation,
-    message: agentMessage,
+    userMessageId: userMessage.sId,
   });
 
   if (streamRes.isErr()) {

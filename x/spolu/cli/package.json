@@ -11,6 +11,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@dust-tt/client": "^1.0.5",
     "@dust-tt/types": "file:../../../types",
     "commander": "^12.1.0",
     "talisman": "^1.1.4"
