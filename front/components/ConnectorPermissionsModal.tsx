@@ -638,10 +638,10 @@ export function ConnectorPermissionsModal({
 
     if (privateNodes.length > 0) {
       const confirmed = await confirm({
-        title: "Privacy heads up!",
-        message: `You are syncing private data from ${privateNodes
+        title: "Sensitive data synchronization",
+        message: `You are synchronizing data from ${privateNodes
           .map((node) => node.node.title)
-          .join(", ")}. Ensure the owners are aware. Is this okay?`,
+          .join(", ")}. Is this okay?`,
         validateVariant: "warning",
       });
       if (!confirmed) {
