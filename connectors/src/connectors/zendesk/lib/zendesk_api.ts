@@ -143,6 +143,8 @@ async function fetchWithRetries({
         return null;
       }
     }
+    logger.error({ response }, "[Zendesk] Zendesk API error");
+    throw new Error(`Zendesk API error: ${text}`);
   }
 
   return response;
@@ -239,61 +241,20 @@ export async function fetchZendeskTicketsInBrand({
     `pageSize must be at most 100 (current value: ${pageSize})`
   );
 
-  const runFetch = async () =>
-    fetch(
+  const response = await fetchWithRetries({
+    url:
       `https://${brandSubdomain}.zendesk.com/api/v2/tickets?page[size]=${pageSize}` +
-        (cursor ? `&page[after]=${cursor}` : ""),
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
+      (cursor ? `&page[after]=${cursor}` : ""),
+    accessToken,
+  });
+
+  return response
+    ? {
+        tickets: response.tickets || [],
+        meta: {
+          has_more: !!response.meta?.has_more,
+          after_cursor: response.meta?.after_cursor || "",
         },
       }
-    );
-
-  let rawResponse = await runFetch();
-
-  let retryCount = 0;
-  while (await handleZendeskRateLimit(rawResponse)) {
-    rawResponse = await runFetch();
-    retryCount++;
-    if (retryCount >= ZENDESK_RATE_LIMIT_MAX_RETRIES) {
-      logger.info(
-        { response: rawResponse },
-        `[Zendesk] Rate limit hit more than ${ZENDESK_RATE_LIMIT_MAX_RETRIES}, aborting.`
-      );
-      throw new Error(
-        `Zendesk rate limit hit more than ${ZENDESK_RATE_LIMIT_MAX_RETRIES} times, aborting.`
-      );
-    }
-  }
-
-  const text = await rawResponse.text();
-  const response = JSON.parse(text);
-
-  if (!rawResponse.ok) {
-    if (
-      response.type === "error.list" &&
-      response.errors &&
-      response.errors.length > 0
-    ) {
-      const error = response.errors[0];
-      if (error.code === "unauthorized") {
-        throw new ExternalOAuthTokenError();
-      }
-      if (error.code === "not_found") {
-        return { tickets: [], meta: { has_more: false, after_cursor: "" } };
-      }
-    }
-    throw new Error(`Zendesk API error: ${text}`);
-  }
-
-  return {
-    tickets: response.tickets || [],
-    meta: {
-      has_more: !!response.meta?.has_more,
-      after_cursor: response.meta?.after_cursor || "",
-    },
-  };
+    : { tickets: [], meta: { has_more: false, after_cursor: "" } };
 }
