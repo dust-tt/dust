@@ -345,6 +345,10 @@
  *           type: string
  *           description: The content type of the content fragment
  *           example: "text/plain"
+ *         fileId:
+ *           type: string
+ *           description: The id of the previously uploaded file
+ *           example: fil_123456
  *         context:
  *           $ref: '#/components/schemas/Context'
  *     Space:
