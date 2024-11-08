@@ -383,19 +383,17 @@ export async function syncZendeskTicketsBatchActivity({
   const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
+  const zendeskApiClient = createZendeskClient({ subdomain, accessToken });
+  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+    connectorId,
+    brandId,
+  });
 
-  // Fetch tickets in batches
   const { tickets, meta } = await fetchZendeskTicketsInBrand({
-    brandSubdomain: subdomain,
+    brandSubdomain,
     accessToken,
     pageSize: ZENDESK_BATCH_SIZE,
     cursor,
-  });
-
-  const zendeskApiClient = createZendeskClient({ subdomain, accessToken });
-  await changeZendeskClientSubdomain(zendeskApiClient, {
-    connectorId,
-    brandId,
   });
 
   const users = await zendeskApiClient.users.list();
@@ -426,8 +424,6 @@ export async function syncZendeskTicketsBatchActivity({
   );
 
   return {
-    processedCount: res.length,
-    successCount: res.filter((r) => r).length,
     nextCursor: meta.after_cursor,
     hasMore: meta.has_more,
   };
