@@ -50,9 +50,8 @@ function ProcessActionQuery({ action }: { action: ProcessActionType }) {
       })} ${minProcessingDate.getDate()}`
     : null;
 
-  const overflow = !(
-    action.outputs && action.outputs?.total_chunks >= PROCESS_ACTION_TOP_K
-  );
+  const overflow =
+    action.outputs && action.outputs?.total_chunks >= PROCESS_ACTION_TOP_K;
 
   return (
     <div className="flex flex-col gap-1">
