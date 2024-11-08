@@ -178,7 +178,12 @@ ${comment.body}`;
       documentContent,
       documentUrl: ticket.url,
       timestampMs: updatedAtDate.getTime(),
-      tags: ticket.tags,
+      tags: [
+        ...ticket.tags,
+        `title:${ticket.subject}`,
+        `updatedAt:${updatedAtDate.getTime()}`,
+        `createdAt:${createdAtDate.getTime()}`,
+      ],
       parents: ticketInDb.getParentInternalIds(connectorId),
       loggerArgs: { ...loggerArgs, ticketId: ticket.id },
       upsertContext: { sync_type: "batch" },
