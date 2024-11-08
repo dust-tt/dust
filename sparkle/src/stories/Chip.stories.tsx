@@ -11,13 +11,14 @@ const meta = {
 export default meta;
 
 const colors = [
-  "warning",
-  "slate",
-  "purple",
-  "sky",
   "emerald",
   "amber",
+  "slate",
+  "purple",
+  "warning",
+  "sky",
   "pink",
+  "action",
   "red",
 ] as const;
 

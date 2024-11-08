@@ -147,6 +147,7 @@ export function Avatar({
       : name
         ? getColor(name)
         : "s-bg-slate-200",
+    visualToUse ? "" : "s-border s-border-slate-950/10",
     "s-flex s-flex-shrink-0 s-items-center s-justify-center s-overflow-hidden",
     clickableStyles,
     busyStyles
