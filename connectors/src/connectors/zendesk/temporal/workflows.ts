@@ -13,7 +13,6 @@ import type {
   ZendeskUpdateSignal,
 } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
-const ZENDESK_BATCH_SIZE = 100;
 const {
   getZendeskCategoriesActivity,
   syncZendeskBrandActivity,
@@ -336,7 +335,6 @@ export async function zendeskCategorySyncWorkflow({
       currentSyncDateMs,
       forceResync,
       cursor,
-      pageSize: ZENDESK_BATCH_SIZE,
     });
     hasMore = result.hasMore || false;
     cursor = result.afterCursor;
@@ -385,7 +383,6 @@ async function runZendeskBrandHelpCenterSyncActivities({
         currentSyncDateMs,
         forceResync,
         cursor,
-        pageSize: ZENDESK_BATCH_SIZE,
       });
       hasMore = result.hasMore || false;
       cursor = result.afterCursor;
@@ -409,36 +406,16 @@ async function runZendeskBrandTicketsSyncActivities({
 }) {
   let cursor: string | null = null;
   let hasMore = true;
-  let totalProcessed = 0;
-  let totalSuccess = 0;
-  let batchNumber = 0;
 
   while (hasMore) {
-    batchNumber++;
-
     const result = await syncZendeskTicketsBatchActivity({
       connectorId,
       brandId,
       currentSyncDateMs,
       forceResync,
-      pageSize: ZENDESK_BATCH_SIZE,
       cursor,
     });
-
-    totalProcessed += result.processedCount;
-    totalSuccess += result.successCount;
+    hasMore = result.hasMore || false;
     cursor = result.nextCursor;
-    hasMore = result.hasMore;
-
-    // Add a small delay between batches to prevent rate limiting
-    if (hasMore) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
   }
-
-  return {
-    totalProcessed,
-    totalSuccess,
-    totalBatches: batchNumber,
-  };
 }
