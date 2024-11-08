@@ -12,6 +12,7 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import {
   changeZendeskClientSubdomain,
   createZendeskClient,
+  fetchRecentlyUpdatedArticles,
   fetchZendeskArticlesInCategory,
   fetchZendeskTicketsInBrand,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
@@ -192,17 +193,6 @@ export async function checkZendeskTicketsPermissionsActivity({
   }
 
   return brandInDb.ticketsPermission === "read";
-}
-
-/**
- * Retrieves the IDs of every brand stored in db.
- */
-export async function getAllZendeskBrandsIdsActivity({
-  connectorId,
-}: {
-  connectorId: ModelId;
-}): Promise<number[]> {
-  return ZendeskBrandResource.fetchAllBrandIds({ connectorId });
 }
 
 /**
@@ -430,6 +420,76 @@ export async function syncZendeskTicketsBatchActivity({
     nextCursor: meta.after_cursor,
     hasMore: meta.has_more,
   };
+}
+
+/**
+ * This activity is responsible for syncing the next batch of recently updated articles to process.
+ * It is based on the incremental endpoint, which returns a diff.
+ */
+export async function syncZendeskArticlesDiffBatchActivity({
+  connectorId,
+  currentSyncDateMs,
+  cursor,
+}: {
+  connectorId: ModelId;
+  currentSyncDateMs: number;
+  cursor: string | null;
+}): Promise<{ hasMore: boolean; afterCursor: string | null }> {
+  const connector = await _getZendeskConnectorOrRaise(connectorId);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const loggerArgs = {
+    workspaceId: dataSourceConfig.workspaceId,
+    connectorId,
+    provider: "zendesk",
+    dataSourceId: dataSourceConfig.dataSourceId,
+  };
+
+  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
+    connector.connectionId
+  );
+  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
+
+  const {
+    articles,
+    meta: { after_cursor, end_of_stream },
+  } = await fetchRecentlyUpdatedArticles({
+    subdomain,
+    accessToken,
+    ...(cursor ? { cursor } : { startTime: currentSyncDateMs - 1000 * 60 * 5 }), // 5 min ago, previous scheduled execution
+  });
+
+  await concurrentExecutor(
+    articles,
+    async (article) => {
+      const { result: section } =
+        await zendeskApiClient.helpcenter.sections.show(article.section_id);
+      const { result: user } = await zendeskApiClient.users.show(
+        article.author_id
+      );
+
+      if (section.category_id) {
+        const category = await ZendeskCategoryResource.fetchByCategoryId({
+          connectorId,
+          categoryId: section.category_id,
+        });
+        if (category && category.permission === "read") {
+          return syncArticle({
+            connectorId,
+            category,
+            article,
+            section,
+            user,
+            dataSourceConfig,
+            currentSyncDateMs,
+            loggerArgs,
+            forceResync: false,
+          });
+        }
+      }
+    },
+    { concurrency: 10 }
+  );
+  return { hasMore: !end_of_stream, afterCursor: after_cursor };
 }
 
 /**
