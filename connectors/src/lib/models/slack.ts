@@ -146,6 +146,8 @@ export class SlackChannel extends Model<
   declare slackChannelId: string;
   declare slackChannelName: string;
 
+  declare private: boolean;
+
   declare permission: ConnectorPermission;
   declare agentConfigurationId: CreationOptional<string | null>;
 }
@@ -176,6 +178,10 @@ SlackChannel.init(
     },
     slackChannelName: {
       type: DataTypes.STRING,
+      allowNull: false,
+    },
+    private: {
+      type: DataTypes.BOOLEAN,
       allowNull: false,
     },
     permission: {
